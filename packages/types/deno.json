@@ -1,0 +1,4 @@
+{
+  "name": "@sandmd/types",
+  "exports": "./index.ts"
+}

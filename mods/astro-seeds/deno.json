@@ -1,0 +1,17 @@
+{
+  "tasks": {
+    "build:main": "deno bundle -o build/main.js src/main/main.ts",
+    "build:worker": "deno bundle -o build/worker.js src/worker/main.ts",
+    "build:modinfo": "cp src/modinfo.json build/modinfo.json",
+    "build:toGame": "cp -r build/. /Users/mickey/Library/Application\\ Support/sandustry/mods/astro-seed-mod",
+
+    
+    "build": "deno task build:main  && deno task build:worker && deno task build:modinfo && deno task build:toGame",
+    "check": "deno check src/main/main.ts src/worker/main.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"],
+    "strict": true
+  },
+  "exclude": ["main.js", "worker.js"]
+}

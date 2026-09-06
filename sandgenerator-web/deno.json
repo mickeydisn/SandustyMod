@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "build": "deno bundle -o build/main.js js/mapGeneration.js"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"],
+    "strict": true
+  }
+}

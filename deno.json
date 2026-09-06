@@ -1,0 +1,20 @@
+{
+  "workspace": [
+    "./packages/*",
+    "./mods/*"
+  ],
+ "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 4
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "tasks": {
+    "fmt": "deno fmt",
+    "lint": "deno lint"
+  }
+}

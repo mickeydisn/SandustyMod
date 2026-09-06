@@ -1,0 +1,20 @@
+{
+  "tasks": {
+    "build:img": "node tools/generate-catalogue.mjs",
+    "build:main": "deno bundle -o build/main.js src/main.ts",
+    "build:modinfo": "cp src/modinfo.json build/modinfo.json",
+    "build:toGame": "cp -r build/. /Users/mickey/Library/Application\\ Support/sandustry/mods/sandusty-icons",
+    "build:assetToGame": "cp -r assets/. /Users/mickey/Library/Application\\ Support/sandustry/mods/sandusty-icons/assets",
+    "build:asset2ToGame": "cp -r assets2/. /Users/mickey/Library/Application\\ Support/sandustry/mods/sandusty-icons/assets2",
+
+    "build:mainToGame": "deno task build:toGame  && deno task build:assetToGame   && deno task build:asset2ToGame ",
+    
+    "build": "deno task build:img && deno task build:main  && deno task build:modinfo && deno task build:mainToGame ",
+    "check": "deno check src/main/main.ts src/worker/main.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"],
+    "strict": true
+  },
+  "exclude": ["main.js", "worker.js"]
+}

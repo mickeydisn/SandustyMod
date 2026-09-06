@@ -1,0 +1,7 @@
+{
+  "name": "@sandmd/controls",
+  "exports": "./index.ts",
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@sandmd/catalogue",
+  "exports": "./index.ts",
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"]
+  }
+}

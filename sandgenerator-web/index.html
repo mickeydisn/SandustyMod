@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dynamic Game Map Generator</title>
+    <style>
+      :root {
+        interpolate-size: allow-keywords;
+      }
+      body {
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+      }
+      input:focus {
+        border: 8px solid #f0f;
+      }
+      h3 {
+        padding: 4px;
+        margin: 5px 0px 10px 0px;
+        width: 100%;
+        text-align: left;
+      }
+      h4 {
+        width: 100%;
+        padding: 4px;
+        margin: 10px 0px 5px 0px;
+        text-decoration: solid;
+      }
+      #mapCanvas {
+        border: 1px solid black;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        zoom: 2.5;
+      }
+      #controls {
+        float: left;
+        width: 250px;
+        height: 95vh;
+        padding: 10px;
+        overflow-y: scroll;
+      }
+      #canvasContainer {
+        float: left;
+      }
+
+      .layerMenu {
+        border: 1px solid blue;
+        text-align: right;
+        margin-bottom: 10px;
+        padding: 5px;
+      }
+
+      details {
+        margin-inline-start: 1rem;
+        text-align: left;
+        margin: 0;
+        padding-block: 0.2rem;
+        padding-inline: 0.3rem;
+        overflow: hidden;
+      }
+
+      #fromMenu > button {
+        font-size: 1.5rem;
+      }
+
+      details > summary {
+        list-style-position: inside;
+        margin: 0;
+      }
+
+      details::details-content {
+        block-size: 0;
+        transition: block-size 0.3s, content-visibility 0.3s;
+        transition-behavior: allow-discrete;
+      }
+      details[open]::details-content {
+        block-size: auto;
+      }
+
+      details > div {
+        border: 1px solid #000;
+        padding: 0.2rem;
+        margin: 0.6rem 0rem 0.3rem 0rem;
+        text-align: right;
+      }
+
+      .layerMenu .valueSelector {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: end;
+
+        & div {
+          border: 1px solid #000;
+          cursor: pointer;
+          padding: 3px;
+          margin: 1px 3px;
+        }
+
+        & input {
+          size: 10px;
+          width: 50px;
+          text-align: center;
+        }
+      }
+
+      .layerMenu ul.colorSelector {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+
+        & > li {
+          height: 1.2rem;
+          min-width: 1.2rem;
+          border-radius: 100%;
+          border: 1px solid #000;
+          margin: 0.1rem;
+          position: relative;
+          display: block;
+        }
+
+        & > li > span {
+          position: absolute;
+          display: none;
+          border: 1px solid #000;
+          background-color: #dedede;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-100%);
+          z-index: 100;
+          padding: 0.4rem;
+        }
+        & > li:hover > span {
+          position: absolute;
+          display: flex;
+        }
+      }
+    </style>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/gpu.js@latest/dist/gpu-browser.min.js"
+    ></script>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"
+    ></script>
+    <!-- script src="./js/mapGeneration.js" type="module"></script -->
+    <script src="./build/main.js" type="module"></script>
+    <script>
+    </script>
+  </head>
+  <body>
+    <div id="controls">
+      <div>
+        <form id="fromMenu" onsubmit="return false;">
+
+          <h2>Seed</h2>
+          <input type="text" id="seed" name="seed" value="mickey">
+
+          <h2>Generate</h2>
+          <button onclick="generateMap()">Generate Map</button>
+
+          <h2>Layers</h2>
+          <div id="rockSkyMenu" class="layerMenu"></div>
+          <div id="tunnelMenu" class="layerMenu"></div>
+          <div id="caveMenu" class="layerMenu"></div>
+          <div id="fluidMenu" class="layerMenu"></div>
+
+          <h2>Wall Modifier</h2>
+          <div id="wallMenu" class="layerMenu"></div>
+          <h2>GrowForme Modifier</h2>
+          <div id="distanceMenu" class="layerMenu"></div>
+
+        </form>
+      </div>
+    </div>
+    <div id="canvasContainer">
+      <canvas id="mapCanvas" width="300" height="300"></canvas>
+      <canvas id="mapCanvasFog" width="300" height="300"></canvas>
+    </div>
+    <div id="Stat"></div>
+  </body>
+</html>

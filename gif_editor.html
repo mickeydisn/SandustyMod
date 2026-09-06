@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed GIF Frame & Framerate Editor</title>
+    <script src="https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        #drop-zone {
+            border: 2px dashed var(--border-color);
+            background-color: var(--panel-bg);
+            padding: 40px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        #drop-zone.dragover {
+            border-color: var(--accent-color);
+            background-color: #1e3a8a33;
+        }
+
+        #drop-zone p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .editor-panel {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .preview-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            border-radius: 8px;
+            min-height: 200px;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            accent-color: var(--accent-color);
+        }
+
+        input[type="number"] {
+            width: 70px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 6px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stats {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>GIF Frame & Framerate Editor</h1>
+
+    <div id="drop-zone">
+        <p>Drag & Drop a GIF file here, or <span style="color: var(--accent-color); text-decoration: underline;">browse</span></p>
+        <input type="file" id="file-input" accept="image/gif" class="hidden">
+    </div>
+
+    <div id="editor-workspace" class="editor-panel hidden">
+        <div class="preview-container">
+            <canvas id="preview-canvas"></canvas>
+        </div>
+
+        <div class="stats" id="frame-stats">Frames: 0 / 0</div>
+
+        <div class="controls-group">
+            <div class="controls-row">
+                <label for="start-frame">Start Frame:</label>
+                <input type="range" id="start-frame" min="0" value="0">
+                <input type="number" id="start-frame-num" min="0" value="0">
+            </div>
+            <div class="controls-row">
+                <label for="end-frame">End Frame:</label>
+                <input type="range" id="end-frame" min="0" value="0">
+                <input type="number" id="end-frame-num" min="0" value="0">
+            </div>
+        </div>
+
+        <div class="controls-group">
+            <div class="controls-row">
+                <label for="delay-input">Frame Delay (ms per frame):</label>
+                <input type="number" id="delay-input" min="10" max="1000" step="10" value="100">
+            </div>
+        </div>
+
+        <button id="export-btn" class="btn">Export Processed GIF</button>
+    </div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const editorWorkspace = document.getElementById('editor-workspace');
+    const canvas = document.getElementById('preview-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const startSlider = document.getElementById('start-frame');
+    const startNum = document.getElementById('start-frame-num');
+    const endSlider = document.getElementById('end-frame');
+    const endNum = document.getElementById('end-frame-num');
+    const delayInput = document.getElementById('delay-input');
+    const frameStats = document.getElementById('frame-stats');
+    const exportBtn = document.getElementById('export-btn');
+
+    let parsedFrames = [];    
+    let gifWidth = 0;
+    let gifHeight = 0;
+    let animInterval = null;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    function handleFile(file) {
+        if (!file || file.type !== 'image/gif') {
+            alert('Please drop a valid GIF file.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            parseGif(e.target.result);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function parseGif(buffer) {
+        try {
+            const intArray = new Uint8Array(buffer);
+            const reader = new GifReader(intArray);
+
+            gifWidth = reader.width;
+            gifHeight = reader.height;
+            canvas.width = gifWidth;
+            canvas.height = gifHeight;
+
+            parsedFrames = [];
+            const numFrames = reader.numFrames();
+
+            const compositeCanvas = document.createElement('canvas');
+            compositeCanvas.width = gifWidth;
+            compositeCanvas.height = gifHeight;
+            const compCtx = compositeCanvas.getContext('2d');
+
+            let prevCanvasSnapshot = null;
+
+            for (let i = 0; i < numFrames; i++) {
+                const frameInfo = reader.frameInfo(i);
+                let disposal = frameInfo.disposal;
+                if (disposal === 3) {
+                    prevCanvasSnapshot = compCtx.getImageData(0, 0, gifWidth, gifHeight);
+                }
+
+                const frameBuffer = new Uint8Array(gifWidth * gifHeight * 4);
+                reader.decodeAndBlitFrameRGBA(i, frameBuffer);
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = gifWidth;
+                tempCanvas.height = gifHeight;
+                const tCtx = tempCanvas.getContext('2d');
+                tCtx.putImageData(new ImageData(new Uint8ClampedArray(frameBuffer), gifWidth, gifHeight), 0, 0);
+
+                compCtx.drawImage(tempCanvas, 0, 0);
+
+                const snapshotCanvas = document.createElement('canvas');
+                snapshotCanvas.width = gifWidth;
+                snapshotCanvas.height = gifHeight;
+                snapshotCanvas.getContext('2d').drawImage(compositeCanvas, 0, 0);
+
+                parsedFrames.push({
+                    canvas: snapshotCanvas,
+                    delay: frameInfo.delay ? frameInfo.delay * 10 : 100
+                });
+
+                if (disposal === 2) {
+                    compCtx.clearRect(frameInfo.x, frameInfo.y, frameInfo.width, frameInfo.height);
+                } else if (disposal === 3 && prevCanvasSnapshot) {
+                    compCtx.putImageData(prevCanvasSnapshot, 0, 0);
+                }
+            }
+
+            initControls(numFrames);
+            editorWorkspace.classList.remove('hidden');
+            startAnimation();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to parse GIF. It might be corrupted or in an unsupported format.');
+        }
+    }
+
+    function initControls(numFrames) {
+        const maxIdx = numFrames - 1;
+
+        startSlider.max = maxIdx;
+        startSlider.value = 0;
+        startNum.max = maxIdx;
+        startNum.value = 0;
+
+        endSlider.max = maxIdx;
+        endSlider.value = maxIdx;
+        endNum.max = maxIdx;
+        endNum.value = maxIdx;
+
+        frameStats.textContent = `Total Original Frames: ${numFrames}`;
+    }
+
+    function syncValues(source) {
+        let start = parseInt(startSlider.value);
+        let end = parseInt(endSlider.value);
+
+        if (start > end) {
+            if (source === 'start') end = start;
+            else start = end;
+        }
+
+        startSlider.value = start;
+        startNum.value = start;
+        endSlider.value = end;
+        endNum.value = end;
+
+        startAnimation();
+    }
+
+    startSlider.addEventListener('input', () => { startNum.value = startSlider.value; syncValues('start'); });
+    startNum.addEventListener('input', () => { startSlider.value = startNum.value; syncValues('start'); });
+    endSlider.addEventListener('input', () => { endNum.value = endSlider.value; syncValues('end'); });
+    endNum.addEventListener('input', () => { endSlider.value = endNum.value; syncValues('end'); });
+    delayInput.addEventListener('input', startAnimation);
+
+    function startAnimation() {
+        if (animInterval) clearInterval(animInterval);
+
+        const startIdx = parseInt(startSlider.value);
+        const endIdx = parseInt(endSlider.value);
+        const customDelay = parseInt(delayInput.value) || 100;
+
+        let currentIdx = startIdx;
+
+        function drawNextFrame() {
+            ctx.clearRect(0, 0, gifWidth, gifHeight);
+            const frame = parsedFrames[currentIdx];
+            if (frame) {
+                ctx.drawImage(frame.canvas, 0, 0);
+            }
+
+            currentIdx++;
+            if (currentIdx > endIdx) {
+                currentIdx = startIdx;
+            }
+        }
+
+        ctx.clearRect(0, 0, gifWidth, gifHeight);
+        ctx.drawImage(parsedFrames[startIdx].canvas, 0, 0);
+        
+        animInterval = setInterval(drawNextFrame, customDelay);
+    }
+
+    exportBtn.addEventListener('click', () => {
+        const startIdx = parseInt(startSlider.value);
+        const endIdx = parseInt(endSlider.value);
+        const customDelay = Math.round((parseInt(delayInput.value) || 100) / 10);
+
+        const subFrames = parsedFrames.slice(startIdx, endIdx + 1);
+        const canvasExport = document.createElement('canvas');
+        canvasExport.width = gifWidth;
+        canvasExport.height = gifHeight;
+        const expCtx = canvasExport.getContext('2d');
+
+        try {
+            // Buffer sized safely for output
+            const buf = new Uint8Array(gifWidth * gifHeight * subFrames.length * 5 + 32768);
+            const gifWriter = new GifWriter(buf, gifWidth, gifHeight, { loop: 0 });
+
+            for (let f of subFrames) {
+                expCtx.clearRect(0, 0, gifWidth, gifHeight);
+                expCtx.drawImage(f.canvas, 0, 0);
+                const imgData = expCtx.getImageData(0, 0, gifWidth, gifHeight);
+                const data = imgData.data;
+
+                // Simple quantization to build a custom 256-color palette index map per frame
+                const pixels = new Uint8Array(gifWidth * gifHeight);
+                const palette = [];
+
+                for (let j = 0, k = 0, jl = data.length; j < jl; j += 4, k++) {
+                    // Reduce color depth slightly to pack into 256 palette limits
+                    const r = Math.floor(data[j + 0] * 0.1) * 10;
+                    const g = Math.floor(data[j + 1] * 0.1) * 10;
+                    const b = Math.floor(data[j + 2] * 0.1) * 10;
+                    const color = (r << 16) | (g << 8) | b;
+
+                    let index = palette.indexOf(color);
+                    if (index === -1) {
+                        if (palette.length < 256) {
+                            palette.push(color);
+                            index = palette.length - 1;
+                        } else {
+                            index = 0; // fallback if palette exceeds 256
+                        }
+                    }
+                    pixels[k] = index;
+                }
+
+                // Ensure palette size is a power of 2 (min 2, max 256) as required by GIF specs
+                let powof2 = 2;
+                while (powof2 < palette.length && powof2 < 256) powof2 <<= 1;
+                palette.length = powof2;
+
+                gifWriter.addFrame(0, 0, gifWidth, gifHeight, pixels, {
+                    palette: new Uint32Array(palette),
+                    delay: customDelay
+                });
+            }
+
+            const len = gifWriter.end();
+            const actualBytes = buf.subarray(0, len);
+            const blob = new Blob([actualBytes], { type: 'image/gif' });
+            
+            const url = URL.createObjectURL(blob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = 'edited-animation.gif';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        } catch (err) {
+            console.error(err);
+            alert('Error generating exported GIF.');
+        }
+    });
+</script>
+
+</body>
+</html>

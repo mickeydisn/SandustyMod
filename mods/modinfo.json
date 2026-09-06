@@ -1,0 +1,15 @@
+{
+	"manifestVersion": 1,
+	"id": "mickey.test",
+	"name": "mickey.test",
+	"description": "a test mode",
+	"version": "1.0.0",
+	"apiVersion": 1,
+	"entry": "main.js",
+    "author": "MickeyDisn",
+	"dependencies": [],
+	"loadOrder": 0,
+    "configSchema": {}
+}
+
+

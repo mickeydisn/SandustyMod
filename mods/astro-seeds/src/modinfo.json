@@ -1,0 +1,21 @@
+{
+	"manifestVersion": 1,
+	"id": "astro.seeds",
+	"name": "Astro Seeds",
+	"version": "3.1.0",
+	"apiVersion": 1,
+	"entry": "main.js",
+	"workerEntry": "worker.js",
+	"author": "MickeyDisn",
+	"description": "Astro Seeds v2.3\n\nGold & Copper fixed. Water configured in-game (Alt+A panel).\nMOVE → GROW → CRYSTALLIZATION.\n",
+	"dependencies": [],
+	"loadOrder": 0,
+	"configSchema": {
+		"enabled": {
+			"type": "boolean",
+			"default": true,
+			"labelKey": "Mod enabled",
+			"descriptionKey": "Master switch. Water particle rules use the in-game panel (Alt+A)."
+		}
+	}
+}

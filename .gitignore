@@ -1,0 +1,8 @@
+# Folders starting with "__" — archives, bundles, scraped/downloaded mods, packages
+__*/
+
+# Dotfiles & IDE config (user rule: ignore anything starting with ".")
+.*
+
+# ...except keep .gitignore itself tracked
+!.gitignore

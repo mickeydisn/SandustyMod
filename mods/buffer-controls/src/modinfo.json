@@ -1,0 +1,23 @@
+
+{
+	"manifestVersion": 1,
+  "id": "buffer-control",
+  "name": "Buffer-control",
+  "version": "1.0.0",
+  "description": "Decorative icon objects — picker and placement only (no cost).",
+	"author": "MickeyDisn",
+	"apiVersion": 1,
+	"entry": "main.js",
+	"dependencies": [],
+	"loadOrder": 0,
+  "main": "main.ts",
+	"configSchema": {
+		"enabled": {
+			"type": "boolean",
+			"default": true,
+			"labelKey": "Mod enabled",
+			"descriptionKey": "Master switch. Water particle rules use the in-game panel (Alt+A)."
+		}
+	}
+}
+
