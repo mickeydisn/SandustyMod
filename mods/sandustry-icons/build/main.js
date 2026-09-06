@@ -55,12 +55,9 @@ function typeOfCatalogueItem(modId, itemId, mirrored = false) {
 }
 function itemIdFromType(modId, type) {
   const prefix = itemTypePrefix(modId);
-  console.log("WWWWW= itemIdFromType", modId, type, prefix);
   if (!type.startsWith(prefix)) return null;
   let id = type.slice(prefix.length);
-  console.log("WWWWW= startsWith", id);
   if (id.endsWith(MIRROR_SUFFIX)) id = id.slice(0, -MIRROR_SUFFIX.length);
-  console.log("WWWWW= moror", id);
   return id;
 }
 function findItem(items, id) {
@@ -222,11 +219,6 @@ function persistSelection(list) {
   }
 }
 
-// ../../packages/catalogue/src/picker/react.ts
-function h(type, props, ...children) {
-  return sandkit.react.createElement(type, props, ...children);
-}
-
 // ../../packages/catalogue/src/picker/scroll.ts
 var position = 0;
 var pending = false;
@@ -248,33 +240,27 @@ function resetScroll() {
   pending = true;
 }
 
-// ../../packages/catalogue/src/picker/overlay.ts
+// ../../packages/catalogue/src/picker/react.ts
+function h(type, props, ...children) {
+  return sandkit.react.createElement(type, props, ...children);
+}
+
+// ../../packages/catalogue/src/picker/content.ts
 var TOOLTIP_DELAY_MS = 120;
-function createPickerOverlay(options) {
-  const list = options.list;
-  const pickerId = options.pickerId ?? `${list.modId}/picker`;
-  const slot = options.slot ?? "hotbar";
-  const title = options.title ?? "Pick item";
-  const maxHeight = options.maxHeight ?? 400;
-  const syncIntervalMs = options.syncIntervalMs ?? 1e3;
-  let pickerState = null;
-  let repaint = null;
+var SWATCH_BOX = 34;
+var MAX_SWATCH_ZOOM = 4;
+function createPickerView(options) {
+  const { api, maxHeight } = options;
+  const list = api.list;
   const search = "";
   let tooltip = null;
   let tooltipTimer = null;
-  let timer = null;
-  let unsubscribe = null;
-  let registered = false;
-  if (options.persistSelection !== false) restorePickerState(list);
-  const unlockTypes = options.unlockTypes ?? ((types) => {
-    for (const type of types) sandkit.api.player.buildings.unlockByType(type);
-  });
   const clearTooltip = () => {
     if (tooltipTimer) clearTimeout(tooltipTimer);
     tooltipTimer = null;
     if (!tooltip) return;
     tooltip = null;
-    repaint?.();
+    api.repaint();
   };
   const scheduleTooltip = (label, rect) => {
     if (tooltipTimer) clearTimeout(tooltipTimer);
@@ -285,7 +271,7 @@ function createPickerOverlay(options) {
         x: rect.left + rect.width / 2,
         y: rect.top
       };
-      repaint?.();
+      api.repaint();
     }, TOOLTIP_DELAY_MS);
   };
   const ctx = () => ({
@@ -294,43 +280,8 @@ function createPickerOverlay(options) {
     mirrored: list.isMirrored(),
     categoryId: list.getCategory(),
     search,
-    repaint: () => repaint?.()
+    repaint: () => api.repaint()
   });
-  const selectItem = (item) => {
-    list.setSelected(item.id);
-    list.setCategory(item.category);
-    const mirrored = list.isMirrored();
-    const type = list.structureType(item.id, mirrored);
-    unlockTypes([
-      type,
-      list.structureType(item.id, !mirrored)
-    ]);
-    options.onSelect?.(item, mirrored);
-    list.applyToBuildTool();
-    if (options.persistSelection !== false) persistSelection(list);
-    repaint?.();
-  };
-  const expand = () => {
-    if (!pickerState?.minimized) return;
-    requestScrollRestore();
-    pickerState = {
-      minimized: false
-    };
-    repaint?.();
-  };
-  const minimize = () => {
-    if (!pickerState || pickerState.minimized) return;
-    clearTooltip();
-    pickerState = {
-      minimized: true
-    };
-    repaint?.();
-  };
-  const close = () => {
-    clearTooltip();
-    pickerState = null;
-    repaint?.();
-  };
   const spriteSrc = (item) => {
     const id = options.spriteIdFor?.(item) ?? item.spriteId ?? list.structureType(item.id, false);
     const r = sandkit.api.sprites.getById(id)?.imageAsset?.image?.src;
@@ -340,7 +291,7 @@ function createPickerOverlay(options) {
     const navigation = sandkit.api.ui?.navigation;
     const focusable = navigation.useFocusable({
       id: props.id,
-      scope: pickerId,
+      scope: api.pickerId,
       onActivate: props.onActivate,
       scrollIntoView: true
     });
@@ -358,8 +309,6 @@ function createPickerOverlay(options) {
   };
   const ObjectSwatch = (props) => {
     const src = spriteSrc(props.item);
-    const SWATCH_BOX = 34;
-    const MAX_SWATCH_ZOOM = 4;
     function swatchZoom(width, height, box = SWATCH_BOX) {
       const longest = Math.max(width, height);
       if (longest <= 0) return 1;
@@ -367,13 +316,12 @@ function createPickerOverlay(options) {
     }
     const zoom = swatchZoom(props.item.width, props.item.height);
     return h(FocusableButton, {
-      id: `${pickerId}-item-${props.item.id}`,
+      id: `${api.pickerId}-item-${props.item.id}`,
       onHoverStart: (rect) => {
-        const extra = "Hello";
-        scheduleTooltip(`${props.item.label} \u2014 ${props.item.width}\xD7${props.item.height}${extra}`, rect);
+        scheduleTooltip(`${props.item.label} \u2014 ${props.item.width}\xD7${props.item.height}`, rect);
       },
       onHoverEnd: clearTooltip,
-      onActivate: () => selectItem(props.item),
+      onActivate: () => api.selectItem(props.item),
       className: `w-10 h-10 rounded border-2 ${props.selected ? "border-yellow-400" : "border-slate-600"} hover:border-slate-400 flex items-center justify-center`,
       children: [
         src ? h("img", {
@@ -402,12 +350,15 @@ function createPickerOverlay(options) {
   const Picker = () => {
     const [, bump] = sandkit.react.useState(0);
     sandkit.react.useEffect(() => {
-      repaint = () => bump((n) => n + 1);
+      api.setRepaint(() => bump((n) => n + 1));
+      api.setClearTooltip(() => clearTooltip);
       return () => {
-        if (repaint) repaint = null;
+        api.setRepaint(null);
+        api.setClearTooltip(null);
       };
     }, []);
-    if (!pickerState) return null;
+    const state = api.getState();
+    if (!state) return null;
     const selected = list.getSelected();
     const categoryId = list.getCategory() || list.categories[0]?.id || "";
     function filterItems(items, options2) {
@@ -425,16 +376,16 @@ function createPickerOverlay(options) {
       query: search,
       itemFilter: options.itemFilter
     });
-    if (pickerState.minimized) {
+    if (state.minimized) {
       const src = selected ? spriteSrc(selected) : void 0;
       return h("div", {
         className: "pointer-events-auto flex items-center gap-2 bg-black bg-opacity-75 border border-slate-700 rounded px-3 py-2 ui-box text-slate-300",
-        onClick: expand
+        onClick: api.expand
       }, h("span", {
         className: "text-white text-xs opacity-70"
-      }, title), h(FocusableButton, {
-        id: `${pickerId}-selected`,
-        onActivate: expand,
+      }, api.title), h(FocusableButton, {
+        id: `${api.pickerId}-selected`,
+        onActivate: api.expand,
         className: "flex items-center gap-2 text-xs text-white hover:text-[#ffe700]",
         children: [
           h("div", {
@@ -464,190 +415,214 @@ function createPickerOverlay(options) {
         className: "text-xs text-slate-500"
       }, "Click to expand"));
     }
-    return h(
-      "div",
-      {
-        className: "pointer-events-auto flex min-h-0 flex-col overflow-hidden bg-black bg-opacity-75 border border-slate-700 rounded ui-box text-slate-300",
-        style: {
-          width: `75vw`,
-          maxWidth: `75vw`,
-          maxHeight: `${maxHeight}px`,
-          position: "fixed",
-          bottom: "80px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 1e3
-        }
+    return h("div", {
+      className: "pointer-events-auto flex min-h-0 flex-col overflow-hidden bg-black bg-opacity-75 border border-slate-700 rounded ui-box text-slate-300",
+      style: {
+        width: `75vw`,
+        maxWidth: `75vw`,
+        maxHeight: `${maxHeight}px`,
+        position: "fixed",
+        bottom: "80px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 1e3
+      }
+    }, h("div", {
+      className: "px-4 py-2 border-b border-slate-800 flex items-center justify-between"
+    }, h("span", {
+      className: "text-white text-xs opacity-70"
+    }, api.title), h("div", {
+      className: "flex items-center gap-2"
+    }, h(FocusableButton, {
+      id: `${api.pickerId}-mirror`,
+      onActivate: api.toggleMirror,
+      className: `text-xs px-2 py-0.5 border rounded ${list.isMirrored() ? "text-[#ffe700] border-yellow-400" : "text-slate-300 border-slate-600"}`,
+      children: `${list.isMirrored() ? "\u2611" : "\u2610"} Mirrored`
+    }), h(FocusableButton, {
+      id: `${api.pickerId}-minimize`,
+      onActivate: api.minimize,
+      className: "text-xs px-2 py-0.5 text-white bg-black border border-slate-600 rounded",
+      children: "Minimize \u25BE"
+    }))), options.renderHeaderExtra ? options.renderHeaderExtra(ctx()) : null, tooltip ? h("div", {
+      style: {
+        position: "fixed",
+        left: `${tooltip.x}px`,
+        top: `${tooltip.y - 8}px`,
+        transform: "translate(-50%, -100%)",
+        padding: "2px 6px",
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+        zIndex: 1001,
+        background: "rgba(0,0,0,0.9)",
+        border: "1px solid rgba(255,255,255,0.25)",
+        borderRadius: "3px"
       },
-      h("div", {
-        className: "px-4 py-2 border-b border-slate-800 flex items-center justify-between"
-      }, h("span", {
-        className: "text-white text-xs opacity-70"
-      }, title), h("div", {
-        className: "flex items-center gap-2"
-      }, h(FocusableButton, {
-        id: `${pickerId}-mirror`,
-        onActivate: () => {
-          const next = !list.isMirrored();
-          list.setMirrored(next);
-          const item = list.getSelected();
-          if (item) {
-            const type = list.structureType(item.id, next);
-            unlockTypes([
-              type
-            ]);
-            sandkit.api.building?.selectStructure(type);
-          }
-          if (options.persistSelection !== false) {
-            persistSelection(list);
-          }
-          repaint?.();
-        },
-        className: `text-xs px-2 py-0.5 border rounded ${list.isMirrored() ? "text-[#ffe700] border-yellow-400" : "text-slate-300 border-slate-600"}`,
-        children: `${list.isMirrored() ? "\u2611" : "\u2610"} Mirrored`
-      }), h(FocusableButton, {
-        id: `${pickerId}-minimize`,
-        onActivate: minimize,
-        className: "text-xs px-2 py-0.5 text-white bg-black border border-slate-600 rounded",
-        children: "Minimize \u25BE"
-      }))),
-      /*
-      options.search !== false
-        ? h(
-          "div",
-          { className: "px-4 py-2 border-b border-slate-800" },
-          h("input", {
-            type: "search",
-            placeholder: "Search…",
-            value: search,
-            className:
-              "w-full text-xs bg-black border border-slate-700 rounded px-2 py-1 text-white",
-            onInput: (event: { currentTarget: { value: string } }) => {
-              search = event.currentTarget.value;
-              repaint?.();
-            },
-          }),
-        )
-        : null,
-      */
-      options.renderHeaderExtra ? options.renderHeaderExtra(ctx()) : null,
-      tooltip ? h("div", {
-        style: {
-          position: "fixed",
-          left: `${tooltip.x}px`,
-          top: `${tooltip.y - 8}px`,
-          transform: "translate(-50%, -100%)",
-          padding: "2px 6px",
-          whiteSpace: "nowrap",
-          pointerEvents: "none",
-          zIndex: 1001,
-          background: "rgba(0,0,0,0.9)",
-          border: "1px solid rgba(255,255,255,0.25)",
-          borderRadius: "3px"
-        },
-        className: "text-xs text-white",
-        children: tooltip.label
-      }) : null,
-      h("div", {
-        // className: "flex flex-wrap gap-1 px-4 py-2 border-b border-slate-800",
-        className: "flex flex-row flex-wrap "
-      }, h("div", {
-        // className: "flex flex-wrap gap-1 px-4 py-2 border-b border-slate-800",
-        className: "grid grid-cols-4 overflow-y-auto  gap-1 px-4 py-2 border-b border-slate-800",
-        style: {
-          height: `18vh`
-        }
-      }, list.categories.filter((cat) => list.countIn(cat.id) > 0).map((cat) => h(FocusableButton, {
-        key: cat.id,
-        id: `${pickerId}-cat-${cat.id}`,
-        onActivate: () => {
-          list.setCategory(cat.id);
-          const next = !list.isMirrored();
-          const item = list.itemsInCategory(cat.id)[0];
-          if (item) {
-            const type = list.structureType(item.id, next);
-            unlockTypes([
-              type
-            ]);
-            sandkit.api.building?.selectStructure(type);
-          }
-          if (options.persistSelection !== false) {
-            persistSelection(list);
-          }
-          resetScroll();
-          repaint?.();
-        },
-        className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === categoryId ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
-        children: `${cat.label} ${list.countIn(cat.id)}`
-      }))), h("div", {
-        className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
-        style: {
-          height: `18vh`
-        },
-        onScroll: (event) => {
-          rememberScroll(event.currentTarget.scrollTop);
-        },
-        ref: (node) => applyScroll(node)
-      }, h("div", {
-        className: "flex flex-wrap gap-1.5"
-      }, visible.map((item) => h(ObjectSwatch, {
-        key: item.id,
-        item,
-        selected: item.id === selected?.id
-      })))))
-    );
+      className: "text-xs text-white",
+      children: tooltip.label
+    }) : null, h("div", {
+      className: "flex flex-row flex-wrap "
+    }, h("div", {
+      className: "grid grid-cols-4 overflow-y-auto  gap-1 px-4 py-2 border-b border-slate-800",
+      style: {
+        height: `18vh`
+      }
+    }, list.categories.filter((cat) => list.countIn(cat.id) > 0).map((cat) => h(FocusableButton, {
+      key: cat.id,
+      id: `${api.pickerId}-cat-${cat.id}`,
+      onActivate: () => api.chooseCategory(cat.id),
+      className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === categoryId ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
+      children: `${cat.label} ${list.countIn(cat.id)}`
+    }))), h("div", {
+      className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
+      style: {
+        height: `18vh`
+      },
+      onScroll: (event) => {
+        rememberScroll(event.currentTarget.scrollTop);
+      },
+      ref: (node) => applyScroll(node)
+    }, h("div", {
+      className: "flex flex-wrap gap-1.5"
+    }, visible.map((item) => h(ObjectSwatch, {
+      key: item.id,
+      item,
+      selected: item.id === selected?.id
+    }))))));
   };
-  const selectedModType = () => {
+  return () => h(Picker, null);
+}
+
+// ../../packages/catalogue/src/picker/overlay.ts
+function createPickerOverlay(options) {
+  const list = options.list;
+  const pickerId = options.pickerId ?? `${list.modId}/picker`;
+  const slot = options.slot ?? "hotbar";
+  const title = options.title ?? "Pick item";
+  const maxHeight = options.maxHeight ?? 400;
+  let pickerState = null;
+  let repaint = null;
+  let clearTooltip = null;
+  let unsubscribe = null;
+  let registered = false;
+  if (options.persistSelection !== false) restorePickerState(list);
+  const unlockTypes = options.unlockTypes ?? ((types) => {
+    for (const type of types) sandkit.api.player.buildings.unlockByType(type);
+  });
+  const persistIfEnabled = () => {
+    if (options.persistSelection !== false) persistSelection(list);
+  };
+  const selectStructure = (type) => {
+    unlockTypes([
+      type
+    ]);
+    sandkit.api.building?.selectStructure?.(type);
+  };
+  const expand = () => {
+    if (!pickerState?.minimized) return;
+    requestScrollRestore();
+    pickerState = {
+      minimized: false
+    };
+    repaint?.();
+  };
+  const minimize = () => {
+    if (!pickerState || pickerState.minimized) return;
+    clearTooltip?.();
+    pickerState = {
+      minimized: true
+    };
+    repaint?.();
+  };
+  const close = () => {
+    clearTooltip?.();
+    pickerState = null;
+    repaint?.();
+  };
+  const selectItem = (item) => {
+    const mirrored = list.isMirrored();
+    list.setSelected(item.id);
+    list.setCategory(item.category);
+    selectStructure(list.structureType(item.id, mirrored));
+    unlockTypes([
+      list.structureType(item.id, !mirrored)
+    ]);
+    options.onSelect?.(item, mirrored);
+    list.applyToBuildTool();
+    persistIfEnabled();
+    repaint?.();
+  };
+  const toggleMirror = () => {
+    const next = !list.isMirrored();
+    list.setMirrored(next);
+    const item = list.getSelected();
+    if (item) selectStructure(list.structureType(item.id, next));
+    persistIfEnabled();
+    repaint?.();
+  };
+  const chooseCategory = (categoryId) => {
+    list.setCategory(categoryId);
+    const item = list.itemsInCategory(categoryId)[0];
+    if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
+    persistIfEnabled();
+    resetScroll();
+    repaint?.();
+  };
+  const contentApi = {
+    pickerId,
+    title,
+    list,
+    getState: () => pickerState,
+    expand,
+    minimize,
+    selectItem,
+    toggleMirror,
+    chooseCategory,
+    setRepaint(fn) {
+      repaint = fn;
+    },
+    setClearTooltip(fn) {
+      clearTooltip = fn;
+    },
+    repaint: () => repaint?.()
+  };
+  const render = createPickerView({
+    api: contentApi,
+    maxHeight,
+    spriteIdFor: options.spriteIdFor,
+    itemFilter: options.itemFilter,
+    renderItemBadge: options.renderItemBadge,
+    renderHeaderExtra: options.renderHeaderExtra
+  });
+  const currentSelectedItem = () => {
     const selected = sandkit.api.action.getSelected?.();
     const building = sandkit.enums.ActionType.Building;
-    console.log("WWWWW= selectedModType", selected, building);
-    if (!selected || !building) {
-      console.log("WWWWW= selectedModType: no selected or no building");
-      return void 0;
-    }
-    if (selected.type !== building) {
-      console.log("WWWWW= selectedModType: not building", selected.types, building);
+    if (!selected || !building || selected.type !== building) {
       return void 0;
     }
     const id = selected.id;
-    if (!id || !id.startsWith(`${list.modId}:`)) {
-      console.log("WWWWW= selectedModType: not mod", id);
-      return void 0;
-    }
-    const type = itemIdFromType(list.modId, id);
-    console.log("WWWWW= selectedModType: type", type);
-    return type ? type : void 0;
+    if (!id || !id.startsWith(`${list.modId}:`)) return void 0;
+    return list.itemFromType(id);
   };
   const sync = () => {
-    const type = selectedModType();
-    console.log("WWWWW=  sync picker overlay", type, pickerState);
-    if (type && !pickerState) {
-      const itemId = itemIdFromType(list.modId, type);
-      if (itemId) {
-        list.setSelected(itemId);
-        pickerState = {
-          minimized: true
-        };
-        repaint?.();
-      }
+    const item = currentSelectedItem();
+    if (!item) {
+      if (pickerState) close();
       return;
     }
-    if (type && pickerState) {
-      const itemId = itemIdFromType(list.modId, type);
-      if (itemId && itemId !== list.getSelected()?.id) {
-        list.setSelected(itemId);
-        repaint?.();
-      }
-      return;
+    if (item.id !== list.getSelected()?.id) {
+      list.setSelected(item.id);
+      if (pickerState) repaint?.();
     }
-    if (!type && pickerState) {
-      close();
+    if (!pickerState) {
+      pickerState = {
+        minimized: true
+      };
+      repaint?.();
     }
   };
   const install = () => {
-    console.log("install picker overlay");
     if (registered) return;
-    sandkit.api.ui.overlays.register(slot, pickerId, () => h(Picker, null));
+    sandkit.api.ui.overlays.register(slot, pickerId, render);
     registered = true;
     unsubscribe = sandkit.api.events.on("action:changed", sync);
     sync();

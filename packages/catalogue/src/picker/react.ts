@@ -2,9 +2,9 @@
 export type HTMLElement = globalThis.HTMLElement;
 
 export function h(
-  type: unknown,
-  props: Record<string, unknown> | null,
-  ...children: unknown[]
+    type: unknown,
+    props: Record<string, unknown> | null,
+    ...children: unknown[]
 ) {
-  return sandkit.react.createElement(type, props, ...children);
+    return sandkit.react.createElement(type, props, ...children);
 }

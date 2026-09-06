@@ -28,12 +28,6 @@ export interface PickerOverlayOptions {
     maxHeight?: number;
     search?: boolean;
     persistSelection?: boolean;
-    /**
-     * Slow fallback poll interval in ms (default 1000). The picker is primarily
-     * driven by the engine's push `action:changed` event; this timer only guards
-     * against edge cases where the action changes without that event being emitted.
-     */
-    syncIntervalMs?: number;
     itemFilter?: (item: CatalogueItem) => boolean;
     priceFor?: (item: CatalogueItem) => PriceTag | null;
     onSelect?: (item: CatalogueItem, mirrored: boolean) => void;
@@ -56,4 +50,33 @@ export interface PickerOverlay {
     close(): void;
     sync(): void;
     dispose(): void;
+}
+
+/**
+ * The contract the overlay controller (overlay.ts) exposes to the picker's
+ * presentational view (content.ts). The view renders the catalogue UI and
+ * reports user intent (select / mirror / category); the controller owns the
+ * overlay state machine, sync with the selected build action, and the game
+ * side-effects (unlock, select build tool, persist).
+ */
+export interface PickerContentApi {
+    readonly pickerId: string;
+    readonly title: string;
+    readonly list: BuildList;
+    /** Overlay visibility/minimized state, read by the view to pick a layout. */
+    getState(): { minimized: boolean } | null;
+    expand(): void;
+    minimize(): void;
+    /** User picked a swatch — select it, unlock, hand it to the build tool. */
+    selectItem(item: CatalogueItem): void;
+    /** Toggle the mirror flag and refresh the build-tool structure. */
+    toggleMirror(): void;
+    /** Switch the active category and select its first item. */
+    chooseCategory(categoryId: string): void;
+    /** Register the view's re-render trigger; pass null to clear. */
+    setRepaint(fn: (() => void) | null): void;
+    /** Register a callback to clear transient UI state (e.g. tooltip); pass null to clear. */
+    setClearTooltip(fn: (() => void) | null): void;
+    /** Request a re-render of the view (used for header extras). */
+    repaint(): void;
 }
