@@ -9,7 +9,6 @@
  */
 import { CatalogueItem } from "../strucutre/types.ts";
 import { h, HTMLElement } from "./react.ts";
-import { applyScroll, rememberScroll } from "./scroll.ts";
 import type { PickerContentApi, PickerContext } from "./types.ts";
 
 const TOOLTIP_DELAY_MS = 120;
@@ -167,6 +166,12 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
     const Picker = () => {
         // @ts-ignore React Type
         const [, bump] = sandkit.react.useState(0);
+        // @ts-ignore React Type
+        const scrollRef = sandkit.react.useRef(null) as { current: HTMLElement | null };
+        // @ts-ignore React Type
+        const savedScrollRef = sandkit.react.useRef(0) as { current: number };
+        // @ts-ignore React Type
+        const wasMinimizedRef = sandkit.react.useRef(true) as { current: boolean };
         sandkit.react.useEffect(() => {
             api.setRepaint(() => bump((n: number) => n + 1)); // functional update, always changes
             api.setClearTooltip(() => clearTooltip);
@@ -175,6 +180,19 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 api.setClearTooltip(null);
             };
         }, []);
+
+        // Restore the scroll cursor when the list is re-expanded after being
+        // minimized. Runs after every render (no deps) so the DOM has committed
+        // before we assign `scrollTop`.
+        // @ts-ignore React Type
+        const useLayoutEffect = sandkit.react.useLayoutEffect ?? sandkit.react.useEffect;
+        useLayoutEffect(() => {
+            const minimized = api.getState()?.minimized ?? true;
+            if (!minimized && wasMinimizedRef.current && scrollRef.current) {
+                scrollRef.current.scrollTop = savedScrollRef.current;
+            }
+            wasMinimizedRef.current = minimized;
+        });
 
         const state = api.getState();
         if (!state) return null;
@@ -346,7 +364,12 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                             h(FocusableButton, {
                                 key: cat.id,
                                 id: `${api.pickerId}-cat-${cat.id}`,
-                                onActivate: () => api.chooseCategory(cat.id),
+                                onActivate: () => {
+                                    // Jump back to the top before switching category.
+                                    savedScrollRef.current = 0;
+                                    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+                                    api.chooseCategory(cat.id);
+                                },
                                 className: `text-xs px-2 py-0.5 rounded border w-[100px] ${
                                     cat.id === categoryId
                                         ? "text-[#ffe700] border-yellow-400"
@@ -364,10 +387,11 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                             height: `18vh`,
                         },
                         onScroll: (event: { currentTarget: HTMLElement }) => {
-                            // @ts-ignore HTMLElement
-                            rememberScroll(event.currentTarget.scrollTop);
+                            savedScrollRef.current = event.currentTarget.scrollTop;
                         },
-                        ref: (node: HTMLElement | null) => applyScroll(node),
+                        ref: (node: HTMLElement | null) => {
+                            scrollRef.current = node;
+                        },
                     },
                     h(
                         "div",

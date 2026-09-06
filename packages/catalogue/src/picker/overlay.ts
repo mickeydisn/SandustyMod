@@ -12,7 +12,6 @@
  */
 import { CatalogueItem } from "../strucutre/types.ts";
 import { persistSelection, restorePickerState } from "../list/persistence.ts";
-import { requestScrollRestore, resetScroll } from "./scroll.ts";
 import { createPickerView } from "./content.ts";
 import type { PickerContentApi, PickerOverlay, PickerOverlayOptions } from "./types.ts";
 
@@ -50,7 +49,6 @@ export function createPickerOverlay(
     };
     const expand = () => {
         if (!pickerState?.minimized) return;
-        requestScrollRestore();
         pickerState = { minimized: false };
         repaint?.();
     };
@@ -94,7 +92,6 @@ export function createPickerOverlay(
         const item = list.itemsInCategory(categoryId)[0];
         if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
         persistIfEnabled();
-        resetScroll();
         repaint?.();
     };
     const contentApi: PickerContentApi = {
