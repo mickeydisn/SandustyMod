@@ -123,11 +123,9 @@ var createBuildList = (options) => {
         categoryId: id
       });
     },
-    tagsInCategory(id) {
-      const cat = id ?? category;
+    allTags() {
       const set = /* @__PURE__ */ new Set();
       for (const it of catalogueItems) {
-        if (it.category !== cat) continue;
         for (const t of it.tags ?? []) set.add(t);
       }
       return [
@@ -397,7 +395,19 @@ function createPickerView(options) {
       });
     }
     const selectedTags = list.getSelectedTags();
-    const availableTags = list.tagsInCategory(categoryId);
+    const availableTags = list.allTags();
+    const matchesTags = (item) => {
+      if (options.itemFilter && !options.itemFilter(item)) return false;
+      const itemTags = item.tags ?? [];
+      if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
+        return false;
+      }
+      return true;
+    };
+    const visibleCategories = list.categories.map((cat) => ({
+      cat,
+      count: list.itemsInCategory(cat.id).filter(matchesTags).length
+    })).filter((c) => c.count > 0);
     const visible = filterItems(list.catalogueItems, {
       categoryId,
       query: search,
@@ -487,28 +497,11 @@ function createPickerView(options) {
       },
       className: "text-xs text-white",
       children: tooltip.label
-    }) : null, h("div", {
-      className: "flex flex-row flex-wrap "
-    }, h("div", {
-      className: "grid grid-cols-4 overflow-y-auto  gap-1 px-4 py-2 border-b border-slate-800",
-      style: {
-        height: `18vh`
-      }
-    }, list.categories.filter((cat) => list.countIn(cat.id) > 0).map((cat) => h(FocusableButton, {
-      key: cat.id,
-      id: `${api.pickerId}-cat-${cat.id}`,
-      onActivate: () => {
-        savedScrollRef.current = 0;
-        if (scrollRef.current) scrollRef.current.scrollTop = 0;
-        api.chooseCategory(cat.id);
-      },
-      className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === categoryId ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
-      children: `${cat.label} ${list.countIn(cat.id)}`
-    }))), availableTags.length > 0 ? h("div", {
+    }) : null, availableTags.length > 0 ? h("div", {
       className: "w-full flex flex-wrap items-center gap-1 px-4 py-1 border-b border-slate-800 bg-black/30"
     }, h("span", {
       className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1"
-    }, "Size:"), availableTags.map((tag) => h(FocusableButton, {
+    }, "Tags:"), availableTags.map((tag) => h(FocusableButton, {
       key: tag,
       id: `${api.pickerId}-tag-${tag}`,
       onActivate: () => api.toggleTag(tag),
@@ -520,6 +513,23 @@ function createPickerView(options) {
       className: "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white",
       children: "Clear"
     }) : null) : null, h("div", {
+      className: "flex flex-row flex-wrap "
+    }, h("div", {
+      className: "grid grid-cols-4 overflow-y-auto  gap-1 px-4 py-2 border-b border-slate-800",
+      style: {
+        height: `18vh`
+      }
+    }, visibleCategories.map(({ cat, count }) => h(FocusableButton, {
+      key: cat.id,
+      id: `${api.pickerId}-cat-${cat.id}`,
+      onActivate: () => {
+        savedScrollRef.current = 0;
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+        api.chooseCategory(cat.id);
+      },
+      className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === categoryId ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
+      children: `${cat.label} ${count}`
+    })))), h("div", {
       className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
       style: {
         height: `18vh`
@@ -536,7 +546,7 @@ function createPickerView(options) {
       key: item.id,
       item,
       selected: item.id === selected?.id
-    }))))));
+    })))));
   };
   return () => h(Picker, null);
 }
@@ -609,8 +619,9 @@ function createPickerOverlay(options) {
   };
   const chooseCategory = (categoryId) => {
     list.setCategory(categoryId);
-    list.setSelectedTags([]);
-    const item = list.itemsInCategory(categoryId)[0];
+    const tags = list.getSelectedTags();
+    const matches = (it) => tags.length === 0 || tags.some((t) => (it.tags ?? []).includes(t));
+    const item = list.itemsInCategory(categoryId).find(matches);
     if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
     persistIfEnabled();
     repaint?.();
@@ -961,7 +972,7 @@ var ICON_ITEMS = [
     "category": "glyphs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-A-1x1.png",
+    "filePath": "./assets/icons/char-A-1x1.png",
     "align": "wall",
     "description": "Decorative. No collision."
   },
@@ -971,10 +982,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-back-1x1.png",
+    "filePath": "assets/icons/icon-arrow-back-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -984,10 +996,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-back-2x2.png",
+    "filePath": "assets/icons/icon-arrow-back-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -997,10 +1010,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-back-3x3.png",
+    "filePath": "assets/icons/icon-arrow-back-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1010,10 +1024,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-bounce-1x1.png",
+    "filePath": "assets/icons/icon-arrow-bounce-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1023,10 +1038,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-bounce-2x2.png",
+    "filePath": "assets/icons/icon-arrow-bounce-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1036,10 +1052,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-bounce-3x3.png",
+    "filePath": "assets/icons/icon-arrow-bounce-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1049,10 +1066,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-circle-down-1x1.png",
+    "filePath": "assets/icons/icon-arrow-circle-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1062,10 +1080,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-circle-down-2x2.png",
+    "filePath": "assets/icons/icon-arrow-circle-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1075,10 +1094,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-circle-down-3x3.png",
+    "filePath": "assets/icons/icon-arrow-circle-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1088,10 +1108,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-circle-left-1x1.png",
+    "filePath": "assets/icons/icon-arrow-circle-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1101,10 +1122,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-circle-left-2x2.png",
+    "filePath": "assets/icons/icon-arrow-circle-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1114,10 +1136,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-circle-left-3x3.png",
+    "filePath": "assets/icons/icon-arrow-circle-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1127,10 +1150,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-circle-right-1x1.png",
+    "filePath": "assets/icons/icon-arrow-circle-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1140,10 +1164,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-circle-right-2x2.png",
+    "filePath": "assets/icons/icon-arrow-circle-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1153,10 +1178,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-circle-right-3x3.png",
+    "filePath": "assets/icons/icon-arrow-circle-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1166,10 +1192,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-circle-up-1x1.png",
+    "filePath": "assets/icons/icon-arrow-circle-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1179,10 +1206,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-circle-up-2x2.png",
+    "filePath": "assets/icons/icon-arrow-circle-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1192,10 +1220,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-circle-up-3x3.png",
+    "filePath": "assets/icons/icon-arrow-circle-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1205,10 +1234,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-collapse-1x1.png",
+    "filePath": "assets/icons/icon-arrow-collapse-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1218,10 +1248,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-collapse-2x2.png",
+    "filePath": "assets/icons/icon-arrow-collapse-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1231,10 +1262,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-collapse-3x3.png",
+    "filePath": "assets/icons/icon-arrow-collapse-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1244,10 +1276,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-double-down-1x1.png",
+    "filePath": "assets/icons/icon-arrow-double-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1257,10 +1290,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-double-down-2x2.png",
+    "filePath": "assets/icons/icon-arrow-double-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1270,10 +1304,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-double-down-3x3.png",
+    "filePath": "assets/icons/icon-arrow-double-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1283,10 +1318,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-double-left-1x1.png",
+    "filePath": "assets/icons/icon-arrow-double-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1296,10 +1332,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-double-left-2x2.png",
+    "filePath": "assets/icons/icon-arrow-double-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1309,10 +1346,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-double-left-3x3.png",
+    "filePath": "assets/icons/icon-arrow-double-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1322,10 +1360,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-double-right-1x1.png",
+    "filePath": "assets/icons/icon-arrow-double-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1335,10 +1374,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-double-right-2x2.png",
+    "filePath": "assets/icons/icon-arrow-double-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1348,10 +1388,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-double-right-3x3.png",
+    "filePath": "assets/icons/icon-arrow-double-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1361,10 +1402,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-double-up-1x1.png",
+    "filePath": "assets/icons/icon-arrow-double-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1374,10 +1416,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-double-up-2x2.png",
+    "filePath": "assets/icons/icon-arrow-double-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1387,10 +1430,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-double-up-3x3.png",
+    "filePath": "assets/icons/icon-arrow-double-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1400,10 +1444,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-down-1x1.png",
+    "filePath": "assets/icons/icon-arrow-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1413,10 +1458,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-down-2x2.png",
+    "filePath": "assets/icons/icon-arrow-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1426,10 +1472,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-down-3x3.png",
+    "filePath": "assets/icons/icon-arrow-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1439,10 +1486,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-down-left-1x1.png",
+    "filePath": "assets/icons/icon-arrow-down-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1452,10 +1500,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-down-left-2x2.png",
+    "filePath": "assets/icons/icon-arrow-down-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1465,10 +1514,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-down-left-3x3.png",
+    "filePath": "assets/icons/icon-arrow-down-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1478,10 +1528,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-down-right-1x1.png",
+    "filePath": "assets/icons/icon-arrow-down-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1491,10 +1542,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-down-right-2x2.png",
+    "filePath": "assets/icons/icon-arrow-down-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1504,10 +1556,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-down-right-3x3.png",
+    "filePath": "assets/icons/icon-arrow-down-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1517,10 +1570,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-enter-1x1.png",
+    "filePath": "assets/icons/icon-arrow-enter-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1530,10 +1584,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-enter-2x2.png",
+    "filePath": "assets/icons/icon-arrow-enter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1543,10 +1598,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-enter-3x3.png",
+    "filePath": "assets/icons/icon-arrow-enter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1556,10 +1612,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-expand-1x1.png",
+    "filePath": "assets/icons/icon-arrow-expand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1569,10 +1626,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-expand-2x2.png",
+    "filePath": "assets/icons/icon-arrow-expand-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1582,10 +1640,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-expand-3x3.png",
+    "filePath": "assets/icons/icon-arrow-expand-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1595,10 +1654,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-fork-1x1.png",
+    "filePath": "assets/icons/icon-arrow-fork-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1608,10 +1668,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-fork-2x2.png",
+    "filePath": "assets/icons/icon-arrow-fork-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1621,10 +1682,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-fork-3x3.png",
+    "filePath": "assets/icons/icon-arrow-fork-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1634,10 +1696,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-left-1x1.png",
+    "filePath": "assets/icons/icon-arrow-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1647,10 +1710,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-left-2x2.png",
+    "filePath": "assets/icons/icon-arrow-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1660,10 +1724,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-left-3x3.png",
+    "filePath": "assets/icons/icon-arrow-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1673,10 +1738,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-left-right-1x1.png",
+    "filePath": "assets/icons/icon-arrow-left-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1686,10 +1752,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-left-right-2x2.png",
+    "filePath": "assets/icons/icon-arrow-left-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1699,10 +1766,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-left-right-3x3.png",
+    "filePath": "assets/icons/icon-arrow-left-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1712,10 +1780,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-merge-1x1.png",
+    "filePath": "assets/icons/icon-arrow-merge-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1725,10 +1794,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-merge-2x2.png",
+    "filePath": "assets/icons/icon-arrow-merge-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1738,10 +1808,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-merge-3x3.png",
+    "filePath": "assets/icons/icon-arrow-merge-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1751,10 +1822,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-redo-1x1.png",
+    "filePath": "assets/icons/icon-arrow-redo-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1764,10 +1836,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-redo-2x2.png",
+    "filePath": "assets/icons/icon-arrow-redo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1777,10 +1850,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-redo-3x3.png",
+    "filePath": "assets/icons/icon-arrow-redo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1790,10 +1864,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-right-1x1.png",
+    "filePath": "assets/icons/icon-arrow-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1803,10 +1878,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-right-2x2.png",
+    "filePath": "assets/icons/icon-arrow-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1816,10 +1892,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-right-3x3.png",
+    "filePath": "assets/icons/icon-arrow-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1829,10 +1906,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-rotate-ccw-1x1.png",
+    "filePath": "assets/icons/icon-arrow-rotate-ccw-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1842,10 +1920,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-rotate-ccw-2x2.png",
+    "filePath": "assets/icons/icon-arrow-rotate-ccw-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1855,10 +1934,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-rotate-ccw-3x3.png",
+    "filePath": "assets/icons/icon-arrow-rotate-ccw-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1868,10 +1948,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-rotate-cw-1x1.png",
+    "filePath": "assets/icons/icon-arrow-rotate-cw-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1881,10 +1962,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-rotate-cw-2x2.png",
+    "filePath": "assets/icons/icon-arrow-rotate-cw-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1894,10 +1976,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-rotate-cw-3x3.png",
+    "filePath": "assets/icons/icon-arrow-rotate-cw-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1907,10 +1990,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-shuffle-1x1.png",
+    "filePath": "assets/icons/icon-arrow-shuffle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1920,10 +2004,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-shuffle-2x2.png",
+    "filePath": "assets/icons/icon-arrow-shuffle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1933,10 +2018,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-shuffle-3x3.png",
+    "filePath": "assets/icons/icon-arrow-shuffle-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1946,10 +2032,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-sort-1x1.png",
+    "filePath": "assets/icons/icon-arrow-sort-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1959,10 +2046,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-sort-2x2.png",
+    "filePath": "assets/icons/icon-arrow-sort-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1972,10 +2060,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-sort-3x3.png",
+    "filePath": "assets/icons/icon-arrow-sort-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1985,10 +2074,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-trend-down-1x1.png",
+    "filePath": "assets/icons/icon-arrow-trend-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -1998,10 +2088,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-trend-down-2x2.png",
+    "filePath": "assets/icons/icon-arrow-trend-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2011,10 +2102,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-trend-down-3x3.png",
+    "filePath": "assets/icons/icon-arrow-trend-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2024,10 +2116,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-trend-up-1x1.png",
+    "filePath": "assets/icons/icon-arrow-trend-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2037,10 +2130,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-trend-up-2x2.png",
+    "filePath": "assets/icons/icon-arrow-trend-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2050,10 +2144,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-trend-up-3x3.png",
+    "filePath": "assets/icons/icon-arrow-trend-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2063,10 +2158,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-undo-1x1.png",
+    "filePath": "assets/icons/icon-arrow-undo-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2076,10 +2172,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-undo-2x2.png",
+    "filePath": "assets/icons/icon-arrow-undo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2089,10 +2186,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-undo-3x3.png",
+    "filePath": "assets/icons/icon-arrow-undo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2102,10 +2200,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-up-1x1.png",
+    "filePath": "assets/icons/icon-arrow-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2115,10 +2214,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-up-2x2.png",
+    "filePath": "assets/icons/icon-arrow-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2128,10 +2228,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-up-3x3.png",
+    "filePath": "assets/icons/icon-arrow-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2141,10 +2242,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-up-down-1x1.png",
+    "filePath": "assets/icons/icon-arrow-up-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2154,10 +2256,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-up-down-2x2.png",
+    "filePath": "assets/icons/icon-arrow-up-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2167,10 +2270,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-up-down-3x3.png",
+    "filePath": "assets/icons/icon-arrow-up-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2180,10 +2284,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-up-left-1x1.png",
+    "filePath": "assets/icons/icon-arrow-up-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2193,10 +2298,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-up-left-2x2.png",
+    "filePath": "assets/icons/icon-arrow-up-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2206,10 +2312,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-up-left-3x3.png",
+    "filePath": "assets/icons/icon-arrow-up-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2219,10 +2326,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-arrow-up-right-1x1.png",
+    "filePath": "assets/icons/icon-arrow-up-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2232,10 +2340,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-arrow-up-right-2x2.png",
+    "filePath": "assets/icons/icon-arrow-up-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -2245,10 +2354,11 @@ var ICON_ITEMS = [
     "category": "arraw",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-arrow-up-right-3x3.png",
+    "filePath": "assets/icons/icon-arrow-up-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -4962,10 +5072,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-0-1x1.png",
+    "filePath": "assets/icons/char-0-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -4975,10 +5086,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-0-2x2.png",
+    "filePath": "assets/icons/char-0-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -4988,10 +5100,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-1-1x1.png",
+    "filePath": "assets/icons/char-1-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5001,10 +5114,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-1-2x2.png",
+    "filePath": "assets/icons/char-1-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5014,10 +5128,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-2-1x1.png",
+    "filePath": "assets/icons/char-2-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5027,10 +5142,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-2-2x2.png",
+    "filePath": "assets/icons/char-2-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5040,10 +5156,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-3-1x1.png",
+    "filePath": "assets/icons/char-3-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5053,10 +5170,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-3-2x2.png",
+    "filePath": "assets/icons/char-3-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5066,10 +5184,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-4-1x1.png",
+    "filePath": "assets/icons/char-4-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5079,10 +5198,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-4-2x2.png",
+    "filePath": "assets/icons/char-4-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5092,10 +5212,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-5-1x1.png",
+    "filePath": "assets/icons/char-5-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5105,10 +5226,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-5-2x2.png",
+    "filePath": "assets/icons/char-5-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5118,10 +5240,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-6-1x1.png",
+    "filePath": "assets/icons/char-6-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5131,10 +5254,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-6-2x2.png",
+    "filePath": "assets/icons/char-6-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5144,10 +5268,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-7-1x1.png",
+    "filePath": "assets/icons/char-7-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5157,10 +5282,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-7-2x2.png",
+    "filePath": "assets/icons/char-7-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5170,10 +5296,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-8-1x1.png",
+    "filePath": "assets/icons/char-8-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5183,10 +5310,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-8-2x2.png",
+    "filePath": "assets/icons/char-8-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5196,10 +5324,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-9-1x1.png",
+    "filePath": "assets/icons/char-9-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5209,10 +5338,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-9-2x2.png",
+    "filePath": "assets/icons/char-9-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5222,10 +5352,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-A-1x1.png",
+    "filePath": "assets/icons/char-A-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5235,10 +5366,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-A-2x2.png",
+    "filePath": "assets/icons/char-A-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5248,10 +5380,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-B-1x1.png",
+    "filePath": "assets/icons/char-B-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5261,10 +5394,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-B-2x2.png",
+    "filePath": "assets/icons/char-B-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5274,10 +5408,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-C-1x1.png",
+    "filePath": "assets/icons/char-C-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5287,10 +5422,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-C-2x2.png",
+    "filePath": "assets/icons/char-C-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5300,10 +5436,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-D-1x1.png",
+    "filePath": "assets/icons/char-D-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5313,10 +5450,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-D-2x2.png",
+    "filePath": "assets/icons/char-D-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5326,10 +5464,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-E-1x1.png",
+    "filePath": "assets/icons/char-E-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5339,10 +5478,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-E-2x2.png",
+    "filePath": "assets/icons/char-E-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5352,10 +5492,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-F-1x1.png",
+    "filePath": "assets/icons/char-F-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5365,10 +5506,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-F-2x2.png",
+    "filePath": "assets/icons/char-F-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5378,10 +5520,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-G-1x1.png",
+    "filePath": "assets/icons/char-G-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5391,10 +5534,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-G-2x2.png",
+    "filePath": "assets/icons/char-G-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5404,10 +5548,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-H-1x1.png",
+    "filePath": "assets/icons/char-H-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5417,10 +5562,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-H-2x2.png",
+    "filePath": "assets/icons/char-H-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5430,10 +5576,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-I-1x1.png",
+    "filePath": "assets/icons/char-I-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5443,10 +5590,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-I-2x2.png",
+    "filePath": "assets/icons/char-I-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5456,10 +5604,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-J-1x1.png",
+    "filePath": "assets/icons/char-J-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5469,10 +5618,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-J-2x2.png",
+    "filePath": "assets/icons/char-J-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5482,10 +5632,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-K-1x1.png",
+    "filePath": "assets/icons/char-K-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5495,10 +5646,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-K-2x2.png",
+    "filePath": "assets/icons/char-K-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5508,10 +5660,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-L-1x1.png",
+    "filePath": "assets/icons/char-L-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5521,10 +5674,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-L-2x2.png",
+    "filePath": "assets/icons/char-L-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5534,10 +5688,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-M-1x1.png",
+    "filePath": "assets/icons/char-M-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5547,10 +5702,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-M-2x2.png",
+    "filePath": "assets/icons/char-M-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5560,10 +5716,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-N-1x1.png",
+    "filePath": "assets/icons/char-N-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5573,10 +5730,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-N-2x2.png",
+    "filePath": "assets/icons/char-N-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5586,10 +5744,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-O-1x1.png",
+    "filePath": "assets/icons/char-O-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5599,10 +5758,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-O-2x2.png",
+    "filePath": "assets/icons/char-O-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5612,10 +5772,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-P-1x1.png",
+    "filePath": "assets/icons/char-P-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5625,10 +5786,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-P-2x2.png",
+    "filePath": "assets/icons/char-P-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5638,10 +5800,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-Q-1x1.png",
+    "filePath": "assets/icons/char-Q-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5651,10 +5814,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-Q-2x2.png",
+    "filePath": "assets/icons/char-Q-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5664,10 +5828,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-R-1x1.png",
+    "filePath": "assets/icons/char-R-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5677,10 +5842,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-R-2x2.png",
+    "filePath": "assets/icons/char-R-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5690,10 +5856,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-S-1x1.png",
+    "filePath": "assets/icons/char-S-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5703,10 +5870,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-S-2x2.png",
+    "filePath": "assets/icons/char-S-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5716,10 +5884,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-amp-1x1.png",
+    "filePath": "assets/icons/char-sym-amp-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5729,10 +5898,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-at-1x1.png",
+    "filePath": "assets/icons/char-sym-at-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5742,10 +5912,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-brace-l-1x1.png",
+    "filePath": "assets/icons/char-sym-brace-l-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5755,10 +5926,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-brace-r-1x1.png",
+    "filePath": "assets/icons/char-sym-brace-r-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5768,10 +5940,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-bslash-1x1.png",
+    "filePath": "assets/icons/char-sym-bslash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5781,10 +5954,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-caret-1x1.png",
+    "filePath": "assets/icons/char-sym-caret-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5794,10 +5968,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-colon-1x1.png",
+    "filePath": "assets/icons/char-sym-colon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5807,10 +5982,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-comma-1x1.png",
+    "filePath": "assets/icons/char-sym-comma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5820,10 +5996,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-dollar-1x1.png",
+    "filePath": "assets/icons/char-sym-dollar-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5833,10 +6010,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-dot-1x1.png",
+    "filePath": "assets/icons/char-sym-dot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5846,10 +6024,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-eq-1x1.png",
+    "filePath": "assets/icons/char-sym-eq-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5859,10 +6038,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-excl-1x1.png",
+    "filePath": "assets/icons/char-sym-excl-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5872,10 +6052,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-gt-1x1.png",
+    "filePath": "assets/icons/char-sym-gt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5885,10 +6066,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-hash-1x1.png",
+    "filePath": "assets/icons/char-sym-hash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5898,10 +6080,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-lbracket-1x1.png",
+    "filePath": "assets/icons/char-sym-lbracket-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5911,10 +6094,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-lparen-1x1.png",
+    "filePath": "assets/icons/char-sym-lparen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5924,10 +6108,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-lt-1x1.png",
+    "filePath": "assets/icons/char-sym-lt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5937,10 +6122,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-minus-1x1.png",
+    "filePath": "assets/icons/char-sym-minus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5950,10 +6136,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-pct-1x1.png",
+    "filePath": "assets/icons/char-sym-pct-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5963,10 +6150,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-pipe-1x1.png",
+    "filePath": "assets/icons/char-sym-pipe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5976,10 +6164,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-plus-1x1.png",
+    "filePath": "assets/icons/char-sym-plus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -5989,10 +6178,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-quest-1x1.png",
+    "filePath": "assets/icons/char-sym-quest-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6002,10 +6192,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-quote-1x1.png",
+    "filePath": "assets/icons/char-sym-quote-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6015,10 +6206,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-rbracket-1x1.png",
+    "filePath": "assets/icons/char-sym-rbracket-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6028,10 +6220,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-rparen-1x1.png",
+    "filePath": "assets/icons/char-sym-rparen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6041,10 +6234,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-semi-1x1.png",
+    "filePath": "assets/icons/char-sym-semi-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6054,10 +6248,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-slash-1x1.png",
+    "filePath": "assets/icons/char-sym-slash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6067,10 +6262,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-star-1x1.png",
+    "filePath": "assets/icons/char-sym-star-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6080,10 +6276,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-tilde-1x1.png",
+    "filePath": "assets/icons/char-sym-tilde-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6093,10 +6290,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-sym-underscore-1x1.png",
+    "filePath": "assets/icons/char-sym-underscore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6106,10 +6304,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-T-1x1.png",
+    "filePath": "assets/icons/char-T-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6119,10 +6318,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-T-2x2.png",
+    "filePath": "assets/icons/char-T-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6132,10 +6332,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-U-1x1.png",
+    "filePath": "assets/icons/char-U-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6145,10 +6346,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-U-2x2.png",
+    "filePath": "assets/icons/char-U-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6158,10 +6360,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-V-1x1.png",
+    "filePath": "assets/icons/char-V-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6171,10 +6374,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-V-2x2.png",
+    "filePath": "assets/icons/char-V-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6184,10 +6388,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-W-1x1.png",
+    "filePath": "assets/icons/char-W-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6197,10 +6402,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-W-2x2.png",
+    "filePath": "assets/icons/char-W-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6210,10 +6416,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-X-1x1.png",
+    "filePath": "assets/icons/char-X-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6223,10 +6430,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-X-2x2.png",
+    "filePath": "assets/icons/char-X-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6236,10 +6444,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-Y-1x1.png",
+    "filePath": "assets/icons/char-Y-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6249,10 +6458,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-Y-2x2.png",
+    "filePath": "assets/icons/char-Y-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6262,10 +6472,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 16,
     "height": 16,
-    "filePath": "assets/char-Z-1x1.png",
+    "filePath": "assets/icons/char-Z-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6275,10 +6486,11 @@ var ICON_ITEMS = [
     "category": "char",
     "width": 32,
     "height": 32,
-    "filePath": "assets/char-Z-2x2.png",
+    "filePath": "assets/icons/char-Z-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -8719,10 +8931,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 32,
-    "filePath": "assets/garden-bed-3x2.png",
+    "filePath": "assets/deco/garden-bed-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8732,10 +8945,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 16,
-    "filePath": "assets/garden-bench-2x1.png",
+    "filePath": "assets/deco/garden-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8745,10 +8959,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-bench-2x2.png",
+    "filePath": "assets/deco/garden-bench-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8758,10 +8973,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-bush-1x1.png",
+    "filePath": "assets/deco/garden-bush-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8771,10 +8987,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 32,
-    "filePath": "assets/garden-climber-1x2.png",
+    "filePath": "assets/deco/garden-climber-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8784,10 +9001,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-composter-2x2.png",
+    "filePath": "assets/deco/garden-composter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8797,10 +9015,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-crate-2x2.png",
+    "filePath": "assets/deco/garden-crate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8810,10 +9029,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 32,
-    "filePath": "assets/garden-crops-3x2.png",
+    "filePath": "assets/deco/garden-crops-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8823,10 +9043,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 16,
-    "filePath": "assets/garden-fence-2x1.png",
+    "filePath": "assets/deco/garden-fence-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8836,10 +9057,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 32,
-    "filePath": "assets/garden-fence-3x2.png",
+    "filePath": "assets/deco/garden-fence-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8849,10 +9071,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-fencepost-1x1.png",
+    "filePath": "assets/deco/garden-fencepost-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8862,10 +9085,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-flower-1x1.png",
+    "filePath": "assets/deco/garden-flower-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8875,10 +9099,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 16,
-    "filePath": "assets/garden-flowerbed-2x1.png",
+    "filePath": "assets/deco/garden-flowerbed-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8888,10 +9113,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 48,
-    "filePath": "assets/garden-fountain-1x3.png",
+    "filePath": "assets/deco/garden-fountain-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8901,10 +9127,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-fountain-2x2.png",
+    "filePath": "assets/deco/garden-fountain-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8914,10 +9141,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 48,
-    "filePath": "assets/garden-fountain-3x3.png",
+    "filePath": "assets/deco/garden-fountain-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8927,10 +9155,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 48,
-    "filePath": "assets/garden-gazebo-3x3.png",
+    "filePath": "assets/deco/garden-gazebo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8940,10 +9169,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 32,
-    "filePath": "assets/garden-greenhouse-3x2.png",
+    "filePath": "assets/deco/garden-greenhouse-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8953,10 +9183,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 48,
-    "filePath": "assets/garden-greenhouse-3x3.png",
+    "filePath": "assets/deco/garden-greenhouse-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8966,10 +9197,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 64,
     "height": 64,
-    "filePath": "assets/garden-greenhouse-4x4.png",
+    "filePath": "assets/deco/garden-greenhouse-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8979,10 +9211,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 16,
-    "filePath": "assets/garden-hedge-2x1.png",
+    "filePath": "assets/deco/garden-hedge-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8992,10 +9225,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-herbs-1x1.png",
+    "filePath": "assets/deco/garden-herbs-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9005,10 +9239,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 32,
-    "filePath": "assets/garden-lamp-1x2.png",
+    "filePath": "assets/deco/garden-lamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9018,10 +9253,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 48,
-    "filePath": "assets/garden-lamp-1x3.png",
+    "filePath": "assets/deco/garden-lamp-1x3.png",
     "align": "wall",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9031,10 +9267,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-lantern-1x1.png",
+    "filePath": "assets/deco/garden-lantern-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9044,10 +9281,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 32,
-    "filePath": "assets/garden-obelisk-1x2.png",
+    "filePath": "assets/deco/garden-obelisk-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9057,10 +9295,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 48,
-    "filePath": "assets/garden-orchard-3x3.png",
+    "filePath": "assets/deco/garden-orchard-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9070,10 +9309,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 64,
     "height": 64,
-    "filePath": "assets/garden-park-4x4.png",
+    "filePath": "assets/deco/garden-park-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9083,10 +9323,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 16,
-    "filePath": "assets/garden-path-2x1.png",
+    "filePath": "assets/deco/garden-path-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9096,10 +9337,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 64,
     "height": 64,
-    "filePath": "assets/garden-patio-4x4.png",
+    "filePath": "assets/deco/garden-patio-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9109,10 +9351,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 32,
-    "filePath": "assets/garden-pergola-3x2.png",
+    "filePath": "assets/deco/garden-pergola-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9122,10 +9365,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 48,
     "height": 32,
-    "filePath": "assets/garden-pond-3x2.png",
+    "filePath": "assets/deco/garden-pond-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9135,10 +9379,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 64,
     "height": 64,
-    "filePath": "assets/garden-pond-4x4.png",
+    "filePath": "assets/deco/garden-pond-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9148,10 +9393,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-pot-1x1.png",
+    "filePath": "assets/deco/garden-pot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9161,10 +9407,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-rock-1x1.png",
+    "filePath": "assets/deco/garden-rock-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9174,10 +9421,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-rows-2x2.png",
+    "filePath": "assets/deco/garden-rows-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9187,10 +9435,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 16,
-    "filePath": "assets/garden-sapling-1x1.png",
+    "filePath": "assets/deco/garden-sapling-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9200,10 +9449,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-shrubs-2x2.png",
+    "filePath": "assets/deco/garden-shrubs-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9213,10 +9463,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-table-2x2.png",
+    "filePath": "assets/deco/garden-table-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9226,10 +9477,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 32,
-    "filePath": "assets/garden-tallpot-1x2.png",
+    "filePath": "assets/deco/garden-tallpot-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9239,10 +9491,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 32,
-    "filePath": "assets/garden-tree-1x2.png",
+    "filePath": "assets/deco/garden-tree-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9252,10 +9505,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 48,
-    "filePath": "assets/garden-tree-1x3.png",
+    "filePath": "assets/deco/garden-tree-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9265,10 +9519,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 32,
-    "filePath": "assets/garden-trellis-1x2.png",
+    "filePath": "assets/deco/garden-trellis-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9278,10 +9533,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 16,
     "height": 48,
-    "filePath": "assets/garden-trellis-1x3.png",
+    "filePath": "assets/deco/garden-trellis-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9291,10 +9547,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 16,
-    "filePath": "assets/garden-trough-2x1.png",
+    "filePath": "assets/deco/garden-trough-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9304,10 +9561,11 @@ var ICON_ITEMS = [
     "category": "garden",
     "width": 32,
     "height": 32,
-    "filePath": "assets/garden-well-2x2.png",
+    "filePath": "assets/deco/garden-well-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10357,10 +10615,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 64,
     "height": 64,
-    "filePath": "assets/home-bathroom-4x4.png",
+    "filePath": "assets/deco/home-bathroom-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10370,10 +10629,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-bathtub-3x2.png",
+    "filePath": "assets/deco/home-bathtub-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10383,10 +10643,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-bathtub-3x3.png",
+    "filePath": "assets/deco/home-bathtub-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10396,10 +10657,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-bed-2x2.png",
+    "filePath": "assets/deco/home-bed-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10409,10 +10671,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-bed-3x2.png",
+    "filePath": "assets/deco/home-bed-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10422,10 +10685,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-bed-3x3.png",
+    "filePath": "assets/deco/home-bed-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10435,10 +10699,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 64,
     "height": 64,
-    "filePath": "assets/home-bedroom-4x4.png",
+    "filePath": "assets/deco/home-bedroom-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10448,10 +10713,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-bench-2x1.png",
+    "filePath": "assets/deco/home-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10461,10 +10727,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-bookrow-2x1.png",
+    "filePath": "assets/deco/home-bookrow-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10474,10 +10741,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-books-1x1.png",
+    "filePath": "assets/deco/home-books-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10487,10 +10755,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 48,
-    "filePath": "assets/home-bookshelf-1x3.png",
+    "filePath": "assets/deco/home-bookshelf-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10500,10 +10769,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-bookshelf-3x2.png",
+    "filePath": "assets/deco/home-bookshelf-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10513,10 +10783,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-bookshelf-3x3.png",
+    "filePath": "assets/deco/home-bookshelf-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10526,10 +10797,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-bottle-1x1.png",
+    "filePath": "assets/deco/home-bottle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10539,10 +10811,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-cabinet-1x2.png",
+    "filePath": "assets/deco/home-cabinet-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10552,10 +10825,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-chair-2x2.png",
+    "filePath": "assets/deco/home-chair-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10565,10 +10839,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-clock-1x1.png",
+    "filePath": "assets/deco/home-clock-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10578,10 +10853,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-coatstand-1x2.png",
+    "filePath": "assets/deco/home-coatstand-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10591,10 +10867,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 48,
-    "filePath": "assets/home-conduit-1x3.png",
+    "filePath": "assets/deco/home-conduit-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10604,10 +10881,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-counter-3x2.png",
+    "filePath": "assets/deco/home-counter-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10617,10 +10895,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-counter-3x3.png",
+    "filePath": "assets/deco/home-counter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10630,10 +10909,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-cushion-2x1.png",
+    "filePath": "assets/deco/home-cushion-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10643,10 +10923,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-desk-3x2.png",
+    "filePath": "assets/deco/home-desk-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10656,10 +10937,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-desk-3x3.png",
+    "filePath": "assets/deco/home-desk-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10669,10 +10951,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 64,
     "height": 64,
-    "filePath": "assets/home-dining-4x4.png",
+    "filePath": "assets/deco/home-dining-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10682,10 +10965,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-fireplace-3x3.png",
+    "filePath": "assets/deco/home-fireplace-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10695,10 +10979,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-floorlamp-1x2.png",
+    "filePath": "assets/deco/home-floorlamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10708,10 +10993,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-fridge-2x2.png",
+    "filePath": "assets/deco/home-fridge-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10721,10 +11007,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 64,
     "height": 64,
-    "filePath": "assets/home-kitchen-4x4.png",
+    "filePath": "assets/deco/home-kitchen-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10734,10 +11021,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-lamp-1x1.png",
+    "filePath": "assets/deco/home-lamp-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10747,10 +11035,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 64,
     "height": 64,
-    "filePath": "assets/home-living-4x4.png",
+    "filePath": "assets/deco/home-living-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10760,10 +11049,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 48,
-    "filePath": "assets/home-locker-1x3.png",
+    "filePath": "assets/deco/home-locker-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10773,10 +11063,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-mirror-1x2.png",
+    "filePath": "assets/deco/home-mirror-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10786,10 +11077,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-mug-1x1.png",
+    "filePath": "assets/deco/home-mug-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10799,10 +11091,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-nightstand-1x2.png",
+    "filePath": "assets/deco/home-nightstand-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10812,10 +11105,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 48,
-    "filePath": "assets/home-panel-1x3.png",
+    "filePath": "assets/deco/home-panel-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10825,10 +11119,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 64,
     "height": 64,
-    "filePath": "assets/home-patio-4x4.png",
+    "filePath": "assets/deco/home-patio-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10838,10 +11133,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-pillow-1x1.png",
+    "filePath": "assets/deco/home-pillow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10851,10 +11147,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-plant-1x1.png",
+    "filePath": "assets/deco/home-plant-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10864,10 +11161,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-planter-2x1.png",
+    "filePath": "assets/deco/home-planter-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10877,10 +11175,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-radiator-1x2.png",
+    "filePath": "assets/deco/home-radiator-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10890,10 +11189,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-radiator-2x1.png",
+    "filePath": "assets/deco/home-radiator-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10903,10 +11203,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-shelf-2x1.png",
+    "filePath": "assets/deco/home-shelf-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10916,10 +11217,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-sidetable-2x2.png",
+    "filePath": "assets/deco/home-sidetable-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10929,10 +11231,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-sink-2x2.png",
+    "filePath": "assets/deco/home-sink-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10942,10 +11245,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-sofa-3x2.png",
+    "filePath": "assets/deco/home-sofa-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10955,10 +11259,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-sofa-3x3.png",
+    "filePath": "assets/deco/home-sofa-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10968,10 +11273,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-soundbar-2x1.png",
+    "filePath": "assets/deco/home-soundbar-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10981,10 +11287,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 16,
-    "filePath": "assets/home-stool-1x1.png",
+    "filePath": "assets/deco/home-stool-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10994,10 +11301,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-stove-2x2.png",
+    "filePath": "assets/deco/home-stove-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11007,10 +11315,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-table-3x2.png",
+    "filePath": "assets/deco/home-table-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11020,10 +11329,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 48,
-    "filePath": "assets/home-table-3x3.png",
+    "filePath": "assets/deco/home-table-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11033,10 +11343,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-tallplant-1x2.png",
+    "filePath": "assets/deco/home-tallplant-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11046,10 +11357,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-toilet-2x2.png",
+    "filePath": "assets/deco/home-toilet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11059,10 +11371,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 48,
-    "filePath": "assets/home-torchere-1x3.png",
+    "filePath": "assets/deco/home-torchere-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11072,10 +11385,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 16,
-    "filePath": "assets/home-towelrail-2x1.png",
+    "filePath": "assets/deco/home-towelrail-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11085,10 +11399,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 48,
-    "filePath": "assets/home-tree-1x3.png",
+    "filePath": "assets/deco/home-tree-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11098,10 +11413,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-tv-2x2.png",
+    "filePath": "assets/deco/home-tv-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11111,10 +11427,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 48,
     "height": 32,
-    "filePath": "assets/home-tv-3x2.png",
+    "filePath": "assets/deco/home-tv-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11124,10 +11441,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 16,
     "height": 32,
-    "filePath": "assets/home-vase-1x2.png",
+    "filePath": "assets/deco/home-vase-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11137,10 +11455,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-wardrobe-2x2.png",
+    "filePath": "assets/deco/home-wardrobe-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11150,10 +11469,11 @@ var ICON_ITEMS = [
     "category": "home",
     "width": 32,
     "height": 32,
-    "filePath": "assets/home-washer-2x2.png",
+    "filePath": "assets/deco/home-washer-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -12294,10 +12614,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-air-3x3.png",
+    "filePath": "assets/icons/icon-air-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12307,10 +12628,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-alien-1x1.png",
+    "filePath": "assets/icons/icon-alien-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12320,10 +12642,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-alien-2x2.png",
+    "filePath": "assets/icons/icon-alien-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12333,10 +12656,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-alien-3x3.png",
+    "filePath": "assets/icons/icon-alien-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12346,10 +12670,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-anchor-1x1.png",
+    "filePath": "assets/icons/icon-anchor-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12359,10 +12684,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-anchor-2x2.png",
+    "filePath": "assets/icons/icon-anchor-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12372,10 +12698,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-anchor-3x3.png",
+    "filePath": "assets/icons/icon-anchor-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12385,10 +12712,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-atom-2x2.png",
+    "filePath": "assets/icons/icon-atom-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12398,10 +12726,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-bag-1x1.png",
+    "filePath": "assets/icons/icon-bag-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12411,10 +12740,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-battery-2x2.png",
+    "filePath": "assets/icons/icon-battery-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12424,10 +12754,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-bell-1x1.png",
+    "filePath": "assets/icons/icon-bell-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12437,10 +12768,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-bio-3x3.png",
+    "filePath": "assets/icons/icon-bio-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12450,10 +12782,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-bird-1x1.png",
+    "filePath": "assets/icons/icon-bird-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12463,10 +12796,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-bird-2x2.png",
+    "filePath": "assets/icons/icon-bird-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12476,10 +12810,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-bird-3x3.png",
+    "filePath": "assets/icons/icon-bird-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12489,10 +12824,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-blueprint-3x3.png",
+    "filePath": "assets/icons/icon-blueprint-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12502,10 +12838,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-bolt-1x1.png",
+    "filePath": "assets/icons/icon-bolt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12515,10 +12852,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-book-1x1.png",
+    "filePath": "assets/icons/icon-book-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12528,10 +12866,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-bottle-1x1.png",
+    "filePath": "assets/icons/icon-bottle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12541,10 +12880,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-bottle-2x2.png",
+    "filePath": "assets/icons/icon-bottle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12554,10 +12894,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-bottle-3x3.png",
+    "filePath": "assets/icons/icon-bottle-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12567,10 +12908,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-bug-2x2.png",
+    "filePath": "assets/icons/icon-bug-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12580,10 +12922,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-bug2-1x1.png",
+    "filePath": "assets/icons/icon-bug2-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12593,10 +12936,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-bug2-2x2.png",
+    "filePath": "assets/icons/icon-bug2-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12606,10 +12950,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-bug2-3x3.png",
+    "filePath": "assets/icons/icon-bug2-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12619,10 +12964,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-build-3x3.png",
+    "filePath": "assets/icons/icon-build-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12632,10 +12978,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-cactus-1x1.png",
+    "filePath": "assets/icons/icon-cactus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12645,10 +12992,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-cactus-2x2.png",
+    "filePath": "assets/icons/icon-cactus-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12658,10 +13006,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-cactus-3x3.png",
+    "filePath": "assets/icons/icon-cactus-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12671,10 +13020,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-calendar-2x2.png",
+    "filePath": "assets/icons/icon-calendar-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12684,10 +13034,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-camera-2x2.png",
+    "filePath": "assets/icons/icon-camera-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12697,10 +13048,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-can-1x1.png",
+    "filePath": "assets/icons/icon-can-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12710,10 +13062,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-can-2x2.png",
+    "filePath": "assets/icons/icon-can-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12723,10 +13076,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-can-3x3.png",
+    "filePath": "assets/icons/icon-can-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12736,10 +13090,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-cards-1x1.png",
+    "filePath": "assets/icons/icon-cards-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12749,10 +13104,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-cards-2x2.png",
+    "filePath": "assets/icons/icon-cards-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12762,10 +13118,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-cards-3x3.png",
+    "filePath": "assets/icons/icon-cards-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12775,10 +13132,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-cart-1x1.png",
+    "filePath": "assets/icons/icon-cart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12788,10 +13146,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-cart-2x2.png",
+    "filePath": "assets/icons/icon-cart-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12801,10 +13160,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-cat-1x1.png",
+    "filePath": "assets/icons/icon-cat-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12814,10 +13174,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-cat-2x2.png",
+    "filePath": "assets/icons/icon-cat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12827,10 +13188,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-cat-3x3.png",
+    "filePath": "assets/icons/icon-cat-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12840,10 +13202,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chart-2x2.png",
+    "filePath": "assets/icons/icon-chart-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12853,10 +13216,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chat-2x2.png",
+    "filePath": "assets/icons/icon-chat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12866,10 +13230,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-check-1x1.png",
+    "filePath": "assets/icons/icon-check-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12879,10 +13244,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-check-2x2.png",
+    "filePath": "assets/icons/icon-check-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12892,10 +13258,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-check-3x3.png",
+    "filePath": "assets/icons/icon-check-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12905,10 +13272,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chess-1x1.png",
+    "filePath": "assets/icons/icon-chess-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12918,10 +13286,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chess-2x2.png",
+    "filePath": "assets/icons/icon-chess-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12931,10 +13300,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chess-3x3.png",
+    "filePath": "assets/icons/icon-chess-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12944,10 +13314,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chest-3x3.png",
+    "filePath": "assets/icons/icon-chest-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12957,10 +13328,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-double-down-1x1.png",
+    "filePath": "assets/icons/icon-chevron-double-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12970,10 +13342,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-double-down-2x2.png",
+    "filePath": "assets/icons/icon-chevron-double-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12983,10 +13356,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-double-down-3x3.png",
+    "filePath": "assets/icons/icon-chevron-double-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -12996,10 +13370,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-double-left-1x1.png",
+    "filePath": "assets/icons/icon-chevron-double-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13009,10 +13384,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-double-left-2x2.png",
+    "filePath": "assets/icons/icon-chevron-double-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13022,10 +13398,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-double-left-3x3.png",
+    "filePath": "assets/icons/icon-chevron-double-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13035,10 +13412,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-double-right-1x1.png",
+    "filePath": "assets/icons/icon-chevron-double-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13048,10 +13426,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-double-right-2x2.png",
+    "filePath": "assets/icons/icon-chevron-double-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13061,10 +13440,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-double-right-3x3.png",
+    "filePath": "assets/icons/icon-chevron-double-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13074,10 +13454,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-double-up-1x1.png",
+    "filePath": "assets/icons/icon-chevron-double-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13087,10 +13468,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-double-up-2x2.png",
+    "filePath": "assets/icons/icon-chevron-double-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13100,10 +13482,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-double-up-3x3.png",
+    "filePath": "assets/icons/icon-chevron-double-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13113,10 +13496,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-down-1x1.png",
+    "filePath": "assets/icons/icon-chevron-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13126,10 +13510,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-down-2x2.png",
+    "filePath": "assets/icons/icon-chevron-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13139,10 +13524,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-down-3x3.png",
+    "filePath": "assets/icons/icon-chevron-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13152,10 +13538,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-left-1x1.png",
+    "filePath": "assets/icons/icon-chevron-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13165,10 +13552,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-left-2x2.png",
+    "filePath": "assets/icons/icon-chevron-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13178,10 +13566,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-left-3x3.png",
+    "filePath": "assets/icons/icon-chevron-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13191,10 +13580,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-right-1x1.png",
+    "filePath": "assets/icons/icon-chevron-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13204,10 +13594,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-right-2x2.png",
+    "filePath": "assets/icons/icon-chevron-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13217,10 +13608,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-right-3x3.png",
+    "filePath": "assets/icons/icon-chevron-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13230,10 +13622,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-chevron-up-1x1.png",
+    "filePath": "assets/icons/icon-chevron-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13243,10 +13636,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-chevron-up-2x2.png",
+    "filePath": "assets/icons/icon-chevron-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13256,10 +13650,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-chevron-up-3x3.png",
+    "filePath": "assets/icons/icon-chevron-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13269,10 +13664,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-circuit-3x3.png",
+    "filePath": "assets/icons/icon-circuit-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13282,10 +13678,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-clock-2x2.png",
+    "filePath": "assets/icons/icon-clock-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13295,10 +13692,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-cloud-1x1.png",
+    "filePath": "assets/icons/icon-cloud-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13308,10 +13706,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-code-2x2.png",
+    "filePath": "assets/icons/icon-code-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13321,10 +13720,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-coffee-1x1.png",
+    "filePath": "assets/icons/icon-coffee-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13334,10 +13734,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-coffee-2x2.png",
+    "filePath": "assets/icons/icon-coffee-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13347,10 +13748,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-coffee-3x3.png",
+    "filePath": "assets/icons/icon-coffee-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13360,10 +13762,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-coin-3x3.png",
+    "filePath": "assets/icons/icon-coin-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13373,10 +13776,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-compass-2x2.png",
+    "filePath": "assets/icons/icon-compass-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13386,10 +13790,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-cookie-1x1.png",
+    "filePath": "assets/icons/icon-cookie-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13399,10 +13804,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-cookie-2x2.png",
+    "filePath": "assets/icons/icon-cookie-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13412,10 +13818,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-cookie-3x3.png",
+    "filePath": "assets/icons/icon-cookie-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13425,10 +13832,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-cpu-2x2.png",
+    "filePath": "assets/icons/icon-cpu-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13438,10 +13846,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-cross-1x1.png",
+    "filePath": "assets/icons/icon-cross-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13451,10 +13860,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-cross-2x2.png",
+    "filePath": "assets/icons/icon-cross-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13464,10 +13874,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-cross-3x3.png",
+    "filePath": "assets/icons/icon-cross-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13477,10 +13888,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-crown-3x3.png",
+    "filePath": "assets/icons/icon-crown-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13490,10 +13902,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-crystal-3x3.png",
+    "filePath": "assets/icons/icon-crystal-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13503,10 +13916,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-diamond-3x3.png",
+    "filePath": "assets/icons/icon-diamond-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13516,10 +13930,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-dice-1x1.png",
+    "filePath": "assets/icons/icon-dice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13529,10 +13944,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-dice-2x2.png",
+    "filePath": "assets/icons/icon-dice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13542,10 +13958,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-dice-3x3.png",
+    "filePath": "assets/icons/icon-dice-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13555,10 +13972,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-disk-2x2.png",
+    "filePath": "assets/icons/icon-disk-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13568,10 +13986,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-dna-3x3.png",
+    "filePath": "assets/icons/icon-dna-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13581,10 +14000,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-dog-1x1.png",
+    "filePath": "assets/icons/icon-dog-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13594,10 +14014,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-dog-2x2.png",
+    "filePath": "assets/icons/icon-dog-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13607,10 +14028,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-dog-3x3.png",
+    "filePath": "assets/icons/icon-dog-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13620,10 +14042,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-drone-3x3.png",
+    "filePath": "assets/icons/icon-drone-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13633,10 +14056,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-drop-1x1.png",
+    "filePath": "assets/icons/icon-drop-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13646,10 +14070,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-earth-3x3.png",
+    "filePath": "assets/icons/icon-earth-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13659,10 +14084,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-energy-3x3.png",
+    "filePath": "assets/icons/icon-energy-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13672,10 +14098,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-eye-1x1.png",
+    "filePath": "assets/icons/icon-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13685,10 +14112,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-factory-3x3.png",
+    "filePath": "assets/icons/icon-factory-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13698,10 +14126,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-file-2x2.png",
+    "filePath": "assets/icons/icon-file-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13711,10 +14140,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-filter-2x2.png",
+    "filePath": "assets/icons/icon-filter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13724,10 +14154,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-fire-3x3.png",
+    "filePath": "assets/icons/icon-fire-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13737,10 +14168,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-fish-1x1.png",
+    "filePath": "assets/icons/icon-fish-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13750,10 +14182,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-fish-2x2.png",
+    "filePath": "assets/icons/icon-fish-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13763,10 +14196,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-fish-3x3.png",
+    "filePath": "assets/icons/icon-fish-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13776,10 +14210,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-flag-1x1.png",
+    "filePath": "assets/icons/icon-flag-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13789,10 +14224,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-flame-1x1.png",
+    "filePath": "assets/icons/icon-flame-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13802,10 +14238,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-folder-2x2.png",
+    "filePath": "assets/icons/icon-folder-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13815,10 +14252,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-fox-1x1.png",
+    "filePath": "assets/icons/icon-fox-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13828,10 +14266,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-fox-2x2.png",
+    "filePath": "assets/icons/icon-fox-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13841,10 +14280,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-fox-3x3.png",
+    "filePath": "assets/icons/icon-fox-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13854,10 +14294,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-gear-1x1.png",
+    "filePath": "assets/icons/icon-gear-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13867,10 +14308,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-gem-1x1.png",
+    "filePath": "assets/icons/icon-gem-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13880,10 +14322,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-gem-2x2.png",
+    "filePath": "assets/icons/icon-gem-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13893,10 +14336,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-gem-3x3.png",
+    "filePath": "assets/icons/icon-gem-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13906,10 +14350,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-ghost-1x1.png",
+    "filePath": "assets/icons/icon-ghost-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13919,10 +14364,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-ghost-2x2.png",
+    "filePath": "assets/icons/icon-ghost-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13932,10 +14378,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-ghost-3x3.png",
+    "filePath": "assets/icons/icon-ghost-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13945,10 +14392,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-gift-2x2.png",
+    "filePath": "assets/icons/icon-gift-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13958,10 +14406,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-globe-2x2.png",
+    "filePath": "assets/icons/icon-globe-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13971,10 +14420,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-hammer-1x1.png",
+    "filePath": "assets/icons/icon-hammer-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13984,10 +14434,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-headphones-2x2.png",
+    "filePath": "assets/icons/icon-headphones-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -13997,10 +14448,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-heart-1x1.png",
+    "filePath": "assets/icons/icon-heart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14010,10 +14462,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-heart-2x2.png",
+    "filePath": "assets/icons/icon-heart-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14023,10 +14476,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-heart-3x3.png",
+    "filePath": "assets/icons/icon-heart-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14036,10 +14490,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-home-1x1.png",
+    "filePath": "assets/icons/icon-home-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14049,10 +14504,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-home-3x3.png",
+    "filePath": "assets/icons/icon-home-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14062,10 +14518,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-hourglass-1x1.png",
+    "filePath": "assets/icons/icon-hourglass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14075,10 +14532,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-hourglass-2x2.png",
+    "filePath": "assets/icons/icon-hourglass-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14088,10 +14546,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-hourglass-3x3.png",
+    "filePath": "assets/icons/icon-hourglass-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14101,10 +14560,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-icecream-1x1.png",
+    "filePath": "assets/icons/icon-icecream-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14114,10 +14574,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-icecream-2x2.png",
+    "filePath": "assets/icons/icon-icecream-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14127,10 +14588,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-icecream-3x3.png",
+    "filePath": "assets/icons/icon-icecream-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14140,10 +14602,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-image-2x2.png",
+    "filePath": "assets/icons/icon-image-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14153,10 +14616,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-infinity-1x1.png",
+    "filePath": "assets/icons/icon-infinity-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14166,10 +14630,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-infinity-2x2.png",
+    "filePath": "assets/icons/icon-infinity-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14179,10 +14644,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-infinity-3x3.png",
+    "filePath": "assets/icons/icon-infinity-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14192,10 +14658,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-info-2x2.png",
+    "filePath": "assets/icons/icon-info-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14205,10 +14672,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-joystick-1x1.png",
+    "filePath": "assets/icons/icon-joystick-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14218,10 +14686,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-joystick-2x2.png",
+    "filePath": "assets/icons/icon-joystick-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14231,10 +14700,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-joystick-3x3.png",
+    "filePath": "assets/icons/icon-joystick-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14244,10 +14714,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-key-1x1.png",
+    "filePath": "assets/icons/icon-key-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14257,10 +14728,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-lab-2x2.png",
+    "filePath": "assets/icons/icon-lab-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14270,10 +14742,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-lab-3x3.png",
+    "filePath": "assets/icons/icon-lab-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14283,10 +14756,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-leaf-1x1.png",
+    "filePath": "assets/icons/icon-leaf-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14296,10 +14770,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-link-2x2.png",
+    "filePath": "assets/icons/icon-link-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14309,10 +14784,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-lock-1x1.png",
+    "filePath": "assets/icons/icon-lock-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14322,10 +14798,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-magnet-1x1.png",
+    "filePath": "assets/icons/icon-magnet-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14335,10 +14812,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-magnet-2x2.png",
+    "filePath": "assets/icons/icon-magnet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14348,10 +14826,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-magnet-3x3.png",
+    "filePath": "assets/icons/icon-magnet-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14361,10 +14840,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-mail-1x1.png",
+    "filePath": "assets/icons/icon-mail-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14374,10 +14854,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-map-2x2.png",
+    "filePath": "assets/icons/icon-map-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14387,10 +14868,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-medal-2x2.png",
+    "filePath": "assets/icons/icon-medal-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14400,10 +14882,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-mic-2x2.png",
+    "filePath": "assets/icons/icon-mic-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14413,10 +14896,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-minus-1x1.png",
+    "filePath": "assets/icons/icon-minus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14426,10 +14910,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-moon-1x1.png",
+    "filePath": "assets/icons/icon-moon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14439,10 +14924,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-mushroom-1x1.png",
+    "filePath": "assets/icons/icon-mushroom-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14452,10 +14938,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-mushroom-2x2.png",
+    "filePath": "assets/icons/icon-mushroom-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14465,10 +14952,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-mushroom-3x3.png",
+    "filePath": "assets/icons/icon-mushroom-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14478,10 +14966,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-music-1x1.png",
+    "filePath": "assets/icons/icon-music-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14491,10 +14980,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-ore-1x1.png",
+    "filePath": "assets/icons/icon-ore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14504,10 +14994,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-ore-2x2.png",
+    "filePath": "assets/icons/icon-ore-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14517,10 +15008,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-ore-3x3.png",
+    "filePath": "assets/icons/icon-ore-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14530,10 +15022,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-pause-1x1.png",
+    "filePath": "assets/icons/icon-pause-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14543,10 +15036,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-phone-2x2.png",
+    "filePath": "assets/icons/icon-phone-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14556,10 +15050,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-pickaxe-1x1.png",
+    "filePath": "assets/icons/icon-pickaxe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14569,10 +15064,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-pickaxe-2x2.png",
+    "filePath": "assets/icons/icon-pickaxe-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14582,10 +15078,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-pickaxe-3x3.png",
+    "filePath": "assets/icons/icon-pickaxe-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14595,10 +15092,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-pin-2x2.png",
+    "filePath": "assets/icons/icon-pin-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14608,10 +15106,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-pizza-1x1.png",
+    "filePath": "assets/icons/icon-pizza-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14621,10 +15120,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-pizza-2x2.png",
+    "filePath": "assets/icons/icon-pizza-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14634,10 +15134,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-pizza-3x3.png",
+    "filePath": "assets/icons/icon-pizza-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14647,10 +15148,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-plane-3x3.png",
+    "filePath": "assets/icons/icon-plane-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14660,10 +15162,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-play-1x1.png",
+    "filePath": "assets/icons/icon-play-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14673,10 +15176,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-plus-1x1.png",
+    "filePath": "assets/icons/icon-plus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14686,10 +15190,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-portal-3x3.png",
+    "filePath": "assets/icons/icon-portal-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14699,10 +15204,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-potion-1x1.png",
+    "filePath": "assets/icons/icon-potion-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14712,10 +15218,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-potion-2x2.png",
+    "filePath": "assets/icons/icon-potion-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14725,10 +15232,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-potion-3x3.png",
+    "filePath": "assets/icons/icon-potion-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14738,10 +15246,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-power-2x2.png",
+    "filePath": "assets/icons/icon-power-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14751,10 +15260,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-power-3x3.png",
+    "filePath": "assets/icons/icon-power-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14764,10 +15274,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-puzzle-1x1.png",
+    "filePath": "assets/icons/icon-puzzle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14777,10 +15288,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-puzzle-2x2.png",
+    "filePath": "assets/icons/icon-puzzle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14790,10 +15302,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-puzzle-3x3.png",
+    "filePath": "assets/icons/icon-puzzle-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14803,10 +15316,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-radar-3x3.png",
+    "filePath": "assets/icons/icon-radar-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14816,10 +15330,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-rainbow-1x1.png",
+    "filePath": "assets/icons/icon-rainbow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14829,10 +15344,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-rainbow-2x2.png",
+    "filePath": "assets/icons/icon-rainbow-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14842,10 +15358,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-rainbow-3x3.png",
+    "filePath": "assets/icons/icon-rainbow-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14855,10 +15372,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-ring-1x1.png",
+    "filePath": "assets/icons/icon-ring-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14868,10 +15386,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-ring-2x2.png",
+    "filePath": "assets/icons/icon-ring-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14881,10 +15400,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-ring-3x3.png",
+    "filePath": "assets/icons/icon-ring-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14894,10 +15414,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-robot-1x1.png",
+    "filePath": "assets/icons/icon-robot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14907,10 +15428,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-robot-2x2.png",
+    "filePath": "assets/icons/icon-robot-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14920,10 +15442,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-robot-3x3.png",
+    "filePath": "assets/icons/icon-robot-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14933,10 +15456,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-rocket-3x3.png",
+    "filePath": "assets/icons/icon-rocket-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14946,10 +15470,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-satellite-3x3.png",
+    "filePath": "assets/icons/icon-satellite-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14959,10 +15484,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-scroll-1x1.png",
+    "filePath": "assets/icons/icon-scroll-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14972,10 +15498,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-scroll-2x2.png",
+    "filePath": "assets/icons/icon-scroll-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14985,10 +15512,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-scroll-3x3.png",
+    "filePath": "assets/icons/icon-scroll-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -14998,10 +15526,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-search-2x2.png",
+    "filePath": "assets/icons/icon-search-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15011,10 +15540,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-seed-1x1.png",
+    "filePath": "assets/icons/icon-seed-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15024,10 +15554,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-seed-2x2.png",
+    "filePath": "assets/icons/icon-seed-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15037,10 +15568,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-seed-3x3.png",
+    "filePath": "assets/icons/icon-seed-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15050,10 +15582,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-settings-3x3.png",
+    "filePath": "assets/icons/icon-settings-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15063,10 +15596,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-shield-1x1.png",
+    "filePath": "assets/icons/icon-shield-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15076,10 +15610,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-ship-3x3.png",
+    "filePath": "assets/icons/icon-ship-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15089,10 +15624,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-shop-3x3.png",
+    "filePath": "assets/icons/icon-shop-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15102,10 +15638,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-skull-3x3.png",
+    "filePath": "assets/icons/icon-skull-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15115,10 +15652,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-snow-1x1.png",
+    "filePath": "assets/icons/icon-snow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15128,10 +15666,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-snow-2x2.png",
+    "filePath": "assets/icons/icon-snow-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15141,10 +15680,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-snow-3x3.png",
+    "filePath": "assets/icons/icon-snow-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15154,10 +15694,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-speaker-2x2.png",
+    "filePath": "assets/icons/icon-speaker-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15167,10 +15708,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-spiral-1x1.png",
+    "filePath": "assets/icons/icon-spiral-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15180,10 +15722,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-spiral-2x2.png",
+    "filePath": "assets/icons/icon-spiral-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15193,10 +15736,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-spiral-3x3.png",
+    "filePath": "assets/icons/icon-spiral-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15206,10 +15750,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-star-1x1.png",
+    "filePath": "assets/icons/icon-star-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15219,10 +15764,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-star-2x2.png",
+    "filePath": "assets/icons/icon-star-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15232,10 +15778,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-star-3x3.png",
+    "filePath": "assets/icons/icon-star-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15245,10 +15792,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-stop-1x1.png",
+    "filePath": "assets/icons/icon-stop-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15258,10 +15806,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-sun-1x1.png",
+    "filePath": "assets/icons/icon-sun-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15271,10 +15820,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-sword-1x1.png",
+    "filePath": "assets/icons/icon-sword-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15284,10 +15834,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-tag-2x2.png",
+    "filePath": "assets/icons/icon-tag-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15297,10 +15848,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-target-1x1.png",
+    "filePath": "assets/icons/icon-target-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15310,10 +15862,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-terminal-2x2.png",
+    "filePath": "assets/icons/icon-terminal-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15323,10 +15876,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-train-3x3.png",
+    "filePath": "assets/icons/icon-train-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15336,10 +15890,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-tree-1x1.png",
+    "filePath": "assets/icons/icon-tree-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15349,10 +15904,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-tree-2x2.png",
+    "filePath": "assets/icons/icon-tree-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15362,10 +15918,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-tree-3x3.png",
+    "filePath": "assets/icons/icon-tree-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15375,10 +15932,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-trophy-2x2.png",
+    "filePath": "assets/icons/icon-trophy-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15388,10 +15946,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-truck-3x3.png",
+    "filePath": "assets/icons/icon-truck-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15401,10 +15960,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-unlock-1x1.png",
+    "filePath": "assets/icons/icon-unlock-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15414,10 +15974,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-user-1x1.png",
+    "filePath": "assets/icons/icon-user-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15427,10 +15988,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-user-3x3.png",
+    "filePath": "assets/icons/icon-user-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15440,10 +16002,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-users-1x1.png",
+    "filePath": "assets/icons/icon-users-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15453,10 +16016,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-users-3x3.png",
+    "filePath": "assets/icons/icon-users-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15466,10 +16030,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-vault-3x3.png",
+    "filePath": "assets/icons/icon-vault-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15479,10 +16044,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-virus-3x3.png",
+    "filePath": "assets/icons/icon-virus-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15492,10 +16058,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-wand-1x1.png",
+    "filePath": "assets/icons/icon-wand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15505,10 +16072,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-wand-2x2.png",
+    "filePath": "assets/icons/icon-wand-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15518,10 +16086,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-wand-3x3.png",
+    "filePath": "assets/icons/icon-wand-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15531,10 +16100,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-warning-2x2.png",
+    "filePath": "assets/icons/icon-warning-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15544,10 +16114,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-warning-3x3.png",
+    "filePath": "assets/icons/icon-warning-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15557,10 +16128,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-water-3x3.png",
+    "filePath": "assets/icons/icon-water-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15570,10 +16142,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-wave-1x1.png",
+    "filePath": "assets/icons/icon-wave-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15583,10 +16156,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-wave-2x2.png",
+    "filePath": "assets/icons/icon-wave-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15596,10 +16170,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-wave-3x3.png",
+    "filePath": "assets/icons/icon-wave-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15609,10 +16184,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-wifi-2x2.png",
+    "filePath": "assets/icons/icon-wifi-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15622,10 +16198,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-wrench-1x1.png",
+    "filePath": "assets/icons/icon-wrench-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15635,10 +16212,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 16,
     "height": 16,
-    "filePath": "assets/icon-yinyang-1x1.png",
+    "filePath": "assets/icons/icon-yinyang-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15648,10 +16226,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 32,
     "height": 32,
-    "filePath": "assets/icon-yinyang-2x2.png",
+    "filePath": "assets/icons/icon-yinyang-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15661,10 +16240,11 @@ var ICON_ITEMS = [
     "category": "icon",
     "width": 48,
     "height": 48,
-    "filePath": "assets/icon-yinyang-3x3.png",
+    "filePath": "assets/icons/icon-yinyang-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -15674,10 +16254,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 32,
-    "filePath": "assets/ind-airlock-3x2.png",
+    "filePath": "assets/deco/ind-airlock-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15687,10 +16268,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 64,
     "height": 64,
-    "filePath": "assets/ind-assembler-4x4.png",
+    "filePath": "assets/deco/ind-assembler-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15700,10 +16282,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-barrel-1x1.png",
+    "filePath": "assets/deco/ind-barrel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15713,10 +16296,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-beam-2x1.png",
+    "filePath": "assets/deco/ind-beam-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15726,10 +16310,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 32,
-    "filePath": "assets/ind-board-3x2.png",
+    "filePath": "assets/deco/ind-board-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15739,10 +16324,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-boiler-2x2.png",
+    "filePath": "assets/deco/ind-boiler-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15752,10 +16338,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-bolt-1x1.png",
+    "filePath": "assets/deco/ind-bolt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15765,10 +16352,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-button-1x1.png",
+    "filePath": "assets/deco/ind-button-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15778,10 +16366,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-cabinet-2x2.png",
+    "filePath": "assets/deco/ind-cabinet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15791,10 +16380,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 48,
-    "filePath": "assets/ind-chimney-1x3.png",
+    "filePath": "assets/deco/ind-chimney-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15804,10 +16394,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-conduit-1x1.png",
+    "filePath": "assets/deco/ind-conduit-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15817,10 +16408,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 32,
-    "filePath": "assets/ind-console-3x2.png",
+    "filePath": "assets/deco/ind-console-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15830,10 +16422,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-conveyor-2x1.png",
+    "filePath": "assets/deco/ind-conveyor-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15843,10 +16436,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/ind-cooling-3x3.png",
+    "filePath": "assets/deco/ind-cooling-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15856,10 +16450,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 64,
     "height": 64,
-    "filePath": "assets/ind-core-4x4.png",
+    "filePath": "assets/deco/ind-core-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15869,10 +16464,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 48,
-    "filePath": "assets/ind-crane-1x3.png",
+    "filePath": "assets/deco/ind-crane-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15882,10 +16478,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/ind-crane-3x3.png",
+    "filePath": "assets/deco/ind-crane-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15895,10 +16492,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-crate-2x1.png",
+    "filePath": "assets/deco/ind-crate-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15908,10 +16506,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-crate-2x2.png",
+    "filePath": "assets/deco/ind-crate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15921,10 +16520,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-door-2x2.png",
+    "filePath": "assets/deco/ind-door-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15934,10 +16534,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-duct-2x1.png",
+    "filePath": "assets/deco/ind-duct-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15947,10 +16548,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-fan-2x2.png",
+    "filePath": "assets/deco/ind-fan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15960,10 +16562,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 32,
-    "filePath": "assets/ind-furnace-3x2.png",
+    "filePath": "assets/deco/ind-furnace-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15973,10 +16576,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-gauge-1x1.png",
+    "filePath": "assets/deco/ind-gauge-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15986,10 +16590,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-gear-1x1.png",
+    "filePath": "assets/deco/ind-gear-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -15999,10 +16604,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-generator-2x2.png",
+    "filePath": "assets/deco/ind-generator-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16012,10 +16618,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-junction-2x1.png",
+    "filePath": "assets/deco/ind-junction-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16025,10 +16632,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-ladder-1x2.png",
+    "filePath": "assets/deco/ind-ladder-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16038,10 +16646,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-lamp-1x2.png",
+    "filePath": "assets/deco/ind-lamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16051,10 +16660,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-locker-1x2.png",
+    "filePath": "assets/deco/ind-locker-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16064,10 +16674,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-motor-2x2.png",
+    "filePath": "assets/deco/ind-motor-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16077,10 +16688,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-panel-2x1.png",
+    "filePath": "assets/deco/ind-panel-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16090,10 +16702,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-pipe-1x2.png",
+    "filePath": "assets/deco/ind-pipe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16103,10 +16716,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 48,
-    "filePath": "assets/ind-pipe-1x3.png",
+    "filePath": "assets/deco/ind-pipe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16116,10 +16730,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-pipe-2x1.png",
+    "filePath": "assets/deco/ind-pipe-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16129,10 +16744,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 32,
-    "filePath": "assets/ind-pipe-bank-3x2.png",
+    "filePath": "assets/deco/ind-pipe-bank-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16142,10 +16758,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-pipe-cap-1x1.png",
+    "filePath": "assets/deco/ind-pipe-cap-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16155,10 +16772,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 64,
     "height": 64,
-    "filePath": "assets/ind-plant-4x4.png",
+    "filePath": "assets/deco/ind-plant-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16168,10 +16786,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-pump-1x2.png",
+    "filePath": "assets/deco/ind-pump-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16181,10 +16800,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-rack-1x2.png",
+    "filePath": "assets/deco/ind-rack-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16194,10 +16814,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 32,
-    "filePath": "assets/ind-radiator-3x2.png",
+    "filePath": "assets/deco/ind-radiator-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16207,10 +16828,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/ind-reactor-3x3.png",
+    "filePath": "assets/deco/ind-reactor-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16220,10 +16842,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 48,
-    "filePath": "assets/ind-server-1x3.png",
+    "filePath": "assets/deco/ind-server-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16233,10 +16856,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/ind-server-3x3.png",
+    "filePath": "assets/deco/ind-server-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16246,10 +16870,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-stack-1x2.png",
+    "filePath": "assets/deco/ind-stack-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16259,10 +16884,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 64,
     "height": 64,
-    "filePath": "assets/ind-storage-4x4.png",
+    "filePath": "assets/deco/ind-storage-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16272,10 +16898,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/ind-tank-2x2.png",
+    "filePath": "assets/deco/ind-tank-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16285,10 +16912,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/ind-terminal-1x2.png",
+    "filePath": "assets/deco/ind-terminal-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16298,10 +16926,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 16,
-    "filePath": "assets/ind-valve-1x1.png",
+    "filePath": "assets/deco/ind-valve-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16311,10 +16940,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/ind-warning-2x1.png",
+    "filePath": "assets/deco/ind-warning-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16324,10 +16954,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-assembler-2x2.png",
+    "filePath": "assets/deco/logi-assembler-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16337,10 +16968,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/logi-assembler-3x3.png",
+    "filePath": "assets/deco/logi-assembler-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16350,10 +16982,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 16,
-    "filePath": "assets/logi-balancer-3x1.png",
+    "filePath": "assets/deco/logi-balancer-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16363,10 +16996,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/logi-belt-1x2.png",
+    "filePath": "assets/deco/logi-belt-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16376,10 +17010,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 16,
-    "filePath": "assets/logi-belt-2x1.png",
+    "filePath": "assets/deco/logi-belt-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16389,10 +17024,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 16,
-    "filePath": "assets/logi-belt-3x1.png",
+    "filePath": "assets/deco/logi-belt-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16402,10 +17038,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-buffer-2x2.png",
+    "filePath": "assets/deco/logi-buffer-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16415,10 +17052,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/logi-drill-1x2.png",
+    "filePath": "assets/deco/logi-drill-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16428,10 +17066,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-drill-2x2.png",
+    "filePath": "assets/deco/logi-drill-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16441,10 +17080,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-drone-station-2x2.png",
+    "filePath": "assets/deco/logi-drone-station-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16454,10 +17094,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-extractor-2x2.png",
+    "filePath": "assets/deco/logi-extractor-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16467,10 +17108,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-filter-2x2.png",
+    "filePath": "assets/deco/logi-filter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16480,10 +17122,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-hopper-2x2.png",
+    "filePath": "assets/deco/logi-hopper-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16493,10 +17136,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-loader-2x2.png",
+    "filePath": "assets/deco/logi-loader-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16506,10 +17150,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-merger-2x2.png",
+    "filePath": "assets/deco/logi-merger-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16519,10 +17164,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 16,
     "height": 32,
-    "filePath": "assets/logi-pump-1x2.png",
+    "filePath": "assets/deco/logi-pump-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16532,10 +17178,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-pump-2x2.png",
+    "filePath": "assets/deco/logi-pump-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16545,10 +17192,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-silo-2x2.png",
+    "filePath": "assets/deco/logi-silo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16558,10 +17206,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 48,
-    "filePath": "assets/logi-silo-2x3.png",
+    "filePath": "assets/deco/logi-silo-2x3.png",
     "align": "floor",
     "tags": [
-      "2x3"
+      "2x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16571,10 +17220,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/logi-silo-3x3.png",
+    "filePath": "assets/deco/logi-silo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16584,10 +17234,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-smelter-2x2.png",
+    "filePath": "assets/deco/logi-smelter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16597,10 +17248,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/logi-smelter-3x3.png",
+    "filePath": "assets/deco/logi-smelter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16610,10 +17262,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-sorter-2x2.png",
+    "filePath": "assets/deco/logi-sorter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16623,10 +17276,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/logi-sorter-3x3.png",
+    "filePath": "assets/deco/logi-sorter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16636,10 +17290,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-splitter-2x2.png",
+    "filePath": "assets/deco/logi-splitter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16649,10 +17304,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 48,
     "height": 48,
-    "filePath": "assets/logi-splitter-3x3.png",
+    "filePath": "assets/deco/logi-splitter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16662,10 +17318,11 @@ var ICON_ITEMS = [
     "category": "indus",
     "width": 32,
     "height": 32,
-    "filePath": "assets/logi-unloader-2x2.png",
+    "filePath": "assets/deco/logi-unloader-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18248,10 +18905,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-assembler-arm-3x3.png",
+    "filePath": "assets/block/probs-assembler-arm-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18261,10 +18919,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-bio-canister-1x1.png",
+    "filePath": "assets/block/probs-bio-canister-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18274,10 +18933,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-biohazard-barrel-1x1.png",
+    "filePath": "assets/block/probs-biohazard-barrel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18287,10 +18947,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-bioreactor-3x3.png",
+    "filePath": "assets/block/probs-bioreactor-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18300,10 +18961,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-console-3x3.png",
+    "filePath": "assets/block/probs-console-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18313,10 +18975,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-cooling-tower-3x3.png",
+    "filePath": "assets/block/probs-cooling-tower-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18326,10 +18989,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-crate-1x1.png",
+    "filePath": "assets/block/probs-crate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18339,10 +19003,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-crate-2x2.png",
+    "filePath": "assets/block/probs-crate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18352,10 +19017,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 64,
     "height": 64,
-    "filePath": "assets/probs-crate-stack-4x4.png",
+    "filePath": "assets/block/probs-crate-stack-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18365,10 +19031,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-data-node-1x1.png",
+    "filePath": "assets/block/probs-data-node-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18378,10 +19045,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-door-2x2.png",
+    "filePath": "assets/block/probs-door-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18391,10 +19059,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-drone-dock-2x2.png",
+    "filePath": "assets/block/probs-drone-dock-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18404,10 +19073,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-fan-2x2.png",
+    "filePath": "assets/block/probs-fan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18417,10 +19087,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 64,
     "height": 64,
-    "filePath": "assets/probs-fusion-core-4x4.png",
+    "filePath": "assets/block/probs-fusion-core-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18430,10 +19101,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 64,
     "height": 64,
-    "filePath": "assets/probs-gate-4x4.png",
+    "filePath": "assets/block/probs-gate-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18443,10 +19115,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-gene-sequencer-3x3.png",
+    "filePath": "assets/block/probs-gene-sequencer-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18456,10 +19129,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 64,
     "height": 64,
-    "filePath": "assets/probs-growth-chamber-4x4.png",
+    "filePath": "assets/block/probs-growth-chamber-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18469,10 +19143,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-holo-projector-2x2.png",
+    "filePath": "assets/block/probs-holo-projector-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18482,10 +19157,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-incubator-2x2.png",
+    "filePath": "assets/block/probs-incubator-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18495,10 +19171,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 64,
     "height": 64,
-    "filePath": "assets/probs-lab-bench-4x4.png",
+    "filePath": "assets/block/probs-lab-bench-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18508,10 +19185,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-nutrient-tank-2x2.png",
+    "filePath": "assets/block/probs-nutrient-tank-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18521,10 +19199,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-pipe-junction-2x2.png",
+    "filePath": "assets/block/probs-pipe-junction-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18534,10 +19213,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-power-junction-1x1.png",
+    "filePath": "assets/block/probs-power-junction-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18547,10 +19227,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 64,
     "height": 64,
-    "filePath": "assets/probs-reactor-core-4x4.png",
+    "filePath": "assets/block/probs-reactor-core-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4"
+      "4x4",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18560,10 +19241,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-sample-tube-1x1.png",
+    "filePath": "assets/block/probs-sample-tube-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18573,10 +19255,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-sensor-1x1.png",
+    "filePath": "assets/block/probs-sensor-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18586,10 +19269,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-server-rack-2x2.png",
+    "filePath": "assets/block/probs-server-rack-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18599,10 +19283,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-shelf-3x3.png",
+    "filePath": "assets/block/probs-shelf-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18612,10 +19297,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-spore-pod-1x1.png",
+    "filePath": "assets/block/probs-spore-pod-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18625,10 +19311,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-stasis-pod-3x3.png",
+    "filePath": "assets/block/probs-stasis-pod-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18638,10 +19325,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-vent-1x1.png",
+    "filePath": "assets/block/probs-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18651,10 +19339,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 16,
     "height": 16,
-    "filePath": "assets/probs-wall-light-1x1.png",
+    "filePath": "assets/block/probs-wall-light-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -18664,10 +19353,11 @@ var ICON_ITEMS = [
     "category": "probs",
     "width": 32,
     "height": 32,
-    "filePath": "assets/probs-window-2x2.png",
+    "filePath": "assets/block/probs-window-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -19483,10 +20173,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 48,
-    "filePath": "assets/probs-airlock-3x3.png",
+    "filePath": "assets/block/probs-airlock-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -19496,10 +20187,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-airlock-2x2.png",
+    "filePath": "assets/deco/space-airlock-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19509,10 +20201,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 48,
-    "filePath": "assets/space-airlock-3x3.png",
+    "filePath": "assets/deco/space-airlock-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19522,10 +20215,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 32,
-    "filePath": "assets/space-antenna-1x2.png",
+    "filePath": "assets/deco/space-antenna-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19535,10 +20229,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-antenna-2x2.png",
+    "filePath": "assets/deco/space-antenna-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19548,10 +20243,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 48,
-    "filePath": "assets/space-antenna-2x3.png",
+    "filePath": "assets/deco/space-antenna-2x3.png",
     "align": "floor",
     "tags": [
-      "2x3"
+      "2x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19561,10 +20257,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 48,
-    "filePath": "assets/space-antenna-array-3x3.png",
+    "filePath": "assets/deco/space-antenna-array-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19574,10 +20271,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 48,
-    "filePath": "assets/space-boom-1x3.png",
+    "filePath": "assets/deco/space-boom-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19587,10 +20285,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-cargo-2x2.png",
+    "filePath": "assets/deco/space-cargo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19600,10 +20299,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 16,
-    "filePath": "assets/space-cargo-3x1.png",
+    "filePath": "assets/deco/space-cargo-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19613,10 +20313,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-dish-2x2.png",
+    "filePath": "assets/deco/space-dish-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19626,10 +20327,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 48,
-    "filePath": "assets/space-dish-3x3.png",
+    "filePath": "assets/deco/space-dish-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19639,10 +20341,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 64,
     "height": 32,
-    "filePath": "assets/space-dock-bay-4x2.png",
+    "filePath": "assets/deco/space-dock-bay-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2"
+      "4x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19652,10 +20355,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-dock-clamp-2x2.png",
+    "filePath": "assets/deco/space-dock-clamp-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19665,10 +20369,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 32,
-    "filePath": "assets/space-dock-clamp-3x2.png",
+    "filePath": "assets/deco/space-dock-clamp-3x2.png",
     "align": "wall",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19678,10 +20383,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-dome-2x2.png",
+    "filePath": "assets/deco/space-dome-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19691,10 +20397,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 48,
-    "filePath": "assets/space-dome-3x3.png",
+    "filePath": "assets/deco/space-dome-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19704,10 +20411,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 32,
-    "filePath": "assets/space-fuel-1x2.png",
+    "filePath": "assets/deco/space-fuel-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19717,10 +20425,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-fuel-2x2.png",
+    "filePath": "assets/deco/space-fuel-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19730,10 +20439,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-habitat-2x2.png",
+    "filePath": "assets/deco/space-habitat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19743,10 +20453,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 32,
-    "filePath": "assets/space-habitat-3x2.png",
+    "filePath": "assets/deco/space-habitat-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19756,10 +20467,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 64,
     "height": 32,
-    "filePath": "assets/space-habitat-4x2.png",
+    "filePath": "assets/deco/space-habitat-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2"
+      "4x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19769,10 +20481,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 16,
-    "filePath": "assets/space-navlight-1x1.png",
+    "filePath": "assets/deco/space-navlight-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19782,10 +20495,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 16,
-    "filePath": "assets/space-navlight-g-1x1.png",
+    "filePath": "assets/deco/space-navlight-g-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19795,10 +20509,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 32,
-    "filePath": "assets/space-pedestal-1x2.png",
+    "filePath": "assets/deco/space-pedestal-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19808,10 +20523,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 16,
-    "filePath": "assets/space-probe-1x1.png",
+    "filePath": "assets/deco/space-probe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19821,10 +20537,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 16,
-    "filePath": "assets/space-radiator-2x1.png",
+    "filePath": "assets/deco/space-radiator-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19834,10 +20551,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 16,
-    "filePath": "assets/space-radiator-3x1.png",
+    "filePath": "assets/deco/space-radiator-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19847,10 +20565,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 16,
-    "filePath": "assets/space-rcs-1x1.png",
+    "filePath": "assets/deco/space-rcs-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19860,10 +20579,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 16,
-    "filePath": "assets/space-rcs-2x1.png",
+    "filePath": "assets/deco/space-rcs-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19873,10 +20593,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-sat-2x2.png",
+    "filePath": "assets/deco/space-sat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19886,10 +20607,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 48,
-    "filePath": "assets/space-sat-3x3.png",
+    "filePath": "assets/deco/space-sat-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19899,10 +20621,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-solar-2x2.png",
+    "filePath": "assets/deco/space-solar-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19912,10 +20635,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 16,
-    "filePath": "assets/space-solar-3x1.png",
+    "filePath": "assets/deco/space-solar-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19925,10 +20649,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 48,
     "height": 48,
-    "filePath": "assets/space-solar-3x3.png",
+    "filePath": "assets/deco/space-solar-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19938,10 +20663,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-starfield-2x2.png",
+    "filePath": "assets/deco/space-starfield-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19951,10 +20677,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 16,
     "height": 32,
-    "filePath": "assets/space-thruster-1x2.png",
+    "filePath": "assets/deco/space-thruster-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19964,10 +20691,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 16,
-    "filePath": "assets/space-thruster-2x1.png",
+    "filePath": "assets/deco/space-thruster-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -19977,10 +20705,11 @@ var ICON_ITEMS = [
     "category": "space",
     "width": 32,
     "height": 32,
-    "filePath": "assets/space-thruster-2x2.png",
+    "filePath": "assets/deco/space-thruster-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21524,10 +22253,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-bronze-1x1.png",
+    "filePath": "assets/block/tile-floor-bronze-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21537,10 +22267,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-check-1x1.png",
+    "filePath": "assets/block/tile-floor-check-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21550,10 +22281,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-dirt-1x1.png",
+    "filePath": "assets/block/tile-floor-dirt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21563,10 +22295,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-dots-1x1.png",
+    "filePath": "assets/block/tile-floor-dots-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21576,10 +22309,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-grass-1x1.png",
+    "filePath": "assets/block/tile-floor-grass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21589,10 +22323,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-lines-1x1.png",
+    "filePath": "assets/block/tile-floor-lines-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21602,10 +22337,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-plate-1x1.png",
+    "filePath": "assets/block/tile-floor-plate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21615,10 +22351,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-floor-tech-1x1.png",
+    "filePath": "assets/block/tile-floor-tech-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21628,10 +22365,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-grating-1x1.png",
+    "filePath": "assets/block/tile-grating-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21641,10 +22379,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-grating-heavy-1x1.png",
+    "filePath": "assets/block/tile-grating-heavy-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21654,10 +22393,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-grating-vent-1x1.png",
+    "filePath": "assets/block/tile-grating-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21667,10 +22407,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-bronze-1x1.png",
+    "filePath": "assets/block/tile-wall-bronze-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21680,10 +22421,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-bronze-tile-1x1.png",
+    "filePath": "assets/block/tile-wall-bronze-tile-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21693,10 +22435,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-check-1x1.png",
+    "filePath": "assets/block/tile-wall-check-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21706,10 +22449,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-console-1x1.png",
+    "filePath": "assets/block/tile-wall-console-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21719,10 +22463,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-dots-1x1.png",
+    "filePath": "assets/block/tile-wall-dots-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21732,10 +22477,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-glass-1x1.png",
+    "filePath": "assets/block/tile-wall-glass-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21745,10 +22491,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-light-1x1.png",
+    "filePath": "assets/block/tile-wall-light-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21758,10 +22505,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-lines-1x1.png",
+    "filePath": "assets/block/tile-wall-lines-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21771,10 +22519,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-panel-1x1.png",
+    "filePath": "assets/block/tile-wall-panel-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21784,10 +22533,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-plate-1x1.png",
+    "filePath": "assets/block/tile-wall-plate-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21797,10 +22547,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-siding-1x1.png",
+    "filePath": "assets/block/tile-wall-siding-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21810,10 +22561,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-steel-1x1.png",
+    "filePath": "assets/block/tile-wall-steel-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21823,10 +22575,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-stripe-1x1.png",
+    "filePath": "assets/block/tile-wall-stripe-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21836,10 +22589,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-tech-1x1.png",
+    "filePath": "assets/block/tile-wall-tech-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21849,10 +22603,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-vent-1x1.png",
+    "filePath": "assets/block/tile-wall-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21862,10 +22617,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-warning-1x1.png",
+    "filePath": "assets/block/tile-wall-warning-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21875,10 +22631,11 @@ var ICON_ITEMS = [
     "category": "walls",
     "width": 16,
     "height": 16,
-    "filePath": "assets/tile-wall-window-1x1.png",
+    "filePath": "assets/block/tile-wall-window-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -21888,10 +22645,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 32,
-    "filePath": "assets/wide-bay-4x2.png",
+    "filePath": "assets/deco/wide-bay-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2"
+      "4x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21901,10 +22659,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-beam-3x1.png",
+    "filePath": "assets/deco/wide-beam-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21914,10 +22673,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 16,
-    "filePath": "assets/wide-beam-4x1.png",
+    "filePath": "assets/deco/wide-beam-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21927,10 +22687,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-billboard-3x1.png",
+    "filePath": "assets/deco/wide-billboard-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21940,10 +22701,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 32,
-    "filePath": "assets/wide-billboard-4x2.png",
+    "filePath": "assets/deco/wide-billboard-4x2.png",
     "align": "wall",
     "tags": [
-      "4x2"
+      "4x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21953,10 +22715,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 16,
-    "filePath": "assets/wide-bridge-4x1.png",
+    "filePath": "assets/deco/wide-bridge-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21966,10 +22729,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-cable-3x1.png",
+    "filePath": "assets/deco/wide-cable-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21979,10 +22743,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-console-3x1.png",
+    "filePath": "assets/deco/wide-console-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21992,10 +22757,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 32,
-    "filePath": "assets/wide-console-4x2.png",
+    "filePath": "assets/deco/wide-console-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2"
+      "4x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22005,10 +22771,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-console-alt-3x1.png",
+    "filePath": "assets/deco/wide-console-alt-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22018,10 +22785,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-duct-3x1.png",
+    "filePath": "assets/deco/wide-duct-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22031,10 +22799,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 32,
-    "filePath": "assets/wide-gauges-3x2.png",
+    "filePath": "assets/deco/wide-gauges-3x2.png",
     "align": "wall",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22044,10 +22813,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-keys-3x1.png",
+    "filePath": "assets/deco/wide-keys-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22057,10 +22827,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 16,
     "height": 48,
-    "filePath": "assets/wide-ladder-1x3.png",
+    "filePath": "assets/deco/wide-ladder-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22070,10 +22841,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-level-bar-3x1.png",
+    "filePath": "assets/deco/wide-level-bar-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22083,10 +22855,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 32,
     "height": 16,
-    "filePath": "assets/wide-level-tank-2x1.png",
+    "filePath": "assets/deco/wide-level-tank-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22096,10 +22869,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 16,
     "height": 16,
-    "filePath": "assets/wide-level-vert-1x1.png",
+    "filePath": "assets/deco/wide-level-vert-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22109,10 +22883,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 16,
     "height": 32,
-    "filePath": "assets/wide-level-vert-1x2.png",
+    "filePath": "assets/deco/wide-level-vert-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22122,10 +22897,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 32,
-    "filePath": "assets/wide-manifold-3x2.png",
+    "filePath": "assets/deco/wide-manifold-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2"
+      "3x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22135,10 +22911,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 32,
-    "filePath": "assets/wide-monitor-bank-4x2.png",
+    "filePath": "assets/deco/wide-monitor-bank-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2"
+      "4x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22148,10 +22925,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-pipe-3x1.png",
+    "filePath": "assets/deco/wide-pipe-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22161,10 +22939,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 16,
-    "filePath": "assets/wide-pipe-4x1.png",
+    "filePath": "assets/deco/wide-pipe-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22174,10 +22953,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-pipe-coolant-3x1.png",
+    "filePath": "assets/deco/wide-pipe-coolant-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22187,10 +22967,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-rail-3x1.png",
+    "filePath": "assets/deco/wide-rail-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22200,10 +22981,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 64,
     "height": 32,
-    "filePath": "assets/wide-reactor-strip-4x2.png",
+    "filePath": "assets/deco/wide-reactor-strip-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2"
+      "4x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22213,10 +22995,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-shelf-3x1.png",
+    "filePath": "assets/deco/wide-shelf-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22226,10 +23009,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 32,
     "height": 16,
-    "filePath": "assets/wide-sign-2x1.png",
+    "filePath": "assets/deco/wide-sign-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22239,10 +23023,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-sign-danger-3x1.png",
+    "filePath": "assets/deco/wide-sign-danger-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22252,10 +23037,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 32,
     "height": 16,
-    "filePath": "assets/wide-sign-ok-2x1.png",
+    "filePath": "assets/deco/wide-sign-ok-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22265,10 +23051,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-status-3x1.png",
+    "filePath": "assets/deco/wide-status-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22278,10 +23065,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 16,
     "height": 16,
-    "filePath": "assets/wide-valve-1x1.png",
+    "filePath": "assets/deco/wide-valve-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22291,10 +23079,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 16,
     "height": 32,
-    "filePath": "assets/wide-valve-1x2.png",
+    "filePath": "assets/deco/wide-valve-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22304,10 +23093,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 32,
     "height": 16,
-    "filePath": "assets/wide-valve-2x1.png",
+    "filePath": "assets/deco/wide-valve-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22317,10 +23107,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 32,
     "height": 16,
-    "filePath": "assets/wide-warning-2x1.png",
+    "filePath": "assets/deco/wide-warning-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22330,10 +23121,11 @@ var ICON_ITEMS = [
     "category": "wide",
     "width": 48,
     "height": 16,
-    "filePath": "assets/wide-warning-3x1.png",
+    "filePath": "assets/deco/wide-warning-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   }
@@ -22341,403 +23133,403 @@ var ICON_ITEMS = [
 var ICON_FILES = [
   {
     "id": "icons",
-    "filePath": "assets/char-A-1x1.png"
+    "filePath": "./assets/icons/char-A-1x1.png"
   },
   {
     "id": "icon-arrow-back-1x1",
-    "filePath": "assets/icon-arrow-back-1x1.png"
+    "filePath": "assets/icons/icon-arrow-back-1x1.png"
   },
   {
     "id": "icon-arrow-back-2x2",
-    "filePath": "assets/icon-arrow-back-2x2.png"
+    "filePath": "assets/icons/icon-arrow-back-2x2.png"
   },
   {
     "id": "icon-arrow-back-3x3",
-    "filePath": "assets/icon-arrow-back-3x3.png"
+    "filePath": "assets/icons/icon-arrow-back-3x3.png"
   },
   {
     "id": "icon-arrow-bounce-1x1",
-    "filePath": "assets/icon-arrow-bounce-1x1.png"
+    "filePath": "assets/icons/icon-arrow-bounce-1x1.png"
   },
   {
     "id": "icon-arrow-bounce-2x2",
-    "filePath": "assets/icon-arrow-bounce-2x2.png"
+    "filePath": "assets/icons/icon-arrow-bounce-2x2.png"
   },
   {
     "id": "icon-arrow-bounce-3x3",
-    "filePath": "assets/icon-arrow-bounce-3x3.png"
+    "filePath": "assets/icons/icon-arrow-bounce-3x3.png"
   },
   {
     "id": "icon-arrow-circle-down-1x1",
-    "filePath": "assets/icon-arrow-circle-down-1x1.png"
+    "filePath": "assets/icons/icon-arrow-circle-down-1x1.png"
   },
   {
     "id": "icon-arrow-circle-down-2x2",
-    "filePath": "assets/icon-arrow-circle-down-2x2.png"
+    "filePath": "assets/icons/icon-arrow-circle-down-2x2.png"
   },
   {
     "id": "icon-arrow-circle-down-3x3",
-    "filePath": "assets/icon-arrow-circle-down-3x3.png"
+    "filePath": "assets/icons/icon-arrow-circle-down-3x3.png"
   },
   {
     "id": "icon-arrow-circle-left-1x1",
-    "filePath": "assets/icon-arrow-circle-left-1x1.png"
+    "filePath": "assets/icons/icon-arrow-circle-left-1x1.png"
   },
   {
     "id": "icon-arrow-circle-left-2x2",
-    "filePath": "assets/icon-arrow-circle-left-2x2.png"
+    "filePath": "assets/icons/icon-arrow-circle-left-2x2.png"
   },
   {
     "id": "icon-arrow-circle-left-3x3",
-    "filePath": "assets/icon-arrow-circle-left-3x3.png"
+    "filePath": "assets/icons/icon-arrow-circle-left-3x3.png"
   },
   {
     "id": "icon-arrow-circle-right-1x1",
-    "filePath": "assets/icon-arrow-circle-right-1x1.png"
+    "filePath": "assets/icons/icon-arrow-circle-right-1x1.png"
   },
   {
     "id": "icon-arrow-circle-right-2x2",
-    "filePath": "assets/icon-arrow-circle-right-2x2.png"
+    "filePath": "assets/icons/icon-arrow-circle-right-2x2.png"
   },
   {
     "id": "icon-arrow-circle-right-3x3",
-    "filePath": "assets/icon-arrow-circle-right-3x3.png"
+    "filePath": "assets/icons/icon-arrow-circle-right-3x3.png"
   },
   {
     "id": "icon-arrow-circle-up-1x1",
-    "filePath": "assets/icon-arrow-circle-up-1x1.png"
+    "filePath": "assets/icons/icon-arrow-circle-up-1x1.png"
   },
   {
     "id": "icon-arrow-circle-up-2x2",
-    "filePath": "assets/icon-arrow-circle-up-2x2.png"
+    "filePath": "assets/icons/icon-arrow-circle-up-2x2.png"
   },
   {
     "id": "icon-arrow-circle-up-3x3",
-    "filePath": "assets/icon-arrow-circle-up-3x3.png"
+    "filePath": "assets/icons/icon-arrow-circle-up-3x3.png"
   },
   {
     "id": "icon-arrow-collapse-1x1",
-    "filePath": "assets/icon-arrow-collapse-1x1.png"
+    "filePath": "assets/icons/icon-arrow-collapse-1x1.png"
   },
   {
     "id": "icon-arrow-collapse-2x2",
-    "filePath": "assets/icon-arrow-collapse-2x2.png"
+    "filePath": "assets/icons/icon-arrow-collapse-2x2.png"
   },
   {
     "id": "icon-arrow-collapse-3x3",
-    "filePath": "assets/icon-arrow-collapse-3x3.png"
+    "filePath": "assets/icons/icon-arrow-collapse-3x3.png"
   },
   {
     "id": "icon-arrow-double-down-1x1",
-    "filePath": "assets/icon-arrow-double-down-1x1.png"
+    "filePath": "assets/icons/icon-arrow-double-down-1x1.png"
   },
   {
     "id": "icon-arrow-double-down-2x2",
-    "filePath": "assets/icon-arrow-double-down-2x2.png"
+    "filePath": "assets/icons/icon-arrow-double-down-2x2.png"
   },
   {
     "id": "icon-arrow-double-down-3x3",
-    "filePath": "assets/icon-arrow-double-down-3x3.png"
+    "filePath": "assets/icons/icon-arrow-double-down-3x3.png"
   },
   {
     "id": "icon-arrow-double-left-1x1",
-    "filePath": "assets/icon-arrow-double-left-1x1.png"
+    "filePath": "assets/icons/icon-arrow-double-left-1x1.png"
   },
   {
     "id": "icon-arrow-double-left-2x2",
-    "filePath": "assets/icon-arrow-double-left-2x2.png"
+    "filePath": "assets/icons/icon-arrow-double-left-2x2.png"
   },
   {
     "id": "icon-arrow-double-left-3x3",
-    "filePath": "assets/icon-arrow-double-left-3x3.png"
+    "filePath": "assets/icons/icon-arrow-double-left-3x3.png"
   },
   {
     "id": "icon-arrow-double-right-1x1",
-    "filePath": "assets/icon-arrow-double-right-1x1.png"
+    "filePath": "assets/icons/icon-arrow-double-right-1x1.png"
   },
   {
     "id": "icon-arrow-double-right-2x2",
-    "filePath": "assets/icon-arrow-double-right-2x2.png"
+    "filePath": "assets/icons/icon-arrow-double-right-2x2.png"
   },
   {
     "id": "icon-arrow-double-right-3x3",
-    "filePath": "assets/icon-arrow-double-right-3x3.png"
+    "filePath": "assets/icons/icon-arrow-double-right-3x3.png"
   },
   {
     "id": "icon-arrow-double-up-1x1",
-    "filePath": "assets/icon-arrow-double-up-1x1.png"
+    "filePath": "assets/icons/icon-arrow-double-up-1x1.png"
   },
   {
     "id": "icon-arrow-double-up-2x2",
-    "filePath": "assets/icon-arrow-double-up-2x2.png"
+    "filePath": "assets/icons/icon-arrow-double-up-2x2.png"
   },
   {
     "id": "icon-arrow-double-up-3x3",
-    "filePath": "assets/icon-arrow-double-up-3x3.png"
+    "filePath": "assets/icons/icon-arrow-double-up-3x3.png"
   },
   {
     "id": "icon-arrow-down-1x1",
-    "filePath": "assets/icon-arrow-down-1x1.png"
+    "filePath": "assets/icons/icon-arrow-down-1x1.png"
   },
   {
     "id": "icon-arrow-down-2x2",
-    "filePath": "assets/icon-arrow-down-2x2.png"
+    "filePath": "assets/icons/icon-arrow-down-2x2.png"
   },
   {
     "id": "icon-arrow-down-3x3",
-    "filePath": "assets/icon-arrow-down-3x3.png"
+    "filePath": "assets/icons/icon-arrow-down-3x3.png"
   },
   {
     "id": "icon-arrow-down-left-1x1",
-    "filePath": "assets/icon-arrow-down-left-1x1.png"
+    "filePath": "assets/icons/icon-arrow-down-left-1x1.png"
   },
   {
     "id": "icon-arrow-down-left-2x2",
-    "filePath": "assets/icon-arrow-down-left-2x2.png"
+    "filePath": "assets/icons/icon-arrow-down-left-2x2.png"
   },
   {
     "id": "icon-arrow-down-left-3x3",
-    "filePath": "assets/icon-arrow-down-left-3x3.png"
+    "filePath": "assets/icons/icon-arrow-down-left-3x3.png"
   },
   {
     "id": "icon-arrow-down-right-1x1",
-    "filePath": "assets/icon-arrow-down-right-1x1.png"
+    "filePath": "assets/icons/icon-arrow-down-right-1x1.png"
   },
   {
     "id": "icon-arrow-down-right-2x2",
-    "filePath": "assets/icon-arrow-down-right-2x2.png"
+    "filePath": "assets/icons/icon-arrow-down-right-2x2.png"
   },
   {
     "id": "icon-arrow-down-right-3x3",
-    "filePath": "assets/icon-arrow-down-right-3x3.png"
+    "filePath": "assets/icons/icon-arrow-down-right-3x3.png"
   },
   {
     "id": "icon-arrow-enter-1x1",
-    "filePath": "assets/icon-arrow-enter-1x1.png"
+    "filePath": "assets/icons/icon-arrow-enter-1x1.png"
   },
   {
     "id": "icon-arrow-enter-2x2",
-    "filePath": "assets/icon-arrow-enter-2x2.png"
+    "filePath": "assets/icons/icon-arrow-enter-2x2.png"
   },
   {
     "id": "icon-arrow-enter-3x3",
-    "filePath": "assets/icon-arrow-enter-3x3.png"
+    "filePath": "assets/icons/icon-arrow-enter-3x3.png"
   },
   {
     "id": "icon-arrow-expand-1x1",
-    "filePath": "assets/icon-arrow-expand-1x1.png"
+    "filePath": "assets/icons/icon-arrow-expand-1x1.png"
   },
   {
     "id": "icon-arrow-expand-2x2",
-    "filePath": "assets/icon-arrow-expand-2x2.png"
+    "filePath": "assets/icons/icon-arrow-expand-2x2.png"
   },
   {
     "id": "icon-arrow-expand-3x3",
-    "filePath": "assets/icon-arrow-expand-3x3.png"
+    "filePath": "assets/icons/icon-arrow-expand-3x3.png"
   },
   {
     "id": "icon-arrow-fork-1x1",
-    "filePath": "assets/icon-arrow-fork-1x1.png"
+    "filePath": "assets/icons/icon-arrow-fork-1x1.png"
   },
   {
     "id": "icon-arrow-fork-2x2",
-    "filePath": "assets/icon-arrow-fork-2x2.png"
+    "filePath": "assets/icons/icon-arrow-fork-2x2.png"
   },
   {
     "id": "icon-arrow-fork-3x3",
-    "filePath": "assets/icon-arrow-fork-3x3.png"
+    "filePath": "assets/icons/icon-arrow-fork-3x3.png"
   },
   {
     "id": "icon-arrow-left-1x1",
-    "filePath": "assets/icon-arrow-left-1x1.png"
+    "filePath": "assets/icons/icon-arrow-left-1x1.png"
   },
   {
     "id": "icon-arrow-left-2x2",
-    "filePath": "assets/icon-arrow-left-2x2.png"
+    "filePath": "assets/icons/icon-arrow-left-2x2.png"
   },
   {
     "id": "icon-arrow-left-3x3",
-    "filePath": "assets/icon-arrow-left-3x3.png"
+    "filePath": "assets/icons/icon-arrow-left-3x3.png"
   },
   {
     "id": "icon-arrow-left-right-1x1",
-    "filePath": "assets/icon-arrow-left-right-1x1.png"
+    "filePath": "assets/icons/icon-arrow-left-right-1x1.png"
   },
   {
     "id": "icon-arrow-left-right-2x2",
-    "filePath": "assets/icon-arrow-left-right-2x2.png"
+    "filePath": "assets/icons/icon-arrow-left-right-2x2.png"
   },
   {
     "id": "icon-arrow-left-right-3x3",
-    "filePath": "assets/icon-arrow-left-right-3x3.png"
+    "filePath": "assets/icons/icon-arrow-left-right-3x3.png"
   },
   {
     "id": "icon-arrow-merge-1x1",
-    "filePath": "assets/icon-arrow-merge-1x1.png"
+    "filePath": "assets/icons/icon-arrow-merge-1x1.png"
   },
   {
     "id": "icon-arrow-merge-2x2",
-    "filePath": "assets/icon-arrow-merge-2x2.png"
+    "filePath": "assets/icons/icon-arrow-merge-2x2.png"
   },
   {
     "id": "icon-arrow-merge-3x3",
-    "filePath": "assets/icon-arrow-merge-3x3.png"
+    "filePath": "assets/icons/icon-arrow-merge-3x3.png"
   },
   {
     "id": "icon-arrow-redo-1x1",
-    "filePath": "assets/icon-arrow-redo-1x1.png"
+    "filePath": "assets/icons/icon-arrow-redo-1x1.png"
   },
   {
     "id": "icon-arrow-redo-2x2",
-    "filePath": "assets/icon-arrow-redo-2x2.png"
+    "filePath": "assets/icons/icon-arrow-redo-2x2.png"
   },
   {
     "id": "icon-arrow-redo-3x3",
-    "filePath": "assets/icon-arrow-redo-3x3.png"
+    "filePath": "assets/icons/icon-arrow-redo-3x3.png"
   },
   {
     "id": "icon-arrow-right-1x1",
-    "filePath": "assets/icon-arrow-right-1x1.png"
+    "filePath": "assets/icons/icon-arrow-right-1x1.png"
   },
   {
     "id": "icon-arrow-right-2x2",
-    "filePath": "assets/icon-arrow-right-2x2.png"
+    "filePath": "assets/icons/icon-arrow-right-2x2.png"
   },
   {
     "id": "icon-arrow-right-3x3",
-    "filePath": "assets/icon-arrow-right-3x3.png"
+    "filePath": "assets/icons/icon-arrow-right-3x3.png"
   },
   {
     "id": "icon-arrow-rotate-ccw-1x1",
-    "filePath": "assets/icon-arrow-rotate-ccw-1x1.png"
+    "filePath": "assets/icons/icon-arrow-rotate-ccw-1x1.png"
   },
   {
     "id": "icon-arrow-rotate-ccw-2x2",
-    "filePath": "assets/icon-arrow-rotate-ccw-2x2.png"
+    "filePath": "assets/icons/icon-arrow-rotate-ccw-2x2.png"
   },
   {
     "id": "icon-arrow-rotate-ccw-3x3",
-    "filePath": "assets/icon-arrow-rotate-ccw-3x3.png"
+    "filePath": "assets/icons/icon-arrow-rotate-ccw-3x3.png"
   },
   {
     "id": "icon-arrow-rotate-cw-1x1",
-    "filePath": "assets/icon-arrow-rotate-cw-1x1.png"
+    "filePath": "assets/icons/icon-arrow-rotate-cw-1x1.png"
   },
   {
     "id": "icon-arrow-rotate-cw-2x2",
-    "filePath": "assets/icon-arrow-rotate-cw-2x2.png"
+    "filePath": "assets/icons/icon-arrow-rotate-cw-2x2.png"
   },
   {
     "id": "icon-arrow-rotate-cw-3x3",
-    "filePath": "assets/icon-arrow-rotate-cw-3x3.png"
+    "filePath": "assets/icons/icon-arrow-rotate-cw-3x3.png"
   },
   {
     "id": "icon-arrow-shuffle-1x1",
-    "filePath": "assets/icon-arrow-shuffle-1x1.png"
+    "filePath": "assets/icons/icon-arrow-shuffle-1x1.png"
   },
   {
     "id": "icon-arrow-shuffle-2x2",
-    "filePath": "assets/icon-arrow-shuffle-2x2.png"
+    "filePath": "assets/icons/icon-arrow-shuffle-2x2.png"
   },
   {
     "id": "icon-arrow-shuffle-3x3",
-    "filePath": "assets/icon-arrow-shuffle-3x3.png"
+    "filePath": "assets/icons/icon-arrow-shuffle-3x3.png"
   },
   {
     "id": "icon-arrow-sort-1x1",
-    "filePath": "assets/icon-arrow-sort-1x1.png"
+    "filePath": "assets/icons/icon-arrow-sort-1x1.png"
   },
   {
     "id": "icon-arrow-sort-2x2",
-    "filePath": "assets/icon-arrow-sort-2x2.png"
+    "filePath": "assets/icons/icon-arrow-sort-2x2.png"
   },
   {
     "id": "icon-arrow-sort-3x3",
-    "filePath": "assets/icon-arrow-sort-3x3.png"
+    "filePath": "assets/icons/icon-arrow-sort-3x3.png"
   },
   {
     "id": "icon-arrow-trend-down-1x1",
-    "filePath": "assets/icon-arrow-trend-down-1x1.png"
+    "filePath": "assets/icons/icon-arrow-trend-down-1x1.png"
   },
   {
     "id": "icon-arrow-trend-down-2x2",
-    "filePath": "assets/icon-arrow-trend-down-2x2.png"
+    "filePath": "assets/icons/icon-arrow-trend-down-2x2.png"
   },
   {
     "id": "icon-arrow-trend-down-3x3",
-    "filePath": "assets/icon-arrow-trend-down-3x3.png"
+    "filePath": "assets/icons/icon-arrow-trend-down-3x3.png"
   },
   {
     "id": "icon-arrow-trend-up-1x1",
-    "filePath": "assets/icon-arrow-trend-up-1x1.png"
+    "filePath": "assets/icons/icon-arrow-trend-up-1x1.png"
   },
   {
     "id": "icon-arrow-trend-up-2x2",
-    "filePath": "assets/icon-arrow-trend-up-2x2.png"
+    "filePath": "assets/icons/icon-arrow-trend-up-2x2.png"
   },
   {
     "id": "icon-arrow-trend-up-3x3",
-    "filePath": "assets/icon-arrow-trend-up-3x3.png"
+    "filePath": "assets/icons/icon-arrow-trend-up-3x3.png"
   },
   {
     "id": "icon-arrow-undo-1x1",
-    "filePath": "assets/icon-arrow-undo-1x1.png"
+    "filePath": "assets/icons/icon-arrow-undo-1x1.png"
   },
   {
     "id": "icon-arrow-undo-2x2",
-    "filePath": "assets/icon-arrow-undo-2x2.png"
+    "filePath": "assets/icons/icon-arrow-undo-2x2.png"
   },
   {
     "id": "icon-arrow-undo-3x3",
-    "filePath": "assets/icon-arrow-undo-3x3.png"
+    "filePath": "assets/icons/icon-arrow-undo-3x3.png"
   },
   {
     "id": "icon-arrow-up-1x1",
-    "filePath": "assets/icon-arrow-up-1x1.png"
+    "filePath": "assets/icons/icon-arrow-up-1x1.png"
   },
   {
     "id": "icon-arrow-up-2x2",
-    "filePath": "assets/icon-arrow-up-2x2.png"
+    "filePath": "assets/icons/icon-arrow-up-2x2.png"
   },
   {
     "id": "icon-arrow-up-3x3",
-    "filePath": "assets/icon-arrow-up-3x3.png"
+    "filePath": "assets/icons/icon-arrow-up-3x3.png"
   },
   {
     "id": "icon-arrow-up-down-1x1",
-    "filePath": "assets/icon-arrow-up-down-1x1.png"
+    "filePath": "assets/icons/icon-arrow-up-down-1x1.png"
   },
   {
     "id": "icon-arrow-up-down-2x2",
-    "filePath": "assets/icon-arrow-up-down-2x2.png"
+    "filePath": "assets/icons/icon-arrow-up-down-2x2.png"
   },
   {
     "id": "icon-arrow-up-down-3x3",
-    "filePath": "assets/icon-arrow-up-down-3x3.png"
+    "filePath": "assets/icons/icon-arrow-up-down-3x3.png"
   },
   {
     "id": "icon-arrow-up-left-1x1",
-    "filePath": "assets/icon-arrow-up-left-1x1.png"
+    "filePath": "assets/icons/icon-arrow-up-left-1x1.png"
   },
   {
     "id": "icon-arrow-up-left-2x2",
-    "filePath": "assets/icon-arrow-up-left-2x2.png"
+    "filePath": "assets/icons/icon-arrow-up-left-2x2.png"
   },
   {
     "id": "icon-arrow-up-left-3x3",
-    "filePath": "assets/icon-arrow-up-left-3x3.png"
+    "filePath": "assets/icons/icon-arrow-up-left-3x3.png"
   },
   {
     "id": "icon-arrow-up-right-1x1",
-    "filePath": "assets/icon-arrow-up-right-1x1.png"
+    "filePath": "assets/icons/icon-arrow-up-right-1x1.png"
   },
   {
     "id": "icon-arrow-up-right-2x2",
-    "filePath": "assets/icon-arrow-up-right-2x2.png"
+    "filePath": "assets/icons/icon-arrow-up-right-2x2.png"
   },
   {
     "id": "icon-arrow-up-right-3x3",
-    "filePath": "assets/icon-arrow-up-right-3x3.png"
+    "filePath": "assets/icons/icon-arrow-up-right-3x3.png"
   },
   {
     "id": "banner-atom-1x2",
@@ -23573,411 +24365,411 @@ var ICON_FILES = [
   },
   {
     "id": "char-0-1x1",
-    "filePath": "assets/char-0-1x1.png"
+    "filePath": "assets/icons/char-0-1x1.png"
   },
   {
     "id": "char-0-2x2",
-    "filePath": "assets/char-0-2x2.png"
+    "filePath": "assets/icons/char-0-2x2.png"
   },
   {
     "id": "char-1-1x1",
-    "filePath": "assets/char-1-1x1.png"
+    "filePath": "assets/icons/char-1-1x1.png"
   },
   {
     "id": "char-1-2x2",
-    "filePath": "assets/char-1-2x2.png"
+    "filePath": "assets/icons/char-1-2x2.png"
   },
   {
     "id": "char-2-1x1",
-    "filePath": "assets/char-2-1x1.png"
+    "filePath": "assets/icons/char-2-1x1.png"
   },
   {
     "id": "char-2-2x2",
-    "filePath": "assets/char-2-2x2.png"
+    "filePath": "assets/icons/char-2-2x2.png"
   },
   {
     "id": "char-3-1x1",
-    "filePath": "assets/char-3-1x1.png"
+    "filePath": "assets/icons/char-3-1x1.png"
   },
   {
     "id": "char-3-2x2",
-    "filePath": "assets/char-3-2x2.png"
+    "filePath": "assets/icons/char-3-2x2.png"
   },
   {
     "id": "char-4-1x1",
-    "filePath": "assets/char-4-1x1.png"
+    "filePath": "assets/icons/char-4-1x1.png"
   },
   {
     "id": "char-4-2x2",
-    "filePath": "assets/char-4-2x2.png"
+    "filePath": "assets/icons/char-4-2x2.png"
   },
   {
     "id": "char-5-1x1",
-    "filePath": "assets/char-5-1x1.png"
+    "filePath": "assets/icons/char-5-1x1.png"
   },
   {
     "id": "char-5-2x2",
-    "filePath": "assets/char-5-2x2.png"
+    "filePath": "assets/icons/char-5-2x2.png"
   },
   {
     "id": "char-6-1x1",
-    "filePath": "assets/char-6-1x1.png"
+    "filePath": "assets/icons/char-6-1x1.png"
   },
   {
     "id": "char-6-2x2",
-    "filePath": "assets/char-6-2x2.png"
+    "filePath": "assets/icons/char-6-2x2.png"
   },
   {
     "id": "char-7-1x1",
-    "filePath": "assets/char-7-1x1.png"
+    "filePath": "assets/icons/char-7-1x1.png"
   },
   {
     "id": "char-7-2x2",
-    "filePath": "assets/char-7-2x2.png"
+    "filePath": "assets/icons/char-7-2x2.png"
   },
   {
     "id": "char-8-1x1",
-    "filePath": "assets/char-8-1x1.png"
+    "filePath": "assets/icons/char-8-1x1.png"
   },
   {
     "id": "char-8-2x2",
-    "filePath": "assets/char-8-2x2.png"
+    "filePath": "assets/icons/char-8-2x2.png"
   },
   {
     "id": "char-9-1x1",
-    "filePath": "assets/char-9-1x1.png"
+    "filePath": "assets/icons/char-9-1x1.png"
   },
   {
     "id": "char-9-2x2",
-    "filePath": "assets/char-9-2x2.png"
+    "filePath": "assets/icons/char-9-2x2.png"
   },
   {
     "id": "char-A-1x1",
-    "filePath": "assets/char-A-1x1.png"
+    "filePath": "assets/icons/char-A-1x1.png"
   },
   {
     "id": "char-A-2x2",
-    "filePath": "assets/char-A-2x2.png"
+    "filePath": "assets/icons/char-A-2x2.png"
   },
   {
     "id": "char-B-1x1",
-    "filePath": "assets/char-B-1x1.png"
+    "filePath": "assets/icons/char-B-1x1.png"
   },
   {
     "id": "char-B-2x2",
-    "filePath": "assets/char-B-2x2.png"
+    "filePath": "assets/icons/char-B-2x2.png"
   },
   {
     "id": "char-C-1x1",
-    "filePath": "assets/char-C-1x1.png"
+    "filePath": "assets/icons/char-C-1x1.png"
   },
   {
     "id": "char-C-2x2",
-    "filePath": "assets/char-C-2x2.png"
+    "filePath": "assets/icons/char-C-2x2.png"
   },
   {
     "id": "char-D-1x1",
-    "filePath": "assets/char-D-1x1.png"
+    "filePath": "assets/icons/char-D-1x1.png"
   },
   {
     "id": "char-D-2x2",
-    "filePath": "assets/char-D-2x2.png"
+    "filePath": "assets/icons/char-D-2x2.png"
   },
   {
     "id": "char-E-1x1",
-    "filePath": "assets/char-E-1x1.png"
+    "filePath": "assets/icons/char-E-1x1.png"
   },
   {
     "id": "char-E-2x2",
-    "filePath": "assets/char-E-2x2.png"
+    "filePath": "assets/icons/char-E-2x2.png"
   },
   {
     "id": "char-F-1x1",
-    "filePath": "assets/char-F-1x1.png"
+    "filePath": "assets/icons/char-F-1x1.png"
   },
   {
     "id": "char-F-2x2",
-    "filePath": "assets/char-F-2x2.png"
+    "filePath": "assets/icons/char-F-2x2.png"
   },
   {
     "id": "char-G-1x1",
-    "filePath": "assets/char-G-1x1.png"
+    "filePath": "assets/icons/char-G-1x1.png"
   },
   {
     "id": "char-G-2x2",
-    "filePath": "assets/char-G-2x2.png"
+    "filePath": "assets/icons/char-G-2x2.png"
   },
   {
     "id": "char-H-1x1",
-    "filePath": "assets/char-H-1x1.png"
+    "filePath": "assets/icons/char-H-1x1.png"
   },
   {
     "id": "char-H-2x2",
-    "filePath": "assets/char-H-2x2.png"
+    "filePath": "assets/icons/char-H-2x2.png"
   },
   {
     "id": "char-I-1x1",
-    "filePath": "assets/char-I-1x1.png"
+    "filePath": "assets/icons/char-I-1x1.png"
   },
   {
     "id": "char-I-2x2",
-    "filePath": "assets/char-I-2x2.png"
+    "filePath": "assets/icons/char-I-2x2.png"
   },
   {
     "id": "char-J-1x1",
-    "filePath": "assets/char-J-1x1.png"
+    "filePath": "assets/icons/char-J-1x1.png"
   },
   {
     "id": "char-J-2x2",
-    "filePath": "assets/char-J-2x2.png"
+    "filePath": "assets/icons/char-J-2x2.png"
   },
   {
     "id": "char-K-1x1",
-    "filePath": "assets/char-K-1x1.png"
+    "filePath": "assets/icons/char-K-1x1.png"
   },
   {
     "id": "char-K-2x2",
-    "filePath": "assets/char-K-2x2.png"
+    "filePath": "assets/icons/char-K-2x2.png"
   },
   {
     "id": "char-L-1x1",
-    "filePath": "assets/char-L-1x1.png"
+    "filePath": "assets/icons/char-L-1x1.png"
   },
   {
     "id": "char-L-2x2",
-    "filePath": "assets/char-L-2x2.png"
+    "filePath": "assets/icons/char-L-2x2.png"
   },
   {
     "id": "char-M-1x1",
-    "filePath": "assets/char-M-1x1.png"
+    "filePath": "assets/icons/char-M-1x1.png"
   },
   {
     "id": "char-M-2x2",
-    "filePath": "assets/char-M-2x2.png"
+    "filePath": "assets/icons/char-M-2x2.png"
   },
   {
     "id": "char-N-1x1",
-    "filePath": "assets/char-N-1x1.png"
+    "filePath": "assets/icons/char-N-1x1.png"
   },
   {
     "id": "char-N-2x2",
-    "filePath": "assets/char-N-2x2.png"
+    "filePath": "assets/icons/char-N-2x2.png"
   },
   {
     "id": "char-O-1x1",
-    "filePath": "assets/char-O-1x1.png"
+    "filePath": "assets/icons/char-O-1x1.png"
   },
   {
     "id": "char-O-2x2",
-    "filePath": "assets/char-O-2x2.png"
+    "filePath": "assets/icons/char-O-2x2.png"
   },
   {
     "id": "char-P-1x1",
-    "filePath": "assets/char-P-1x1.png"
+    "filePath": "assets/icons/char-P-1x1.png"
   },
   {
     "id": "char-P-2x2",
-    "filePath": "assets/char-P-2x2.png"
+    "filePath": "assets/icons/char-P-2x2.png"
   },
   {
     "id": "char-Q-1x1",
-    "filePath": "assets/char-Q-1x1.png"
+    "filePath": "assets/icons/char-Q-1x1.png"
   },
   {
     "id": "char-Q-2x2",
-    "filePath": "assets/char-Q-2x2.png"
+    "filePath": "assets/icons/char-Q-2x2.png"
   },
   {
     "id": "char-R-1x1",
-    "filePath": "assets/char-R-1x1.png"
+    "filePath": "assets/icons/char-R-1x1.png"
   },
   {
     "id": "char-R-2x2",
-    "filePath": "assets/char-R-2x2.png"
+    "filePath": "assets/icons/char-R-2x2.png"
   },
   {
     "id": "char-S-1x1",
-    "filePath": "assets/char-S-1x1.png"
+    "filePath": "assets/icons/char-S-1x1.png"
   },
   {
     "id": "char-S-2x2",
-    "filePath": "assets/char-S-2x2.png"
+    "filePath": "assets/icons/char-S-2x2.png"
   },
   {
     "id": "char-sym-amp-1x1",
-    "filePath": "assets/char-sym-amp-1x1.png"
+    "filePath": "assets/icons/char-sym-amp-1x1.png"
   },
   {
     "id": "char-sym-at-1x1",
-    "filePath": "assets/char-sym-at-1x1.png"
+    "filePath": "assets/icons/char-sym-at-1x1.png"
   },
   {
     "id": "char-sym-brace-l-1x1",
-    "filePath": "assets/char-sym-brace-l-1x1.png"
+    "filePath": "assets/icons/char-sym-brace-l-1x1.png"
   },
   {
     "id": "char-sym-brace-r-1x1",
-    "filePath": "assets/char-sym-brace-r-1x1.png"
+    "filePath": "assets/icons/char-sym-brace-r-1x1.png"
   },
   {
     "id": "char-sym-bslash-1x1",
-    "filePath": "assets/char-sym-bslash-1x1.png"
+    "filePath": "assets/icons/char-sym-bslash-1x1.png"
   },
   {
     "id": "char-sym-caret-1x1",
-    "filePath": "assets/char-sym-caret-1x1.png"
+    "filePath": "assets/icons/char-sym-caret-1x1.png"
   },
   {
     "id": "char-sym-colon-1x1",
-    "filePath": "assets/char-sym-colon-1x1.png"
+    "filePath": "assets/icons/char-sym-colon-1x1.png"
   },
   {
     "id": "char-sym-comma-1x1",
-    "filePath": "assets/char-sym-comma-1x1.png"
+    "filePath": "assets/icons/char-sym-comma-1x1.png"
   },
   {
     "id": "char-sym-dollar-1x1",
-    "filePath": "assets/char-sym-dollar-1x1.png"
+    "filePath": "assets/icons/char-sym-dollar-1x1.png"
   },
   {
     "id": "char-sym-dot-1x1",
-    "filePath": "assets/char-sym-dot-1x1.png"
+    "filePath": "assets/icons/char-sym-dot-1x1.png"
   },
   {
     "id": "char-sym-eq-1x1",
-    "filePath": "assets/char-sym-eq-1x1.png"
+    "filePath": "assets/icons/char-sym-eq-1x1.png"
   },
   {
     "id": "char-sym-excl-1x1",
-    "filePath": "assets/char-sym-excl-1x1.png"
+    "filePath": "assets/icons/char-sym-excl-1x1.png"
   },
   {
     "id": "char-sym-gt-1x1",
-    "filePath": "assets/char-sym-gt-1x1.png"
+    "filePath": "assets/icons/char-sym-gt-1x1.png"
   },
   {
     "id": "char-sym-hash-1x1",
-    "filePath": "assets/char-sym-hash-1x1.png"
+    "filePath": "assets/icons/char-sym-hash-1x1.png"
   },
   {
     "id": "char-sym-lbracket-1x1",
-    "filePath": "assets/char-sym-lbracket-1x1.png"
+    "filePath": "assets/icons/char-sym-lbracket-1x1.png"
   },
   {
     "id": "char-sym-lparen-1x1",
-    "filePath": "assets/char-sym-lparen-1x1.png"
+    "filePath": "assets/icons/char-sym-lparen-1x1.png"
   },
   {
     "id": "char-sym-lt-1x1",
-    "filePath": "assets/char-sym-lt-1x1.png"
+    "filePath": "assets/icons/char-sym-lt-1x1.png"
   },
   {
     "id": "char-sym-minus-1x1",
-    "filePath": "assets/char-sym-minus-1x1.png"
+    "filePath": "assets/icons/char-sym-minus-1x1.png"
   },
   {
     "id": "char-sym-pct-1x1",
-    "filePath": "assets/char-sym-pct-1x1.png"
+    "filePath": "assets/icons/char-sym-pct-1x1.png"
   },
   {
     "id": "char-sym-pipe-1x1",
-    "filePath": "assets/char-sym-pipe-1x1.png"
+    "filePath": "assets/icons/char-sym-pipe-1x1.png"
   },
   {
     "id": "char-sym-plus-1x1",
-    "filePath": "assets/char-sym-plus-1x1.png"
+    "filePath": "assets/icons/char-sym-plus-1x1.png"
   },
   {
     "id": "char-sym-quest-1x1",
-    "filePath": "assets/char-sym-quest-1x1.png"
+    "filePath": "assets/icons/char-sym-quest-1x1.png"
   },
   {
     "id": "char-sym-quote-1x1",
-    "filePath": "assets/char-sym-quote-1x1.png"
+    "filePath": "assets/icons/char-sym-quote-1x1.png"
   },
   {
     "id": "char-sym-rbracket-1x1",
-    "filePath": "assets/char-sym-rbracket-1x1.png"
+    "filePath": "assets/icons/char-sym-rbracket-1x1.png"
   },
   {
     "id": "char-sym-rparen-1x1",
-    "filePath": "assets/char-sym-rparen-1x1.png"
+    "filePath": "assets/icons/char-sym-rparen-1x1.png"
   },
   {
     "id": "char-sym-semi-1x1",
-    "filePath": "assets/char-sym-semi-1x1.png"
+    "filePath": "assets/icons/char-sym-semi-1x1.png"
   },
   {
     "id": "char-sym-slash-1x1",
-    "filePath": "assets/char-sym-slash-1x1.png"
+    "filePath": "assets/icons/char-sym-slash-1x1.png"
   },
   {
     "id": "char-sym-star-1x1",
-    "filePath": "assets/char-sym-star-1x1.png"
+    "filePath": "assets/icons/char-sym-star-1x1.png"
   },
   {
     "id": "char-sym-tilde-1x1",
-    "filePath": "assets/char-sym-tilde-1x1.png"
+    "filePath": "assets/icons/char-sym-tilde-1x1.png"
   },
   {
     "id": "char-sym-underscore-1x1",
-    "filePath": "assets/char-sym-underscore-1x1.png"
+    "filePath": "assets/icons/char-sym-underscore-1x1.png"
   },
   {
     "id": "char-T-1x1",
-    "filePath": "assets/char-T-1x1.png"
+    "filePath": "assets/icons/char-T-1x1.png"
   },
   {
     "id": "char-T-2x2",
-    "filePath": "assets/char-T-2x2.png"
+    "filePath": "assets/icons/char-T-2x2.png"
   },
   {
     "id": "char-U-1x1",
-    "filePath": "assets/char-U-1x1.png"
+    "filePath": "assets/icons/char-U-1x1.png"
   },
   {
     "id": "char-U-2x2",
-    "filePath": "assets/char-U-2x2.png"
+    "filePath": "assets/icons/char-U-2x2.png"
   },
   {
     "id": "char-V-1x1",
-    "filePath": "assets/char-V-1x1.png"
+    "filePath": "assets/icons/char-V-1x1.png"
   },
   {
     "id": "char-V-2x2",
-    "filePath": "assets/char-V-2x2.png"
+    "filePath": "assets/icons/char-V-2x2.png"
   },
   {
     "id": "char-W-1x1",
-    "filePath": "assets/char-W-1x1.png"
+    "filePath": "assets/icons/char-W-1x1.png"
   },
   {
     "id": "char-W-2x2",
-    "filePath": "assets/char-W-2x2.png"
+    "filePath": "assets/icons/char-W-2x2.png"
   },
   {
     "id": "char-X-1x1",
-    "filePath": "assets/char-X-1x1.png"
+    "filePath": "assets/icons/char-X-1x1.png"
   },
   {
     "id": "char-X-2x2",
-    "filePath": "assets/char-X-2x2.png"
+    "filePath": "assets/icons/char-X-2x2.png"
   },
   {
     "id": "char-Y-1x1",
-    "filePath": "assets/char-Y-1x1.png"
+    "filePath": "assets/icons/char-Y-1x1.png"
   },
   {
     "id": "char-Y-2x2",
-    "filePath": "assets/char-Y-2x2.png"
+    "filePath": "assets/icons/char-Y-2x2.png"
   },
   {
     "id": "char-Z-1x1",
-    "filePath": "assets/char-Z-1x1.png"
+    "filePath": "assets/icons/char-Z-1x1.png"
   },
   {
     "id": "char-Z-2x2",
-    "filePath": "assets/char-Z-2x2.png"
+    "filePath": "assets/icons/char-Z-2x2.png"
   },
   {
     "id": "core-coil-1x1",
@@ -24729,187 +25521,187 @@ var ICON_FILES = [
   },
   {
     "id": "garden-bed-3x2",
-    "filePath": "assets/garden-bed-3x2.png"
+    "filePath": "assets/deco/garden-bed-3x2.png"
   },
   {
     "id": "garden-bench-2x1",
-    "filePath": "assets/garden-bench-2x1.png"
+    "filePath": "assets/deco/garden-bench-2x1.png"
   },
   {
     "id": "garden-bench-2x2",
-    "filePath": "assets/garden-bench-2x2.png"
+    "filePath": "assets/deco/garden-bench-2x2.png"
   },
   {
     "id": "garden-bush-1x1",
-    "filePath": "assets/garden-bush-1x1.png"
+    "filePath": "assets/deco/garden-bush-1x1.png"
   },
   {
     "id": "garden-climber-1x2",
-    "filePath": "assets/garden-climber-1x2.png"
+    "filePath": "assets/deco/garden-climber-1x2.png"
   },
   {
     "id": "garden-composter-2x2",
-    "filePath": "assets/garden-composter-2x2.png"
+    "filePath": "assets/deco/garden-composter-2x2.png"
   },
   {
     "id": "garden-crate-2x2",
-    "filePath": "assets/garden-crate-2x2.png"
+    "filePath": "assets/deco/garden-crate-2x2.png"
   },
   {
     "id": "garden-crops-3x2",
-    "filePath": "assets/garden-crops-3x2.png"
+    "filePath": "assets/deco/garden-crops-3x2.png"
   },
   {
     "id": "garden-fence-2x1",
-    "filePath": "assets/garden-fence-2x1.png"
+    "filePath": "assets/deco/garden-fence-2x1.png"
   },
   {
     "id": "garden-fence-3x2",
-    "filePath": "assets/garden-fence-3x2.png"
+    "filePath": "assets/deco/garden-fence-3x2.png"
   },
   {
     "id": "garden-fencepost-1x1",
-    "filePath": "assets/garden-fencepost-1x1.png"
+    "filePath": "assets/deco/garden-fencepost-1x1.png"
   },
   {
     "id": "garden-flower-1x1",
-    "filePath": "assets/garden-flower-1x1.png"
+    "filePath": "assets/deco/garden-flower-1x1.png"
   },
   {
     "id": "garden-flowerbed-2x1",
-    "filePath": "assets/garden-flowerbed-2x1.png"
+    "filePath": "assets/deco/garden-flowerbed-2x1.png"
   },
   {
     "id": "garden-fountain-1x3",
-    "filePath": "assets/garden-fountain-1x3.png"
+    "filePath": "assets/deco/garden-fountain-1x3.png"
   },
   {
     "id": "garden-fountain-2x2",
-    "filePath": "assets/garden-fountain-2x2.png"
+    "filePath": "assets/deco/garden-fountain-2x2.png"
   },
   {
     "id": "garden-fountain-3x3",
-    "filePath": "assets/garden-fountain-3x3.png"
+    "filePath": "assets/deco/garden-fountain-3x3.png"
   },
   {
     "id": "garden-gazebo-3x3",
-    "filePath": "assets/garden-gazebo-3x3.png"
+    "filePath": "assets/deco/garden-gazebo-3x3.png"
   },
   {
     "id": "garden-greenhouse-3x2",
-    "filePath": "assets/garden-greenhouse-3x2.png"
+    "filePath": "assets/deco/garden-greenhouse-3x2.png"
   },
   {
     "id": "garden-greenhouse-3x3",
-    "filePath": "assets/garden-greenhouse-3x3.png"
+    "filePath": "assets/deco/garden-greenhouse-3x3.png"
   },
   {
     "id": "garden-greenhouse-4x4",
-    "filePath": "assets/garden-greenhouse-4x4.png"
+    "filePath": "assets/deco/garden-greenhouse-4x4.png"
   },
   {
     "id": "garden-hedge-2x1",
-    "filePath": "assets/garden-hedge-2x1.png"
+    "filePath": "assets/deco/garden-hedge-2x1.png"
   },
   {
     "id": "garden-herbs-1x1",
-    "filePath": "assets/garden-herbs-1x1.png"
+    "filePath": "assets/deco/garden-herbs-1x1.png"
   },
   {
     "id": "garden-lamp-1x2",
-    "filePath": "assets/garden-lamp-1x2.png"
+    "filePath": "assets/deco/garden-lamp-1x2.png"
   },
   {
     "id": "garden-lamp-1x3",
-    "filePath": "assets/garden-lamp-1x3.png"
+    "filePath": "assets/deco/garden-lamp-1x3.png"
   },
   {
     "id": "garden-lantern-1x1",
-    "filePath": "assets/garden-lantern-1x1.png"
+    "filePath": "assets/deco/garden-lantern-1x1.png"
   },
   {
     "id": "garden-obelisk-1x2",
-    "filePath": "assets/garden-obelisk-1x2.png"
+    "filePath": "assets/deco/garden-obelisk-1x2.png"
   },
   {
     "id": "garden-orchard-3x3",
-    "filePath": "assets/garden-orchard-3x3.png"
+    "filePath": "assets/deco/garden-orchard-3x3.png"
   },
   {
     "id": "garden-park-4x4",
-    "filePath": "assets/garden-park-4x4.png"
+    "filePath": "assets/deco/garden-park-4x4.png"
   },
   {
     "id": "garden-path-2x1",
-    "filePath": "assets/garden-path-2x1.png"
+    "filePath": "assets/deco/garden-path-2x1.png"
   },
   {
     "id": "garden-patio-4x4",
-    "filePath": "assets/garden-patio-4x4.png"
+    "filePath": "assets/deco/garden-patio-4x4.png"
   },
   {
     "id": "garden-pergola-3x2",
-    "filePath": "assets/garden-pergola-3x2.png"
+    "filePath": "assets/deco/garden-pergola-3x2.png"
   },
   {
     "id": "garden-pond-3x2",
-    "filePath": "assets/garden-pond-3x2.png"
+    "filePath": "assets/deco/garden-pond-3x2.png"
   },
   {
     "id": "garden-pond-4x4",
-    "filePath": "assets/garden-pond-4x4.png"
+    "filePath": "assets/deco/garden-pond-4x4.png"
   },
   {
     "id": "garden-pot-1x1",
-    "filePath": "assets/garden-pot-1x1.png"
+    "filePath": "assets/deco/garden-pot-1x1.png"
   },
   {
     "id": "garden-rock-1x1",
-    "filePath": "assets/garden-rock-1x1.png"
+    "filePath": "assets/deco/garden-rock-1x1.png"
   },
   {
     "id": "garden-rows-2x2",
-    "filePath": "assets/garden-rows-2x2.png"
+    "filePath": "assets/deco/garden-rows-2x2.png"
   },
   {
     "id": "garden-sapling-1x1",
-    "filePath": "assets/garden-sapling-1x1.png"
+    "filePath": "assets/deco/garden-sapling-1x1.png"
   },
   {
     "id": "garden-shrubs-2x2",
-    "filePath": "assets/garden-shrubs-2x2.png"
+    "filePath": "assets/deco/garden-shrubs-2x2.png"
   },
   {
     "id": "garden-table-2x2",
-    "filePath": "assets/garden-table-2x2.png"
+    "filePath": "assets/deco/garden-table-2x2.png"
   },
   {
     "id": "garden-tallpot-1x2",
-    "filePath": "assets/garden-tallpot-1x2.png"
+    "filePath": "assets/deco/garden-tallpot-1x2.png"
   },
   {
     "id": "garden-tree-1x2",
-    "filePath": "assets/garden-tree-1x2.png"
+    "filePath": "assets/deco/garden-tree-1x2.png"
   },
   {
     "id": "garden-tree-1x3",
-    "filePath": "assets/garden-tree-1x3.png"
+    "filePath": "assets/deco/garden-tree-1x3.png"
   },
   {
     "id": "garden-trellis-1x2",
-    "filePath": "assets/garden-trellis-1x2.png"
+    "filePath": "assets/deco/garden-trellis-1x2.png"
   },
   {
     "id": "garden-trellis-1x3",
-    "filePath": "assets/garden-trellis-1x3.png"
+    "filePath": "assets/deco/garden-trellis-1x3.png"
   },
   {
     "id": "garden-trough-2x1",
-    "filePath": "assets/garden-trough-2x1.png"
+    "filePath": "assets/deco/garden-trough-2x1.png"
   },
   {
     "id": "garden-well-2x2",
-    "filePath": "assets/garden-well-2x2.png"
+    "filePath": "assets/deco/garden-well-2x2.png"
   },
   {
     "id": "gem-amber-1x1",
@@ -25233,251 +26025,251 @@ var ICON_FILES = [
   },
   {
     "id": "home-bathroom-4x4",
-    "filePath": "assets/home-bathroom-4x4.png"
+    "filePath": "assets/deco/home-bathroom-4x4.png"
   },
   {
     "id": "home-bathtub-3x2",
-    "filePath": "assets/home-bathtub-3x2.png"
+    "filePath": "assets/deco/home-bathtub-3x2.png"
   },
   {
     "id": "home-bathtub-3x3",
-    "filePath": "assets/home-bathtub-3x3.png"
+    "filePath": "assets/deco/home-bathtub-3x3.png"
   },
   {
     "id": "home-bed-2x2",
-    "filePath": "assets/home-bed-2x2.png"
+    "filePath": "assets/deco/home-bed-2x2.png"
   },
   {
     "id": "home-bed-3x2",
-    "filePath": "assets/home-bed-3x2.png"
+    "filePath": "assets/deco/home-bed-3x2.png"
   },
   {
     "id": "home-bed-3x3",
-    "filePath": "assets/home-bed-3x3.png"
+    "filePath": "assets/deco/home-bed-3x3.png"
   },
   {
     "id": "home-bedroom-4x4",
-    "filePath": "assets/home-bedroom-4x4.png"
+    "filePath": "assets/deco/home-bedroom-4x4.png"
   },
   {
     "id": "home-bench-2x1",
-    "filePath": "assets/home-bench-2x1.png"
+    "filePath": "assets/deco/home-bench-2x1.png"
   },
   {
     "id": "home-bookrow-2x1",
-    "filePath": "assets/home-bookrow-2x1.png"
+    "filePath": "assets/deco/home-bookrow-2x1.png"
   },
   {
     "id": "home-books-1x1",
-    "filePath": "assets/home-books-1x1.png"
+    "filePath": "assets/deco/home-books-1x1.png"
   },
   {
     "id": "home-bookshelf-1x3",
-    "filePath": "assets/home-bookshelf-1x3.png"
+    "filePath": "assets/deco/home-bookshelf-1x3.png"
   },
   {
     "id": "home-bookshelf-3x2",
-    "filePath": "assets/home-bookshelf-3x2.png"
+    "filePath": "assets/deco/home-bookshelf-3x2.png"
   },
   {
     "id": "home-bookshelf-3x3",
-    "filePath": "assets/home-bookshelf-3x3.png"
+    "filePath": "assets/deco/home-bookshelf-3x3.png"
   },
   {
     "id": "home-bottle-1x1",
-    "filePath": "assets/home-bottle-1x1.png"
+    "filePath": "assets/deco/home-bottle-1x1.png"
   },
   {
     "id": "home-cabinet-1x2",
-    "filePath": "assets/home-cabinet-1x2.png"
+    "filePath": "assets/deco/home-cabinet-1x2.png"
   },
   {
     "id": "home-chair-2x2",
-    "filePath": "assets/home-chair-2x2.png"
+    "filePath": "assets/deco/home-chair-2x2.png"
   },
   {
     "id": "home-clock-1x1",
-    "filePath": "assets/home-clock-1x1.png"
+    "filePath": "assets/deco/home-clock-1x1.png"
   },
   {
     "id": "home-coatstand-1x2",
-    "filePath": "assets/home-coatstand-1x2.png"
+    "filePath": "assets/deco/home-coatstand-1x2.png"
   },
   {
     "id": "home-conduit-1x3",
-    "filePath": "assets/home-conduit-1x3.png"
+    "filePath": "assets/deco/home-conduit-1x3.png"
   },
   {
     "id": "home-counter-3x2",
-    "filePath": "assets/home-counter-3x2.png"
+    "filePath": "assets/deco/home-counter-3x2.png"
   },
   {
     "id": "home-counter-3x3",
-    "filePath": "assets/home-counter-3x3.png"
+    "filePath": "assets/deco/home-counter-3x3.png"
   },
   {
     "id": "home-cushion-2x1",
-    "filePath": "assets/home-cushion-2x1.png"
+    "filePath": "assets/deco/home-cushion-2x1.png"
   },
   {
     "id": "home-desk-3x2",
-    "filePath": "assets/home-desk-3x2.png"
+    "filePath": "assets/deco/home-desk-3x2.png"
   },
   {
     "id": "home-desk-3x3",
-    "filePath": "assets/home-desk-3x3.png"
+    "filePath": "assets/deco/home-desk-3x3.png"
   },
   {
     "id": "home-dining-4x4",
-    "filePath": "assets/home-dining-4x4.png"
+    "filePath": "assets/deco/home-dining-4x4.png"
   },
   {
     "id": "home-fireplace-3x3",
-    "filePath": "assets/home-fireplace-3x3.png"
+    "filePath": "assets/deco/home-fireplace-3x3.png"
   },
   {
     "id": "home-floorlamp-1x2",
-    "filePath": "assets/home-floorlamp-1x2.png"
+    "filePath": "assets/deco/home-floorlamp-1x2.png"
   },
   {
     "id": "home-fridge-2x2",
-    "filePath": "assets/home-fridge-2x2.png"
+    "filePath": "assets/deco/home-fridge-2x2.png"
   },
   {
     "id": "home-kitchen-4x4",
-    "filePath": "assets/home-kitchen-4x4.png"
+    "filePath": "assets/deco/home-kitchen-4x4.png"
   },
   {
     "id": "home-lamp-1x1",
-    "filePath": "assets/home-lamp-1x1.png"
+    "filePath": "assets/deco/home-lamp-1x1.png"
   },
   {
     "id": "home-living-4x4",
-    "filePath": "assets/home-living-4x4.png"
+    "filePath": "assets/deco/home-living-4x4.png"
   },
   {
     "id": "home-locker-1x3",
-    "filePath": "assets/home-locker-1x3.png"
+    "filePath": "assets/deco/home-locker-1x3.png"
   },
   {
     "id": "home-mirror-1x2",
-    "filePath": "assets/home-mirror-1x2.png"
+    "filePath": "assets/deco/home-mirror-1x2.png"
   },
   {
     "id": "home-mug-1x1",
-    "filePath": "assets/home-mug-1x1.png"
+    "filePath": "assets/deco/home-mug-1x1.png"
   },
   {
     "id": "home-nightstand-1x2",
-    "filePath": "assets/home-nightstand-1x2.png"
+    "filePath": "assets/deco/home-nightstand-1x2.png"
   },
   {
     "id": "home-panel-1x3",
-    "filePath": "assets/home-panel-1x3.png"
+    "filePath": "assets/deco/home-panel-1x3.png"
   },
   {
     "id": "home-patio-4x4",
-    "filePath": "assets/home-patio-4x4.png"
+    "filePath": "assets/deco/home-patio-4x4.png"
   },
   {
     "id": "home-pillow-1x1",
-    "filePath": "assets/home-pillow-1x1.png"
+    "filePath": "assets/deco/home-pillow-1x1.png"
   },
   {
     "id": "home-plant-1x1",
-    "filePath": "assets/home-plant-1x1.png"
+    "filePath": "assets/deco/home-plant-1x1.png"
   },
   {
     "id": "home-planter-2x1",
-    "filePath": "assets/home-planter-2x1.png"
+    "filePath": "assets/deco/home-planter-2x1.png"
   },
   {
     "id": "home-radiator-1x2",
-    "filePath": "assets/home-radiator-1x2.png"
+    "filePath": "assets/deco/home-radiator-1x2.png"
   },
   {
     "id": "home-radiator-2x1",
-    "filePath": "assets/home-radiator-2x1.png"
+    "filePath": "assets/deco/home-radiator-2x1.png"
   },
   {
     "id": "home-shelf-2x1",
-    "filePath": "assets/home-shelf-2x1.png"
+    "filePath": "assets/deco/home-shelf-2x1.png"
   },
   {
     "id": "home-sidetable-2x2",
-    "filePath": "assets/home-sidetable-2x2.png"
+    "filePath": "assets/deco/home-sidetable-2x2.png"
   },
   {
     "id": "home-sink-2x2",
-    "filePath": "assets/home-sink-2x2.png"
+    "filePath": "assets/deco/home-sink-2x2.png"
   },
   {
     "id": "home-sofa-3x2",
-    "filePath": "assets/home-sofa-3x2.png"
+    "filePath": "assets/deco/home-sofa-3x2.png"
   },
   {
     "id": "home-sofa-3x3",
-    "filePath": "assets/home-sofa-3x3.png"
+    "filePath": "assets/deco/home-sofa-3x3.png"
   },
   {
     "id": "home-soundbar-2x1",
-    "filePath": "assets/home-soundbar-2x1.png"
+    "filePath": "assets/deco/home-soundbar-2x1.png"
   },
   {
     "id": "home-stool-1x1",
-    "filePath": "assets/home-stool-1x1.png"
+    "filePath": "assets/deco/home-stool-1x1.png"
   },
   {
     "id": "home-stove-2x2",
-    "filePath": "assets/home-stove-2x2.png"
+    "filePath": "assets/deco/home-stove-2x2.png"
   },
   {
     "id": "home-table-3x2",
-    "filePath": "assets/home-table-3x2.png"
+    "filePath": "assets/deco/home-table-3x2.png"
   },
   {
     "id": "home-table-3x3",
-    "filePath": "assets/home-table-3x3.png"
+    "filePath": "assets/deco/home-table-3x3.png"
   },
   {
     "id": "home-tallplant-1x2",
-    "filePath": "assets/home-tallplant-1x2.png"
+    "filePath": "assets/deco/home-tallplant-1x2.png"
   },
   {
     "id": "home-toilet-2x2",
-    "filePath": "assets/home-toilet-2x2.png"
+    "filePath": "assets/deco/home-toilet-2x2.png"
   },
   {
     "id": "home-torchere-1x3",
-    "filePath": "assets/home-torchere-1x3.png"
+    "filePath": "assets/deco/home-torchere-1x3.png"
   },
   {
     "id": "home-towelrail-2x1",
-    "filePath": "assets/home-towelrail-2x1.png"
+    "filePath": "assets/deco/home-towelrail-2x1.png"
   },
   {
     "id": "home-tree-1x3",
-    "filePath": "assets/home-tree-1x3.png"
+    "filePath": "assets/deco/home-tree-1x3.png"
   },
   {
     "id": "home-tv-2x2",
-    "filePath": "assets/home-tv-2x2.png"
+    "filePath": "assets/deco/home-tv-2x2.png"
   },
   {
     "id": "home-tv-3x2",
-    "filePath": "assets/home-tv-3x2.png"
+    "filePath": "assets/deco/home-tv-3x2.png"
   },
   {
     "id": "home-vase-1x2",
-    "filePath": "assets/home-vase-1x2.png"
+    "filePath": "assets/deco/home-vase-1x2.png"
   },
   {
     "id": "home-wardrobe-2x2",
-    "filePath": "assets/home-wardrobe-2x2.png"
+    "filePath": "assets/deco/home-wardrobe-2x2.png"
   },
   {
     "id": "home-washer-2x2",
-    "filePath": "assets/home-washer-2x2.png"
+    "filePath": "assets/deco/home-washer-2x2.png"
   },
   {
     "id": "horiz-barrier-2x1",
@@ -25829,1351 +26621,1351 @@ var ICON_FILES = [
   },
   {
     "id": "icon-air-3x3",
-    "filePath": "assets/icon-air-3x3.png"
+    "filePath": "assets/icons/icon-air-3x3.png"
   },
   {
     "id": "icon-alien-1x1",
-    "filePath": "assets/icon-alien-1x1.png"
+    "filePath": "assets/icons/icon-alien-1x1.png"
   },
   {
     "id": "icon-alien-2x2",
-    "filePath": "assets/icon-alien-2x2.png"
+    "filePath": "assets/icons/icon-alien-2x2.png"
   },
   {
     "id": "icon-alien-3x3",
-    "filePath": "assets/icon-alien-3x3.png"
+    "filePath": "assets/icons/icon-alien-3x3.png"
   },
   {
     "id": "icon-anchor-1x1",
-    "filePath": "assets/icon-anchor-1x1.png"
+    "filePath": "assets/icons/icon-anchor-1x1.png"
   },
   {
     "id": "icon-anchor-2x2",
-    "filePath": "assets/icon-anchor-2x2.png"
+    "filePath": "assets/icons/icon-anchor-2x2.png"
   },
   {
     "id": "icon-anchor-3x3",
-    "filePath": "assets/icon-anchor-3x3.png"
+    "filePath": "assets/icons/icon-anchor-3x3.png"
   },
   {
     "id": "icon-atom-2x2",
-    "filePath": "assets/icon-atom-2x2.png"
+    "filePath": "assets/icons/icon-atom-2x2.png"
   },
   {
     "id": "icon-bag-1x1",
-    "filePath": "assets/icon-bag-1x1.png"
+    "filePath": "assets/icons/icon-bag-1x1.png"
   },
   {
     "id": "icon-battery-2x2",
-    "filePath": "assets/icon-battery-2x2.png"
+    "filePath": "assets/icons/icon-battery-2x2.png"
   },
   {
     "id": "icon-bell-1x1",
-    "filePath": "assets/icon-bell-1x1.png"
+    "filePath": "assets/icons/icon-bell-1x1.png"
   },
   {
     "id": "icon-bio-3x3",
-    "filePath": "assets/icon-bio-3x3.png"
+    "filePath": "assets/icons/icon-bio-3x3.png"
   },
   {
     "id": "icon-bird-1x1",
-    "filePath": "assets/icon-bird-1x1.png"
+    "filePath": "assets/icons/icon-bird-1x1.png"
   },
   {
     "id": "icon-bird-2x2",
-    "filePath": "assets/icon-bird-2x2.png"
+    "filePath": "assets/icons/icon-bird-2x2.png"
   },
   {
     "id": "icon-bird-3x3",
-    "filePath": "assets/icon-bird-3x3.png"
+    "filePath": "assets/icons/icon-bird-3x3.png"
   },
   {
     "id": "icon-blueprint-3x3",
-    "filePath": "assets/icon-blueprint-3x3.png"
+    "filePath": "assets/icons/icon-blueprint-3x3.png"
   },
   {
     "id": "icon-bolt-1x1",
-    "filePath": "assets/icon-bolt-1x1.png"
+    "filePath": "assets/icons/icon-bolt-1x1.png"
   },
   {
     "id": "icon-book-1x1",
-    "filePath": "assets/icon-book-1x1.png"
+    "filePath": "assets/icons/icon-book-1x1.png"
   },
   {
     "id": "icon-bottle-1x1",
-    "filePath": "assets/icon-bottle-1x1.png"
+    "filePath": "assets/icons/icon-bottle-1x1.png"
   },
   {
     "id": "icon-bottle-2x2",
-    "filePath": "assets/icon-bottle-2x2.png"
+    "filePath": "assets/icons/icon-bottle-2x2.png"
   },
   {
     "id": "icon-bottle-3x3",
-    "filePath": "assets/icon-bottle-3x3.png"
+    "filePath": "assets/icons/icon-bottle-3x3.png"
   },
   {
     "id": "icon-bug-2x2",
-    "filePath": "assets/icon-bug-2x2.png"
+    "filePath": "assets/icons/icon-bug-2x2.png"
   },
   {
     "id": "icon-bug2-1x1",
-    "filePath": "assets/icon-bug2-1x1.png"
+    "filePath": "assets/icons/icon-bug2-1x1.png"
   },
   {
     "id": "icon-bug2-2x2",
-    "filePath": "assets/icon-bug2-2x2.png"
+    "filePath": "assets/icons/icon-bug2-2x2.png"
   },
   {
     "id": "icon-bug2-3x3",
-    "filePath": "assets/icon-bug2-3x3.png"
+    "filePath": "assets/icons/icon-bug2-3x3.png"
   },
   {
     "id": "icon-build-3x3",
-    "filePath": "assets/icon-build-3x3.png"
+    "filePath": "assets/icons/icon-build-3x3.png"
   },
   {
     "id": "icon-cactus-1x1",
-    "filePath": "assets/icon-cactus-1x1.png"
+    "filePath": "assets/icons/icon-cactus-1x1.png"
   },
   {
     "id": "icon-cactus-2x2",
-    "filePath": "assets/icon-cactus-2x2.png"
+    "filePath": "assets/icons/icon-cactus-2x2.png"
   },
   {
     "id": "icon-cactus-3x3",
-    "filePath": "assets/icon-cactus-3x3.png"
+    "filePath": "assets/icons/icon-cactus-3x3.png"
   },
   {
     "id": "icon-calendar-2x2",
-    "filePath": "assets/icon-calendar-2x2.png"
+    "filePath": "assets/icons/icon-calendar-2x2.png"
   },
   {
     "id": "icon-camera-2x2",
-    "filePath": "assets/icon-camera-2x2.png"
+    "filePath": "assets/icons/icon-camera-2x2.png"
   },
   {
     "id": "icon-can-1x1",
-    "filePath": "assets/icon-can-1x1.png"
+    "filePath": "assets/icons/icon-can-1x1.png"
   },
   {
     "id": "icon-can-2x2",
-    "filePath": "assets/icon-can-2x2.png"
+    "filePath": "assets/icons/icon-can-2x2.png"
   },
   {
     "id": "icon-can-3x3",
-    "filePath": "assets/icon-can-3x3.png"
+    "filePath": "assets/icons/icon-can-3x3.png"
   },
   {
     "id": "icon-cards-1x1",
-    "filePath": "assets/icon-cards-1x1.png"
+    "filePath": "assets/icons/icon-cards-1x1.png"
   },
   {
     "id": "icon-cards-2x2",
-    "filePath": "assets/icon-cards-2x2.png"
+    "filePath": "assets/icons/icon-cards-2x2.png"
   },
   {
     "id": "icon-cards-3x3",
-    "filePath": "assets/icon-cards-3x3.png"
+    "filePath": "assets/icons/icon-cards-3x3.png"
   },
   {
     "id": "icon-cart-1x1",
-    "filePath": "assets/icon-cart-1x1.png"
+    "filePath": "assets/icons/icon-cart-1x1.png"
   },
   {
     "id": "icon-cart-2x2",
-    "filePath": "assets/icon-cart-2x2.png"
+    "filePath": "assets/icons/icon-cart-2x2.png"
   },
   {
     "id": "icon-cat-1x1",
-    "filePath": "assets/icon-cat-1x1.png"
+    "filePath": "assets/icons/icon-cat-1x1.png"
   },
   {
     "id": "icon-cat-2x2",
-    "filePath": "assets/icon-cat-2x2.png"
+    "filePath": "assets/icons/icon-cat-2x2.png"
   },
   {
     "id": "icon-cat-3x3",
-    "filePath": "assets/icon-cat-3x3.png"
+    "filePath": "assets/icons/icon-cat-3x3.png"
   },
   {
     "id": "icon-chart-2x2",
-    "filePath": "assets/icon-chart-2x2.png"
+    "filePath": "assets/icons/icon-chart-2x2.png"
   },
   {
     "id": "icon-chat-2x2",
-    "filePath": "assets/icon-chat-2x2.png"
+    "filePath": "assets/icons/icon-chat-2x2.png"
   },
   {
     "id": "icon-check-1x1",
-    "filePath": "assets/icon-check-1x1.png"
+    "filePath": "assets/icons/icon-check-1x1.png"
   },
   {
     "id": "icon-check-2x2",
-    "filePath": "assets/icon-check-2x2.png"
+    "filePath": "assets/icons/icon-check-2x2.png"
   },
   {
     "id": "icon-check-3x3",
-    "filePath": "assets/icon-check-3x3.png"
+    "filePath": "assets/icons/icon-check-3x3.png"
   },
   {
     "id": "icon-chess-1x1",
-    "filePath": "assets/icon-chess-1x1.png"
+    "filePath": "assets/icons/icon-chess-1x1.png"
   },
   {
     "id": "icon-chess-2x2",
-    "filePath": "assets/icon-chess-2x2.png"
+    "filePath": "assets/icons/icon-chess-2x2.png"
   },
   {
     "id": "icon-chess-3x3",
-    "filePath": "assets/icon-chess-3x3.png"
+    "filePath": "assets/icons/icon-chess-3x3.png"
   },
   {
     "id": "icon-chest-3x3",
-    "filePath": "assets/icon-chest-3x3.png"
+    "filePath": "assets/icons/icon-chest-3x3.png"
   },
   {
     "id": "icon-chevron-double-down-1x1",
-    "filePath": "assets/icon-chevron-double-down-1x1.png"
+    "filePath": "assets/icons/icon-chevron-double-down-1x1.png"
   },
   {
     "id": "icon-chevron-double-down-2x2",
-    "filePath": "assets/icon-chevron-double-down-2x2.png"
+    "filePath": "assets/icons/icon-chevron-double-down-2x2.png"
   },
   {
     "id": "icon-chevron-double-down-3x3",
-    "filePath": "assets/icon-chevron-double-down-3x3.png"
+    "filePath": "assets/icons/icon-chevron-double-down-3x3.png"
   },
   {
     "id": "icon-chevron-double-left-1x1",
-    "filePath": "assets/icon-chevron-double-left-1x1.png"
+    "filePath": "assets/icons/icon-chevron-double-left-1x1.png"
   },
   {
     "id": "icon-chevron-double-left-2x2",
-    "filePath": "assets/icon-chevron-double-left-2x2.png"
+    "filePath": "assets/icons/icon-chevron-double-left-2x2.png"
   },
   {
     "id": "icon-chevron-double-left-3x3",
-    "filePath": "assets/icon-chevron-double-left-3x3.png"
+    "filePath": "assets/icons/icon-chevron-double-left-3x3.png"
   },
   {
     "id": "icon-chevron-double-right-1x1",
-    "filePath": "assets/icon-chevron-double-right-1x1.png"
+    "filePath": "assets/icons/icon-chevron-double-right-1x1.png"
   },
   {
     "id": "icon-chevron-double-right-2x2",
-    "filePath": "assets/icon-chevron-double-right-2x2.png"
+    "filePath": "assets/icons/icon-chevron-double-right-2x2.png"
   },
   {
     "id": "icon-chevron-double-right-3x3",
-    "filePath": "assets/icon-chevron-double-right-3x3.png"
+    "filePath": "assets/icons/icon-chevron-double-right-3x3.png"
   },
   {
     "id": "icon-chevron-double-up-1x1",
-    "filePath": "assets/icon-chevron-double-up-1x1.png"
+    "filePath": "assets/icons/icon-chevron-double-up-1x1.png"
   },
   {
     "id": "icon-chevron-double-up-2x2",
-    "filePath": "assets/icon-chevron-double-up-2x2.png"
+    "filePath": "assets/icons/icon-chevron-double-up-2x2.png"
   },
   {
     "id": "icon-chevron-double-up-3x3",
-    "filePath": "assets/icon-chevron-double-up-3x3.png"
+    "filePath": "assets/icons/icon-chevron-double-up-3x3.png"
   },
   {
     "id": "icon-chevron-down-1x1",
-    "filePath": "assets/icon-chevron-down-1x1.png"
+    "filePath": "assets/icons/icon-chevron-down-1x1.png"
   },
   {
     "id": "icon-chevron-down-2x2",
-    "filePath": "assets/icon-chevron-down-2x2.png"
+    "filePath": "assets/icons/icon-chevron-down-2x2.png"
   },
   {
     "id": "icon-chevron-down-3x3",
-    "filePath": "assets/icon-chevron-down-3x3.png"
+    "filePath": "assets/icons/icon-chevron-down-3x3.png"
   },
   {
     "id": "icon-chevron-left-1x1",
-    "filePath": "assets/icon-chevron-left-1x1.png"
+    "filePath": "assets/icons/icon-chevron-left-1x1.png"
   },
   {
     "id": "icon-chevron-left-2x2",
-    "filePath": "assets/icon-chevron-left-2x2.png"
+    "filePath": "assets/icons/icon-chevron-left-2x2.png"
   },
   {
     "id": "icon-chevron-left-3x3",
-    "filePath": "assets/icon-chevron-left-3x3.png"
+    "filePath": "assets/icons/icon-chevron-left-3x3.png"
   },
   {
     "id": "icon-chevron-right-1x1",
-    "filePath": "assets/icon-chevron-right-1x1.png"
+    "filePath": "assets/icons/icon-chevron-right-1x1.png"
   },
   {
     "id": "icon-chevron-right-2x2",
-    "filePath": "assets/icon-chevron-right-2x2.png"
+    "filePath": "assets/icons/icon-chevron-right-2x2.png"
   },
   {
     "id": "icon-chevron-right-3x3",
-    "filePath": "assets/icon-chevron-right-3x3.png"
+    "filePath": "assets/icons/icon-chevron-right-3x3.png"
   },
   {
     "id": "icon-chevron-up-1x1",
-    "filePath": "assets/icon-chevron-up-1x1.png"
+    "filePath": "assets/icons/icon-chevron-up-1x1.png"
   },
   {
     "id": "icon-chevron-up-2x2",
-    "filePath": "assets/icon-chevron-up-2x2.png"
+    "filePath": "assets/icons/icon-chevron-up-2x2.png"
   },
   {
     "id": "icon-chevron-up-3x3",
-    "filePath": "assets/icon-chevron-up-3x3.png"
+    "filePath": "assets/icons/icon-chevron-up-3x3.png"
   },
   {
     "id": "icon-circuit-3x3",
-    "filePath": "assets/icon-circuit-3x3.png"
+    "filePath": "assets/icons/icon-circuit-3x3.png"
   },
   {
     "id": "icon-clock-2x2",
-    "filePath": "assets/icon-clock-2x2.png"
+    "filePath": "assets/icons/icon-clock-2x2.png"
   },
   {
     "id": "icon-cloud-1x1",
-    "filePath": "assets/icon-cloud-1x1.png"
+    "filePath": "assets/icons/icon-cloud-1x1.png"
   },
   {
     "id": "icon-code-2x2",
-    "filePath": "assets/icon-code-2x2.png"
+    "filePath": "assets/icons/icon-code-2x2.png"
   },
   {
     "id": "icon-coffee-1x1",
-    "filePath": "assets/icon-coffee-1x1.png"
+    "filePath": "assets/icons/icon-coffee-1x1.png"
   },
   {
     "id": "icon-coffee-2x2",
-    "filePath": "assets/icon-coffee-2x2.png"
+    "filePath": "assets/icons/icon-coffee-2x2.png"
   },
   {
     "id": "icon-coffee-3x3",
-    "filePath": "assets/icon-coffee-3x3.png"
+    "filePath": "assets/icons/icon-coffee-3x3.png"
   },
   {
     "id": "icon-coin-3x3",
-    "filePath": "assets/icon-coin-3x3.png"
+    "filePath": "assets/icons/icon-coin-3x3.png"
   },
   {
     "id": "icon-compass-2x2",
-    "filePath": "assets/icon-compass-2x2.png"
+    "filePath": "assets/icons/icon-compass-2x2.png"
   },
   {
     "id": "icon-cookie-1x1",
-    "filePath": "assets/icon-cookie-1x1.png"
+    "filePath": "assets/icons/icon-cookie-1x1.png"
   },
   {
     "id": "icon-cookie-2x2",
-    "filePath": "assets/icon-cookie-2x2.png"
+    "filePath": "assets/icons/icon-cookie-2x2.png"
   },
   {
     "id": "icon-cookie-3x3",
-    "filePath": "assets/icon-cookie-3x3.png"
+    "filePath": "assets/icons/icon-cookie-3x3.png"
   },
   {
     "id": "icon-cpu-2x2",
-    "filePath": "assets/icon-cpu-2x2.png"
+    "filePath": "assets/icons/icon-cpu-2x2.png"
   },
   {
     "id": "icon-cross-1x1",
-    "filePath": "assets/icon-cross-1x1.png"
+    "filePath": "assets/icons/icon-cross-1x1.png"
   },
   {
     "id": "icon-cross-2x2",
-    "filePath": "assets/icon-cross-2x2.png"
+    "filePath": "assets/icons/icon-cross-2x2.png"
   },
   {
     "id": "icon-cross-3x3",
-    "filePath": "assets/icon-cross-3x3.png"
+    "filePath": "assets/icons/icon-cross-3x3.png"
   },
   {
     "id": "icon-crown-3x3",
-    "filePath": "assets/icon-crown-3x3.png"
+    "filePath": "assets/icons/icon-crown-3x3.png"
   },
   {
     "id": "icon-crystal-3x3",
-    "filePath": "assets/icon-crystal-3x3.png"
+    "filePath": "assets/icons/icon-crystal-3x3.png"
   },
   {
     "id": "icon-diamond-3x3",
-    "filePath": "assets/icon-diamond-3x3.png"
+    "filePath": "assets/icons/icon-diamond-3x3.png"
   },
   {
     "id": "icon-dice-1x1",
-    "filePath": "assets/icon-dice-1x1.png"
+    "filePath": "assets/icons/icon-dice-1x1.png"
   },
   {
     "id": "icon-dice-2x2",
-    "filePath": "assets/icon-dice-2x2.png"
+    "filePath": "assets/icons/icon-dice-2x2.png"
   },
   {
     "id": "icon-dice-3x3",
-    "filePath": "assets/icon-dice-3x3.png"
+    "filePath": "assets/icons/icon-dice-3x3.png"
   },
   {
     "id": "icon-disk-2x2",
-    "filePath": "assets/icon-disk-2x2.png"
+    "filePath": "assets/icons/icon-disk-2x2.png"
   },
   {
     "id": "icon-dna-3x3",
-    "filePath": "assets/icon-dna-3x3.png"
+    "filePath": "assets/icons/icon-dna-3x3.png"
   },
   {
     "id": "icon-dog-1x1",
-    "filePath": "assets/icon-dog-1x1.png"
+    "filePath": "assets/icons/icon-dog-1x1.png"
   },
   {
     "id": "icon-dog-2x2",
-    "filePath": "assets/icon-dog-2x2.png"
+    "filePath": "assets/icons/icon-dog-2x2.png"
   },
   {
     "id": "icon-dog-3x3",
-    "filePath": "assets/icon-dog-3x3.png"
+    "filePath": "assets/icons/icon-dog-3x3.png"
   },
   {
     "id": "icon-drone-3x3",
-    "filePath": "assets/icon-drone-3x3.png"
+    "filePath": "assets/icons/icon-drone-3x3.png"
   },
   {
     "id": "icon-drop-1x1",
-    "filePath": "assets/icon-drop-1x1.png"
+    "filePath": "assets/icons/icon-drop-1x1.png"
   },
   {
     "id": "icon-earth-3x3",
-    "filePath": "assets/icon-earth-3x3.png"
+    "filePath": "assets/icons/icon-earth-3x3.png"
   },
   {
     "id": "icon-energy-3x3",
-    "filePath": "assets/icon-energy-3x3.png"
+    "filePath": "assets/icons/icon-energy-3x3.png"
   },
   {
     "id": "icon-eye-1x1",
-    "filePath": "assets/icon-eye-1x1.png"
+    "filePath": "assets/icons/icon-eye-1x1.png"
   },
   {
     "id": "icon-factory-3x3",
-    "filePath": "assets/icon-factory-3x3.png"
+    "filePath": "assets/icons/icon-factory-3x3.png"
   },
   {
     "id": "icon-file-2x2",
-    "filePath": "assets/icon-file-2x2.png"
+    "filePath": "assets/icons/icon-file-2x2.png"
   },
   {
     "id": "icon-filter-2x2",
-    "filePath": "assets/icon-filter-2x2.png"
+    "filePath": "assets/icons/icon-filter-2x2.png"
   },
   {
     "id": "icon-fire-3x3",
-    "filePath": "assets/icon-fire-3x3.png"
+    "filePath": "assets/icons/icon-fire-3x3.png"
   },
   {
     "id": "icon-fish-1x1",
-    "filePath": "assets/icon-fish-1x1.png"
+    "filePath": "assets/icons/icon-fish-1x1.png"
   },
   {
     "id": "icon-fish-2x2",
-    "filePath": "assets/icon-fish-2x2.png"
+    "filePath": "assets/icons/icon-fish-2x2.png"
   },
   {
     "id": "icon-fish-3x3",
-    "filePath": "assets/icon-fish-3x3.png"
+    "filePath": "assets/icons/icon-fish-3x3.png"
   },
   {
     "id": "icon-flag-1x1",
-    "filePath": "assets/icon-flag-1x1.png"
+    "filePath": "assets/icons/icon-flag-1x1.png"
   },
   {
     "id": "icon-flame-1x1",
-    "filePath": "assets/icon-flame-1x1.png"
+    "filePath": "assets/icons/icon-flame-1x1.png"
   },
   {
     "id": "icon-folder-2x2",
-    "filePath": "assets/icon-folder-2x2.png"
+    "filePath": "assets/icons/icon-folder-2x2.png"
   },
   {
     "id": "icon-fox-1x1",
-    "filePath": "assets/icon-fox-1x1.png"
+    "filePath": "assets/icons/icon-fox-1x1.png"
   },
   {
     "id": "icon-fox-2x2",
-    "filePath": "assets/icon-fox-2x2.png"
+    "filePath": "assets/icons/icon-fox-2x2.png"
   },
   {
     "id": "icon-fox-3x3",
-    "filePath": "assets/icon-fox-3x3.png"
+    "filePath": "assets/icons/icon-fox-3x3.png"
   },
   {
     "id": "icon-gear-1x1",
-    "filePath": "assets/icon-gear-1x1.png"
+    "filePath": "assets/icons/icon-gear-1x1.png"
   },
   {
     "id": "icon-gem-1x1",
-    "filePath": "assets/icon-gem-1x1.png"
+    "filePath": "assets/icons/icon-gem-1x1.png"
   },
   {
     "id": "icon-gem-2x2",
-    "filePath": "assets/icon-gem-2x2.png"
+    "filePath": "assets/icons/icon-gem-2x2.png"
   },
   {
     "id": "icon-gem-3x3",
-    "filePath": "assets/icon-gem-3x3.png"
+    "filePath": "assets/icons/icon-gem-3x3.png"
   },
   {
     "id": "icon-ghost-1x1",
-    "filePath": "assets/icon-ghost-1x1.png"
+    "filePath": "assets/icons/icon-ghost-1x1.png"
   },
   {
     "id": "icon-ghost-2x2",
-    "filePath": "assets/icon-ghost-2x2.png"
+    "filePath": "assets/icons/icon-ghost-2x2.png"
   },
   {
     "id": "icon-ghost-3x3",
-    "filePath": "assets/icon-ghost-3x3.png"
+    "filePath": "assets/icons/icon-ghost-3x3.png"
   },
   {
     "id": "icon-gift-2x2",
-    "filePath": "assets/icon-gift-2x2.png"
+    "filePath": "assets/icons/icon-gift-2x2.png"
   },
   {
     "id": "icon-globe-2x2",
-    "filePath": "assets/icon-globe-2x2.png"
+    "filePath": "assets/icons/icon-globe-2x2.png"
   },
   {
     "id": "icon-hammer-1x1",
-    "filePath": "assets/icon-hammer-1x1.png"
+    "filePath": "assets/icons/icon-hammer-1x1.png"
   },
   {
     "id": "icon-headphones-2x2",
-    "filePath": "assets/icon-headphones-2x2.png"
+    "filePath": "assets/icons/icon-headphones-2x2.png"
   },
   {
     "id": "icon-heart-1x1",
-    "filePath": "assets/icon-heart-1x1.png"
+    "filePath": "assets/icons/icon-heart-1x1.png"
   },
   {
     "id": "icon-heart-2x2",
-    "filePath": "assets/icon-heart-2x2.png"
+    "filePath": "assets/icons/icon-heart-2x2.png"
   },
   {
     "id": "icon-heart-3x3",
-    "filePath": "assets/icon-heart-3x3.png"
+    "filePath": "assets/icons/icon-heart-3x3.png"
   },
   {
     "id": "icon-home-1x1",
-    "filePath": "assets/icon-home-1x1.png"
+    "filePath": "assets/icons/icon-home-1x1.png"
   },
   {
     "id": "icon-home-3x3",
-    "filePath": "assets/icon-home-3x3.png"
+    "filePath": "assets/icons/icon-home-3x3.png"
   },
   {
     "id": "icon-hourglass-1x1",
-    "filePath": "assets/icon-hourglass-1x1.png"
+    "filePath": "assets/icons/icon-hourglass-1x1.png"
   },
   {
     "id": "icon-hourglass-2x2",
-    "filePath": "assets/icon-hourglass-2x2.png"
+    "filePath": "assets/icons/icon-hourglass-2x2.png"
   },
   {
     "id": "icon-hourglass-3x3",
-    "filePath": "assets/icon-hourglass-3x3.png"
+    "filePath": "assets/icons/icon-hourglass-3x3.png"
   },
   {
     "id": "icon-icecream-1x1",
-    "filePath": "assets/icon-icecream-1x1.png"
+    "filePath": "assets/icons/icon-icecream-1x1.png"
   },
   {
     "id": "icon-icecream-2x2",
-    "filePath": "assets/icon-icecream-2x2.png"
+    "filePath": "assets/icons/icon-icecream-2x2.png"
   },
   {
     "id": "icon-icecream-3x3",
-    "filePath": "assets/icon-icecream-3x3.png"
+    "filePath": "assets/icons/icon-icecream-3x3.png"
   },
   {
     "id": "icon-image-2x2",
-    "filePath": "assets/icon-image-2x2.png"
+    "filePath": "assets/icons/icon-image-2x2.png"
   },
   {
     "id": "icon-infinity-1x1",
-    "filePath": "assets/icon-infinity-1x1.png"
+    "filePath": "assets/icons/icon-infinity-1x1.png"
   },
   {
     "id": "icon-infinity-2x2",
-    "filePath": "assets/icon-infinity-2x2.png"
+    "filePath": "assets/icons/icon-infinity-2x2.png"
   },
   {
     "id": "icon-infinity-3x3",
-    "filePath": "assets/icon-infinity-3x3.png"
+    "filePath": "assets/icons/icon-infinity-3x3.png"
   },
   {
     "id": "icon-info-2x2",
-    "filePath": "assets/icon-info-2x2.png"
+    "filePath": "assets/icons/icon-info-2x2.png"
   },
   {
     "id": "icon-joystick-1x1",
-    "filePath": "assets/icon-joystick-1x1.png"
+    "filePath": "assets/icons/icon-joystick-1x1.png"
   },
   {
     "id": "icon-joystick-2x2",
-    "filePath": "assets/icon-joystick-2x2.png"
+    "filePath": "assets/icons/icon-joystick-2x2.png"
   },
   {
     "id": "icon-joystick-3x3",
-    "filePath": "assets/icon-joystick-3x3.png"
+    "filePath": "assets/icons/icon-joystick-3x3.png"
   },
   {
     "id": "icon-key-1x1",
-    "filePath": "assets/icon-key-1x1.png"
+    "filePath": "assets/icons/icon-key-1x1.png"
   },
   {
     "id": "icon-lab-2x2",
-    "filePath": "assets/icon-lab-2x2.png"
+    "filePath": "assets/icons/icon-lab-2x2.png"
   },
   {
     "id": "icon-lab-3x3",
-    "filePath": "assets/icon-lab-3x3.png"
+    "filePath": "assets/icons/icon-lab-3x3.png"
   },
   {
     "id": "icon-leaf-1x1",
-    "filePath": "assets/icon-leaf-1x1.png"
+    "filePath": "assets/icons/icon-leaf-1x1.png"
   },
   {
     "id": "icon-link-2x2",
-    "filePath": "assets/icon-link-2x2.png"
+    "filePath": "assets/icons/icon-link-2x2.png"
   },
   {
     "id": "icon-lock-1x1",
-    "filePath": "assets/icon-lock-1x1.png"
+    "filePath": "assets/icons/icon-lock-1x1.png"
   },
   {
     "id": "icon-magnet-1x1",
-    "filePath": "assets/icon-magnet-1x1.png"
+    "filePath": "assets/icons/icon-magnet-1x1.png"
   },
   {
     "id": "icon-magnet-2x2",
-    "filePath": "assets/icon-magnet-2x2.png"
+    "filePath": "assets/icons/icon-magnet-2x2.png"
   },
   {
     "id": "icon-magnet-3x3",
-    "filePath": "assets/icon-magnet-3x3.png"
+    "filePath": "assets/icons/icon-magnet-3x3.png"
   },
   {
     "id": "icon-mail-1x1",
-    "filePath": "assets/icon-mail-1x1.png"
+    "filePath": "assets/icons/icon-mail-1x1.png"
   },
   {
     "id": "icon-map-2x2",
-    "filePath": "assets/icon-map-2x2.png"
+    "filePath": "assets/icons/icon-map-2x2.png"
   },
   {
     "id": "icon-medal-2x2",
-    "filePath": "assets/icon-medal-2x2.png"
+    "filePath": "assets/icons/icon-medal-2x2.png"
   },
   {
     "id": "icon-mic-2x2",
-    "filePath": "assets/icon-mic-2x2.png"
+    "filePath": "assets/icons/icon-mic-2x2.png"
   },
   {
     "id": "icon-minus-1x1",
-    "filePath": "assets/icon-minus-1x1.png"
+    "filePath": "assets/icons/icon-minus-1x1.png"
   },
   {
     "id": "icon-moon-1x1",
-    "filePath": "assets/icon-moon-1x1.png"
+    "filePath": "assets/icons/icon-moon-1x1.png"
   },
   {
     "id": "icon-mushroom-1x1",
-    "filePath": "assets/icon-mushroom-1x1.png"
+    "filePath": "assets/icons/icon-mushroom-1x1.png"
   },
   {
     "id": "icon-mushroom-2x2",
-    "filePath": "assets/icon-mushroom-2x2.png"
+    "filePath": "assets/icons/icon-mushroom-2x2.png"
   },
   {
     "id": "icon-mushroom-3x3",
-    "filePath": "assets/icon-mushroom-3x3.png"
+    "filePath": "assets/icons/icon-mushroom-3x3.png"
   },
   {
     "id": "icon-music-1x1",
-    "filePath": "assets/icon-music-1x1.png"
+    "filePath": "assets/icons/icon-music-1x1.png"
   },
   {
     "id": "icon-ore-1x1",
-    "filePath": "assets/icon-ore-1x1.png"
+    "filePath": "assets/icons/icon-ore-1x1.png"
   },
   {
     "id": "icon-ore-2x2",
-    "filePath": "assets/icon-ore-2x2.png"
+    "filePath": "assets/icons/icon-ore-2x2.png"
   },
   {
     "id": "icon-ore-3x3",
-    "filePath": "assets/icon-ore-3x3.png"
+    "filePath": "assets/icons/icon-ore-3x3.png"
   },
   {
     "id": "icon-pause-1x1",
-    "filePath": "assets/icon-pause-1x1.png"
+    "filePath": "assets/icons/icon-pause-1x1.png"
   },
   {
     "id": "icon-phone-2x2",
-    "filePath": "assets/icon-phone-2x2.png"
+    "filePath": "assets/icons/icon-phone-2x2.png"
   },
   {
     "id": "icon-pickaxe-1x1",
-    "filePath": "assets/icon-pickaxe-1x1.png"
+    "filePath": "assets/icons/icon-pickaxe-1x1.png"
   },
   {
     "id": "icon-pickaxe-2x2",
-    "filePath": "assets/icon-pickaxe-2x2.png"
+    "filePath": "assets/icons/icon-pickaxe-2x2.png"
   },
   {
     "id": "icon-pickaxe-3x3",
-    "filePath": "assets/icon-pickaxe-3x3.png"
+    "filePath": "assets/icons/icon-pickaxe-3x3.png"
   },
   {
     "id": "icon-pin-2x2",
-    "filePath": "assets/icon-pin-2x2.png"
+    "filePath": "assets/icons/icon-pin-2x2.png"
   },
   {
     "id": "icon-pizza-1x1",
-    "filePath": "assets/icon-pizza-1x1.png"
+    "filePath": "assets/icons/icon-pizza-1x1.png"
   },
   {
     "id": "icon-pizza-2x2",
-    "filePath": "assets/icon-pizza-2x2.png"
+    "filePath": "assets/icons/icon-pizza-2x2.png"
   },
   {
     "id": "icon-pizza-3x3",
-    "filePath": "assets/icon-pizza-3x3.png"
+    "filePath": "assets/icons/icon-pizza-3x3.png"
   },
   {
     "id": "icon-plane-3x3",
-    "filePath": "assets/icon-plane-3x3.png"
+    "filePath": "assets/icons/icon-plane-3x3.png"
   },
   {
     "id": "icon-play-1x1",
-    "filePath": "assets/icon-play-1x1.png"
+    "filePath": "assets/icons/icon-play-1x1.png"
   },
   {
     "id": "icon-plus-1x1",
-    "filePath": "assets/icon-plus-1x1.png"
+    "filePath": "assets/icons/icon-plus-1x1.png"
   },
   {
     "id": "icon-portal-3x3",
-    "filePath": "assets/icon-portal-3x3.png"
+    "filePath": "assets/icons/icon-portal-3x3.png"
   },
   {
     "id": "icon-potion-1x1",
-    "filePath": "assets/icon-potion-1x1.png"
+    "filePath": "assets/icons/icon-potion-1x1.png"
   },
   {
     "id": "icon-potion-2x2",
-    "filePath": "assets/icon-potion-2x2.png"
+    "filePath": "assets/icons/icon-potion-2x2.png"
   },
   {
     "id": "icon-potion-3x3",
-    "filePath": "assets/icon-potion-3x3.png"
+    "filePath": "assets/icons/icon-potion-3x3.png"
   },
   {
     "id": "icon-power-2x2",
-    "filePath": "assets/icon-power-2x2.png"
+    "filePath": "assets/icons/icon-power-2x2.png"
   },
   {
     "id": "icon-power-3x3",
-    "filePath": "assets/icon-power-3x3.png"
+    "filePath": "assets/icons/icon-power-3x3.png"
   },
   {
     "id": "icon-puzzle-1x1",
-    "filePath": "assets/icon-puzzle-1x1.png"
+    "filePath": "assets/icons/icon-puzzle-1x1.png"
   },
   {
     "id": "icon-puzzle-2x2",
-    "filePath": "assets/icon-puzzle-2x2.png"
+    "filePath": "assets/icons/icon-puzzle-2x2.png"
   },
   {
     "id": "icon-puzzle-3x3",
-    "filePath": "assets/icon-puzzle-3x3.png"
+    "filePath": "assets/icons/icon-puzzle-3x3.png"
   },
   {
     "id": "icon-radar-3x3",
-    "filePath": "assets/icon-radar-3x3.png"
+    "filePath": "assets/icons/icon-radar-3x3.png"
   },
   {
     "id": "icon-rainbow-1x1",
-    "filePath": "assets/icon-rainbow-1x1.png"
+    "filePath": "assets/icons/icon-rainbow-1x1.png"
   },
   {
     "id": "icon-rainbow-2x2",
-    "filePath": "assets/icon-rainbow-2x2.png"
+    "filePath": "assets/icons/icon-rainbow-2x2.png"
   },
   {
     "id": "icon-rainbow-3x3",
-    "filePath": "assets/icon-rainbow-3x3.png"
+    "filePath": "assets/icons/icon-rainbow-3x3.png"
   },
   {
     "id": "icon-ring-1x1",
-    "filePath": "assets/icon-ring-1x1.png"
+    "filePath": "assets/icons/icon-ring-1x1.png"
   },
   {
     "id": "icon-ring-2x2",
-    "filePath": "assets/icon-ring-2x2.png"
+    "filePath": "assets/icons/icon-ring-2x2.png"
   },
   {
     "id": "icon-ring-3x3",
-    "filePath": "assets/icon-ring-3x3.png"
+    "filePath": "assets/icons/icon-ring-3x3.png"
   },
   {
     "id": "icon-robot-1x1",
-    "filePath": "assets/icon-robot-1x1.png"
+    "filePath": "assets/icons/icon-robot-1x1.png"
   },
   {
     "id": "icon-robot-2x2",
-    "filePath": "assets/icon-robot-2x2.png"
+    "filePath": "assets/icons/icon-robot-2x2.png"
   },
   {
     "id": "icon-robot-3x3",
-    "filePath": "assets/icon-robot-3x3.png"
+    "filePath": "assets/icons/icon-robot-3x3.png"
   },
   {
     "id": "icon-rocket-3x3",
-    "filePath": "assets/icon-rocket-3x3.png"
+    "filePath": "assets/icons/icon-rocket-3x3.png"
   },
   {
     "id": "icon-satellite-3x3",
-    "filePath": "assets/icon-satellite-3x3.png"
+    "filePath": "assets/icons/icon-satellite-3x3.png"
   },
   {
     "id": "icon-scroll-1x1",
-    "filePath": "assets/icon-scroll-1x1.png"
+    "filePath": "assets/icons/icon-scroll-1x1.png"
   },
   {
     "id": "icon-scroll-2x2",
-    "filePath": "assets/icon-scroll-2x2.png"
+    "filePath": "assets/icons/icon-scroll-2x2.png"
   },
   {
     "id": "icon-scroll-3x3",
-    "filePath": "assets/icon-scroll-3x3.png"
+    "filePath": "assets/icons/icon-scroll-3x3.png"
   },
   {
     "id": "icon-search-2x2",
-    "filePath": "assets/icon-search-2x2.png"
+    "filePath": "assets/icons/icon-search-2x2.png"
   },
   {
     "id": "icon-seed-1x1",
-    "filePath": "assets/icon-seed-1x1.png"
+    "filePath": "assets/icons/icon-seed-1x1.png"
   },
   {
     "id": "icon-seed-2x2",
-    "filePath": "assets/icon-seed-2x2.png"
+    "filePath": "assets/icons/icon-seed-2x2.png"
   },
   {
     "id": "icon-seed-3x3",
-    "filePath": "assets/icon-seed-3x3.png"
+    "filePath": "assets/icons/icon-seed-3x3.png"
   },
   {
     "id": "icon-settings-3x3",
-    "filePath": "assets/icon-settings-3x3.png"
+    "filePath": "assets/icons/icon-settings-3x3.png"
   },
   {
     "id": "icon-shield-1x1",
-    "filePath": "assets/icon-shield-1x1.png"
+    "filePath": "assets/icons/icon-shield-1x1.png"
   },
   {
     "id": "icon-ship-3x3",
-    "filePath": "assets/icon-ship-3x3.png"
+    "filePath": "assets/icons/icon-ship-3x3.png"
   },
   {
     "id": "icon-shop-3x3",
-    "filePath": "assets/icon-shop-3x3.png"
+    "filePath": "assets/icons/icon-shop-3x3.png"
   },
   {
     "id": "icon-skull-3x3",
-    "filePath": "assets/icon-skull-3x3.png"
+    "filePath": "assets/icons/icon-skull-3x3.png"
   },
   {
     "id": "icon-snow-1x1",
-    "filePath": "assets/icon-snow-1x1.png"
+    "filePath": "assets/icons/icon-snow-1x1.png"
   },
   {
     "id": "icon-snow-2x2",
-    "filePath": "assets/icon-snow-2x2.png"
+    "filePath": "assets/icons/icon-snow-2x2.png"
   },
   {
     "id": "icon-snow-3x3",
-    "filePath": "assets/icon-snow-3x3.png"
+    "filePath": "assets/icons/icon-snow-3x3.png"
   },
   {
     "id": "icon-speaker-2x2",
-    "filePath": "assets/icon-speaker-2x2.png"
+    "filePath": "assets/icons/icon-speaker-2x2.png"
   },
   {
     "id": "icon-spiral-1x1",
-    "filePath": "assets/icon-spiral-1x1.png"
+    "filePath": "assets/icons/icon-spiral-1x1.png"
   },
   {
     "id": "icon-spiral-2x2",
-    "filePath": "assets/icon-spiral-2x2.png"
+    "filePath": "assets/icons/icon-spiral-2x2.png"
   },
   {
     "id": "icon-spiral-3x3",
-    "filePath": "assets/icon-spiral-3x3.png"
+    "filePath": "assets/icons/icon-spiral-3x3.png"
   },
   {
     "id": "icon-star-1x1",
-    "filePath": "assets/icon-star-1x1.png"
+    "filePath": "assets/icons/icon-star-1x1.png"
   },
   {
     "id": "icon-star-2x2",
-    "filePath": "assets/icon-star-2x2.png"
+    "filePath": "assets/icons/icon-star-2x2.png"
   },
   {
     "id": "icon-star-3x3",
-    "filePath": "assets/icon-star-3x3.png"
+    "filePath": "assets/icons/icon-star-3x3.png"
   },
   {
     "id": "icon-stop-1x1",
-    "filePath": "assets/icon-stop-1x1.png"
+    "filePath": "assets/icons/icon-stop-1x1.png"
   },
   {
     "id": "icon-sun-1x1",
-    "filePath": "assets/icon-sun-1x1.png"
+    "filePath": "assets/icons/icon-sun-1x1.png"
   },
   {
     "id": "icon-sword-1x1",
-    "filePath": "assets/icon-sword-1x1.png"
+    "filePath": "assets/icons/icon-sword-1x1.png"
   },
   {
     "id": "icon-tag-2x2",
-    "filePath": "assets/icon-tag-2x2.png"
+    "filePath": "assets/icons/icon-tag-2x2.png"
   },
   {
     "id": "icon-target-1x1",
-    "filePath": "assets/icon-target-1x1.png"
+    "filePath": "assets/icons/icon-target-1x1.png"
   },
   {
     "id": "icon-terminal-2x2",
-    "filePath": "assets/icon-terminal-2x2.png"
+    "filePath": "assets/icons/icon-terminal-2x2.png"
   },
   {
     "id": "icon-train-3x3",
-    "filePath": "assets/icon-train-3x3.png"
+    "filePath": "assets/icons/icon-train-3x3.png"
   },
   {
     "id": "icon-tree-1x1",
-    "filePath": "assets/icon-tree-1x1.png"
+    "filePath": "assets/icons/icon-tree-1x1.png"
   },
   {
     "id": "icon-tree-2x2",
-    "filePath": "assets/icon-tree-2x2.png"
+    "filePath": "assets/icons/icon-tree-2x2.png"
   },
   {
     "id": "icon-tree-3x3",
-    "filePath": "assets/icon-tree-3x3.png"
+    "filePath": "assets/icons/icon-tree-3x3.png"
   },
   {
     "id": "icon-trophy-2x2",
-    "filePath": "assets/icon-trophy-2x2.png"
+    "filePath": "assets/icons/icon-trophy-2x2.png"
   },
   {
     "id": "icon-truck-3x3",
-    "filePath": "assets/icon-truck-3x3.png"
+    "filePath": "assets/icons/icon-truck-3x3.png"
   },
   {
     "id": "icon-unlock-1x1",
-    "filePath": "assets/icon-unlock-1x1.png"
+    "filePath": "assets/icons/icon-unlock-1x1.png"
   },
   {
     "id": "icon-user-1x1",
-    "filePath": "assets/icon-user-1x1.png"
+    "filePath": "assets/icons/icon-user-1x1.png"
   },
   {
     "id": "icon-user-3x3",
-    "filePath": "assets/icon-user-3x3.png"
+    "filePath": "assets/icons/icon-user-3x3.png"
   },
   {
     "id": "icon-users-1x1",
-    "filePath": "assets/icon-users-1x1.png"
+    "filePath": "assets/icons/icon-users-1x1.png"
   },
   {
     "id": "icon-users-3x3",
-    "filePath": "assets/icon-users-3x3.png"
+    "filePath": "assets/icons/icon-users-3x3.png"
   },
   {
     "id": "icon-vault-3x3",
-    "filePath": "assets/icon-vault-3x3.png"
+    "filePath": "assets/icons/icon-vault-3x3.png"
   },
   {
     "id": "icon-virus-3x3",
-    "filePath": "assets/icon-virus-3x3.png"
+    "filePath": "assets/icons/icon-virus-3x3.png"
   },
   {
     "id": "icon-wand-1x1",
-    "filePath": "assets/icon-wand-1x1.png"
+    "filePath": "assets/icons/icon-wand-1x1.png"
   },
   {
     "id": "icon-wand-2x2",
-    "filePath": "assets/icon-wand-2x2.png"
+    "filePath": "assets/icons/icon-wand-2x2.png"
   },
   {
     "id": "icon-wand-3x3",
-    "filePath": "assets/icon-wand-3x3.png"
+    "filePath": "assets/icons/icon-wand-3x3.png"
   },
   {
     "id": "icon-warning-2x2",
-    "filePath": "assets/icon-warning-2x2.png"
+    "filePath": "assets/icons/icon-warning-2x2.png"
   },
   {
     "id": "icon-warning-3x3",
-    "filePath": "assets/icon-warning-3x3.png"
+    "filePath": "assets/icons/icon-warning-3x3.png"
   },
   {
     "id": "icon-water-3x3",
-    "filePath": "assets/icon-water-3x3.png"
+    "filePath": "assets/icons/icon-water-3x3.png"
   },
   {
     "id": "icon-wave-1x1",
-    "filePath": "assets/icon-wave-1x1.png"
+    "filePath": "assets/icons/icon-wave-1x1.png"
   },
   {
     "id": "icon-wave-2x2",
-    "filePath": "assets/icon-wave-2x2.png"
+    "filePath": "assets/icons/icon-wave-2x2.png"
   },
   {
     "id": "icon-wave-3x3",
-    "filePath": "assets/icon-wave-3x3.png"
+    "filePath": "assets/icons/icon-wave-3x3.png"
   },
   {
     "id": "icon-wifi-2x2",
-    "filePath": "assets/icon-wifi-2x2.png"
+    "filePath": "assets/icons/icon-wifi-2x2.png"
   },
   {
     "id": "icon-wrench-1x1",
-    "filePath": "assets/icon-wrench-1x1.png"
+    "filePath": "assets/icons/icon-wrench-1x1.png"
   },
   {
     "id": "icon-yinyang-1x1",
-    "filePath": "assets/icon-yinyang-1x1.png"
+    "filePath": "assets/icons/icon-yinyang-1x1.png"
   },
   {
     "id": "icon-yinyang-2x2",
-    "filePath": "assets/icon-yinyang-2x2.png"
+    "filePath": "assets/icons/icon-yinyang-2x2.png"
   },
   {
     "id": "icon-yinyang-3x3",
-    "filePath": "assets/icon-yinyang-3x3.png"
+    "filePath": "assets/icons/icon-yinyang-3x3.png"
   },
   {
     "id": "ind-airlock-3x2",
-    "filePath": "assets/ind-airlock-3x2.png"
+    "filePath": "assets/deco/ind-airlock-3x2.png"
   },
   {
     "id": "ind-assembler-4x4",
-    "filePath": "assets/ind-assembler-4x4.png"
+    "filePath": "assets/deco/ind-assembler-4x4.png"
   },
   {
     "id": "ind-barrel-1x1",
-    "filePath": "assets/ind-barrel-1x1.png"
+    "filePath": "assets/deco/ind-barrel-1x1.png"
   },
   {
     "id": "ind-beam-2x1",
-    "filePath": "assets/ind-beam-2x1.png"
+    "filePath": "assets/deco/ind-beam-2x1.png"
   },
   {
     "id": "ind-board-3x2",
-    "filePath": "assets/ind-board-3x2.png"
+    "filePath": "assets/deco/ind-board-3x2.png"
   },
   {
     "id": "ind-boiler-2x2",
-    "filePath": "assets/ind-boiler-2x2.png"
+    "filePath": "assets/deco/ind-boiler-2x2.png"
   },
   {
     "id": "ind-bolt-1x1",
-    "filePath": "assets/ind-bolt-1x1.png"
+    "filePath": "assets/deco/ind-bolt-1x1.png"
   },
   {
     "id": "ind-button-1x1",
-    "filePath": "assets/ind-button-1x1.png"
+    "filePath": "assets/deco/ind-button-1x1.png"
   },
   {
     "id": "ind-cabinet-2x2",
-    "filePath": "assets/ind-cabinet-2x2.png"
+    "filePath": "assets/deco/ind-cabinet-2x2.png"
   },
   {
     "id": "ind-chimney-1x3",
-    "filePath": "assets/ind-chimney-1x3.png"
+    "filePath": "assets/deco/ind-chimney-1x3.png"
   },
   {
     "id": "ind-conduit-1x1",
-    "filePath": "assets/ind-conduit-1x1.png"
+    "filePath": "assets/deco/ind-conduit-1x1.png"
   },
   {
     "id": "ind-console-3x2",
-    "filePath": "assets/ind-console-3x2.png"
+    "filePath": "assets/deco/ind-console-3x2.png"
   },
   {
     "id": "ind-conveyor-2x1",
-    "filePath": "assets/ind-conveyor-2x1.png"
+    "filePath": "assets/deco/ind-conveyor-2x1.png"
   },
   {
     "id": "ind-cooling-3x3",
-    "filePath": "assets/ind-cooling-3x3.png"
+    "filePath": "assets/deco/ind-cooling-3x3.png"
   },
   {
     "id": "ind-core-4x4",
-    "filePath": "assets/ind-core-4x4.png"
+    "filePath": "assets/deco/ind-core-4x4.png"
   },
   {
     "id": "ind-crane-1x3",
-    "filePath": "assets/ind-crane-1x3.png"
+    "filePath": "assets/deco/ind-crane-1x3.png"
   },
   {
     "id": "ind-crane-3x3",
-    "filePath": "assets/ind-crane-3x3.png"
+    "filePath": "assets/deco/ind-crane-3x3.png"
   },
   {
     "id": "ind-crate-2x1",
-    "filePath": "assets/ind-crate-2x1.png"
+    "filePath": "assets/deco/ind-crate-2x1.png"
   },
   {
     "id": "ind-crate-2x2",
-    "filePath": "assets/ind-crate-2x2.png"
+    "filePath": "assets/deco/ind-crate-2x2.png"
   },
   {
     "id": "ind-door-2x2",
-    "filePath": "assets/ind-door-2x2.png"
+    "filePath": "assets/deco/ind-door-2x2.png"
   },
   {
     "id": "ind-duct-2x1",
-    "filePath": "assets/ind-duct-2x1.png"
+    "filePath": "assets/deco/ind-duct-2x1.png"
   },
   {
     "id": "ind-fan-2x2",
-    "filePath": "assets/ind-fan-2x2.png"
+    "filePath": "assets/deco/ind-fan-2x2.png"
   },
   {
     "id": "ind-furnace-3x2",
-    "filePath": "assets/ind-furnace-3x2.png"
+    "filePath": "assets/deco/ind-furnace-3x2.png"
   },
   {
     "id": "ind-gauge-1x1",
-    "filePath": "assets/ind-gauge-1x1.png"
+    "filePath": "assets/deco/ind-gauge-1x1.png"
   },
   {
     "id": "ind-gear-1x1",
-    "filePath": "assets/ind-gear-1x1.png"
+    "filePath": "assets/deco/ind-gear-1x1.png"
   },
   {
     "id": "ind-generator-2x2",
-    "filePath": "assets/ind-generator-2x2.png"
+    "filePath": "assets/deco/ind-generator-2x2.png"
   },
   {
     "id": "ind-junction-2x1",
-    "filePath": "assets/ind-junction-2x1.png"
+    "filePath": "assets/deco/ind-junction-2x1.png"
   },
   {
     "id": "ind-ladder-1x2",
-    "filePath": "assets/ind-ladder-1x2.png"
+    "filePath": "assets/deco/ind-ladder-1x2.png"
   },
   {
     "id": "ind-lamp-1x2",
-    "filePath": "assets/ind-lamp-1x2.png"
+    "filePath": "assets/deco/ind-lamp-1x2.png"
   },
   {
     "id": "ind-locker-1x2",
-    "filePath": "assets/ind-locker-1x2.png"
+    "filePath": "assets/deco/ind-locker-1x2.png"
   },
   {
     "id": "ind-motor-2x2",
-    "filePath": "assets/ind-motor-2x2.png"
+    "filePath": "assets/deco/ind-motor-2x2.png"
   },
   {
     "id": "ind-panel-2x1",
-    "filePath": "assets/ind-panel-2x1.png"
+    "filePath": "assets/deco/ind-panel-2x1.png"
   },
   {
     "id": "ind-pipe-1x2",
-    "filePath": "assets/ind-pipe-1x2.png"
+    "filePath": "assets/deco/ind-pipe-1x2.png"
   },
   {
     "id": "ind-pipe-1x3",
-    "filePath": "assets/ind-pipe-1x3.png"
+    "filePath": "assets/deco/ind-pipe-1x3.png"
   },
   {
     "id": "ind-pipe-2x1",
-    "filePath": "assets/ind-pipe-2x1.png"
+    "filePath": "assets/deco/ind-pipe-2x1.png"
   },
   {
     "id": "ind-pipe-bank-3x2",
-    "filePath": "assets/ind-pipe-bank-3x2.png"
+    "filePath": "assets/deco/ind-pipe-bank-3x2.png"
   },
   {
     "id": "ind-pipe-cap-1x1",
-    "filePath": "assets/ind-pipe-cap-1x1.png"
+    "filePath": "assets/deco/ind-pipe-cap-1x1.png"
   },
   {
     "id": "ind-plant-4x4",
-    "filePath": "assets/ind-plant-4x4.png"
+    "filePath": "assets/deco/ind-plant-4x4.png"
   },
   {
     "id": "ind-pump-1x2",
-    "filePath": "assets/ind-pump-1x2.png"
+    "filePath": "assets/deco/ind-pump-1x2.png"
   },
   {
     "id": "ind-rack-1x2",
-    "filePath": "assets/ind-rack-1x2.png"
+    "filePath": "assets/deco/ind-rack-1x2.png"
   },
   {
     "id": "ind-radiator-3x2",
-    "filePath": "assets/ind-radiator-3x2.png"
+    "filePath": "assets/deco/ind-radiator-3x2.png"
   },
   {
     "id": "ind-reactor-3x3",
-    "filePath": "assets/ind-reactor-3x3.png"
+    "filePath": "assets/deco/ind-reactor-3x3.png"
   },
   {
     "id": "ind-server-1x3",
-    "filePath": "assets/ind-server-1x3.png"
+    "filePath": "assets/deco/ind-server-1x3.png"
   },
   {
     "id": "ind-server-3x3",
-    "filePath": "assets/ind-server-3x3.png"
+    "filePath": "assets/deco/ind-server-3x3.png"
   },
   {
     "id": "ind-stack-1x2",
-    "filePath": "assets/ind-stack-1x2.png"
+    "filePath": "assets/deco/ind-stack-1x2.png"
   },
   {
     "id": "ind-storage-4x4",
-    "filePath": "assets/ind-storage-4x4.png"
+    "filePath": "assets/deco/ind-storage-4x4.png"
   },
   {
     "id": "ind-tank-2x2",
-    "filePath": "assets/ind-tank-2x2.png"
+    "filePath": "assets/deco/ind-tank-2x2.png"
   },
   {
     "id": "ind-terminal-1x2",
-    "filePath": "assets/ind-terminal-1x2.png"
+    "filePath": "assets/deco/ind-terminal-1x2.png"
   },
   {
     "id": "ind-valve-1x1",
-    "filePath": "assets/ind-valve-1x1.png"
+    "filePath": "assets/deco/ind-valve-1x1.png"
   },
   {
     "id": "ind-warning-2x1",
-    "filePath": "assets/ind-warning-2x1.png"
+    "filePath": "assets/deco/ind-warning-2x1.png"
   },
   {
     "id": "logi-assembler-2x2",
-    "filePath": "assets/logi-assembler-2x2.png"
+    "filePath": "assets/deco/logi-assembler-2x2.png"
   },
   {
     "id": "logi-assembler-3x3",
-    "filePath": "assets/logi-assembler-3x3.png"
+    "filePath": "assets/deco/logi-assembler-3x3.png"
   },
   {
     "id": "logi-balancer-3x1",
-    "filePath": "assets/logi-balancer-3x1.png"
+    "filePath": "assets/deco/logi-balancer-3x1.png"
   },
   {
     "id": "logi-belt-1x2",
-    "filePath": "assets/logi-belt-1x2.png"
+    "filePath": "assets/deco/logi-belt-1x2.png"
   },
   {
     "id": "logi-belt-2x1",
-    "filePath": "assets/logi-belt-2x1.png"
+    "filePath": "assets/deco/logi-belt-2x1.png"
   },
   {
     "id": "logi-belt-3x1",
-    "filePath": "assets/logi-belt-3x1.png"
+    "filePath": "assets/deco/logi-belt-3x1.png"
   },
   {
     "id": "logi-buffer-2x2",
-    "filePath": "assets/logi-buffer-2x2.png"
+    "filePath": "assets/deco/logi-buffer-2x2.png"
   },
   {
     "id": "logi-drill-1x2",
-    "filePath": "assets/logi-drill-1x2.png"
+    "filePath": "assets/deco/logi-drill-1x2.png"
   },
   {
     "id": "logi-drill-2x2",
-    "filePath": "assets/logi-drill-2x2.png"
+    "filePath": "assets/deco/logi-drill-2x2.png"
   },
   {
     "id": "logi-drone-station-2x2",
-    "filePath": "assets/logi-drone-station-2x2.png"
+    "filePath": "assets/deco/logi-drone-station-2x2.png"
   },
   {
     "id": "logi-extractor-2x2",
-    "filePath": "assets/logi-extractor-2x2.png"
+    "filePath": "assets/deco/logi-extractor-2x2.png"
   },
   {
     "id": "logi-filter-2x2",
-    "filePath": "assets/logi-filter-2x2.png"
+    "filePath": "assets/deco/logi-filter-2x2.png"
   },
   {
     "id": "logi-hopper-2x2",
-    "filePath": "assets/logi-hopper-2x2.png"
+    "filePath": "assets/deco/logi-hopper-2x2.png"
   },
   {
     "id": "logi-loader-2x2",
-    "filePath": "assets/logi-loader-2x2.png"
+    "filePath": "assets/deco/logi-loader-2x2.png"
   },
   {
     "id": "logi-merger-2x2",
-    "filePath": "assets/logi-merger-2x2.png"
+    "filePath": "assets/deco/logi-merger-2x2.png"
   },
   {
     "id": "logi-pump-1x2",
-    "filePath": "assets/logi-pump-1x2.png"
+    "filePath": "assets/deco/logi-pump-1x2.png"
   },
   {
     "id": "logi-pump-2x2",
-    "filePath": "assets/logi-pump-2x2.png"
+    "filePath": "assets/deco/logi-pump-2x2.png"
   },
   {
     "id": "logi-silo-2x2",
-    "filePath": "assets/logi-silo-2x2.png"
+    "filePath": "assets/deco/logi-silo-2x2.png"
   },
   {
     "id": "logi-silo-2x3",
-    "filePath": "assets/logi-silo-2x3.png"
+    "filePath": "assets/deco/logi-silo-2x3.png"
   },
   {
     "id": "logi-silo-3x3",
-    "filePath": "assets/logi-silo-3x3.png"
+    "filePath": "assets/deco/logi-silo-3x3.png"
   },
   {
     "id": "logi-smelter-2x2",
-    "filePath": "assets/logi-smelter-2x2.png"
+    "filePath": "assets/deco/logi-smelter-2x2.png"
   },
   {
     "id": "logi-smelter-3x3",
-    "filePath": "assets/logi-smelter-3x3.png"
+    "filePath": "assets/deco/logi-smelter-3x3.png"
   },
   {
     "id": "logi-sorter-2x2",
-    "filePath": "assets/logi-sorter-2x2.png"
+    "filePath": "assets/deco/logi-sorter-2x2.png"
   },
   {
     "id": "logi-sorter-3x3",
-    "filePath": "assets/logi-sorter-3x3.png"
+    "filePath": "assets/deco/logi-sorter-3x3.png"
   },
   {
     "id": "logi-splitter-2x2",
-    "filePath": "assets/logi-splitter-2x2.png"
+    "filePath": "assets/deco/logi-splitter-2x2.png"
   },
   {
     "id": "logi-splitter-3x3",
-    "filePath": "assets/logi-splitter-3x3.png"
+    "filePath": "assets/deco/logi-splitter-3x3.png"
   },
   {
     "id": "logi-unloader-2x2",
-    "filePath": "assets/logi-unloader-2x2.png"
+    "filePath": "assets/deco/logi-unloader-2x2.png"
   },
   {
     "id": "jar-ash-1x1",
@@ -27661,135 +28453,135 @@ var ICON_FILES = [
   },
   {
     "id": "probs-assembler-arm-3x3",
-    "filePath": "assets/probs-assembler-arm-3x3.png"
+    "filePath": "assets/block/probs-assembler-arm-3x3.png"
   },
   {
     "id": "probs-bio-canister-1x1",
-    "filePath": "assets/probs-bio-canister-1x1.png"
+    "filePath": "assets/block/probs-bio-canister-1x1.png"
   },
   {
     "id": "probs-biohazard-barrel-1x1",
-    "filePath": "assets/probs-biohazard-barrel-1x1.png"
+    "filePath": "assets/block/probs-biohazard-barrel-1x1.png"
   },
   {
     "id": "probs-bioreactor-3x3",
-    "filePath": "assets/probs-bioreactor-3x3.png"
+    "filePath": "assets/block/probs-bioreactor-3x3.png"
   },
   {
     "id": "probs-console-3x3",
-    "filePath": "assets/probs-console-3x3.png"
+    "filePath": "assets/block/probs-console-3x3.png"
   },
   {
     "id": "probs-cooling-tower-3x3",
-    "filePath": "assets/probs-cooling-tower-3x3.png"
+    "filePath": "assets/block/probs-cooling-tower-3x3.png"
   },
   {
     "id": "probs-crate-1x1",
-    "filePath": "assets/probs-crate-1x1.png"
+    "filePath": "assets/block/probs-crate-1x1.png"
   },
   {
     "id": "probs-crate-2x2",
-    "filePath": "assets/probs-crate-2x2.png"
+    "filePath": "assets/block/probs-crate-2x2.png"
   },
   {
     "id": "probs-crate-stack-4x4",
-    "filePath": "assets/probs-crate-stack-4x4.png"
+    "filePath": "assets/block/probs-crate-stack-4x4.png"
   },
   {
     "id": "probs-data-node-1x1",
-    "filePath": "assets/probs-data-node-1x1.png"
+    "filePath": "assets/block/probs-data-node-1x1.png"
   },
   {
     "id": "probs-door-2x2",
-    "filePath": "assets/probs-door-2x2.png"
+    "filePath": "assets/block/probs-door-2x2.png"
   },
   {
     "id": "probs-drone-dock-2x2",
-    "filePath": "assets/probs-drone-dock-2x2.png"
+    "filePath": "assets/block/probs-drone-dock-2x2.png"
   },
   {
     "id": "probs-fan-2x2",
-    "filePath": "assets/probs-fan-2x2.png"
+    "filePath": "assets/block/probs-fan-2x2.png"
   },
   {
     "id": "probs-fusion-core-4x4",
-    "filePath": "assets/probs-fusion-core-4x4.png"
+    "filePath": "assets/block/probs-fusion-core-4x4.png"
   },
   {
     "id": "probs-gate-4x4",
-    "filePath": "assets/probs-gate-4x4.png"
+    "filePath": "assets/block/probs-gate-4x4.png"
   },
   {
     "id": "probs-gene-sequencer-3x3",
-    "filePath": "assets/probs-gene-sequencer-3x3.png"
+    "filePath": "assets/block/probs-gene-sequencer-3x3.png"
   },
   {
     "id": "probs-growth-chamber-4x4",
-    "filePath": "assets/probs-growth-chamber-4x4.png"
+    "filePath": "assets/block/probs-growth-chamber-4x4.png"
   },
   {
     "id": "probs-holo-projector-2x2",
-    "filePath": "assets/probs-holo-projector-2x2.png"
+    "filePath": "assets/block/probs-holo-projector-2x2.png"
   },
   {
     "id": "probs-incubator-2x2",
-    "filePath": "assets/probs-incubator-2x2.png"
+    "filePath": "assets/block/probs-incubator-2x2.png"
   },
   {
     "id": "probs-lab-bench-4x4",
-    "filePath": "assets/probs-lab-bench-4x4.png"
+    "filePath": "assets/block/probs-lab-bench-4x4.png"
   },
   {
     "id": "probs-nutrient-tank-2x2",
-    "filePath": "assets/probs-nutrient-tank-2x2.png"
+    "filePath": "assets/block/probs-nutrient-tank-2x2.png"
   },
   {
     "id": "probs-pipe-junction-2x2",
-    "filePath": "assets/probs-pipe-junction-2x2.png"
+    "filePath": "assets/block/probs-pipe-junction-2x2.png"
   },
   {
     "id": "probs-power-junction-1x1",
-    "filePath": "assets/probs-power-junction-1x1.png"
+    "filePath": "assets/block/probs-power-junction-1x1.png"
   },
   {
     "id": "probs-reactor-core-4x4",
-    "filePath": "assets/probs-reactor-core-4x4.png"
+    "filePath": "assets/block/probs-reactor-core-4x4.png"
   },
   {
     "id": "probs-sample-tube-1x1",
-    "filePath": "assets/probs-sample-tube-1x1.png"
+    "filePath": "assets/block/probs-sample-tube-1x1.png"
   },
   {
     "id": "probs-sensor-1x1",
-    "filePath": "assets/probs-sensor-1x1.png"
+    "filePath": "assets/block/probs-sensor-1x1.png"
   },
   {
     "id": "probs-server-rack-2x2",
-    "filePath": "assets/probs-server-rack-2x2.png"
+    "filePath": "assets/block/probs-server-rack-2x2.png"
   },
   {
     "id": "probs-shelf-3x3",
-    "filePath": "assets/probs-shelf-3x3.png"
+    "filePath": "assets/block/probs-shelf-3x3.png"
   },
   {
     "id": "probs-spore-pod-1x1",
-    "filePath": "assets/probs-spore-pod-1x1.png"
+    "filePath": "assets/block/probs-spore-pod-1x1.png"
   },
   {
     "id": "probs-stasis-pod-3x3",
-    "filePath": "assets/probs-stasis-pod-3x3.png"
+    "filePath": "assets/block/probs-stasis-pod-3x3.png"
   },
   {
     "id": "probs-vent-1x1",
-    "filePath": "assets/probs-vent-1x1.png"
+    "filePath": "assets/block/probs-vent-1x1.png"
   },
   {
     "id": "probs-wall-light-1x1",
-    "filePath": "assets/probs-wall-light-1x1.png"
+    "filePath": "assets/block/probs-wall-light-1x1.png"
   },
   {
     "id": "probs-window-2x2",
-    "filePath": "assets/probs-window-2x2.png"
+    "filePath": "assets/block/probs-window-2x2.png"
   },
   {
     "id": "sensor-alarm-1x1",
@@ -28041,159 +28833,159 @@ var ICON_FILES = [
   },
   {
     "id": "probs-airlock-3x3",
-    "filePath": "assets/probs-airlock-3x3.png"
+    "filePath": "assets/block/probs-airlock-3x3.png"
   },
   {
     "id": "space-airlock-2x2",
-    "filePath": "assets/space-airlock-2x2.png"
+    "filePath": "assets/deco/space-airlock-2x2.png"
   },
   {
     "id": "space-airlock-3x3",
-    "filePath": "assets/space-airlock-3x3.png"
+    "filePath": "assets/deco/space-airlock-3x3.png"
   },
   {
     "id": "space-antenna-1x2",
-    "filePath": "assets/space-antenna-1x2.png"
+    "filePath": "assets/deco/space-antenna-1x2.png"
   },
   {
     "id": "space-antenna-2x2",
-    "filePath": "assets/space-antenna-2x2.png"
+    "filePath": "assets/deco/space-antenna-2x2.png"
   },
   {
     "id": "space-antenna-2x3",
-    "filePath": "assets/space-antenna-2x3.png"
+    "filePath": "assets/deco/space-antenna-2x3.png"
   },
   {
     "id": "space-antenna-array-3x3",
-    "filePath": "assets/space-antenna-array-3x3.png"
+    "filePath": "assets/deco/space-antenna-array-3x3.png"
   },
   {
     "id": "space-boom-1x3",
-    "filePath": "assets/space-boom-1x3.png"
+    "filePath": "assets/deco/space-boom-1x3.png"
   },
   {
     "id": "space-cargo-2x2",
-    "filePath": "assets/space-cargo-2x2.png"
+    "filePath": "assets/deco/space-cargo-2x2.png"
   },
   {
     "id": "space-cargo-3x1",
-    "filePath": "assets/space-cargo-3x1.png"
+    "filePath": "assets/deco/space-cargo-3x1.png"
   },
   {
     "id": "space-dish-2x2",
-    "filePath": "assets/space-dish-2x2.png"
+    "filePath": "assets/deco/space-dish-2x2.png"
   },
   {
     "id": "space-dish-3x3",
-    "filePath": "assets/space-dish-3x3.png"
+    "filePath": "assets/deco/space-dish-3x3.png"
   },
   {
     "id": "space-dock-bay-4x2",
-    "filePath": "assets/space-dock-bay-4x2.png"
+    "filePath": "assets/deco/space-dock-bay-4x2.png"
   },
   {
     "id": "space-dock-clamp-2x2",
-    "filePath": "assets/space-dock-clamp-2x2.png"
+    "filePath": "assets/deco/space-dock-clamp-2x2.png"
   },
   {
     "id": "space-dock-clamp-3x2",
-    "filePath": "assets/space-dock-clamp-3x2.png"
+    "filePath": "assets/deco/space-dock-clamp-3x2.png"
   },
   {
     "id": "space-dome-2x2",
-    "filePath": "assets/space-dome-2x2.png"
+    "filePath": "assets/deco/space-dome-2x2.png"
   },
   {
     "id": "space-dome-3x3",
-    "filePath": "assets/space-dome-3x3.png"
+    "filePath": "assets/deco/space-dome-3x3.png"
   },
   {
     "id": "space-fuel-1x2",
-    "filePath": "assets/space-fuel-1x2.png"
+    "filePath": "assets/deco/space-fuel-1x2.png"
   },
   {
     "id": "space-fuel-2x2",
-    "filePath": "assets/space-fuel-2x2.png"
+    "filePath": "assets/deco/space-fuel-2x2.png"
   },
   {
     "id": "space-habitat-2x2",
-    "filePath": "assets/space-habitat-2x2.png"
+    "filePath": "assets/deco/space-habitat-2x2.png"
   },
   {
     "id": "space-habitat-3x2",
-    "filePath": "assets/space-habitat-3x2.png"
+    "filePath": "assets/deco/space-habitat-3x2.png"
   },
   {
     "id": "space-habitat-4x2",
-    "filePath": "assets/space-habitat-4x2.png"
+    "filePath": "assets/deco/space-habitat-4x2.png"
   },
   {
     "id": "space-navlight-1x1",
-    "filePath": "assets/space-navlight-1x1.png"
+    "filePath": "assets/deco/space-navlight-1x1.png"
   },
   {
     "id": "space-navlight-g-1x1",
-    "filePath": "assets/space-navlight-g-1x1.png"
+    "filePath": "assets/deco/space-navlight-g-1x1.png"
   },
   {
     "id": "space-pedestal-1x2",
-    "filePath": "assets/space-pedestal-1x2.png"
+    "filePath": "assets/deco/space-pedestal-1x2.png"
   },
   {
     "id": "space-probe-1x1",
-    "filePath": "assets/space-probe-1x1.png"
+    "filePath": "assets/deco/space-probe-1x1.png"
   },
   {
     "id": "space-radiator-2x1",
-    "filePath": "assets/space-radiator-2x1.png"
+    "filePath": "assets/deco/space-radiator-2x1.png"
   },
   {
     "id": "space-radiator-3x1",
-    "filePath": "assets/space-radiator-3x1.png"
+    "filePath": "assets/deco/space-radiator-3x1.png"
   },
   {
     "id": "space-rcs-1x1",
-    "filePath": "assets/space-rcs-1x1.png"
+    "filePath": "assets/deco/space-rcs-1x1.png"
   },
   {
     "id": "space-rcs-2x1",
-    "filePath": "assets/space-rcs-2x1.png"
+    "filePath": "assets/deco/space-rcs-2x1.png"
   },
   {
     "id": "space-sat-2x2",
-    "filePath": "assets/space-sat-2x2.png"
+    "filePath": "assets/deco/space-sat-2x2.png"
   },
   {
     "id": "space-sat-3x3",
-    "filePath": "assets/space-sat-3x3.png"
+    "filePath": "assets/deco/space-sat-3x3.png"
   },
   {
     "id": "space-solar-2x2",
-    "filePath": "assets/space-solar-2x2.png"
+    "filePath": "assets/deco/space-solar-2x2.png"
   },
   {
     "id": "space-solar-3x1",
-    "filePath": "assets/space-solar-3x1.png"
+    "filePath": "assets/deco/space-solar-3x1.png"
   },
   {
     "id": "space-solar-3x3",
-    "filePath": "assets/space-solar-3x3.png"
+    "filePath": "assets/deco/space-solar-3x3.png"
   },
   {
     "id": "space-starfield-2x2",
-    "filePath": "assets/space-starfield-2x2.png"
+    "filePath": "assets/deco/space-starfield-2x2.png"
   },
   {
     "id": "space-thruster-1x2",
-    "filePath": "assets/space-thruster-1x2.png"
+    "filePath": "assets/deco/space-thruster-1x2.png"
   },
   {
     "id": "space-thruster-2x1",
-    "filePath": "assets/space-thruster-2x1.png"
+    "filePath": "assets/deco/space-thruster-2x1.png"
   },
   {
     "id": "space-thruster-2x2",
-    "filePath": "assets/space-thruster-2x2.png"
+    "filePath": "assets/deco/space-thruster-2x2.png"
   },
   {
     "id": "tele-cyan-2x2",
@@ -28669,255 +29461,255 @@ var ICON_FILES = [
   },
   {
     "id": "tile-floor-bronze-1x1",
-    "filePath": "assets/tile-floor-bronze-1x1.png"
+    "filePath": "assets/block/tile-floor-bronze-1x1.png"
   },
   {
     "id": "tile-floor-check-1x1",
-    "filePath": "assets/tile-floor-check-1x1.png"
+    "filePath": "assets/block/tile-floor-check-1x1.png"
   },
   {
     "id": "tile-floor-dirt-1x1",
-    "filePath": "assets/tile-floor-dirt-1x1.png"
+    "filePath": "assets/block/tile-floor-dirt-1x1.png"
   },
   {
     "id": "tile-floor-dots-1x1",
-    "filePath": "assets/tile-floor-dots-1x1.png"
+    "filePath": "assets/block/tile-floor-dots-1x1.png"
   },
   {
     "id": "tile-floor-grass-1x1",
-    "filePath": "assets/tile-floor-grass-1x1.png"
+    "filePath": "assets/block/tile-floor-grass-1x1.png"
   },
   {
     "id": "tile-floor-lines-1x1",
-    "filePath": "assets/tile-floor-lines-1x1.png"
+    "filePath": "assets/block/tile-floor-lines-1x1.png"
   },
   {
     "id": "tile-floor-plate-1x1",
-    "filePath": "assets/tile-floor-plate-1x1.png"
+    "filePath": "assets/block/tile-floor-plate-1x1.png"
   },
   {
     "id": "tile-floor-tech-1x1",
-    "filePath": "assets/tile-floor-tech-1x1.png"
+    "filePath": "assets/block/tile-floor-tech-1x1.png"
   },
   {
     "id": "tile-grating-1x1",
-    "filePath": "assets/tile-grating-1x1.png"
+    "filePath": "assets/block/tile-grating-1x1.png"
   },
   {
     "id": "tile-grating-heavy-1x1",
-    "filePath": "assets/tile-grating-heavy-1x1.png"
+    "filePath": "assets/block/tile-grating-heavy-1x1.png"
   },
   {
     "id": "tile-grating-vent-1x1",
-    "filePath": "assets/tile-grating-vent-1x1.png"
+    "filePath": "assets/block/tile-grating-vent-1x1.png"
   },
   {
     "id": "tile-wall-bronze-1x1",
-    "filePath": "assets/tile-wall-bronze-1x1.png"
+    "filePath": "assets/block/tile-wall-bronze-1x1.png"
   },
   {
     "id": "tile-wall-bronze-tile-1x1",
-    "filePath": "assets/tile-wall-bronze-tile-1x1.png"
+    "filePath": "assets/block/tile-wall-bronze-tile-1x1.png"
   },
   {
     "id": "tile-wall-check-1x1",
-    "filePath": "assets/tile-wall-check-1x1.png"
+    "filePath": "assets/block/tile-wall-check-1x1.png"
   },
   {
     "id": "tile-wall-console-1x1",
-    "filePath": "assets/tile-wall-console-1x1.png"
+    "filePath": "assets/block/tile-wall-console-1x1.png"
   },
   {
     "id": "tile-wall-dots-1x1",
-    "filePath": "assets/tile-wall-dots-1x1.png"
+    "filePath": "assets/block/tile-wall-dots-1x1.png"
   },
   {
     "id": "tile-wall-glass-1x1",
-    "filePath": "assets/tile-wall-glass-1x1.png"
+    "filePath": "assets/block/tile-wall-glass-1x1.png"
   },
   {
     "id": "tile-wall-light-1x1",
-    "filePath": "assets/tile-wall-light-1x1.png"
+    "filePath": "assets/block/tile-wall-light-1x1.png"
   },
   {
     "id": "tile-wall-lines-1x1",
-    "filePath": "assets/tile-wall-lines-1x1.png"
+    "filePath": "assets/block/tile-wall-lines-1x1.png"
   },
   {
     "id": "tile-wall-panel-1x1",
-    "filePath": "assets/tile-wall-panel-1x1.png"
+    "filePath": "assets/block/tile-wall-panel-1x1.png"
   },
   {
     "id": "tile-wall-plate-1x1",
-    "filePath": "assets/tile-wall-plate-1x1.png"
+    "filePath": "assets/block/tile-wall-plate-1x1.png"
   },
   {
     "id": "tile-wall-siding-1x1",
-    "filePath": "assets/tile-wall-siding-1x1.png"
+    "filePath": "assets/block/tile-wall-siding-1x1.png"
   },
   {
     "id": "tile-wall-steel-1x1",
-    "filePath": "assets/tile-wall-steel-1x1.png"
+    "filePath": "assets/block/tile-wall-steel-1x1.png"
   },
   {
     "id": "tile-wall-stripe-1x1",
-    "filePath": "assets/tile-wall-stripe-1x1.png"
+    "filePath": "assets/block/tile-wall-stripe-1x1.png"
   },
   {
     "id": "tile-wall-tech-1x1",
-    "filePath": "assets/tile-wall-tech-1x1.png"
+    "filePath": "assets/block/tile-wall-tech-1x1.png"
   },
   {
     "id": "tile-wall-vent-1x1",
-    "filePath": "assets/tile-wall-vent-1x1.png"
+    "filePath": "assets/block/tile-wall-vent-1x1.png"
   },
   {
     "id": "tile-wall-warning-1x1",
-    "filePath": "assets/tile-wall-warning-1x1.png"
+    "filePath": "assets/block/tile-wall-warning-1x1.png"
   },
   {
     "id": "tile-wall-window-1x1",
-    "filePath": "assets/tile-wall-window-1x1.png"
+    "filePath": "assets/block/tile-wall-window-1x1.png"
   },
   {
     "id": "wide-bay-4x2",
-    "filePath": "assets/wide-bay-4x2.png"
+    "filePath": "assets/deco/wide-bay-4x2.png"
   },
   {
     "id": "wide-beam-3x1",
-    "filePath": "assets/wide-beam-3x1.png"
+    "filePath": "assets/deco/wide-beam-3x1.png"
   },
   {
     "id": "wide-beam-4x1",
-    "filePath": "assets/wide-beam-4x1.png"
+    "filePath": "assets/deco/wide-beam-4x1.png"
   },
   {
     "id": "wide-billboard-3x1",
-    "filePath": "assets/wide-billboard-3x1.png"
+    "filePath": "assets/deco/wide-billboard-3x1.png"
   },
   {
     "id": "wide-billboard-4x2",
-    "filePath": "assets/wide-billboard-4x2.png"
+    "filePath": "assets/deco/wide-billboard-4x2.png"
   },
   {
     "id": "wide-bridge-4x1",
-    "filePath": "assets/wide-bridge-4x1.png"
+    "filePath": "assets/deco/wide-bridge-4x1.png"
   },
   {
     "id": "wide-cable-3x1",
-    "filePath": "assets/wide-cable-3x1.png"
+    "filePath": "assets/deco/wide-cable-3x1.png"
   },
   {
     "id": "wide-console-3x1",
-    "filePath": "assets/wide-console-3x1.png"
+    "filePath": "assets/deco/wide-console-3x1.png"
   },
   {
     "id": "wide-console-4x2",
-    "filePath": "assets/wide-console-4x2.png"
+    "filePath": "assets/deco/wide-console-4x2.png"
   },
   {
     "id": "wide-console-alt-3x1",
-    "filePath": "assets/wide-console-alt-3x1.png"
+    "filePath": "assets/deco/wide-console-alt-3x1.png"
   },
   {
     "id": "wide-duct-3x1",
-    "filePath": "assets/wide-duct-3x1.png"
+    "filePath": "assets/deco/wide-duct-3x1.png"
   },
   {
     "id": "wide-gauges-3x2",
-    "filePath": "assets/wide-gauges-3x2.png"
+    "filePath": "assets/deco/wide-gauges-3x2.png"
   },
   {
     "id": "wide-keys-3x1",
-    "filePath": "assets/wide-keys-3x1.png"
+    "filePath": "assets/deco/wide-keys-3x1.png"
   },
   {
     "id": "wide-ladder-1x3",
-    "filePath": "assets/wide-ladder-1x3.png"
+    "filePath": "assets/deco/wide-ladder-1x3.png"
   },
   {
     "id": "wide-level-bar-3x1",
-    "filePath": "assets/wide-level-bar-3x1.png"
+    "filePath": "assets/deco/wide-level-bar-3x1.png"
   },
   {
     "id": "wide-level-tank-2x1",
-    "filePath": "assets/wide-level-tank-2x1.png"
+    "filePath": "assets/deco/wide-level-tank-2x1.png"
   },
   {
     "id": "wide-level-vert-1x1",
-    "filePath": "assets/wide-level-vert-1x1.png"
+    "filePath": "assets/deco/wide-level-vert-1x1.png"
   },
   {
     "id": "wide-level-vert-1x2",
-    "filePath": "assets/wide-level-vert-1x2.png"
+    "filePath": "assets/deco/wide-level-vert-1x2.png"
   },
   {
     "id": "wide-manifold-3x2",
-    "filePath": "assets/wide-manifold-3x2.png"
+    "filePath": "assets/deco/wide-manifold-3x2.png"
   },
   {
     "id": "wide-monitor-bank-4x2",
-    "filePath": "assets/wide-monitor-bank-4x2.png"
+    "filePath": "assets/deco/wide-monitor-bank-4x2.png"
   },
   {
     "id": "wide-pipe-3x1",
-    "filePath": "assets/wide-pipe-3x1.png"
+    "filePath": "assets/deco/wide-pipe-3x1.png"
   },
   {
     "id": "wide-pipe-4x1",
-    "filePath": "assets/wide-pipe-4x1.png"
+    "filePath": "assets/deco/wide-pipe-4x1.png"
   },
   {
     "id": "wide-pipe-coolant-3x1",
-    "filePath": "assets/wide-pipe-coolant-3x1.png"
+    "filePath": "assets/deco/wide-pipe-coolant-3x1.png"
   },
   {
     "id": "wide-rail-3x1",
-    "filePath": "assets/wide-rail-3x1.png"
+    "filePath": "assets/deco/wide-rail-3x1.png"
   },
   {
     "id": "wide-reactor-strip-4x2",
-    "filePath": "assets/wide-reactor-strip-4x2.png"
+    "filePath": "assets/deco/wide-reactor-strip-4x2.png"
   },
   {
     "id": "wide-shelf-3x1",
-    "filePath": "assets/wide-shelf-3x1.png"
+    "filePath": "assets/deco/wide-shelf-3x1.png"
   },
   {
     "id": "wide-sign-2x1",
-    "filePath": "assets/wide-sign-2x1.png"
+    "filePath": "assets/deco/wide-sign-2x1.png"
   },
   {
     "id": "wide-sign-danger-3x1",
-    "filePath": "assets/wide-sign-danger-3x1.png"
+    "filePath": "assets/deco/wide-sign-danger-3x1.png"
   },
   {
     "id": "wide-sign-ok-2x1",
-    "filePath": "assets/wide-sign-ok-2x1.png"
+    "filePath": "assets/deco/wide-sign-ok-2x1.png"
   },
   {
     "id": "wide-status-3x1",
-    "filePath": "assets/wide-status-3x1.png"
+    "filePath": "assets/deco/wide-status-3x1.png"
   },
   {
     "id": "wide-valve-1x1",
-    "filePath": "assets/wide-valve-1x1.png"
+    "filePath": "assets/deco/wide-valve-1x1.png"
   },
   {
     "id": "wide-valve-1x2",
-    "filePath": "assets/wide-valve-1x2.png"
+    "filePath": "assets/deco/wide-valve-1x2.png"
   },
   {
     "id": "wide-valve-2x1",
-    "filePath": "assets/wide-valve-2x1.png"
+    "filePath": "assets/deco/wide-valve-2x1.png"
   },
   {
     "id": "wide-warning-2x1",
-    "filePath": "assets/wide-warning-2x1.png"
+    "filePath": "assets/deco/wide-warning-2x1.png"
   },
   {
     "id": "wide-warning-3x1",
-    "filePath": "assets/wide-warning-3x1.png"
+    "filePath": "assets/deco/wide-warning-3x1.png"
   }
 ];
 

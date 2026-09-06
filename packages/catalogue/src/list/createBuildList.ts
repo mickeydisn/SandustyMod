@@ -49,8 +49,8 @@ export interface BuildList {
     setMirrored(next: boolean): void;
     getCategory(): string;
     setCategory(id: string): void;
-    /** Distinct size tags available for a category (e.g. "1x1", "2x2", "3x2"). */
-    tagsInCategory(categoryId?: string): string[];
+    /** All distinct tags across the catalogue (sizes, subdirectories, ...). */
+    allTags(): string[];
     /** Currently selected tag filters (multi-select). */
     getSelectedTags(): string[];
     setSelectedTags(tags: string[]): void;
@@ -134,11 +134,9 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
             emit("category", { categoryId: id });
         },
 
-        tagsInCategory(id) {
-            const cat = id ?? category;
+        allTags() {
             const set = new Set<string>();
             for (const it of catalogueItems) {
-                if (it.category !== cat) continue;
                 for (const t of it.tags ?? []) set.add(t);
             }
             return [...set].sort();

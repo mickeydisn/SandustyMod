@@ -226,7 +226,26 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         }
 
         const selectedTags = list.getSelectedTags();
-        const availableTags = list.tagsInCategory(categoryId);
+        const availableTags = list.allTags();
+
+        // An item is kept when it passes the optional mod filter and either no
+        // tag is selected or it carries at least one of the selected tags.
+        const matchesTags = (item: CatalogueItem): boolean => {
+            if (options.itemFilter && !options.itemFilter(item)) return false;
+            const itemTags = item.tags ?? [];
+            if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
+                return false;
+            }
+            return true;
+        };
+
+        // Category grid shows only categories that still have matching items.
+        const visibleCategories = list.categories
+            .map((cat) => ({
+                cat,
+                count: list.itemsInCategory(cat.id).filter(matchesTags).length,
+            }))
+            .filter((c) => c.count > 0);
 
         const visible = filterItems(list.catalogueItems, {
             categoryId,
@@ -353,6 +372,44 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                     children: tooltip.label,
                 })
                 : null,
+            availableTags.length > 0
+                ? h(
+                    "div",
+                    {
+                        className:
+                            "w-full flex flex-wrap items-center gap-1 px-4 py-1 border-b border-slate-800 bg-black/30",
+                    },
+                    h(
+                        "span",
+                        {
+                            className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
+                        },
+                        "Tags:",
+                    ),
+                    availableTags.map((tag) =>
+                        h(FocusableButton, {
+                            key: tag,
+                            id: `${api.pickerId}-tag-${tag}`,
+                            onActivate: () => api.toggleTag(tag),
+                            className: `text-xs px-2 py-0.5 rounded border ${
+                                selectedTags.includes(tag)
+                                    ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
+                                    : "text-slate-400 border-slate-600"
+                            }`,
+                            children: `${selectedTags.includes(tag) ? "☑" : "☐"} ${tag}`,
+                        })
+                    ),
+                    selectedTags.length > 0
+                        ? h(FocusableButton, {
+                            id: `${api.pickerId}-tags-clear`,
+                            onActivate: () => api.clearTags(),
+                            className:
+                                "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white",
+                            children: "Clear",
+                        })
+                        : null,
+                )
+                : null,
             h(
                 "div",
                 {
@@ -367,90 +424,49 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                             height: `18vh`,
                         },
                     },
-                    list.categories
-                        .filter((cat: { id: string; label: string }) => list.countIn(cat.id) > 0)
-                        .map((cat: { id: string; label: string }) =>
-                            h(FocusableButton, {
-                                key: cat.id,
-                                id: `${api.pickerId}-cat-${cat.id}`,
-                                onActivate: () => {
-                                    // Jump back to the top before switching category.
-                                    savedScrollRef.current = 0;
-                                    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-                                    api.chooseCategory(cat.id);
-                                },
-                                className: `text-xs px-2 py-0.5 rounded border w-[100px] ${
-                                    cat.id === categoryId
-                                        ? "text-[#ffe700] border-yellow-400"
-                                        : "text-slate-400 border-slate-600"
-                                }`,
-                                children: `${cat.label} ${list.countIn(cat.id)}`,
-                            })
-                        ),
-                ),
-                availableTags.length > 0
-                    ? h(
-                        "div",
-                        {
-                            className:
-                                "w-full flex flex-wrap items-center gap-1 px-4 py-1 border-b border-slate-800 bg-black/30",
-                        },
-                        h(
-                            "span",
-                            {
-                                className:
-                                    "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
+                    visibleCategories.map(({ cat, count }) =>
+                        h(FocusableButton, {
+                            key: cat.id,
+                            id: `${api.pickerId}-cat-${cat.id}`,
+                            onActivate: () => {
+                                // Jump back to the top before switching category.
+                                savedScrollRef.current = 0;
+                                if (scrollRef.current) scrollRef.current.scrollTop = 0;
+                                api.chooseCategory(cat.id);
                             },
-                            "Size:",
-                        ),
-                        availableTags.map((tag) =>
-                            h(FocusableButton, {
-                                key: tag,
-                                id: `${api.pickerId}-tag-${tag}`,
-                                onActivate: () => api.toggleTag(tag),
-                                className: `text-xs px-2 py-0.5 rounded border ${
-                                    selectedTags.includes(tag)
-                                        ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
-                                        : "text-slate-400 border-slate-600"
-                                }`,
-                                children: `${selectedTags.includes(tag) ? "☑" : "☐"} ${tag}`,
-                            })
-                        ),
-                        selectedTags.length > 0
-                            ? h(FocusableButton, {
-                                id: `${api.pickerId}-tags-clear`,
-                                onActivate: () => api.clearTags(),
-                                className:
-                                    "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white",
-                                children: "Clear",
-                            })
-                            : null,
-                    )
-                    : null,
+                            className: `text-xs px-2 py-0.5 rounded border w-[100px] ${
+                                cat.id === categoryId
+                                    ? "text-[#ffe700] border-yellow-400"
+                                    : "text-slate-400 border-slate-600"
+                            }`,
+                            children: `${cat.label} ${count}`,
+                        })
+                    ),
+                ),
+            ),
+            h(
+                "div",
+                {
+                    className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
+                    style: {
+                        height: `18vh`,
+                    },
+                    onScroll: (event: { currentTarget: HTMLElement }) => {
+                        savedScrollRef.current = event.currentTarget.scrollTop;
+                    },
+                    ref: (node: HTMLElement | null) => {
+                        scrollRef.current = node;
+                    },
+                },
                 h(
                     "div",
-                    {
-                        className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
-                        style: {
-                            height: `18vh`,
-                        },
-                        onScroll: (event: { currentTarget: HTMLElement }) => {
-                            savedScrollRef.current = event.currentTarget.scrollTop;
-                        },
-                        ref: (node: HTMLElement | null) => {
-                            scrollRef.current = node;
-                        },
-                    },
-                    h(
-                        "div",
-                        { className: "flex flex-wrap gap-1.5" },
-                        visible.map((item) =>
-                            h(ObjectSwatch, {
-                                key: item.id,
-                                item,
-                                selected: item.id === selected?.id,
-                            })
-                        ),
+                    { className: "flex flex-wrap gap-1.5" },
+                    visible.map((item) =>
+                        h(ObjectSwatch, {
+                            key: item.id,
+                            item,
+                            selected: item.id === selected?.id,
+                        })
                     ),
                 ),
             ),

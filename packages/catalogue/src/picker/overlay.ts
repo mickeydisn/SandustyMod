@@ -89,8 +89,10 @@ export function createPickerOverlay(
 
     const chooseCategory = (categoryId: string) => {
         list.setCategory(categoryId);
-        list.setSelectedTags([]);
-        const item = list.itemsInCategory(categoryId)[0];
+        const tags = list.getSelectedTags();
+        const matches = (it: CatalogueItem): boolean =>
+            tags.length === 0 || tags.some((t) => (it.tags ?? []).includes(t));
+        const item = list.itemsInCategory(categoryId).find(matches);
         if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
         persistIfEnabled();
         repaint?.();
