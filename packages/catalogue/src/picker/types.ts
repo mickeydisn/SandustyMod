@@ -73,6 +73,10 @@ export interface PickerContentApi {
     toggleMirror(): void;
     /** Switch the active category and select its first item. */
     chooseCategory(categoryId: string): void;
+    /** Toggle a size tag filter for the current category (multi-select). */
+    toggleTag(tag: string): void;
+    /** Clear the current size-tag filters. */
+    clearTags(): void;
     /** Register the view's re-render trigger; pass null to clear. */
     setRepaint(fn: (() => void) | null): void;
     /** Register a callback to clear transient UI state (e.g. tooltip); pass null to clear. */

@@ -89,8 +89,21 @@ export function createPickerOverlay(
 
     const chooseCategory = (categoryId: string) => {
         list.setCategory(categoryId);
+        list.setSelectedTags([]);
         const item = list.itemsInCategory(categoryId)[0];
         if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
+        persistIfEnabled();
+        repaint?.();
+    };
+
+    const toggleTag = (tag: string) => {
+        list.toggleTag(tag);
+        persistIfEnabled();
+        repaint?.();
+    };
+
+    const clearTags = () => {
+        list.setSelectedTags([]);
         persistIfEnabled();
         repaint?.();
     };
@@ -104,6 +117,8 @@ export function createPickerOverlay(
         selectItem,
         toggleMirror,
         chooseCategory,
+        toggleTag,
+        clearTags,
         setRepaint(fn) {
             repaint = fn;
         },

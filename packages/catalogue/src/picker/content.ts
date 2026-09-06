@@ -205,6 +205,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             options: {
                 categoryId: string;
                 query: string;
+                tags: string[];
                 itemFilter?: (item: CatalogueItem) => boolean;
             },
         ): CatalogueItem[] {
@@ -212,17 +213,25 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             return items.filter((item) => {
                 if (item.category !== options.categoryId) return false;
                 if (options.itemFilter && !options.itemFilter(item)) return false;
+                const itemTags = item.tags ?? [];
+                if (options.tags.length > 0 && !options.tags.some((t) => itemTags.includes(t))) {
+                    return false;
+                }
                 if (!q) return true;
                 const hay = `${item.label} ${item.id} ${item.description ?? ""} ${
-                    (item.tags ?? []).join(" ")
+                    itemTags.join(" ")
                 }`.toLowerCase();
                 return hay.includes(q);
             });
         }
 
+        const selectedTags = list.getSelectedTags();
+        const availableTags = list.tagsInCategory(categoryId);
+
         const visible = filterItems(list.catalogueItems, {
             categoryId,
             query: search,
+            tags: selectedTags,
             itemFilter: options.itemFilter,
         });
 
@@ -379,6 +388,45 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                             })
                         ),
                 ),
+                availableTags.length > 0
+                    ? h(
+                        "div",
+                        {
+                            className:
+                                "w-full flex flex-wrap items-center gap-1 px-4 py-1 border-b border-slate-800 bg-black/30",
+                        },
+                        h(
+                            "span",
+                            {
+                                className:
+                                    "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
+                            },
+                            "Size:",
+                        ),
+                        availableTags.map((tag) =>
+                            h(FocusableButton, {
+                                key: tag,
+                                id: `${api.pickerId}-tag-${tag}`,
+                                onActivate: () => api.toggleTag(tag),
+                                className: `text-xs px-2 py-0.5 rounded border ${
+                                    selectedTags.includes(tag)
+                                        ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
+                                        : "text-slate-400 border-slate-600"
+                                }`,
+                                children: `${selectedTags.includes(tag) ? "☑" : "☐"} ${tag}`,
+                            })
+                        ),
+                        selectedTags.length > 0
+                            ? h(FocusableButton, {
+                                id: `${api.pickerId}-tags-clear`,
+                                onActivate: () => api.clearTags(),
+                                className:
+                                    "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white",
+                                children: "Clear",
+                            })
+                            : null,
+                    )
+                    : null,
                 h(
                     "div",
                     {

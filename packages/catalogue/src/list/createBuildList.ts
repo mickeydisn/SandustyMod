@@ -49,6 +49,12 @@ export interface BuildList {
     setMirrored(next: boolean): void;
     getCategory(): string;
     setCategory(id: string): void;
+    /** Distinct size tags available for a category (e.g. "1x1", "2x2", "3x2"). */
+    tagsInCategory(categoryId?: string): string[];
+    /** Currently selected tag filters (multi-select). */
+    getSelectedTags(): string[];
+    setSelectedTags(tags: string[]): void;
+    toggleTag(tag: string): void;
     itemsInCategory(id?: string): CatalogueItem[];
     countIn(categoryId: string): number;
     structureType(itemId: string, mirrored?: boolean): string;
@@ -70,6 +76,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
     let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
     let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
     let mirrored = false;
+    let selectedTags: string[] = [];
 
     const listeners: { [K in BuildEventName]: Set<BuildListener<K>> } = {
         select: new Set(),
@@ -77,6 +84,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         remove: new Set(),
         category: new Set(),
         mirror: new Set(),
+        tag: new Set(),
     };
 
     const emit = <K extends BuildEventName>(name: K, event: BuildEventMap[K]) => {
@@ -124,6 +132,34 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         setCategory(id) {
             category = id;
             emit("category", { categoryId: id });
+        },
+
+        tagsInCategory(id) {
+            const cat = id ?? category;
+            const set = new Set<string>();
+            for (const it of catalogueItems) {
+                if (it.category !== cat) continue;
+                for (const t of it.tags ?? []) set.add(t);
+            }
+            return [...set].sort();
+        },
+
+        getSelectedTags: () => selectedTags.slice(),
+
+        setSelectedTags(tags) {
+            selectedTags = tags.filter(
+                (t, i) =>
+                    tags.indexOf(t) === i &&
+                    catalogueItems.some((it) => (it.tags ?? []).includes(t)),
+            );
+            emit("tag", { tags: selectedTags });
+        },
+
+        toggleTag(tag) {
+            const next = selectedTags.includes(tag)
+                ? selectedTags.filter((t) => t !== tag)
+                : [...selectedTags, tag];
+            list.setSelectedTags(next);
         },
 
         itemsInCategory(id) {

@@ -32,29 +32,24 @@ const WALL_HINTS = [
   "panel-wall",
 ];
 
-/** Derive the "<name><size>" category suffix (e.g. "char-2") from an id. */
-function sizeSuffix(id) {
-  if (id.includes("1x1")) return "_1";
-  if (id.includes("2x2")) return "_2";
-  if (id.includes("3x3")) return "_3";
-  return "__";
-}
-
+/**
+ * Derive a clean category name (no size suffix) from a base id.
+ * The sprite's size is captured separately in each item's `tags` field
+ * (e.g. "1x1", "3x2") so categories stay readable in the picker while the
+ * size filter is handled by tags.
+ */
 function categoryFor(id) {
-  const size = sizeSuffix(id);
+  if (id.startsWith("char-")) return "char";
+  if (id.startsWith("icon-arrow-") || id.startsWith("icon-cheveron")) return "arraw";
+  if (id.startsWith("icon-")) return "icon";
+  if (id.startsWith("garden-")) return "garden";
+  if (id.startsWith("home-")) return "home";
+  if (id.startsWith("ind-") || id.startsWith("logi-")) return "indus";
+  if (id.startsWith("wide-")) return "wide";
+  if (id.startsWith("tile")) return "walls";
+  if (id.startsWith("space-") || id.includes("habitat") || id.includes("airlock")) return "space";
 
-  if (id.startsWith("char-")) return "char" + size;
-  if (id.startsWith("icon-arrow-") || id.startsWith("icon-cheveron")) return "arraw" + size;
-  if (id.startsWith("icon-")) return "icon" + size;
-  if (id.startsWith("garden-")) return "garden" + size;
-  if (id.startsWith("home-")) return "home" + size;
-  if (id.startsWith("ind-") || id.startsWith("logi-")) return "indus" + size;
-  if (id.startsWith("logi-")) return "logistic" + size;
-  if (id.startsWith("wide-")) return "wide" + size;
-  if (id.startsWith("tile")) return "walls" + size;
-  if (id.startsWith("space-") || id.includes("habitat") || id.includes("airlock")) return "space" + size;
-
-  return id.split("-")[0] + size;
+  return id.split("-")[0];
 }
 
 function alignFor(id) {
@@ -110,6 +105,7 @@ const items = parsedFiles
       height: p.cellsH * PX,
       filePath: p.path.slice(2),
       align: alignFor(p.baseId),
+      tags: [`${p.cellsW}x${p.cellsH}`],
     };
   })
   .sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
@@ -117,7 +113,7 @@ const items = parsedFiles
 const categoryIds = [...new Set(items.map((i) => i.category))].sort();
 const categories = categoryIds.map((id) => ({
   id,
-  label: id.charAt(0).toUpperCase() + id.slice(2),
+  label: id.charAt(0).toUpperCase() + id.slice(1),
 }));
 
 // The catalogue always needs an "icons" menu entry; reuse whichever asset
@@ -143,7 +139,7 @@ import type { CatalogueCategory, CatalogueItem } from "@sandmd/catalogue";
 export const ICON_CATEGORIES: CatalogueCategory[] = ${JSON.stringify(categories, null, 2)};
 
 export const ICON_ITEMS: CatalogueItem[] = ${JSON.stringify(
-  items.map(({ id, label, category, width, height, filePath, align }) => ({
+  items.map(({ id, label, category, width, height, filePath, align, tags }) => ({
     id,
     label,
     category,
@@ -151,6 +147,7 @@ export const ICON_ITEMS: CatalogueItem[] = ${JSON.stringify(
     height,
     filePath,
     align,
+    tags,
     description: "Decorative. No collision.",
   })),
   null,

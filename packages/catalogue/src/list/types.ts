@@ -5,7 +5,7 @@
 
 import { CatalogueItem } from "@sandmd/catalogue";
 
-export type BuildEventName = "select" | "place" | "remove" | "category" | "mirror";
+export type BuildEventName = "select" | "place" | "remove" | "category" | "mirror" | "tag";
 
 export interface CatalogueCategory {
     id: string;
@@ -38,6 +38,7 @@ export interface BuildEventMap {
     remove: PlacedPayload;
     category: { categoryId: string };
     mirror: { mirrored: boolean };
+    tag: { tags: string[] };
 }
 
 export type BuildListener<K extends BuildEventName = BuildEventName> = (
