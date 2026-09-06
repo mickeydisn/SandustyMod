@@ -152,7 +152,7 @@ export interface SandkitApi {
             name: string,
             fn: (payload: unknown) => void,
             opts?: { guard?: { elementType: TElementType } },
-        ): void;
+        ): () => void;
     };
     hooks: {
         intercept(

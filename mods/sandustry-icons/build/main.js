@@ -49,14 +49,18 @@ async function loadSpriteMap(modId, entries, idPrefix) {
 
 // ../../packages/catalogue/src/list/createBuildList.ts
 var MIRROR_SUFFIX = "~mirrored";
+var itemTypePrefix = (modId) => `${modId}:item/`;
 function typeOfCatalogueItem(modId, itemId, mirrored = false) {
-  return `${modId}:cItem:${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
+  return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
 }
 function itemIdFromType(modId, type) {
-  const prefix = `${modId}:cItem:`;
+  const prefix = itemTypePrefix(modId);
+  console.log("WWWWW= itemIdFromType", modId, type, prefix);
   if (!type.startsWith(prefix)) return null;
   let id = type.slice(prefix.length);
+  console.log("WWWWW= startsWith", id);
   if (id.endsWith(MIRROR_SUFFIX)) id = id.slice(0, -MIRROR_SUFFIX.length);
+  console.log("WWWWW= moror", id);
   return id;
 }
 function findItem(items, id) {
@@ -146,7 +150,7 @@ var createBuildList = (options) => {
         type: used,
         x,
         y,
-        mirrored: type ? type.endsWith("~mirrored") : mirrored
+        mirrored: type ? type.endsWith(MIRROR_SUFFIX) : mirrored
       };
       emit("place", payload);
       return payload;
@@ -159,7 +163,7 @@ var createBuildList = (options) => {
         type,
         x,
         y,
-        mirrored: type.endsWith("~mirrored")
+        mirrored: type.endsWith(MIRROR_SUFFIX)
       };
       emit("remove", payload);
       return payload;
@@ -251,15 +255,15 @@ function createPickerOverlay(options) {
   const pickerId = options.pickerId ?? `${list.modId}/picker`;
   const slot = options.slot ?? "hotbar";
   const title = options.title ?? "Pick item";
-  const width = options.width ?? 850;
   const maxHeight = options.maxHeight ?? 400;
-  const syncIntervalMs = options.syncIntervalMs ?? 100;
+  const syncIntervalMs = options.syncIntervalMs ?? 1e3;
   let pickerState = null;
   let repaint = null;
-  let search = "";
+  const search = "";
   let tooltip = null;
   let tooltipTimer = null;
   let timer = null;
+  let unsubscribe = null;
   let registered = false;
   if (options.persistSelection !== false) restorePickerState(list);
   const unlockTypes = options.unlockTypes ?? ((types) => {
@@ -307,7 +311,6 @@ function createPickerOverlay(options) {
     repaint?.();
   };
   const expand = () => {
-    console.log("ICON MENU EXTEND");
     if (!pickerState?.minimized) return;
     requestScrollRestore();
     pickerState = {
@@ -324,7 +327,6 @@ function createPickerOverlay(options) {
     repaint?.();
   };
   const close = () => {
-    console.log("ICON MENU CLOSE");
     clearTooltip();
     pickerState = null;
     repaint?.();
@@ -358,8 +360,8 @@ function createPickerOverlay(options) {
     const src = spriteSrc(props.item);
     const SWATCH_BOX = 34;
     const MAX_SWATCH_ZOOM = 4;
-    function swatchZoom(width2, height, box = SWATCH_BOX) {
-      const longest = Math.max(width2, height);
+    function swatchZoom(width, height, box = SWATCH_BOX) {
+      const longest = Math.max(width, height);
       if (longest <= 0) return 1;
       return Math.max(1, Math.min(MAX_SWATCH_ZOOM, Math.floor(box / longest)));
     }
@@ -559,7 +561,6 @@ function createPickerOverlay(options) {
         key: cat.id,
         id: `${pickerId}-cat-${cat.id}`,
         onActivate: () => {
-          console.log("SELECT CAT", cat.id);
           list.setCategory(cat.id);
           const next = !list.isMirrored();
           const item = list.itemsInCategory(cat.id)[0];
@@ -599,16 +600,27 @@ function createPickerOverlay(options) {
   const selectedModType = () => {
     const selected = sandkit.api.action.getSelected?.();
     const building = sandkit.enums.ActionType.Building;
-    if (!selected || building != null && selected.type !== building) {
+    console.log("WWWWW= selectedModType", selected, building);
+    if (!selected || !building) {
+      console.log("WWWWW= selectedModType: no selected or no building");
+      return void 0;
+    }
+    if (selected.type !== building) {
+      console.log("WWWWW= selectedModType: not building", selected.types, building);
       return void 0;
     }
     const id = selected.id;
-    console.log(selected);
-    if (!id || !id.startsWith(`${list.modId}:`)) return void 0;
-    return itemIdFromType(list.modId, id) ? id : void 0;
+    if (!id || !id.startsWith(`${list.modId}:`)) {
+      console.log("WWWWW= selectedModType: not mod", id);
+      return void 0;
+    }
+    const type = itemIdFromType(list.modId, id);
+    console.log("WWWWW= selectedModType: type", type);
+    return type ? type : void 0;
   };
   const sync = () => {
     const type = selectedModType();
+    console.log("WWWWW=  sync picker overlay", type, pickerState);
     if (type && !pickerState) {
       const itemId = itemIdFromType(list.modId, type);
       if (itemId) {
@@ -633,11 +645,12 @@ function createPickerOverlay(options) {
     }
   };
   const install = () => {
+    console.log("install picker overlay");
     if (registered) return;
     sandkit.api.ui.overlays.register(slot, pickerId, () => h(Picker, null));
     registered = true;
-    timer = setInterval(sync, syncIntervalMs);
-    timer.unref?.();
+    unsubscribe = sandkit.api.events.on("action:changed", sync);
+    sync();
   };
   install();
   return {
@@ -647,8 +660,8 @@ function createPickerOverlay(options) {
     close,
     sync,
     dispose() {
-      if (timer) clearInterval(timer);
-      timer = null;
+      unsubscribe?.();
+      unsubscribe = null;
       close();
     }
   };
@@ -656,32 +669,6 @@ function createPickerOverlay(options) {
 
 // ../../packages/catalogue/src/strucutre/buildDefinitiont.ts
 function buildStructureDefinition(opts) {
-  const _shapeFull = [
-    [
-      1,
-      1,
-      1,
-      1
-    ],
-    [
-      1,
-      1,
-      1,
-      1
-    ],
-    [
-      1,
-      1,
-      1,
-      1
-    ],
-    [
-      1,
-      1,
-      1,
-      1
-    ]
-  ];
   const makeEmptyShape = (x, y) => Array.from({
     length: y
   }, () => Array(x).fill(0));

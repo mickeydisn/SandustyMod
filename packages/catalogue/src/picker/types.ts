@@ -28,6 +28,11 @@ export interface PickerOverlayOptions {
     maxHeight?: number;
     search?: boolean;
     persistSelection?: boolean;
+    /**
+     * Slow fallback poll interval in ms (default 1000). The picker is primarily
+     * driven by the engine's push `action:changed` event; this timer only guards
+     * against edge cases where the action changes without that event being emitted.
+     */
     syncIntervalMs?: number;
     itemFilter?: (item: CatalogueItem) => boolean;
     priceFor?: (item: CatalogueItem) => PriceTag | null;

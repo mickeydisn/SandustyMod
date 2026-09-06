@@ -18,7 +18,7 @@ import type {
 
 export const MIRROR_SUFFIX = "~mirrored";
 
-const itemTypePrefix = (modId: string): string => `${modId}:cItem:`;
+const itemTypePrefix = (modId: string): string => `${modId}:item/`;
 
 export function typeOfCatalogueItem(modId: string, itemId: string, mirrored = false): string {
     return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
@@ -26,9 +26,12 @@ export function typeOfCatalogueItem(modId: string, itemId: string, mirrored = fa
 
 export function itemIdFromType(modId: string, type: string): string | null {
     const prefix = itemTypePrefix(modId);
+    console.log("WWWWW= itemIdFromType", modId, type, prefix);
     if (!type.startsWith(prefix)) return null;
     let id = type.slice(prefix.length);
+    console.log("WWWWW= startsWith", id);
     if (id.endsWith(MIRROR_SUFFIX)) id = id.slice(0, -MIRROR_SUFFIX.length);
+    console.log("WWWWW= moror", id);
     return id;
 }
 

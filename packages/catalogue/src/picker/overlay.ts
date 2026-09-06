@@ -18,7 +18,10 @@ export function createPickerOverlay(
     const slot = options.slot ?? "hotbar";
     const title = options.title ?? "Pick item";
     const maxHeight = options.maxHeight ?? 400;
-    const syncIntervalMs = options.syncIntervalMs ?? 100;
+    // Slow fallback poll only (see docs_tech/11-action-events-and-picker-without-timer.md).
+    // The picker is driven by the engine's push `action:changed` event; this interval
+    // is just a safety net for any engine path that mutates the action without emitting.
+    const syncIntervalMs = options.syncIntervalMs ?? 1000;
 
     let pickerState: PickerState = null;
     let repaint: (() => void) | null = null;
@@ -26,6 +29,7 @@ export function createPickerOverlay(
     let tooltip: { label: string; x: number; y: number } | null = null;
     let tooltipTimer: ReturnType<typeof setTimeout> | null = null;
     let timer: ReturnType<typeof setInterval> | null = null;
+    let unsubscribe: (() => void) | null = null;
     let registered = false;
 
     if (options.persistSelection !== false) restorePickerState(list);
@@ -469,14 +473,20 @@ export function createPickerOverlay(
     const selectedModType = (): string | undefined => {
         const selected = sandkit.api.action.getSelected?.();
         const building = sandkit.enums.ActionType.Building;
-        if (!selected || (building != null && selected.type !== building)) {
+        console.log("WWWWW= selectedModType", selected, building);
+        if (!selected || !building || selected?.type !== building) {
             return undefined;
         }
         const id = selected.id;
-        if (!id || !id.startsWith(`${list.modId}:`)) return undefined;
-        return itemIdFromType(list.modId, id) ? id : undefined;
+        if (!id || !id.startsWith(`${list.modId}:`)) {
+            return undefined;
+        }
+        const type = itemIdFromType(list.modId, id);
+        console.log("WWWWW= selectedModType: type", type);
+        return type ? type : undefined;
     };
     const sync = () => {
+        console.log("WWWWW=  Sync () ", pickerState);
         const type = selectedModType();
         if (type && !pickerState) {
             const itemId = itemIdFromType(list.modId, type);
@@ -502,11 +512,22 @@ export function createPickerOverlay(
     };
 
     const install = () => {
+        console.log("install picker overlay");
         if (registered) return;
         sandkit.api.ui.overlays.register(slot, pickerId, () => h(Picker, null));
         registered = true;
-        timer = setInterval(sync, syncIntervalMs);
-        timer.unref?.();
+        // Event-driven: the engine emits `action:changed` every time the selected
+        // action changes (select, build-menu pick, deselect). The payload is `{}`,
+        // so `sync` reads the new state via `api.action.getSelected()` itself —
+        // exactly what the old 100 ms poll did. `events.on` returns an unsubscribe.
+        unsubscribe = sandkit.api.events.on("action:changed", sync);
+        // The listener only fires after registration, so run once to catch the
+        // current state (selecting a structure from the build menu).
+        sync();
+        // Slow fallback poll (safe net for engine paths that mutate the action
+        // without emitting — none found in the bundle).
+        // timer = setInterval(sync, syncIntervalMs);
+        // timer.unref?.();
     };
 
     install();
@@ -518,8 +539,10 @@ export function createPickerOverlay(
         close,
         sync,
         dispose() {
-            if (timer) clearInterval(timer);
-            timer = null;
+            unsubscribe?.();
+            unsubscribe = null;
+            // if (timer) clearInterval(timer);
+            // timer = null;
             close();
         },
     };
