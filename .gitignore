@@ -1,5 +1,6 @@
 # Folders starting with "__" — archives, bundles, scraped/downloaded mods, packages
 __*/
+__build*/
 
 # Dotfiles & IDE config (user rule: ignore anything starting with ".")
 .*
