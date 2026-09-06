@@ -27,28 +27,8 @@ export const ICON_CATEGORIES: CatalogueCategory[] = [
     "label": "Bot"
   },
   {
-    "id": "cable",
-    "label": "Cable"
-  },
-  {
     "id": "char",
     "label": "Char"
-  },
-  {
-    "id": "core",
-    "label": "Core"
-  },
-  {
-    "id": "crew",
-    "label": "Crew"
-  },
-  {
-    "id": "debris",
-    "label": "Debris"
-  },
-  {
-    "id": "egg",
-    "label": "Egg"
   },
   {
     "id": "emoji",
@@ -57,10 +37,6 @@ export const ICON_CATEGORIES: CatalogueCategory[] = [
   {
     "id": "fence",
     "label": "Fence"
-  },
-  {
-    "id": "flora",
-    "label": "Flora"
   },
   {
     "id": "garden",
@@ -111,14 +87,6 @@ export const ICON_CATEGORIES: CatalogueCategory[] = [
     "label": "Lever"
   },
   {
-    "id": "pipe",
-    "label": "Pipe"
-  },
-  {
-    "id": "pod",
-    "label": "Pod"
-  },
-  {
     "id": "port",
     "label": "Port"
   },
@@ -131,24 +99,12 @@ export const ICON_CATEGORIES: CatalogueCategory[] = [
     "label": "Probs"
   },
   {
-    "id": "sensor",
-    "label": "Sensor"
-  },
-  {
     "id": "sign",
     "label": "Sign"
   },
   {
     "id": "space",
     "label": "Space"
-  },
-  {
-    "id": "tele",
-    "label": "Tele"
-  },
-  {
-    "id": "totem",
-    "label": "Totem"
   },
   {
     "id": "vert",
@@ -1567,10 +1523,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-atom-1x2.png",
+    "filePath": "assets2/deco/banner-atom-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1580,10 +1537,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-atom-1x3.png",
+    "filePath": "assets2/deco/banner-atom-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1593,10 +1551,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-atom-1x4.png",
+    "filePath": "assets2/deco/banner-atom-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1606,10 +1565,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-bio-1x2.png",
+    "filePath": "assets2/deco/banner-bio-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1619,10 +1579,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-bio-1x3.png",
+    "filePath": "assets2/deco/banner-bio-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1632,10 +1593,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-bio-1x4.png",
+    "filePath": "assets2/deco/banner-bio-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1645,10 +1607,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-blue-1x2.png",
+    "filePath": "assets2/deco/banner-blue-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1658,10 +1621,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-blue-1x3.png",
+    "filePath": "assets2/deco/banner-blue-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1671,10 +1635,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-blue-1x4.png",
+    "filePath": "assets2/deco/banner-blue-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1684,10 +1649,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-bolt-1x2.png",
+    "filePath": "assets2/deco/banner-bolt-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1697,10 +1663,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-bolt-1x3.png",
+    "filePath": "assets2/deco/banner-bolt-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1710,10 +1677,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-bolt-1x4.png",
+    "filePath": "assets2/deco/banner-bolt-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1723,10 +1691,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-diamond-1x2.png",
+    "filePath": "assets2/deco/banner-diamond-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1736,10 +1705,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-diamond-1x3.png",
+    "filePath": "assets2/deco/banner-diamond-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1749,10 +1719,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-diamond-1x4.png",
+    "filePath": "assets2/deco/banner-diamond-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1762,10 +1733,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-flame-1x2.png",
+    "filePath": "assets2/deco/banner-flame-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1775,10 +1747,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-flame-1x3.png",
+    "filePath": "assets2/deco/banner-flame-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1788,10 +1761,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-flame-1x4.png",
+    "filePath": "assets2/deco/banner-flame-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1801,10 +1775,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-gear-1x2.png",
+    "filePath": "assets2/deco/banner-gear-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1814,10 +1789,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-gear-1x3.png",
+    "filePath": "assets2/deco/banner-gear-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1827,10 +1803,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-gear-1x4.png",
+    "filePath": "assets2/deco/banner-gear-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1840,10 +1817,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-green-1x2.png",
+    "filePath": "assets2/deco/banner-green-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1853,10 +1831,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-green-1x3.png",
+    "filePath": "assets2/deco/banner-green-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1866,10 +1845,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-green-1x4.png",
+    "filePath": "assets2/deco/banner-green-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1879,10 +1859,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-red-1x2.png",
+    "filePath": "assets2/deco/banner-red-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1892,10 +1873,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-red-1x3.png",
+    "filePath": "assets2/deco/banner-red-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1905,10 +1887,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-red-1x4.png",
+    "filePath": "assets2/deco/banner-red-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1918,10 +1901,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-skull-1x2.png",
+    "filePath": "assets2/deco/banner-skull-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1931,10 +1915,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-skull-1x3.png",
+    "filePath": "assets2/deco/banner-skull-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1944,10 +1929,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-skull-1x4.png",
+    "filePath": "assets2/deco/banner-skull-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1957,10 +1943,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-spore-1x2.png",
+    "filePath": "assets2/deco/banner-spore-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1970,10 +1957,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-spore-1x3.png",
+    "filePath": "assets2/deco/banner-spore-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1983,10 +1971,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-spore-1x4.png",
+    "filePath": "assets2/deco/banner-spore-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -1996,10 +1985,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-star-1x2.png",
+    "filePath": "assets2/deco/banner-star-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2009,10 +1999,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-star-1x3.png",
+    "filePath": "assets2/deco/banner-star-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2022,10 +2013,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-star-1x4.png",
+    "filePath": "assets2/deco/banner-star-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2035,10 +2027,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-tech-1x2.png",
+    "filePath": "assets2/deco/banner-tech-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2048,10 +2041,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-tech-1x3.png",
+    "filePath": "assets2/deco/banner-tech-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2061,10 +2055,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-tech-1x4.png",
+    "filePath": "assets2/deco/banner-tech-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2074,10 +2069,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-warning-1x2.png",
+    "filePath": "assets2/deco/banner-warning-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2087,10 +2083,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-warning-1x3.png",
+    "filePath": "assets2/deco/banner-warning-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2100,10 +2097,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-warning-1x4.png",
+    "filePath": "assets2/deco/banner-warning-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2113,10 +2111,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/banner-wave-1x2.png",
+    "filePath": "assets2/deco/banner-wave-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2126,10 +2125,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/banner-wave-1x3.png",
+    "filePath": "assets2/deco/banner-wave-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2139,10 +2139,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "banner",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/banner-wave-1x4.png",
+    "filePath": "assets2/deco/banner-wave-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2152,10 +2153,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-alert-1x1.png",
+    "filePath": "assets2/deco/beacon-alert-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2165,10 +2167,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-alert-1x2.png",
+    "filePath": "assets2/deco/beacon-alert-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2178,10 +2181,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-alert-1x3.png",
+    "filePath": "assets2/deco/beacon-alert-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2191,10 +2195,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-amber-1x1.png",
+    "filePath": "assets2/deco/beacon-amber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2204,10 +2209,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-amber-1x2.png",
+    "filePath": "assets2/deco/beacon-amber-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2217,10 +2223,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-amber-1x3.png",
+    "filePath": "assets2/deco/beacon-amber-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2230,10 +2237,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-bio-1x1.png",
+    "filePath": "assets2/deco/beacon-bio-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2243,10 +2251,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-bio-1x2.png",
+    "filePath": "assets2/deco/beacon-bio-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2256,10 +2265,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-bio-1x3.png",
+    "filePath": "assets2/deco/beacon-bio-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2269,10 +2279,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-cyan-1x1.png",
+    "filePath": "assets2/deco/beacon-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2282,10 +2293,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-cyan-1x2.png",
+    "filePath": "assets2/deco/beacon-cyan-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2295,10 +2307,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-cyan-1x3.png",
+    "filePath": "assets2/deco/beacon-cyan-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2308,10 +2321,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-ice-1x1.png",
+    "filePath": "assets2/deco/beacon-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2321,10 +2335,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-ice-1x2.png",
+    "filePath": "assets2/deco/beacon-ice-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2334,10 +2349,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-ice-1x3.png",
+    "filePath": "assets2/deco/beacon-ice-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2347,10 +2363,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-moth-1x1.png",
+    "filePath": "assets2/deco/beacon-moth-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2360,10 +2377,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-moth-1x2.png",
+    "filePath": "assets2/deco/beacon-moth-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2373,10 +2391,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-moth-1x3.png",
+    "filePath": "assets2/deco/beacon-moth-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2386,10 +2405,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-rainbow-1x1.png",
+    "filePath": "assets2/deco/beacon-rainbow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2399,10 +2419,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-rainbow-1x2.png",
+    "filePath": "assets2/deco/beacon-rainbow-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2412,10 +2433,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-rainbow-1x3.png",
+    "filePath": "assets2/deco/beacon-rainbow-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2425,10 +2447,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-spore-1x1.png",
+    "filePath": "assets2/deco/beacon-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2438,10 +2461,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-spore-1x2.png",
+    "filePath": "assets2/deco/beacon-spore-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2451,10 +2475,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-spore-1x3.png",
+    "filePath": "assets2/deco/beacon-spore-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2464,10 +2489,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-strobe-1x1.png",
+    "filePath": "assets2/deco/beacon-strobe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2477,10 +2503,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-strobe-1x2.png",
+    "filePath": "assets2/deco/beacon-strobe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2490,10 +2517,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-strobe-1x3.png",
+    "filePath": "assets2/deco/beacon-strobe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2503,10 +2531,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/beacon-torch-1x1.png",
+    "filePath": "assets2/deco/beacon-torch-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2516,10 +2545,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/beacon-torch-1x2.png",
+    "filePath": "assets2/deco/beacon-torch-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2529,10 +2559,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "beacon",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/beacon-torch-1x3.png",
+    "filePath": "assets2/deco/beacon-torch-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -2542,10 +2573,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-bio-membrane-1x1.png",
+    "filePath": "assets2/block/bg-bio-membrane-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2555,10 +2587,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-blueprint-1x1.png",
+    "filePath": "assets2/block/bg-blueprint-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2568,10 +2601,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-brick-dark-1x1.png",
+    "filePath": "assets2/block/bg-brick-dark-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2581,10 +2615,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-brick-red-1x1.png",
+    "filePath": "assets2/block/bg-brick-red-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2594,10 +2629,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-brick-white-1x1.png",
+    "filePath": "assets2/block/bg-brick-white-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2607,10 +2643,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-cables-1x1.png",
+    "filePath": "assets2/block/bg-cables-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2620,10 +2657,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-carbon-1x1.png",
+    "filePath": "assets2/block/bg-carbon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2633,10 +2671,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-circuit-1x1.png",
+    "filePath": "assets2/block/bg-circuit-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2646,10 +2685,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-concrete-1x1.png",
+    "filePath": "assets2/block/bg-concrete-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2659,10 +2699,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-concrete-crack-1x1.png",
+    "filePath": "assets2/block/bg-concrete-crack-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2672,10 +2713,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-corrugated-1x1.png",
+    "filePath": "assets2/block/bg-corrugated-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2685,10 +2727,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-crate-face-1x1.png",
+    "filePath": "assets2/block/bg-crate-face-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2698,10 +2741,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-diamond-plate-1x1.png",
+    "filePath": "assets2/block/bg-diamond-plate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2711,10 +2755,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-glass-block-1x1.png",
+    "filePath": "assets2/block/bg-glass-block-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2724,10 +2769,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-grime-1x1.png",
+    "filePath": "assets2/block/bg-grime-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2737,10 +2783,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-hex-1x1.png",
+    "filePath": "assets2/block/bg-hex-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2750,10 +2797,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-honeycomb-1x1.png",
+    "filePath": "assets2/block/bg-honeycomb-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2763,10 +2811,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-insulation-1x1.png",
+    "filePath": "assets2/block/bg-insulation-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2776,10 +2825,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-led-grid-1x1.png",
+    "filePath": "assets2/block/bg-led-grid-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2789,10 +2839,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-metal-bronze-1x1.png",
+    "filePath": "assets2/block/bg-metal-bronze-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2802,10 +2853,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-metal-dark-1x1.png",
+    "filePath": "assets2/block/bg-metal-dark-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2815,10 +2867,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-metal-plate-1x1.png",
+    "filePath": "assets2/block/bg-metal-plate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2828,10 +2881,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-metal-rivet-1x1.png",
+    "filePath": "assets2/block/bg-metal-rivet-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2841,10 +2895,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-neon-1x1.png",
+    "filePath": "assets2/block/bg-neon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2854,10 +2909,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-padded-1x1.png",
+    "filePath": "assets2/block/bg-padded-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2867,10 +2923,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-panel-screen-1x1.png",
+    "filePath": "assets2/block/bg-panel-screen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2880,10 +2937,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-panel-steel-1x1.png",
+    "filePath": "assets2/block/bg-panel-steel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2893,10 +2951,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-panel-warning-1x1.png",
+    "filePath": "assets2/block/bg-panel-warning-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2906,10 +2965,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-pipes-1x1.png",
+    "filePath": "assets2/block/bg-pipes-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2919,10 +2979,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-poster-1x1.png",
+    "filePath": "assets2/block/bg-poster-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2932,10 +2993,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-rust-1x1.png",
+    "filePath": "assets2/block/bg-rust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2945,10 +3007,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-spore-1x1.png",
+    "filePath": "assets2/block/bg-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2958,10 +3021,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-stars-1x1.png",
+    "filePath": "assets2/block/bg-stars-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2971,10 +3035,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-stone-1x1.png",
+    "filePath": "assets2/block/bg-stone-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2984,10 +3049,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-stripe-hazard-1x1.png",
+    "filePath": "assets2/block/bg-stripe-hazard-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -2997,10 +3063,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-stripe-red-1x1.png",
+    "filePath": "assets2/block/bg-stripe-red-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3010,10 +3077,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-tile-green-1x1.png",
+    "filePath": "assets2/block/bg-tile-green-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3023,10 +3091,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-tile-lab-1x1.png",
+    "filePath": "assets2/block/bg-tile-lab-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3036,10 +3105,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-tile-white-1x1.png",
+    "filePath": "assets2/block/bg-tile-white-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3049,10 +3119,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-vent-1x1.png",
+    "filePath": "assets2/block/bg-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3062,10 +3133,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-warning-band-1x1.png",
+    "filePath": "assets2/block/bg-warning-band-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3075,10 +3147,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-window-1x1.png",
+    "filePath": "assets2/block/bg-window-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3088,10 +3161,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-window-bars-1x1.png",
+    "filePath": "assets2/block/bg-window-bars-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3101,10 +3175,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bg",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bg-wood-1x1.png",
+    "filePath": "assets2/block/bg-wood-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3114,10 +3189,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-acid-1x1.png",
+    "filePath": "assets2/block/block-acid-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3127,10 +3203,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-asphalt-1x1.png",
+    "filePath": "assets2/block/block-asphalt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3140,10 +3217,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-bio-gel-1x1.png",
+    "filePath": "assets2/block/block-bio-gel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3153,10 +3231,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-brick-1x1.png",
+    "filePath": "assets2/block/block-brick-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3166,10 +3245,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-bronze-1x1.png",
+    "filePath": "assets2/block/block-bronze-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3179,10 +3259,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-carbon-1x1.png",
+    "filePath": "assets2/block/block-carbon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3192,10 +3273,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-ceramic-1x1.png",
+    "filePath": "assets2/block/block-ceramic-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3205,10 +3287,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-checker-1x1.png",
+    "filePath": "assets2/block/block-checker-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3218,10 +3301,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-circuit-1x1.png",
+    "filePath": "assets2/block/block-circuit-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3231,10 +3315,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-cobble-1x1.png",
+    "filePath": "assets2/block/block-cobble-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3244,10 +3329,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-concrete-1x1.png",
+    "filePath": "assets2/block/block-concrete-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3257,10 +3343,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-copper-1x1.png",
+    "filePath": "assets2/block/block-copper-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3270,10 +3357,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-crystal-1x1.png",
+    "filePath": "assets2/block/block-crystal-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3283,10 +3371,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-diamond-1x1.png",
+    "filePath": "assets2/block/block-diamond-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3296,10 +3385,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-dirt-1x1.png",
+    "filePath": "assets2/block/block-dirt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3309,10 +3399,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-glass-1x1.png",
+    "filePath": "assets2/block/block-glass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3322,10 +3413,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-gold-1x1.png",
+    "filePath": "assets2/block/block-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3335,10 +3427,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-grass-1x1.png",
+    "filePath": "assets2/block/block-grass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3348,10 +3441,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-grate-1x1.png",
+    "filePath": "assets2/block/block-grate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3361,10 +3455,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-gravel-1x1.png",
+    "filePath": "assets2/block/block-gravel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3374,10 +3469,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-hazard-1x1.png",
+    "filePath": "assets2/block/block-hazard-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3387,10 +3483,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-hex-1x1.png",
+    "filePath": "assets2/block/block-hex-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3400,10 +3497,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-ice-1x1.png",
+    "filePath": "assets2/block/block-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3413,10 +3511,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-lava-1x1.png",
+    "filePath": "assets2/block/block-lava-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3426,10 +3525,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-marble-1x1.png",
+    "filePath": "assets2/block/block-marble-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3439,10 +3539,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-mesh-1x1.png",
+    "filePath": "assets2/block/block-mesh-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3452,10 +3553,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-moss-1x1.png",
+    "filePath": "assets2/block/block-moss-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3465,10 +3567,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-obsidian-1x1.png",
+    "filePath": "assets2/block/block-obsidian-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3478,10 +3581,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-padded-1x1.png",
+    "filePath": "assets2/block/block-padded-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3491,10 +3595,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-plasma-1x1.png",
+    "filePath": "assets2/block/block-plasma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3504,10 +3609,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-rubber-1x1.png",
+    "filePath": "assets2/block/block-rubber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3517,10 +3623,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-rust-1x1.png",
+    "filePath": "assets2/block/block-rust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3530,10 +3637,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-sand-1x1.png",
+    "filePath": "assets2/block/block-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3543,10 +3651,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-snow-1x1.png",
+    "filePath": "assets2/block/block-snow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3556,10 +3665,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-solar-1x1.png",
+    "filePath": "assets2/block/block-solar-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3569,10 +3679,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-steel-1x1.png",
+    "filePath": "assets2/block/block-steel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3582,10 +3693,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-steel-lite-1x1.png",
+    "filePath": "assets2/block/block-steel-lite-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3595,10 +3707,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-tech-1x1.png",
+    "filePath": "assets2/block/block-tech-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3608,10 +3721,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-vent-1x1.png",
+    "filePath": "assets2/block/block-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3621,10 +3735,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-void-1x1.png",
+    "filePath": "assets2/block/block-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3634,10 +3749,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-warning-1x1.png",
+    "filePath": "assets2/block/block-warning-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3647,10 +3763,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-water-1x1.png",
+    "filePath": "assets2/block/block-water-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3660,10 +3777,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "block",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/block-wood-1x1.png",
+    "filePath": "assets2/block/block-wood-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "block"
     ],
     "description": "Decorative. No collision."
   },
@@ -3673,10 +3791,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-farm-1x1.png",
+    "filePath": "assets2/deco/bot-farm-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3686,10 +3805,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-farm-2x2.png",
+    "filePath": "assets2/deco/bot-farm-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3699,10 +3819,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-farm-3x3.png",
+    "filePath": "assets2/deco/bot-farm-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3712,10 +3833,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-haul-1x1.png",
+    "filePath": "assets2/deco/bot-haul-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3725,10 +3847,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-haul-2x2.png",
+    "filePath": "assets2/deco/bot-haul-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3738,10 +3861,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-haul-3x3.png",
+    "filePath": "assets2/deco/bot-haul-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3751,10 +3875,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-king-1x1.png",
+    "filePath": "assets2/deco/bot-king-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3764,10 +3889,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-king-2x2.png",
+    "filePath": "assets2/deco/bot-king-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3777,10 +3903,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-king-3x3.png",
+    "filePath": "assets2/deco/bot-king-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3790,10 +3917,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-medic-1x1.png",
+    "filePath": "assets2/deco/bot-medic-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3803,10 +3931,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-medic-2x2.png",
+    "filePath": "assets2/deco/bot-medic-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3816,10 +3945,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-medic-3x3.png",
+    "filePath": "assets2/deco/bot-medic-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3829,10 +3959,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-mine-1x1.png",
+    "filePath": "assets2/deco/bot-mine-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3842,10 +3973,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-mine-2x2.png",
+    "filePath": "assets2/deco/bot-mine-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3855,10 +3987,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-mine-3x3.png",
+    "filePath": "assets2/deco/bot-mine-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3868,10 +4001,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-pet-1x1.png",
+    "filePath": "assets2/deco/bot-pet-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3881,10 +4015,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-pet-2x2.png",
+    "filePath": "assets2/deco/bot-pet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3894,10 +4029,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-pet-3x3.png",
+    "filePath": "assets2/deco/bot-pet-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3907,10 +4043,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-scan-1x1.png",
+    "filePath": "assets2/deco/bot-scan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3920,10 +4057,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-scan-2x2.png",
+    "filePath": "assets2/deco/bot-scan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3933,10 +4071,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-scan-3x3.png",
+    "filePath": "assets2/deco/bot-scan-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3946,10 +4085,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-sentry-1x1.png",
+    "filePath": "assets2/deco/bot-sentry-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3959,10 +4099,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-sentry-2x2.png",
+    "filePath": "assets2/deco/bot-sentry-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3972,10 +4113,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-sentry-3x3.png",
+    "filePath": "assets2/deco/bot-sentry-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3985,10 +4127,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-water-1x1.png",
+    "filePath": "assets2/deco/bot-water-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -3998,10 +4141,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-water-2x2.png",
+    "filePath": "assets2/deco/bot-water-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -4011,10 +4155,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-water-3x3.png",
+    "filePath": "assets2/deco/bot-water-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -4024,10 +4169,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/bot-weld-1x1.png",
+    "filePath": "assets2/deco/bot-weld-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -4037,10 +4183,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/bot-weld-2x2.png",
+    "filePath": "assets2/deco/bot-weld-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -4050,218 +4197,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "bot",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/bot-weld-3x3.png",
+    "filePath": "assets2/deco/bot-weld-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-brick-1x1",
-    "label": "Cable Brick 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-brick-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-clip-1x1",
-    "label": "Cable Clip 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-clip-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-coil-1x1",
-    "label": "Cable Coil 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-coil-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-copper-1x1",
-    "label": "Cable Copper 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-copper-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-data-1x1",
-    "label": "Cable Data 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-data-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-fiber-1x1",
-    "label": "Cable Fiber 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-fiber-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-fuse-1x1",
-    "label": "Cable Fuse 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-fuse-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-gold-1x1",
-    "label": "Cable Gold 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-gold-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-ground-1x1",
-    "label": "Cable Ground 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-ground-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-ice-port-1x1",
-    "label": "Cable Ice Port 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-ice-port-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-nerve-1x1",
-    "label": "Cable Nerve 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-nerve-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-nub-1x1",
-    "label": "Cable Nub 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-nub-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-spark-1x1",
-    "label": "Cable Spark 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-spark-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-split-1x1",
-    "label": "Cable Split 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-split-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-triple-1x1",
-    "label": "Cable Triple 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-triple-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "cable-void-1x1",
-    "label": "Cable Void 1x1",
-    "category": "cable",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/cable-void-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -5694,951 +5634,16 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "description": "Decorative. No collision."
   },
   {
-    "id": "core-coil-1x1",
-    "label": "Core Coil 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-coil-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-coil-2x2",
-    "label": "Core Coil 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-coil-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-copper-1x1",
-    "label": "Core Copper 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-copper-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-copper-2x2",
-    "label": "Core Copper 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-copper-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-fusion-1x1",
-    "label": "Core Fusion 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-fusion-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-fusion-2x2",
-    "label": "Core Fusion 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-fusion-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-ice-1x1",
-    "label": "Core Ice 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-ice-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-ice-2x2",
-    "label": "Core Ice 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-ice-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-leaf-1x1",
-    "label": "Core Leaf 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-leaf-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-leaf-2x2",
-    "label": "Core Leaf 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-leaf-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-magma-1x1",
-    "label": "Core Magma 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-magma-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-magma-2x2",
-    "label": "Core Magma 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-magma-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-prism-1x1",
-    "label": "Core Prism 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-prism-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-prism-2x2",
-    "label": "Core Prism 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-prism-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-sand-1x1",
-    "label": "Core Sand 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-sand-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-sand-2x2",
-    "label": "Core Sand 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-sand-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-spark-1x1",
-    "label": "Core Spark 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-spark-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-spark-2x2",
-    "label": "Core Spark 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-spark-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-spore-1x1",
-    "label": "Core Spore 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-spore-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-spore-2x2",
-    "label": "Core Spore 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-spore-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-tesla-1x1",
-    "label": "Core Tesla 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-tesla-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-tesla-2x2",
-    "label": "Core Tesla 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-tesla-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-void-1x1",
-    "label": "Core Void 1x1",
-    "category": "core",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/core-void-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "core-void-2x2",
-    "label": "Core Void 2x2",
-    "category": "core",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/core-void-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-boss-1x2",
-    "label": "Crew Boss 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-boss-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-boss-1x3",
-    "label": "Crew Boss 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-boss-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-botanist-1x2",
-    "label": "Crew Botanist 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-botanist-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-botanist-1x3",
-    "label": "Crew Botanist 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-botanist-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-cook-1x2",
-    "label": "Crew Cook 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-cook-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-cook-1x3",
-    "label": "Crew Cook 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-cook-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-engineer-1x2",
-    "label": "Crew Engineer 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-engineer-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-engineer-1x3",
-    "label": "Crew Engineer 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-engineer-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-miner-1x2",
-    "label": "Crew Miner 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-miner-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-miner-1x3",
-    "label": "Crew Miner 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-miner-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-priest-1x2",
-    "label": "Crew Priest 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-priest-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-priest-1x3",
-    "label": "Crew Priest 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-priest-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-ranger-1x2",
-    "label": "Crew Ranger 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-ranger-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-ranger-1x3",
-    "label": "Crew Ranger 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-ranger-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-scout-1x2",
-    "label": "Crew Scout 1x2",
-    "category": "crew",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/crew-scout-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "crew-scout-1x3",
-    "label": "Crew Scout 1x3",
-    "category": "crew",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/crew-scout-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-anchor-1x1",
-    "label": "Debris Anchor 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-anchor-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-banner-torn-1x1",
-    "label": "Debris Banner Torn 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-banner-torn-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-bone-pile-1x1",
-    "label": "Debris Bone Pile 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-bone-pile-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-brick-1x1",
-    "label": "Debris Brick 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-brick-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-circuit-1x1",
-    "label": "Debris Circuit 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-circuit-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-column-1x1",
-    "label": "Debris Column 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-column-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-crate-bit-1x1",
-    "label": "Debris Crate Bit 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-crate-bit-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-gear-1x1",
-    "label": "Debris Gear 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-gear-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-ice-shard-1x1",
-    "label": "Debris Ice Shard 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-ice-shard-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-mask-bit-1x1",
-    "label": "Debris Mask Bit 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-mask-bit-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-mosaic-1x1",
-    "label": "Debris Mosaic 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-mosaic-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-pipe-bit-1x1",
-    "label": "Debris Pipe Bit 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-pipe-bit-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-sand-drift-1x1",
-    "label": "Debris Sand Drift 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-sand-drift-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-statue-head-1x1",
-    "label": "Debris Statue Head 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-statue-head-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-tile-1x1",
-    "label": "Debris Tile 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-tile-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "debris-urn-1x1",
-    "label": "Debris Urn 1x1",
-    "category": "debris",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/debris-urn-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-crack-1x1",
-    "label": "Egg Crack 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-crack-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-crystal-1x1",
-    "label": "Egg Crystal 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-crystal-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-cyan-1x1",
-    "label": "Egg Cyan 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-cyan-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-gold-1x1",
-    "label": "Egg Gold 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-gold-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-ice-1x1",
-    "label": "Egg Ice 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-ice-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-jelly-1x1",
-    "label": "Egg Jelly 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-jelly-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-magma-1x1",
-    "label": "Egg Magma 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-magma-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-nest-1x1",
-    "label": "Egg Nest 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-nest-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-pink-1x1",
-    "label": "Egg Pink 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-pink-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-royal-1x1",
-    "label": "Egg Royal 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-royal-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-sand-1x1",
-    "label": "Egg Sand 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-sand-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-spore-1x1",
-    "label": "Egg Spore 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-spore-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-spot-1x1",
-    "label": "Egg Spot 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-spot-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-tiny-1x1",
-    "label": "Egg Tiny 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-tiny-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-twin-1x1",
-    "label": "Egg Twin 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-twin-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "egg-void-1x1",
-    "label": "Egg Void 1x1",
-    "category": "egg",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/egg-void-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
     "id": "emoji-alien-1x1",
     "label": "Emoji Alien 1x1",
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-alien-1x1.png",
+    "filePath": "assets2/icons/emoji-alien-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6648,10 +5653,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-alien-2x2.png",
+    "filePath": "assets2/icons/emoji-alien-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6661,10 +5667,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-alien-3x3.png",
+    "filePath": "assets2/icons/emoji-alien-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6674,10 +5681,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-angel-1x1.png",
+    "filePath": "assets2/icons/emoji-angel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6687,10 +5695,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-angel-2x2.png",
+    "filePath": "assets2/icons/emoji-angel-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6700,10 +5709,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-angel-3x3.png",
+    "filePath": "assets2/icons/emoji-angel-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6713,10 +5723,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-angry-1x1.png",
+    "filePath": "assets2/icons/emoji-angry-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6726,10 +5737,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-angry-2x2.png",
+    "filePath": "assets2/icons/emoji-angry-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6739,10 +5751,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-angry-3x3.png",
+    "filePath": "assets2/icons/emoji-angry-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6752,10 +5765,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-cat-1x1.png",
+    "filePath": "assets2/icons/emoji-cat-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6765,10 +5779,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-cat-2x2.png",
+    "filePath": "assets2/icons/emoji-cat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6778,10 +5793,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-cat-3x3.png",
+    "filePath": "assets2/icons/emoji-cat-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6791,10 +5807,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-cool-1x1.png",
+    "filePath": "assets2/icons/emoji-cool-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6804,10 +5821,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-cool-2x2.png",
+    "filePath": "assets2/icons/emoji-cool-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6817,10 +5835,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-cool-3x3.png",
+    "filePath": "assets2/icons/emoji-cool-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6830,10 +5849,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-cry-1x1.png",
+    "filePath": "assets2/icons/emoji-cry-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6843,10 +5863,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-cry-2x2.png",
+    "filePath": "assets2/icons/emoji-cry-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6856,10 +5877,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-cry-3x3.png",
+    "filePath": "assets2/icons/emoji-cry-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6869,10 +5891,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-dead-1x1.png",
+    "filePath": "assets2/icons/emoji-dead-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6882,10 +5905,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-dead-2x2.png",
+    "filePath": "assets2/icons/emoji-dead-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6895,10 +5919,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-dead-3x3.png",
+    "filePath": "assets2/icons/emoji-dead-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6908,10 +5933,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-devil-1x1.png",
+    "filePath": "assets2/icons/emoji-devil-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6921,10 +5947,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-devil-2x2.png",
+    "filePath": "assets2/icons/emoji-devil-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6934,10 +5961,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-devil-3x3.png",
+    "filePath": "assets2/icons/emoji-devil-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6947,10 +5975,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-grin-1x1.png",
+    "filePath": "assets2/icons/emoji-grin-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6960,10 +5989,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-grin-2x2.png",
+    "filePath": "assets2/icons/emoji-grin-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6973,10 +6003,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-grin-3x3.png",
+    "filePath": "assets2/icons/emoji-grin-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6986,10 +6017,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-heart-eyes-1x1.png",
+    "filePath": "assets2/icons/emoji-heart-eyes-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -6999,10 +6031,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-heart-eyes-2x2.png",
+    "filePath": "assets2/icons/emoji-heart-eyes-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7012,10 +6045,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-heart-eyes-3x3.png",
+    "filePath": "assets2/icons/emoji-heart-eyes-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7025,10 +6059,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-kiss-1x1.png",
+    "filePath": "assets2/icons/emoji-kiss-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7038,10 +6073,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-kiss-2x2.png",
+    "filePath": "assets2/icons/emoji-kiss-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7051,10 +6087,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-kiss-3x3.png",
+    "filePath": "assets2/icons/emoji-kiss-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7064,10 +6101,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-laugh-1x1.png",
+    "filePath": "assets2/icons/emoji-laugh-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7077,10 +6115,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-laugh-2x2.png",
+    "filePath": "assets2/icons/emoji-laugh-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7090,10 +6129,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-laugh-3x3.png",
+    "filePath": "assets2/icons/emoji-laugh-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7103,10 +6143,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-love-1x1.png",
+    "filePath": "assets2/icons/emoji-love-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7116,10 +6157,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-love-2x2.png",
+    "filePath": "assets2/icons/emoji-love-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7129,10 +6171,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-love-3x3.png",
+    "filePath": "assets2/icons/emoji-love-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7142,10 +6185,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-mindblown-1x1.png",
+    "filePath": "assets2/icons/emoji-mindblown-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7155,10 +6199,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-mindblown-2x2.png",
+    "filePath": "assets2/icons/emoji-mindblown-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7168,10 +6213,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-mindblown-3x3.png",
+    "filePath": "assets2/icons/emoji-mindblown-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7181,10 +6227,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-money-1x1.png",
+    "filePath": "assets2/icons/emoji-money-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7194,10 +6241,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-money-2x2.png",
+    "filePath": "assets2/icons/emoji-money-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7207,10 +6255,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-money-3x3.png",
+    "filePath": "assets2/icons/emoji-money-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7220,10 +6269,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-nerd-1x1.png",
+    "filePath": "assets2/icons/emoji-nerd-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7233,10 +6283,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-nerd-2x2.png",
+    "filePath": "assets2/icons/emoji-nerd-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7246,10 +6297,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-nerd-3x3.png",
+    "filePath": "assets2/icons/emoji-nerd-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7259,10 +6311,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-nervous-1x1.png",
+    "filePath": "assets2/icons/emoji-nervous-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7272,10 +6325,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-nervous-2x2.png",
+    "filePath": "assets2/icons/emoji-nervous-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7285,10 +6339,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-nervous-3x3.png",
+    "filePath": "assets2/icons/emoji-nervous-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7298,10 +6353,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-party-1x1.png",
+    "filePath": "assets2/icons/emoji-party-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7311,10 +6367,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-party-2x2.png",
+    "filePath": "assets2/icons/emoji-party-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7324,10 +6381,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-party-3x3.png",
+    "filePath": "assets2/icons/emoji-party-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7337,10 +6395,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-robot-1x1.png",
+    "filePath": "assets2/icons/emoji-robot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7350,10 +6409,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-robot-2x2.png",
+    "filePath": "assets2/icons/emoji-robot-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7363,10 +6423,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-robot-3x3.png",
+    "filePath": "assets2/icons/emoji-robot-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7376,10 +6437,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-sad-1x1.png",
+    "filePath": "assets2/icons/emoji-sad-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7389,10 +6451,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-sad-2x2.png",
+    "filePath": "assets2/icons/emoji-sad-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7402,10 +6465,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-sad-3x3.png",
+    "filePath": "assets2/icons/emoji-sad-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7415,10 +6479,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-shocked-1x1.png",
+    "filePath": "assets2/icons/emoji-shocked-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7428,10 +6493,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-shocked-2x2.png",
+    "filePath": "assets2/icons/emoji-shocked-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7441,10 +6507,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-shocked-3x3.png",
+    "filePath": "assets2/icons/emoji-shocked-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7454,10 +6521,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-sick-1x1.png",
+    "filePath": "assets2/icons/emoji-sick-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7467,10 +6535,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-sick-2x2.png",
+    "filePath": "assets2/icons/emoji-sick-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7480,10 +6549,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-sick-3x3.png",
+    "filePath": "assets2/icons/emoji-sick-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7493,10 +6563,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-skull-1x1.png",
+    "filePath": "assets2/icons/emoji-skull-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7506,10 +6577,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-skull-2x2.png",
+    "filePath": "assets2/icons/emoji-skull-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7519,10 +6591,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-skull-3x3.png",
+    "filePath": "assets2/icons/emoji-skull-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7532,10 +6605,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-sleepy-1x1.png",
+    "filePath": "assets2/icons/emoji-sleepy-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7545,10 +6619,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-sleepy-2x2.png",
+    "filePath": "assets2/icons/emoji-sleepy-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7558,10 +6633,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-sleepy-3x3.png",
+    "filePath": "assets2/icons/emoji-sleepy-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7571,10 +6647,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-smile-1x1.png",
+    "filePath": "assets2/icons/emoji-smile-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7584,10 +6661,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-smile-2x2.png",
+    "filePath": "assets2/icons/emoji-smile-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7597,10 +6675,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-smile-3x3.png",
+    "filePath": "assets2/icons/emoji-smile-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7610,10 +6689,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-smirk-1x1.png",
+    "filePath": "assets2/icons/emoji-smirk-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7623,10 +6703,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-smirk-2x2.png",
+    "filePath": "assets2/icons/emoji-smirk-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7636,10 +6717,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-smirk-3x3.png",
+    "filePath": "assets2/icons/emoji-smirk-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7649,10 +6731,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-star-eyes-1x1.png",
+    "filePath": "assets2/icons/emoji-star-eyes-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7662,10 +6745,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-star-eyes-2x2.png",
+    "filePath": "assets2/icons/emoji-star-eyes-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7675,10 +6759,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-star-eyes-3x3.png",
+    "filePath": "assets2/icons/emoji-star-eyes-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7688,10 +6773,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-sunglasses-1x1.png",
+    "filePath": "assets2/icons/emoji-sunglasses-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7701,10 +6787,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-sunglasses-2x2.png",
+    "filePath": "assets2/icons/emoji-sunglasses-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7714,10 +6801,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-sunglasses-3x3.png",
+    "filePath": "assets2/icons/emoji-sunglasses-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7727,10 +6815,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-thinking-1x1.png",
+    "filePath": "assets2/icons/emoji-thinking-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7740,10 +6829,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-thinking-2x2.png",
+    "filePath": "assets2/icons/emoji-thinking-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7753,10 +6843,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-thinking-3x3.png",
+    "filePath": "assets2/icons/emoji-thinking-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7766,10 +6857,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/emoji-wink-1x1.png",
+    "filePath": "assets2/icons/emoji-wink-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7779,10 +6871,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/emoji-wink-2x2.png",
+    "filePath": "assets2/icons/emoji-wink-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7792,10 +6885,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "emoji",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/emoji-wink-3x3.png",
+    "filePath": "assets2/icons/emoji-wink-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -7805,10 +6899,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-amber-1x1.png",
+    "filePath": "assets2/deco/fence-amber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7818,10 +6913,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/fence-amber-2x1.png",
+    "filePath": "assets2/deco/fence-amber-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7831,10 +6927,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-bio-1x1.png",
+    "filePath": "assets2/deco/fence-bio-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7844,10 +6941,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-cyan-1x1.png",
+    "filePath": "assets2/deco/fence-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7857,10 +6955,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-ice-1x1.png",
+    "filePath": "assets2/deco/fence-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7870,10 +6969,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-magma-1x1.png",
+    "filePath": "assets2/deco/fence-magma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7883,10 +6983,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-pink-1x1.png",
+    "filePath": "assets2/deco/fence-pink-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7896,10 +6997,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-red-1x1.png",
+    "filePath": "assets2/deco/fence-red-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -7909,218 +7011,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "fence",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/fence-void-1x1.png",
+    "filePath": "assets2/deco/fence-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-blue-shroom-1x1",
-    "label": "Flora Blue Shroom 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-blue-shroom-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-cave-moss-1x1",
-    "label": "Flora Cave Moss 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-cave-moss-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-cluster-1x1",
-    "label": "Flora Cluster 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-cluster-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-crystal-bloom-1x1",
-    "label": "Flora Crystal Bloom 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-crystal-bloom-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-glow-root-1x1",
-    "label": "Flora Glow Root 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-glow-root-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-glowcap-1x1",
-    "label": "Flora Glowcap 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-glowcap-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-ice-flower-1x1",
-    "label": "Flora Ice Flower 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-ice-flower-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-night-cap-1x1",
-    "label": "Flora Night Cap 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-night-cap-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-pink-shroom-1x1",
-    "label": "Flora Pink Shroom 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-pink-shroom-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-puffball-1x1",
-    "label": "Flora Puffball 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-puffball-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-sand-cactus-1x1",
-    "label": "Flora Sand Cactus 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-sand-cactus-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-shelf-1x1",
-    "label": "Flora Shelf 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-shelf-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-spore-fern-1x1",
-    "label": "Flora Spore Fern 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-spore-fern-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-tall-fungus-1x1",
-    "label": "Flora Tall Fungus 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-tall-fungus-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-tiny-tree-1x1",
-    "label": "Flora Tiny Tree 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-tiny-tree-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "flora-vine-sprout-1x1",
-    "label": "Flora Vine Sprout 1x1",
-    "category": "flora",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/flora-vine-sprout-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8774,10 +7669,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-amber-1x1.png",
+    "filePath": "assets2/deco/gem-amber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8787,10 +7683,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-amber-2x2.png",
+    "filePath": "assets2/deco/gem-amber-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8800,10 +7697,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-cyan-1x1.png",
+    "filePath": "assets2/deco/gem-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8813,10 +7711,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-cyan-2x2.png",
+    "filePath": "assets2/deco/gem-cyan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8826,10 +7725,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-gold-1x1.png",
+    "filePath": "assets2/deco/gem-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8839,10 +7739,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-gold-2x2.png",
+    "filePath": "assets2/deco/gem-gold-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8852,10 +7753,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-ice-1x1.png",
+    "filePath": "assets2/deco/gem-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8865,10 +7767,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-ice-2x2.png",
+    "filePath": "assets2/deco/gem-ice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8878,10 +7781,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-leaf-1x1.png",
+    "filePath": "assets2/deco/gem-leaf-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8891,10 +7795,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-leaf-2x2.png",
+    "filePath": "assets2/deco/gem-leaf-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8904,10 +7809,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-rose-1x1.png",
+    "filePath": "assets2/deco/gem-rose-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8917,10 +7823,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-rose-2x2.png",
+    "filePath": "assets2/deco/gem-rose-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8930,10 +7837,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-ruby-1x1.png",
+    "filePath": "assets2/deco/gem-ruby-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8943,10 +7851,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-ruby-2x2.png",
+    "filePath": "assets2/deco/gem-ruby-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8956,10 +7865,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/gem-void-1x1.png",
+    "filePath": "assets2/deco/gem-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8969,10 +7879,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "gem",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/gem-void-2x2.png",
+    "filePath": "assets2/deco/gem-void-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8982,10 +7893,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-beetle-1x1.png",
+    "filePath": "assets2/deco/glyph-beetle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -8995,10 +7907,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-beetle-2x2.png",
+    "filePath": "assets2/deco/glyph-beetle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9008,10 +7921,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-chip-1x1.png",
+    "filePath": "assets2/deco/glyph-chip-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9021,10 +7935,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-chip-2x2.png",
+    "filePath": "assets2/deco/glyph-chip-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9034,10 +7949,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-eye-1x1.png",
+    "filePath": "assets2/deco/glyph-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9047,10 +7963,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-eye-2x2.png",
+    "filePath": "assets2/deco/glyph-eye-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9060,10 +7977,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-gate-1x1.png",
+    "filePath": "assets2/deco/glyph-gate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9073,10 +7991,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-gate-2x2.png",
+    "filePath": "assets2/deco/glyph-gate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9086,10 +8005,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-gear-sun-1x1.png",
+    "filePath": "assets2/deco/glyph-gear-sun-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9099,10 +8019,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-gear-sun-2x2.png",
+    "filePath": "assets2/deco/glyph-gear-sun-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9112,10 +8033,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-ladder-1x1.png",
+    "filePath": "assets2/deco/glyph-ladder-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9125,10 +8047,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-ladder-2x2.png",
+    "filePath": "assets2/deco/glyph-ladder-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9138,10 +8061,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-mask-1x1.png",
+    "filePath": "assets2/deco/glyph-mask-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9151,10 +8075,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-mask-2x2.png",
+    "filePath": "assets2/deco/glyph-mask-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9164,10 +8089,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-mountain-1x1.png",
+    "filePath": "assets2/deco/glyph-mountain-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9177,10 +8103,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-mountain-2x2.png",
+    "filePath": "assets2/deco/glyph-mountain-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9190,10 +8117,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-river-1x1.png",
+    "filePath": "assets2/deco/glyph-river-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9203,10 +8131,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-river-2x2.png",
+    "filePath": "assets2/deco/glyph-river-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9216,10 +8145,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-scarab-1x1.png",
+    "filePath": "assets2/deco/glyph-scarab-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9229,10 +8159,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-scarab-2x2.png",
+    "filePath": "assets2/deco/glyph-scarab-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9242,10 +8173,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-seed-1x1.png",
+    "filePath": "assets2/deco/glyph-seed-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9255,10 +8187,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-seed-2x2.png",
+    "filePath": "assets2/deco/glyph-seed-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9268,10 +8201,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-spiral-1x1.png",
+    "filePath": "assets2/deco/glyph-spiral-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9281,10 +8215,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-spiral-2x2.png",
+    "filePath": "assets2/deco/glyph-spiral-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9294,10 +8229,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-sun-1x1.png",
+    "filePath": "assets2/deco/glyph-sun-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9307,10 +8243,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-sun-2x2.png",
+    "filePath": "assets2/deco/glyph-sun-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9320,10 +8257,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-twin-moon-1x1.png",
+    "filePath": "assets2/deco/glyph-twin-moon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9333,10 +8271,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-twin-moon-2x2.png",
+    "filePath": "assets2/deco/glyph-twin-moon-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9346,10 +8285,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-void-1x1.png",
+    "filePath": "assets2/deco/glyph-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9359,10 +8299,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-void-2x2.png",
+    "filePath": "assets2/deco/glyph-void-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9372,10 +8313,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/glyph-wave-1x1.png",
+    "filePath": "assets2/deco/glyph-wave-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9385,10 +8327,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "glyph",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/glyph-wave-2x2.png",
+    "filePath": "assets2/deco/glyph-wave-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9398,10 +8341,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-bio-1x2.png",
+    "filePath": "assets2/deco/hatch-bio-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9411,10 +8355,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-bio-2x2.png",
+    "filePath": "assets2/deco/hatch-bio-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9424,10 +8369,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-bronze-1x2.png",
+    "filePath": "assets2/deco/hatch-bronze-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9437,10 +8383,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-bronze-2x2.png",
+    "filePath": "assets2/deco/hatch-bronze-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9450,10 +8397,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-grate-1x2.png",
+    "filePath": "assets2/deco/hatch-grate-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9463,10 +8411,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-grate-2x2.png",
+    "filePath": "assets2/deco/hatch-grate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9476,10 +8425,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-hazard-1x2.png",
+    "filePath": "assets2/deco/hatch-hazard-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9489,10 +8439,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-hazard-2x2.png",
+    "filePath": "assets2/deco/hatch-hazard-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9502,10 +8453,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-ice-1x2.png",
+    "filePath": "assets2/deco/hatch-ice-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9515,10 +8467,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-ice-2x2.png",
+    "filePath": "assets2/deco/hatch-ice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9528,10 +8481,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-round-1x2.png",
+    "filePath": "assets2/deco/hatch-round-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9541,10 +8495,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-round-2x2.png",
+    "filePath": "assets2/deco/hatch-round-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9554,10 +8509,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-shutter-1x2.png",
+    "filePath": "assets2/deco/hatch-shutter-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9567,10 +8523,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-shutter-2x2.png",
+    "filePath": "assets2/deco/hatch-shutter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9580,10 +8537,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/hatch-temple-1x2.png",
+    "filePath": "assets2/deco/hatch-temple-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9593,10 +8551,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "hatch",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/hatch-temple-2x2.png",
+    "filePath": "assets2/deco/hatch-temple-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9606,10 +8565,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-biome-2x2.png",
+    "filePath": "assets2/deco/holo-biome-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9619,10 +8579,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-biome-3x3.png",
+    "filePath": "assets2/deco/holo-biome-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9632,10 +8593,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-cyan-2x2.png",
+    "filePath": "assets2/deco/holo-cyan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9645,10 +8607,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-cyan-3x3.png",
+    "filePath": "assets2/deco/holo-cyan-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9658,10 +8621,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-ghost-2x2.png",
+    "filePath": "assets2/deco/holo-ghost-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9671,10 +8635,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-ghost-3x3.png",
+    "filePath": "assets2/deco/holo-ghost-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9684,10 +8649,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-map-2x2.png",
+    "filePath": "assets2/deco/holo-map-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9697,10 +8663,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-map-3x3.png",
+    "filePath": "assets2/deco/holo-map-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9710,10 +8677,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-playback-2x2.png",
+    "filePath": "assets2/deco/holo-playback-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9723,10 +8691,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-playback-3x3.png",
+    "filePath": "assets2/deco/holo-playback-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9736,10 +8705,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-portrait-2x2.png",
+    "filePath": "assets2/deco/holo-portrait-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9749,10 +8719,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-portrait-3x3.png",
+    "filePath": "assets2/deco/holo-portrait-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9762,10 +8733,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-warn-2x2.png",
+    "filePath": "assets2/deco/holo-warn-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9775,10 +8747,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-warn-3x3.png",
+    "filePath": "assets2/deco/holo-warn-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9788,10 +8761,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/holo-waypoint-2x2.png",
+    "filePath": "assets2/deco/holo-waypoint-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -9801,10 +8775,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "holo",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/holo-waypoint-3x3.png",
+    "filePath": "assets2/deco/holo-waypoint-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10682,10 +9657,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-barrier-2x1.png",
+    "filePath": "assets2/deco/horiz-barrier-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10695,10 +9671,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-barrier-3x1.png",
+    "filePath": "assets2/deco/horiz-barrier-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10708,10 +9685,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-barrier-4x1.png",
+    "filePath": "assets2/deco/horiz-barrier-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10721,10 +9699,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-battery-2x1.png",
+    "filePath": "assets2/deco/horiz-battery-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10734,10 +9713,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-battery-3x1.png",
+    "filePath": "assets2/deco/horiz-battery-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10747,10 +9727,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-battery-4x1.png",
+    "filePath": "assets2/deco/horiz-battery-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10760,10 +9741,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-beam-2x1.png",
+    "filePath": "assets2/deco/horiz-beam-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10773,10 +9755,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-beam-3x1.png",
+    "filePath": "assets2/deco/horiz-beam-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10786,10 +9769,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-beam-4x1.png",
+    "filePath": "assets2/deco/horiz-beam-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10799,10 +9783,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-bed-2x1.png",
+    "filePath": "assets2/deco/horiz-bed-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10812,10 +9797,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-bed-3x1.png",
+    "filePath": "assets2/deco/horiz-bed-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10825,10 +9811,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-bed-4x1.png",
+    "filePath": "assets2/deco/horiz-bed-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10838,10 +9825,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-bench-2x1.png",
+    "filePath": "assets2/deco/horiz-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10851,10 +9839,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-bench-3x1.png",
+    "filePath": "assets2/deco/horiz-bench-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10864,10 +9853,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-bench-4x1.png",
+    "filePath": "assets2/deco/horiz-bench-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10877,10 +9867,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-bumper-2x1.png",
+    "filePath": "assets2/deco/horiz-bumper-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10890,10 +9881,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-bumper-3x1.png",
+    "filePath": "assets2/deco/horiz-bumper-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10903,10 +9895,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-bumper-4x1.png",
+    "filePath": "assets2/deco/horiz-bumper-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10916,10 +9909,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-cables-2x1.png",
+    "filePath": "assets2/deco/horiz-cables-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10929,10 +9923,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-cables-3x1.png",
+    "filePath": "assets2/deco/horiz-cables-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10942,10 +9937,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-cables-4x1.png",
+    "filePath": "assets2/deco/horiz-cables-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10955,10 +9951,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-console-2x1.png",
+    "filePath": "assets2/deco/horiz-console-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10968,10 +9965,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-console-3x1.png",
+    "filePath": "assets2/deco/horiz-console-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10981,10 +9979,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-console-4x1.png",
+    "filePath": "assets2/deco/horiz-console-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -10994,10 +9993,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-conveyor-2x1.png",
+    "filePath": "assets2/deco/horiz-conveyor-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11007,10 +10007,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-conveyor-3x1.png",
+    "filePath": "assets2/deco/horiz-conveyor-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11020,10 +10021,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-conveyor-4x1.png",
+    "filePath": "assets2/deco/horiz-conveyor-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11033,10 +10035,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-counter-2x1.png",
+    "filePath": "assets2/deco/horiz-counter-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11046,10 +10049,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-counter-3x1.png",
+    "filePath": "assets2/deco/horiz-counter-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11059,10 +10063,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-counter-4x1.png",
+    "filePath": "assets2/deco/horiz-counter-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11072,10 +10077,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-crates-2x1.png",
+    "filePath": "assets2/deco/horiz-crates-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11085,10 +10091,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-crates-3x1.png",
+    "filePath": "assets2/deco/horiz-crates-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11098,10 +10105,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-crates-4x1.png",
+    "filePath": "assets2/deco/horiz-crates-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11111,10 +10119,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-desk-2x1.png",
+    "filePath": "assets2/deco/horiz-desk-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11124,10 +10133,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-desk-3x1.png",
+    "filePath": "assets2/deco/horiz-desk-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11137,10 +10147,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-desk-4x1.png",
+    "filePath": "assets2/deco/horiz-desk-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11150,10 +10161,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-duct-2x1.png",
+    "filePath": "assets2/deco/horiz-duct-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11163,10 +10175,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-duct-3x1.png",
+    "filePath": "assets2/deco/horiz-duct-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11176,10 +10189,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-duct-4x1.png",
+    "filePath": "assets2/deco/horiz-duct-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11189,10 +10203,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-fence-2x1.png",
+    "filePath": "assets2/deco/horiz-fence-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11202,10 +10217,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-fence-3x1.png",
+    "filePath": "assets2/deco/horiz-fence-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11215,10 +10231,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-fence-4x1.png",
+    "filePath": "assets2/deco/horiz-fence-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11228,10 +10245,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-garden-2x1.png",
+    "filePath": "assets2/deco/horiz-garden-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11241,10 +10259,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-garden-3x1.png",
+    "filePath": "assets2/deco/horiz-garden-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11254,10 +10273,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-garden-4x1.png",
+    "filePath": "assets2/deco/horiz-garden-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11267,10 +10287,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-keyboard-2x1.png",
+    "filePath": "assets2/deco/horiz-keyboard-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11280,10 +10301,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-keyboard-3x1.png",
+    "filePath": "assets2/deco/horiz-keyboard-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11293,10 +10315,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-keyboard-4x1.png",
+    "filePath": "assets2/deco/horiz-keyboard-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11306,10 +10329,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-lab-bench-2x1.png",
+    "filePath": "assets2/deco/horiz-lab-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11319,10 +10343,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-lab-bench-3x1.png",
+    "filePath": "assets2/deco/horiz-lab-bench-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11332,10 +10357,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-lab-bench-4x1.png",
+    "filePath": "assets2/deco/horiz-lab-bench-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11345,10 +10371,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-low-wall-2x1.png",
+    "filePath": "assets2/deco/horiz-low-wall-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11358,10 +10385,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-low-wall-3x1.png",
+    "filePath": "assets2/deco/horiz-low-wall-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11371,10 +10399,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-low-wall-4x1.png",
+    "filePath": "assets2/deco/horiz-low-wall-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11384,10 +10413,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-pallet-2x1.png",
+    "filePath": "assets2/deco/horiz-pallet-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11397,10 +10427,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-pallet-3x1.png",
+    "filePath": "assets2/deco/horiz-pallet-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11410,10 +10441,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-pallet-4x1.png",
+    "filePath": "assets2/deco/horiz-pallet-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11423,10 +10455,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-panel-2x1.png",
+    "filePath": "assets2/deco/horiz-panel-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11436,10 +10469,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-panel-3x1.png",
+    "filePath": "assets2/deco/horiz-panel-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11449,10 +10483,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-panel-4x1.png",
+    "filePath": "assets2/deco/horiz-panel-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11462,10 +10497,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-pipe-2x1.png",
+    "filePath": "assets2/deco/horiz-pipe-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11475,10 +10511,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-pipe-3x1.png",
+    "filePath": "assets2/deco/horiz-pipe-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11488,10 +10525,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-pipe-4x1.png",
+    "filePath": "assets2/deco/horiz-pipe-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11501,10 +10539,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-planter-2x1.png",
+    "filePath": "assets2/deco/horiz-planter-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11514,10 +10553,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-planter-3x1.png",
+    "filePath": "assets2/deco/horiz-planter-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11527,10 +10567,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-planter-4x1.png",
+    "filePath": "assets2/deco/horiz-planter-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11540,10 +10581,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-rail-2x1.png",
+    "filePath": "assets2/deco/horiz-rail-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11553,10 +10595,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-rail-3x1.png",
+    "filePath": "assets2/deco/horiz-rail-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11566,10 +10609,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-rail-4x1.png",
+    "filePath": "assets2/deco/horiz-rail-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11579,10 +10623,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-shelf-2x1.png",
+    "filePath": "assets2/deco/horiz-shelf-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11592,10 +10637,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-shelf-3x1.png",
+    "filePath": "assets2/deco/horiz-shelf-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11605,10 +10651,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-shelf-4x1.png",
+    "filePath": "assets2/deco/horiz-shelf-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11618,10 +10665,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-sofa-2x1.png",
+    "filePath": "assets2/deco/horiz-sofa-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11631,10 +10679,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-sofa-3x1.png",
+    "filePath": "assets2/deco/horiz-sofa-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11644,10 +10693,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-sofa-4x1.png",
+    "filePath": "assets2/deco/horiz-sofa-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11657,10 +10707,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-solar-2x1.png",
+    "filePath": "assets2/deco/horiz-solar-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11670,10 +10721,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-solar-3x1.png",
+    "filePath": "assets2/deco/horiz-solar-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11683,10 +10735,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-solar-4x1.png",
+    "filePath": "assets2/deco/horiz-solar-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11696,10 +10749,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-table-2x1.png",
+    "filePath": "assets2/deco/horiz-table-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11709,10 +10763,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-table-3x1.png",
+    "filePath": "assets2/deco/horiz-table-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11722,10 +10777,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-table-4x1.png",
+    "filePath": "assets2/deco/horiz-table-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11735,10 +10791,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-tank-2x1.png",
+    "filePath": "assets2/deco/horiz-tank-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11748,10 +10805,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-tank-3x1.png",
+    "filePath": "assets2/deco/horiz-tank-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11761,10 +10819,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-tank-4x1.png",
+    "filePath": "assets2/deco/horiz-tank-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11774,10 +10833,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 32,
     "height": 16,
-    "filePath": "assets2/horiz-vent-2x1.png",
+    "filePath": "assets2/deco/horiz-vent-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1"
+      "2x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11787,10 +10847,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 48,
     "height": 16,
-    "filePath": "assets2/horiz-vent-3x1.png",
+    "filePath": "assets2/deco/horiz-vent-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1"
+      "3x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -11800,10 +10861,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "horiz",
     "width": 64,
     "height": 16,
-    "filePath": "assets2/horiz-vent-4x1.png",
+    "filePath": "assets2/deco/horiz-vent-4x1.png",
     "align": "wall",
     "tags": [
-      "4x1"
+      "4x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16531,10 +15593,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-ash-1x1.png",
+    "filePath": "assets2/deco/jar-ash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16544,10 +15607,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-crystal-1x1.png",
+    "filePath": "assets2/deco/jar-crystal-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16557,10 +15621,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-empty-1x1.png",
+    "filePath": "assets2/deco/jar-empty-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16570,10 +15635,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-eye-1x1.png",
+    "filePath": "assets2/deco/jar-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16583,10 +15649,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-gold-dust-1x1.png",
+    "filePath": "assets2/deco/jar-gold-dust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16596,10 +15663,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-goo-1x1.png",
+    "filePath": "assets2/deco/jar-goo-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16609,10 +15677,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-heart-1x1.png",
+    "filePath": "assets2/deco/jar-heart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16622,10 +15691,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-ice-1x1.png",
+    "filePath": "assets2/deco/jar-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16635,10 +15705,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-mite-1x1.png",
+    "filePath": "assets2/deco/jar-mite-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16648,10 +15719,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-oil-1x1.png",
+    "filePath": "assets2/deco/jar-oil-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16661,10 +15733,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-pollen-1x1.png",
+    "filePath": "assets2/deco/jar-pollen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16674,10 +15747,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-sand-1x1.png",
+    "filePath": "assets2/deco/jar-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16687,10 +15761,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-spore-1x1.png",
+    "filePath": "assets2/deco/jar-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16700,10 +15775,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-void-1x1.png",
+    "filePath": "assets2/deco/jar-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16713,10 +15789,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-water-1x1.png",
+    "filePath": "assets2/deco/jar-water-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16726,10 +15803,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "jar",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/jar-worm-1x1.png",
+    "filePath": "assets2/deco/jar-worm-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16739,10 +15817,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-bio-1x1.png",
+    "filePath": "assets2/deco/key-bio-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16752,10 +15831,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-card-1x1.png",
+    "filePath": "assets2/deco/key-card-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16765,10 +15845,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-copper-1x1.png",
+    "filePath": "assets2/deco/key-copper-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16778,10 +15859,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-crystal-1x1.png",
+    "filePath": "assets2/deco/key-crystal-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16791,10 +15873,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-eye-1x1.png",
+    "filePath": "assets2/deco/key-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16804,10 +15887,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-gold-1x1.png",
+    "filePath": "assets2/deco/key-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16817,10 +15901,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-heart-1x1.png",
+    "filePath": "assets2/deco/key-heart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16830,10 +15915,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-ice-1x1.png",
+    "filePath": "assets2/deco/key-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16843,10 +15929,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-master-1x1.png",
+    "filePath": "assets2/deco/key-master-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16856,10 +15943,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-pixel-1x1.png",
+    "filePath": "assets2/deco/key-pixel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16869,10 +15957,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-rust-1x1.png",
+    "filePath": "assets2/deco/key-rust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16882,10 +15971,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-sand-1x1.png",
+    "filePath": "assets2/deco/key-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16895,10 +15985,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-skull-1x1.png",
+    "filePath": "assets2/deco/key-skull-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16908,10 +15999,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-spore-1x1.png",
+    "filePath": "assets2/deco/key-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16921,10 +16013,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-temple-1x1.png",
+    "filePath": "assets2/deco/key-temple-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16934,10 +16027,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "key",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/key-void-1x1.png",
+    "filePath": "assets2/deco/key-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -16947,738 +16041,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "lever",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/lever-bio-btn-1x1.png",
+    "filePath": "assets2/deco/lever-bio-btn-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-cap-1x1",
-    "label": "Pipe Cap 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-cap-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-cap-2x2",
-    "label": "Pipe Cap 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-cap-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-cap-ice-1x1",
-    "label": "Pipe Cap Ice 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-cap-ice-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-cap-ice-2x2",
-    "label": "Pipe Cap Ice 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-cap-ice-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-1x1",
-    "label": "Pipe I 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-I-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-2x2",
-    "label": "Pipe I 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-I-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-glass-1x1",
-    "label": "Pipe I Glass 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-I-glass-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-glass-2x2",
-    "label": "Pipe I Glass 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-I-glass-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-ice-1x1",
-    "label": "Pipe I Ice 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-I-ice-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-ice-2x2",
-    "label": "Pipe I Ice 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-I-ice-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-magma-1x1",
-    "label": "Pipe I Magma 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-I-magma-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-magma-2x2",
-    "label": "Pipe I Magma 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-I-magma-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-sand-1x1",
-    "label": "Pipe I Sand 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-I-sand-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-sand-2x2",
-    "label": "Pipe I Sand 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-I-sand-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-spore-1x1",
-    "label": "Pipe I Spore 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-I-spore-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-I-spore-2x2",
-    "label": "Pipe I Spore 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-I-spore-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-L-1x1",
-    "label": "Pipe L 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-L-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-L-2x2",
-    "label": "Pipe L 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-L-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-L-ice-1x1",
-    "label": "Pipe L Ice 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-L-ice-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-L-ice-2x2",
-    "label": "Pipe L Ice 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-L-ice-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-L-magma-1x1",
-    "label": "Pipe L Magma 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-L-magma-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-L-magma-2x2",
-    "label": "Pipe L Magma 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-L-magma-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-T-1x1",
-    "label": "Pipe T 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-T-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-T-2x2",
-    "label": "Pipe T 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-T-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-T-copper-1x1",
-    "label": "Pipe T Copper 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-T-copper-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-T-copper-2x2",
-    "label": "Pipe T Copper 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-T-copper-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-T-sand-1x1",
-    "label": "Pipe T Sand 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-T-sand-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-T-sand-2x2",
-    "label": "Pipe T Sand 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-T-sand-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-X-1x1",
-    "label": "Pipe X 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-X-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-X-2x2",
-    "label": "Pipe X 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-X-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-X-spore-1x1",
-    "label": "Pipe X Spore 1x1",
-    "category": "pipe",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pipe-X-spore-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pipe-X-spore-2x2",
-    "label": "Pipe X Spore 2x2",
-    "category": "pipe",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pipe-X-spore-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-algae-1x1",
-    "label": "Pod Algae 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-algae-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-algae-2x2",
-    "label": "Pod Algae 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-algae-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-berry-1x1",
-    "label": "Pod Berry 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-berry-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-berry-2x2",
-    "label": "Pod Berry 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-berry-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-crystal-1x1",
-    "label": "Pod Crystal 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-crystal-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-crystal-2x2",
-    "label": "Pod Crystal 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-crystal-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-ice-1x1",
-    "label": "Pod Ice 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-ice-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-ice-2x2",
-    "label": "Pod Ice 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-ice-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-pollen-1x1",
-    "label": "Pod Pollen 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-pollen-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-pollen-2x2",
-    "label": "Pod Pollen 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-pollen-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-root-1x1",
-    "label": "Pod Root 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-root-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-root-2x2",
-    "label": "Pod Root 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-root-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-sand-1x1",
-    "label": "Pod Sand 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-sand-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-sand-2x2",
-    "label": "Pod Sand 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-sand-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-shroom-1x1",
-    "label": "Pod Shroom 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-shroom-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-shroom-2x2",
-    "label": "Pod Shroom 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-shroom-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-spore-1x1",
-    "label": "Pod Spore 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-spore-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-spore-2x2",
-    "label": "Pod Spore 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-spore-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-thorn-1x1",
-    "label": "Pod Thorn 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-thorn-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-thorn-2x2",
-    "label": "Pod Thorn 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-thorn-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-twin-1x1",
-    "label": "Pod Twin 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-twin-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-twin-2x2",
-    "label": "Pod Twin 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-twin-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-vine-1x1",
-    "label": "Pod Vine 1x1",
-    "category": "pod",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/pod-vine-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "pod-vine-2x2",
-    "label": "Pod Vine 2x2",
-    "category": "pod",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/pod-vine-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
+      "1x1",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17688,10 +16055,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-cyan-1x1.png",
+    "filePath": "assets2/icons/port-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17701,10 +16069,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-factory-1x1.png",
+    "filePath": "assets2/icons/port-factory-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17714,10 +16083,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-fog-1x1.png",
+    "filePath": "assets2/icons/port-fog-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17727,10 +16097,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-garden-1x1.png",
+    "filePath": "assets2/icons/port-garden-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17740,10 +16111,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-gold-1x1.png",
+    "filePath": "assets2/icons/port-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17753,10 +16125,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-green-1x1.png",
+    "filePath": "assets2/icons/port-green-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17766,10 +16139,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-ice-1x1.png",
+    "filePath": "assets2/icons/port-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17779,10 +16153,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-magma-1x1.png",
+    "filePath": "assets2/icons/port-magma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17792,10 +16167,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-night-1x1.png",
+    "filePath": "assets2/icons/port-night-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17805,10 +16181,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-ocean-1x1.png",
+    "filePath": "assets2/icons/port-ocean-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17818,10 +16195,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-red-alert-1x1.png",
+    "filePath": "assets2/icons/port-red-alert-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17831,10 +16209,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-sand-1x1.png",
+    "filePath": "assets2/icons/port-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17844,10 +16223,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-spore-1x1.png",
+    "filePath": "assets2/icons/port-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17857,10 +16237,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-stars-1x1.png",
+    "filePath": "assets2/icons/port-stars-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17870,10 +16251,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-storm-1x1.png",
+    "filePath": "assets2/icons/port-storm-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17883,10 +16265,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "port",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/port-void-1x1.png",
+    "filePath": "assets2/icons/port-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -17896,10 +16279,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-cyan-2x2.png",
+    "filePath": "assets2/deco/portal-cyan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17909,10 +16293,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-cyan-3x3.png",
+    "filePath": "assets2/deco/portal-cyan-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17922,10 +16307,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-gold-2x2.png",
+    "filePath": "assets2/deco/portal-gold-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17935,10 +16321,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-gold-3x3.png",
+    "filePath": "assets2/deco/portal-gold-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17948,10 +16335,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-ice-2x2.png",
+    "filePath": "assets2/deco/portal-ice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17961,10 +16349,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-ice-3x3.png",
+    "filePath": "assets2/deco/portal-ice-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17974,10 +16363,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-magma-2x2.png",
+    "filePath": "assets2/deco/portal-magma-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -17987,10 +16377,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-magma-3x3.png",
+    "filePath": "assets2/deco/portal-magma-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18000,10 +16391,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-pink-2x2.png",
+    "filePath": "assets2/deco/portal-pink-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18013,10 +16405,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-pink-3x3.png",
+    "filePath": "assets2/deco/portal-pink-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18026,10 +16419,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-sand-2x2.png",
+    "filePath": "assets2/deco/portal-sand-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18039,10 +16433,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-sand-3x3.png",
+    "filePath": "assets2/deco/portal-sand-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18052,10 +16447,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-spore-2x2.png",
+    "filePath": "assets2/deco/portal-spore-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18065,10 +16461,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-spore-3x3.png",
+    "filePath": "assets2/deco/portal-spore-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18078,10 +16475,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/portal-void-2x2.png",
+    "filePath": "assets2/deco/portal-void-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2"
+      "2x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18091,10 +16489,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "portal",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/portal-void-3x3.png",
+    "filePath": "assets2/deco/portal-void-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3"
+      "3x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -18561,41 +16960,16 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "description": "Decorative. No collision."
   },
   {
-    "id": "sensor-alarm-1x1",
-    "label": "Sensor Alarm 1x1",
-    "category": "sensor",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/sensor-alarm-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "sensor-beacon-eye-1x1",
-    "label": "Sensor Beacon Eye 1x1",
-    "category": "sensor",
-    "width": 16,
-    "height": 16,
-    "filePath": "assets2/sensor-beacon-eye-1x1.png",
-    "align": "floor",
-    "tags": [
-      "1x1"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
     "id": "sign-biohazard-1x1",
     "label": "Sign Biohazard 1x1",
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-biohazard-1x1.png",
+    "filePath": "assets2/icons/sign-biohazard-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18605,10 +16979,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-biohazard-2x2.png",
+    "filePath": "assets2/icons/sign-biohazard-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18618,10 +16993,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-biohazard-3x3.png",
+    "filePath": "assets2/icons/sign-biohazard-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18631,10 +17007,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-cold-1x1.png",
+    "filePath": "assets2/icons/sign-cold-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18644,10 +17021,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-cold-2x2.png",
+    "filePath": "assets2/icons/sign-cold-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18657,10 +17035,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-cold-3x3.png",
+    "filePath": "assets2/icons/sign-cold-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18670,10 +17049,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-electric-1x1.png",
+    "filePath": "assets2/icons/sign-electric-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18683,10 +17063,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-electric-2x2.png",
+    "filePath": "assets2/icons/sign-electric-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18696,10 +17077,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-electric-3x3.png",
+    "filePath": "assets2/icons/sign-electric-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18709,10 +17091,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-exit-1x1.png",
+    "filePath": "assets2/icons/sign-exit-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18722,10 +17105,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-exit-2x2.png",
+    "filePath": "assets2/icons/sign-exit-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18735,10 +17119,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-exit-3x3.png",
+    "filePath": "assets2/icons/sign-exit-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18748,10 +17133,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-fire-1x1.png",
+    "filePath": "assets2/icons/sign-fire-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18761,10 +17147,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-fire-2x2.png",
+    "filePath": "assets2/icons/sign-fire-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18774,10 +17161,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-fire-3x3.png",
+    "filePath": "assets2/icons/sign-fire-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18787,10 +17175,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-first-aid-1x1.png",
+    "filePath": "assets2/icons/sign-first-aid-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18800,10 +17189,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-first-aid-2x2.png",
+    "filePath": "assets2/icons/sign-first-aid-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18813,10 +17203,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-first-aid-3x3.png",
+    "filePath": "assets2/icons/sign-first-aid-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18826,10 +17217,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-flammable-1x1.png",
+    "filePath": "assets2/icons/sign-flammable-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18839,10 +17231,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-flammable-2x2.png",
+    "filePath": "assets2/icons/sign-flammable-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18852,10 +17245,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-flammable-3x3.png",
+    "filePath": "assets2/icons/sign-flammable-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18865,10 +17259,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-go-1x1.png",
+    "filePath": "assets2/icons/sign-go-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18878,10 +17273,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-go-2x2.png",
+    "filePath": "assets2/icons/sign-go-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18891,10 +17287,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-go-3x3.png",
+    "filePath": "assets2/icons/sign-go-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18904,10 +17301,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-info-1x1.png",
+    "filePath": "assets2/icons/sign-info-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18917,10 +17315,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-info-2x2.png",
+    "filePath": "assets2/icons/sign-info-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18930,10 +17329,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-info-3x3.png",
+    "filePath": "assets2/icons/sign-info-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18943,10 +17343,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-laser-1x1.png",
+    "filePath": "assets2/icons/sign-laser-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18956,10 +17357,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-laser-2x2.png",
+    "filePath": "assets2/icons/sign-laser-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18969,10 +17371,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-laser-3x3.png",
+    "filePath": "assets2/icons/sign-laser-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18982,10 +17385,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-lock-1x1.png",
+    "filePath": "assets2/icons/sign-lock-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -18995,10 +17399,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-lock-2x2.png",
+    "filePath": "assets2/icons/sign-lock-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19008,10 +17413,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-lock-3x3.png",
+    "filePath": "assets2/icons/sign-lock-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19021,10 +17427,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-magnetic-1x1.png",
+    "filePath": "assets2/icons/sign-magnetic-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19034,10 +17441,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-magnetic-2x2.png",
+    "filePath": "assets2/icons/sign-magnetic-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19047,10 +17455,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-magnetic-3x3.png",
+    "filePath": "assets2/icons/sign-magnetic-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19060,10 +17469,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-no-entry-1x1.png",
+    "filePath": "assets2/icons/sign-no-entry-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19073,10 +17483,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-no-entry-2x2.png",
+    "filePath": "assets2/icons/sign-no-entry-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19086,10 +17497,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-no-entry-3x3.png",
+    "filePath": "assets2/icons/sign-no-entry-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19099,10 +17511,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-radiation-1x1.png",
+    "filePath": "assets2/icons/sign-radiation-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19112,10 +17525,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-radiation-2x2.png",
+    "filePath": "assets2/icons/sign-radiation-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19125,10 +17539,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-radiation-3x3.png",
+    "filePath": "assets2/icons/sign-radiation-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19138,10 +17553,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-recycle-1x1.png",
+    "filePath": "assets2/icons/sign-recycle-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19151,10 +17567,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-recycle-2x2.png",
+    "filePath": "assets2/icons/sign-recycle-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19164,10 +17581,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-recycle-3x3.png",
+    "filePath": "assets2/icons/sign-recycle-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19177,10 +17595,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-skull-1x1.png",
+    "filePath": "assets2/icons/sign-skull-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19190,10 +17609,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-skull-2x2.png",
+    "filePath": "assets2/icons/sign-skull-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19203,10 +17623,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-skull-3x3.png",
+    "filePath": "assets2/icons/sign-skull-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19216,10 +17637,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-stop-1x1.png",
+    "filePath": "assets2/icons/sign-stop-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19229,10 +17651,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-stop-2x2.png",
+    "filePath": "assets2/icons/sign-stop-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19242,10 +17665,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-stop-3x3.png",
+    "filePath": "assets2/icons/sign-stop-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19255,10 +17679,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-toxic-1x1.png",
+    "filePath": "assets2/icons/sign-toxic-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19268,10 +17693,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-toxic-2x2.png",
+    "filePath": "assets2/icons/sign-toxic-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19281,10 +17707,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-toxic-3x3.png",
+    "filePath": "assets2/icons/sign-toxic-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19294,10 +17721,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-warning-1x1.png",
+    "filePath": "assets2/icons/sign-warning-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19307,10 +17735,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-warning-2x2.png",
+    "filePath": "assets2/icons/sign-warning-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19320,10 +17749,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-warning-3x3.png",
+    "filePath": "assets2/icons/sign-warning-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19333,10 +17763,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 16,
     "height": 16,
-    "filePath": "assets2/sign-wifi-1x1.png",
+    "filePath": "assets2/icons/sign-wifi-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1"
+      "1x1",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19346,10 +17777,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 32,
     "height": 32,
-    "filePath": "assets2/sign-wifi-2x2.png",
+    "filePath": "assets2/icons/sign-wifi-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2"
+      "2x2",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19359,10 +17791,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "sign",
     "width": 48,
     "height": 48,
-    "filePath": "assets2/sign-wifi-3x3.png",
+    "filePath": "assets2/icons/sign-wifi-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3"
+      "3x3",
+      "icons"
     ],
     "description": "Decorative. No collision."
   },
@@ -19913,431 +18346,16 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "description": "Decorative. No collision."
   },
   {
-    "id": "tele-cyan-2x2",
-    "label": "Tele Cyan 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-cyan-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-cyan-3x3",
-    "label": "Tele Cyan 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-cyan-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-ice-2x2",
-    "label": "Tele Ice 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-ice-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-ice-3x3",
-    "label": "Tele Ice 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-ice-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-magma-2x2",
-    "label": "Tele Magma 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-magma-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-magma-3x3",
-    "label": "Tele Magma 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-magma-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-mirror-2x2",
-    "label": "Tele Mirror 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-mirror-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-mirror-3x3",
-    "label": "Tele Mirror 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-mirror-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-sand-2x2",
-    "label": "Tele Sand 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-sand-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-sand-3x3",
-    "label": "Tele Sand 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-sand-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-spore-2x2",
-    "label": "Tele Spore 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-spore-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-spore-3x3",
-    "label": "Tele Spore 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-spore-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-temple-2x2",
-    "label": "Tele Temple 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-temple-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-temple-3x3",
-    "label": "Tele Temple 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-temple-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-void-2x2",
-    "label": "Tele Void 2x2",
-    "category": "tele",
-    "width": 32,
-    "height": 32,
-    "filePath": "assets2/tele-void-2x2.png",
-    "align": "floor",
-    "tags": [
-      "2x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "tele-void-3x3",
-    "label": "Tele Void 3x3",
-    "category": "tele",
-    "width": 48,
-    "height": 48,
-    "filePath": "assets2/tele-void-3x3.png",
-    "align": "floor",
-    "tags": [
-      "3x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-bio-1x2",
-    "label": "Totem Bio 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-bio-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-bio-1x3",
-    "label": "Totem Bio 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-bio-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-bot-1x2",
-    "label": "Totem Bot 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-bot-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-bot-1x3",
-    "label": "Totem Bot 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-bot-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-eye-1x2",
-    "label": "Totem Eye 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-eye-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-eye-1x3",
-    "label": "Totem Eye 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-eye-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-gold-1x2",
-    "label": "Totem Gold 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-gold-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-gold-1x3",
-    "label": "Totem Gold 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-gold-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-ice-1x2",
-    "label": "Totem Ice 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-ice-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-ice-1x3",
-    "label": "Totem Ice 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-ice-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-sand-1x2",
-    "label": "Totem Sand 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-sand-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-sand-1x3",
-    "label": "Totem Sand 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-sand-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-skull-1x2",
-    "label": "Totem Skull 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-skull-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-skull-1x3",
-    "label": "Totem Skull 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-skull-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-void-1x2",
-    "label": "Totem Void 1x2",
-    "category": "totem",
-    "width": 16,
-    "height": 32,
-    "filePath": "assets2/totem-void-1x2.png",
-    "align": "floor",
-    "tags": [
-      "1x2"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
-    "id": "totem-void-1x3",
-    "label": "Totem Void 1x3",
-    "category": "totem",
-    "width": 16,
-    "height": 48,
-    "filePath": "assets2/totem-void-1x3.png",
-    "align": "floor",
-    "tags": [
-      "1x3"
-    ],
-    "description": "Decorative. No collision."
-  },
-  {
     "id": "vert-aquarium-1x2",
     "label": "Vert Aquarium 1x2",
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-aquarium-1x2.png",
+    "filePath": "assets2/deco/vert-aquarium-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20347,10 +18365,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-aquarium-1x3.png",
+    "filePath": "assets2/deco/vert-aquarium-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20360,10 +18379,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-aquarium-1x4.png",
+    "filePath": "assets2/deco/vert-aquarium-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20373,10 +18393,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-barrels-1x2.png",
+    "filePath": "assets2/deco/vert-barrels-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20386,10 +18407,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-barrels-1x3.png",
+    "filePath": "assets2/deco/vert-barrels-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20399,10 +18421,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-barrels-1x4.png",
+    "filePath": "assets2/deco/vert-barrels-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20412,10 +18435,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-bookshelf-1x2.png",
+    "filePath": "assets2/deco/vert-bookshelf-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20425,10 +18449,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-bookshelf-1x3.png",
+    "filePath": "assets2/deco/vert-bookshelf-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20438,10 +18463,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-bookshelf-1x4.png",
+    "filePath": "assets2/deco/vert-bookshelf-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20451,10 +18477,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-cabinet-1x2.png",
+    "filePath": "assets2/deco/vert-cabinet-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20464,10 +18491,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-cabinet-1x3.png",
+    "filePath": "assets2/deco/vert-cabinet-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20477,10 +18505,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-cabinet-1x4.png",
+    "filePath": "assets2/deco/vert-cabinet-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20490,10 +18519,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-clock-1x2.png",
+    "filePath": "assets2/deco/vert-clock-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20503,10 +18533,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-clock-1x3.png",
+    "filePath": "assets2/deco/vert-clock-1x3.png",
     "align": "wall",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20516,10 +18547,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-clock-1x4.png",
+    "filePath": "assets2/deco/vert-clock-1x4.png",
     "align": "wall",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20529,10 +18561,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-coat-rack-1x2.png",
+    "filePath": "assets2/deco/vert-coat-rack-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20542,10 +18575,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-coat-rack-1x3.png",
+    "filePath": "assets2/deco/vert-coat-rack-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20555,10 +18589,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-coat-rack-1x4.png",
+    "filePath": "assets2/deco/vert-coat-rack-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20568,10 +18603,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-crates-1x2.png",
+    "filePath": "assets2/deco/vert-crates-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20581,10 +18617,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-crates-1x3.png",
+    "filePath": "assets2/deco/vert-crates-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20594,10 +18631,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-crates-1x4.png",
+    "filePath": "assets2/deco/vert-crates-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20607,10 +18645,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-data-pillar-1x2.png",
+    "filePath": "assets2/deco/vert-data-pillar-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20620,10 +18659,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-data-pillar-1x3.png",
+    "filePath": "assets2/deco/vert-data-pillar-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20633,10 +18673,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-data-pillar-1x4.png",
+    "filePath": "assets2/deco/vert-data-pillar-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20646,10 +18687,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-flagpole-1x2.png",
+    "filePath": "assets2/deco/vert-flagpole-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20659,10 +18701,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-flagpole-1x3.png",
+    "filePath": "assets2/deco/vert-flagpole-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20672,10 +18715,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-flagpole-1x4.png",
+    "filePath": "assets2/deco/vert-flagpole-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20685,10 +18729,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-fountain-1x2.png",
+    "filePath": "assets2/deco/vert-fountain-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20698,10 +18743,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-fountain-1x3.png",
+    "filePath": "assets2/deco/vert-fountain-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20711,10 +18757,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-fountain-1x4.png",
+    "filePath": "assets2/deco/vert-fountain-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20724,10 +18771,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-fridge-1x2.png",
+    "filePath": "assets2/deco/vert-fridge-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20737,10 +18785,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-fridge-1x3.png",
+    "filePath": "assets2/deco/vert-fridge-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20750,10 +18799,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-fridge-1x4.png",
+    "filePath": "assets2/deco/vert-fridge-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20763,10 +18813,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-gene-vault-1x2.png",
+    "filePath": "assets2/deco/vert-gene-vault-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20776,10 +18827,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-gene-vault-1x3.png",
+    "filePath": "assets2/deco/vert-gene-vault-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20789,10 +18841,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-gene-vault-1x4.png",
+    "filePath": "assets2/deco/vert-gene-vault-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20802,10 +18855,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-incubator-1x2.png",
+    "filePath": "assets2/deco/vert-incubator-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20815,10 +18869,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-incubator-1x3.png",
+    "filePath": "assets2/deco/vert-incubator-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20828,10 +18883,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-incubator-1x4.png",
+    "filePath": "assets2/deco/vert-incubator-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20841,10 +18897,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-ladder-1x2.png",
+    "filePath": "assets2/deco/vert-ladder-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20854,10 +18911,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-ladder-1x3.png",
+    "filePath": "assets2/deco/vert-ladder-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20867,10 +18925,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-ladder-1x4.png",
+    "filePath": "assets2/deco/vert-ladder-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20880,10 +18939,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-lamp-1x2.png",
+    "filePath": "assets2/deco/vert-lamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20893,10 +18953,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-lamp-1x3.png",
+    "filePath": "assets2/deco/vert-lamp-1x3.png",
     "align": "wall",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20906,10 +18967,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-lamp-1x4.png",
+    "filePath": "assets2/deco/vert-lamp-1x4.png",
     "align": "wall",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20919,10 +18981,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-locker-1x2.png",
+    "filePath": "assets2/deco/vert-locker-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20932,10 +18995,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-locker-1x3.png",
+    "filePath": "assets2/deco/vert-locker-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20945,10 +19009,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-locker-1x4.png",
+    "filePath": "assets2/deco/vert-locker-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20958,10 +19023,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-locker-red-1x2.png",
+    "filePath": "assets2/deco/vert-locker-red-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20971,10 +19037,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-locker-red-1x3.png",
+    "filePath": "assets2/deco/vert-locker-red-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20984,10 +19051,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-locker-red-1x4.png",
+    "filePath": "assets2/deco/vert-locker-red-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -20997,10 +19065,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-pipe-1x2.png",
+    "filePath": "assets2/deco/vert-pipe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21010,10 +19079,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-pipe-1x3.png",
+    "filePath": "assets2/deco/vert-pipe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21023,10 +19093,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-pipe-1x4.png",
+    "filePath": "assets2/deco/vert-pipe-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21036,10 +19107,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-plant-1x2.png",
+    "filePath": "assets2/deco/vert-plant-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21049,10 +19121,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-plant-1x3.png",
+    "filePath": "assets2/deco/vert-plant-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21062,10 +19135,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-plant-1x4.png",
+    "filePath": "assets2/deco/vert-plant-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21075,10 +19149,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-robot-1x2.png",
+    "filePath": "assets2/deco/vert-robot-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21088,10 +19163,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-robot-1x3.png",
+    "filePath": "assets2/deco/vert-robot-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21101,10 +19177,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-robot-1x4.png",
+    "filePath": "assets2/deco/vert-robot-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21114,10 +19191,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-safe-1x2.png",
+    "filePath": "assets2/deco/vert-safe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21127,10 +19205,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-safe-1x3.png",
+    "filePath": "assets2/deco/vert-safe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21140,10 +19219,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-safe-1x4.png",
+    "filePath": "assets2/deco/vert-safe-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21153,10 +19233,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-server-1x2.png",
+    "filePath": "assets2/deco/vert-server-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21166,10 +19247,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-server-1x3.png",
+    "filePath": "assets2/deco/vert-server-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21179,10 +19261,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-server-1x4.png",
+    "filePath": "assets2/deco/vert-server-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21192,10 +19275,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-speaker-1x2.png",
+    "filePath": "assets2/deco/vert-speaker-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21205,10 +19289,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-speaker-1x3.png",
+    "filePath": "assets2/deco/vert-speaker-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21218,10 +19303,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-speaker-1x4.png",
+    "filePath": "assets2/deco/vert-speaker-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21231,10 +19317,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-spore-tower-1x2.png",
+    "filePath": "assets2/deco/vert-spore-tower-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21244,10 +19331,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-spore-tower-1x3.png",
+    "filePath": "assets2/deco/vert-spore-tower-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21257,10 +19345,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-spore-tower-1x4.png",
+    "filePath": "assets2/deco/vert-spore-tower-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21270,10 +19359,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-statue-1x2.png",
+    "filePath": "assets2/deco/vert-statue-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21283,10 +19373,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-statue-1x3.png",
+    "filePath": "assets2/deco/vert-statue-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21296,10 +19387,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-statue-1x4.png",
+    "filePath": "assets2/deco/vert-statue-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21309,10 +19401,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-tank-1x2.png",
+    "filePath": "assets2/deco/vert-tank-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21322,10 +19415,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-tank-1x3.png",
+    "filePath": "assets2/deco/vert-tank-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21335,10 +19429,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-tank-1x4.png",
+    "filePath": "assets2/deco/vert-tank-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21348,10 +19443,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-telescope-1x2.png",
+    "filePath": "assets2/deco/vert-telescope-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21361,10 +19457,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-telescope-1x3.png",
+    "filePath": "assets2/deco/vert-telescope-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21374,10 +19471,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-telescope-1x4.png",
+    "filePath": "assets2/deco/vert-telescope-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21387,10 +19485,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-toolbox-1x2.png",
+    "filePath": "assets2/deco/vert-toolbox-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21400,10 +19499,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-toolbox-1x3.png",
+    "filePath": "assets2/deco/vert-toolbox-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21413,10 +19513,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 64,
-    "filePath": "assets2/vert-toolbox-1x4.png",
+    "filePath": "assets2/deco/vert-toolbox-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4"
+      "1x4",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21426,10 +19527,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 32,
-    "filePath": "assets2/vert-umbrella-1x2.png",
+    "filePath": "assets2/deco/vert-umbrella-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2"
+      "1x2",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -21439,10 +19541,11 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "category": "vert",
     "width": 16,
     "height": 48,
-    "filePath": "assets2/vert-umbrella-1x3.png",
+    "filePath": "assets2/deco/vert-umbrella-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3"
+      "1x3",
+      "deco"
     ],
     "description": "Decorative. No collision."
   },
@@ -22733,835 +20836,771 @@ export const ICON_FILES: { id: string; filePath: string }[] = [
   },
   {
     "id": "banner-atom-1x2",
-    "filePath": "assets2/banner-atom-1x2.png"
+    "filePath": "assets2/deco/banner-atom-1x2.png"
   },
   {
     "id": "banner-atom-1x3",
-    "filePath": "assets2/banner-atom-1x3.png"
+    "filePath": "assets2/deco/banner-atom-1x3.png"
   },
   {
     "id": "banner-atom-1x4",
-    "filePath": "assets2/banner-atom-1x4.png"
+    "filePath": "assets2/deco/banner-atom-1x4.png"
   },
   {
     "id": "banner-bio-1x2",
-    "filePath": "assets2/banner-bio-1x2.png"
+    "filePath": "assets2/deco/banner-bio-1x2.png"
   },
   {
     "id": "banner-bio-1x3",
-    "filePath": "assets2/banner-bio-1x3.png"
+    "filePath": "assets2/deco/banner-bio-1x3.png"
   },
   {
     "id": "banner-bio-1x4",
-    "filePath": "assets2/banner-bio-1x4.png"
+    "filePath": "assets2/deco/banner-bio-1x4.png"
   },
   {
     "id": "banner-blue-1x2",
-    "filePath": "assets2/banner-blue-1x2.png"
+    "filePath": "assets2/deco/banner-blue-1x2.png"
   },
   {
     "id": "banner-blue-1x3",
-    "filePath": "assets2/banner-blue-1x3.png"
+    "filePath": "assets2/deco/banner-blue-1x3.png"
   },
   {
     "id": "banner-blue-1x4",
-    "filePath": "assets2/banner-blue-1x4.png"
+    "filePath": "assets2/deco/banner-blue-1x4.png"
   },
   {
     "id": "banner-bolt-1x2",
-    "filePath": "assets2/banner-bolt-1x2.png"
+    "filePath": "assets2/deco/banner-bolt-1x2.png"
   },
   {
     "id": "banner-bolt-1x3",
-    "filePath": "assets2/banner-bolt-1x3.png"
+    "filePath": "assets2/deco/banner-bolt-1x3.png"
   },
   {
     "id": "banner-bolt-1x4",
-    "filePath": "assets2/banner-bolt-1x4.png"
+    "filePath": "assets2/deco/banner-bolt-1x4.png"
   },
   {
     "id": "banner-diamond-1x2",
-    "filePath": "assets2/banner-diamond-1x2.png"
+    "filePath": "assets2/deco/banner-diamond-1x2.png"
   },
   {
     "id": "banner-diamond-1x3",
-    "filePath": "assets2/banner-diamond-1x3.png"
+    "filePath": "assets2/deco/banner-diamond-1x3.png"
   },
   {
     "id": "banner-diamond-1x4",
-    "filePath": "assets2/banner-diamond-1x4.png"
+    "filePath": "assets2/deco/banner-diamond-1x4.png"
   },
   {
     "id": "banner-flame-1x2",
-    "filePath": "assets2/banner-flame-1x2.png"
+    "filePath": "assets2/deco/banner-flame-1x2.png"
   },
   {
     "id": "banner-flame-1x3",
-    "filePath": "assets2/banner-flame-1x3.png"
+    "filePath": "assets2/deco/banner-flame-1x3.png"
   },
   {
     "id": "banner-flame-1x4",
-    "filePath": "assets2/banner-flame-1x4.png"
+    "filePath": "assets2/deco/banner-flame-1x4.png"
   },
   {
     "id": "banner-gear-1x2",
-    "filePath": "assets2/banner-gear-1x2.png"
+    "filePath": "assets2/deco/banner-gear-1x2.png"
   },
   {
     "id": "banner-gear-1x3",
-    "filePath": "assets2/banner-gear-1x3.png"
+    "filePath": "assets2/deco/banner-gear-1x3.png"
   },
   {
     "id": "banner-gear-1x4",
-    "filePath": "assets2/banner-gear-1x4.png"
+    "filePath": "assets2/deco/banner-gear-1x4.png"
   },
   {
     "id": "banner-green-1x2",
-    "filePath": "assets2/banner-green-1x2.png"
+    "filePath": "assets2/deco/banner-green-1x2.png"
   },
   {
     "id": "banner-green-1x3",
-    "filePath": "assets2/banner-green-1x3.png"
+    "filePath": "assets2/deco/banner-green-1x3.png"
   },
   {
     "id": "banner-green-1x4",
-    "filePath": "assets2/banner-green-1x4.png"
+    "filePath": "assets2/deco/banner-green-1x4.png"
   },
   {
     "id": "banner-red-1x2",
-    "filePath": "assets2/banner-red-1x2.png"
+    "filePath": "assets2/deco/banner-red-1x2.png"
   },
   {
     "id": "banner-red-1x3",
-    "filePath": "assets2/banner-red-1x3.png"
+    "filePath": "assets2/deco/banner-red-1x3.png"
   },
   {
     "id": "banner-red-1x4",
-    "filePath": "assets2/banner-red-1x4.png"
+    "filePath": "assets2/deco/banner-red-1x4.png"
   },
   {
     "id": "banner-skull-1x2",
-    "filePath": "assets2/banner-skull-1x2.png"
+    "filePath": "assets2/deco/banner-skull-1x2.png"
   },
   {
     "id": "banner-skull-1x3",
-    "filePath": "assets2/banner-skull-1x3.png"
+    "filePath": "assets2/deco/banner-skull-1x3.png"
   },
   {
     "id": "banner-skull-1x4",
-    "filePath": "assets2/banner-skull-1x4.png"
+    "filePath": "assets2/deco/banner-skull-1x4.png"
   },
   {
     "id": "banner-spore-1x2",
-    "filePath": "assets2/banner-spore-1x2.png"
+    "filePath": "assets2/deco/banner-spore-1x2.png"
   },
   {
     "id": "banner-spore-1x3",
-    "filePath": "assets2/banner-spore-1x3.png"
+    "filePath": "assets2/deco/banner-spore-1x3.png"
   },
   {
     "id": "banner-spore-1x4",
-    "filePath": "assets2/banner-spore-1x4.png"
+    "filePath": "assets2/deco/banner-spore-1x4.png"
   },
   {
     "id": "banner-star-1x2",
-    "filePath": "assets2/banner-star-1x2.png"
+    "filePath": "assets2/deco/banner-star-1x2.png"
   },
   {
     "id": "banner-star-1x3",
-    "filePath": "assets2/banner-star-1x3.png"
+    "filePath": "assets2/deco/banner-star-1x3.png"
   },
   {
     "id": "banner-star-1x4",
-    "filePath": "assets2/banner-star-1x4.png"
+    "filePath": "assets2/deco/banner-star-1x4.png"
   },
   {
     "id": "banner-tech-1x2",
-    "filePath": "assets2/banner-tech-1x2.png"
+    "filePath": "assets2/deco/banner-tech-1x2.png"
   },
   {
     "id": "banner-tech-1x3",
-    "filePath": "assets2/banner-tech-1x3.png"
+    "filePath": "assets2/deco/banner-tech-1x3.png"
   },
   {
     "id": "banner-tech-1x4",
-    "filePath": "assets2/banner-tech-1x4.png"
+    "filePath": "assets2/deco/banner-tech-1x4.png"
   },
   {
     "id": "banner-warning-1x2",
-    "filePath": "assets2/banner-warning-1x2.png"
+    "filePath": "assets2/deco/banner-warning-1x2.png"
   },
   {
     "id": "banner-warning-1x3",
-    "filePath": "assets2/banner-warning-1x3.png"
+    "filePath": "assets2/deco/banner-warning-1x3.png"
   },
   {
     "id": "banner-warning-1x4",
-    "filePath": "assets2/banner-warning-1x4.png"
+    "filePath": "assets2/deco/banner-warning-1x4.png"
   },
   {
     "id": "banner-wave-1x2",
-    "filePath": "assets2/banner-wave-1x2.png"
+    "filePath": "assets2/deco/banner-wave-1x2.png"
   },
   {
     "id": "banner-wave-1x3",
-    "filePath": "assets2/banner-wave-1x3.png"
+    "filePath": "assets2/deco/banner-wave-1x3.png"
   },
   {
     "id": "banner-wave-1x4",
-    "filePath": "assets2/banner-wave-1x4.png"
+    "filePath": "assets2/deco/banner-wave-1x4.png"
   },
   {
     "id": "beacon-alert-1x1",
-    "filePath": "assets2/beacon-alert-1x1.png"
+    "filePath": "assets2/deco/beacon-alert-1x1.png"
   },
   {
     "id": "beacon-alert-1x2",
-    "filePath": "assets2/beacon-alert-1x2.png"
+    "filePath": "assets2/deco/beacon-alert-1x2.png"
   },
   {
     "id": "beacon-alert-1x3",
-    "filePath": "assets2/beacon-alert-1x3.png"
+    "filePath": "assets2/deco/beacon-alert-1x3.png"
   },
   {
     "id": "beacon-amber-1x1",
-    "filePath": "assets2/beacon-amber-1x1.png"
+    "filePath": "assets2/deco/beacon-amber-1x1.png"
   },
   {
     "id": "beacon-amber-1x2",
-    "filePath": "assets2/beacon-amber-1x2.png"
+    "filePath": "assets2/deco/beacon-amber-1x2.png"
   },
   {
     "id": "beacon-amber-1x3",
-    "filePath": "assets2/beacon-amber-1x3.png"
+    "filePath": "assets2/deco/beacon-amber-1x3.png"
   },
   {
     "id": "beacon-bio-1x1",
-    "filePath": "assets2/beacon-bio-1x1.png"
+    "filePath": "assets2/deco/beacon-bio-1x1.png"
   },
   {
     "id": "beacon-bio-1x2",
-    "filePath": "assets2/beacon-bio-1x2.png"
+    "filePath": "assets2/deco/beacon-bio-1x2.png"
   },
   {
     "id": "beacon-bio-1x3",
-    "filePath": "assets2/beacon-bio-1x3.png"
+    "filePath": "assets2/deco/beacon-bio-1x3.png"
   },
   {
     "id": "beacon-cyan-1x1",
-    "filePath": "assets2/beacon-cyan-1x1.png"
+    "filePath": "assets2/deco/beacon-cyan-1x1.png"
   },
   {
     "id": "beacon-cyan-1x2",
-    "filePath": "assets2/beacon-cyan-1x2.png"
+    "filePath": "assets2/deco/beacon-cyan-1x2.png"
   },
   {
     "id": "beacon-cyan-1x3",
-    "filePath": "assets2/beacon-cyan-1x3.png"
+    "filePath": "assets2/deco/beacon-cyan-1x3.png"
   },
   {
     "id": "beacon-ice-1x1",
-    "filePath": "assets2/beacon-ice-1x1.png"
+    "filePath": "assets2/deco/beacon-ice-1x1.png"
   },
   {
     "id": "beacon-ice-1x2",
-    "filePath": "assets2/beacon-ice-1x2.png"
+    "filePath": "assets2/deco/beacon-ice-1x2.png"
   },
   {
     "id": "beacon-ice-1x3",
-    "filePath": "assets2/beacon-ice-1x3.png"
+    "filePath": "assets2/deco/beacon-ice-1x3.png"
   },
   {
     "id": "beacon-moth-1x1",
-    "filePath": "assets2/beacon-moth-1x1.png"
+    "filePath": "assets2/deco/beacon-moth-1x1.png"
   },
   {
     "id": "beacon-moth-1x2",
-    "filePath": "assets2/beacon-moth-1x2.png"
+    "filePath": "assets2/deco/beacon-moth-1x2.png"
   },
   {
     "id": "beacon-moth-1x3",
-    "filePath": "assets2/beacon-moth-1x3.png"
+    "filePath": "assets2/deco/beacon-moth-1x3.png"
   },
   {
     "id": "beacon-rainbow-1x1",
-    "filePath": "assets2/beacon-rainbow-1x1.png"
+    "filePath": "assets2/deco/beacon-rainbow-1x1.png"
   },
   {
     "id": "beacon-rainbow-1x2",
-    "filePath": "assets2/beacon-rainbow-1x2.png"
+    "filePath": "assets2/deco/beacon-rainbow-1x2.png"
   },
   {
     "id": "beacon-rainbow-1x3",
-    "filePath": "assets2/beacon-rainbow-1x3.png"
+    "filePath": "assets2/deco/beacon-rainbow-1x3.png"
   },
   {
     "id": "beacon-spore-1x1",
-    "filePath": "assets2/beacon-spore-1x1.png"
+    "filePath": "assets2/deco/beacon-spore-1x1.png"
   },
   {
     "id": "beacon-spore-1x2",
-    "filePath": "assets2/beacon-spore-1x2.png"
+    "filePath": "assets2/deco/beacon-spore-1x2.png"
   },
   {
     "id": "beacon-spore-1x3",
-    "filePath": "assets2/beacon-spore-1x3.png"
+    "filePath": "assets2/deco/beacon-spore-1x3.png"
   },
   {
     "id": "beacon-strobe-1x1",
-    "filePath": "assets2/beacon-strobe-1x1.png"
+    "filePath": "assets2/deco/beacon-strobe-1x1.png"
   },
   {
     "id": "beacon-strobe-1x2",
-    "filePath": "assets2/beacon-strobe-1x2.png"
+    "filePath": "assets2/deco/beacon-strobe-1x2.png"
   },
   {
     "id": "beacon-strobe-1x3",
-    "filePath": "assets2/beacon-strobe-1x3.png"
+    "filePath": "assets2/deco/beacon-strobe-1x3.png"
   },
   {
     "id": "beacon-torch-1x1",
-    "filePath": "assets2/beacon-torch-1x1.png"
+    "filePath": "assets2/deco/beacon-torch-1x1.png"
   },
   {
     "id": "beacon-torch-1x2",
-    "filePath": "assets2/beacon-torch-1x2.png"
+    "filePath": "assets2/deco/beacon-torch-1x2.png"
   },
   {
     "id": "beacon-torch-1x3",
-    "filePath": "assets2/beacon-torch-1x3.png"
+    "filePath": "assets2/deco/beacon-torch-1x3.png"
   },
   {
     "id": "bg-bio-membrane-1x1",
-    "filePath": "assets2/bg-bio-membrane-1x1.png"
+    "filePath": "assets2/block/bg-bio-membrane-1x1.png"
   },
   {
     "id": "bg-blueprint-1x1",
-    "filePath": "assets2/bg-blueprint-1x1.png"
+    "filePath": "assets2/block/bg-blueprint-1x1.png"
   },
   {
     "id": "bg-brick-dark-1x1",
-    "filePath": "assets2/bg-brick-dark-1x1.png"
+    "filePath": "assets2/block/bg-brick-dark-1x1.png"
   },
   {
     "id": "bg-brick-red-1x1",
-    "filePath": "assets2/bg-brick-red-1x1.png"
+    "filePath": "assets2/block/bg-brick-red-1x1.png"
   },
   {
     "id": "bg-brick-white-1x1",
-    "filePath": "assets2/bg-brick-white-1x1.png"
+    "filePath": "assets2/block/bg-brick-white-1x1.png"
   },
   {
     "id": "bg-cables-1x1",
-    "filePath": "assets2/bg-cables-1x1.png"
+    "filePath": "assets2/block/bg-cables-1x1.png"
   },
   {
     "id": "bg-carbon-1x1",
-    "filePath": "assets2/bg-carbon-1x1.png"
+    "filePath": "assets2/block/bg-carbon-1x1.png"
   },
   {
     "id": "bg-circuit-1x1",
-    "filePath": "assets2/bg-circuit-1x1.png"
+    "filePath": "assets2/block/bg-circuit-1x1.png"
   },
   {
     "id": "bg-concrete-1x1",
-    "filePath": "assets2/bg-concrete-1x1.png"
+    "filePath": "assets2/block/bg-concrete-1x1.png"
   },
   {
     "id": "bg-concrete-crack-1x1",
-    "filePath": "assets2/bg-concrete-crack-1x1.png"
+    "filePath": "assets2/block/bg-concrete-crack-1x1.png"
   },
   {
     "id": "bg-corrugated-1x1",
-    "filePath": "assets2/bg-corrugated-1x1.png"
+    "filePath": "assets2/block/bg-corrugated-1x1.png"
   },
   {
     "id": "bg-crate-face-1x1",
-    "filePath": "assets2/bg-crate-face-1x1.png"
+    "filePath": "assets2/block/bg-crate-face-1x1.png"
   },
   {
     "id": "bg-diamond-plate-1x1",
-    "filePath": "assets2/bg-diamond-plate-1x1.png"
+    "filePath": "assets2/block/bg-diamond-plate-1x1.png"
   },
   {
     "id": "bg-glass-block-1x1",
-    "filePath": "assets2/bg-glass-block-1x1.png"
+    "filePath": "assets2/block/bg-glass-block-1x1.png"
   },
   {
     "id": "bg-grime-1x1",
-    "filePath": "assets2/bg-grime-1x1.png"
+    "filePath": "assets2/block/bg-grime-1x1.png"
   },
   {
     "id": "bg-hex-1x1",
-    "filePath": "assets2/bg-hex-1x1.png"
+    "filePath": "assets2/block/bg-hex-1x1.png"
   },
   {
     "id": "bg-honeycomb-1x1",
-    "filePath": "assets2/bg-honeycomb-1x1.png"
+    "filePath": "assets2/block/bg-honeycomb-1x1.png"
   },
   {
     "id": "bg-insulation-1x1",
-    "filePath": "assets2/bg-insulation-1x1.png"
+    "filePath": "assets2/block/bg-insulation-1x1.png"
   },
   {
     "id": "bg-led-grid-1x1",
-    "filePath": "assets2/bg-led-grid-1x1.png"
+    "filePath": "assets2/block/bg-led-grid-1x1.png"
   },
   {
     "id": "bg-metal-bronze-1x1",
-    "filePath": "assets2/bg-metal-bronze-1x1.png"
+    "filePath": "assets2/block/bg-metal-bronze-1x1.png"
   },
   {
     "id": "bg-metal-dark-1x1",
-    "filePath": "assets2/bg-metal-dark-1x1.png"
+    "filePath": "assets2/block/bg-metal-dark-1x1.png"
   },
   {
     "id": "bg-metal-plate-1x1",
-    "filePath": "assets2/bg-metal-plate-1x1.png"
+    "filePath": "assets2/block/bg-metal-plate-1x1.png"
   },
   {
     "id": "bg-metal-rivet-1x1",
-    "filePath": "assets2/bg-metal-rivet-1x1.png"
+    "filePath": "assets2/block/bg-metal-rivet-1x1.png"
   },
   {
     "id": "bg-neon-1x1",
-    "filePath": "assets2/bg-neon-1x1.png"
+    "filePath": "assets2/block/bg-neon-1x1.png"
   },
   {
     "id": "bg-padded-1x1",
-    "filePath": "assets2/bg-padded-1x1.png"
+    "filePath": "assets2/block/bg-padded-1x1.png"
   },
   {
     "id": "bg-panel-screen-1x1",
-    "filePath": "assets2/bg-panel-screen-1x1.png"
+    "filePath": "assets2/block/bg-panel-screen-1x1.png"
   },
   {
     "id": "bg-panel-steel-1x1",
-    "filePath": "assets2/bg-panel-steel-1x1.png"
+    "filePath": "assets2/block/bg-panel-steel-1x1.png"
   },
   {
     "id": "bg-panel-warning-1x1",
-    "filePath": "assets2/bg-panel-warning-1x1.png"
+    "filePath": "assets2/block/bg-panel-warning-1x1.png"
   },
   {
     "id": "bg-pipes-1x1",
-    "filePath": "assets2/bg-pipes-1x1.png"
+    "filePath": "assets2/block/bg-pipes-1x1.png"
   },
   {
     "id": "bg-poster-1x1",
-    "filePath": "assets2/bg-poster-1x1.png"
+    "filePath": "assets2/block/bg-poster-1x1.png"
   },
   {
     "id": "bg-rust-1x1",
-    "filePath": "assets2/bg-rust-1x1.png"
+    "filePath": "assets2/block/bg-rust-1x1.png"
   },
   {
     "id": "bg-spore-1x1",
-    "filePath": "assets2/bg-spore-1x1.png"
+    "filePath": "assets2/block/bg-spore-1x1.png"
   },
   {
     "id": "bg-stars-1x1",
-    "filePath": "assets2/bg-stars-1x1.png"
+    "filePath": "assets2/block/bg-stars-1x1.png"
   },
   {
     "id": "bg-stone-1x1",
-    "filePath": "assets2/bg-stone-1x1.png"
+    "filePath": "assets2/block/bg-stone-1x1.png"
   },
   {
     "id": "bg-stripe-hazard-1x1",
-    "filePath": "assets2/bg-stripe-hazard-1x1.png"
+    "filePath": "assets2/block/bg-stripe-hazard-1x1.png"
   },
   {
     "id": "bg-stripe-red-1x1",
-    "filePath": "assets2/bg-stripe-red-1x1.png"
+    "filePath": "assets2/block/bg-stripe-red-1x1.png"
   },
   {
     "id": "bg-tile-green-1x1",
-    "filePath": "assets2/bg-tile-green-1x1.png"
+    "filePath": "assets2/block/bg-tile-green-1x1.png"
   },
   {
     "id": "bg-tile-lab-1x1",
-    "filePath": "assets2/bg-tile-lab-1x1.png"
+    "filePath": "assets2/block/bg-tile-lab-1x1.png"
   },
   {
     "id": "bg-tile-white-1x1",
-    "filePath": "assets2/bg-tile-white-1x1.png"
+    "filePath": "assets2/block/bg-tile-white-1x1.png"
   },
   {
     "id": "bg-vent-1x1",
-    "filePath": "assets2/bg-vent-1x1.png"
+    "filePath": "assets2/block/bg-vent-1x1.png"
   },
   {
     "id": "bg-warning-band-1x1",
-    "filePath": "assets2/bg-warning-band-1x1.png"
+    "filePath": "assets2/block/bg-warning-band-1x1.png"
   },
   {
     "id": "bg-window-1x1",
-    "filePath": "assets2/bg-window-1x1.png"
+    "filePath": "assets2/block/bg-window-1x1.png"
   },
   {
     "id": "bg-window-bars-1x1",
-    "filePath": "assets2/bg-window-bars-1x1.png"
+    "filePath": "assets2/block/bg-window-bars-1x1.png"
   },
   {
     "id": "bg-wood-1x1",
-    "filePath": "assets2/bg-wood-1x1.png"
+    "filePath": "assets2/block/bg-wood-1x1.png"
   },
   {
     "id": "block-acid-1x1",
-    "filePath": "assets2/block-acid-1x1.png"
+    "filePath": "assets2/block/block-acid-1x1.png"
   },
   {
     "id": "block-asphalt-1x1",
-    "filePath": "assets2/block-asphalt-1x1.png"
+    "filePath": "assets2/block/block-asphalt-1x1.png"
   },
   {
     "id": "block-bio-gel-1x1",
-    "filePath": "assets2/block-bio-gel-1x1.png"
+    "filePath": "assets2/block/block-bio-gel-1x1.png"
   },
   {
     "id": "block-brick-1x1",
-    "filePath": "assets2/block-brick-1x1.png"
+    "filePath": "assets2/block/block-brick-1x1.png"
   },
   {
     "id": "block-bronze-1x1",
-    "filePath": "assets2/block-bronze-1x1.png"
+    "filePath": "assets2/block/block-bronze-1x1.png"
   },
   {
     "id": "block-carbon-1x1",
-    "filePath": "assets2/block-carbon-1x1.png"
+    "filePath": "assets2/block/block-carbon-1x1.png"
   },
   {
     "id": "block-ceramic-1x1",
-    "filePath": "assets2/block-ceramic-1x1.png"
+    "filePath": "assets2/block/block-ceramic-1x1.png"
   },
   {
     "id": "block-checker-1x1",
-    "filePath": "assets2/block-checker-1x1.png"
+    "filePath": "assets2/block/block-checker-1x1.png"
   },
   {
     "id": "block-circuit-1x1",
-    "filePath": "assets2/block-circuit-1x1.png"
+    "filePath": "assets2/block/block-circuit-1x1.png"
   },
   {
     "id": "block-cobble-1x1",
-    "filePath": "assets2/block-cobble-1x1.png"
+    "filePath": "assets2/block/block-cobble-1x1.png"
   },
   {
     "id": "block-concrete-1x1",
-    "filePath": "assets2/block-concrete-1x1.png"
+    "filePath": "assets2/block/block-concrete-1x1.png"
   },
   {
     "id": "block-copper-1x1",
-    "filePath": "assets2/block-copper-1x1.png"
+    "filePath": "assets2/block/block-copper-1x1.png"
   },
   {
     "id": "block-crystal-1x1",
-    "filePath": "assets2/block-crystal-1x1.png"
+    "filePath": "assets2/block/block-crystal-1x1.png"
   },
   {
     "id": "block-diamond-1x1",
-    "filePath": "assets2/block-diamond-1x1.png"
+    "filePath": "assets2/block/block-diamond-1x1.png"
   },
   {
     "id": "block-dirt-1x1",
-    "filePath": "assets2/block-dirt-1x1.png"
+    "filePath": "assets2/block/block-dirt-1x1.png"
   },
   {
     "id": "block-glass-1x1",
-    "filePath": "assets2/block-glass-1x1.png"
+    "filePath": "assets2/block/block-glass-1x1.png"
   },
   {
     "id": "block-gold-1x1",
-    "filePath": "assets2/block-gold-1x1.png"
+    "filePath": "assets2/block/block-gold-1x1.png"
   },
   {
     "id": "block-grass-1x1",
-    "filePath": "assets2/block-grass-1x1.png"
+    "filePath": "assets2/block/block-grass-1x1.png"
   },
   {
     "id": "block-grate-1x1",
-    "filePath": "assets2/block-grate-1x1.png"
+    "filePath": "assets2/block/block-grate-1x1.png"
   },
   {
     "id": "block-gravel-1x1",
-    "filePath": "assets2/block-gravel-1x1.png"
+    "filePath": "assets2/block/block-gravel-1x1.png"
   },
   {
     "id": "block-hazard-1x1",
-    "filePath": "assets2/block-hazard-1x1.png"
+    "filePath": "assets2/block/block-hazard-1x1.png"
   },
   {
     "id": "block-hex-1x1",
-    "filePath": "assets2/block-hex-1x1.png"
+    "filePath": "assets2/block/block-hex-1x1.png"
   },
   {
     "id": "block-ice-1x1",
-    "filePath": "assets2/block-ice-1x1.png"
+    "filePath": "assets2/block/block-ice-1x1.png"
   },
   {
     "id": "block-lava-1x1",
-    "filePath": "assets2/block-lava-1x1.png"
+    "filePath": "assets2/block/block-lava-1x1.png"
   },
   {
     "id": "block-marble-1x1",
-    "filePath": "assets2/block-marble-1x1.png"
+    "filePath": "assets2/block/block-marble-1x1.png"
   },
   {
     "id": "block-mesh-1x1",
-    "filePath": "assets2/block-mesh-1x1.png"
+    "filePath": "assets2/block/block-mesh-1x1.png"
   },
   {
     "id": "block-moss-1x1",
-    "filePath": "assets2/block-moss-1x1.png"
+    "filePath": "assets2/block/block-moss-1x1.png"
   },
   {
     "id": "block-obsidian-1x1",
-    "filePath": "assets2/block-obsidian-1x1.png"
+    "filePath": "assets2/block/block-obsidian-1x1.png"
   },
   {
     "id": "block-padded-1x1",
-    "filePath": "assets2/block-padded-1x1.png"
+    "filePath": "assets2/block/block-padded-1x1.png"
   },
   {
     "id": "block-plasma-1x1",
-    "filePath": "assets2/block-plasma-1x1.png"
+    "filePath": "assets2/block/block-plasma-1x1.png"
   },
   {
     "id": "block-rubber-1x1",
-    "filePath": "assets2/block-rubber-1x1.png"
+    "filePath": "assets2/block/block-rubber-1x1.png"
   },
   {
     "id": "block-rust-1x1",
-    "filePath": "assets2/block-rust-1x1.png"
+    "filePath": "assets2/block/block-rust-1x1.png"
   },
   {
     "id": "block-sand-1x1",
-    "filePath": "assets2/block-sand-1x1.png"
+    "filePath": "assets2/block/block-sand-1x1.png"
   },
   {
     "id": "block-snow-1x1",
-    "filePath": "assets2/block-snow-1x1.png"
+    "filePath": "assets2/block/block-snow-1x1.png"
   },
   {
     "id": "block-solar-1x1",
-    "filePath": "assets2/block-solar-1x1.png"
+    "filePath": "assets2/block/block-solar-1x1.png"
   },
   {
     "id": "block-steel-1x1",
-    "filePath": "assets2/block-steel-1x1.png"
+    "filePath": "assets2/block/block-steel-1x1.png"
   },
   {
     "id": "block-steel-lite-1x1",
-    "filePath": "assets2/block-steel-lite-1x1.png"
+    "filePath": "assets2/block/block-steel-lite-1x1.png"
   },
   {
     "id": "block-tech-1x1",
-    "filePath": "assets2/block-tech-1x1.png"
+    "filePath": "assets2/block/block-tech-1x1.png"
   },
   {
     "id": "block-vent-1x1",
-    "filePath": "assets2/block-vent-1x1.png"
+    "filePath": "assets2/block/block-vent-1x1.png"
   },
   {
     "id": "block-void-1x1",
-    "filePath": "assets2/block-void-1x1.png"
+    "filePath": "assets2/block/block-void-1x1.png"
   },
   {
     "id": "block-warning-1x1",
-    "filePath": "assets2/block-warning-1x1.png"
+    "filePath": "assets2/block/block-warning-1x1.png"
   },
   {
     "id": "block-water-1x1",
-    "filePath": "assets2/block-water-1x1.png"
+    "filePath": "assets2/block/block-water-1x1.png"
   },
   {
     "id": "block-wood-1x1",
-    "filePath": "assets2/block-wood-1x1.png"
+    "filePath": "assets2/block/block-wood-1x1.png"
   },
   {
     "id": "bot-farm-1x1",
-    "filePath": "assets2/bot-farm-1x1.png"
+    "filePath": "assets2/deco/bot-farm-1x1.png"
   },
   {
     "id": "bot-farm-2x2",
-    "filePath": "assets2/bot-farm-2x2.png"
+    "filePath": "assets2/deco/bot-farm-2x2.png"
   },
   {
     "id": "bot-farm-3x3",
-    "filePath": "assets2/bot-farm-3x3.png"
+    "filePath": "assets2/deco/bot-farm-3x3.png"
   },
   {
     "id": "bot-haul-1x1",
-    "filePath": "assets2/bot-haul-1x1.png"
+    "filePath": "assets2/deco/bot-haul-1x1.png"
   },
   {
     "id": "bot-haul-2x2",
-    "filePath": "assets2/bot-haul-2x2.png"
+    "filePath": "assets2/deco/bot-haul-2x2.png"
   },
   {
     "id": "bot-haul-3x3",
-    "filePath": "assets2/bot-haul-3x3.png"
+    "filePath": "assets2/deco/bot-haul-3x3.png"
   },
   {
     "id": "bot-king-1x1",
-    "filePath": "assets2/bot-king-1x1.png"
+    "filePath": "assets2/deco/bot-king-1x1.png"
   },
   {
     "id": "bot-king-2x2",
-    "filePath": "assets2/bot-king-2x2.png"
+    "filePath": "assets2/deco/bot-king-2x2.png"
   },
   {
     "id": "bot-king-3x3",
-    "filePath": "assets2/bot-king-3x3.png"
+    "filePath": "assets2/deco/bot-king-3x3.png"
   },
   {
     "id": "bot-medic-1x1",
-    "filePath": "assets2/bot-medic-1x1.png"
+    "filePath": "assets2/deco/bot-medic-1x1.png"
   },
   {
     "id": "bot-medic-2x2",
-    "filePath": "assets2/bot-medic-2x2.png"
+    "filePath": "assets2/deco/bot-medic-2x2.png"
   },
   {
     "id": "bot-medic-3x3",
-    "filePath": "assets2/bot-medic-3x3.png"
+    "filePath": "assets2/deco/bot-medic-3x3.png"
   },
   {
     "id": "bot-mine-1x1",
-    "filePath": "assets2/bot-mine-1x1.png"
+    "filePath": "assets2/deco/bot-mine-1x1.png"
   },
   {
     "id": "bot-mine-2x2",
-    "filePath": "assets2/bot-mine-2x2.png"
+    "filePath": "assets2/deco/bot-mine-2x2.png"
   },
   {
     "id": "bot-mine-3x3",
-    "filePath": "assets2/bot-mine-3x3.png"
+    "filePath": "assets2/deco/bot-mine-3x3.png"
   },
   {
     "id": "bot-pet-1x1",
-    "filePath": "assets2/bot-pet-1x1.png"
+    "filePath": "assets2/deco/bot-pet-1x1.png"
   },
   {
     "id": "bot-pet-2x2",
-    "filePath": "assets2/bot-pet-2x2.png"
+    "filePath": "assets2/deco/bot-pet-2x2.png"
   },
   {
     "id": "bot-pet-3x3",
-    "filePath": "assets2/bot-pet-3x3.png"
+    "filePath": "assets2/deco/bot-pet-3x3.png"
   },
   {
     "id": "bot-scan-1x1",
-    "filePath": "assets2/bot-scan-1x1.png"
+    "filePath": "assets2/deco/bot-scan-1x1.png"
   },
   {
     "id": "bot-scan-2x2",
-    "filePath": "assets2/bot-scan-2x2.png"
+    "filePath": "assets2/deco/bot-scan-2x2.png"
   },
   {
     "id": "bot-scan-3x3",
-    "filePath": "assets2/bot-scan-3x3.png"
+    "filePath": "assets2/deco/bot-scan-3x3.png"
   },
   {
     "id": "bot-sentry-1x1",
-    "filePath": "assets2/bot-sentry-1x1.png"
+    "filePath": "assets2/deco/bot-sentry-1x1.png"
   },
   {
     "id": "bot-sentry-2x2",
-    "filePath": "assets2/bot-sentry-2x2.png"
+    "filePath": "assets2/deco/bot-sentry-2x2.png"
   },
   {
     "id": "bot-sentry-3x3",
-    "filePath": "assets2/bot-sentry-3x3.png"
+    "filePath": "assets2/deco/bot-sentry-3x3.png"
   },
   {
     "id": "bot-water-1x1",
-    "filePath": "assets2/bot-water-1x1.png"
+    "filePath": "assets2/deco/bot-water-1x1.png"
   },
   {
     "id": "bot-water-2x2",
-    "filePath": "assets2/bot-water-2x2.png"
+    "filePath": "assets2/deco/bot-water-2x2.png"
   },
   {
     "id": "bot-water-3x3",
-    "filePath": "assets2/bot-water-3x3.png"
+    "filePath": "assets2/deco/bot-water-3x3.png"
   },
   {
     "id": "bot-weld-1x1",
-    "filePath": "assets2/bot-weld-1x1.png"
+    "filePath": "assets2/deco/bot-weld-1x1.png"
   },
   {
     "id": "bot-weld-2x2",
-    "filePath": "assets2/bot-weld-2x2.png"
+    "filePath": "assets2/deco/bot-weld-2x2.png"
   },
   {
     "id": "bot-weld-3x3",
-    "filePath": "assets2/bot-weld-3x3.png"
-  },
-  {
-    "id": "cable-brick-1x1",
-    "filePath": "assets2/cable-brick-1x1.png"
-  },
-  {
-    "id": "cable-clip-1x1",
-    "filePath": "assets2/cable-clip-1x1.png"
-  },
-  {
-    "id": "cable-coil-1x1",
-    "filePath": "assets2/cable-coil-1x1.png"
-  },
-  {
-    "id": "cable-copper-1x1",
-    "filePath": "assets2/cable-copper-1x1.png"
-  },
-  {
-    "id": "cable-data-1x1",
-    "filePath": "assets2/cable-data-1x1.png"
-  },
-  {
-    "id": "cable-fiber-1x1",
-    "filePath": "assets2/cable-fiber-1x1.png"
-  },
-  {
-    "id": "cable-fuse-1x1",
-    "filePath": "assets2/cable-fuse-1x1.png"
-  },
-  {
-    "id": "cable-gold-1x1",
-    "filePath": "assets2/cable-gold-1x1.png"
-  },
-  {
-    "id": "cable-ground-1x1",
-    "filePath": "assets2/cable-ground-1x1.png"
-  },
-  {
-    "id": "cable-ice-port-1x1",
-    "filePath": "assets2/cable-ice-port-1x1.png"
-  },
-  {
-    "id": "cable-nerve-1x1",
-    "filePath": "assets2/cable-nerve-1x1.png"
-  },
-  {
-    "id": "cable-nub-1x1",
-    "filePath": "assets2/cable-nub-1x1.png"
-  },
-  {
-    "id": "cable-spark-1x1",
-    "filePath": "assets2/cable-spark-1x1.png"
-  },
-  {
-    "id": "cable-split-1x1",
-    "filePath": "assets2/cable-split-1x1.png"
-  },
-  {
-    "id": "cable-triple-1x1",
-    "filePath": "assets2/cable-triple-1x1.png"
-  },
-  {
-    "id": "cable-void-1x1",
-    "filePath": "assets2/cable-void-1x1.png"
+    "filePath": "assets2/deco/bot-weld-3x3.png"
   },
   {
     "id": "char-0-1x1",
@@ -23972,752 +22011,400 @@ export const ICON_FILES: { id: string; filePath: string }[] = [
     "filePath": "assets/icons/char-Z-2x2.png"
   },
   {
-    "id": "core-coil-1x1",
-    "filePath": "assets2/core-coil-1x1.png"
-  },
-  {
-    "id": "core-coil-2x2",
-    "filePath": "assets2/core-coil-2x2.png"
-  },
-  {
-    "id": "core-copper-1x1",
-    "filePath": "assets2/core-copper-1x1.png"
-  },
-  {
-    "id": "core-copper-2x2",
-    "filePath": "assets2/core-copper-2x2.png"
-  },
-  {
-    "id": "core-fusion-1x1",
-    "filePath": "assets2/core-fusion-1x1.png"
-  },
-  {
-    "id": "core-fusion-2x2",
-    "filePath": "assets2/core-fusion-2x2.png"
-  },
-  {
-    "id": "core-ice-1x1",
-    "filePath": "assets2/core-ice-1x1.png"
-  },
-  {
-    "id": "core-ice-2x2",
-    "filePath": "assets2/core-ice-2x2.png"
-  },
-  {
-    "id": "core-leaf-1x1",
-    "filePath": "assets2/core-leaf-1x1.png"
-  },
-  {
-    "id": "core-leaf-2x2",
-    "filePath": "assets2/core-leaf-2x2.png"
-  },
-  {
-    "id": "core-magma-1x1",
-    "filePath": "assets2/core-magma-1x1.png"
-  },
-  {
-    "id": "core-magma-2x2",
-    "filePath": "assets2/core-magma-2x2.png"
-  },
-  {
-    "id": "core-prism-1x1",
-    "filePath": "assets2/core-prism-1x1.png"
-  },
-  {
-    "id": "core-prism-2x2",
-    "filePath": "assets2/core-prism-2x2.png"
-  },
-  {
-    "id": "core-sand-1x1",
-    "filePath": "assets2/core-sand-1x1.png"
-  },
-  {
-    "id": "core-sand-2x2",
-    "filePath": "assets2/core-sand-2x2.png"
-  },
-  {
-    "id": "core-spark-1x1",
-    "filePath": "assets2/core-spark-1x1.png"
-  },
-  {
-    "id": "core-spark-2x2",
-    "filePath": "assets2/core-spark-2x2.png"
-  },
-  {
-    "id": "core-spore-1x1",
-    "filePath": "assets2/core-spore-1x1.png"
-  },
-  {
-    "id": "core-spore-2x2",
-    "filePath": "assets2/core-spore-2x2.png"
-  },
-  {
-    "id": "core-tesla-1x1",
-    "filePath": "assets2/core-tesla-1x1.png"
-  },
-  {
-    "id": "core-tesla-2x2",
-    "filePath": "assets2/core-tesla-2x2.png"
-  },
-  {
-    "id": "core-void-1x1",
-    "filePath": "assets2/core-void-1x1.png"
-  },
-  {
-    "id": "core-void-2x2",
-    "filePath": "assets2/core-void-2x2.png"
-  },
-  {
-    "id": "crew-boss-1x2",
-    "filePath": "assets2/crew-boss-1x2.png"
-  },
-  {
-    "id": "crew-boss-1x3",
-    "filePath": "assets2/crew-boss-1x3.png"
-  },
-  {
-    "id": "crew-botanist-1x2",
-    "filePath": "assets2/crew-botanist-1x2.png"
-  },
-  {
-    "id": "crew-botanist-1x3",
-    "filePath": "assets2/crew-botanist-1x3.png"
-  },
-  {
-    "id": "crew-cook-1x2",
-    "filePath": "assets2/crew-cook-1x2.png"
-  },
-  {
-    "id": "crew-cook-1x3",
-    "filePath": "assets2/crew-cook-1x3.png"
-  },
-  {
-    "id": "crew-engineer-1x2",
-    "filePath": "assets2/crew-engineer-1x2.png"
-  },
-  {
-    "id": "crew-engineer-1x3",
-    "filePath": "assets2/crew-engineer-1x3.png"
-  },
-  {
-    "id": "crew-miner-1x2",
-    "filePath": "assets2/crew-miner-1x2.png"
-  },
-  {
-    "id": "crew-miner-1x3",
-    "filePath": "assets2/crew-miner-1x3.png"
-  },
-  {
-    "id": "crew-priest-1x2",
-    "filePath": "assets2/crew-priest-1x2.png"
-  },
-  {
-    "id": "crew-priest-1x3",
-    "filePath": "assets2/crew-priest-1x3.png"
-  },
-  {
-    "id": "crew-ranger-1x2",
-    "filePath": "assets2/crew-ranger-1x2.png"
-  },
-  {
-    "id": "crew-ranger-1x3",
-    "filePath": "assets2/crew-ranger-1x3.png"
-  },
-  {
-    "id": "crew-scout-1x2",
-    "filePath": "assets2/crew-scout-1x2.png"
-  },
-  {
-    "id": "crew-scout-1x3",
-    "filePath": "assets2/crew-scout-1x3.png"
-  },
-  {
-    "id": "debris-anchor-1x1",
-    "filePath": "assets2/debris-anchor-1x1.png"
-  },
-  {
-    "id": "debris-banner-torn-1x1",
-    "filePath": "assets2/debris-banner-torn-1x1.png"
-  },
-  {
-    "id": "debris-bone-pile-1x1",
-    "filePath": "assets2/debris-bone-pile-1x1.png"
-  },
-  {
-    "id": "debris-brick-1x1",
-    "filePath": "assets2/debris-brick-1x1.png"
-  },
-  {
-    "id": "debris-circuit-1x1",
-    "filePath": "assets2/debris-circuit-1x1.png"
-  },
-  {
-    "id": "debris-column-1x1",
-    "filePath": "assets2/debris-column-1x1.png"
-  },
-  {
-    "id": "debris-crate-bit-1x1",
-    "filePath": "assets2/debris-crate-bit-1x1.png"
-  },
-  {
-    "id": "debris-gear-1x1",
-    "filePath": "assets2/debris-gear-1x1.png"
-  },
-  {
-    "id": "debris-ice-shard-1x1",
-    "filePath": "assets2/debris-ice-shard-1x1.png"
-  },
-  {
-    "id": "debris-mask-bit-1x1",
-    "filePath": "assets2/debris-mask-bit-1x1.png"
-  },
-  {
-    "id": "debris-mosaic-1x1",
-    "filePath": "assets2/debris-mosaic-1x1.png"
-  },
-  {
-    "id": "debris-pipe-bit-1x1",
-    "filePath": "assets2/debris-pipe-bit-1x1.png"
-  },
-  {
-    "id": "debris-sand-drift-1x1",
-    "filePath": "assets2/debris-sand-drift-1x1.png"
-  },
-  {
-    "id": "debris-statue-head-1x1",
-    "filePath": "assets2/debris-statue-head-1x1.png"
-  },
-  {
-    "id": "debris-tile-1x1",
-    "filePath": "assets2/debris-tile-1x1.png"
-  },
-  {
-    "id": "debris-urn-1x1",
-    "filePath": "assets2/debris-urn-1x1.png"
-  },
-  {
-    "id": "egg-crack-1x1",
-    "filePath": "assets2/egg-crack-1x1.png"
-  },
-  {
-    "id": "egg-crystal-1x1",
-    "filePath": "assets2/egg-crystal-1x1.png"
-  },
-  {
-    "id": "egg-cyan-1x1",
-    "filePath": "assets2/egg-cyan-1x1.png"
-  },
-  {
-    "id": "egg-gold-1x1",
-    "filePath": "assets2/egg-gold-1x1.png"
-  },
-  {
-    "id": "egg-ice-1x1",
-    "filePath": "assets2/egg-ice-1x1.png"
-  },
-  {
-    "id": "egg-jelly-1x1",
-    "filePath": "assets2/egg-jelly-1x1.png"
-  },
-  {
-    "id": "egg-magma-1x1",
-    "filePath": "assets2/egg-magma-1x1.png"
-  },
-  {
-    "id": "egg-nest-1x1",
-    "filePath": "assets2/egg-nest-1x1.png"
-  },
-  {
-    "id": "egg-pink-1x1",
-    "filePath": "assets2/egg-pink-1x1.png"
-  },
-  {
-    "id": "egg-royal-1x1",
-    "filePath": "assets2/egg-royal-1x1.png"
-  },
-  {
-    "id": "egg-sand-1x1",
-    "filePath": "assets2/egg-sand-1x1.png"
-  },
-  {
-    "id": "egg-spore-1x1",
-    "filePath": "assets2/egg-spore-1x1.png"
-  },
-  {
-    "id": "egg-spot-1x1",
-    "filePath": "assets2/egg-spot-1x1.png"
-  },
-  {
-    "id": "egg-tiny-1x1",
-    "filePath": "assets2/egg-tiny-1x1.png"
-  },
-  {
-    "id": "egg-twin-1x1",
-    "filePath": "assets2/egg-twin-1x1.png"
-  },
-  {
-    "id": "egg-void-1x1",
-    "filePath": "assets2/egg-void-1x1.png"
-  },
-  {
     "id": "emoji-alien-1x1",
-    "filePath": "assets2/emoji-alien-1x1.png"
+    "filePath": "assets2/icons/emoji-alien-1x1.png"
   },
   {
     "id": "emoji-alien-2x2",
-    "filePath": "assets2/emoji-alien-2x2.png"
+    "filePath": "assets2/icons/emoji-alien-2x2.png"
   },
   {
     "id": "emoji-alien-3x3",
-    "filePath": "assets2/emoji-alien-3x3.png"
+    "filePath": "assets2/icons/emoji-alien-3x3.png"
   },
   {
     "id": "emoji-angel-1x1",
-    "filePath": "assets2/emoji-angel-1x1.png"
+    "filePath": "assets2/icons/emoji-angel-1x1.png"
   },
   {
     "id": "emoji-angel-2x2",
-    "filePath": "assets2/emoji-angel-2x2.png"
+    "filePath": "assets2/icons/emoji-angel-2x2.png"
   },
   {
     "id": "emoji-angel-3x3",
-    "filePath": "assets2/emoji-angel-3x3.png"
+    "filePath": "assets2/icons/emoji-angel-3x3.png"
   },
   {
     "id": "emoji-angry-1x1",
-    "filePath": "assets2/emoji-angry-1x1.png"
+    "filePath": "assets2/icons/emoji-angry-1x1.png"
   },
   {
     "id": "emoji-angry-2x2",
-    "filePath": "assets2/emoji-angry-2x2.png"
+    "filePath": "assets2/icons/emoji-angry-2x2.png"
   },
   {
     "id": "emoji-angry-3x3",
-    "filePath": "assets2/emoji-angry-3x3.png"
+    "filePath": "assets2/icons/emoji-angry-3x3.png"
   },
   {
     "id": "emoji-cat-1x1",
-    "filePath": "assets2/emoji-cat-1x1.png"
+    "filePath": "assets2/icons/emoji-cat-1x1.png"
   },
   {
     "id": "emoji-cat-2x2",
-    "filePath": "assets2/emoji-cat-2x2.png"
+    "filePath": "assets2/icons/emoji-cat-2x2.png"
   },
   {
     "id": "emoji-cat-3x3",
-    "filePath": "assets2/emoji-cat-3x3.png"
+    "filePath": "assets2/icons/emoji-cat-3x3.png"
   },
   {
     "id": "emoji-cool-1x1",
-    "filePath": "assets2/emoji-cool-1x1.png"
+    "filePath": "assets2/icons/emoji-cool-1x1.png"
   },
   {
     "id": "emoji-cool-2x2",
-    "filePath": "assets2/emoji-cool-2x2.png"
+    "filePath": "assets2/icons/emoji-cool-2x2.png"
   },
   {
     "id": "emoji-cool-3x3",
-    "filePath": "assets2/emoji-cool-3x3.png"
+    "filePath": "assets2/icons/emoji-cool-3x3.png"
   },
   {
     "id": "emoji-cry-1x1",
-    "filePath": "assets2/emoji-cry-1x1.png"
+    "filePath": "assets2/icons/emoji-cry-1x1.png"
   },
   {
     "id": "emoji-cry-2x2",
-    "filePath": "assets2/emoji-cry-2x2.png"
+    "filePath": "assets2/icons/emoji-cry-2x2.png"
   },
   {
     "id": "emoji-cry-3x3",
-    "filePath": "assets2/emoji-cry-3x3.png"
+    "filePath": "assets2/icons/emoji-cry-3x3.png"
   },
   {
     "id": "emoji-dead-1x1",
-    "filePath": "assets2/emoji-dead-1x1.png"
+    "filePath": "assets2/icons/emoji-dead-1x1.png"
   },
   {
     "id": "emoji-dead-2x2",
-    "filePath": "assets2/emoji-dead-2x2.png"
+    "filePath": "assets2/icons/emoji-dead-2x2.png"
   },
   {
     "id": "emoji-dead-3x3",
-    "filePath": "assets2/emoji-dead-3x3.png"
+    "filePath": "assets2/icons/emoji-dead-3x3.png"
   },
   {
     "id": "emoji-devil-1x1",
-    "filePath": "assets2/emoji-devil-1x1.png"
+    "filePath": "assets2/icons/emoji-devil-1x1.png"
   },
   {
     "id": "emoji-devil-2x2",
-    "filePath": "assets2/emoji-devil-2x2.png"
+    "filePath": "assets2/icons/emoji-devil-2x2.png"
   },
   {
     "id": "emoji-devil-3x3",
-    "filePath": "assets2/emoji-devil-3x3.png"
+    "filePath": "assets2/icons/emoji-devil-3x3.png"
   },
   {
     "id": "emoji-grin-1x1",
-    "filePath": "assets2/emoji-grin-1x1.png"
+    "filePath": "assets2/icons/emoji-grin-1x1.png"
   },
   {
     "id": "emoji-grin-2x2",
-    "filePath": "assets2/emoji-grin-2x2.png"
+    "filePath": "assets2/icons/emoji-grin-2x2.png"
   },
   {
     "id": "emoji-grin-3x3",
-    "filePath": "assets2/emoji-grin-3x3.png"
+    "filePath": "assets2/icons/emoji-grin-3x3.png"
   },
   {
     "id": "emoji-heart-eyes-1x1",
-    "filePath": "assets2/emoji-heart-eyes-1x1.png"
+    "filePath": "assets2/icons/emoji-heart-eyes-1x1.png"
   },
   {
     "id": "emoji-heart-eyes-2x2",
-    "filePath": "assets2/emoji-heart-eyes-2x2.png"
+    "filePath": "assets2/icons/emoji-heart-eyes-2x2.png"
   },
   {
     "id": "emoji-heart-eyes-3x3",
-    "filePath": "assets2/emoji-heart-eyes-3x3.png"
+    "filePath": "assets2/icons/emoji-heart-eyes-3x3.png"
   },
   {
     "id": "emoji-kiss-1x1",
-    "filePath": "assets2/emoji-kiss-1x1.png"
+    "filePath": "assets2/icons/emoji-kiss-1x1.png"
   },
   {
     "id": "emoji-kiss-2x2",
-    "filePath": "assets2/emoji-kiss-2x2.png"
+    "filePath": "assets2/icons/emoji-kiss-2x2.png"
   },
   {
     "id": "emoji-kiss-3x3",
-    "filePath": "assets2/emoji-kiss-3x3.png"
+    "filePath": "assets2/icons/emoji-kiss-3x3.png"
   },
   {
     "id": "emoji-laugh-1x1",
-    "filePath": "assets2/emoji-laugh-1x1.png"
+    "filePath": "assets2/icons/emoji-laugh-1x1.png"
   },
   {
     "id": "emoji-laugh-2x2",
-    "filePath": "assets2/emoji-laugh-2x2.png"
+    "filePath": "assets2/icons/emoji-laugh-2x2.png"
   },
   {
     "id": "emoji-laugh-3x3",
-    "filePath": "assets2/emoji-laugh-3x3.png"
+    "filePath": "assets2/icons/emoji-laugh-3x3.png"
   },
   {
     "id": "emoji-love-1x1",
-    "filePath": "assets2/emoji-love-1x1.png"
+    "filePath": "assets2/icons/emoji-love-1x1.png"
   },
   {
     "id": "emoji-love-2x2",
-    "filePath": "assets2/emoji-love-2x2.png"
+    "filePath": "assets2/icons/emoji-love-2x2.png"
   },
   {
     "id": "emoji-love-3x3",
-    "filePath": "assets2/emoji-love-3x3.png"
+    "filePath": "assets2/icons/emoji-love-3x3.png"
   },
   {
     "id": "emoji-mindblown-1x1",
-    "filePath": "assets2/emoji-mindblown-1x1.png"
+    "filePath": "assets2/icons/emoji-mindblown-1x1.png"
   },
   {
     "id": "emoji-mindblown-2x2",
-    "filePath": "assets2/emoji-mindblown-2x2.png"
+    "filePath": "assets2/icons/emoji-mindblown-2x2.png"
   },
   {
     "id": "emoji-mindblown-3x3",
-    "filePath": "assets2/emoji-mindblown-3x3.png"
+    "filePath": "assets2/icons/emoji-mindblown-3x3.png"
   },
   {
     "id": "emoji-money-1x1",
-    "filePath": "assets2/emoji-money-1x1.png"
+    "filePath": "assets2/icons/emoji-money-1x1.png"
   },
   {
     "id": "emoji-money-2x2",
-    "filePath": "assets2/emoji-money-2x2.png"
+    "filePath": "assets2/icons/emoji-money-2x2.png"
   },
   {
     "id": "emoji-money-3x3",
-    "filePath": "assets2/emoji-money-3x3.png"
+    "filePath": "assets2/icons/emoji-money-3x3.png"
   },
   {
     "id": "emoji-nerd-1x1",
-    "filePath": "assets2/emoji-nerd-1x1.png"
+    "filePath": "assets2/icons/emoji-nerd-1x1.png"
   },
   {
     "id": "emoji-nerd-2x2",
-    "filePath": "assets2/emoji-nerd-2x2.png"
+    "filePath": "assets2/icons/emoji-nerd-2x2.png"
   },
   {
     "id": "emoji-nerd-3x3",
-    "filePath": "assets2/emoji-nerd-3x3.png"
+    "filePath": "assets2/icons/emoji-nerd-3x3.png"
   },
   {
     "id": "emoji-nervous-1x1",
-    "filePath": "assets2/emoji-nervous-1x1.png"
+    "filePath": "assets2/icons/emoji-nervous-1x1.png"
   },
   {
     "id": "emoji-nervous-2x2",
-    "filePath": "assets2/emoji-nervous-2x2.png"
+    "filePath": "assets2/icons/emoji-nervous-2x2.png"
   },
   {
     "id": "emoji-nervous-3x3",
-    "filePath": "assets2/emoji-nervous-3x3.png"
+    "filePath": "assets2/icons/emoji-nervous-3x3.png"
   },
   {
     "id": "emoji-party-1x1",
-    "filePath": "assets2/emoji-party-1x1.png"
+    "filePath": "assets2/icons/emoji-party-1x1.png"
   },
   {
     "id": "emoji-party-2x2",
-    "filePath": "assets2/emoji-party-2x2.png"
+    "filePath": "assets2/icons/emoji-party-2x2.png"
   },
   {
     "id": "emoji-party-3x3",
-    "filePath": "assets2/emoji-party-3x3.png"
+    "filePath": "assets2/icons/emoji-party-3x3.png"
   },
   {
     "id": "emoji-robot-1x1",
-    "filePath": "assets2/emoji-robot-1x1.png"
+    "filePath": "assets2/icons/emoji-robot-1x1.png"
   },
   {
     "id": "emoji-robot-2x2",
-    "filePath": "assets2/emoji-robot-2x2.png"
+    "filePath": "assets2/icons/emoji-robot-2x2.png"
   },
   {
     "id": "emoji-robot-3x3",
-    "filePath": "assets2/emoji-robot-3x3.png"
+    "filePath": "assets2/icons/emoji-robot-3x3.png"
   },
   {
     "id": "emoji-sad-1x1",
-    "filePath": "assets2/emoji-sad-1x1.png"
+    "filePath": "assets2/icons/emoji-sad-1x1.png"
   },
   {
     "id": "emoji-sad-2x2",
-    "filePath": "assets2/emoji-sad-2x2.png"
+    "filePath": "assets2/icons/emoji-sad-2x2.png"
   },
   {
     "id": "emoji-sad-3x3",
-    "filePath": "assets2/emoji-sad-3x3.png"
+    "filePath": "assets2/icons/emoji-sad-3x3.png"
   },
   {
     "id": "emoji-shocked-1x1",
-    "filePath": "assets2/emoji-shocked-1x1.png"
+    "filePath": "assets2/icons/emoji-shocked-1x1.png"
   },
   {
     "id": "emoji-shocked-2x2",
-    "filePath": "assets2/emoji-shocked-2x2.png"
+    "filePath": "assets2/icons/emoji-shocked-2x2.png"
   },
   {
     "id": "emoji-shocked-3x3",
-    "filePath": "assets2/emoji-shocked-3x3.png"
+    "filePath": "assets2/icons/emoji-shocked-3x3.png"
   },
   {
     "id": "emoji-sick-1x1",
-    "filePath": "assets2/emoji-sick-1x1.png"
+    "filePath": "assets2/icons/emoji-sick-1x1.png"
   },
   {
     "id": "emoji-sick-2x2",
-    "filePath": "assets2/emoji-sick-2x2.png"
+    "filePath": "assets2/icons/emoji-sick-2x2.png"
   },
   {
     "id": "emoji-sick-3x3",
-    "filePath": "assets2/emoji-sick-3x3.png"
+    "filePath": "assets2/icons/emoji-sick-3x3.png"
   },
   {
     "id": "emoji-skull-1x1",
-    "filePath": "assets2/emoji-skull-1x1.png"
+    "filePath": "assets2/icons/emoji-skull-1x1.png"
   },
   {
     "id": "emoji-skull-2x2",
-    "filePath": "assets2/emoji-skull-2x2.png"
+    "filePath": "assets2/icons/emoji-skull-2x2.png"
   },
   {
     "id": "emoji-skull-3x3",
-    "filePath": "assets2/emoji-skull-3x3.png"
+    "filePath": "assets2/icons/emoji-skull-3x3.png"
   },
   {
     "id": "emoji-sleepy-1x1",
-    "filePath": "assets2/emoji-sleepy-1x1.png"
+    "filePath": "assets2/icons/emoji-sleepy-1x1.png"
   },
   {
     "id": "emoji-sleepy-2x2",
-    "filePath": "assets2/emoji-sleepy-2x2.png"
+    "filePath": "assets2/icons/emoji-sleepy-2x2.png"
   },
   {
     "id": "emoji-sleepy-3x3",
-    "filePath": "assets2/emoji-sleepy-3x3.png"
+    "filePath": "assets2/icons/emoji-sleepy-3x3.png"
   },
   {
     "id": "emoji-smile-1x1",
-    "filePath": "assets2/emoji-smile-1x1.png"
+    "filePath": "assets2/icons/emoji-smile-1x1.png"
   },
   {
     "id": "emoji-smile-2x2",
-    "filePath": "assets2/emoji-smile-2x2.png"
+    "filePath": "assets2/icons/emoji-smile-2x2.png"
   },
   {
     "id": "emoji-smile-3x3",
-    "filePath": "assets2/emoji-smile-3x3.png"
+    "filePath": "assets2/icons/emoji-smile-3x3.png"
   },
   {
     "id": "emoji-smirk-1x1",
-    "filePath": "assets2/emoji-smirk-1x1.png"
+    "filePath": "assets2/icons/emoji-smirk-1x1.png"
   },
   {
     "id": "emoji-smirk-2x2",
-    "filePath": "assets2/emoji-smirk-2x2.png"
+    "filePath": "assets2/icons/emoji-smirk-2x2.png"
   },
   {
     "id": "emoji-smirk-3x3",
-    "filePath": "assets2/emoji-smirk-3x3.png"
+    "filePath": "assets2/icons/emoji-smirk-3x3.png"
   },
   {
     "id": "emoji-star-eyes-1x1",
-    "filePath": "assets2/emoji-star-eyes-1x1.png"
+    "filePath": "assets2/icons/emoji-star-eyes-1x1.png"
   },
   {
     "id": "emoji-star-eyes-2x2",
-    "filePath": "assets2/emoji-star-eyes-2x2.png"
+    "filePath": "assets2/icons/emoji-star-eyes-2x2.png"
   },
   {
     "id": "emoji-star-eyes-3x3",
-    "filePath": "assets2/emoji-star-eyes-3x3.png"
+    "filePath": "assets2/icons/emoji-star-eyes-3x3.png"
   },
   {
     "id": "emoji-sunglasses-1x1",
-    "filePath": "assets2/emoji-sunglasses-1x1.png"
+    "filePath": "assets2/icons/emoji-sunglasses-1x1.png"
   },
   {
     "id": "emoji-sunglasses-2x2",
-    "filePath": "assets2/emoji-sunglasses-2x2.png"
+    "filePath": "assets2/icons/emoji-sunglasses-2x2.png"
   },
   {
     "id": "emoji-sunglasses-3x3",
-    "filePath": "assets2/emoji-sunglasses-3x3.png"
+    "filePath": "assets2/icons/emoji-sunglasses-3x3.png"
   },
   {
     "id": "emoji-thinking-1x1",
-    "filePath": "assets2/emoji-thinking-1x1.png"
+    "filePath": "assets2/icons/emoji-thinking-1x1.png"
   },
   {
     "id": "emoji-thinking-2x2",
-    "filePath": "assets2/emoji-thinking-2x2.png"
+    "filePath": "assets2/icons/emoji-thinking-2x2.png"
   },
   {
     "id": "emoji-thinking-3x3",
-    "filePath": "assets2/emoji-thinking-3x3.png"
+    "filePath": "assets2/icons/emoji-thinking-3x3.png"
   },
   {
     "id": "emoji-wink-1x1",
-    "filePath": "assets2/emoji-wink-1x1.png"
+    "filePath": "assets2/icons/emoji-wink-1x1.png"
   },
   {
     "id": "emoji-wink-2x2",
-    "filePath": "assets2/emoji-wink-2x2.png"
+    "filePath": "assets2/icons/emoji-wink-2x2.png"
   },
   {
     "id": "emoji-wink-3x3",
-    "filePath": "assets2/emoji-wink-3x3.png"
+    "filePath": "assets2/icons/emoji-wink-3x3.png"
   },
   {
     "id": "fence-amber-1x1",
-    "filePath": "assets2/fence-amber-1x1.png"
+    "filePath": "assets2/deco/fence-amber-1x1.png"
   },
   {
     "id": "fence-amber-2x1",
-    "filePath": "assets2/fence-amber-2x1.png"
+    "filePath": "assets2/deco/fence-amber-2x1.png"
   },
   {
     "id": "fence-bio-1x1",
-    "filePath": "assets2/fence-bio-1x1.png"
+    "filePath": "assets2/deco/fence-bio-1x1.png"
   },
   {
     "id": "fence-cyan-1x1",
-    "filePath": "assets2/fence-cyan-1x1.png"
+    "filePath": "assets2/deco/fence-cyan-1x1.png"
   },
   {
     "id": "fence-ice-1x1",
-    "filePath": "assets2/fence-ice-1x1.png"
+    "filePath": "assets2/deco/fence-ice-1x1.png"
   },
   {
     "id": "fence-magma-1x1",
-    "filePath": "assets2/fence-magma-1x1.png"
+    "filePath": "assets2/deco/fence-magma-1x1.png"
   },
   {
     "id": "fence-pink-1x1",
-    "filePath": "assets2/fence-pink-1x1.png"
+    "filePath": "assets2/deco/fence-pink-1x1.png"
   },
   {
     "id": "fence-red-1x1",
-    "filePath": "assets2/fence-red-1x1.png"
+    "filePath": "assets2/deco/fence-red-1x1.png"
   },
   {
     "id": "fence-void-1x1",
-    "filePath": "assets2/fence-void-1x1.png"
-  },
-  {
-    "id": "flora-blue-shroom-1x1",
-    "filePath": "assets2/flora-blue-shroom-1x1.png"
-  },
-  {
-    "id": "flora-cave-moss-1x1",
-    "filePath": "assets2/flora-cave-moss-1x1.png"
-  },
-  {
-    "id": "flora-cluster-1x1",
-    "filePath": "assets2/flora-cluster-1x1.png"
-  },
-  {
-    "id": "flora-crystal-bloom-1x1",
-    "filePath": "assets2/flora-crystal-bloom-1x1.png"
-  },
-  {
-    "id": "flora-glow-root-1x1",
-    "filePath": "assets2/flora-glow-root-1x1.png"
-  },
-  {
-    "id": "flora-glowcap-1x1",
-    "filePath": "assets2/flora-glowcap-1x1.png"
-  },
-  {
-    "id": "flora-ice-flower-1x1",
-    "filePath": "assets2/flora-ice-flower-1x1.png"
-  },
-  {
-    "id": "flora-night-cap-1x1",
-    "filePath": "assets2/flora-night-cap-1x1.png"
-  },
-  {
-    "id": "flora-pink-shroom-1x1",
-    "filePath": "assets2/flora-pink-shroom-1x1.png"
-  },
-  {
-    "id": "flora-puffball-1x1",
-    "filePath": "assets2/flora-puffball-1x1.png"
-  },
-  {
-    "id": "flora-sand-cactus-1x1",
-    "filePath": "assets2/flora-sand-cactus-1x1.png"
-  },
-  {
-    "id": "flora-shelf-1x1",
-    "filePath": "assets2/flora-shelf-1x1.png"
-  },
-  {
-    "id": "flora-spore-fern-1x1",
-    "filePath": "assets2/flora-spore-fern-1x1.png"
-  },
-  {
-    "id": "flora-tall-fungus-1x1",
-    "filePath": "assets2/flora-tall-fungus-1x1.png"
-  },
-  {
-    "id": "flora-tiny-tree-1x1",
-    "filePath": "assets2/flora-tiny-tree-1x1.png"
-  },
-  {
-    "id": "flora-vine-sprout-1x1",
-    "filePath": "assets2/flora-vine-sprout-1x1.png"
+    "filePath": "assets2/deco/fence-void-1x1.png"
   },
   {
     "id": "garden-bed-3x2",
@@ -24905,323 +22592,323 @@ export const ICON_FILES: { id: string; filePath: string }[] = [
   },
   {
     "id": "gem-amber-1x1",
-    "filePath": "assets2/gem-amber-1x1.png"
+    "filePath": "assets2/deco/gem-amber-1x1.png"
   },
   {
     "id": "gem-amber-2x2",
-    "filePath": "assets2/gem-amber-2x2.png"
+    "filePath": "assets2/deco/gem-amber-2x2.png"
   },
   {
     "id": "gem-cyan-1x1",
-    "filePath": "assets2/gem-cyan-1x1.png"
+    "filePath": "assets2/deco/gem-cyan-1x1.png"
   },
   {
     "id": "gem-cyan-2x2",
-    "filePath": "assets2/gem-cyan-2x2.png"
+    "filePath": "assets2/deco/gem-cyan-2x2.png"
   },
   {
     "id": "gem-gold-1x1",
-    "filePath": "assets2/gem-gold-1x1.png"
+    "filePath": "assets2/deco/gem-gold-1x1.png"
   },
   {
     "id": "gem-gold-2x2",
-    "filePath": "assets2/gem-gold-2x2.png"
+    "filePath": "assets2/deco/gem-gold-2x2.png"
   },
   {
     "id": "gem-ice-1x1",
-    "filePath": "assets2/gem-ice-1x1.png"
+    "filePath": "assets2/deco/gem-ice-1x1.png"
   },
   {
     "id": "gem-ice-2x2",
-    "filePath": "assets2/gem-ice-2x2.png"
+    "filePath": "assets2/deco/gem-ice-2x2.png"
   },
   {
     "id": "gem-leaf-1x1",
-    "filePath": "assets2/gem-leaf-1x1.png"
+    "filePath": "assets2/deco/gem-leaf-1x1.png"
   },
   {
     "id": "gem-leaf-2x2",
-    "filePath": "assets2/gem-leaf-2x2.png"
+    "filePath": "assets2/deco/gem-leaf-2x2.png"
   },
   {
     "id": "gem-rose-1x1",
-    "filePath": "assets2/gem-rose-1x1.png"
+    "filePath": "assets2/deco/gem-rose-1x1.png"
   },
   {
     "id": "gem-rose-2x2",
-    "filePath": "assets2/gem-rose-2x2.png"
+    "filePath": "assets2/deco/gem-rose-2x2.png"
   },
   {
     "id": "gem-ruby-1x1",
-    "filePath": "assets2/gem-ruby-1x1.png"
+    "filePath": "assets2/deco/gem-ruby-1x1.png"
   },
   {
     "id": "gem-ruby-2x2",
-    "filePath": "assets2/gem-ruby-2x2.png"
+    "filePath": "assets2/deco/gem-ruby-2x2.png"
   },
   {
     "id": "gem-void-1x1",
-    "filePath": "assets2/gem-void-1x1.png"
+    "filePath": "assets2/deco/gem-void-1x1.png"
   },
   {
     "id": "gem-void-2x2",
-    "filePath": "assets2/gem-void-2x2.png"
+    "filePath": "assets2/deco/gem-void-2x2.png"
   },
   {
     "id": "glyph-beetle-1x1",
-    "filePath": "assets2/glyph-beetle-1x1.png"
+    "filePath": "assets2/deco/glyph-beetle-1x1.png"
   },
   {
     "id": "glyph-beetle-2x2",
-    "filePath": "assets2/glyph-beetle-2x2.png"
+    "filePath": "assets2/deco/glyph-beetle-2x2.png"
   },
   {
     "id": "glyph-chip-1x1",
-    "filePath": "assets2/glyph-chip-1x1.png"
+    "filePath": "assets2/deco/glyph-chip-1x1.png"
   },
   {
     "id": "glyph-chip-2x2",
-    "filePath": "assets2/glyph-chip-2x2.png"
+    "filePath": "assets2/deco/glyph-chip-2x2.png"
   },
   {
     "id": "glyph-eye-1x1",
-    "filePath": "assets2/glyph-eye-1x1.png"
+    "filePath": "assets2/deco/glyph-eye-1x1.png"
   },
   {
     "id": "glyph-eye-2x2",
-    "filePath": "assets2/glyph-eye-2x2.png"
+    "filePath": "assets2/deco/glyph-eye-2x2.png"
   },
   {
     "id": "glyph-gate-1x1",
-    "filePath": "assets2/glyph-gate-1x1.png"
+    "filePath": "assets2/deco/glyph-gate-1x1.png"
   },
   {
     "id": "glyph-gate-2x2",
-    "filePath": "assets2/glyph-gate-2x2.png"
+    "filePath": "assets2/deco/glyph-gate-2x2.png"
   },
   {
     "id": "glyph-gear-sun-1x1",
-    "filePath": "assets2/glyph-gear-sun-1x1.png"
+    "filePath": "assets2/deco/glyph-gear-sun-1x1.png"
   },
   {
     "id": "glyph-gear-sun-2x2",
-    "filePath": "assets2/glyph-gear-sun-2x2.png"
+    "filePath": "assets2/deco/glyph-gear-sun-2x2.png"
   },
   {
     "id": "glyph-ladder-1x1",
-    "filePath": "assets2/glyph-ladder-1x1.png"
+    "filePath": "assets2/deco/glyph-ladder-1x1.png"
   },
   {
     "id": "glyph-ladder-2x2",
-    "filePath": "assets2/glyph-ladder-2x2.png"
+    "filePath": "assets2/deco/glyph-ladder-2x2.png"
   },
   {
     "id": "glyph-mask-1x1",
-    "filePath": "assets2/glyph-mask-1x1.png"
+    "filePath": "assets2/deco/glyph-mask-1x1.png"
   },
   {
     "id": "glyph-mask-2x2",
-    "filePath": "assets2/glyph-mask-2x2.png"
+    "filePath": "assets2/deco/glyph-mask-2x2.png"
   },
   {
     "id": "glyph-mountain-1x1",
-    "filePath": "assets2/glyph-mountain-1x1.png"
+    "filePath": "assets2/deco/glyph-mountain-1x1.png"
   },
   {
     "id": "glyph-mountain-2x2",
-    "filePath": "assets2/glyph-mountain-2x2.png"
+    "filePath": "assets2/deco/glyph-mountain-2x2.png"
   },
   {
     "id": "glyph-river-1x1",
-    "filePath": "assets2/glyph-river-1x1.png"
+    "filePath": "assets2/deco/glyph-river-1x1.png"
   },
   {
     "id": "glyph-river-2x2",
-    "filePath": "assets2/glyph-river-2x2.png"
+    "filePath": "assets2/deco/glyph-river-2x2.png"
   },
   {
     "id": "glyph-scarab-1x1",
-    "filePath": "assets2/glyph-scarab-1x1.png"
+    "filePath": "assets2/deco/glyph-scarab-1x1.png"
   },
   {
     "id": "glyph-scarab-2x2",
-    "filePath": "assets2/glyph-scarab-2x2.png"
+    "filePath": "assets2/deco/glyph-scarab-2x2.png"
   },
   {
     "id": "glyph-seed-1x1",
-    "filePath": "assets2/glyph-seed-1x1.png"
+    "filePath": "assets2/deco/glyph-seed-1x1.png"
   },
   {
     "id": "glyph-seed-2x2",
-    "filePath": "assets2/glyph-seed-2x2.png"
+    "filePath": "assets2/deco/glyph-seed-2x2.png"
   },
   {
     "id": "glyph-spiral-1x1",
-    "filePath": "assets2/glyph-spiral-1x1.png"
+    "filePath": "assets2/deco/glyph-spiral-1x1.png"
   },
   {
     "id": "glyph-spiral-2x2",
-    "filePath": "assets2/glyph-spiral-2x2.png"
+    "filePath": "assets2/deco/glyph-spiral-2x2.png"
   },
   {
     "id": "glyph-sun-1x1",
-    "filePath": "assets2/glyph-sun-1x1.png"
+    "filePath": "assets2/deco/glyph-sun-1x1.png"
   },
   {
     "id": "glyph-sun-2x2",
-    "filePath": "assets2/glyph-sun-2x2.png"
+    "filePath": "assets2/deco/glyph-sun-2x2.png"
   },
   {
     "id": "glyph-twin-moon-1x1",
-    "filePath": "assets2/glyph-twin-moon-1x1.png"
+    "filePath": "assets2/deco/glyph-twin-moon-1x1.png"
   },
   {
     "id": "glyph-twin-moon-2x2",
-    "filePath": "assets2/glyph-twin-moon-2x2.png"
+    "filePath": "assets2/deco/glyph-twin-moon-2x2.png"
   },
   {
     "id": "glyph-void-1x1",
-    "filePath": "assets2/glyph-void-1x1.png"
+    "filePath": "assets2/deco/glyph-void-1x1.png"
   },
   {
     "id": "glyph-void-2x2",
-    "filePath": "assets2/glyph-void-2x2.png"
+    "filePath": "assets2/deco/glyph-void-2x2.png"
   },
   {
     "id": "glyph-wave-1x1",
-    "filePath": "assets2/glyph-wave-1x1.png"
+    "filePath": "assets2/deco/glyph-wave-1x1.png"
   },
   {
     "id": "glyph-wave-2x2",
-    "filePath": "assets2/glyph-wave-2x2.png"
+    "filePath": "assets2/deco/glyph-wave-2x2.png"
   },
   {
     "id": "hatch-bio-1x2",
-    "filePath": "assets2/hatch-bio-1x2.png"
+    "filePath": "assets2/deco/hatch-bio-1x2.png"
   },
   {
     "id": "hatch-bio-2x2",
-    "filePath": "assets2/hatch-bio-2x2.png"
+    "filePath": "assets2/deco/hatch-bio-2x2.png"
   },
   {
     "id": "hatch-bronze-1x2",
-    "filePath": "assets2/hatch-bronze-1x2.png"
+    "filePath": "assets2/deco/hatch-bronze-1x2.png"
   },
   {
     "id": "hatch-bronze-2x2",
-    "filePath": "assets2/hatch-bronze-2x2.png"
+    "filePath": "assets2/deco/hatch-bronze-2x2.png"
   },
   {
     "id": "hatch-grate-1x2",
-    "filePath": "assets2/hatch-grate-1x2.png"
+    "filePath": "assets2/deco/hatch-grate-1x2.png"
   },
   {
     "id": "hatch-grate-2x2",
-    "filePath": "assets2/hatch-grate-2x2.png"
+    "filePath": "assets2/deco/hatch-grate-2x2.png"
   },
   {
     "id": "hatch-hazard-1x2",
-    "filePath": "assets2/hatch-hazard-1x2.png"
+    "filePath": "assets2/deco/hatch-hazard-1x2.png"
   },
   {
     "id": "hatch-hazard-2x2",
-    "filePath": "assets2/hatch-hazard-2x2.png"
+    "filePath": "assets2/deco/hatch-hazard-2x2.png"
   },
   {
     "id": "hatch-ice-1x2",
-    "filePath": "assets2/hatch-ice-1x2.png"
+    "filePath": "assets2/deco/hatch-ice-1x2.png"
   },
   {
     "id": "hatch-ice-2x2",
-    "filePath": "assets2/hatch-ice-2x2.png"
+    "filePath": "assets2/deco/hatch-ice-2x2.png"
   },
   {
     "id": "hatch-round-1x2",
-    "filePath": "assets2/hatch-round-1x2.png"
+    "filePath": "assets2/deco/hatch-round-1x2.png"
   },
   {
     "id": "hatch-round-2x2",
-    "filePath": "assets2/hatch-round-2x2.png"
+    "filePath": "assets2/deco/hatch-round-2x2.png"
   },
   {
     "id": "hatch-shutter-1x2",
-    "filePath": "assets2/hatch-shutter-1x2.png"
+    "filePath": "assets2/deco/hatch-shutter-1x2.png"
   },
   {
     "id": "hatch-shutter-2x2",
-    "filePath": "assets2/hatch-shutter-2x2.png"
+    "filePath": "assets2/deco/hatch-shutter-2x2.png"
   },
   {
     "id": "hatch-temple-1x2",
-    "filePath": "assets2/hatch-temple-1x2.png"
+    "filePath": "assets2/deco/hatch-temple-1x2.png"
   },
   {
     "id": "hatch-temple-2x2",
-    "filePath": "assets2/hatch-temple-2x2.png"
+    "filePath": "assets2/deco/hatch-temple-2x2.png"
   },
   {
     "id": "holo-biome-2x2",
-    "filePath": "assets2/holo-biome-2x2.png"
+    "filePath": "assets2/deco/holo-biome-2x2.png"
   },
   {
     "id": "holo-biome-3x3",
-    "filePath": "assets2/holo-biome-3x3.png"
+    "filePath": "assets2/deco/holo-biome-3x3.png"
   },
   {
     "id": "holo-cyan-2x2",
-    "filePath": "assets2/holo-cyan-2x2.png"
+    "filePath": "assets2/deco/holo-cyan-2x2.png"
   },
   {
     "id": "holo-cyan-3x3",
-    "filePath": "assets2/holo-cyan-3x3.png"
+    "filePath": "assets2/deco/holo-cyan-3x3.png"
   },
   {
     "id": "holo-ghost-2x2",
-    "filePath": "assets2/holo-ghost-2x2.png"
+    "filePath": "assets2/deco/holo-ghost-2x2.png"
   },
   {
     "id": "holo-ghost-3x3",
-    "filePath": "assets2/holo-ghost-3x3.png"
+    "filePath": "assets2/deco/holo-ghost-3x3.png"
   },
   {
     "id": "holo-map-2x2",
-    "filePath": "assets2/holo-map-2x2.png"
+    "filePath": "assets2/deco/holo-map-2x2.png"
   },
   {
     "id": "holo-map-3x3",
-    "filePath": "assets2/holo-map-3x3.png"
+    "filePath": "assets2/deco/holo-map-3x3.png"
   },
   {
     "id": "holo-playback-2x2",
-    "filePath": "assets2/holo-playback-2x2.png"
+    "filePath": "assets2/deco/holo-playback-2x2.png"
   },
   {
     "id": "holo-playback-3x3",
-    "filePath": "assets2/holo-playback-3x3.png"
+    "filePath": "assets2/deco/holo-playback-3x3.png"
   },
   {
     "id": "holo-portrait-2x2",
-    "filePath": "assets2/holo-portrait-2x2.png"
+    "filePath": "assets2/deco/holo-portrait-2x2.png"
   },
   {
     "id": "holo-portrait-3x3",
-    "filePath": "assets2/holo-portrait-3x3.png"
+    "filePath": "assets2/deco/holo-portrait-3x3.png"
   },
   {
     "id": "holo-warn-2x2",
-    "filePath": "assets2/holo-warn-2x2.png"
+    "filePath": "assets2/deco/holo-warn-2x2.png"
   },
   {
     "id": "holo-warn-3x3",
-    "filePath": "assets2/holo-warn-3x3.png"
+    "filePath": "assets2/deco/holo-warn-3x3.png"
   },
   {
     "id": "holo-waypoint-2x2",
-    "filePath": "assets2/holo-waypoint-2x2.png"
+    "filePath": "assets2/deco/holo-waypoint-2x2.png"
   },
   {
     "id": "holo-waypoint-3x3",
-    "filePath": "assets2/holo-waypoint-3x3.png"
+    "filePath": "assets2/deco/holo-waypoint-3x3.png"
   },
   {
     "id": "home-bathroom-4x4",
@@ -25473,351 +23160,351 @@ export const ICON_FILES: { id: string; filePath: string }[] = [
   },
   {
     "id": "horiz-barrier-2x1",
-    "filePath": "assets2/horiz-barrier-2x1.png"
+    "filePath": "assets2/deco/horiz-barrier-2x1.png"
   },
   {
     "id": "horiz-barrier-3x1",
-    "filePath": "assets2/horiz-barrier-3x1.png"
+    "filePath": "assets2/deco/horiz-barrier-3x1.png"
   },
   {
     "id": "horiz-barrier-4x1",
-    "filePath": "assets2/horiz-barrier-4x1.png"
+    "filePath": "assets2/deco/horiz-barrier-4x1.png"
   },
   {
     "id": "horiz-battery-2x1",
-    "filePath": "assets2/horiz-battery-2x1.png"
+    "filePath": "assets2/deco/horiz-battery-2x1.png"
   },
   {
     "id": "horiz-battery-3x1",
-    "filePath": "assets2/horiz-battery-3x1.png"
+    "filePath": "assets2/deco/horiz-battery-3x1.png"
   },
   {
     "id": "horiz-battery-4x1",
-    "filePath": "assets2/horiz-battery-4x1.png"
+    "filePath": "assets2/deco/horiz-battery-4x1.png"
   },
   {
     "id": "horiz-beam-2x1",
-    "filePath": "assets2/horiz-beam-2x1.png"
+    "filePath": "assets2/deco/horiz-beam-2x1.png"
   },
   {
     "id": "horiz-beam-3x1",
-    "filePath": "assets2/horiz-beam-3x1.png"
+    "filePath": "assets2/deco/horiz-beam-3x1.png"
   },
   {
     "id": "horiz-beam-4x1",
-    "filePath": "assets2/horiz-beam-4x1.png"
+    "filePath": "assets2/deco/horiz-beam-4x1.png"
   },
   {
     "id": "horiz-bed-2x1",
-    "filePath": "assets2/horiz-bed-2x1.png"
+    "filePath": "assets2/deco/horiz-bed-2x1.png"
   },
   {
     "id": "horiz-bed-3x1",
-    "filePath": "assets2/horiz-bed-3x1.png"
+    "filePath": "assets2/deco/horiz-bed-3x1.png"
   },
   {
     "id": "horiz-bed-4x1",
-    "filePath": "assets2/horiz-bed-4x1.png"
+    "filePath": "assets2/deco/horiz-bed-4x1.png"
   },
   {
     "id": "horiz-bench-2x1",
-    "filePath": "assets2/horiz-bench-2x1.png"
+    "filePath": "assets2/deco/horiz-bench-2x1.png"
   },
   {
     "id": "horiz-bench-3x1",
-    "filePath": "assets2/horiz-bench-3x1.png"
+    "filePath": "assets2/deco/horiz-bench-3x1.png"
   },
   {
     "id": "horiz-bench-4x1",
-    "filePath": "assets2/horiz-bench-4x1.png"
+    "filePath": "assets2/deco/horiz-bench-4x1.png"
   },
   {
     "id": "horiz-bumper-2x1",
-    "filePath": "assets2/horiz-bumper-2x1.png"
+    "filePath": "assets2/deco/horiz-bumper-2x1.png"
   },
   {
     "id": "horiz-bumper-3x1",
-    "filePath": "assets2/horiz-bumper-3x1.png"
+    "filePath": "assets2/deco/horiz-bumper-3x1.png"
   },
   {
     "id": "horiz-bumper-4x1",
-    "filePath": "assets2/horiz-bumper-4x1.png"
+    "filePath": "assets2/deco/horiz-bumper-4x1.png"
   },
   {
     "id": "horiz-cables-2x1",
-    "filePath": "assets2/horiz-cables-2x1.png"
+    "filePath": "assets2/deco/horiz-cables-2x1.png"
   },
   {
     "id": "horiz-cables-3x1",
-    "filePath": "assets2/horiz-cables-3x1.png"
+    "filePath": "assets2/deco/horiz-cables-3x1.png"
   },
   {
     "id": "horiz-cables-4x1",
-    "filePath": "assets2/horiz-cables-4x1.png"
+    "filePath": "assets2/deco/horiz-cables-4x1.png"
   },
   {
     "id": "horiz-console-2x1",
-    "filePath": "assets2/horiz-console-2x1.png"
+    "filePath": "assets2/deco/horiz-console-2x1.png"
   },
   {
     "id": "horiz-console-3x1",
-    "filePath": "assets2/horiz-console-3x1.png"
+    "filePath": "assets2/deco/horiz-console-3x1.png"
   },
   {
     "id": "horiz-console-4x1",
-    "filePath": "assets2/horiz-console-4x1.png"
+    "filePath": "assets2/deco/horiz-console-4x1.png"
   },
   {
     "id": "horiz-conveyor-2x1",
-    "filePath": "assets2/horiz-conveyor-2x1.png"
+    "filePath": "assets2/deco/horiz-conveyor-2x1.png"
   },
   {
     "id": "horiz-conveyor-3x1",
-    "filePath": "assets2/horiz-conveyor-3x1.png"
+    "filePath": "assets2/deco/horiz-conveyor-3x1.png"
   },
   {
     "id": "horiz-conveyor-4x1",
-    "filePath": "assets2/horiz-conveyor-4x1.png"
+    "filePath": "assets2/deco/horiz-conveyor-4x1.png"
   },
   {
     "id": "horiz-counter-2x1",
-    "filePath": "assets2/horiz-counter-2x1.png"
+    "filePath": "assets2/deco/horiz-counter-2x1.png"
   },
   {
     "id": "horiz-counter-3x1",
-    "filePath": "assets2/horiz-counter-3x1.png"
+    "filePath": "assets2/deco/horiz-counter-3x1.png"
   },
   {
     "id": "horiz-counter-4x1",
-    "filePath": "assets2/horiz-counter-4x1.png"
+    "filePath": "assets2/deco/horiz-counter-4x1.png"
   },
   {
     "id": "horiz-crates-2x1",
-    "filePath": "assets2/horiz-crates-2x1.png"
+    "filePath": "assets2/deco/horiz-crates-2x1.png"
   },
   {
     "id": "horiz-crates-3x1",
-    "filePath": "assets2/horiz-crates-3x1.png"
+    "filePath": "assets2/deco/horiz-crates-3x1.png"
   },
   {
     "id": "horiz-crates-4x1",
-    "filePath": "assets2/horiz-crates-4x1.png"
+    "filePath": "assets2/deco/horiz-crates-4x1.png"
   },
   {
     "id": "horiz-desk-2x1",
-    "filePath": "assets2/horiz-desk-2x1.png"
+    "filePath": "assets2/deco/horiz-desk-2x1.png"
   },
   {
     "id": "horiz-desk-3x1",
-    "filePath": "assets2/horiz-desk-3x1.png"
+    "filePath": "assets2/deco/horiz-desk-3x1.png"
   },
   {
     "id": "horiz-desk-4x1",
-    "filePath": "assets2/horiz-desk-4x1.png"
+    "filePath": "assets2/deco/horiz-desk-4x1.png"
   },
   {
     "id": "horiz-duct-2x1",
-    "filePath": "assets2/horiz-duct-2x1.png"
+    "filePath": "assets2/deco/horiz-duct-2x1.png"
   },
   {
     "id": "horiz-duct-3x1",
-    "filePath": "assets2/horiz-duct-3x1.png"
+    "filePath": "assets2/deco/horiz-duct-3x1.png"
   },
   {
     "id": "horiz-duct-4x1",
-    "filePath": "assets2/horiz-duct-4x1.png"
+    "filePath": "assets2/deco/horiz-duct-4x1.png"
   },
   {
     "id": "horiz-fence-2x1",
-    "filePath": "assets2/horiz-fence-2x1.png"
+    "filePath": "assets2/deco/horiz-fence-2x1.png"
   },
   {
     "id": "horiz-fence-3x1",
-    "filePath": "assets2/horiz-fence-3x1.png"
+    "filePath": "assets2/deco/horiz-fence-3x1.png"
   },
   {
     "id": "horiz-fence-4x1",
-    "filePath": "assets2/horiz-fence-4x1.png"
+    "filePath": "assets2/deco/horiz-fence-4x1.png"
   },
   {
     "id": "horiz-garden-2x1",
-    "filePath": "assets2/horiz-garden-2x1.png"
+    "filePath": "assets2/deco/horiz-garden-2x1.png"
   },
   {
     "id": "horiz-garden-3x1",
-    "filePath": "assets2/horiz-garden-3x1.png"
+    "filePath": "assets2/deco/horiz-garden-3x1.png"
   },
   {
     "id": "horiz-garden-4x1",
-    "filePath": "assets2/horiz-garden-4x1.png"
+    "filePath": "assets2/deco/horiz-garden-4x1.png"
   },
   {
     "id": "horiz-keyboard-2x1",
-    "filePath": "assets2/horiz-keyboard-2x1.png"
+    "filePath": "assets2/deco/horiz-keyboard-2x1.png"
   },
   {
     "id": "horiz-keyboard-3x1",
-    "filePath": "assets2/horiz-keyboard-3x1.png"
+    "filePath": "assets2/deco/horiz-keyboard-3x1.png"
   },
   {
     "id": "horiz-keyboard-4x1",
-    "filePath": "assets2/horiz-keyboard-4x1.png"
+    "filePath": "assets2/deco/horiz-keyboard-4x1.png"
   },
   {
     "id": "horiz-lab-bench-2x1",
-    "filePath": "assets2/horiz-lab-bench-2x1.png"
+    "filePath": "assets2/deco/horiz-lab-bench-2x1.png"
   },
   {
     "id": "horiz-lab-bench-3x1",
-    "filePath": "assets2/horiz-lab-bench-3x1.png"
+    "filePath": "assets2/deco/horiz-lab-bench-3x1.png"
   },
   {
     "id": "horiz-lab-bench-4x1",
-    "filePath": "assets2/horiz-lab-bench-4x1.png"
+    "filePath": "assets2/deco/horiz-lab-bench-4x1.png"
   },
   {
     "id": "horiz-low-wall-2x1",
-    "filePath": "assets2/horiz-low-wall-2x1.png"
+    "filePath": "assets2/deco/horiz-low-wall-2x1.png"
   },
   {
     "id": "horiz-low-wall-3x1",
-    "filePath": "assets2/horiz-low-wall-3x1.png"
+    "filePath": "assets2/deco/horiz-low-wall-3x1.png"
   },
   {
     "id": "horiz-low-wall-4x1",
-    "filePath": "assets2/horiz-low-wall-4x1.png"
+    "filePath": "assets2/deco/horiz-low-wall-4x1.png"
   },
   {
     "id": "horiz-pallet-2x1",
-    "filePath": "assets2/horiz-pallet-2x1.png"
+    "filePath": "assets2/deco/horiz-pallet-2x1.png"
   },
   {
     "id": "horiz-pallet-3x1",
-    "filePath": "assets2/horiz-pallet-3x1.png"
+    "filePath": "assets2/deco/horiz-pallet-3x1.png"
   },
   {
     "id": "horiz-pallet-4x1",
-    "filePath": "assets2/horiz-pallet-4x1.png"
+    "filePath": "assets2/deco/horiz-pallet-4x1.png"
   },
   {
     "id": "horiz-panel-2x1",
-    "filePath": "assets2/horiz-panel-2x1.png"
+    "filePath": "assets2/deco/horiz-panel-2x1.png"
   },
   {
     "id": "horiz-panel-3x1",
-    "filePath": "assets2/horiz-panel-3x1.png"
+    "filePath": "assets2/deco/horiz-panel-3x1.png"
   },
   {
     "id": "horiz-panel-4x1",
-    "filePath": "assets2/horiz-panel-4x1.png"
+    "filePath": "assets2/deco/horiz-panel-4x1.png"
   },
   {
     "id": "horiz-pipe-2x1",
-    "filePath": "assets2/horiz-pipe-2x1.png"
+    "filePath": "assets2/deco/horiz-pipe-2x1.png"
   },
   {
     "id": "horiz-pipe-3x1",
-    "filePath": "assets2/horiz-pipe-3x1.png"
+    "filePath": "assets2/deco/horiz-pipe-3x1.png"
   },
   {
     "id": "horiz-pipe-4x1",
-    "filePath": "assets2/horiz-pipe-4x1.png"
+    "filePath": "assets2/deco/horiz-pipe-4x1.png"
   },
   {
     "id": "horiz-planter-2x1",
-    "filePath": "assets2/horiz-planter-2x1.png"
+    "filePath": "assets2/deco/horiz-planter-2x1.png"
   },
   {
     "id": "horiz-planter-3x1",
-    "filePath": "assets2/horiz-planter-3x1.png"
+    "filePath": "assets2/deco/horiz-planter-3x1.png"
   },
   {
     "id": "horiz-planter-4x1",
-    "filePath": "assets2/horiz-planter-4x1.png"
+    "filePath": "assets2/deco/horiz-planter-4x1.png"
   },
   {
     "id": "horiz-rail-2x1",
-    "filePath": "assets2/horiz-rail-2x1.png"
+    "filePath": "assets2/deco/horiz-rail-2x1.png"
   },
   {
     "id": "horiz-rail-3x1",
-    "filePath": "assets2/horiz-rail-3x1.png"
+    "filePath": "assets2/deco/horiz-rail-3x1.png"
   },
   {
     "id": "horiz-rail-4x1",
-    "filePath": "assets2/horiz-rail-4x1.png"
+    "filePath": "assets2/deco/horiz-rail-4x1.png"
   },
   {
     "id": "horiz-shelf-2x1",
-    "filePath": "assets2/horiz-shelf-2x1.png"
+    "filePath": "assets2/deco/horiz-shelf-2x1.png"
   },
   {
     "id": "horiz-shelf-3x1",
-    "filePath": "assets2/horiz-shelf-3x1.png"
+    "filePath": "assets2/deco/horiz-shelf-3x1.png"
   },
   {
     "id": "horiz-shelf-4x1",
-    "filePath": "assets2/horiz-shelf-4x1.png"
+    "filePath": "assets2/deco/horiz-shelf-4x1.png"
   },
   {
     "id": "horiz-sofa-2x1",
-    "filePath": "assets2/horiz-sofa-2x1.png"
+    "filePath": "assets2/deco/horiz-sofa-2x1.png"
   },
   {
     "id": "horiz-sofa-3x1",
-    "filePath": "assets2/horiz-sofa-3x1.png"
+    "filePath": "assets2/deco/horiz-sofa-3x1.png"
   },
   {
     "id": "horiz-sofa-4x1",
-    "filePath": "assets2/horiz-sofa-4x1.png"
+    "filePath": "assets2/deco/horiz-sofa-4x1.png"
   },
   {
     "id": "horiz-solar-2x1",
-    "filePath": "assets2/horiz-solar-2x1.png"
+    "filePath": "assets2/deco/horiz-solar-2x1.png"
   },
   {
     "id": "horiz-solar-3x1",
-    "filePath": "assets2/horiz-solar-3x1.png"
+    "filePath": "assets2/deco/horiz-solar-3x1.png"
   },
   {
     "id": "horiz-solar-4x1",
-    "filePath": "assets2/horiz-solar-4x1.png"
+    "filePath": "assets2/deco/horiz-solar-4x1.png"
   },
   {
     "id": "horiz-table-2x1",
-    "filePath": "assets2/horiz-table-2x1.png"
+    "filePath": "assets2/deco/horiz-table-2x1.png"
   },
   {
     "id": "horiz-table-3x1",
-    "filePath": "assets2/horiz-table-3x1.png"
+    "filePath": "assets2/deco/horiz-table-3x1.png"
   },
   {
     "id": "horiz-table-4x1",
-    "filePath": "assets2/horiz-table-4x1.png"
+    "filePath": "assets2/deco/horiz-table-4x1.png"
   },
   {
     "id": "horiz-tank-2x1",
-    "filePath": "assets2/horiz-tank-2x1.png"
+    "filePath": "assets2/deco/horiz-tank-2x1.png"
   },
   {
     "id": "horiz-tank-3x1",
-    "filePath": "assets2/horiz-tank-3x1.png"
+    "filePath": "assets2/deco/horiz-tank-3x1.png"
   },
   {
     "id": "horiz-tank-4x1",
-    "filePath": "assets2/horiz-tank-4x1.png"
+    "filePath": "assets2/deco/horiz-tank-4x1.png"
   },
   {
     "id": "horiz-vent-2x1",
-    "filePath": "assets2/horiz-vent-2x1.png"
+    "filePath": "assets2/deco/horiz-vent-2x1.png"
   },
   {
     "id": "horiz-vent-3x1",
-    "filePath": "assets2/horiz-vent-3x1.png"
+    "filePath": "assets2/deco/horiz-vent-3x1.png"
   },
   {
     "id": "horiz-vent-4x1",
-    "filePath": "assets2/horiz-vent-4x1.png"
+    "filePath": "assets2/deco/horiz-vent-4x1.png"
   },
   {
     "id": "icon-air-3x3",
@@ -27169,487 +24856,263 @@ export const ICON_FILES: { id: string; filePath: string }[] = [
   },
   {
     "id": "jar-ash-1x1",
-    "filePath": "assets2/jar-ash-1x1.png"
+    "filePath": "assets2/deco/jar-ash-1x1.png"
   },
   {
     "id": "jar-crystal-1x1",
-    "filePath": "assets2/jar-crystal-1x1.png"
+    "filePath": "assets2/deco/jar-crystal-1x1.png"
   },
   {
     "id": "jar-empty-1x1",
-    "filePath": "assets2/jar-empty-1x1.png"
+    "filePath": "assets2/deco/jar-empty-1x1.png"
   },
   {
     "id": "jar-eye-1x1",
-    "filePath": "assets2/jar-eye-1x1.png"
+    "filePath": "assets2/deco/jar-eye-1x1.png"
   },
   {
     "id": "jar-gold-dust-1x1",
-    "filePath": "assets2/jar-gold-dust-1x1.png"
+    "filePath": "assets2/deco/jar-gold-dust-1x1.png"
   },
   {
     "id": "jar-goo-1x1",
-    "filePath": "assets2/jar-goo-1x1.png"
+    "filePath": "assets2/deco/jar-goo-1x1.png"
   },
   {
     "id": "jar-heart-1x1",
-    "filePath": "assets2/jar-heart-1x1.png"
+    "filePath": "assets2/deco/jar-heart-1x1.png"
   },
   {
     "id": "jar-ice-1x1",
-    "filePath": "assets2/jar-ice-1x1.png"
+    "filePath": "assets2/deco/jar-ice-1x1.png"
   },
   {
     "id": "jar-mite-1x1",
-    "filePath": "assets2/jar-mite-1x1.png"
+    "filePath": "assets2/deco/jar-mite-1x1.png"
   },
   {
     "id": "jar-oil-1x1",
-    "filePath": "assets2/jar-oil-1x1.png"
+    "filePath": "assets2/deco/jar-oil-1x1.png"
   },
   {
     "id": "jar-pollen-1x1",
-    "filePath": "assets2/jar-pollen-1x1.png"
+    "filePath": "assets2/deco/jar-pollen-1x1.png"
   },
   {
     "id": "jar-sand-1x1",
-    "filePath": "assets2/jar-sand-1x1.png"
+    "filePath": "assets2/deco/jar-sand-1x1.png"
   },
   {
     "id": "jar-spore-1x1",
-    "filePath": "assets2/jar-spore-1x1.png"
+    "filePath": "assets2/deco/jar-spore-1x1.png"
   },
   {
     "id": "jar-void-1x1",
-    "filePath": "assets2/jar-void-1x1.png"
+    "filePath": "assets2/deco/jar-void-1x1.png"
   },
   {
     "id": "jar-water-1x1",
-    "filePath": "assets2/jar-water-1x1.png"
+    "filePath": "assets2/deco/jar-water-1x1.png"
   },
   {
     "id": "jar-worm-1x1",
-    "filePath": "assets2/jar-worm-1x1.png"
+    "filePath": "assets2/deco/jar-worm-1x1.png"
   },
   {
     "id": "key-bio-1x1",
-    "filePath": "assets2/key-bio-1x1.png"
+    "filePath": "assets2/deco/key-bio-1x1.png"
   },
   {
     "id": "key-card-1x1",
-    "filePath": "assets2/key-card-1x1.png"
+    "filePath": "assets2/deco/key-card-1x1.png"
   },
   {
     "id": "key-copper-1x1",
-    "filePath": "assets2/key-copper-1x1.png"
+    "filePath": "assets2/deco/key-copper-1x1.png"
   },
   {
     "id": "key-crystal-1x1",
-    "filePath": "assets2/key-crystal-1x1.png"
+    "filePath": "assets2/deco/key-crystal-1x1.png"
   },
   {
     "id": "key-eye-1x1",
-    "filePath": "assets2/key-eye-1x1.png"
+    "filePath": "assets2/deco/key-eye-1x1.png"
   },
   {
     "id": "key-gold-1x1",
-    "filePath": "assets2/key-gold-1x1.png"
+    "filePath": "assets2/deco/key-gold-1x1.png"
   },
   {
     "id": "key-heart-1x1",
-    "filePath": "assets2/key-heart-1x1.png"
+    "filePath": "assets2/deco/key-heart-1x1.png"
   },
   {
     "id": "key-ice-1x1",
-    "filePath": "assets2/key-ice-1x1.png"
+    "filePath": "assets2/deco/key-ice-1x1.png"
   },
   {
     "id": "key-master-1x1",
-    "filePath": "assets2/key-master-1x1.png"
+    "filePath": "assets2/deco/key-master-1x1.png"
   },
   {
     "id": "key-pixel-1x1",
-    "filePath": "assets2/key-pixel-1x1.png"
+    "filePath": "assets2/deco/key-pixel-1x1.png"
   },
   {
     "id": "key-rust-1x1",
-    "filePath": "assets2/key-rust-1x1.png"
+    "filePath": "assets2/deco/key-rust-1x1.png"
   },
   {
     "id": "key-sand-1x1",
-    "filePath": "assets2/key-sand-1x1.png"
+    "filePath": "assets2/deco/key-sand-1x1.png"
   },
   {
     "id": "key-skull-1x1",
-    "filePath": "assets2/key-skull-1x1.png"
+    "filePath": "assets2/deco/key-skull-1x1.png"
   },
   {
     "id": "key-spore-1x1",
-    "filePath": "assets2/key-spore-1x1.png"
+    "filePath": "assets2/deco/key-spore-1x1.png"
   },
   {
     "id": "key-temple-1x1",
-    "filePath": "assets2/key-temple-1x1.png"
+    "filePath": "assets2/deco/key-temple-1x1.png"
   },
   {
     "id": "key-void-1x1",
-    "filePath": "assets2/key-void-1x1.png"
+    "filePath": "assets2/deco/key-void-1x1.png"
   },
   {
     "id": "lever-bio-btn-1x1",
-    "filePath": "assets2/lever-bio-btn-1x1.png"
-  },
-  {
-    "id": "pipe-cap-1x1",
-    "filePath": "assets2/pipe-cap-1x1.png"
-  },
-  {
-    "id": "pipe-cap-2x2",
-    "filePath": "assets2/pipe-cap-2x2.png"
-  },
-  {
-    "id": "pipe-cap-ice-1x1",
-    "filePath": "assets2/pipe-cap-ice-1x1.png"
-  },
-  {
-    "id": "pipe-cap-ice-2x2",
-    "filePath": "assets2/pipe-cap-ice-2x2.png"
-  },
-  {
-    "id": "pipe-I-1x1",
-    "filePath": "assets2/pipe-I-1x1.png"
-  },
-  {
-    "id": "pipe-I-2x2",
-    "filePath": "assets2/pipe-I-2x2.png"
-  },
-  {
-    "id": "pipe-I-glass-1x1",
-    "filePath": "assets2/pipe-I-glass-1x1.png"
-  },
-  {
-    "id": "pipe-I-glass-2x2",
-    "filePath": "assets2/pipe-I-glass-2x2.png"
-  },
-  {
-    "id": "pipe-I-ice-1x1",
-    "filePath": "assets2/pipe-I-ice-1x1.png"
-  },
-  {
-    "id": "pipe-I-ice-2x2",
-    "filePath": "assets2/pipe-I-ice-2x2.png"
-  },
-  {
-    "id": "pipe-I-magma-1x1",
-    "filePath": "assets2/pipe-I-magma-1x1.png"
-  },
-  {
-    "id": "pipe-I-magma-2x2",
-    "filePath": "assets2/pipe-I-magma-2x2.png"
-  },
-  {
-    "id": "pipe-I-sand-1x1",
-    "filePath": "assets2/pipe-I-sand-1x1.png"
-  },
-  {
-    "id": "pipe-I-sand-2x2",
-    "filePath": "assets2/pipe-I-sand-2x2.png"
-  },
-  {
-    "id": "pipe-I-spore-1x1",
-    "filePath": "assets2/pipe-I-spore-1x1.png"
-  },
-  {
-    "id": "pipe-I-spore-2x2",
-    "filePath": "assets2/pipe-I-spore-2x2.png"
-  },
-  {
-    "id": "pipe-L-1x1",
-    "filePath": "assets2/pipe-L-1x1.png"
-  },
-  {
-    "id": "pipe-L-2x2",
-    "filePath": "assets2/pipe-L-2x2.png"
-  },
-  {
-    "id": "pipe-L-ice-1x1",
-    "filePath": "assets2/pipe-L-ice-1x1.png"
-  },
-  {
-    "id": "pipe-L-ice-2x2",
-    "filePath": "assets2/pipe-L-ice-2x2.png"
-  },
-  {
-    "id": "pipe-L-magma-1x1",
-    "filePath": "assets2/pipe-L-magma-1x1.png"
-  },
-  {
-    "id": "pipe-L-magma-2x2",
-    "filePath": "assets2/pipe-L-magma-2x2.png"
-  },
-  {
-    "id": "pipe-T-1x1",
-    "filePath": "assets2/pipe-T-1x1.png"
-  },
-  {
-    "id": "pipe-T-2x2",
-    "filePath": "assets2/pipe-T-2x2.png"
-  },
-  {
-    "id": "pipe-T-copper-1x1",
-    "filePath": "assets2/pipe-T-copper-1x1.png"
-  },
-  {
-    "id": "pipe-T-copper-2x2",
-    "filePath": "assets2/pipe-T-copper-2x2.png"
-  },
-  {
-    "id": "pipe-T-sand-1x1",
-    "filePath": "assets2/pipe-T-sand-1x1.png"
-  },
-  {
-    "id": "pipe-T-sand-2x2",
-    "filePath": "assets2/pipe-T-sand-2x2.png"
-  },
-  {
-    "id": "pipe-X-1x1",
-    "filePath": "assets2/pipe-X-1x1.png"
-  },
-  {
-    "id": "pipe-X-2x2",
-    "filePath": "assets2/pipe-X-2x2.png"
-  },
-  {
-    "id": "pipe-X-spore-1x1",
-    "filePath": "assets2/pipe-X-spore-1x1.png"
-  },
-  {
-    "id": "pipe-X-spore-2x2",
-    "filePath": "assets2/pipe-X-spore-2x2.png"
-  },
-  {
-    "id": "pod-algae-1x1",
-    "filePath": "assets2/pod-algae-1x1.png"
-  },
-  {
-    "id": "pod-algae-2x2",
-    "filePath": "assets2/pod-algae-2x2.png"
-  },
-  {
-    "id": "pod-berry-1x1",
-    "filePath": "assets2/pod-berry-1x1.png"
-  },
-  {
-    "id": "pod-berry-2x2",
-    "filePath": "assets2/pod-berry-2x2.png"
-  },
-  {
-    "id": "pod-crystal-1x1",
-    "filePath": "assets2/pod-crystal-1x1.png"
-  },
-  {
-    "id": "pod-crystal-2x2",
-    "filePath": "assets2/pod-crystal-2x2.png"
-  },
-  {
-    "id": "pod-ice-1x1",
-    "filePath": "assets2/pod-ice-1x1.png"
-  },
-  {
-    "id": "pod-ice-2x2",
-    "filePath": "assets2/pod-ice-2x2.png"
-  },
-  {
-    "id": "pod-pollen-1x1",
-    "filePath": "assets2/pod-pollen-1x1.png"
-  },
-  {
-    "id": "pod-pollen-2x2",
-    "filePath": "assets2/pod-pollen-2x2.png"
-  },
-  {
-    "id": "pod-root-1x1",
-    "filePath": "assets2/pod-root-1x1.png"
-  },
-  {
-    "id": "pod-root-2x2",
-    "filePath": "assets2/pod-root-2x2.png"
-  },
-  {
-    "id": "pod-sand-1x1",
-    "filePath": "assets2/pod-sand-1x1.png"
-  },
-  {
-    "id": "pod-sand-2x2",
-    "filePath": "assets2/pod-sand-2x2.png"
-  },
-  {
-    "id": "pod-shroom-1x1",
-    "filePath": "assets2/pod-shroom-1x1.png"
-  },
-  {
-    "id": "pod-shroom-2x2",
-    "filePath": "assets2/pod-shroom-2x2.png"
-  },
-  {
-    "id": "pod-spore-1x1",
-    "filePath": "assets2/pod-spore-1x1.png"
-  },
-  {
-    "id": "pod-spore-2x2",
-    "filePath": "assets2/pod-spore-2x2.png"
-  },
-  {
-    "id": "pod-thorn-1x1",
-    "filePath": "assets2/pod-thorn-1x1.png"
-  },
-  {
-    "id": "pod-thorn-2x2",
-    "filePath": "assets2/pod-thorn-2x2.png"
-  },
-  {
-    "id": "pod-twin-1x1",
-    "filePath": "assets2/pod-twin-1x1.png"
-  },
-  {
-    "id": "pod-twin-2x2",
-    "filePath": "assets2/pod-twin-2x2.png"
-  },
-  {
-    "id": "pod-vine-1x1",
-    "filePath": "assets2/pod-vine-1x1.png"
-  },
-  {
-    "id": "pod-vine-2x2",
-    "filePath": "assets2/pod-vine-2x2.png"
+    "filePath": "assets2/deco/lever-bio-btn-1x1.png"
   },
   {
     "id": "port-cyan-1x1",
-    "filePath": "assets2/port-cyan-1x1.png"
+    "filePath": "assets2/icons/port-cyan-1x1.png"
   },
   {
     "id": "port-factory-1x1",
-    "filePath": "assets2/port-factory-1x1.png"
+    "filePath": "assets2/icons/port-factory-1x1.png"
   },
   {
     "id": "port-fog-1x1",
-    "filePath": "assets2/port-fog-1x1.png"
+    "filePath": "assets2/icons/port-fog-1x1.png"
   },
   {
     "id": "port-garden-1x1",
-    "filePath": "assets2/port-garden-1x1.png"
+    "filePath": "assets2/icons/port-garden-1x1.png"
   },
   {
     "id": "port-gold-1x1",
-    "filePath": "assets2/port-gold-1x1.png"
+    "filePath": "assets2/icons/port-gold-1x1.png"
   },
   {
     "id": "port-green-1x1",
-    "filePath": "assets2/port-green-1x1.png"
+    "filePath": "assets2/icons/port-green-1x1.png"
   },
   {
     "id": "port-ice-1x1",
-    "filePath": "assets2/port-ice-1x1.png"
+    "filePath": "assets2/icons/port-ice-1x1.png"
   },
   {
     "id": "port-magma-1x1",
-    "filePath": "assets2/port-magma-1x1.png"
+    "filePath": "assets2/icons/port-magma-1x1.png"
   },
   {
     "id": "port-night-1x1",
-    "filePath": "assets2/port-night-1x1.png"
+    "filePath": "assets2/icons/port-night-1x1.png"
   },
   {
     "id": "port-ocean-1x1",
-    "filePath": "assets2/port-ocean-1x1.png"
+    "filePath": "assets2/icons/port-ocean-1x1.png"
   },
   {
     "id": "port-red-alert-1x1",
-    "filePath": "assets2/port-red-alert-1x1.png"
+    "filePath": "assets2/icons/port-red-alert-1x1.png"
   },
   {
     "id": "port-sand-1x1",
-    "filePath": "assets2/port-sand-1x1.png"
+    "filePath": "assets2/icons/port-sand-1x1.png"
   },
   {
     "id": "port-spore-1x1",
-    "filePath": "assets2/port-spore-1x1.png"
+    "filePath": "assets2/icons/port-spore-1x1.png"
   },
   {
     "id": "port-stars-1x1",
-    "filePath": "assets2/port-stars-1x1.png"
+    "filePath": "assets2/icons/port-stars-1x1.png"
   },
   {
     "id": "port-storm-1x1",
-    "filePath": "assets2/port-storm-1x1.png"
+    "filePath": "assets2/icons/port-storm-1x1.png"
   },
   {
     "id": "port-void-1x1",
-    "filePath": "assets2/port-void-1x1.png"
+    "filePath": "assets2/icons/port-void-1x1.png"
   },
   {
     "id": "portal-cyan-2x2",
-    "filePath": "assets2/portal-cyan-2x2.png"
+    "filePath": "assets2/deco/portal-cyan-2x2.png"
   },
   {
     "id": "portal-cyan-3x3",
-    "filePath": "assets2/portal-cyan-3x3.png"
+    "filePath": "assets2/deco/portal-cyan-3x3.png"
   },
   {
     "id": "portal-gold-2x2",
-    "filePath": "assets2/portal-gold-2x2.png"
+    "filePath": "assets2/deco/portal-gold-2x2.png"
   },
   {
     "id": "portal-gold-3x3",
-    "filePath": "assets2/portal-gold-3x3.png"
+    "filePath": "assets2/deco/portal-gold-3x3.png"
   },
   {
     "id": "portal-ice-2x2",
-    "filePath": "assets2/portal-ice-2x2.png"
+    "filePath": "assets2/deco/portal-ice-2x2.png"
   },
   {
     "id": "portal-ice-3x3",
-    "filePath": "assets2/portal-ice-3x3.png"
+    "filePath": "assets2/deco/portal-ice-3x3.png"
   },
   {
     "id": "portal-magma-2x2",
-    "filePath": "assets2/portal-magma-2x2.png"
+    "filePath": "assets2/deco/portal-magma-2x2.png"
   },
   {
     "id": "portal-magma-3x3",
-    "filePath": "assets2/portal-magma-3x3.png"
+    "filePath": "assets2/deco/portal-magma-3x3.png"
   },
   {
     "id": "portal-pink-2x2",
-    "filePath": "assets2/portal-pink-2x2.png"
+    "filePath": "assets2/deco/portal-pink-2x2.png"
   },
   {
     "id": "portal-pink-3x3",
-    "filePath": "assets2/portal-pink-3x3.png"
+    "filePath": "assets2/deco/portal-pink-3x3.png"
   },
   {
     "id": "portal-sand-2x2",
-    "filePath": "assets2/portal-sand-2x2.png"
+    "filePath": "assets2/deco/portal-sand-2x2.png"
   },
   {
     "id": "portal-sand-3x3",
-    "filePath": "assets2/portal-sand-3x3.png"
+    "filePath": "assets2/deco/portal-sand-3x3.png"
   },
   {
     "id": "portal-spore-2x2",
-    "filePath": "assets2/portal-spore-2x2.png"
+    "filePath": "assets2/deco/portal-spore-2x2.png"
   },
   {
     "id": "portal-spore-3x3",
-    "filePath": "assets2/portal-spore-3x3.png"
+    "filePath": "assets2/deco/portal-spore-3x3.png"
   },
   {
     "id": "portal-void-2x2",
-    "filePath": "assets2/portal-void-2x2.png"
+    "filePath": "assets2/deco/portal-void-2x2.png"
   },
   {
     "id": "portal-void-3x3",
-    "filePath": "assets2/portal-void-3x3.png"
+    "filePath": "assets2/deco/portal-void-3x3.png"
   },
   {
     "id": "probs-assembler-arm-3x3",
@@ -27784,252 +25247,244 @@ export const ICON_FILES: { id: string; filePath: string }[] = [
     "filePath": "assets/block/probs-window-2x2.png"
   },
   {
-    "id": "sensor-alarm-1x1",
-    "filePath": "assets2/sensor-alarm-1x1.png"
-  },
-  {
-    "id": "sensor-beacon-eye-1x1",
-    "filePath": "assets2/sensor-beacon-eye-1x1.png"
-  },
-  {
     "id": "sign-biohazard-1x1",
-    "filePath": "assets2/sign-biohazard-1x1.png"
+    "filePath": "assets2/icons/sign-biohazard-1x1.png"
   },
   {
     "id": "sign-biohazard-2x2",
-    "filePath": "assets2/sign-biohazard-2x2.png"
+    "filePath": "assets2/icons/sign-biohazard-2x2.png"
   },
   {
     "id": "sign-biohazard-3x3",
-    "filePath": "assets2/sign-biohazard-3x3.png"
+    "filePath": "assets2/icons/sign-biohazard-3x3.png"
   },
   {
     "id": "sign-cold-1x1",
-    "filePath": "assets2/sign-cold-1x1.png"
+    "filePath": "assets2/icons/sign-cold-1x1.png"
   },
   {
     "id": "sign-cold-2x2",
-    "filePath": "assets2/sign-cold-2x2.png"
+    "filePath": "assets2/icons/sign-cold-2x2.png"
   },
   {
     "id": "sign-cold-3x3",
-    "filePath": "assets2/sign-cold-3x3.png"
+    "filePath": "assets2/icons/sign-cold-3x3.png"
   },
   {
     "id": "sign-electric-1x1",
-    "filePath": "assets2/sign-electric-1x1.png"
+    "filePath": "assets2/icons/sign-electric-1x1.png"
   },
   {
     "id": "sign-electric-2x2",
-    "filePath": "assets2/sign-electric-2x2.png"
+    "filePath": "assets2/icons/sign-electric-2x2.png"
   },
   {
     "id": "sign-electric-3x3",
-    "filePath": "assets2/sign-electric-3x3.png"
+    "filePath": "assets2/icons/sign-electric-3x3.png"
   },
   {
     "id": "sign-exit-1x1",
-    "filePath": "assets2/sign-exit-1x1.png"
+    "filePath": "assets2/icons/sign-exit-1x1.png"
   },
   {
     "id": "sign-exit-2x2",
-    "filePath": "assets2/sign-exit-2x2.png"
+    "filePath": "assets2/icons/sign-exit-2x2.png"
   },
   {
     "id": "sign-exit-3x3",
-    "filePath": "assets2/sign-exit-3x3.png"
+    "filePath": "assets2/icons/sign-exit-3x3.png"
   },
   {
     "id": "sign-fire-1x1",
-    "filePath": "assets2/sign-fire-1x1.png"
+    "filePath": "assets2/icons/sign-fire-1x1.png"
   },
   {
     "id": "sign-fire-2x2",
-    "filePath": "assets2/sign-fire-2x2.png"
+    "filePath": "assets2/icons/sign-fire-2x2.png"
   },
   {
     "id": "sign-fire-3x3",
-    "filePath": "assets2/sign-fire-3x3.png"
+    "filePath": "assets2/icons/sign-fire-3x3.png"
   },
   {
     "id": "sign-first-aid-1x1",
-    "filePath": "assets2/sign-first-aid-1x1.png"
+    "filePath": "assets2/icons/sign-first-aid-1x1.png"
   },
   {
     "id": "sign-first-aid-2x2",
-    "filePath": "assets2/sign-first-aid-2x2.png"
+    "filePath": "assets2/icons/sign-first-aid-2x2.png"
   },
   {
     "id": "sign-first-aid-3x3",
-    "filePath": "assets2/sign-first-aid-3x3.png"
+    "filePath": "assets2/icons/sign-first-aid-3x3.png"
   },
   {
     "id": "sign-flammable-1x1",
-    "filePath": "assets2/sign-flammable-1x1.png"
+    "filePath": "assets2/icons/sign-flammable-1x1.png"
   },
   {
     "id": "sign-flammable-2x2",
-    "filePath": "assets2/sign-flammable-2x2.png"
+    "filePath": "assets2/icons/sign-flammable-2x2.png"
   },
   {
     "id": "sign-flammable-3x3",
-    "filePath": "assets2/sign-flammable-3x3.png"
+    "filePath": "assets2/icons/sign-flammable-3x3.png"
   },
   {
     "id": "sign-go-1x1",
-    "filePath": "assets2/sign-go-1x1.png"
+    "filePath": "assets2/icons/sign-go-1x1.png"
   },
   {
     "id": "sign-go-2x2",
-    "filePath": "assets2/sign-go-2x2.png"
+    "filePath": "assets2/icons/sign-go-2x2.png"
   },
   {
     "id": "sign-go-3x3",
-    "filePath": "assets2/sign-go-3x3.png"
+    "filePath": "assets2/icons/sign-go-3x3.png"
   },
   {
     "id": "sign-info-1x1",
-    "filePath": "assets2/sign-info-1x1.png"
+    "filePath": "assets2/icons/sign-info-1x1.png"
   },
   {
     "id": "sign-info-2x2",
-    "filePath": "assets2/sign-info-2x2.png"
+    "filePath": "assets2/icons/sign-info-2x2.png"
   },
   {
     "id": "sign-info-3x3",
-    "filePath": "assets2/sign-info-3x3.png"
+    "filePath": "assets2/icons/sign-info-3x3.png"
   },
   {
     "id": "sign-laser-1x1",
-    "filePath": "assets2/sign-laser-1x1.png"
+    "filePath": "assets2/icons/sign-laser-1x1.png"
   },
   {
     "id": "sign-laser-2x2",
-    "filePath": "assets2/sign-laser-2x2.png"
+    "filePath": "assets2/icons/sign-laser-2x2.png"
   },
   {
     "id": "sign-laser-3x3",
-    "filePath": "assets2/sign-laser-3x3.png"
+    "filePath": "assets2/icons/sign-laser-3x3.png"
   },
   {
     "id": "sign-lock-1x1",
-    "filePath": "assets2/sign-lock-1x1.png"
+    "filePath": "assets2/icons/sign-lock-1x1.png"
   },
   {
     "id": "sign-lock-2x2",
-    "filePath": "assets2/sign-lock-2x2.png"
+    "filePath": "assets2/icons/sign-lock-2x2.png"
   },
   {
     "id": "sign-lock-3x3",
-    "filePath": "assets2/sign-lock-3x3.png"
+    "filePath": "assets2/icons/sign-lock-3x3.png"
   },
   {
     "id": "sign-magnetic-1x1",
-    "filePath": "assets2/sign-magnetic-1x1.png"
+    "filePath": "assets2/icons/sign-magnetic-1x1.png"
   },
   {
     "id": "sign-magnetic-2x2",
-    "filePath": "assets2/sign-magnetic-2x2.png"
+    "filePath": "assets2/icons/sign-magnetic-2x2.png"
   },
   {
     "id": "sign-magnetic-3x3",
-    "filePath": "assets2/sign-magnetic-3x3.png"
+    "filePath": "assets2/icons/sign-magnetic-3x3.png"
   },
   {
     "id": "sign-no-entry-1x1",
-    "filePath": "assets2/sign-no-entry-1x1.png"
+    "filePath": "assets2/icons/sign-no-entry-1x1.png"
   },
   {
     "id": "sign-no-entry-2x2",
-    "filePath": "assets2/sign-no-entry-2x2.png"
+    "filePath": "assets2/icons/sign-no-entry-2x2.png"
   },
   {
     "id": "sign-no-entry-3x3",
-    "filePath": "assets2/sign-no-entry-3x3.png"
+    "filePath": "assets2/icons/sign-no-entry-3x3.png"
   },
   {
     "id": "sign-radiation-1x1",
-    "filePath": "assets2/sign-radiation-1x1.png"
+    "filePath": "assets2/icons/sign-radiation-1x1.png"
   },
   {
     "id": "sign-radiation-2x2",
-    "filePath": "assets2/sign-radiation-2x2.png"
+    "filePath": "assets2/icons/sign-radiation-2x2.png"
   },
   {
     "id": "sign-radiation-3x3",
-    "filePath": "assets2/sign-radiation-3x3.png"
+    "filePath": "assets2/icons/sign-radiation-3x3.png"
   },
   {
     "id": "sign-recycle-1x1",
-    "filePath": "assets2/sign-recycle-1x1.png"
+    "filePath": "assets2/icons/sign-recycle-1x1.png"
   },
   {
     "id": "sign-recycle-2x2",
-    "filePath": "assets2/sign-recycle-2x2.png"
+    "filePath": "assets2/icons/sign-recycle-2x2.png"
   },
   {
     "id": "sign-recycle-3x3",
-    "filePath": "assets2/sign-recycle-3x3.png"
+    "filePath": "assets2/icons/sign-recycle-3x3.png"
   },
   {
     "id": "sign-skull-1x1",
-    "filePath": "assets2/sign-skull-1x1.png"
+    "filePath": "assets2/icons/sign-skull-1x1.png"
   },
   {
     "id": "sign-skull-2x2",
-    "filePath": "assets2/sign-skull-2x2.png"
+    "filePath": "assets2/icons/sign-skull-2x2.png"
   },
   {
     "id": "sign-skull-3x3",
-    "filePath": "assets2/sign-skull-3x3.png"
+    "filePath": "assets2/icons/sign-skull-3x3.png"
   },
   {
     "id": "sign-stop-1x1",
-    "filePath": "assets2/sign-stop-1x1.png"
+    "filePath": "assets2/icons/sign-stop-1x1.png"
   },
   {
     "id": "sign-stop-2x2",
-    "filePath": "assets2/sign-stop-2x2.png"
+    "filePath": "assets2/icons/sign-stop-2x2.png"
   },
   {
     "id": "sign-stop-3x3",
-    "filePath": "assets2/sign-stop-3x3.png"
+    "filePath": "assets2/icons/sign-stop-3x3.png"
   },
   {
     "id": "sign-toxic-1x1",
-    "filePath": "assets2/sign-toxic-1x1.png"
+    "filePath": "assets2/icons/sign-toxic-1x1.png"
   },
   {
     "id": "sign-toxic-2x2",
-    "filePath": "assets2/sign-toxic-2x2.png"
+    "filePath": "assets2/icons/sign-toxic-2x2.png"
   },
   {
     "id": "sign-toxic-3x3",
-    "filePath": "assets2/sign-toxic-3x3.png"
+    "filePath": "assets2/icons/sign-toxic-3x3.png"
   },
   {
     "id": "sign-warning-1x1",
-    "filePath": "assets2/sign-warning-1x1.png"
+    "filePath": "assets2/icons/sign-warning-1x1.png"
   },
   {
     "id": "sign-warning-2x2",
-    "filePath": "assets2/sign-warning-2x2.png"
+    "filePath": "assets2/icons/sign-warning-2x2.png"
   },
   {
     "id": "sign-warning-3x3",
-    "filePath": "assets2/sign-warning-3x3.png"
+    "filePath": "assets2/icons/sign-warning-3x3.png"
   },
   {
     "id": "sign-wifi-1x1",
-    "filePath": "assets2/sign-wifi-1x1.png"
+    "filePath": "assets2/icons/sign-wifi-1x1.png"
   },
   {
     "id": "sign-wifi-2x2",
-    "filePath": "assets2/sign-wifi-2x2.png"
+    "filePath": "assets2/icons/sign-wifi-2x2.png"
   },
   {
     "id": "sign-wifi-3x3",
-    "filePath": "assets2/sign-wifi-3x3.png"
+    "filePath": "assets2/icons/sign-wifi-3x3.png"
   },
   {
     "id": "probs-airlock-3x3",
@@ -28188,476 +25643,348 @@ export const ICON_FILES: { id: string; filePath: string }[] = [
     "filePath": "assets/deco/space-thruster-2x2.png"
   },
   {
-    "id": "tele-cyan-2x2",
-    "filePath": "assets2/tele-cyan-2x2.png"
-  },
-  {
-    "id": "tele-cyan-3x3",
-    "filePath": "assets2/tele-cyan-3x3.png"
-  },
-  {
-    "id": "tele-ice-2x2",
-    "filePath": "assets2/tele-ice-2x2.png"
-  },
-  {
-    "id": "tele-ice-3x3",
-    "filePath": "assets2/tele-ice-3x3.png"
-  },
-  {
-    "id": "tele-magma-2x2",
-    "filePath": "assets2/tele-magma-2x2.png"
-  },
-  {
-    "id": "tele-magma-3x3",
-    "filePath": "assets2/tele-magma-3x3.png"
-  },
-  {
-    "id": "tele-mirror-2x2",
-    "filePath": "assets2/tele-mirror-2x2.png"
-  },
-  {
-    "id": "tele-mirror-3x3",
-    "filePath": "assets2/tele-mirror-3x3.png"
-  },
-  {
-    "id": "tele-sand-2x2",
-    "filePath": "assets2/tele-sand-2x2.png"
-  },
-  {
-    "id": "tele-sand-3x3",
-    "filePath": "assets2/tele-sand-3x3.png"
-  },
-  {
-    "id": "tele-spore-2x2",
-    "filePath": "assets2/tele-spore-2x2.png"
-  },
-  {
-    "id": "tele-spore-3x3",
-    "filePath": "assets2/tele-spore-3x3.png"
-  },
-  {
-    "id": "tele-temple-2x2",
-    "filePath": "assets2/tele-temple-2x2.png"
-  },
-  {
-    "id": "tele-temple-3x3",
-    "filePath": "assets2/tele-temple-3x3.png"
-  },
-  {
-    "id": "tele-void-2x2",
-    "filePath": "assets2/tele-void-2x2.png"
-  },
-  {
-    "id": "tele-void-3x3",
-    "filePath": "assets2/tele-void-3x3.png"
-  },
-  {
-    "id": "totem-bio-1x2",
-    "filePath": "assets2/totem-bio-1x2.png"
-  },
-  {
-    "id": "totem-bio-1x3",
-    "filePath": "assets2/totem-bio-1x3.png"
-  },
-  {
-    "id": "totem-bot-1x2",
-    "filePath": "assets2/totem-bot-1x2.png"
-  },
-  {
-    "id": "totem-bot-1x3",
-    "filePath": "assets2/totem-bot-1x3.png"
-  },
-  {
-    "id": "totem-eye-1x2",
-    "filePath": "assets2/totem-eye-1x2.png"
-  },
-  {
-    "id": "totem-eye-1x3",
-    "filePath": "assets2/totem-eye-1x3.png"
-  },
-  {
-    "id": "totem-gold-1x2",
-    "filePath": "assets2/totem-gold-1x2.png"
-  },
-  {
-    "id": "totem-gold-1x3",
-    "filePath": "assets2/totem-gold-1x3.png"
-  },
-  {
-    "id": "totem-ice-1x2",
-    "filePath": "assets2/totem-ice-1x2.png"
-  },
-  {
-    "id": "totem-ice-1x3",
-    "filePath": "assets2/totem-ice-1x3.png"
-  },
-  {
-    "id": "totem-sand-1x2",
-    "filePath": "assets2/totem-sand-1x2.png"
-  },
-  {
-    "id": "totem-sand-1x3",
-    "filePath": "assets2/totem-sand-1x3.png"
-  },
-  {
-    "id": "totem-skull-1x2",
-    "filePath": "assets2/totem-skull-1x2.png"
-  },
-  {
-    "id": "totem-skull-1x3",
-    "filePath": "assets2/totem-skull-1x3.png"
-  },
-  {
-    "id": "totem-void-1x2",
-    "filePath": "assets2/totem-void-1x2.png"
-  },
-  {
-    "id": "totem-void-1x3",
-    "filePath": "assets2/totem-void-1x3.png"
-  },
-  {
     "id": "vert-aquarium-1x2",
-    "filePath": "assets2/vert-aquarium-1x2.png"
+    "filePath": "assets2/deco/vert-aquarium-1x2.png"
   },
   {
     "id": "vert-aquarium-1x3",
-    "filePath": "assets2/vert-aquarium-1x3.png"
+    "filePath": "assets2/deco/vert-aquarium-1x3.png"
   },
   {
     "id": "vert-aquarium-1x4",
-    "filePath": "assets2/vert-aquarium-1x4.png"
+    "filePath": "assets2/deco/vert-aquarium-1x4.png"
   },
   {
     "id": "vert-barrels-1x2",
-    "filePath": "assets2/vert-barrels-1x2.png"
+    "filePath": "assets2/deco/vert-barrels-1x2.png"
   },
   {
     "id": "vert-barrels-1x3",
-    "filePath": "assets2/vert-barrels-1x3.png"
+    "filePath": "assets2/deco/vert-barrels-1x3.png"
   },
   {
     "id": "vert-barrels-1x4",
-    "filePath": "assets2/vert-barrels-1x4.png"
+    "filePath": "assets2/deco/vert-barrels-1x4.png"
   },
   {
     "id": "vert-bookshelf-1x2",
-    "filePath": "assets2/vert-bookshelf-1x2.png"
+    "filePath": "assets2/deco/vert-bookshelf-1x2.png"
   },
   {
     "id": "vert-bookshelf-1x3",
-    "filePath": "assets2/vert-bookshelf-1x3.png"
+    "filePath": "assets2/deco/vert-bookshelf-1x3.png"
   },
   {
     "id": "vert-bookshelf-1x4",
-    "filePath": "assets2/vert-bookshelf-1x4.png"
+    "filePath": "assets2/deco/vert-bookshelf-1x4.png"
   },
   {
     "id": "vert-cabinet-1x2",
-    "filePath": "assets2/vert-cabinet-1x2.png"
+    "filePath": "assets2/deco/vert-cabinet-1x2.png"
   },
   {
     "id": "vert-cabinet-1x3",
-    "filePath": "assets2/vert-cabinet-1x3.png"
+    "filePath": "assets2/deco/vert-cabinet-1x3.png"
   },
   {
     "id": "vert-cabinet-1x4",
-    "filePath": "assets2/vert-cabinet-1x4.png"
+    "filePath": "assets2/deco/vert-cabinet-1x4.png"
   },
   {
     "id": "vert-clock-1x2",
-    "filePath": "assets2/vert-clock-1x2.png"
+    "filePath": "assets2/deco/vert-clock-1x2.png"
   },
   {
     "id": "vert-clock-1x3",
-    "filePath": "assets2/vert-clock-1x3.png"
+    "filePath": "assets2/deco/vert-clock-1x3.png"
   },
   {
     "id": "vert-clock-1x4",
-    "filePath": "assets2/vert-clock-1x4.png"
+    "filePath": "assets2/deco/vert-clock-1x4.png"
   },
   {
     "id": "vert-coat-rack-1x2",
-    "filePath": "assets2/vert-coat-rack-1x2.png"
+    "filePath": "assets2/deco/vert-coat-rack-1x2.png"
   },
   {
     "id": "vert-coat-rack-1x3",
-    "filePath": "assets2/vert-coat-rack-1x3.png"
+    "filePath": "assets2/deco/vert-coat-rack-1x3.png"
   },
   {
     "id": "vert-coat-rack-1x4",
-    "filePath": "assets2/vert-coat-rack-1x4.png"
+    "filePath": "assets2/deco/vert-coat-rack-1x4.png"
   },
   {
     "id": "vert-crates-1x2",
-    "filePath": "assets2/vert-crates-1x2.png"
+    "filePath": "assets2/deco/vert-crates-1x2.png"
   },
   {
     "id": "vert-crates-1x3",
-    "filePath": "assets2/vert-crates-1x3.png"
+    "filePath": "assets2/deco/vert-crates-1x3.png"
   },
   {
     "id": "vert-crates-1x4",
-    "filePath": "assets2/vert-crates-1x4.png"
+    "filePath": "assets2/deco/vert-crates-1x4.png"
   },
   {
     "id": "vert-data-pillar-1x2",
-    "filePath": "assets2/vert-data-pillar-1x2.png"
+    "filePath": "assets2/deco/vert-data-pillar-1x2.png"
   },
   {
     "id": "vert-data-pillar-1x3",
-    "filePath": "assets2/vert-data-pillar-1x3.png"
+    "filePath": "assets2/deco/vert-data-pillar-1x3.png"
   },
   {
     "id": "vert-data-pillar-1x4",
-    "filePath": "assets2/vert-data-pillar-1x4.png"
+    "filePath": "assets2/deco/vert-data-pillar-1x4.png"
   },
   {
     "id": "vert-flagpole-1x2",
-    "filePath": "assets2/vert-flagpole-1x2.png"
+    "filePath": "assets2/deco/vert-flagpole-1x2.png"
   },
   {
     "id": "vert-flagpole-1x3",
-    "filePath": "assets2/vert-flagpole-1x3.png"
+    "filePath": "assets2/deco/vert-flagpole-1x3.png"
   },
   {
     "id": "vert-flagpole-1x4",
-    "filePath": "assets2/vert-flagpole-1x4.png"
+    "filePath": "assets2/deco/vert-flagpole-1x4.png"
   },
   {
     "id": "vert-fountain-1x2",
-    "filePath": "assets2/vert-fountain-1x2.png"
+    "filePath": "assets2/deco/vert-fountain-1x2.png"
   },
   {
     "id": "vert-fountain-1x3",
-    "filePath": "assets2/vert-fountain-1x3.png"
+    "filePath": "assets2/deco/vert-fountain-1x3.png"
   },
   {
     "id": "vert-fountain-1x4",
-    "filePath": "assets2/vert-fountain-1x4.png"
+    "filePath": "assets2/deco/vert-fountain-1x4.png"
   },
   {
     "id": "vert-fridge-1x2",
-    "filePath": "assets2/vert-fridge-1x2.png"
+    "filePath": "assets2/deco/vert-fridge-1x2.png"
   },
   {
     "id": "vert-fridge-1x3",
-    "filePath": "assets2/vert-fridge-1x3.png"
+    "filePath": "assets2/deco/vert-fridge-1x3.png"
   },
   {
     "id": "vert-fridge-1x4",
-    "filePath": "assets2/vert-fridge-1x4.png"
+    "filePath": "assets2/deco/vert-fridge-1x4.png"
   },
   {
     "id": "vert-gene-vault-1x2",
-    "filePath": "assets2/vert-gene-vault-1x2.png"
+    "filePath": "assets2/deco/vert-gene-vault-1x2.png"
   },
   {
     "id": "vert-gene-vault-1x3",
-    "filePath": "assets2/vert-gene-vault-1x3.png"
+    "filePath": "assets2/deco/vert-gene-vault-1x3.png"
   },
   {
     "id": "vert-gene-vault-1x4",
-    "filePath": "assets2/vert-gene-vault-1x4.png"
+    "filePath": "assets2/deco/vert-gene-vault-1x4.png"
   },
   {
     "id": "vert-incubator-1x2",
-    "filePath": "assets2/vert-incubator-1x2.png"
+    "filePath": "assets2/deco/vert-incubator-1x2.png"
   },
   {
     "id": "vert-incubator-1x3",
-    "filePath": "assets2/vert-incubator-1x3.png"
+    "filePath": "assets2/deco/vert-incubator-1x3.png"
   },
   {
     "id": "vert-incubator-1x4",
-    "filePath": "assets2/vert-incubator-1x4.png"
+    "filePath": "assets2/deco/vert-incubator-1x4.png"
   },
   {
     "id": "vert-ladder-1x2",
-    "filePath": "assets2/vert-ladder-1x2.png"
+    "filePath": "assets2/deco/vert-ladder-1x2.png"
   },
   {
     "id": "vert-ladder-1x3",
-    "filePath": "assets2/vert-ladder-1x3.png"
+    "filePath": "assets2/deco/vert-ladder-1x3.png"
   },
   {
     "id": "vert-ladder-1x4",
-    "filePath": "assets2/vert-ladder-1x4.png"
+    "filePath": "assets2/deco/vert-ladder-1x4.png"
   },
   {
     "id": "vert-lamp-1x2",
-    "filePath": "assets2/vert-lamp-1x2.png"
+    "filePath": "assets2/deco/vert-lamp-1x2.png"
   },
   {
     "id": "vert-lamp-1x3",
-    "filePath": "assets2/vert-lamp-1x3.png"
+    "filePath": "assets2/deco/vert-lamp-1x3.png"
   },
   {
     "id": "vert-lamp-1x4",
-    "filePath": "assets2/vert-lamp-1x4.png"
+    "filePath": "assets2/deco/vert-lamp-1x4.png"
   },
   {
     "id": "vert-locker-1x2",
-    "filePath": "assets2/vert-locker-1x2.png"
+    "filePath": "assets2/deco/vert-locker-1x2.png"
   },
   {
     "id": "vert-locker-1x3",
-    "filePath": "assets2/vert-locker-1x3.png"
+    "filePath": "assets2/deco/vert-locker-1x3.png"
   },
   {
     "id": "vert-locker-1x4",
-    "filePath": "assets2/vert-locker-1x4.png"
+    "filePath": "assets2/deco/vert-locker-1x4.png"
   },
   {
     "id": "vert-locker-red-1x2",
-    "filePath": "assets2/vert-locker-red-1x2.png"
+    "filePath": "assets2/deco/vert-locker-red-1x2.png"
   },
   {
     "id": "vert-locker-red-1x3",
-    "filePath": "assets2/vert-locker-red-1x3.png"
+    "filePath": "assets2/deco/vert-locker-red-1x3.png"
   },
   {
     "id": "vert-locker-red-1x4",
-    "filePath": "assets2/vert-locker-red-1x4.png"
+    "filePath": "assets2/deco/vert-locker-red-1x4.png"
   },
   {
     "id": "vert-pipe-1x2",
-    "filePath": "assets2/vert-pipe-1x2.png"
+    "filePath": "assets2/deco/vert-pipe-1x2.png"
   },
   {
     "id": "vert-pipe-1x3",
-    "filePath": "assets2/vert-pipe-1x3.png"
+    "filePath": "assets2/deco/vert-pipe-1x3.png"
   },
   {
     "id": "vert-pipe-1x4",
-    "filePath": "assets2/vert-pipe-1x4.png"
+    "filePath": "assets2/deco/vert-pipe-1x4.png"
   },
   {
     "id": "vert-plant-1x2",
-    "filePath": "assets2/vert-plant-1x2.png"
+    "filePath": "assets2/deco/vert-plant-1x2.png"
   },
   {
     "id": "vert-plant-1x3",
-    "filePath": "assets2/vert-plant-1x3.png"
+    "filePath": "assets2/deco/vert-plant-1x3.png"
   },
   {
     "id": "vert-plant-1x4",
-    "filePath": "assets2/vert-plant-1x4.png"
+    "filePath": "assets2/deco/vert-plant-1x4.png"
   },
   {
     "id": "vert-robot-1x2",
-    "filePath": "assets2/vert-robot-1x2.png"
+    "filePath": "assets2/deco/vert-robot-1x2.png"
   },
   {
     "id": "vert-robot-1x3",
-    "filePath": "assets2/vert-robot-1x3.png"
+    "filePath": "assets2/deco/vert-robot-1x3.png"
   },
   {
     "id": "vert-robot-1x4",
-    "filePath": "assets2/vert-robot-1x4.png"
+    "filePath": "assets2/deco/vert-robot-1x4.png"
   },
   {
     "id": "vert-safe-1x2",
-    "filePath": "assets2/vert-safe-1x2.png"
+    "filePath": "assets2/deco/vert-safe-1x2.png"
   },
   {
     "id": "vert-safe-1x3",
-    "filePath": "assets2/vert-safe-1x3.png"
+    "filePath": "assets2/deco/vert-safe-1x3.png"
   },
   {
     "id": "vert-safe-1x4",
-    "filePath": "assets2/vert-safe-1x4.png"
+    "filePath": "assets2/deco/vert-safe-1x4.png"
   },
   {
     "id": "vert-server-1x2",
-    "filePath": "assets2/vert-server-1x2.png"
+    "filePath": "assets2/deco/vert-server-1x2.png"
   },
   {
     "id": "vert-server-1x3",
-    "filePath": "assets2/vert-server-1x3.png"
+    "filePath": "assets2/deco/vert-server-1x3.png"
   },
   {
     "id": "vert-server-1x4",
-    "filePath": "assets2/vert-server-1x4.png"
+    "filePath": "assets2/deco/vert-server-1x4.png"
   },
   {
     "id": "vert-speaker-1x2",
-    "filePath": "assets2/vert-speaker-1x2.png"
+    "filePath": "assets2/deco/vert-speaker-1x2.png"
   },
   {
     "id": "vert-speaker-1x3",
-    "filePath": "assets2/vert-speaker-1x3.png"
+    "filePath": "assets2/deco/vert-speaker-1x3.png"
   },
   {
     "id": "vert-speaker-1x4",
-    "filePath": "assets2/vert-speaker-1x4.png"
+    "filePath": "assets2/deco/vert-speaker-1x4.png"
   },
   {
     "id": "vert-spore-tower-1x2",
-    "filePath": "assets2/vert-spore-tower-1x2.png"
+    "filePath": "assets2/deco/vert-spore-tower-1x2.png"
   },
   {
     "id": "vert-spore-tower-1x3",
-    "filePath": "assets2/vert-spore-tower-1x3.png"
+    "filePath": "assets2/deco/vert-spore-tower-1x3.png"
   },
   {
     "id": "vert-spore-tower-1x4",
-    "filePath": "assets2/vert-spore-tower-1x4.png"
+    "filePath": "assets2/deco/vert-spore-tower-1x4.png"
   },
   {
     "id": "vert-statue-1x2",
-    "filePath": "assets2/vert-statue-1x2.png"
+    "filePath": "assets2/deco/vert-statue-1x2.png"
   },
   {
     "id": "vert-statue-1x3",
-    "filePath": "assets2/vert-statue-1x3.png"
+    "filePath": "assets2/deco/vert-statue-1x3.png"
   },
   {
     "id": "vert-statue-1x4",
-    "filePath": "assets2/vert-statue-1x4.png"
+    "filePath": "assets2/deco/vert-statue-1x4.png"
   },
   {
     "id": "vert-tank-1x2",
-    "filePath": "assets2/vert-tank-1x2.png"
+    "filePath": "assets2/deco/vert-tank-1x2.png"
   },
   {
     "id": "vert-tank-1x3",
-    "filePath": "assets2/vert-tank-1x3.png"
+    "filePath": "assets2/deco/vert-tank-1x3.png"
   },
   {
     "id": "vert-tank-1x4",
-    "filePath": "assets2/vert-tank-1x4.png"
+    "filePath": "assets2/deco/vert-tank-1x4.png"
   },
   {
     "id": "vert-telescope-1x2",
-    "filePath": "assets2/vert-telescope-1x2.png"
+    "filePath": "assets2/deco/vert-telescope-1x2.png"
   },
   {
     "id": "vert-telescope-1x3",
-    "filePath": "assets2/vert-telescope-1x3.png"
+    "filePath": "assets2/deco/vert-telescope-1x3.png"
   },
   {
     "id": "vert-telescope-1x4",
-    "filePath": "assets2/vert-telescope-1x4.png"
+    "filePath": "assets2/deco/vert-telescope-1x4.png"
   },
   {
     "id": "vert-toolbox-1x2",
-    "filePath": "assets2/vert-toolbox-1x2.png"
+    "filePath": "assets2/deco/vert-toolbox-1x2.png"
   },
   {
     "id": "vert-toolbox-1x3",
-    "filePath": "assets2/vert-toolbox-1x3.png"
+    "filePath": "assets2/deco/vert-toolbox-1x3.png"
   },
   {
     "id": "vert-toolbox-1x4",
-    "filePath": "assets2/vert-toolbox-1x4.png"
+    "filePath": "assets2/deco/vert-toolbox-1x4.png"
   },
   {
     "id": "vert-umbrella-1x2",
-    "filePath": "assets2/vert-umbrella-1x2.png"
+    "filePath": "assets2/deco/vert-umbrella-1x2.png"
   },
   {
     "id": "vert-umbrella-1x3",
-    "filePath": "assets2/vert-umbrella-1x3.png"
+    "filePath": "assets2/deco/vert-umbrella-1x3.png"
   },
   {
     "id": "tile-floor-bronze-1x1",
