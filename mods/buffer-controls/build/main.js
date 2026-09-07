@@ -1,28 +1,3 @@
-// ../../packages/assets/src/loader.ts
-async function loadSpriteMap(modId, entries, options = {}) {
-  const assetDir = options.assetDir ? options.assetDir + "/" : "";
-  const concurrency = options.concurrency ?? 16;
-  const ids = {};
-  let next = 0;
-  const worker = async () => {
-    while (next < entries.length) {
-      const entry = entries[next++];
-      const spriteId = `${modId}:${options.idPrefix ?? ""}${entry.id}`;
-      try {
-        await sandkit.api.sprites.loadFromMod(spriteId, `${assetDir}${entry.file}`);
-        ids[entry.id] = spriteId;
-      } catch (e) {
-        console.error(`${modId}: Unknow Asset:  ${assetDir}${entry.file}`);
-        console.error("Thrown value:", e);
-      }
-    }
-  };
-  await Promise.all(Array.from({
-    length: Math.min(concurrency, entries.length)
-  }, () => worker()));
-  return ids;
-}
-
 // ../../packages/dev/index.ts
 function pruneStaleBuildings(PRUNE_MOD_ID) {
   const keep = /* @__PURE__ */ new Set();
@@ -49,197 +24,226 @@ function findOrphanedObjects(PRUNE_MOD_ID) {
   return counts;
 }
 
-// src/catalogue.generated.ts
-var ICON_FILES = [
-  {
-    "id": "icons",
-    "file": "assets/char-A-1x1.png"
-  },
-  {
-    "id": "button",
-    "file": "assets/button.png"
-  },
-  {
-    "id": "counter",
-    "file": "assets/counter.png"
-  },
-  {
-    "id": "counter-2x1",
-    "file": "assets/counter-2x1.png"
-  },
-  {
-    "id": "counter-3x1",
-    "file": "assets/counter-3x1.png"
-  },
-  {
-    "id": "counter-4x1",
-    "file": "assets/counter-4x1.png"
-  },
-  {
-    "id": "counter-5x1",
-    "file": "assets/counter-5x1.png"
-  },
-  {
-    "id": "counter-1x1",
-    "file": "assets/counter-1x1.png"
-  },
-  {
-    "id": "display",
-    "file": "assets/display.png"
-  },
-  {
-    "id": "display-2x1",
-    "file": "assets/display-2x1.png"
-  },
-  {
-    "id": "display-3x1",
-    "file": "assets/display-3x1.png"
-  },
-  {
-    "id": "display-4x1",
-    "file": "assets/display-4x1.png"
-  },
-  {
-    "id": "display-5x1",
-    "file": "assets/display-5x1.png"
-  },
-  {
-    "id": "display-2x2",
-    "file": "assets/display-2x2.png"
-  },
-  {
-    "id": "display-3x3",
-    "file": "assets/display-3x3.png"
-  },
-  {
-    "id": "dpad",
-    "file": "assets/dpad.png"
-  },
-  {
-    "id": "gauge",
-    "file": "assets/gauge.png"
-  },
-  {
-    "id": "gauge-2x1",
-    "file": "assets/gauge-2x1.png"
-  },
-  {
-    "id": "gauge-3x1",
-    "file": "assets/gauge-3x1.png"
-  },
-  {
-    "id": "gauge-4x1",
-    "file": "assets/gauge-4x1.png"
-  },
-  {
-    "id": "gauge-5x1",
-    "file": "assets/gauge-5x1.png"
-  },
-  {
-    "id": "gauge-1x1",
-    "file": "assets/gauge-1x1.png"
-  },
-  {
-    "id": "led-off",
-    "file": "assets/led-off.png"
-  },
-  {
-    "id": "led-on",
-    "file": "assets/led-on.png"
-  },
-  {
-    "id": "minus",
-    "file": "assets/minus.png"
-  },
-  {
-    "id": "plus",
-    "file": "assets/plus.png"
-  },
-  {
-    "id": "pulse",
-    "file": "assets/pulse.png"
-  },
-  {
-    "id": "range",
-    "file": "assets/range.png"
-  },
-  {
-    "id": "range-2x1",
-    "file": "assets/range-2x1.png"
-  },
-  {
-    "id": "range-3x1",
-    "file": "assets/range-3x1.png"
-  },
-  {
-    "id": "range-4x1",
-    "file": "assets/range-4x1.png"
-  },
-  {
-    "id": "range-5x1",
-    "file": "assets/range-5x1.png"
-  },
-  {
-    "id": "range-1x1",
-    "file": "assets/range-1x1.png"
-  },
-  {
-    "id": "selector",
-    "file": "assets/selector.png"
-  },
-  {
-    "id": "selector-2x1",
-    "file": "assets/selector-2x1.png"
-  },
-  {
-    "id": "selector-3x1",
-    "file": "assets/selector-3x1.png"
-  },
-  {
-    "id": "selector-4x1",
-    "file": "assets/selector-4x1.png"
-  },
-  {
-    "id": "selector-5x1",
-    "file": "assets/selector-5x1.png"
-  },
-  {
-    "id": "selector-1x1",
-    "file": "assets/selector-1x1.png"
-  },
-  {
-    "id": "text",
-    "file": "assets/text.png"
-  },
-  {
-    "id": "text-2x1",
-    "file": "assets/text-2x1.png"
-  },
-  {
-    "id": "text-3x1",
-    "file": "assets/text-3x1.png"
-  },
-  {
-    "id": "text-4x1",
-    "file": "assets/text-4x1.png"
-  },
-  {
-    "id": "text-5x1",
-    "file": "assets/text-5x1.png"
-  },
-  {
-    "id": "text-1x1",
-    "file": "assets/text-1x1.png"
-  },
-  {
-    "id": "toggle-off",
-    "file": "assets/toggle-off.png"
-  },
-  {
-    "id": "toggle-on",
-    "file": "assets/toggle-on.png"
+// ../../packages/assets/src/loader.ts
+async function loadSpriteMap(modId, entries, idPrefix) {
+  const ids = {};
+  let next = 0;
+  const worker = async () => {
+    while (next < entries.length) {
+      const entry = entries[next++];
+      const spriteId = `${modId}:${idPrefix ?? ""}${entry.id}`;
+      try {
+        await sandkit.api.sprites.loadFromMod(spriteId, `${entry.filePath}`);
+        ids[entry.id] = spriteId;
+      } catch (e) {
+        console.error(`${modId}: Unknow Asset:  ${entry.filePath}`);
+        console.error("Thrown value:", e);
+      }
+    }
+  };
+  await Promise.all(Array.from({
+    length: Math.min(16, entries.length)
+  }, () => worker()));
+  return ids;
+}
+
+// ../../packages/catalogue/src/list/createBuildList.ts
+var MIRROR_SUFFIX = "~mirrored";
+function compareSizes(a, b) {
+  const [aw, ah] = a.split("x").map(Number);
+  const [bw, bh] = b.split("x").map(Number);
+  return (aw || 0) - (bw || 0) || (ah || 0) - (bh || 0);
+}
+var itemTypePrefix = (modId) => `${modId}:item/`;
+function typeOfCatalogueItem(modId, itemId, mirrored = false) {
+  return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
+}
+function itemIdFromType(modId, type) {
+  const prefix = itemTypePrefix(modId);
+  if (!type.startsWith(prefix)) return null;
+  let id = type.slice(prefix.length);
+  if (id.endsWith(MIRROR_SUFFIX)) id = id.slice(0, -MIRROR_SUFFIX.length);
+  return id;
+}
+function findItem(items, id) {
+  return items.find((entry) => entry.id === id);
+}
+var createBuildList = (options) => {
+  const catalogueItems = options.catalogueItems.slice();
+  const categories = options.categories.filter((c) => catalogueItems.some((it) => it.category === c.id));
+  let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
+  let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
+  let mirrored = false;
+  let selectedTags = [];
+  let selectedSizes = [];
+  const listeners = {
+    select: /* @__PURE__ */ new Set(),
+    place: /* @__PURE__ */ new Set(),
+    remove: /* @__PURE__ */ new Set(),
+    category: /* @__PURE__ */ new Set(),
+    mirror: /* @__PURE__ */ new Set(),
+    tag: /* @__PURE__ */ new Set()
+  };
+  const emit = (name, event) => {
+    for (const h3 of listeners[name]) {
+      try {
+        h3(event);
+      } catch (err) {
+        console.error("[panel-build-list]", name, err);
+      }
+    }
+  };
+  const list = {
+    modId: options.modId,
+    menuId: options.menuId,
+    menuLabel: options.menuLabel,
+    catalogueItems,
+    categories,
+    getSelected() {
+      return findItem(catalogueItems, selectedId);
+    },
+    getSelectedType() {
+      return typeOfCatalogueItem(options.modId, selectedId, mirrored);
+    },
+    setSelected(id) {
+      const item = findItem(catalogueItems, id);
+      if (!item) return;
+      selectedId = id;
+      category = item.category;
+      emit("select", {
+        item,
+        mirrored
+      });
+    },
+    isMirrored: () => mirrored,
+    setMirrored(next) {
+      mirrored = next;
+      emit("mirror", {
+        mirrored
+      });
+    },
+    getCategory: () => category,
+    setCategory(id) {
+      category = id;
+      emit("category", {
+        categoryId: id
+      });
+    },
+    allTags() {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of catalogueItems) {
+        for (const t of it.tags ?? []) set.add(t);
+      }
+      return [
+        ...set
+      ].sort();
+    },
+    allSizes() {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of catalogueItems) {
+        for (const s of it.sizes ?? []) set.add(s);
+      }
+      return [
+        ...set
+      ].sort(compareSizes);
+    },
+    getSelectedTags: () => selectedTags.slice(),
+    setSelectedTags(tags) {
+      selectedTags = tags.filter((t, i) => tags.indexOf(t) === i && catalogueItems.some((it) => (it.tags ?? []).includes(t)));
+      emit("tag", {
+        tags: selectedTags,
+        sizes: selectedSizes
+      });
+    },
+    toggleTag(tag) {
+      const next = selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [
+        ...selectedTags,
+        tag
+      ];
+      list.setSelectedTags(next);
+    },
+    getSelectedSizes: () => selectedSizes.slice(),
+    setSelectedSizes(sizes) {
+      selectedSizes = sizes.filter((s, i) => sizes.indexOf(s) === i && catalogueItems.some((it) => (it.sizes ?? []).includes(s)));
+      emit("tag", {
+        tags: selectedTags,
+        sizes: selectedSizes
+      });
+    },
+    toggleSize(size) {
+      const next = selectedSizes.includes(size) ? selectedSizes.filter((s) => s !== size) : [
+        ...selectedSizes,
+        size
+      ];
+      list.setSelectedSizes(next);
+    },
+    itemsInCategory(id) {
+      const cat = id ?? category;
+      return catalogueItems.filter((it) => it.category === cat);
+    },
+    countIn(categoryId) {
+      return catalogueItems.reduce((n, it) => n + (it.category === categoryId ? 1 : 0), 0);
+    },
+    structureType: (itemId, mir) => typeOfCatalogueItem(options.modId, itemId, mir ?? mirrored),
+    itemFromType(type) {
+      const id = itemIdFromType(options.modId, type);
+      return id ? findItem(catalogueItems, id) : void 0;
+    },
+    on(name, handler) {
+      const set = listeners[name];
+      set.add(handler);
+      return () => set.delete(handler);
+    },
+    notifyPlace(x, y, type) {
+      const used = type ?? list.getSelectedType();
+      const item = list.itemFromType(used);
+      if (!item) return null;
+      const payload = {
+        item,
+        type: used,
+        x,
+        y,
+        mirrored: type ? type.endsWith(MIRROR_SUFFIX) : mirrored
+      };
+      emit("place", payload);
+      return payload;
+    },
+    notifyRemove(x, y, type) {
+      const item = list.itemFromType(type);
+      if (!item) return null;
+      const payload = {
+        item,
+        type,
+        x,
+        y,
+        mirrored: type.endsWith(MIRROR_SUFFIX)
+      };
+      emit("remove", payload);
+      return payload;
+    },
+    applyToBuildTool() {
+      sandkit.api.building?.selectStructure?.(list.getSelectedType());
+    }
+  };
+  if (sandkit.api.events?.on) {
+    sandkit.api.events.on("building:placed", (payload) => {
+      const p = payload;
+      const structure = p.structure;
+      if (!structure?.type) return;
+      if (!structure.type.startsWith(`${options.modId}:`)) return;
+      list.notifyPlace(structure.x, structure.y, structure.type);
+    });
+    sandkit.api.events.on("building:removed", (payload) => {
+      const p = payload;
+      const type = String(p.structureId ?? p.type ?? "");
+      const x = Number(p.x);
+      const y = Number(p.y);
+      if (!type.startsWith(`${options.modId}:`)) return;
+      list.notifyRemove(x, y, type);
+    });
   }
-];
+  return list;
+};
 
 // ../../packages/buffer/src/utils/codec.ts
 function decodeJson(buffer) {
@@ -247,7 +251,6 @@ function decodeJson(buffer) {
     const end = buffer.indexOf(0);
     const bytes = buffer.slice(0, end === -1 ? buffer.length : end);
     const result = new TextDecoder().decode(bytes);
-    console.log("=====> ReadJson Buffer", result);
     const obj = JSON.parse(result);
     return obj;
   } catch (e) {
@@ -258,10 +261,10 @@ function decodeJson(buffer) {
 function encodeJsonInBuffer(buf, value) {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   if (bytes.length > buf.length) {
-    console.error("Force config too big \u2014 buffer truncated");
+    throw new Error(`JSON payload of ${bytes.length} bytes does not fit in ${buf.length}-byte buffer`);
   }
   buf.fill(0);
-  buf.set(bytes.subarray(0, buf.length));
+  buf.set(bytes);
   return bytes;
 }
 
@@ -449,7 +452,6 @@ function kindOf(value) {
 var ensureBuffer = (key, config) => {
   const existing = sandkit.api.shared.buffers.get(key);
   if (existing) return existing;
-  console.log("Create a new Buffer ", key);
   if (!sandkit.api.shared.buffers.ensure) {
     return null;
   }
@@ -473,7 +475,9 @@ var JsonBuffer = class {
   };
   subscribe(fn) {
     this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
   }
   constructor(modId, key, defaultRecord, assertShape) {
     this.modId = modId;
@@ -497,7 +501,6 @@ var JsonBuffer = class {
         this.commit();
         this.save();
       });
-      console.log("STORAGE Get", this.modId, this.key, storedRecord);
       this.cache = storedRecord ? storedRecord : this.defaultRecord ? deepClone(this.defaultRecord) : {};
       this.localVersion = -1;
       this.commit();
@@ -521,9 +524,7 @@ var JsonBuffer = class {
     this.notify();
     return this.cache;
   }
-  hasUpdate = () => {
-    this.remoteVersion() !== this.localVersion;
-  };
+  hasUpdate = () => this.remoteVersion() !== this.localVersion;
   get() {
     this.pull();
     return this.cache;
@@ -548,7 +549,6 @@ var JsonBuffer = class {
   commit() {
     this.assertShape?.(this.cache);
     encodeJsonInBuffer(this.dataView, this.cache);
-    console.log("STORAGE set", this.key, this.cache);
     this.localVersion = this.remoteVersion() + 1;
     this.notify();
   }
@@ -557,18 +557,336 @@ var JsonBuffer = class {
   }
 };
 
+// src/structure/sectionStructure.ts
+var BUILD_MODE = () => {
+  return {
+    single: {
+      type: "single"
+    },
+    rec: {
+      type: "rectangle"
+    },
+    line: {
+      type: "line",
+      directions: [
+        "horizontal",
+        "vertical"
+      ]
+    }
+  };
+};
+var VARIANTS = (typeId) => {
+  return {
+    single: {
+      id: typeId,
+      angles: [
+        0
+      ]
+    },
+    card: {
+      id: typeId,
+      angles: [
+        0,
+        90,
+        180,
+        270
+      ]
+    }
+  };
+};
+var sectionBuild = {
+  single: (typeId) => {
+    return {
+      buildModes: [
+        BUILD_MODE().single
+      ],
+      variants: [
+        VARIANTS(typeId).single
+      ]
+    };
+  },
+  rec: (typeId) => {
+    return {
+      buildModes: [
+        BUILD_MODE().rec
+      ],
+      variants: [
+        VARIANTS(typeId).single
+      ]
+    };
+  }
+};
+
+// src/structure/register.ts
+var KIND_SPRITE_KEY = {
+  bool: "bolean",
+  number: "number",
+  string: "string"
+};
+var EXPOSED_KINDS = [
+  "bool",
+  "number",
+  "string"
+];
+var CELL = 16;
+var STRUCT_H = 16;
+var RECT_W = 5 * 16;
+function registerPathStructures(list, spriteFor) {
+  const modId = list.modId;
+  for (const item of list.catalogueItems) {
+    const isMenu = item.id === list.menuId;
+    const typeId = list.structureType(item.id);
+    const spriteId = spriteFor(item) ?? typeId;
+    const menuRender = isMenu ? {
+      render: {
+        imageName: spriteId,
+        size: {
+          width: item.width,
+          height: item.height
+        },
+        outline: true,
+        ui: {
+          imageName: spriteId,
+          width: item.width,
+          height: item.height,
+          outline: true
+        }
+      }
+    } : {};
+    const sectionTooltips = {
+      tooltipHover: {
+        type: "custom",
+        dataFieldMessage: {
+          // Generic "{field}: {field}" template — shows the bound
+          // jsonBuffer path and its kind while hovering the structure.
+          messageKey: "{material}: {amount}",
+          fields: [
+            {
+              param: "material",
+              field: "path",
+              fallback: "Unbound"
+            },
+            {
+              param: "amount",
+              field: "kind",
+              fallback: "string"
+            }
+          ]
+        }
+      }
+    };
+    const sectionData = {
+      copyData: true,
+      defaultData: {
+        path: item.id,
+        kind: item.kind ?? "string",
+        spriteId
+      }
+    };
+    const draw = (_state, structure, render) => {
+      const ctx = render?.ctx;
+      if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;
+      const image = sandkit.api.sprites?.getById(spriteId)?.imageAsset?.image;
+      if (!image) return false;
+      const origin = sandkit.api.rendering.getDrawPositionAtCell(structure.x, structure.y);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(image, origin.x, origin.y, CELL, CELL);
+      const rx = origin.x + CELL;
+      const ry = origin.y;
+      const rw = RECT_W;
+      const rh = STRUCT_H;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.fillStyle = "#c1812e";
+      ctx.fillRect(rx + 1, ry + 1, rw - 2, rh - 2);
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
+      const path = String(structure.data?.path ?? item.label ?? item.id);
+      ctx.font = "9px monospace";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#c1812e";
+      ctx.fillText(path, rx + 6, ry + rh / 2, rw - 12);
+      ctx.restore();
+      return true;
+    };
+    const makeShape = (x, y) => Array.from({
+      length: x
+    }, () => Array(y).fill(0));
+    sandkit.api.structures.register({
+      id: typeId,
+      categoryKey: "blocks",
+      name: item.label,
+      description: isMenu ? "Buffer Controls \u2014 opens the variable picker." : `${item.kind ?? "string"} \u2014 linked to jsonBuffer path "${item.id}".`,
+      hideFromBuildMenu: !isMenu,
+      // 1 wide × 6 tall footprint ( *4 = the shape array must be).
+      shape: isMenu ? makeShape(4, 4) : makeShape(1 * 4, 6 * 4),
+      ...sectionBuild.single(typeId),
+      ...menuRender,
+      ...sectionTooltips,
+      ...sectionData,
+      draw
+    });
+    if (isMenu) {
+      sandkit.api.player.buildings.unlockByType(typeId);
+    }
+  }
+  console.log(`[${modId}] registered ${list.catalogueItems.length} buffer structures`);
+}
+
+// src/picker.ts
+var h2 = (type, props, ...children) => sandkit.react.createElement(type, props, ...children);
+function createVariablePicker(options) {
+  const list = options.list;
+  const pickerId = `${list.modId}/picker`;
+  const title = options.title ?? "Buffer variables";
+  const modPrefix = `${list.modId}:`;
+  const bridge = {
+    repaint: null
+  };
+  let open = false;
+  let minimized = false;
+  let unsubscribe = null;
+  const selectItem = (item) => {
+    const type = list.structureType(item.id);
+    sandkit.api.player.buildings.unlockByType(type);
+    list.setSelected(item.id);
+    sandkit.api.building?.selectStructure?.(type);
+    bridge.repaint?.();
+  };
+  const Row = (props) => {
+    const spriteId = options.spriteFor(props.item);
+    const src = spriteId ? sandkit.api.sprites.getById(spriteId)?.imageAsset?.image?.src : void 0;
+    const selected = list.getSelected()?.id === props.item.id;
+    return h2("button", {
+      key: props.item.id,
+      onClick: () => selectItem(props.item),
+      className: "flex items-center gap-2 w-full text-left px-3 py-1.5 rounded border text-xs whitespace-nowrap " + (selected ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-300 border-slate-700 hover:text-white hover:border-slate-500"),
+      children: [
+        src ? h2("img", {
+          src,
+          width: 16,
+          height: 16,
+          className: "shrink-0"
+        }) : h2("span", {
+          className: "w-4 h-4 shrink-0"
+        }),
+        h2("span", {
+          children: props.item.label
+        }),
+        h2("span", {
+          className: "ml-auto text-slate-500 text-[10px] uppercase",
+          children: String(props.item.kind ?? "")
+        })
+      ]
+    });
+  };
+  const Panel = () => {
+    const [, forceUpdate] = sandkit.react.useState(0);
+    if (!bridge.repaint) {
+      bridge.repaint = () => forceUpdate((n) => n + 1);
+    }
+    const items = list.catalogueItems.filter((i) => i.category === "variables");
+    if (!open) return null;
+    if (minimized) {
+      return h2("div", {
+        className: "flex items-center gap-2 bg-slate-900/90 border border-slate-700 rounded px-3 py-1"
+      }, h2("span", {
+        className: "text-xs text-slate-300",
+        children: title
+      }), h2("button", {
+        className: "text-xs text-slate-400 hover:text-white",
+        onClick: () => {
+          minimized = false;
+          bridge.repaint?.();
+        },
+        children: "\u25B2"
+      }));
+    }
+    return h2("div", {
+      className: "flex flex-col bg-slate-900/90 border border-slate-700 rounded w-[320px] max-h-[40vh]"
+    }, h2("div", {
+      className: "flex items-center px-3 py-2 border-b border-slate-700"
+    }, h2("span", {
+      className: "text-xs text-white font-bold",
+      children: title
+    }), h2("button", {
+      className: "ml-auto text-xs text-slate-400 hover:text-white",
+      onClick: () => {
+        minimized = true;
+        bridge.repaint?.();
+      },
+      children: "\u2014"
+    })), h2("div", {
+      className: "flex flex-col gap-1 px-2 py-2 overflow-y-auto"
+    }, items.map((item) => h2(Row, {
+      key: item.id,
+      item
+    }))));
+  };
+  const sync = () => {
+    const selected = sandkit.api.action.getSelected?.();
+    const building = sandkit.enums?.ActionType?.Building;
+    const ours = !!selected && selected.type === building && typeof selected.id === "string" && selected.id.startsWith(modPrefix);
+    if (ours) {
+      const id = list.itemFromType(String(selected.id))?.id;
+      if (id) list.setSelected(id);
+      open = true;
+    } else {
+      open = false;
+      minimized = false;
+    }
+    bridge.repaint?.();
+  };
+  const install = () => {
+    sandkit.api.ui.overlays.register("hotbar", pickerId, () => sandkit.react.createElement(Panel, null));
+    unsubscribe = sandkit.api.events.on("action:changed", sync);
+    sync();
+  };
+  install();
+  return {
+    pickerId,
+    dispose() {
+      unsubscribe?.();
+      unsubscribe = null;
+      open = false;
+      bridge.repaint = null;
+    }
+  };
+}
+
 // src/main.ts
 var MOD_ID = "buffer-controls";
+var MENU_ID = "buffer-controls";
+var VARIABLE_CATEGORY = "variables";
 var BUFFER_ID = `${MOD_ID}:gameConfig`;
+var SPRITE_FILES = [
+  {
+    id: "number",
+    filePath: "assets/types/number.png"
+  },
+  {
+    id: "bolean",
+    filePath: "assets/types/bolean.png"
+  },
+  {
+    id: "string",
+    filePath: "assets/types/string.png"
+  },
+  {
+    id: "menu",
+    filePath: "assets/other/display.png"
+  }
+];
+var CELL2 = 16;
+var STRUCT_H2 = 6 * 15;
 async function main() {
-  const spriteIds = await loadSpriteMap(MOD_ID, ICON_FILES, {
-    assetDir: "",
-    concurrency: 16
-  });
-  console.log("=== SPRITE ", spriteIds);
+  const api = sandkit.api;
   const buffer = new JsonBuffer(MOD_ID, BUFFER_ID, {
     volume: 1,
     muted: false,
+    label: "hello",
     players: [
       {
         name: "Bob",
@@ -576,25 +894,58 @@ async function main() {
       }
     ]
   });
-  const buffer2 = new JsonBuffer(MOD_ID, BUFFER_ID, {
-    volume: 1,
-    muted: false,
-    players: [
-      {
-        name: "Bob",
-        score: 0
-      }
-    ]
+  const spriteIds = await loadSpriteMap(MOD_ID, SPRITE_FILES);
+  const kindSpriteId = (kind) => spriteIds[KIND_SPRITE_KEY[kind] ?? "string"];
+  const spriteFor = (item) => item.id === MENU_ID ? spriteIds["menu"] : kindSpriteId(item.kind ?? "string");
+  const paths = buffer.listPaths().filter((field) => EXPOSED_KINDS.includes(field.kind));
+  const items = [
+    {
+      id: MENU_ID,
+      label: "Buffer Controls",
+      description: "Buffer Controls \u2014 opens the variable picker.",
+      category: VARIABLE_CATEGORY,
+      width: CELL2,
+      height: CELL2,
+      filePath: "assets/other/display.png"
+    },
+    ...paths.map((field) => ({
+      id: field.path,
+      label: field.path,
+      description: `${field.kind} \u2014 linked to jsonBuffer path "${field.path}".`,
+      category: VARIABLE_CATEGORY,
+      width: CELL2,
+      height: STRUCT_H2,
+      filePath: "assets/types/string.png",
+      kind: field.kind
+    }))
+  ];
+  const categories = [
+    {
+      id: VARIABLE_CATEGORY,
+      label: "Variables"
+    }
+  ];
+  const list = createBuildList({
+    modId: MOD_ID,
+    menuId: MENU_ID,
+    menuLabel: "Buffer Controls",
+    categories,
+    catalogueItems: items,
+    selectedId: paths[0]?.path
   });
-  const path = buffer.listPaths();
-  console.log("LIST _PATH");
+  registerPathStructures(list, spriteFor);
+  createVariablePicker({
+    list,
+    title: "Buffer variables",
+    spriteFor
+  });
+  api.ui?.toast?.(`Buffer Controls \u2014 ${paths.length} variables loaded`, {});
+  console.log(`[${MOD_ID}] loaded ${paths.length} jsonBuffer paths`);
 }
 try {
   findOrphanedObjects(MOD_ID);
   pruneStaleBuildings(MOD_ID);
-  const storage = sandkit.api.storage.ensure(MOD_ID);
-  console.log("STORE", storage);
-  console.log("getGridMetrics:", sandkit.api.rendering.getGridMetrics());
+  console.log("==== STATE STORE === ", sandkit.state?.store);
   void main();
 } catch (e) {
   console.error(e instanceof Error ? e.stack : e);

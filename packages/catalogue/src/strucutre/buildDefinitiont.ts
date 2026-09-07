@@ -24,7 +24,7 @@ export function buildStructureDefinition(
     opts: StructureOptions,
 ): Record<string, unknown> {
     const makeEmptyShape = (x: number, y: number) =>
-        Array.from({ length: y }, () => Array(x).fill(0));
+        Array.from({ length: x }, () => Array(y).fill(0));
 
     const _shapeEmpty = makeEmptyShape(
         Math.round(opts.renderSize.width / 4),

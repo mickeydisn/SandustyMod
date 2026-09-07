@@ -15,6 +15,10 @@ declare global {
         api: SandkitApi;
         enums: ApiEnum;
         react: SandkitReact;
+        /** Live game store (read-only access from mods). */
+        state?: {
+            store?: Record<string, any>;
+        };
     };
     var sandkit2: {
         api: SandkitApiWorker;
