@@ -748,6 +748,7 @@ function createVariablePicker(options) {
   let open = false;
   let minimized = false;
   let unsubscribe = null;
+  let pollTimer = null;
   const selectItem = (item) => {
     const type = list.structureType(item.id);
     sandkit.api.player.buildings.unlockByType(type);
@@ -825,7 +826,7 @@ function createVariablePicker(options) {
       item
     }))));
   };
-  const sync = () => {
+  const syncNow = () => {
     const selected = sandkit.api.action.getSelected?.();
     const building = sandkit.enums?.ActionType?.Building;
     const ours = !!selected && selected.type === building && typeof selected.id === "string" && selected.id.startsWith(modPrefix);
@@ -839,9 +840,19 @@ function createVariablePicker(options) {
     }
     bridge.repaint?.();
   };
+  let syncQueued = false;
+  const sync = () => {
+    if (syncQueued) return;
+    syncQueued = true;
+    setTimeout(() => {
+      syncQueued = false;
+      syncNow();
+    }, 0);
+  };
   const install = () => {
     sandkit.api.ui.overlays.register("hotbar", pickerId, () => sandkit.react.createElement(Panel, null));
     unsubscribe = sandkit.api.events.on("action:changed", sync);
+    pollTimer = setInterval(syncNow, 1e3);
     sync();
   };
   install();
@@ -850,6 +861,10 @@ function createVariablePicker(options) {
     dispose() {
       unsubscribe?.();
       unsubscribe = null;
+      if (pollTimer !== null) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
       open = false;
       bridge.repaint = null;
     }

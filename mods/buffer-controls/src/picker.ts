@@ -43,6 +43,7 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
     let open = false;
     let minimized = false;
     let unsubscribe: (() => void) | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     const selectItem = (item: CatalogueItem) => {
         const type = list.structureType(item.id);
@@ -142,7 +143,7 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
         );
     };
 
-    const sync = () => {
+    const syncNow = () => {
         const selected = sandkit.api.action.getSelected?.();
         const building = sandkit.enums?.ActionType?.Building;
         const ours = !!selected && selected.type === building &&
@@ -158,6 +159,21 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
         bridge.repaint?.();
     };
 
+    // `action:changed` carries no payload and can fire before the engine has
+    // committed the new action, so `getSelected()` may read the PREVIOUS value
+    // during the event (why a single emit looked like a no-op and a second one
+    // was needed). Defer the read to the next tick so the committed state is
+    // visible, and coalesce bursts.
+    let syncQueued = false;
+    const sync = () => {
+        if (syncQueued) return;
+        syncQueued = true;
+        setTimeout(() => {
+            syncQueued = false;
+            syncNow();
+        }, 0);
+    };
+
     const install = () => {
         sandkit.api.ui.overlays.register(
             "hotbar",
@@ -165,6 +181,9 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
             () => sandkit.react.createElement(Panel, null),
         );
         unsubscribe = sandkit.api.events.on("action:changed", sync);
+        // Safety net for engine paths that mutate the action without emitting
+        // (docs_tech/11 §3) — a slow, cheap, read-only poll.
+        pollTimer = setInterval(syncNow, 1000);
         sync();
     };
 
@@ -175,6 +194,10 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
         dispose() {
             unsubscribe?.();
             unsubscribe = null;
+            if (pollTimer !== null) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
             open = false;
             bridge.repaint = null;
         },
