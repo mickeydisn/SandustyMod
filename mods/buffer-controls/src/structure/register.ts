@@ -107,14 +107,12 @@ export function registerPathStructures(
             const ry = origin.y;
             const rw = RECT_W;
             const rh = STRUCT_H;
-
             ctx.fillStyle = "#000000"; // outer border
             ctx.fillRect(rx, ry, rw, rh);
             ctx.fillStyle = "#c1812e"; // inner border
             ctx.fillRect(rx + 1, ry + 1, rw - 2, rh - 2);
             ctx.fillStyle = "#000000"; // background
             ctx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
-
             // Path text: center-left inside the rectangle, color #c1812e.
             const path = String(structure.data?.path ?? item.label ?? item.id);
             ctx.font = "9px monospace";
@@ -127,7 +125,7 @@ export function registerPathStructures(
         };
 
         const makeShape = (x: number, y: number) =>
-            Array.from({ length: x }, () => Array(y).fill(0));
+            Array.from({ length: x * 4 }, () => Array(y * 4).fill(0));
 
         sandkit.api.structures.register({
             id: typeId,
@@ -138,7 +136,7 @@ export function registerPathStructures(
                 : `${item.kind ?? "string"} — linked to jsonBuffer path "${item.id}".`,
             hideFromBuildMenu: !isMenu,
             // 1 wide × 6 tall footprint ( *4 = the shape array must be).
-            shape: isMenu ? makeShape(4, 4) : makeShape(1 * 4, 6 * 4),
+            shape: isMenu ? makeShape(1, 1) : makeShape(1, 1),
             ...sectionBuild.single(typeId),
             ...menuRender,
             ...sectionTooltips,

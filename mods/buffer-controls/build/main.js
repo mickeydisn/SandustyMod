@@ -712,8 +712,8 @@ function registerPathStructures(list, spriteFor) {
       return true;
     };
     const makeShape = (x, y) => Array.from({
-      length: x
-    }, () => Array(y).fill(0));
+      length: x * 4
+    }, () => Array(y * 4).fill(0));
     sandkit.api.structures.register({
       id: typeId,
       categoryKey: "blocks",
@@ -721,7 +721,7 @@ function registerPathStructures(list, spriteFor) {
       description: isMenu ? "Buffer Controls \u2014 opens the variable picker." : `${item.kind ?? "string"} \u2014 linked to jsonBuffer path "${item.id}".`,
       hideFromBuildMenu: !isMenu,
       // 1 wide × 6 tall footprint ( *4 = the shape array must be).
-      shape: isMenu ? makeShape(4, 4) : makeShape(1 * 4, 6 * 4),
+      shape: isMenu ? makeShape(1, 1) : makeShape(1, 1),
       ...sectionBuild.single(typeId),
       ...menuRender,
       ...sectionTooltips,
