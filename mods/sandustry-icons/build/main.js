@@ -49,6 +49,11 @@ async function loadSpriteMap(modId, entries, idPrefix) {
 
 // ../../packages/catalogue/src/list/createBuildList.ts
 var MIRROR_SUFFIX = "~mirrored";
+function compareSizes(a, b) {
+  const [aw, ah] = a.split("x").map(Number);
+  const [bw, bh] = b.split("x").map(Number);
+  return (aw || 0) - (bw || 0) || (ah || 0) - (bh || 0);
+}
 var itemTypePrefix = (modId) => `${modId}:item/`;
 function typeOfCatalogueItem(modId, itemId, mirrored = false) {
   return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
@@ -70,6 +75,7 @@ var createBuildList = (options) => {
   let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
   let mirrored = false;
   let selectedTags = [];
+  let selectedSizes = [];
   const listeners = {
     select: /* @__PURE__ */ new Set(),
     place: /* @__PURE__ */ new Set(),
@@ -132,11 +138,21 @@ var createBuildList = (options) => {
         ...set
       ].sort();
     },
+    allSizes() {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of catalogueItems) {
+        for (const s of it.sizes ?? []) set.add(s);
+      }
+      return [
+        ...set
+      ].sort(compareSizes);
+    },
     getSelectedTags: () => selectedTags.slice(),
     setSelectedTags(tags) {
       selectedTags = tags.filter((t, i) => tags.indexOf(t) === i && catalogueItems.some((it) => (it.tags ?? []).includes(t)));
       emit("tag", {
-        tags: selectedTags
+        tags: selectedTags,
+        sizes: selectedSizes
       });
     },
     toggleTag(tag) {
@@ -145,6 +161,21 @@ var createBuildList = (options) => {
         tag
       ];
       list.setSelectedTags(next);
+    },
+    getSelectedSizes: () => selectedSizes.slice(),
+    setSelectedSizes(sizes) {
+      selectedSizes = sizes.filter((s, i) => sizes.indexOf(s) === i && catalogueItems.some((it) => (it.sizes ?? []).includes(s)));
+      emit("tag", {
+        tags: selectedTags,
+        sizes: selectedSizes
+      });
+    },
+    toggleSize(size) {
+      const next = selectedSizes.includes(size) ? selectedSizes.filter((s) => s !== size) : [
+        ...selectedSizes,
+        size
+      ];
+      list.setSelectedSizes(next);
     },
     itemsInCategory(id) {
       const cat = id ?? category;
@@ -219,6 +250,7 @@ var KEY_SELECTED = "picker.selected";
 var KEY_MIRROR = "picker.mirror";
 var KEY_CATEGORY = "picker.category";
 var KEY_TAGS = "picker.tags";
+var KEY_SIZES = "picker.sizes";
 function restorePickerState(list) {
   if (!sandkit.api.storage) return;
   try {
@@ -232,6 +264,8 @@ function restorePickerState(list) {
     if (typeof category === "string") list.setCategory(category);
     const tags = sandkit.api.storage.get(list.modId, KEY_TAGS);
     if (Array.isArray(tags)) list.setSelectedTags(tags);
+    const sizes = sandkit.api.storage.get(list.modId, KEY_SIZES);
+    if (Array.isArray(sizes)) list.setSelectedSizes(sizes);
   } catch (err) {
     console.warn("[picker-overlay] could not restore selection", err);
   }
@@ -243,6 +277,7 @@ function persistSelection(list) {
     sandkit.api.storage.set(list.modId, KEY_MIRROR, list.isMirrored());
     sandkit.api.storage.set(list.modId, KEY_CATEGORY, list.getCategory());
     sandkit.api.storage.set(list.modId, KEY_TAGS, list.getSelectedTags());
+    sandkit.api.storage.set(list.modId, KEY_SIZES, list.getSelectedSizes());
   } catch (err) {
     console.warn("[picker-overlay] could not persist selection", err);
   }
@@ -389,14 +424,19 @@ function createPickerView(options) {
         if (options2.tags.length > 0 && !options2.tags.some((t) => itemTags.includes(t))) {
           return false;
         }
+        const itemSizes = item.sizes ?? [];
+        if (options2.sizes.length > 0 && !options2.sizes.some((s) => itemSizes.includes(s))) {
+          return false;
+        }
         if (!q) return true;
-        const hay = `${item.label} ${item.id} ${item.description ?? ""} ${itemTags.join(" ")}`.toLowerCase();
+        const hay = `${item.label} ${item.id} ${item.description ?? ""} ${itemTags.join(" ")} ${itemSizes.join(" ")}`.toLowerCase();
         return hay.includes(q);
       });
     }
     const selectedTags = list.getSelectedTags();
     const availableTags = list.allTags();
-    const matchesTags = (item) => {
+    const selectedSizes = list.getSelectedSizes();
+    const matchesTagGroup = (item) => {
       if (options.itemFilter && !options.itemFilter(item)) return false;
       const itemTags = item.tags ?? [];
       if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
@@ -404,14 +444,37 @@ function createPickerView(options) {
       }
       return true;
     };
+    const availableSizes = (() => {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of list.catalogueItems) {
+        if (!matchesTagGroup(it)) continue;
+        for (const s of it.sizes ?? []) set.add(s);
+      }
+      return [
+        ...set
+      ].sort(compareSizes);
+    })();
+    const matchesFilters = (item) => {
+      if (options.itemFilter && !options.itemFilter(item)) return false;
+      const itemTags = item.tags ?? [];
+      if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
+        return false;
+      }
+      const itemSizes = item.sizes ?? [];
+      if (selectedSizes.length > 0 && !selectedSizes.some((s) => itemSizes.includes(s))) {
+        return false;
+      }
+      return true;
+    };
     const visibleCategories = list.categories.map((cat) => ({
       cat,
-      count: list.itemsInCategory(cat.id).filter(matchesTags).length
+      count: list.itemsInCategory(cat.id).filter(matchesFilters).length
     })).filter((c) => c.count > 0);
     const visible = filterItems(list.catalogueItems, {
       categoryId,
       query: search,
       tags: selectedTags,
+      sizes: selectedSizes,
       itemFilter: options.itemFilter
     });
     if (state.minimized) {
@@ -497,8 +560,10 @@ function createPickerView(options) {
       },
       className: "text-xs text-white",
       children: tooltip.label
-    }) : null, availableTags.length > 0 ? h("div", {
-      className: "w-full flex flex-wrap items-center gap-1 px-4 py-1 border-b border-slate-800 bg-black/30"
+    }) : null, availableTags.length > 0 || availableSizes.length > 0 ? h("div", {
+      className: "w-full flex flex-col gap-0.5 px-4 py-1 border-b border-slate-800 bg-black/30"
+    }, availableTags.length > 0 ? h("div", {
+      className: "flex flex-wrap items-center gap-1"
     }, h("span", {
       className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1"
     }, "Tags:"), availableTags.map((tag) => h(FocusableButton, {
@@ -507,10 +572,20 @@ function createPickerView(options) {
       onActivate: () => api.toggleTag(tag),
       className: `text-xs px-2 py-0.5 rounded border ${selectedTags.includes(tag) ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-600"}`,
       children: `${selectedTags.includes(tag) ? "\u2611" : "\u2610"} ${tag}`
-    })), selectedTags.length > 0 ? h(FocusableButton, {
-      id: `${api.pickerId}-tags-clear`,
-      onActivate: () => api.clearTags(),
-      className: "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white",
+    }))) : null, availableSizes.length > 0 ? h("div", {
+      className: "flex flex-wrap items-center gap-1"
+    }, h("span", {
+      className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1"
+    }, "Size:"), availableSizes.map((size) => h(FocusableButton, {
+      key: size,
+      id: `${api.pickerId}-size-${size}`,
+      onActivate: () => api.toggleSize(size),
+      className: `text-xs px-2 py-0.5 rounded border ${selectedSizes.includes(size) ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-600"}`,
+      children: `${selectedSizes.includes(size) ? "\u2611" : "\u2610"} ${size}`
+    }))) : null, selectedTags.length > 0 || selectedSizes.length > 0 ? h(FocusableButton, {
+      id: `${api.pickerId}-filters-clear`,
+      onActivate: () => api.clearFilters(),
+      className: "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white self-start",
       children: "Clear"
     }) : null) : null, h("div", {
       className: "flex flex-row flex-wrap "
@@ -620,7 +695,14 @@ function createPickerOverlay(options) {
   const chooseCategory = (categoryId) => {
     list.setCategory(categoryId);
     const tags = list.getSelectedTags();
-    const matches = (it) => tags.length === 0 || tags.some((t) => (it.tags ?? []).includes(t));
+    const sizes = list.getSelectedSizes();
+    const matches = (it) => {
+      const itemTags = it.tags ?? [];
+      const itemSizes = it.sizes ?? [];
+      if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) return false;
+      if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
+      return true;
+    };
     const item = list.itemsInCategory(categoryId).find(matches);
     if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
     persistIfEnabled();
@@ -628,11 +710,28 @@ function createPickerOverlay(options) {
   };
   const toggleTag = (tag) => {
     list.toggleTag(tag);
+    const tags = list.getSelectedTags();
+    const avail = /* @__PURE__ */ new Set();
+    for (const it of list.catalogueItems) {
+      const itemTags = it.tags ?? [];
+      if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) continue;
+      for (const s of it.sizes ?? []) avail.add(s);
+    }
+    const stale = list.getSelectedSizes().filter((s) => !avail.has(s));
+    if (stale.length > 0) {
+      list.setSelectedSizes(list.getSelectedSizes().filter((s) => avail.has(s)));
+    }
     persistIfEnabled();
     repaint?.();
   };
-  const clearTags = () => {
+  const toggleSize = (size) => {
+    list.toggleSize(size);
+    persistIfEnabled();
+    repaint?.();
+  };
+  const clearFilters = () => {
     list.setSelectedTags([]);
+    list.setSelectedSizes([]);
     persistIfEnabled();
     repaint?.();
   };
@@ -647,7 +746,8 @@ function createPickerOverlay(options) {
     toggleMirror,
     chooseCategory,
     toggleTag,
-    clearTags,
+    toggleSize,
+    clearFilters,
     setRepaint(fn) {
       repaint = fn;
     },
@@ -941,8 +1041,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-back-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -955,8 +1057,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-back-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -969,8 +1073,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-back-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -983,8 +1089,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-bounce-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -997,8 +1105,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-bounce-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1011,8 +1121,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-bounce-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1025,8 +1137,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1039,8 +1153,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1053,8 +1169,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1067,8 +1185,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1081,8 +1201,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1095,8 +1217,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1109,8 +1233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1123,8 +1249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1137,8 +1265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1151,8 +1281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1165,8 +1297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1179,8 +1313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-circle-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1193,8 +1329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-collapse-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1207,8 +1345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-collapse-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1221,8 +1361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-collapse-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1235,8 +1377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1249,8 +1393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1263,8 +1409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1277,8 +1425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1291,8 +1441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1305,8 +1457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1319,8 +1473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1333,8 +1489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1347,8 +1505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1361,8 +1521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1375,8 +1537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1389,8 +1553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-double-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1403,8 +1569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1417,8 +1585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1431,8 +1601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1445,8 +1617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1459,8 +1633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1473,8 +1649,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1487,8 +1665,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1501,8 +1681,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1515,8 +1697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-down-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1529,8 +1713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-enter-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1543,8 +1729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-enter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1557,8 +1745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-enter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1571,8 +1761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-expand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1585,8 +1777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-expand-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1599,8 +1793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-expand-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1613,8 +1809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-fork-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1627,8 +1825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-fork-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1641,8 +1841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-fork-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1655,8 +1857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1669,8 +1873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1683,8 +1889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1697,8 +1905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-left-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1711,8 +1921,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-left-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1725,8 +1937,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-left-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1739,8 +1953,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-merge-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1753,8 +1969,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-merge-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1767,8 +1985,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-merge-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1781,8 +2001,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-redo-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1795,8 +2017,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-redo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1809,8 +2033,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-redo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1823,8 +2049,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1837,8 +2065,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1851,8 +2081,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1865,8 +2097,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-rotate-ccw-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1879,8 +2113,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-rotate-ccw-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1893,8 +2129,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-rotate-ccw-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1907,8 +2145,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-rotate-cw-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1921,8 +2161,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-rotate-cw-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1935,8 +2177,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-rotate-cw-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1949,8 +2193,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-shuffle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -1963,8 +2209,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-shuffle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -1977,8 +2225,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-shuffle-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -1991,8 +2241,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-sort-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2005,8 +2257,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-sort-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2019,8 +2273,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-sort-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2033,8 +2289,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-trend-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2047,8 +2305,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-trend-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2061,8 +2321,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-trend-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2075,8 +2337,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-trend-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2089,8 +2353,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-trend-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2103,8 +2369,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-trend-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2117,8 +2385,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-undo-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2131,8 +2401,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-undo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2145,8 +2417,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-undo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2159,8 +2433,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2173,8 +2449,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2187,8 +2465,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2201,8 +2481,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2215,8 +2497,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2229,8 +2513,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2243,8 +2529,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2257,8 +2545,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2271,8 +2561,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2285,8 +2577,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2299,8 +2593,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2313,8 +2609,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-arrow-up-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2327,8 +2625,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-atom-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2341,8 +2641,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-atom-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2355,8 +2657,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-atom-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2369,8 +2673,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-bio-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2383,8 +2689,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-bio-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2397,8 +2705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-bio-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2411,8 +2721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-blue-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2425,8 +2737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-blue-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2439,8 +2753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-blue-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2453,8 +2769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-bolt-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2467,8 +2785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-bolt-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2481,8 +2801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-bolt-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2495,8 +2817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-diamond-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2509,8 +2833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-diamond-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2523,8 +2849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-diamond-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2537,8 +2865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-flame-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2551,8 +2881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-flame-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2565,8 +2897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-flame-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2579,8 +2913,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-gear-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2593,8 +2929,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-gear-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2607,8 +2945,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-gear-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2621,8 +2961,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-green-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2635,8 +2977,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-green-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2649,8 +2993,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-green-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2663,8 +3009,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-red-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2677,8 +3025,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-red-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2691,8 +3041,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-red-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2705,8 +3057,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-skull-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2719,8 +3073,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-skull-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2733,8 +3089,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-skull-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2747,8 +3105,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-spore-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2761,8 +3121,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-spore-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2775,8 +3137,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-spore-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2789,8 +3153,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-star-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2803,8 +3169,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-star-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2817,8 +3185,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-star-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2831,8 +3201,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-tech-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2845,8 +3217,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-tech-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2859,8 +3233,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-tech-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2873,8 +3249,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-warning-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2887,8 +3265,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-warning-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2901,8 +3281,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-warning-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2915,8 +3297,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-wave-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2929,8 +3313,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-wave-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2943,8 +3329,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/banner-wave-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -2957,8 +3345,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-alert-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -2971,8 +3361,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-alert-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -2985,8 +3377,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-alert-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -2999,8 +3393,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-amber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3013,8 +3409,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-amber-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3027,8 +3425,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-amber-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3041,8 +3441,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-bio-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3055,8 +3457,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-bio-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3069,8 +3473,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-bio-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3083,8 +3489,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3097,8 +3505,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-cyan-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3111,8 +3521,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-cyan-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3125,8 +3537,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3139,8 +3553,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-ice-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3153,8 +3569,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-ice-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3167,8 +3585,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-moth-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3181,8 +3601,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-moth-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3195,8 +3617,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-moth-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3209,8 +3633,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-rainbow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3223,8 +3649,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-rainbow-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3237,8 +3665,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-rainbow-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3251,8 +3681,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3265,8 +3697,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-spore-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3279,8 +3713,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-spore-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3293,8 +3729,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-strobe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3307,8 +3745,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-strobe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3321,8 +3761,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-strobe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3335,8 +3777,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-torch-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3349,8 +3793,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-torch-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -3363,8 +3809,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/beacon-torch-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -3377,8 +3825,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-bio-membrane-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3391,8 +3841,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-blueprint-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3405,8 +3857,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-brick-dark-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3419,8 +3873,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-brick-red-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3433,8 +3889,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-brick-white-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3447,8 +3905,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-cables-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3461,8 +3921,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-carbon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3475,8 +3937,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-circuit-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3489,8 +3953,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-concrete-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3503,8 +3969,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-concrete-crack-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3517,8 +3985,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-corrugated-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3531,8 +4001,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-crate-face-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3545,8 +4017,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-diamond-plate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3559,8 +4033,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-glass-block-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3573,8 +4049,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-grime-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3587,8 +4065,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-hex-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3601,8 +4081,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-honeycomb-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3615,8 +4097,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-insulation-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3629,8 +4113,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-led-grid-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3643,8 +4129,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-metal-bronze-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3657,8 +4145,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-metal-dark-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3671,8 +4161,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-metal-plate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3685,8 +4177,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-metal-rivet-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3699,8 +4193,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-neon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3713,8 +4209,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-padded-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3727,8 +4225,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-panel-screen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3741,8 +4241,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-panel-steel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3755,8 +4257,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-panel-warning-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3769,8 +4273,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-pipes-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3783,8 +4289,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-poster-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3797,8 +4305,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-rust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3811,8 +4321,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3825,8 +4337,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-stars-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3839,8 +4353,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-stone-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3853,8 +4369,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-stripe-hazard-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3867,8 +4385,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-stripe-red-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3881,8 +4401,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-tile-green-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3895,8 +4417,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-tile-lab-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3909,8 +4433,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-tile-white-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3923,8 +4449,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3937,8 +4465,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-warning-band-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3951,8 +4481,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-window-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3965,8 +4497,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-window-bars-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3979,8 +4513,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/bg-wood-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -3993,8 +4529,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-acid-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4007,8 +4545,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-asphalt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4021,8 +4561,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-bio-gel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4035,8 +4577,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-brick-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4049,8 +4593,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-bronze-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4063,8 +4609,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-carbon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4077,8 +4625,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-ceramic-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4091,8 +4641,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-checker-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4105,8 +4657,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-circuit-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4119,8 +4673,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-cobble-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4133,8 +4689,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-concrete-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4147,8 +4705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-copper-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4161,8 +4721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-crystal-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4175,8 +4737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-diamond-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4189,8 +4753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-dirt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4203,8 +4769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-glass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4217,8 +4785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4231,8 +4801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-grass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4245,8 +4817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-grate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4259,8 +4833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-gravel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4273,8 +4849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-hazard-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4287,8 +4865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-hex-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4301,8 +4881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4315,8 +4897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-lava-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4329,8 +4913,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-marble-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4343,8 +4929,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-mesh-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4357,8 +4945,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-moss-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4371,8 +4961,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-obsidian-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4385,8 +4977,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-padded-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4399,8 +4993,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-plasma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4413,8 +5009,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-rubber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4427,8 +5025,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-rust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4441,8 +5041,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4455,8 +5057,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-snow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4469,8 +5073,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-solar-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4483,8 +5089,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-steel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4497,8 +5105,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-steel-lite-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4511,8 +5121,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-tech-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4525,8 +5137,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4539,8 +5153,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4553,8 +5169,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-warning-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4567,8 +5185,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-water-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4581,8 +5201,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/block/block-wood-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4595,8 +5217,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-farm-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4609,8 +5233,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-farm-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4623,8 +5249,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-farm-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4637,8 +5265,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-haul-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4651,8 +5281,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-haul-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4665,8 +5297,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-haul-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4679,8 +5313,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-king-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4693,8 +5329,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-king-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4707,8 +5345,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-king-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4721,8 +5361,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-medic-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4735,8 +5377,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-medic-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4749,8 +5393,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-medic-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4763,8 +5409,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-mine-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4777,8 +5425,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-mine-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4791,8 +5441,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-mine-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4805,8 +5457,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-pet-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4819,8 +5473,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-pet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4833,8 +5489,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-pet-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4847,8 +5505,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-scan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4861,8 +5521,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-scan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4875,8 +5537,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-scan-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4889,8 +5553,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-sentry-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4903,8 +5569,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-sentry-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4917,8 +5585,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-sentry-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4931,8 +5601,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-water-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4945,8 +5617,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-water-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -4959,8 +5633,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-water-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -4973,8 +5649,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-weld-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -4987,8 +5665,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-weld-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5001,8 +5681,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/bot-weld-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -5015,8 +5697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-0-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5029,8 +5713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-0-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5043,8 +5729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-1-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5057,8 +5745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-1-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5071,8 +5761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-2-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5085,8 +5777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-2-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5099,8 +5793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-3-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5113,8 +5809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-3-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5127,8 +5825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-4-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5141,8 +5841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-4-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5155,8 +5857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-5-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5169,8 +5873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-5-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5183,8 +5889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-6-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5197,8 +5905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-6-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5211,8 +5921,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-7-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5225,8 +5937,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-7-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5239,8 +5953,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-8-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5253,8 +5969,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-8-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5267,8 +5985,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-9-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5281,8 +6001,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-9-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5295,8 +6017,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-A-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5309,8 +6033,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-A-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5323,8 +6049,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-B-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5337,8 +6065,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-B-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5351,8 +6081,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-C-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5365,8 +6097,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-C-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5379,8 +6113,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-D-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5393,8 +6129,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-D-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5407,8 +6145,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-E-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5421,8 +6161,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-E-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5435,8 +6177,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-F-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5449,8 +6193,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-F-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5463,8 +6209,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-G-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5477,8 +6225,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-G-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5491,8 +6241,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-H-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5505,8 +6257,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-H-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5519,8 +6273,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-I-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5533,8 +6289,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-I-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5547,8 +6305,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-J-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5561,8 +6321,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-J-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5575,8 +6337,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-K-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5589,8 +6353,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-K-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5603,8 +6369,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-L-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5617,8 +6385,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-L-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5631,8 +6401,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-M-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5645,8 +6417,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-M-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5659,8 +6433,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-N-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5673,8 +6449,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-N-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5687,8 +6465,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-O-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5701,8 +6481,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-O-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5715,8 +6497,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-P-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5729,8 +6513,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-P-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5743,8 +6529,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-Q-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5757,8 +6545,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-Q-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5771,8 +6561,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-R-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5785,8 +6577,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-R-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5799,8 +6593,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-S-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5813,8 +6609,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-S-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -5827,8 +6625,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-amp-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5841,8 +6641,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-at-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5855,8 +6657,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-brace-l-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5869,8 +6673,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-brace-r-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5883,8 +6689,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-bslash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5897,8 +6705,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-caret-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5911,8 +6721,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-colon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5925,8 +6737,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-comma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5939,8 +6753,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-dollar-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5953,8 +6769,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-dot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5967,8 +6785,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-eq-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5981,8 +6801,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-excl-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -5995,8 +6817,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-gt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6009,8 +6833,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-hash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6023,8 +6849,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-lbracket-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6037,8 +6865,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-lparen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6051,8 +6881,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-lt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6065,8 +6897,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-minus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6079,8 +6913,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-pct-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6093,8 +6929,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-pipe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6107,8 +6945,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-plus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6121,8 +6961,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-quest-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6135,8 +6977,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-quote-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6149,8 +6993,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-rbracket-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6163,8 +7009,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-rparen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6177,8 +7025,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-semi-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6191,8 +7041,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-slash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6205,8 +7057,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-star-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6219,8 +7073,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-tilde-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6233,8 +7089,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-sym-underscore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6247,8 +7105,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-T-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6261,8 +7121,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-T-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6275,8 +7137,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-U-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6289,8 +7153,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-U-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6303,8 +7169,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-V-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6317,8 +7185,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-V-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6331,8 +7201,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-W-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6345,8 +7217,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-W-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6359,8 +7233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-X-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6373,8 +7249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-X-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6387,8 +7265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-Y-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6401,8 +7281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-Y-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6415,8 +7297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-Z-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6429,8 +7313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/char-Z-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6443,8 +7329,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-alien-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6457,8 +7345,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-alien-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6471,8 +7361,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-alien-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6485,8 +7377,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-angel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6499,8 +7393,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-angel-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6513,8 +7409,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-angel-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6527,8 +7425,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-angry-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6541,8 +7441,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-angry-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6555,8 +7457,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-angry-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6569,8 +7473,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cat-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6583,8 +7489,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6597,8 +7505,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cat-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6611,8 +7521,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cool-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6625,8 +7537,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cool-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6639,8 +7553,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cool-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6653,8 +7569,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cry-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6667,8 +7585,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cry-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6681,8 +7601,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-cry-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6695,8 +7617,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-dead-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6709,8 +7633,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-dead-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6723,8 +7649,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-dead-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6737,8 +7665,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-devil-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6751,8 +7681,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-devil-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6765,8 +7697,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-devil-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6779,8 +7713,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-grin-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6793,8 +7729,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-grin-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6807,8 +7745,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-grin-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6821,8 +7761,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-heart-eyes-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6835,8 +7777,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-heart-eyes-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6849,8 +7793,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-heart-eyes-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6863,8 +7809,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-kiss-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6877,8 +7825,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-kiss-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6891,8 +7841,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-kiss-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6905,8 +7857,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-laugh-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6919,8 +7873,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-laugh-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6933,8 +7889,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-laugh-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6947,8 +7905,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-love-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -6961,8 +7921,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-love-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -6975,8 +7937,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-love-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -6989,8 +7953,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-mindblown-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7003,8 +7969,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-mindblown-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7017,8 +7985,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-mindblown-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7031,8 +8001,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-money-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7045,8 +8017,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-money-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7059,8 +8033,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-money-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7073,8 +8049,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-nerd-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7087,8 +8065,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-nerd-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7101,8 +8081,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-nerd-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7115,8 +8097,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-nervous-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7129,8 +8113,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-nervous-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7143,8 +8129,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-nervous-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7157,8 +8145,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-party-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7171,8 +8161,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-party-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7185,8 +8177,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-party-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7199,8 +8193,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-robot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7213,8 +8209,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-robot-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7227,8 +8225,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-robot-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7241,8 +8241,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sad-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7255,8 +8257,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sad-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7269,8 +8273,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sad-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7283,8 +8289,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-shocked-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7297,8 +8305,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-shocked-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7311,8 +8321,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-shocked-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7325,8 +8337,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sick-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7339,8 +8353,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sick-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7353,8 +8369,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sick-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7367,8 +8385,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-skull-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7381,8 +8401,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-skull-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7395,8 +8417,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-skull-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7409,8 +8433,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sleepy-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7423,8 +8449,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sleepy-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7437,8 +8465,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sleepy-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7451,8 +8481,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-smile-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7465,8 +8497,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-smile-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7479,8 +8513,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-smile-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7493,8 +8529,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-smirk-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7507,8 +8545,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-smirk-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7521,8 +8561,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-smirk-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7535,8 +8577,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-star-eyes-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7549,8 +8593,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-star-eyes-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7563,8 +8609,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-star-eyes-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7577,8 +8625,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sunglasses-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7591,8 +8641,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sunglasses-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7605,8 +8657,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-sunglasses-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7619,8 +8673,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-thinking-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7633,8 +8689,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-thinking-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7647,8 +8705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-thinking-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7661,8 +8721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-wink-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7675,8 +8737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-wink-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7689,8 +8753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/emoji-wink-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -7703,8 +8769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-amber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7717,8 +8785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-amber-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7731,8 +8801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-bio-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7745,8 +8817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7759,8 +8833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7773,8 +8849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-magma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7787,8 +8865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-pink-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7801,8 +8881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-red-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7815,8 +8897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/fence-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7829,8 +8913,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-bed-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7843,8 +8929,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7857,8 +8945,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-bench-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7871,8 +8961,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-bush-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7885,8 +8977,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-climber-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7899,8 +8993,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-composter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7913,8 +9009,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-crate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7927,8 +9025,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-crops-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7941,8 +9041,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-fence-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7955,8 +9057,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-fence-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -7969,8 +9073,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-fencepost-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7983,8 +9089,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-flower-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -7997,8 +9105,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-flowerbed-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8011,8 +9121,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-fountain-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8025,8 +9137,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-fountain-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8039,8 +9153,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-fountain-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8053,8 +9169,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-gazebo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8067,8 +9185,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-greenhouse-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8081,8 +9201,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-greenhouse-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8095,8 +9217,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-greenhouse-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -8109,8 +9233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-hedge-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8123,8 +9249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-herbs-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8137,8 +9265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-lamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8151,8 +9281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-lamp-1x3.png",
     "align": "wall",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8165,8 +9297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-lantern-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8179,8 +9313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-obelisk-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8193,8 +9329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-orchard-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8207,8 +9345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-park-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -8221,8 +9361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-path-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8235,8 +9377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-patio-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -8249,8 +9393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-pergola-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8263,8 +9409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-pond-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8277,8 +9425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-pond-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -8291,8 +9441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-pot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8305,8 +9457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-rock-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8319,8 +9473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-rows-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8333,8 +9489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-sapling-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8347,8 +9505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-shrubs-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8361,8 +9521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-table-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8375,8 +9537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-tallpot-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8389,8 +9553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-tree-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8403,8 +9569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-tree-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8417,8 +9585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-trellis-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8431,8 +9601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-trellis-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -8445,8 +9617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-trough-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8459,8 +9633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/garden-well-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8473,8 +9649,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-amber-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8487,8 +9665,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-amber-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8501,8 +9681,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8515,8 +9697,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-cyan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8529,8 +9713,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8543,8 +9729,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-gold-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8557,8 +9745,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8571,8 +9761,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-ice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8585,8 +9777,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-leaf-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8599,8 +9793,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-leaf-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8613,8 +9809,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-rose-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8627,8 +9825,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-rose-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8641,8 +9841,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-ruby-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8655,8 +9857,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-ruby-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8669,8 +9873,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8683,8 +9889,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/gem-void-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8697,8 +9905,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-beetle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8711,8 +9921,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-beetle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8725,8 +9937,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-chip-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8739,8 +9953,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-chip-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8753,8 +9969,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8767,8 +9985,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-eye-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8781,8 +10001,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-gate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8795,8 +10017,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-gate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8809,8 +10033,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-gear-sun-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8823,8 +10049,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-gear-sun-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8837,8 +10065,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-ladder-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8851,8 +10081,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-ladder-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8865,8 +10097,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-mask-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8879,8 +10113,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-mask-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8893,8 +10129,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-mountain-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8907,8 +10145,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-mountain-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8921,8 +10161,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-river-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8935,8 +10177,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-river-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8949,8 +10193,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-scarab-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8963,8 +10209,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-scarab-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -8977,8 +10225,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-seed-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -8991,8 +10241,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-seed-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9005,8 +10257,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-spiral-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9019,8 +10273,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-spiral-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9033,8 +10289,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-sun-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9047,8 +10305,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-sun-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9061,8 +10321,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-twin-moon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9075,8 +10337,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-twin-moon-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9089,8 +10353,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9103,8 +10369,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-void-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9117,8 +10385,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-wave-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9131,8 +10401,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/glyph-wave-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9145,8 +10417,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-bio-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9159,8 +10433,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-bio-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9173,8 +10449,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-bronze-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9187,8 +10465,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-bronze-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9201,8 +10481,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-grate-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9215,8 +10497,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-grate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9229,8 +10513,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-hazard-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9243,8 +10529,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-hazard-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9257,8 +10545,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-ice-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9271,8 +10561,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-ice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9285,8 +10577,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-round-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9299,8 +10593,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-round-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9313,8 +10609,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-shutter-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9327,8 +10625,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-shutter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9341,8 +10641,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-temple-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9355,8 +10657,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/hatch-temple-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9369,8 +10673,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-biome-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9383,8 +10689,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-biome-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9397,8 +10705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-cyan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9411,8 +10721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-cyan-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9425,8 +10737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-ghost-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9439,8 +10753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-ghost-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9453,8 +10769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-map-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9467,8 +10785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-map-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9481,8 +10801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-playback-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9495,8 +10817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-playback-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9509,8 +10833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-portrait-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9523,8 +10849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-portrait-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9537,8 +10865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-warn-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9551,8 +10881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-warn-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9565,8 +10897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-waypoint-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9579,8 +10913,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/holo-waypoint-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9593,8 +10929,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bathroom-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -9607,8 +10945,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bathtub-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9621,8 +10961,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bathtub-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9635,8 +10977,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bed-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9649,8 +10993,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bed-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9663,8 +11009,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bed-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9677,8 +11025,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bedroom-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -9691,8 +11041,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9705,8 +11057,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bookrow-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9719,8 +11073,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-books-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9733,8 +11089,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bookshelf-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9747,8 +11105,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bookshelf-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9761,8 +11121,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bookshelf-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9775,8 +11137,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-bottle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9789,8 +11153,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-cabinet-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9803,8 +11169,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-chair-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9817,8 +11185,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-clock-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9831,8 +11201,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-coatstand-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9845,8 +11217,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-conduit-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9859,8 +11233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-counter-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9873,8 +11249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-counter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9887,8 +11265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-cushion-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -9901,8 +11281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-desk-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9915,8 +11297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-desk-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9929,8 +11313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-dining-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -9943,8 +11329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-fireplace-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -9957,8 +11345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-floorlamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9971,8 +11361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-fridge-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -9985,8 +11377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-kitchen-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -9999,8 +11393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-lamp-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10013,8 +11409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-living-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -10027,8 +11425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-locker-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -10041,8 +11441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-mirror-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10055,8 +11457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-mug-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10069,8 +11473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-nightstand-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10083,8 +11489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-panel-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -10097,8 +11505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-patio-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -10111,8 +11521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-pillow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10125,8 +11537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-plant-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10139,8 +11553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-planter-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10153,8 +11569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-radiator-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10167,8 +11585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-radiator-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10181,8 +11601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-shelf-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10195,8 +11617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-sidetable-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10209,8 +11633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-sink-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10223,8 +11649,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-sofa-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10237,8 +11665,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-sofa-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -10251,8 +11681,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-soundbar-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10265,8 +11697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-stool-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10279,8 +11713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-stove-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10293,8 +11729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-table-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10307,8 +11745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-table-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -10321,8 +11761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-tallplant-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10335,8 +11777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-toilet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10349,8 +11793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-torchere-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -10363,8 +11809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-towelrail-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10377,8 +11825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-tree-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -10391,8 +11841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-tv-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10405,8 +11857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-tv-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10419,8 +11873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-vase-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10433,8 +11889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-wardrobe-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10447,8 +11905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/home-washer-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -10461,8 +11921,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-barrier-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10475,8 +11937,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-barrier-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10489,8 +11953,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-barrier-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10503,8 +11969,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-battery-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10517,8 +11985,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-battery-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10531,8 +12001,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-battery-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10545,8 +12017,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-beam-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10559,8 +12033,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-beam-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10573,8 +12049,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-beam-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10587,8 +12065,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bed-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10601,8 +12081,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bed-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10615,8 +12097,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bed-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10629,8 +12113,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10643,8 +12129,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bench-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10657,8 +12145,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bench-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10671,8 +12161,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bumper-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10685,8 +12177,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bumper-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10699,8 +12193,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-bumper-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10713,8 +12209,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-cables-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10727,8 +12225,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-cables-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10741,8 +12241,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-cables-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10755,8 +12257,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-console-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10769,8 +12273,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-console-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10783,8 +12289,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-console-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10797,8 +12305,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-conveyor-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10811,8 +12321,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-conveyor-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10825,8 +12337,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-conveyor-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10839,8 +12353,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-counter-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10853,8 +12369,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-counter-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10867,8 +12385,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-counter-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10881,8 +12401,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-crates-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10895,8 +12417,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-crates-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10909,8 +12433,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-crates-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10923,8 +12449,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-desk-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10937,8 +12465,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-desk-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10951,8 +12481,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-desk-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10965,8 +12497,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-duct-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10979,8 +12513,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-duct-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -10993,8 +12529,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-duct-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11007,8 +12545,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-fence-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11021,8 +12561,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-fence-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11035,8 +12577,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-fence-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11049,8 +12593,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-garden-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11063,8 +12609,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-garden-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11077,8 +12625,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-garden-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11091,8 +12641,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-keyboard-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11105,8 +12657,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-keyboard-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11119,8 +12673,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-keyboard-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11133,8 +12689,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-lab-bench-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11147,8 +12705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-lab-bench-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11161,8 +12721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-lab-bench-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11175,8 +12737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-low-wall-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11189,8 +12753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-low-wall-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11203,8 +12769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-low-wall-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11217,8 +12785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-pallet-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11231,8 +12801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-pallet-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11245,8 +12817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-pallet-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11259,8 +12833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-panel-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11273,8 +12849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-panel-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11287,8 +12865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-panel-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11301,8 +12881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-pipe-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11315,8 +12897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-pipe-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11329,8 +12913,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-pipe-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11343,8 +12929,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-planter-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11357,8 +12945,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-planter-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11371,8 +12961,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-planter-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11385,8 +12977,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-rail-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11399,8 +12993,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-rail-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11413,8 +13009,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-rail-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11427,8 +13025,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-shelf-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11441,8 +13041,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-shelf-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11455,8 +13057,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-shelf-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11469,8 +13073,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-sofa-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11483,8 +13089,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-sofa-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11497,8 +13105,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-sofa-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11511,8 +13121,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-solar-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11525,8 +13137,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-solar-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11539,8 +13153,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-solar-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11553,8 +13169,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-table-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11567,8 +13185,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-table-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11581,8 +13201,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-table-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11595,8 +13217,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-tank-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11609,8 +13233,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-tank-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11623,8 +13249,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-tank-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11637,8 +13265,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-vent-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11651,8 +13281,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-vent-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11665,8 +13297,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/horiz-vent-4x1.png",
     "align": "wall",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11679,8 +13313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-air-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -11693,8 +13329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-alien-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11707,8 +13345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-alien-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -11721,8 +13361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-alien-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -11735,8 +13377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-anchor-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11749,8 +13393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-anchor-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -11763,8 +13409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-anchor-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -11777,8 +13425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-atom-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -11791,8 +13441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bag-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11805,8 +13457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-battery-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -11819,8 +13473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bell-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11833,8 +13489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bio-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -11847,8 +13505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bird-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11861,8 +13521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bird-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -11875,8 +13537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bird-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -11889,8 +13553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-blueprint-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -11903,8 +13569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bolt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11917,8 +13585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-book-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11931,8 +13601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bottle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -11945,8 +13617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bottle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -11959,8 +13633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bottle-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -11973,8 +13649,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bug-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -11987,8 +13665,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bug2-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12001,8 +13681,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bug2-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12015,8 +13697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-bug2-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12029,8 +13713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-build-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12043,8 +13729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cactus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12057,8 +13745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cactus-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12071,8 +13761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cactus-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12085,8 +13777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-calendar-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12099,8 +13793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-camera-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12113,8 +13809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-can-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12127,8 +13825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-can-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12141,8 +13841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-can-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12155,8 +13857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cards-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12169,8 +13873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cards-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12183,8 +13889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cards-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12197,8 +13905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12211,8 +13921,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cart-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12225,8 +13937,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cat-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12239,8 +13953,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12253,8 +13969,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cat-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12267,8 +13985,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chart-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12281,8 +14001,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12295,8 +14017,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-check-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12309,8 +14033,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-check-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12323,8 +14049,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-check-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12337,8 +14065,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chess-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12351,8 +14081,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chess-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12365,8 +14097,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chess-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12379,8 +14113,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chest-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12393,8 +14129,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12407,8 +14145,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12421,8 +14161,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12435,8 +14177,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12449,8 +14193,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12463,8 +14209,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12477,8 +14225,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12491,8 +14241,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12505,8 +14257,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12519,8 +14273,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12533,8 +14289,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12547,8 +14305,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-double-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12561,8 +14321,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-down-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12575,8 +14337,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-down-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12589,8 +14353,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-down-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12603,8 +14369,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-left-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12617,8 +14385,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-left-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12631,8 +14401,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-left-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12645,8 +14417,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-right-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12659,8 +14433,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-right-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12673,8 +14449,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-right-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12687,8 +14465,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-up-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12701,8 +14481,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-up-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12715,8 +14497,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-chevron-up-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12729,8 +14513,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-circuit-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12743,8 +14529,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-clock-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12757,8 +14545,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cloud-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12771,8 +14561,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-code-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12785,8 +14577,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-coffee-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12799,8 +14593,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-coffee-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12813,8 +14609,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-coffee-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12827,8 +14625,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-coin-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12841,8 +14641,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-compass-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12855,8 +14657,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cookie-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12869,8 +14673,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cookie-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12883,8 +14689,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cookie-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12897,8 +14705,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cpu-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12911,8 +14721,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cross-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -12925,8 +14737,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cross-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -12939,8 +14753,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-cross-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12953,8 +14769,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-crown-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12967,8 +14785,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-crystal-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12981,8 +14801,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-diamond-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -12995,8 +14817,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-dice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13009,8 +14833,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-dice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13023,8 +14849,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-dice-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13037,8 +14865,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-disk-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13051,8 +14881,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-dna-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13065,8 +14897,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-dog-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13079,8 +14913,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-dog-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13093,8 +14929,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-dog-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13107,8 +14945,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-drone-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13121,8 +14961,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-drop-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13135,8 +14977,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-earth-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13149,8 +14993,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-energy-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13163,8 +15009,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13177,8 +15025,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-factory-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13191,8 +15041,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-file-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13205,8 +15057,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-filter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13219,8 +15073,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-fire-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13233,8 +15089,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-fish-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13247,8 +15105,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-fish-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13261,8 +15121,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-fish-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13275,8 +15137,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-flag-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13289,8 +15153,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-flame-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13303,8 +15169,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-folder-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13317,8 +15185,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-fox-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13331,8 +15201,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-fox-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13345,8 +15217,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-fox-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13359,8 +15233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-gear-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13373,8 +15249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-gem-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13387,8 +15265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-gem-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13401,8 +15281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-gem-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13415,8 +15297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ghost-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13429,8 +15313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ghost-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13443,8 +15329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ghost-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13457,8 +15345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-gift-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13471,8 +15361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-globe-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13485,8 +15377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-hammer-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13499,8 +15393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-headphones-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13513,8 +15409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-heart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13527,8 +15425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-heart-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13541,8 +15441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-heart-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13555,8 +15457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-home-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13569,8 +15473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-home-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13583,8 +15489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-hourglass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13597,8 +15505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-hourglass-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13611,8 +15521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-hourglass-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13625,8 +15537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-icecream-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13639,8 +15553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-icecream-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13653,8 +15569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-icecream-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13667,8 +15585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-image-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13681,8 +15601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-infinity-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13695,8 +15617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-infinity-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13709,8 +15633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-infinity-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13723,8 +15649,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-info-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13737,8 +15665,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-joystick-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13751,8 +15681,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-joystick-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13765,8 +15697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-joystick-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13779,8 +15713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-key-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13793,8 +15729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-lab-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13807,8 +15745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-lab-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13821,8 +15761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-leaf-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13835,8 +15777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-link-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13849,8 +15793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-lock-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13863,8 +15809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-magnet-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13877,8 +15825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-magnet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13891,8 +15841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-magnet-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -13905,8 +15857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-mail-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13919,8 +15873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-map-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13933,8 +15889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-medal-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13947,8 +15905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-mic-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -13961,8 +15921,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-minus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13975,8 +15937,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-moon-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -13989,8 +15953,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-mushroom-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14003,8 +15969,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-mushroom-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14017,8 +15985,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-mushroom-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14031,8 +16001,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-music-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14045,8 +16017,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14059,8 +16033,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ore-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14073,8 +16049,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ore-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14087,8 +16065,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pause-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14101,8 +16081,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-phone-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14115,8 +16097,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pickaxe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14129,8 +16113,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pickaxe-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14143,8 +16129,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pickaxe-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14157,8 +16145,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pin-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14171,8 +16161,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pizza-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14185,8 +16177,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pizza-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14199,8 +16193,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-pizza-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14213,8 +16209,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-plane-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14227,8 +16225,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-play-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14241,8 +16241,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-plus-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14255,8 +16257,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-portal-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14269,8 +16273,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-potion-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14283,8 +16289,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-potion-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14297,8 +16305,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-potion-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14311,8 +16321,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-power-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14325,8 +16337,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-power-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14339,8 +16353,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-puzzle-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14353,8 +16369,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-puzzle-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14367,8 +16385,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-puzzle-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14381,8 +16401,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-radar-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14395,8 +16417,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-rainbow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14409,8 +16433,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-rainbow-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14423,8 +16449,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-rainbow-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14437,8 +16465,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ring-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14451,8 +16481,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ring-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14465,8 +16497,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ring-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14479,8 +16513,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-robot-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14493,8 +16529,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-robot-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14507,8 +16545,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-robot-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14521,8 +16561,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-rocket-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14535,8 +16577,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-satellite-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14549,8 +16593,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-scroll-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14563,8 +16609,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-scroll-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14577,8 +16625,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-scroll-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14591,8 +16641,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-search-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14605,8 +16657,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-seed-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14619,8 +16673,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-seed-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14633,8 +16689,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-seed-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14647,8 +16705,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-settings-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14661,8 +16721,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-shield-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14675,8 +16737,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-ship-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14689,8 +16753,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-shop-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14703,8 +16769,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-skull-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14717,8 +16785,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-snow-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14731,8 +16801,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-snow-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14745,8 +16817,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-snow-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14759,8 +16833,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-speaker-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14773,8 +16849,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-spiral-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14787,8 +16865,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-spiral-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14801,8 +16881,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-spiral-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14815,8 +16897,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-star-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14829,8 +16913,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-star-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14843,8 +16929,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-star-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14857,8 +16945,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-stop-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14871,8 +16961,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-sun-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14885,8 +16977,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-sword-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14899,8 +16993,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-tag-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14913,8 +17009,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-target-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14927,8 +17025,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-terminal-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14941,8 +17041,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-train-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14955,8 +17057,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-tree-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -14969,8 +17073,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-tree-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -14983,8 +17089,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-tree-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -14997,8 +17105,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-trophy-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15011,8 +17121,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-truck-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15025,8 +17137,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-unlock-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15039,8 +17153,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-user-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15053,8 +17169,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-user-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15067,8 +17185,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-users-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15081,8 +17201,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-users-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15095,8 +17217,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-vault-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15109,8 +17233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-virus-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15123,8 +17249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15137,8 +17265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wand-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15151,8 +17281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wand-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15165,8 +17297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-warning-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15179,8 +17313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-warning-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15193,8 +17329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-water-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15207,8 +17345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wave-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15221,8 +17361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wave-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15235,8 +17377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wave-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15249,8 +17393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wifi-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15263,8 +17409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-wrench-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15277,8 +17425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-yinyang-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15291,8 +17441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-yinyang-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15305,8 +17457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/icons/icon-yinyang-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15319,8 +17473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-airlock-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15333,8 +17489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-assembler-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -15347,8 +17505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-barrel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15361,8 +17521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-beam-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15375,8 +17537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-board-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15389,8 +17553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-boiler-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15403,8 +17569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-bolt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15417,8 +17585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-button-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15431,8 +17601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-cabinet-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15445,8 +17617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-chimney-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15459,8 +17633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-conduit-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15473,8 +17649,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-console-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15487,8 +17665,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-conveyor-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15501,8 +17681,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-cooling-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15515,8 +17697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-core-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -15529,8 +17713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-crane-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15543,8 +17729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-crane-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15557,8 +17745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-crate-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15571,8 +17761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-crate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15585,8 +17777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-door-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15599,8 +17793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-duct-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15613,8 +17809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-fan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15627,8 +17825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-furnace-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15641,8 +17841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-gauge-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15655,8 +17857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-gear-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15669,8 +17873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-generator-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15683,8 +17889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-junction-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15697,8 +17905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-ladder-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15711,8 +17921,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-lamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15725,8 +17937,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-locker-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15739,8 +17953,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-motor-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15753,8 +17969,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-panel-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15767,8 +17985,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-pipe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15781,8 +18001,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-pipe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15795,8 +18017,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-pipe-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15809,8 +18033,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-pipe-bank-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15823,8 +18049,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-pipe-cap-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -15837,8 +18065,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-plant-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -15851,8 +18081,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-pump-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15865,8 +18097,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-rack-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15879,8 +18113,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-radiator-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15893,8 +18129,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-reactor-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15907,8 +18145,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-server-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15921,8 +18161,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-server-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -15935,8 +18177,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-stack-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15949,8 +18193,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-storage-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "deco"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -15963,8 +18209,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-tank-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15977,8 +18225,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-terminal-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -15991,8 +18241,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-valve-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16005,8 +18257,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/ind-warning-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16019,8 +18273,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-assembler-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16033,8 +18289,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-assembler-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -16047,8 +18305,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-balancer-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16061,8 +18321,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-belt-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16075,8 +18337,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-belt-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16089,8 +18353,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-belt-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16103,8 +18369,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-buffer-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16117,8 +18385,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-drill-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16131,8 +18401,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-drill-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16145,8 +18417,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-drone-station-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16159,8 +18433,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-extractor-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16173,8 +18449,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-filter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16187,8 +18465,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-hopper-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16201,8 +18481,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-loader-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16215,8 +18497,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-merger-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16229,8 +18513,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-pump-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16243,8 +18529,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-pump-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16257,8 +18545,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-silo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16271,8 +18561,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-silo-2x3.png",
     "align": "floor",
     "tags": [
-      "2x3",
       "deco"
+    ],
+    "sizes": [
+      "2x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -16285,8 +18577,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-silo-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -16299,8 +18593,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-smelter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16313,8 +18609,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-smelter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -16327,8 +18625,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-sorter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16341,8 +18641,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-sorter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -16355,8 +18657,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-splitter-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16369,8 +18673,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-splitter-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -16383,8 +18689,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/logi-unloader-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -16397,8 +18705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-ash-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16411,8 +18721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-crystal-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16425,8 +18737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-empty-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16439,8 +18753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16453,8 +18769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-gold-dust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16467,8 +18785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-goo-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16481,8 +18801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-heart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16495,8 +18817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16509,8 +18833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-mite-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16523,8 +18849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-oil-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16537,8 +18865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-pollen-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16551,8 +18881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16565,8 +18897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16579,8 +18913,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16593,8 +18929,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-water-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16607,8 +18945,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/jar-worm-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16621,8 +18961,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-bio-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16635,8 +18977,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-card-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16649,8 +18993,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-copper-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16663,8 +19009,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-crystal-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16677,8 +19025,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-eye-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16691,8 +19041,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16705,8 +19057,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-heart-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16719,8 +19073,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16733,8 +19089,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-master-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16747,8 +19105,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-pixel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16761,8 +19121,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-rust-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16775,8 +19137,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16789,8 +19153,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-skull-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16803,8 +19169,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16817,8 +19185,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-temple-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16831,8 +19201,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/key-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16845,8 +19217,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/lever-bio-btn-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16859,8 +19233,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-cyan-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16873,8 +19249,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-factory-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16887,8 +19265,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-fog-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16901,8 +19281,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-garden-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16915,8 +19297,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-gold-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16929,8 +19313,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-green-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16943,8 +19329,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-ice-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16957,8 +19345,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-magma-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16971,8 +19361,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-night-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16985,8 +19377,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-ocean-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -16999,8 +19393,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-red-alert-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17013,8 +19409,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-sand-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17027,8 +19425,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-spore-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17041,8 +19441,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-stars-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17055,8 +19457,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-storm-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17069,8 +19473,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/port-void-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17083,8 +19489,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-cyan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17097,8 +19505,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-cyan-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17111,8 +19521,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-gold-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17125,8 +19537,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-gold-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17139,8 +19553,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-ice-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17153,8 +19569,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-ice-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17167,8 +19585,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-magma-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17181,8 +19601,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-magma-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17195,8 +19617,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-pink-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17209,8 +19633,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-pink-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17223,8 +19649,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-sand-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17237,8 +19665,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-sand-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17251,8 +19681,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-spore-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17265,8 +19697,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-spore-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17279,8 +19713,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-void-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17293,8 +19729,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/portal-void-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17307,8 +19745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-assembler-arm-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17321,8 +19761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-bio-canister-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17335,8 +19777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-biohazard-barrel-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17349,8 +19793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-bioreactor-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17363,8 +19809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-console-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17377,8 +19825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-cooling-tower-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17391,8 +19841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-crate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17405,8 +19857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-crate-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17419,8 +19873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-crate-stack-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "block"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -17433,8 +19889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-data-node-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17447,8 +19905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-door-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17461,8 +19921,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-drone-dock-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17475,8 +19937,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-fan-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17489,8 +19953,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-fusion-core-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "block"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -17503,8 +19969,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-gate-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "block"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -17517,8 +19985,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-gene-sequencer-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17531,8 +20001,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-growth-chamber-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "block"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -17545,8 +20017,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-holo-projector-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17559,8 +20033,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-incubator-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17573,8 +20049,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-lab-bench-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "block"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -17587,8 +20065,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-nutrient-tank-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17601,8 +20081,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-pipe-junction-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17615,8 +20097,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-power-junction-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17629,8 +20113,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-reactor-core-4x4.png",
     "align": "floor",
     "tags": [
-      "4x4",
       "block"
+    ],
+    "sizes": [
+      "4x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -17643,8 +20129,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-sample-tube-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17657,8 +20145,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-sensor-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17671,8 +20161,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-server-rack-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17685,8 +20177,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-shelf-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17699,8 +20193,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-spore-pod-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17713,8 +20209,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-stasis-pod-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17727,8 +20225,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17741,8 +20241,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-wall-light-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17755,8 +20257,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-window-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "block"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17769,8 +20273,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-biohazard-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17783,8 +20289,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-biohazard-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17797,8 +20305,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-biohazard-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17811,8 +20321,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-cold-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17825,8 +20337,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-cold-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17839,8 +20353,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-cold-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17853,8 +20369,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-electric-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17867,8 +20385,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-electric-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17881,8 +20401,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-electric-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17895,8 +20417,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-exit-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17909,8 +20433,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-exit-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17923,8 +20449,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-exit-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17937,8 +20465,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-fire-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17951,8 +20481,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-fire-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -17965,8 +20497,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-fire-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -17979,8 +20513,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-first-aid-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -17993,8 +20529,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-first-aid-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18007,8 +20545,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-first-aid-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18021,8 +20561,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-flammable-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18035,8 +20577,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-flammable-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18049,8 +20593,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-flammable-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18063,8 +20609,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-go-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18077,8 +20625,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-go-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18091,8 +20641,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-go-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18105,8 +20657,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-info-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18119,8 +20673,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-info-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18133,8 +20689,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-info-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18147,8 +20705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-laser-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18161,8 +20721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-laser-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18175,8 +20737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-laser-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18189,8 +20753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-lock-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18203,8 +20769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-lock-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18217,8 +20785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-lock-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18231,8 +20801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-magnetic-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18245,8 +20817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-magnetic-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18259,8 +20833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-magnetic-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18273,8 +20849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-no-entry-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18287,8 +20865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-no-entry-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18301,8 +20881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-no-entry-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18315,8 +20897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-radiation-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18329,8 +20913,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-radiation-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18343,8 +20929,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-radiation-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18357,8 +20945,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-recycle-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18371,8 +20961,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-recycle-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18385,8 +20977,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-recycle-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18399,8 +20993,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-skull-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18413,8 +21009,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-skull-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18427,8 +21025,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-skull-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18441,8 +21041,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-stop-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18455,8 +21057,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-stop-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18469,8 +21073,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-stop-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18483,8 +21089,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-toxic-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18497,8 +21105,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-toxic-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18511,8 +21121,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-toxic-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18525,8 +21137,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-warning-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18539,8 +21153,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-warning-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18553,8 +21169,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-warning-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18567,8 +21185,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-wifi-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "icons"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18581,8 +21201,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-wifi-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "icons"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18595,8 +21217,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/icons/sign-wifi-3x3.png",
     "align": "wall",
     "tags": [
-      "3x3",
       "icons"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18609,8 +21233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/probs-airlock-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "block"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18623,8 +21249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-airlock-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18637,8 +21265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-airlock-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18651,8 +21281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-antenna-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18665,8 +21297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-antenna-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18679,8 +21313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-antenna-2x3.png",
     "align": "floor",
     "tags": [
-      "2x3",
       "deco"
+    ],
+    "sizes": [
+      "2x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18693,8 +21329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-antenna-array-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18707,8 +21345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-boom-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18721,8 +21361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-cargo-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18735,8 +21377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-cargo-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18749,8 +21393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-dish-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18763,8 +21409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-dish-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18777,8 +21425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-dock-bay-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2",
       "deco"
+    ],
+    "sizes": [
+      "4x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18791,8 +21441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-dock-clamp-2x2.png",
     "align": "wall",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18805,8 +21457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-dock-clamp-3x2.png",
     "align": "wall",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18819,8 +21473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-dome-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18833,8 +21489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-dome-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -18847,8 +21505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-fuel-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18861,8 +21521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-fuel-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18875,8 +21537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-habitat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18889,8 +21553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-habitat-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18903,8 +21569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-habitat-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2",
       "deco"
+    ],
+    "sizes": [
+      "4x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18917,8 +21585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-navlight-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18931,8 +21601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-navlight-g-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18945,8 +21617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-pedestal-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -18959,8 +21633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-probe-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18973,8 +21649,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-radiator-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -18987,8 +21665,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-radiator-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -19001,8 +21681,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-rcs-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -19015,8 +21697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-rcs-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -19029,8 +21713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-sat-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19043,8 +21729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-sat-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19057,8 +21745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-solar-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19071,8 +21761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-solar-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -19085,8 +21777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-solar-3x3.png",
     "align": "floor",
     "tags": [
-      "3x3",
       "deco"
+    ],
+    "sizes": [
+      "3x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19099,8 +21793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-starfield-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19113,8 +21809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-thruster-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19127,8 +21825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-thruster-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -19141,8 +21841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/space-thruster-2x2.png",
     "align": "floor",
     "tags": [
-      "2x2",
       "deco"
+    ],
+    "sizes": [
+      "2x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19155,8 +21857,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-aquarium-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19169,8 +21873,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-aquarium-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19183,8 +21889,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-aquarium-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19197,8 +21905,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-barrels-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19211,8 +21921,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-barrels-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19225,8 +21937,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-barrels-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19239,8 +21953,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-bookshelf-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19253,8 +21969,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-bookshelf-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19267,8 +21985,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-bookshelf-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19281,8 +22001,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-cabinet-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19295,8 +22017,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-cabinet-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19309,8 +22033,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-cabinet-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19323,8 +22049,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-clock-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19337,8 +22065,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-clock-1x3.png",
     "align": "wall",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19351,8 +22081,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-clock-1x4.png",
     "align": "wall",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19365,8 +22097,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-coat-rack-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19379,8 +22113,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-coat-rack-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19393,8 +22129,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-coat-rack-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19407,8 +22145,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-crates-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19421,8 +22161,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-crates-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19435,8 +22177,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-crates-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19449,8 +22193,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-data-pillar-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19463,8 +22209,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-data-pillar-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19477,8 +22225,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-data-pillar-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19491,8 +22241,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-flagpole-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19505,8 +22257,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-flagpole-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19519,8 +22273,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-flagpole-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19533,8 +22289,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-fountain-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19547,8 +22305,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-fountain-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19561,8 +22321,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-fountain-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19575,8 +22337,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-fridge-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19589,8 +22353,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-fridge-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19603,8 +22369,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-fridge-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19617,8 +22385,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-gene-vault-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19631,8 +22401,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-gene-vault-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19645,8 +22417,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-gene-vault-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19659,8 +22433,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-incubator-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19673,8 +22449,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-incubator-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19687,8 +22465,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-incubator-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19701,8 +22481,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-ladder-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19715,8 +22497,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-ladder-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19729,8 +22513,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-ladder-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19743,8 +22529,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-lamp-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19757,8 +22545,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-lamp-1x3.png",
     "align": "wall",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19771,8 +22561,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-lamp-1x4.png",
     "align": "wall",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19785,8 +22577,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-locker-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19799,8 +22593,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-locker-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19813,8 +22609,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-locker-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19827,8 +22625,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-locker-red-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19841,8 +22641,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-locker-red-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19855,8 +22657,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-locker-red-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19869,8 +22673,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-pipe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19883,8 +22689,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-pipe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19897,8 +22705,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-pipe-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19911,8 +22721,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-plant-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19925,8 +22737,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-plant-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19939,8 +22753,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-plant-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19953,8 +22769,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-robot-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -19967,8 +22785,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-robot-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -19981,8 +22801,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-robot-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -19995,8 +22817,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-safe-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20009,8 +22833,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-safe-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20023,8 +22849,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-safe-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20037,8 +22865,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-server-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20051,8 +22881,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-server-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20065,8 +22897,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-server-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20079,8 +22913,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-speaker-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20093,8 +22929,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-speaker-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20107,8 +22945,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-speaker-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20121,8 +22961,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-spore-tower-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20135,8 +22977,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-spore-tower-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20149,8 +22993,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-spore-tower-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20163,8 +23009,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-statue-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20177,8 +23025,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-statue-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20191,8 +23041,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-statue-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20205,8 +23057,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-tank-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20219,8 +23073,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-tank-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20233,8 +23089,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-tank-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20247,8 +23105,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-telescope-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20261,8 +23121,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-telescope-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20275,8 +23137,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-telescope-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20289,8 +23153,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-toolbox-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20303,8 +23169,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-toolbox-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20317,8 +23185,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-toolbox-1x4.png",
     "align": "floor",
     "tags": [
-      "1x4",
       "deco"
+    ],
+    "sizes": [
+      "1x4"
     ],
     "description": "Decorative. No collision."
   },
@@ -20331,8 +23201,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-umbrella-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20345,8 +23217,10 @@ var ICON_ITEMS = [
     "filePath": "assets2/deco/vert-umbrella-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20359,8 +23233,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-bronze-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20373,8 +23249,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-check-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20387,8 +23265,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-dirt-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20401,8 +23281,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-dots-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20415,8 +23297,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-grass-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20429,8 +23313,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-lines-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20443,8 +23329,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-plate-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20457,8 +23345,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-floor-tech-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20471,8 +23361,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-grating-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20485,8 +23377,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-grating-heavy-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20499,8 +23393,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-grating-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20513,8 +23409,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-bronze-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20527,8 +23425,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-bronze-tile-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20541,8 +23441,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-check-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20555,8 +23457,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-console-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20569,8 +23473,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-dots-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20583,8 +23489,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-glass-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20597,8 +23505,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-light-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20611,8 +23521,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-lines-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20625,8 +23537,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-panel-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20639,8 +23553,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-plate-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20653,8 +23569,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-siding-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20667,8 +23585,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-steel-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20681,8 +23601,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-stripe-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20695,8 +23617,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-tech-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20709,8 +23633,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-vent-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20723,8 +23649,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-warning-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20737,8 +23665,10 @@ var ICON_ITEMS = [
     "filePath": "assets/block/tile-wall-window-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "block"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20751,8 +23681,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-bay-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2",
       "deco"
+    ],
+    "sizes": [
+      "4x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20765,8 +23697,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-beam-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20779,8 +23713,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-beam-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20793,8 +23729,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-billboard-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20807,8 +23745,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-billboard-4x2.png",
     "align": "wall",
     "tags": [
-      "4x2",
       "deco"
+    ],
+    "sizes": [
+      "4x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20821,8 +23761,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-bridge-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20835,8 +23777,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-cable-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20849,8 +23793,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-console-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20863,8 +23809,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-console-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2",
       "deco"
+    ],
+    "sizes": [
+      "4x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20877,8 +23825,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-console-alt-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20891,8 +23841,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-duct-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20905,8 +23857,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-gauges-3x2.png",
     "align": "wall",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -20919,8 +23873,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-keys-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20933,8 +23889,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-ladder-1x3.png",
     "align": "floor",
     "tags": [
-      "1x3",
       "deco"
+    ],
+    "sizes": [
+      "1x3"
     ],
     "description": "Decorative. No collision."
   },
@@ -20947,8 +23905,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-level-bar-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20961,8 +23921,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-level-tank-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20975,8 +23937,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-level-vert-1x1.png",
     "align": "floor",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -20989,8 +23953,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-level-vert-1x2.png",
     "align": "floor",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -21003,8 +23969,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-manifold-3x2.png",
     "align": "floor",
     "tags": [
-      "3x2",
       "deco"
+    ],
+    "sizes": [
+      "3x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -21017,8 +23985,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-monitor-bank-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2",
       "deco"
+    ],
+    "sizes": [
+      "4x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -21031,8 +24001,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-pipe-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21045,8 +24017,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-pipe-4x1.png",
     "align": "floor",
     "tags": [
-      "4x1",
       "deco"
+    ],
+    "sizes": [
+      "4x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21059,8 +24033,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-pipe-coolant-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21073,8 +24049,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-rail-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21087,8 +24065,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-reactor-strip-4x2.png",
     "align": "floor",
     "tags": [
-      "4x2",
       "deco"
+    ],
+    "sizes": [
+      "4x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -21101,8 +24081,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-shelf-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21115,8 +24097,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-sign-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21129,8 +24113,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-sign-danger-3x1.png",
     "align": "wall",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21143,8 +24129,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-sign-ok-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21157,8 +24145,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-status-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21171,8 +24161,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-valve-1x1.png",
     "align": "wall",
     "tags": [
-      "1x1",
       "deco"
+    ],
+    "sizes": [
+      "1x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21185,8 +24177,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-valve-1x2.png",
     "align": "wall",
     "tags": [
-      "1x2",
       "deco"
+    ],
+    "sizes": [
+      "1x2"
     ],
     "description": "Decorative. No collision."
   },
@@ -21199,8 +24193,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-valve-2x1.png",
     "align": "wall",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21213,8 +24209,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-warning-2x1.png",
     "align": "floor",
     "tags": [
-      "2x1",
       "deco"
+    ],
+    "sizes": [
+      "2x1"
     ],
     "description": "Decorative. No collision."
   },
@@ -21227,8 +24225,10 @@ var ICON_ITEMS = [
     "filePath": "assets/deco/wide-warning-3x1.png",
     "align": "floor",
     "tags": [
-      "3x1",
       "deco"
+    ],
+    "sizes": [
+      "3x1"
     ],
     "description": "Decorative. No collision."
   }

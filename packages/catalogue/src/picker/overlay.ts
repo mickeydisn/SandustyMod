@@ -90,8 +90,15 @@ export function createPickerOverlay(
     const chooseCategory = (categoryId: string) => {
         list.setCategory(categoryId);
         const tags = list.getSelectedTags();
-        const matches = (it: CatalogueItem): boolean =>
-            tags.length === 0 || tags.some((t) => (it.tags ?? []).includes(t));
+        const sizes = list.getSelectedSizes();
+        // AND across groups, OR within each group (same as the picker filter).
+        const matches = (it: CatalogueItem): boolean => {
+            const itemTags = it.tags ?? [];
+            const itemSizes = it.sizes ?? [];
+            if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) return false;
+            if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
+            return true;
+        };
         const item = list.itemsInCategory(categoryId).find(matches);
         if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
         persistIfEnabled();
@@ -100,12 +107,32 @@ export function createPickerOverlay(
 
     const toggleTag = (tag: string) => {
         list.toggleTag(tag);
+        // Tags constrain the available sizes — prune any size filter that no
+        // longer matches an item under the new tag selection.
+        const tags = list.getSelectedTags();
+        const avail = new Set<string>();
+        for (const it of list.catalogueItems) {
+            const itemTags = it.tags ?? [];
+            if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) continue;
+            for (const s of it.sizes ?? []) avail.add(s);
+        }
+        const stale = list.getSelectedSizes().filter((s) => !avail.has(s));
+        if (stale.length > 0) {
+            list.setSelectedSizes(list.getSelectedSizes().filter((s) => avail.has(s)));
+        }
         persistIfEnabled();
         repaint?.();
     };
 
-    const clearTags = () => {
+    const toggleSize = (size: string) => {
+        list.toggleSize(size);
+        persistIfEnabled();
+        repaint?.();
+    };
+
+    const clearFilters = () => {
         list.setSelectedTags([]);
+        list.setSelectedSizes([]);
         persistIfEnabled();
         repaint?.();
     };
@@ -120,7 +147,8 @@ export function createPickerOverlay(
         toggleMirror,
         chooseCategory,
         toggleTag,
-        clearTags,
+        toggleSize,
+        clearFilters,
         setRepaint(fn) {
             repaint = fn;
         },

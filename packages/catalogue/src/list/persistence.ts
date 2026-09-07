@@ -4,6 +4,7 @@ const KEY_SELECTED = "picker.selected";
 const KEY_MIRROR = "picker.mirror";
 const KEY_CATEGORY = "picker.category";
 const KEY_TAGS = "picker.tags";
+const KEY_SIZES = "picker.sizes";
 
 export function restorePickerState(list: BuildList) {
     if (!sandkit.api.storage) return;
@@ -21,6 +22,8 @@ export function restorePickerState(list: BuildList) {
         if (typeof category === "string") list.setCategory(category);
         const tags = sandkit.api.storage.get(list.modId, KEY_TAGS);
         if (Array.isArray(tags)) list.setSelectedTags(tags as string[]);
+        const sizes = sandkit.api.storage.get(list.modId, KEY_SIZES);
+        if (Array.isArray(sizes)) list.setSelectedSizes(sizes as string[]);
     } catch (err) {
         console.warn("[picker-overlay] could not restore selection", err);
     }
@@ -33,6 +36,7 @@ export function persistSelection(list: BuildList) {
         sandkit.api.storage.set(list.modId, KEY_MIRROR, list.isMirrored());
         sandkit.api.storage.set(list.modId, KEY_CATEGORY, list.getCategory());
         sandkit.api.storage.set(list.modId, KEY_TAGS, list.getSelectedTags());
+        sandkit.api.storage.set(list.modId, KEY_SIZES, list.getSelectedSizes());
     } catch (err) {
         console.warn("[picker-overlay] could not persist selection", err);
     }

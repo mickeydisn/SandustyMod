@@ -18,6 +18,13 @@ import type {
 
 export const MIRROR_SUFFIX = "~mirrored";
 
+/** Natural sort for size tags: "2x10" after "2x2" (W then H, numerically). */
+export function compareSizes(a: string, b: string): number {
+    const [aw, ah] = a.split("x").map(Number);
+    const [bw, bh] = b.split("x").map(Number);
+    return (aw || 0) - (bw || 0) || (ah || 0) - (bh || 0);
+}
+
 const itemTypePrefix = (modId: string): string => `${modId}:item/`;
 
 export function typeOfCatalogueItem(modId: string, itemId: string, mirrored = false): string {
@@ -49,12 +56,18 @@ export interface BuildList {
     setMirrored(next: boolean): void;
     getCategory(): string;
     setCategory(id: string): void;
-    /** All distinct tags across the catalogue (sizes, subdirectories, ...). */
+    /** All distinct directory tags across the catalogue. */
     allTags(): string[];
-    /** Currently selected tag filters (multi-select). */
+    /** All distinct size tags across the catalogue (e.g. "1x1", "3x2"). */
+    allSizes(): string[];
+    /** Currently selected directory-tag filters (multi-select, OR within group). */
     getSelectedTags(): string[];
     setSelectedTags(tags: string[]): void;
     toggleTag(tag: string): void;
+    /** Currently selected size filters (multi-select, OR within group). */
+    getSelectedSizes(): string[];
+    setSelectedSizes(sizes: string[]): void;
+    toggleSize(size: string): void;
     itemsInCategory(id?: string): CatalogueItem[];
     countIn(categoryId: string): number;
     structureType(itemId: string, mirrored?: boolean): string;
@@ -77,6 +90,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
     let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
     let mirrored = false;
     let selectedTags: string[] = [];
+    let selectedSizes: string[] = [];
 
     const listeners: { [K in BuildEventName]: Set<BuildListener<K>> } = {
         select: new Set(),
@@ -142,6 +156,14 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
             return [...set].sort();
         },
 
+        allSizes() {
+            const set = new Set<string>();
+            for (const it of catalogueItems) {
+                for (const s of it.sizes ?? []) set.add(s);
+            }
+            return [...set].sort(compareSizes);
+        },
+
         getSelectedTags: () => selectedTags.slice(),
 
         setSelectedTags(tags) {
@@ -150,7 +172,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
                     tags.indexOf(t) === i &&
                     catalogueItems.some((it) => (it.tags ?? []).includes(t)),
             );
-            emit("tag", { tags: selectedTags });
+            emit("tag", { tags: selectedTags, sizes: selectedSizes });
         },
 
         toggleTag(tag) {
@@ -158,6 +180,24 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
                 ? selectedTags.filter((t) => t !== tag)
                 : [...selectedTags, tag];
             list.setSelectedTags(next);
+        },
+
+        getSelectedSizes: () => selectedSizes.slice(),
+
+        setSelectedSizes(sizes) {
+            selectedSizes = sizes.filter(
+                (s, i) =>
+                    sizes.indexOf(s) === i &&
+                    catalogueItems.some((it) => (it.sizes ?? []).includes(s)),
+            );
+            emit("tag", { tags: selectedTags, sizes: selectedSizes });
+        },
+
+        toggleSize(size) {
+            const next = selectedSizes.includes(size)
+                ? selectedSizes.filter((s) => s !== size)
+                : [...selectedSizes, size];
+            list.setSelectedSizes(next);
         },
 
         itemsInCategory(id) {

@@ -8,6 +8,7 @@
  * through the {@link PickerContentApi} it is given.
  */
 import { CatalogueItem } from "../strucutre/types.ts";
+import { compareSizes } from "../list/createBuildList.ts";
 import { h, HTMLElement } from "./react.ts";
 import type { PickerContentApi, PickerContext } from "./types.ts";
 
@@ -206,6 +207,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 categoryId: string;
                 query: string;
                 tags: string[];
+                sizes: string[];
                 itemFilter?: (item: CatalogueItem) => boolean;
             },
         ): CatalogueItem[] {
@@ -213,27 +215,58 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             return items.filter((item) => {
                 if (item.category !== options.categoryId) return false;
                 if (options.itemFilter && !options.itemFilter(item)) return false;
+                // AND across groups: tags group and sizes group are combined
+                // with AND; within a group selected entries are OR.
                 const itemTags = item.tags ?? [];
                 if (options.tags.length > 0 && !options.tags.some((t) => itemTags.includes(t))) {
+                    return false;
+                }
+                const itemSizes = item.sizes ?? [];
+                if (options.sizes.length > 0 && !options.sizes.some((s) => itemSizes.includes(s))) {
                     return false;
                 }
                 if (!q) return true;
                 const hay = `${item.label} ${item.id} ${item.description ?? ""} ${
                     itemTags.join(" ")
-                }`.toLowerCase();
+                } ${itemSizes.join(" ")}`.toLowerCase();
                 return hay.includes(q);
             });
         }
 
         const selectedTags = list.getSelectedTags();
         const availableTags = list.allTags();
+        const selectedSizes = list.getSelectedSizes();
 
-        // An item is kept when it passes the optional mod filter and either no
-        // tag is selected or it carries at least one of the selected tags.
-        const matchesTags = (item: CatalogueItem): boolean => {
+        // Sizes offered are constrained by the tags already selected: only the
+        // sizes of items matching the active tags (and the mod's item filter)
+        // are listed. OR within the tags group, AND between the groups.
+        const matchesTagGroup = (item: CatalogueItem): boolean => {
             if (options.itemFilter && !options.itemFilter(item)) return false;
             const itemTags = item.tags ?? [];
             if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
+                return false;
+            }
+            return true;
+        };
+        const availableSizes = (() => {
+            const set = new Set<string>();
+            for (const it of list.catalogueItems) {
+                if (!matchesTagGroup(it)) continue;
+                for (const s of it.sizes ?? []) set.add(s);
+            }
+            return [...set].sort(compareSizes);
+        })();
+
+        // An item is kept when it passes the optional mod filter and matches
+        // both filter groups: OR within each group, AND between the groups.
+        const matchesFilters = (item: CatalogueItem): boolean => {
+            if (options.itemFilter && !options.itemFilter(item)) return false;
+            const itemTags = item.tags ?? [];
+            if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
+                return false;
+            }
+            const itemSizes = item.sizes ?? [];
+            if (selectedSizes.length > 0 && !selectedSizes.some((s) => itemSizes.includes(s))) {
                 return false;
             }
             return true;
@@ -243,7 +276,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         const visibleCategories = list.categories
             .map((cat) => ({
                 cat,
-                count: list.itemsInCategory(cat.id).filter(matchesTags).length,
+                count: list.itemsInCategory(cat.id).filter(matchesFilters).length,
             }))
             .filter((c) => c.count > 0);
 
@@ -251,6 +284,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             categoryId,
             query: search,
             tags: selectedTags,
+            sizes: selectedSizes,
             itemFilter: options.itemFilter,
         });
 
@@ -372,39 +406,75 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                     children: tooltip.label,
                 })
                 : null,
-            availableTags.length > 0
+            availableTags.length > 0 || availableSizes.length > 0
                 ? h(
                     "div",
                     {
                         className:
-                            "w-full flex flex-wrap items-center gap-1 px-4 py-1 border-b border-slate-800 bg-black/30",
+                            "w-full flex flex-col gap-0.5 px-4 py-1 border-b border-slate-800 bg-black/30",
                     },
-                    h(
-                        "span",
-                        {
-                            className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
-                        },
-                        "Tags:",
-                    ),
-                    availableTags.map((tag) =>
-                        h(FocusableButton, {
-                            key: tag,
-                            id: `${api.pickerId}-tag-${tag}`,
-                            onActivate: () => api.toggleTag(tag),
-                            className: `text-xs px-2 py-0.5 rounded border ${
-                                selectedTags.includes(tag)
-                                    ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
-                                    : "text-slate-400 border-slate-600"
-                            }`,
-                            children: `${selectedTags.includes(tag) ? "☑" : "☐"} ${tag}`,
-                        })
-                    ),
-                    selectedTags.length > 0
+                    // Directory tags row.
+                    availableTags.length > 0
+                        ? h(
+                            "div",
+                            { className: "flex flex-wrap items-center gap-1" },
+                            h(
+                                "span",
+                                {
+                                    className:
+                                        "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
+                                },
+                                "Tags:",
+                            ),
+                            availableTags.map((tag) =>
+                                h(FocusableButton, {
+                                    key: tag,
+                                    id: `${api.pickerId}-tag-${tag}`,
+                                    onActivate: () => api.toggleTag(tag),
+                                    className: `text-xs px-2 py-0.5 rounded border ${
+                                        selectedTags.includes(tag)
+                                            ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
+                                            : "text-slate-400 border-slate-600"
+                                    }`,
+                                    children: `${selectedTags.includes(tag) ? "☑" : "☐"} ${tag}`,
+                                })
+                            ),
+                        )
+                        : null,
+                    // Size tags row.
+                    availableSizes.length > 0
+                        ? h(
+                            "div",
+                            { className: "flex flex-wrap items-center gap-1" },
+                            h(
+                                "span",
+                                {
+                                    className:
+                                        "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
+                                },
+                                "Size:",
+                            ),
+                            availableSizes.map((size) =>
+                                h(FocusableButton, {
+                                    key: size,
+                                    id: `${api.pickerId}-size-${size}`,
+                                    onActivate: () => api.toggleSize(size),
+                                    className: `text-xs px-2 py-0.5 rounded border ${
+                                        selectedSizes.includes(size)
+                                            ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
+                                            : "text-slate-400 border-slate-600"
+                                    }`,
+                                    children: `${selectedSizes.includes(size) ? "☑" : "☐"} ${size}`,
+                                })
+                            ),
+                        )
+                        : null,
+                    selectedTags.length > 0 || selectedSizes.length > 0
                         ? h(FocusableButton, {
-                            id: `${api.pickerId}-tags-clear`,
-                            onActivate: () => api.clearTags(),
+                            id: `${api.pickerId}-filters-clear`,
+                            onActivate: () => api.clearFilters(),
                             className:
-                                "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white",
+                                "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white self-start",
                             children: "Clear",
                         })
                         : null,

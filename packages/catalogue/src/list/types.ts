@@ -38,7 +38,7 @@ export interface BuildEventMap {
     remove: PlacedPayload;
     category: { categoryId: string };
     mirror: { mirrored: boolean };
-    tag: { tags: string[] };
+    tag: { tags: string[]; sizes: string[] };
 }
 
 export type BuildListener<K extends BuildEventName = BuildEventName> = (

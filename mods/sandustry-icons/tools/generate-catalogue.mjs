@@ -125,12 +125,10 @@ const items = parsedFiles
             height: p.cellsH * PX,
             filePath: p.path.slice(2),
             align: alignFor(p.baseId),
-            tags: [
-                `${p.cellsW}x${p.cellsH}`,
-                // Subdirectory names become tags too (e.g. "assets/walls/metal/x.png"
-                // -> tags "walls" and "metal"), at any depth.
-                ...(p.relDir ? p.relDir.split("/").slice(1) : []),
-            ],
+            // Kept separate: "tags" = directory names, "sizes" = WxH from the
+            // filename (e.g. "home-bed-3x2.png" -> sizes ["3x2"]).
+            tags: p.relDir ? p.relDir.split("/").slice(1) : [],
+            sizes: [`${p.cellsW}x${p.cellsH}`],
         };
     })
     .sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
@@ -165,7 +163,7 @@ export const ICON_CATEGORIES: CatalogueCategory[] = ${JSON.stringify(categories,
 
 export const ICON_ITEMS: CatalogueItem[] = ${
     JSON.stringify(
-        items.map(({ id, label, category, width, height, filePath, align, tags }) => ({
+        items.map(({ id, label, category, width, height, filePath, align, tags, sizes }) => ({
             id,
             label,
             category,
@@ -174,6 +172,7 @@ export const ICON_ITEMS: CatalogueItem[] = ${
             filePath,
             align,
             tags,
+            sizes,
             description: "Decorative. No collision.",
         })),
         null,
