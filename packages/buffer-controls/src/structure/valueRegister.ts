@@ -7,23 +7,17 @@
  *
  * The live value is carried on `structure.data.dataValue`. It is baked into
  * `defaultData` once at register time, then refreshed whenever the JsonBuffer
- * updates — main.ts subscribes to the buffer and, inside the event handler,
- * iterates every placed value structure (api.structures.forEachOfType) calling
- * setData({ dataValue }) with the value of that structure's path. The draw only
- * ever reads `structure.data.dataValue`, so it always shows the last buffer
- * value.
+ * updates — registerBufferControls subscribes to the buffer and, inside the
+ * event handler, iterates every placed value structure
+ * (api.structures.forEachOfType) calling setData({ dataValue }) with the value
+ * of that structure's path. The draw only ever reads
+ * `structure.data.dataValue`, so it always shows the last buffer value.
  */
 import "@sandmd/sandkit";
 import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
+import type { FieldKind, PathCatalogueItem } from "./shared.ts";
+import { buildSectionData, buildSectionTooltips, drawIconAndReadout, makeShape } from "./shared.ts";
 import { sectionBuild } from "./sectionStructure.ts";
-import {
-    FieldKind,
-    PathCatalogueItem,
-    buildSectionData,
-    buildSectionTooltips,
-    drawIconAndReadout,
-    makeShape,
-} from "./shared.ts";
 
 /** One registered value structure: its type id maps back to a buffer path. */
 export interface ValueStructureEntry {

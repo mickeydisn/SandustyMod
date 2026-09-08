@@ -151,8 +151,7 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
                     ? categories.map((cat) =>
                         h("button", {
                             key: cat.id,
-                            className:
-                                "text-[10px] px-2 py-0.5 rounded border whitespace-nowrap " +
+                            className: "text-[10px] px-2 py-0.5 rounded border whitespace-nowrap " +
                                 (cat.id === activeCategory
                                     ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
                                     : "text-slate-400 border-slate-700 hover:text-white hover:border-slate-500"),
@@ -162,7 +161,7 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
                                 bridge.repaint?.();
                             },
                             children: cat.label,
-                        }),
+                        })
                     )
                     : null,
             ),

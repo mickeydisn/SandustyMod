@@ -47,204 +47,6 @@ async function loadSpriteMap(modId, entries, idPrefix) {
   return ids;
 }
 
-// ../../packages/catalogue/src/list/createBuildList.ts
-var MIRROR_SUFFIX = "~mirrored";
-function compareSizes(a, b) {
-  const [aw, ah] = a.split("x").map(Number);
-  const [bw, bh] = b.split("x").map(Number);
-  return (aw || 0) - (bw || 0) || (ah || 0) - (bh || 0);
-}
-var itemTypePrefix = (modId) => `${modId}:item/`;
-function typeOfCatalogueItem(modId, itemId, mirrored = false) {
-  return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
-}
-function itemIdFromType(modId, type) {
-  const prefix = itemTypePrefix(modId);
-  if (!type.startsWith(prefix)) return null;
-  let id = type.slice(prefix.length);
-  if (id.endsWith(MIRROR_SUFFIX)) id = id.slice(0, -MIRROR_SUFFIX.length);
-  return id;
-}
-function findItem(items, id) {
-  return items.find((entry) => entry.id === id);
-}
-var createBuildList = (options) => {
-  const catalogueItems = options.catalogueItems.slice();
-  const categories = options.categories.filter((c) => catalogueItems.some((it) => it.category === c.id));
-  let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
-  let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
-  let mirrored = false;
-  let selectedTags = [];
-  let selectedSizes = [];
-  const listeners = {
-    select: /* @__PURE__ */ new Set(),
-    place: /* @__PURE__ */ new Set(),
-    remove: /* @__PURE__ */ new Set(),
-    category: /* @__PURE__ */ new Set(),
-    mirror: /* @__PURE__ */ new Set(),
-    tag: /* @__PURE__ */ new Set()
-  };
-  const emit = (name, event) => {
-    for (const h3 of listeners[name]) {
-      try {
-        h3(event);
-      } catch (err) {
-        console.error("[panel-build-list]", name, err);
-      }
-    }
-  };
-  const list = {
-    modId: options.modId,
-    menuId: options.menuId,
-    menuLabel: options.menuLabel,
-    catalogueItems,
-    categories,
-    getSelected() {
-      return findItem(catalogueItems, selectedId);
-    },
-    getSelectedType() {
-      return typeOfCatalogueItem(options.modId, selectedId, mirrored);
-    },
-    setSelected(id) {
-      const item = findItem(catalogueItems, id);
-      if (!item) return;
-      selectedId = id;
-      category = item.category;
-      emit("select", {
-        item,
-        mirrored
-      });
-    },
-    isMirrored: () => mirrored,
-    setMirrored(next) {
-      mirrored = next;
-      emit("mirror", {
-        mirrored
-      });
-    },
-    getCategory: () => category,
-    setCategory(id) {
-      category = id;
-      emit("category", {
-        categoryId: id
-      });
-    },
-    allTags() {
-      const set = /* @__PURE__ */ new Set();
-      for (const it of catalogueItems) {
-        for (const t of it.tags ?? []) set.add(t);
-      }
-      return [
-        ...set
-      ].sort();
-    },
-    allSizes() {
-      const set = /* @__PURE__ */ new Set();
-      for (const it of catalogueItems) {
-        for (const s of it.sizes ?? []) set.add(s);
-      }
-      return [
-        ...set
-      ].sort(compareSizes);
-    },
-    getSelectedTags: () => selectedTags.slice(),
-    setSelectedTags(tags) {
-      selectedTags = tags.filter((t, i) => tags.indexOf(t) === i && catalogueItems.some((it) => (it.tags ?? []).includes(t)));
-      emit("tag", {
-        tags: selectedTags,
-        sizes: selectedSizes
-      });
-    },
-    toggleTag(tag) {
-      const next = selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [
-        ...selectedTags,
-        tag
-      ];
-      list.setSelectedTags(next);
-    },
-    getSelectedSizes: () => selectedSizes.slice(),
-    setSelectedSizes(sizes) {
-      selectedSizes = sizes.filter((s, i) => sizes.indexOf(s) === i && catalogueItems.some((it) => (it.sizes ?? []).includes(s)));
-      emit("tag", {
-        tags: selectedTags,
-        sizes: selectedSizes
-      });
-    },
-    toggleSize(size) {
-      const next = selectedSizes.includes(size) ? selectedSizes.filter((s) => s !== size) : [
-        ...selectedSizes,
-        size
-      ];
-      list.setSelectedSizes(next);
-    },
-    itemsInCategory(id) {
-      const cat = id ?? category;
-      return catalogueItems.filter((it) => it.category === cat);
-    },
-    countIn(categoryId) {
-      return catalogueItems.reduce((n, it) => n + (it.category === categoryId ? 1 : 0), 0);
-    },
-    structureType: (itemId, mir) => typeOfCatalogueItem(options.modId, itemId, mir ?? mirrored),
-    itemFromType(type) {
-      const id = itemIdFromType(options.modId, type);
-      return id ? findItem(catalogueItems, id) : void 0;
-    },
-    on(name, handler) {
-      const set = listeners[name];
-      set.add(handler);
-      return () => set.delete(handler);
-    },
-    notifyPlace(x, y, type) {
-      const used = type ?? list.getSelectedType();
-      const item = list.itemFromType(used);
-      if (!item) return null;
-      const payload = {
-        item,
-        type: used,
-        x,
-        y,
-        mirrored: type ? type.endsWith(MIRROR_SUFFIX) : mirrored
-      };
-      emit("place", payload);
-      return payload;
-    },
-    notifyRemove(x, y, type) {
-      const item = list.itemFromType(type);
-      if (!item) return null;
-      const payload = {
-        item,
-        type,
-        x,
-        y,
-        mirrored: type.endsWith(MIRROR_SUFFIX)
-      };
-      emit("remove", payload);
-      return payload;
-    },
-    applyToBuildTool() {
-      sandkit.api.building?.selectStructure?.(list.getSelectedType());
-    }
-  };
-  if (sandkit.api.events?.on) {
-    sandkit.api.events.on("building:placed", (payload) => {
-      const p = payload;
-      const structure = p.structure;
-      if (!structure?.type) return;
-      if (!structure.type.startsWith(`${options.modId}:`)) return;
-      list.notifyPlace(structure.x, structure.y, structure.type);
-    });
-    sandkit.api.events.on("building:removed", (payload) => {
-      const p = payload;
-      const type = String(p.structureId ?? p.type ?? "");
-      const x = Number(p.x);
-      const y = Number(p.y);
-      if (!type.startsWith(`${options.modId}:`)) return;
-      list.notifyRemove(x, y, type);
-    });
-  }
-  return list;
-};
-
 // ../../packages/buffer/src/utils/codec.ts
 function decodeJson(buffer) {
   try {
@@ -557,72 +359,205 @@ var JsonBuffer = class {
   }
 };
 
-// src/structure/sectionStructure.ts
-var BUILD_MODE = () => {
-  return {
-    single: {
-      type: "single"
-    },
-    rec: {
-      type: "rectangle"
-    },
-    line: {
-      type: "line",
-      directions: [
-        "horizontal",
-        "vertical"
-      ]
+// ../../packages/catalogue/src/list/createBuildList.ts
+var MIRROR_SUFFIX = "~mirrored";
+function compareSizes(a, b) {
+  const [aw, ah] = a.split("x").map(Number);
+  const [bw, bh] = b.split("x").map(Number);
+  return (aw || 0) - (bw || 0) || (ah || 0) - (bh || 0);
+}
+var itemTypePrefix = (modId) => `${modId}:item/`;
+function typeOfCatalogueItem(modId, itemId, mirrored = false) {
+  return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
+}
+function itemIdFromType(modId, type) {
+  const prefix = itemTypePrefix(modId);
+  if (!type.startsWith(prefix)) return null;
+  let id = type.slice(prefix.length);
+  if (id.endsWith(MIRROR_SUFFIX)) id = id.slice(0, -MIRROR_SUFFIX.length);
+  return id;
+}
+function findItem(items, id) {
+  return items.find((entry) => entry.id === id);
+}
+var createBuildList = (options) => {
+  const catalogueItems = options.catalogueItems.slice();
+  const categories = options.categories.filter((c) => catalogueItems.some((it) => it.category === c.id));
+  let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
+  let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
+  let mirrored = false;
+  let selectedTags = [];
+  let selectedSizes = [];
+  const listeners = {
+    select: /* @__PURE__ */ new Set(),
+    place: /* @__PURE__ */ new Set(),
+    remove: /* @__PURE__ */ new Set(),
+    category: /* @__PURE__ */ new Set(),
+    mirror: /* @__PURE__ */ new Set(),
+    tag: /* @__PURE__ */ new Set()
+  };
+  const emit = (name, event) => {
+    for (const h3 of listeners[name]) {
+      try {
+        h3(event);
+      } catch (err) {
+        console.error("[panel-build-list]", name, err);
+      }
     }
   };
-};
-var VARIANTS = (typeId) => {
-  return {
-    single: {
-      id: typeId,
-      angles: [
-        0
-      ]
+  const list = {
+    modId: options.modId,
+    menuId: options.menuId,
+    menuLabel: options.menuLabel,
+    catalogueItems,
+    categories,
+    getSelected() {
+      return findItem(catalogueItems, selectedId);
     },
-    card: {
-      id: typeId,
-      angles: [
-        0,
-        90,
-        180,
-        270
-      ]
+    getSelectedType() {
+      return typeOfCatalogueItem(options.modId, selectedId, mirrored);
+    },
+    setSelected(id) {
+      const item = findItem(catalogueItems, id);
+      if (!item) return;
+      selectedId = id;
+      category = item.category;
+      emit("select", {
+        item,
+        mirrored
+      });
+    },
+    isMirrored: () => mirrored,
+    setMirrored(next) {
+      mirrored = next;
+      emit("mirror", {
+        mirrored
+      });
+    },
+    getCategory: () => category,
+    setCategory(id) {
+      category = id;
+      emit("category", {
+        categoryId: id
+      });
+    },
+    allTags() {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of catalogueItems) {
+        for (const t of it.tags ?? []) set.add(t);
+      }
+      return [
+        ...set
+      ].sort();
+    },
+    allSizes() {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of catalogueItems) {
+        for (const s of it.sizes ?? []) set.add(s);
+      }
+      return [
+        ...set
+      ].sort(compareSizes);
+    },
+    getSelectedTags: () => selectedTags.slice(),
+    setSelectedTags(tags) {
+      selectedTags = tags.filter((t, i) => tags.indexOf(t) === i && catalogueItems.some((it) => (it.tags ?? []).includes(t)));
+      emit("tag", {
+        tags: selectedTags,
+        sizes: selectedSizes
+      });
+    },
+    toggleTag(tag) {
+      const next = selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [
+        ...selectedTags,
+        tag
+      ];
+      list.setSelectedTags(next);
+    },
+    getSelectedSizes: () => selectedSizes.slice(),
+    setSelectedSizes(sizes) {
+      selectedSizes = sizes.filter((s, i) => sizes.indexOf(s) === i && catalogueItems.some((it) => (it.sizes ?? []).includes(s)));
+      emit("tag", {
+        tags: selectedTags,
+        sizes: selectedSizes
+      });
+    },
+    toggleSize(size) {
+      const next = selectedSizes.includes(size) ? selectedSizes.filter((s) => s !== size) : [
+        ...selectedSizes,
+        size
+      ];
+      list.setSelectedSizes(next);
+    },
+    itemsInCategory(id) {
+      const cat = id ?? category;
+      return catalogueItems.filter((it) => it.category === cat);
+    },
+    countIn(categoryId) {
+      return catalogueItems.reduce((n, it) => n + (it.category === categoryId ? 1 : 0), 0);
+    },
+    structureType: (itemId, mir) => typeOfCatalogueItem(options.modId, itemId, mir ?? mirrored),
+    itemFromType(type) {
+      const id = itemIdFromType(options.modId, type);
+      return id ? findItem(catalogueItems, id) : void 0;
+    },
+    on(name, handler) {
+      const set = listeners[name];
+      set.add(handler);
+      return () => set.delete(handler);
+    },
+    notifyPlace(x, y, type) {
+      const used = type ?? list.getSelectedType();
+      const item = list.itemFromType(used);
+      if (!item) return null;
+      const payload = {
+        item,
+        type: used,
+        x,
+        y,
+        mirrored: type ? type.endsWith(MIRROR_SUFFIX) : mirrored
+      };
+      emit("place", payload);
+      return payload;
+    },
+    notifyRemove(x, y, type) {
+      const item = list.itemFromType(type);
+      if (!item) return null;
+      const payload = {
+        item,
+        type,
+        x,
+        y,
+        mirrored: type.endsWith(MIRROR_SUFFIX)
+      };
+      emit("remove", payload);
+      return payload;
+    },
+    applyToBuildTool() {
+      sandkit.api.building?.selectStructure?.(list.getSelectedType());
     }
   };
-};
-var sectionBuild = {
-  single: (typeId) => {
-    return {
-      buildModes: [
-        BUILD_MODE().single
-      ],
-      variants: [
-        VARIANTS(typeId).single
-      ]
-    };
-  },
-  rec: (typeId) => {
-    return {
-      buildModes: [
-        BUILD_MODE().rec
-      ],
-      variants: [
-        VARIANTS(typeId).single
-      ]
-    };
+  if (sandkit.api.events?.on) {
+    sandkit.api.events.on("building:placed", (payload) => {
+      const p = payload;
+      const structure = p.structure;
+      if (!structure?.type) return;
+      if (!structure.type.startsWith(`${options.modId}:`)) return;
+      list.notifyPlace(structure.x, structure.y, structure.type);
+    });
+    sandkit.api.events.on("building:removed", (payload) => {
+      const p = payload;
+      const type = String(p.structureId ?? p.type ?? "");
+      const x = Number(p.x);
+      const y = Number(p.y);
+      if (!type.startsWith(`${options.modId}:`)) return;
+      list.notifyRemove(x, y, type);
+    });
   }
+  return list;
 };
 
-// src/structure/shared.ts
-var KIND_SPRITE_KEY = {
-  bool: "bolean",
-  number: "number",
-  string: "string"
-};
+// ../../packages/buffer-controls/src/structure/shared.ts
 var EXPOSED_KINDS = [
   "bool",
   "number",
@@ -721,7 +656,186 @@ function drawIconAndReadout(structure, render, opts) {
   return true;
 }
 
-// src/structure/register.ts
+// ../../packages/buffer-controls/src/structure/sectionStructure.ts
+var sectionBuild = {
+  single: (typeId) => ({
+    buildModes: [
+      {
+        type: "single"
+      }
+    ],
+    variants: [
+      {
+        id: typeId,
+        angles: [
+          0
+        ]
+      }
+    ]
+  })
+};
+
+// ../../packages/buffer-controls/src/structure/actionRegister.ts
+var ACTION_LABEL = {
+  inc: "+1",
+  dec: "-1",
+  toggle: "toggle"
+};
+function applyAction(op, current) {
+  switch (op) {
+    case "inc":
+      return (Number(current) || 0) + 1;
+    case "dec":
+      return (Number(current) || 0) - 1;
+    case "toggle":
+      return !current;
+  }
+}
+function registerActionStructures(list, spriteFor, read, write) {
+  const modId = list.modId;
+  for (const item of list.catalogueItems) {
+    if (item.category !== "action") continue;
+    const typeId = list.structureType(item.id);
+    const spriteId = spriteFor(item) ?? typeId;
+    const op = item.action ?? "inc";
+    const path = item.path ?? item.id;
+    sandkit.api.structures.register({
+      id: typeId,
+      categoryKey: "blocks",
+      name: item.label,
+      description: item.description,
+      hideFromBuildMenu: true,
+      shape: makeShape(1, 1),
+      ...sectionBuild.single(typeId),
+      render: {
+        imageName: spriteId,
+        size: {
+          width: 16,
+          height: 16
+        }
+      },
+      copyData: true,
+      defaultData: {
+        path,
+        kind: item.kind ?? "string",
+        op
+      }
+    });
+    sandkit.api.signals?.interactables?.register?.(typeId, (structure) => {
+      const p = structure.data?.path;
+      if (typeof p !== "string" || p.length === 0) return;
+      write(p, applyAction(op, read(p)));
+    });
+  }
+  console.log(`[${modId}] registered action structures`);
+}
+
+// ../../packages/buffer-controls/src/catalogue.ts
+var CELL2 = 16;
+var ITEM_HEIGHT = 6 * 15;
+var VALUE_PREFIX = "value:";
+var ACTION_PREFIX = "action:";
+var menuItem = (menuItemId, menu, filePathFor) => ({
+  id: menuItemId,
+  label: menu.label,
+  description: menu.description,
+  category: "variables",
+  width: CELL2,
+  height: CELL2,
+  filePath: filePathFor(menu.spriteId)
+});
+var variableItem = (field, filePathFor) => ({
+  id: field.path,
+  path: field.path,
+  kind: field.kind,
+  label: field.path,
+  description: `${field.kind} \u2014 linked to jsonBuffer path "${field.path}".`,
+  category: "variables",
+  width: CELL2,
+  height: ITEM_HEIGHT,
+  filePath: filePathFor(field.kind)
+});
+var valueItem = (field, filePathFor) => ({
+  id: `${VALUE_PREFIX}${field.path}`,
+  path: field.path,
+  kind: field.kind,
+  label: field.path,
+  description: `${field.kind} \u2014 live value for jsonBuffer path "${field.path}".`,
+  category: "value",
+  width: CELL2,
+  height: ITEM_HEIGHT,
+  filePath: filePathFor(field.kind)
+});
+var actionItem = (field, op, filePathFor) => ({
+  id: `${ACTION_PREFIX}${field.path}:${op}`,
+  action: op,
+  path: field.path,
+  kind: field.kind,
+  label: `${field.path} ${ACTION_LABEL[op]}`,
+  description: `${ACTION_LABEL[op]} \u2014 writes jsonBuffer path "${field.path}" then commits.`,
+  category: "action",
+  width: CELL2,
+  height: CELL2,
+  filePath: filePathFor(op)
+});
+var actionItemsFor = (field, filePathFor) => {
+  if (field.kind === "number") {
+    return [
+      actionItem(field, "inc", filePathFor),
+      actionItem(field, "dec", filePathFor)
+    ];
+  }
+  if (field.kind === "bool") return [
+    actionItem(field, "toggle", filePathFor)
+  ];
+  return [];
+};
+function boundFields(listed) {
+  return listed.filter((f) => f.kind !== void 0 && EXPOSED_KINDS.includes(f.kind)).map((f) => ({
+    kind: f.kind,
+    path: resolveBindingPath(f.path)
+  }));
+}
+function buildBufferControlList(modId, bound, config) {
+  const filePathFor = (spriteEntryId) => config.spriteFiles.find((f) => f.id === spriteEntryId)?.filePath ?? "";
+  const categories = [
+    {
+      id: "variables",
+      label: config.categories.variables
+    },
+    {
+      id: "value",
+      label: config.categories.value
+    },
+    {
+      id: "action",
+      label: config.categories.action
+    }
+  ];
+  const menuId = config.menuItemId ?? modId;
+  const items = [
+    menuItem(menuId, config.menu, filePathFor),
+    ...bound.flatMap((field) => [
+      variableItem(field, filePathFor),
+      valueItem(field, filePathFor),
+      ...actionItemsFor(field, filePathFor)
+    ])
+  ];
+  const list = createBuildList({
+    modId,
+    menuId,
+    menuLabel: config.menu.label,
+    categories,
+    catalogueItems: items,
+    selectedId: bound[0]?.path
+  });
+  return {
+    list,
+    pathCount: bound.length
+  };
+}
+
+// ../../packages/buffer-controls/src/structure/varRegister.ts
 function registerPathStructures(list, spriteFor) {
   const modId = list.modId;
   let count = 0;
@@ -740,7 +854,7 @@ function registerPathStructures(list, spriteFor) {
       id: typeId,
       categoryKey: "blocks",
       name: item.label,
-      description: isMenu ? "Buffer Controls \u2014 opens the variable picker." : `${item.kind ?? "string"} \u2014 linked to jsonBuffer path "${item.path ?? item.id}".`,
+      description: isMenu ? item.description : `${item.kind ?? "string"} \u2014 linked to jsonBuffer path "${item.path ?? item.id}".`,
       hideFromBuildMenu: !isMenu,
       shape: makeShape(1, 1),
       ...sectionBuild.single(typeId),
@@ -756,7 +870,7 @@ function registerPathStructures(list, spriteFor) {
   console.log(`[${modId}] registered ${count} buffer structures`);
 }
 
-// src/structure/valueRegister.ts
+// ../../packages/buffer-controls/src/structure/valueRegister.ts
 function formatBufferValue(value, kind) {
   if (kind === "string") return String(value ?? "");
   if (kind === "number") return String(value ?? 0);
@@ -802,62 +916,7 @@ function registerValueStructures(list, spriteFor, readValue) {
   return entries;
 }
 
-// src/structure/actionRegister.ts
-var ACTION_LABEL = {
-  inc: "+1",
-  dec: "-1",
-  toggle: "toggle"
-};
-function applyAction(op, current) {
-  switch (op) {
-    case "inc":
-      return (Number(current) || 0) + 1;
-    case "dec":
-      return (Number(current) || 0) - 1;
-    case "toggle":
-      return !current;
-  }
-}
-function registerActionStructures(list, spriteFor, read, write) {
-  const modId = list.modId;
-  for (const item of list.catalogueItems) {
-    if (item.category !== "action") continue;
-    const typeId = list.structureType(item.id);
-    const spriteId = spriteFor(item) ?? typeId;
-    const op = item.action ?? "inc";
-    const path = item.path ?? item.id;
-    sandkit.api.structures.register({
-      id: typeId,
-      categoryKey: "blocks",
-      name: item.label,
-      description: `${ACTION_LABEL[op]} \u2014 writes jsonBuffer path "${path}" then commits.`,
-      hideFromBuildMenu: true,
-      shape: makeShape(1, 1),
-      ...sectionBuild.single(typeId),
-      render: {
-        imageName: spriteId,
-        size: {
-          width: 16,
-          height: 16
-        }
-      },
-      copyData: true,
-      defaultData: {
-        path,
-        kind: item.kind ?? "string",
-        op
-      }
-    });
-    sandkit.api.signals?.interactables?.register?.(typeId, (structure) => {
-      const p = structure.data?.path;
-      if (typeof p !== "string" || p.length === 0) return;
-      write(p, applyAction(op, read(p)));
-    });
-  }
-  console.log(`[${modId}] registered action structures`);
-}
-
-// src/picker.ts
+// ../../packages/buffer-controls/src/picker.ts
 var h2 = (type, props, ...children) => sandkit.react.createElement(type, props, ...children);
 function createVariablePicker(options) {
   const list = options.list;
@@ -1009,179 +1068,30 @@ function createVariablePicker(options) {
   };
 }
 
-// src/main.ts
-var MOD_ID = "buffer-controls";
-var MENU_ID = "buffer-controls";
-var VARIABLE_CATEGORY = "variables";
-var VALUE_CATEGORY = "value";
-var ACTION_CATEGORY = "action";
-var VALUE_PREFIX = "value:";
-var ACTION_PREFIX = "action:";
-var BUFFER_ID = `${MOD_ID}:gameConfig`;
-var SPRITE_FILES = [
-  {
-    id: "number",
-    filePath: "assets/types/number.png"
-  },
-  {
-    id: "bolean",
-    filePath: "assets/types/bolean.png"
-  },
-  {
-    id: "string",
-    filePath: "assets/types/string.png"
-  },
-  {
-    id: "menu",
-    filePath: "assets/other/display.png"
-  },
-  {
-    id: "actionPlus",
-    filePath: "assets/other/plus.png"
-  },
-  {
-    id: "actionMinus",
-    filePath: "assets/other/minus.png"
-  },
-  {
-    id: "actionToggle",
-    filePath: "assets/other/toggle-on.png"
-  }
-];
-var ACTION_SPRITE_ID = {
-  inc: "actionPlus",
-  dec: "actionMinus",
-  toggle: "actionToggle"
-};
-var CELL2 = 16;
-var STRUCT_H2 = 6 * 15;
-async function main() {
-  const api = sandkit.api;
-  const buffer = new JsonBuffer(MOD_ID, BUFFER_ID, {
-    volume: 1,
-    muted: false,
-    label: "hello",
-    players: [
-      {
-        name: "Bob",
-        score: 0
-      }
-    ]
-  });
+// ../../packages/buffer-controls/src/buffer-controls.ts
+async function registerBufferControls(config) {
+  const { modId } = config;
+  const buffer = new JsonBuffer(modId, config.bufferId, config.defaultRecord);
   const readBuffer = (path) => buffer.getPath(path);
   const writeBuffer = (path, value) => {
     buffer.setPath(path, value);
     buffer.commit();
   };
-  const spriteIds = await loadSpriteMap(MOD_ID, SPRITE_FILES);
-  const kindSpriteId = (kind) => spriteIds[KIND_SPRITE_KEY[kind] ?? "string"];
+  const spriteIds = await loadSpriteMap(modId, config.spriteFiles);
+  const menuItemId = config.menuItemId ?? modId;
   const spriteFor = (item) => {
-    if (item.id === MENU_ID) return spriteIds["menu"];
+    if (item.id === menuItemId) return spriteIds[config.menu.spriteId];
     const action = item.action;
-    if (action) return spriteIds[ACTION_SPRITE_ID[action]];
-    return kindSpriteId(item.kind ?? "string");
+    if (action) return spriteIds[config.sprites.action[action]];
+    const kind = item.kind ?? "string";
+    return spriteIds[config.sprites.kind[kind] ?? "string"];
   };
-  const bound = buffer.listPaths().filter((field) => EXPOSED_KINDS.includes(field.kind)).map((field) => ({
-    ...field,
-    path: resolveBindingPath(field.path)
-  }));
-  const actionItems = (field) => {
-    if (field.kind === "number") {
-      const make = (op) => ({
-        id: `${ACTION_PREFIX}${field.path}:${op}`,
-        action: op,
-        path: field.path,
-        kind: field.kind,
-        label: `${field.path} ${ACTION_LABEL[op]}`,
-        description: `${ACTION_LABEL[op]} \u2014 writes jsonBuffer path "${field.path}" then commits.`,
-        category: ACTION_CATEGORY,
-        width: CELL2,
-        height: CELL2,
-        filePath: "assets/other/plus.png"
-      });
-      return [
-        make("inc"),
-        make("dec")
-      ];
-    }
-    if (field.kind === "bool") {
-      return [
-        {
-          id: `${ACTION_PREFIX}${field.path}:toggle`,
-          action: "toggle",
-          path: field.path,
-          kind: field.kind,
-          label: `${field.path} ${ACTION_LABEL["toggle"]}`,
-          description: `toggle \u2014 writes jsonBuffer path "${field.path}" then commits.`,
-          category: ACTION_CATEGORY,
-          width: CELL2,
-          height: CELL2,
-          filePath: "assets/other/toggle-on.png"
-        }
-      ];
-    }
-    return [];
-  };
-  const items = [
-    {
-      id: MENU_ID,
-      label: "Buffer Controls",
-      description: "Buffer Controls \u2014 opens the variable picker.",
-      category: VARIABLE_CATEGORY,
-      width: CELL2,
-      height: CELL2,
-      filePath: "assets/other/display.png"
-    },
-    ...bound.map((field) => ({
-      id: field.path,
-      path: field.path,
-      label: field.path,
-      description: `${field.kind} \u2014 linked to jsonBuffer path "${field.path}".`,
-      category: VARIABLE_CATEGORY,
-      width: CELL2,
-      height: STRUCT_H2,
-      filePath: "assets/types/string.png",
-      kind: field.kind
-    })),
-    ...bound.map((field) => ({
-      id: `${VALUE_PREFIX}${field.path}`,
-      path: field.path,
-      label: field.path,
-      description: `${field.kind} \u2014 live value for jsonBuffer path "${field.path}".`,
-      category: VALUE_CATEGORY,
-      width: CELL2,
-      height: STRUCT_H2,
-      filePath: "assets/types/string.png",
-      kind: field.kind
-    })),
-    ...bound.flatMap(actionItems)
-  ];
-  const categories = [
-    {
-      id: VARIABLE_CATEGORY,
-      label: "Variables"
-    },
-    {
-      id: VALUE_CATEGORY,
-      label: "Value"
-    },
-    {
-      id: ACTION_CATEGORY,
-      label: "Action"
-    }
-  ];
-  const list = createBuildList({
-    modId: MOD_ID,
-    menuId: MENU_ID,
-    menuLabel: "Buffer Controls",
-    categories,
-    catalogueItems: items,
-    selectedId: bound[0]?.path
-  });
+  const bound = boundFields(buffer.listPaths());
+  const { list, pathCount } = buildBufferControlList(modId, bound, config);
   registerPathStructures(list, spriteFor);
   const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
   registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
-  const refreshValueStructures = () => {
+  const refresh = () => {
     for (const entry of valueEntries) {
       const value = readBuffer(entry.path);
       const next = formatBufferValue(value, entry.kind);
@@ -1195,26 +1105,101 @@ async function main() {
       });
     }
   };
-  buffer.subscribe(() => refreshValueStructures());
+  buffer.subscribe(() => refresh());
   setInterval(() => {
     buffer.pull();
   }, 500);
-  refreshValueStructures();
-  sandkit.api.events?.on?.("building:placed", () => refreshValueStructures());
+  refresh();
+  sandkit.api.events?.on?.("building:placed", () => refresh());
   createVariablePicker({
     list,
-    title: "Buffer controls",
+    title: config.pickerTitle,
     spriteFor
   });
-  api.ui?.toast?.(`Buffer Controls \u2014 ${bound.length} paths loaded`, {});
-  console.log(`[${MOD_ID}] loaded ${bound.length} jsonBuffer paths`);
+  console.log(`[${modId}] loaded ${pathCount} jsonBuffer paths`);
+  return {
+    buffer,
+    list,
+    pathCount,
+    refresh
+  };
 }
+
+// src/main.ts
+var MOD_ID = "buffer-controls";
+void (async () => {
+  await registerBufferControls({
+    modId: MOD_ID,
+    bufferId: `${MOD_ID}:gameConfig`,
+    defaultRecord: {
+      volume: 1,
+      muted: false,
+      label: "hello",
+      players: [
+        {
+          name: "Bob",
+          score: 0
+        }
+      ]
+    },
+    menu: {
+      label: "Buffer Controls",
+      description: "Buffer Controls \u2014 opens the variable picker.",
+      spriteId: "menu"
+    },
+    categories: {
+      variables: "Variables",
+      value: "Value",
+      action: "Action"
+    },
+    sprites: {
+      kind: {
+        bool: "bolean",
+        number: "number",
+        string: "string"
+      },
+      action: {
+        inc: "actionPlus",
+        dec: "actionMinus",
+        toggle: "actionToggle"
+      }
+    },
+    spriteFiles: [
+      {
+        id: "number",
+        filePath: "assets/types/number.png"
+      },
+      {
+        id: "bolean",
+        filePath: "assets/types/bolean.png"
+      },
+      {
+        id: "string",
+        filePath: "assets/types/string.png"
+      },
+      {
+        id: "menu",
+        filePath: "assets/other/display.png"
+      },
+      {
+        id: "actionPlus",
+        filePath: "assets/other/plus.png"
+      },
+      {
+        id: "actionMinus",
+        filePath: "assets/other/minus.png"
+      },
+      {
+        id: "actionToggle",
+        filePath: "assets/other/toggle-on.png"
+      }
+    ],
+    pickerTitle: "Buffer controls"
+  });
+})();
 try {
   findOrphanedObjects(MOD_ID);
   pruneStaleBuildings(MOD_ID);
-  console.log("==== STATE STORE === ", sandkit.state?.store);
-  void main();
 } catch (e) {
   console.error(e instanceof Error ? e.stack : e);
-  console.error(e);
 }

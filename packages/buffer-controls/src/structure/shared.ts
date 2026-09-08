@@ -2,19 +2,19 @@
  * Shared features for the buffer-controls structure registers.
  *
  * Both the "path" register (variables category) and the "value" register (value
- * category) build their structure from the same skeleton: a kind icon
- * (assets/types/*.png) plus a readout rectangle. The only thing that differs
- * between the two registers is the text painted inside that rectangle — the
- * bound jsonBuffer path (variables) vs. the live buffer value (value).
+ * category) build their structure from the same skeleton: a kind icon plus a
+ * readout rectangle. The only thing that differs between the two registers is
+ * the text painted inside that rectangle — the bound jsonBuffer path
+ * (variables) vs. the live buffer value (value).
  *
- * Everything the two registers have in common lives here, so a change to the
+ * Everything the registers have in common lives here, so a change to the
  * footprint, layout, tooltip, or render behaviour updates both at once.
  */
 import "@sandmd/sandkit";
 import type { CatalogueItem } from "@sandmd/catalogue";
+import type { FieldKind } from "@sandmd/buffer";
 
-/** Same enum the JsonBuffer's listPaths() reports per field. */
-export type FieldKind = "bool" | "number" | "string" | "array" | "object";
+export type { FieldKind };
 
 /** Extra fields we attach to catalogue items generated from the JsonBuffer. */
 export interface PathCatalogueItem extends CatalogueItem {
@@ -26,13 +26,6 @@ export interface PathCatalogueItem extends CatalogueItem {
      */
     path?: string;
 }
-
-/** Ids under assets/types/, loaded by main via loadSpriteMap. */
-export const KIND_SPRITE_KEY: Partial<Record<FieldKind, string>> = {
-    bool: "bolean",
-    number: "number",
-    string: "string",
-};
 
 /** Kinds that produce a placeable structure (arrays/objects excluded for now). */
 export const EXPOSED_KINDS: FieldKind[] = ["bool", "number", "string"];
@@ -52,7 +45,7 @@ export function resolveBindingPath(path: string): string {
 
 /** Pixels per world cell. */
 export const CELL = 16;
-/** Height of the readout rectangle (matching the 6-cell tall item). */
+/** Height of the readout rectangle. */
 export const STRUCT_H = 16;
 /** Width of the readout rectangle right of the icon (5 cells). */
 export const RECT_W = 5 * 16;
@@ -122,7 +115,7 @@ export function buildMenuRender(
 }
 
 /** Resolve the sprite id to a loaded canvas image, or undefined if not ready. */
-function loadImage(spriteId: string): undefined | { src: unknown } {
+function loadImage(spriteId: string): unknown {
     return sandkit.api.sprites?.getById(spriteId)?.imageAsset?.image;
 }
 

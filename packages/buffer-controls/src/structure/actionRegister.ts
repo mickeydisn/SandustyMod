@@ -9,13 +9,15 @@
  * 14 §cheat-sheet): the engine draws a hover highlight around the structure and
  * cancels the default action for us. On click we read the current buffer value,
  * apply the op, write it back through the buffer (setPath + commit), which
- * triggers main's refresh so every placed value structure updates immediately.
+ * triggers the value-structure refresh so every placed value structure updates
+ * immediately.
  *
  * The bound path + op travel in defaultData so copier duplicates keep working.
  */
 import "@sandmd/sandkit";
 import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
-import { FieldKind, makeShape } from "./shared.ts";
+import type { FieldKind } from "./shared.ts";
+import { makeShape } from "./shared.ts";
 import { sectionBuild } from "./sectionStructure.ts";
 
 export type ActionOp = "inc" | "dec" | "toggle";
@@ -71,7 +73,7 @@ export function registerActionStructures(
             id: typeId,
             categoryKey: "blocks",
             name: item.label,
-            description: `${ACTION_LABEL[op]} — writes jsonBuffer path "${path}" then commits.`,
+            description: item.description,
             hideFromBuildMenu: true,
             shape: makeShape(1, 1),
             ...sectionBuild.single(typeId),

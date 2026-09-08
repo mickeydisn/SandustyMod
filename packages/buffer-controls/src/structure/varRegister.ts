@@ -4,7 +4,7 @@
  * Every path in the JsonBuffer record becomes a placeable structure:
  *  - one single unlocked "menu" entry opens the picker (render sprite),
  *  - one structure per path, hidden from the build menu, whose custom `draw`
- *    paints the kind icon (assets/types/*.png) + the record path as text.
+ *    paints the kind icon + the record path as text.
  * The path/kind travel in `defaultData` so copier duplicates keep the binding.
  *
  * The shared structure skeleton (render, tooltip, data, footprint, draw) is
@@ -12,17 +12,16 @@
  */
 import "@sandmd/sandkit";
 import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
-import { sectionBuild } from "./sectionStructure.ts";
+import type { PathCatalogueItem } from "./shared.ts";
 import {
-    PathCatalogueItem,
     buildMenuRender,
     buildSectionData,
     buildSectionTooltips,
     drawIconAndReadout,
     makeShape,
 } from "./shared.ts";
+import { sectionBuild } from "./sectionStructure.ts";
 
-export { EXPOSED_KINDS, KIND_SPRITE_KEY } from "./shared.ts";
 export type { PathCatalogueItem } from "./shared.ts";
 
 export function registerPathStructures(
@@ -59,7 +58,7 @@ export function registerPathStructures(
             categoryKey: "blocks",
             name: item.label,
             description: isMenu
-                ? "Buffer Controls — opens the variable picker."
+                ? item.description
                 : `${item.kind ?? "string"} — linked to jsonBuffer path "${item.path ?? item.id}".`,
             hideFromBuildMenu: !isMenu,
             shape: makeShape(1, 1),
