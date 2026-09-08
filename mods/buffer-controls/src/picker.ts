@@ -1,11 +1,12 @@
 /**
  * Variable picker — custom overlay for buffer-controls.
  *
- * A slim list picker (icon + path text per row) showing every JsonBuffer path
- * in a single "Variables" category. No size selector, no category tabs — just
- * the rows. Opened when a buffer-controls structure is the active build action
- * (driven by `action:changed`, same pattern as the catalogue picker), and each
- * row click unlocks + selects that structure in the build tool.
+ * A slim list picker (icon + path text per row) showing every JsonBuffer path,
+ * with a category tab bar (variables / value) like the sandustry-icons picker.
+ * No size selector — just the rows. Opened when a buffer-controls structure is
+ * the active build action (driven by `action:changed`, same pattern as the
+ * catalogue picker), and each row click unlocks + selects that structure in the
+ * build tool.
  */
 import "@sandmd/sandkit";
 import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
@@ -42,6 +43,7 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
 
     let open = false;
     let minimized = false;
+    let activeCategory = list.getCategory() || "";
     let unsubscribe: (() => void) | null = null;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -94,7 +96,11 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
             bridge.repaint = () => forceUpdate((n: number) => n + 1);
         }
 
-        const items = list.catalogueItems.filter((i) => i.category === "variables");
+        const categories = list.categories.filter((c) => list.countIn(c.id) > 0);
+        if (categories.length > 0 && !categories.some((c) => c.id === activeCategory)) {
+            activeCategory = categories[0]!.id;
+        }
+        const items = list.catalogueItems.filter((i) => i.category === activeCategory);
         if (!open) return null;
 
         if (minimized) {
@@ -134,6 +140,31 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
                     },
                     children: "—",
                 }),
+            ),
+            h(
+                "div",
+                {
+                    className:
+                        "flex items-center gap-1 px-2 py-1 border-b border-slate-700 overflow-x-auto",
+                },
+                categories.length > 1
+                    ? categories.map((cat) =>
+                        h("button", {
+                            key: cat.id,
+                            className:
+                                "text-[10px] px-2 py-0.5 rounded border whitespace-nowrap " +
+                                (cat.id === activeCategory
+                                    ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
+                                    : "text-slate-400 border-slate-700 hover:text-white hover:border-slate-500"),
+                            onClick: () => {
+                                activeCategory = cat.id;
+                                list.setCategory(cat.id);
+                                bridge.repaint?.();
+                            },
+                            children: cat.label,
+                        }),
+                    )
+                    : null,
             ),
             h(
                 "div",

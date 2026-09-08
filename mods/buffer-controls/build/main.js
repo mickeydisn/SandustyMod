@@ -617,7 +617,7 @@ var sectionBuild = {
   }
 };
 
-// src/structure/register.ts
+// src/structure/shared.ts
 var KIND_SPRITE_KEY = {
   bool: "bolean",
   number: "number",
@@ -628,111 +628,233 @@ var EXPOSED_KINDS = [
   "number",
   "string"
 ];
+function resolveBindingPath(path) {
+  return path.replace(/\[\]/g, "[0]");
+}
 var CELL = 16;
 var STRUCT_H = 16;
 var RECT_W = 5 * 16;
+var makeShape = (x, y) => Array.from({
+  length: x * 4
+}, () => Array(y * 4).fill(0));
+function buildSectionData(item, spriteId, extra = {}) {
+  return {
+    copyData: true,
+    defaultData: {
+      path: item.path ?? item.id,
+      kind: item.kind ?? "string",
+      spriteId,
+      ...extra
+    }
+  };
+}
+function buildSectionTooltips() {
+  return {
+    tooltipHover: {
+      type: "custom",
+      dataFieldMessage: {
+        // Generic "{field}: {field}" template — shows the bound
+        // jsonBuffer path and its kind while hovering the structure.
+        messageKey: "{material}: {amount}",
+        fields: [
+          {
+            param: "material",
+            field: "path",
+            fallback: "Unbound"
+          },
+          {
+            param: "amount",
+            field: "kind",
+            fallback: "string"
+          }
+        ]
+      }
+    }
+  };
+}
+function buildMenuRender(item, spriteId) {
+  return {
+    render: {
+      imageName: spriteId,
+      size: {
+        width: item.width,
+        height: item.height
+      },
+      outline: true,
+      ui: {
+        imageName: spriteId,
+        width: item.width,
+        height: item.height,
+        outline: true
+      }
+    }
+  };
+}
+function loadImage(spriteId) {
+  return sandkit.api.sprites?.getById(spriteId)?.imageAsset?.image;
+}
+function drawIconAndReadout(structure, render, opts) {
+  const ctx = render?.ctx;
+  if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;
+  const image = loadImage(opts.spriteId);
+  if (!image) return false;
+  const origin = sandkit.api.rendering.getDrawPositionAtCell(structure.x, structure.y);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(image, origin.x, origin.y, CELL, CELL);
+  const rx = origin.x + CELL;
+  const ry = origin.y;
+  const rw = RECT_W;
+  const rh = STRUCT_H;
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(rx, ry, rw, rh);
+  ctx.fillStyle = "#c1812e";
+  ctx.fillRect(rx + 1, ry + 1, rw - 2, rh - 2);
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
+  ctx.font = "9px monospace";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#c1812e";
+  ctx.fillText(opts.text, rx + 6, ry + rh / 2, rw - 12);
+  ctx.restore();
+  return true;
+}
+
+// src/structure/register.ts
 function registerPathStructures(list, spriteFor) {
   const modId = list.modId;
+  let count = 0;
   for (const item of list.catalogueItems) {
+    if (item.category === "value" || item.category === "action") continue;
+    count++;
     const isMenu = item.id === list.menuId;
     const typeId = list.structureType(item.id);
     const spriteId = spriteFor(item) ?? typeId;
-    const menuRender = isMenu ? {
-      render: {
-        imageName: spriteId,
-        size: {
-          width: item.width,
-          height: item.height
-        },
-        outline: true,
-        ui: {
-          imageName: spriteId,
-          width: item.width,
-          height: item.height,
-          outline: true
-        }
-      }
-    } : {};
-    const sectionTooltips = {
-      tooltipHover: {
-        type: "custom",
-        dataFieldMessage: {
-          // Generic "{field}: {field}" template — shows the bound
-          // jsonBuffer path and its kind while hovering the structure.
-          messageKey: "{material}: {amount}",
-          fields: [
-            {
-              param: "material",
-              field: "path",
-              fallback: "Unbound"
-            },
-            {
-              param: "amount",
-              field: "kind",
-              fallback: "string"
-            }
-          ]
-        }
-      }
-    };
-    const sectionData = {
-      copyData: true,
-      defaultData: {
-        path: item.id,
-        kind: item.kind ?? "string",
-        spriteId
-      }
-    };
-    const draw = (_state, structure, render) => {
-      const ctx = render?.ctx;
-      if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;
-      const image = sandkit.api.sprites?.getById(spriteId)?.imageAsset?.image;
-      if (!image) return false;
-      const origin = sandkit.api.rendering.getDrawPositionAtCell(structure.x, structure.y);
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(image, origin.x, origin.y, CELL, CELL);
-      const rx = origin.x + CELL;
-      const ry = origin.y;
-      const rw = RECT_W;
-      const rh = STRUCT_H;
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(rx, ry, rw, rh);
-      ctx.fillStyle = "#c1812e";
-      ctx.fillRect(rx + 1, ry + 1, rw - 2, rh - 2);
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
-      const path = String(structure.data?.path ?? item.label ?? item.id);
-      ctx.font = "9px monospace";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#c1812e";
-      ctx.fillText(path, rx + 6, ry + rh / 2, rw - 12);
-      ctx.restore();
-      return true;
-    };
-    const makeShape = (x, y) => Array.from({
-      length: x * 4
-    }, () => Array(y * 4).fill(0));
+    const draw = (_state, structure, render) => drawIconAndReadout(structure, render, {
+      spriteId,
+      // Path structure: the readout shows the bound jsonBuffer path.
+      text: String(structure.data?.path ?? item.label ?? item.id)
+    });
     sandkit.api.structures.register({
       id: typeId,
       categoryKey: "blocks",
       name: item.label,
-      description: isMenu ? "Buffer Controls \u2014 opens the variable picker." : `${item.kind ?? "string"} \u2014 linked to jsonBuffer path "${item.id}".`,
+      description: isMenu ? "Buffer Controls \u2014 opens the variable picker." : `${item.kind ?? "string"} \u2014 linked to jsonBuffer path "${item.path ?? item.id}".`,
       hideFromBuildMenu: !isMenu,
-      // 1 wide × 6 tall footprint ( *4 = the shape array must be).
-      shape: isMenu ? makeShape(1, 1) : makeShape(1, 1),
+      shape: makeShape(1, 1),
       ...sectionBuild.single(typeId),
-      ...menuRender,
-      ...sectionTooltips,
-      ...sectionData,
+      ...isMenu ? buildMenuRender(item, spriteId) : {},
+      ...buildSectionTooltips(),
+      ...buildSectionData(item, spriteId),
       draw
     });
     if (isMenu) {
       sandkit.api.player.buildings.unlockByType(typeId);
     }
   }
-  console.log(`[${modId}] registered ${list.catalogueItems.length} buffer structures`);
+  console.log(`[${modId}] registered ${count} buffer structures`);
+}
+
+// src/structure/valueRegister.ts
+function formatBufferValue(value, kind) {
+  if (kind === "string") return String(value ?? "");
+  if (kind === "number") return String(value ?? 0);
+  return String(value ?? false);
+}
+function registerValueStructures(list, spriteFor, readValue) {
+  const entries = [];
+  const modId = list.modId;
+  for (const item of list.catalogueItems) {
+    if (item.category !== "value") continue;
+    const typeId = list.structureType(item.id);
+    const spriteId = spriteFor(item) ?? typeId;
+    const kind = item.kind ?? "string";
+    const path = item.path ?? item.id;
+    const value = formatBufferValue(readValue(path), kind);
+    const draw = (_state, structure, render) => drawIconAndReadout(structure, render, {
+      spriteId,
+      // Value structure: the readout shows the last buffer value,
+      // refreshed on every buffer update via setData({ dataValue }).
+      text: String(structure.data?.dataValue ?? value)
+    });
+    sandkit.api.structures.register({
+      id: typeId,
+      categoryKey: "blocks",
+      name: item.label,
+      description: `live value \u2014 linked to jsonBuffer path "${path}".`,
+      hideFromBuildMenu: true,
+      shape: makeShape(1, 1),
+      ...sectionBuild.single(typeId),
+      ...buildSectionTooltips(),
+      ...buildSectionData(item, spriteId, {
+        dataValue: value
+      }),
+      draw
+    });
+    entries.push({
+      typeId,
+      path,
+      kind
+    });
+  }
+  console.log(`[${modId}] registered ${entries.length} value structures`);
+  return entries;
+}
+
+// src/structure/actionRegister.ts
+var ACTION_LABEL = {
+  inc: "+1",
+  dec: "-1",
+  toggle: "toggle"
+};
+function applyAction(op, current) {
+  switch (op) {
+    case "inc":
+      return (Number(current) || 0) + 1;
+    case "dec":
+      return (Number(current) || 0) - 1;
+    case "toggle":
+      return !current;
+  }
+}
+function registerActionStructures(list, spriteFor, read, write) {
+  const modId = list.modId;
+  for (const item of list.catalogueItems) {
+    if (item.category !== "action") continue;
+    const typeId = list.structureType(item.id);
+    const spriteId = spriteFor(item) ?? typeId;
+    const op = item.action ?? "inc";
+    const path = item.path ?? item.id;
+    sandkit.api.structures.register({
+      id: typeId,
+      categoryKey: "blocks",
+      name: item.label,
+      description: `${ACTION_LABEL[op]} \u2014 writes jsonBuffer path "${path}" then commits.`,
+      hideFromBuildMenu: true,
+      shape: makeShape(1, 1),
+      ...sectionBuild.single(typeId),
+      render: {
+        imageName: spriteId,
+        size: {
+          width: 16,
+          height: 16
+        }
+      },
+      copyData: true,
+      defaultData: {
+        path,
+        kind: item.kind ?? "string",
+        op
+      }
+    });
+    sandkit.api.signals?.interactables?.register?.(typeId, (structure) => {
+      const p = structure.data?.path;
+      if (typeof p !== "string" || p.length === 0) return;
+      write(p, applyAction(op, read(p)));
+    });
+  }
+  console.log(`[${modId}] registered action structures`);
 }
 
 // src/picker.ts
@@ -747,6 +869,7 @@ function createVariablePicker(options) {
   };
   let open = false;
   let minimized = false;
+  let activeCategory = list.getCategory() || "";
   let unsubscribe = null;
   let pollTimer = null;
   const selectItem = (item) => {
@@ -788,7 +911,11 @@ function createVariablePicker(options) {
     if (!bridge.repaint) {
       bridge.repaint = () => forceUpdate((n) => n + 1);
     }
-    const items = list.catalogueItems.filter((i) => i.category === "variables");
+    const categories = list.categories.filter((c) => list.countIn(c.id) > 0);
+    if (categories.length > 0 && !categories.some((c) => c.id === activeCategory)) {
+      activeCategory = categories[0].id;
+    }
+    const items = list.catalogueItems.filter((i) => i.category === activeCategory);
     if (!open) return null;
     if (minimized) {
       return h2("div", {
@@ -820,6 +947,17 @@ function createVariablePicker(options) {
       },
       children: "\u2014"
     })), h2("div", {
+      className: "flex items-center gap-1 px-2 py-1 border-b border-slate-700 overflow-x-auto"
+    }, categories.length > 1 ? categories.map((cat) => h2("button", {
+      key: cat.id,
+      className: "text-[10px] px-2 py-0.5 rounded border whitespace-nowrap " + (cat.id === activeCategory ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-700 hover:text-white hover:border-slate-500"),
+      onClick: () => {
+        activeCategory = cat.id;
+        list.setCategory(cat.id);
+        bridge.repaint?.();
+      },
+      children: cat.label
+    })) : null), h2("div", {
       className: "flex flex-col gap-1 px-2 py-2 overflow-y-auto"
     }, items.map((item) => h2(Row, {
       key: item.id,
@@ -875,6 +1013,10 @@ function createVariablePicker(options) {
 var MOD_ID = "buffer-controls";
 var MENU_ID = "buffer-controls";
 var VARIABLE_CATEGORY = "variables";
+var VALUE_CATEGORY = "value";
+var ACTION_CATEGORY = "action";
+var VALUE_PREFIX = "value:";
+var ACTION_PREFIX = "action:";
 var BUFFER_ID = `${MOD_ID}:gameConfig`;
 var SPRITE_FILES = [
   {
@@ -892,8 +1034,25 @@ var SPRITE_FILES = [
   {
     id: "menu",
     filePath: "assets/other/display.png"
+  },
+  {
+    id: "actionPlus",
+    filePath: "assets/other/plus.png"
+  },
+  {
+    id: "actionMinus",
+    filePath: "assets/other/minus.png"
+  },
+  {
+    id: "actionToggle",
+    filePath: "assets/other/toggle-on.png"
   }
 ];
+var ACTION_SPRITE_ID = {
+  inc: "actionPlus",
+  dec: "actionMinus",
+  toggle: "actionToggle"
+};
 var CELL2 = 16;
 var STRUCT_H2 = 6 * 15;
 async function main() {
@@ -909,10 +1068,60 @@ async function main() {
       }
     ]
   });
+  const readBuffer = (path) => buffer.getPath(path);
+  const writeBuffer = (path, value) => {
+    buffer.setPath(path, value);
+    buffer.commit();
+  };
   const spriteIds = await loadSpriteMap(MOD_ID, SPRITE_FILES);
   const kindSpriteId = (kind) => spriteIds[KIND_SPRITE_KEY[kind] ?? "string"];
-  const spriteFor = (item) => item.id === MENU_ID ? spriteIds["menu"] : kindSpriteId(item.kind ?? "string");
-  const paths = buffer.listPaths().filter((field) => EXPOSED_KINDS.includes(field.kind));
+  const spriteFor = (item) => {
+    if (item.id === MENU_ID) return spriteIds["menu"];
+    const action = item.action;
+    if (action) return spriteIds[ACTION_SPRITE_ID[action]];
+    return kindSpriteId(item.kind ?? "string");
+  };
+  const bound = buffer.listPaths().filter((field) => EXPOSED_KINDS.includes(field.kind)).map((field) => ({
+    ...field,
+    path: resolveBindingPath(field.path)
+  }));
+  const actionItems = (field) => {
+    if (field.kind === "number") {
+      const make = (op) => ({
+        id: `${ACTION_PREFIX}${field.path}:${op}`,
+        action: op,
+        path: field.path,
+        kind: field.kind,
+        label: `${field.path} ${ACTION_LABEL[op]}`,
+        description: `${ACTION_LABEL[op]} \u2014 writes jsonBuffer path "${field.path}" then commits.`,
+        category: ACTION_CATEGORY,
+        width: CELL2,
+        height: CELL2,
+        filePath: "assets/other/plus.png"
+      });
+      return [
+        make("inc"),
+        make("dec")
+      ];
+    }
+    if (field.kind === "bool") {
+      return [
+        {
+          id: `${ACTION_PREFIX}${field.path}:toggle`,
+          action: "toggle",
+          path: field.path,
+          kind: field.kind,
+          label: `${field.path} ${ACTION_LABEL["toggle"]}`,
+          description: `toggle \u2014 writes jsonBuffer path "${field.path}" then commits.`,
+          category: ACTION_CATEGORY,
+          width: CELL2,
+          height: CELL2,
+          filePath: "assets/other/toggle-on.png"
+        }
+      ];
+    }
+    return [];
+  };
   const items = [
     {
       id: MENU_ID,
@@ -923,8 +1132,9 @@ async function main() {
       height: CELL2,
       filePath: "assets/other/display.png"
     },
-    ...paths.map((field) => ({
+    ...bound.map((field) => ({
       id: field.path,
+      path: field.path,
       label: field.path,
       description: `${field.kind} \u2014 linked to jsonBuffer path "${field.path}".`,
       category: VARIABLE_CATEGORY,
@@ -932,12 +1142,32 @@ async function main() {
       height: STRUCT_H2,
       filePath: "assets/types/string.png",
       kind: field.kind
-    }))
+    })),
+    ...bound.map((field) => ({
+      id: `${VALUE_PREFIX}${field.path}`,
+      path: field.path,
+      label: field.path,
+      description: `${field.kind} \u2014 live value for jsonBuffer path "${field.path}".`,
+      category: VALUE_CATEGORY,
+      width: CELL2,
+      height: STRUCT_H2,
+      filePath: "assets/types/string.png",
+      kind: field.kind
+    })),
+    ...bound.flatMap(actionItems)
   ];
   const categories = [
     {
       id: VARIABLE_CATEGORY,
       label: "Variables"
+    },
+    {
+      id: VALUE_CATEGORY,
+      label: "Value"
+    },
+    {
+      id: ACTION_CATEGORY,
+      label: "Action"
     }
   ];
   const list = createBuildList({
@@ -946,16 +1176,38 @@ async function main() {
     menuLabel: "Buffer Controls",
     categories,
     catalogueItems: items,
-    selectedId: paths[0]?.path
+    selectedId: bound[0]?.path
   });
   registerPathStructures(list, spriteFor);
+  const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
+  registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
+  const refreshValueStructures = () => {
+    for (const entry of valueEntries) {
+      const value = readBuffer(entry.path);
+      const next = formatBufferValue(value, entry.kind);
+      sandkit.api.structures.forEachOfType(entry.typeId, (structure) => {
+        if (String(structure.data?.dataValue) === next) return;
+        sandkit.api.structures.setData(structure, {
+          dataValue: next
+        }, {
+          propagateToWorkers: true
+        });
+      });
+    }
+  };
+  buffer.subscribe(() => refreshValueStructures());
+  setInterval(() => {
+    buffer.pull();
+  }, 500);
+  refreshValueStructures();
+  sandkit.api.events?.on?.("building:placed", () => refreshValueStructures());
   createVariablePicker({
     list,
-    title: "Buffer variables",
+    title: "Buffer controls",
     spriteFor
   });
-  api.ui?.toast?.(`Buffer Controls \u2014 ${paths.length} variables loaded`, {});
-  console.log(`[${MOD_ID}] loaded ${paths.length} jsonBuffer paths`);
+  api.ui?.toast?.(`Buffer Controls \u2014 ${bound.length} paths loaded`, {});
+  console.log(`[${MOD_ID}] loaded ${bound.length} jsonBuffer paths`);
 }
 try {
   findOrphanedObjects(MOD_ID);

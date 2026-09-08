@@ -816,8 +816,8 @@ function createPickerOverlay(options) {
 // ../../packages/catalogue/src/strucutre/buildDefinitiont.ts
 function buildStructureDefinition(opts) {
   const makeEmptyShape = (x, y) => Array.from({
-    length: y
-  }, () => Array(x).fill(0));
+    length: x
+  }, () => Array(y).fill(0));
   const _shapeEmpty = makeEmptyShape(Math.round(opts.renderSize.width / 4), Math.round(opts.renderSize.height / 4));
   const def = opts.def;
   return {
