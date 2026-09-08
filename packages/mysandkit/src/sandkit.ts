@@ -101,6 +101,9 @@ export interface SandkitApi {
             definition: { intervalMs: number; tick?: () => void; callback?: () => void },
         ) => (() => void) | void;
     };
+    schedule: {
+        nextTick: (fn: () => void) => void;
+    };
 
     rendering: {
         getDrawPositionAtCell(cellX: number, cellY: number): {

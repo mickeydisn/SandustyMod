@@ -23,6 +23,14 @@ export enum Direction {
     LEFT_UP = 7,
 }
 
+export type DirectionName =
+    | "top"
+    | "bottom"
+    | "left"
+    | "right"
+    | "sides"
+    | "cross";
+
 /*
 const DirectionIndex = {
   | "top"

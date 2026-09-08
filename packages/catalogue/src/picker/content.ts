@@ -22,8 +22,64 @@ export interface PickerViewOptions {
     maxHeight: number;
     spriteIdFor?: (item: CatalogueItem) => string | undefined;
     itemFilter?: (item: CatalogueItem) => boolean;
-    renderItemBadge?: (item: CatalogueItem) => unknown;
-    renderHeaderExtra?: (ctx: PickerContext) => unknown;
+    // renderItemBadge?: (item: CatalogueItem) => unknown;
+    // renderHeaderExtra?: (ctx: PickerContext) => unknown;
+}
+
+function createPickerCss() {
+    console.log("[pkg-picker] injecting CSS");
+    const css = `
+        .pkg-picker-main-div {
+            width: 70vw;
+            max-width: 70vw;
+            max-height: 20vh;
+            min-height: 20vh;
+            position: fixed;
+            bottom: 6em;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;    
+            
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #334;
+            border-radius: 0.25rem;
+            box-sizing: border-box;
+            color: #ccc;
+            font-size: 1rem;
+            pointer-events: auto;
+    }
+
+    .pkg-picker-head {
+        padding: .3rem .3rem;
+        border-bottom: 1px solid #334;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .pkg-picker-tooltip {
+        font-size: 0.75rem;
+        line-height: 1rem;
+
+        position: fixed;
+        transform: translate(-50%, -100%);
+        padding: 2px 6px;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 1001;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 3px;
+        color: #fff;
+
+    }
+    `;
+    const style = document.createElement("style");
+    style.textContent = css;
+    document.head.appendChild(style);
 }
 
 /**
@@ -38,6 +94,8 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
 
     let tooltip: { label: string; x: number; y: number } | null = null;
     let tooltipTimer: ReturnType<typeof setTimeout> | null = null;
+
+    createPickerCss();
 
     const clearTooltip = () => {
         if (tooltipTimer) clearTimeout(tooltipTimer);
@@ -153,6 +211,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                             { key: "fallback", className: "text-xs" },
                             props.item.label.charAt(0),
                         ),
+                    /*
                     options.renderItemBadge
                         ? h(
                             "span",
@@ -160,6 +219,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                             options.renderItemBadge(props.item),
                         )
                         : null,
+                    */
                 ],
             },
         );
@@ -341,204 +401,188 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 ),
             );
         }
-        return h(
+
+        const headEl = h(
+            "div",
+            { className: "pkg-picker-head bg-black/30" },
+            h("span", { className: "text-white text-xs opacity-70" }, api.title),
+            h(
+                "div",
+                { className: "flex items-center gap-2" },
+                /*
+                h(FocusableButton, {
+                    id: `${api.pickerId}-mirror`,
+                    onActivate: api.toggleMirror,
+                    className: `text-xs px-2 py-0.5 border rounded ${
+                        list.isMirrored()
+                            ? "text-[#ffe700] border-yellow-400"
+                            : "text-slate-300 border-slate-600"
+                    }`,
+                    children: `${list.isMirrored() ? "☑" : "☐"} Mirrored`,
+                }),
+                */
+                h(FocusableButton, {
+                    id: `${api.pickerId}-minimize`,
+                    onActivate: api.minimize,
+                    className:
+                        "text-xs px-2 py-0.5 text-white bg-black border border-slate-600 rounded",
+                    children: "▾",
+                }),
+            ),
+        );
+        const tooltipEl = !tooltip ? null : h("div", {
+            className: "pkg-picker-tooltip",
+            children: tooltip.label,
+        });
+
+        const hVerticalItemsList = (name: string, contents: unknown[]) =>
+            h(
+                "div",
+                { className: "flex flex-col items-center" },
+                h(
+                    "span",
+                    {
+                        className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
+                    },
+                    name,
+                ),
+                h(
+                    "div",
+                    {
+                        className: "flex flex-col items-left gap-1  overflow-x-auto",
+                        style: { padding: "1px .8em 1px 1px" },
+                    },
+                    ...contents,
+                ),
+            );
+
+        // Directory tags row.
+        const filterTagEl = availableTags.length > 0
+            ? hVerticalItemsList(
+                "Tag:",
+                availableTags.map((tag) =>
+                    h(FocusableButton, {
+                        key: tag,
+                        id: `${api.pickerId}-tag-${tag}`,
+                        onActivate: () => api.toggleTag(tag),
+                        className: `text-xs px-2 py-0.5 rounded border ${
+                            selectedTags.includes(tag)
+                                ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
+                                : "text-slate-400 border-slate-600"
+                        }`,
+                        children: `${selectedTags.includes(tag) ? "☑" : "☐"} ${tag}`,
+                    })
+                ),
+            )
+            : [];
+        // Size tags row.
+        const filterSizeEl = availableSizes.length > 0
+            ? hVerticalItemsList(
+                "Size:",
+                availableSizes.map((size) =>
+                    h(FocusableButton, {
+                        key: size,
+                        id: `${api.pickerId}-size-${size}`,
+                        onActivate: () => api.toggleSize(size),
+                        className: `text-xs px-2 py-0.5 rounded border ${
+                            selectedSizes.includes(size)
+                                ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
+                                : "text-slate-400 border-slate-600"
+                        }`,
+                        children: `${selectedSizes.includes(size) ? "☑" : "☐"} ${size}`,
+                    })
+                ),
+            )
+            : null;
+
+        const categorieEl = hVerticalItemsList(
+            "Element:",
+            visibleCategories.map(({ cat }) =>
+                h(FocusableButton, {
+                    key: cat.id,
+                    id: `${api.pickerId}-cat-${cat.id}`,
+                    onActivate: () => {
+                        // Jump back to the top before switching category.
+                        savedScrollRef.current = 0;
+                        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+                        api.chooseCategory(cat.id);
+                    },
+                    className: `text-xs px-2 py-0.5 rounded border w-[100px] ${
+                        cat.id === categoryId
+                            ? "text-[#ffe700] border-yellow-400"
+                            : "text-slate-400 border-slate-600"
+                    }`,
+                    children: `${cat.label}`,
+                })
+            ),
+        );
+
+        const filterClearEl = selectedTags.length > 0 || selectedSizes.length > 0
+            ? h(FocusableButton, {
+                id: `${api.pickerId}-filters-clear`,
+                onActivate: () => api.clearFilters(),
+                className:
+                    "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white self-start",
+                children: "Clear",
+            })
+            : null;
+
+        const filterEl = h(
             "div",
             {
-                className:
-                    "pointer-events-auto flex min-h-0 flex-col overflow-hidden bg-black bg-opacity-75 border border-slate-700 rounded ui-box text-slate-300",
+                className: "flex flex-col gap-1 px-1 py-1 border-b bg-black/30",
+            },
+            filterClearEl,
+            h(
+                "div",
+                {
+                    className: "flex flex-row gap-1 px-1 py-1 border-b bg-black/30",
+                },
+                filterSizeEl,
+                filterTagEl,
+                categorieEl,
+                // filterClearEl,
+            ),
+        );
+
+        const itemElemnts = h(
+            "div",
+            {
+                className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
                 style: {
-                    width: `75vw`,
-                    maxWidth: `75vw`,
-                    maxHeight: `${maxHeight}px`,
-                    position: "fixed",
-                    bottom: "80px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    zIndex: 1000,
+                    height: `18vh`,
+                },
+                onScroll: (event: { currentTarget: HTMLElement }) => {
+                    savedScrollRef.current = event.currentTarget.scrollTop;
+                },
+                ref: (node: HTMLElement | null) => {
+                    scrollRef.current = node;
                 },
             },
             h(
                 "div",
-                {
-                    className:
-                        "px-4 py-2 border-b border-slate-800 flex items-center justify-between",
-                },
-                h("span", { className: "text-white text-xs opacity-70" }, api.title),
-                h(
-                    "div",
-                    { className: "flex items-center gap-2" },
-                    h(FocusableButton, {
-                        id: `${api.pickerId}-mirror`,
-                        onActivate: api.toggleMirror,
-                        className: `text-xs px-2 py-0.5 border rounded ${
-                            list.isMirrored()
-                                ? "text-[#ffe700] border-yellow-400"
-                                : "text-slate-300 border-slate-600"
-                        }`,
-                        children: `${list.isMirrored() ? "☑" : "☐"} Mirrored`,
-                    }),
-                    h(FocusableButton, {
-                        id: `${api.pickerId}-minimize`,
-                        onActivate: api.minimize,
-                        className:
-                            "text-xs px-2 py-0.5 text-white bg-black border border-slate-600 rounded",
-                        children: "Minimize ▾",
-                    }),
+                { className: "flex flex-wrap gap-1.5" },
+                visible.map((item) =>
+                    h(ObjectSwatch, {
+                        key: item.id,
+                        item,
+                        selected: item.id === selected?.id,
+                    })
                 ),
             ),
-            options.renderHeaderExtra ? options.renderHeaderExtra(ctx()) : null,
-            tooltip
-                ? h("div", {
-                    style: {
-                        position: "fixed",
-                        left: `${tooltip.x}px`,
-                        top: `${tooltip.y - 8}px`,
-                        transform: "translate(-50%, -100%)",
-                        padding: "2px 6px",
-                        whiteSpace: "nowrap",
-                        pointerEvents: "none",
-                        zIndex: 1001,
-                        background: "rgba(0,0,0,0.9)",
-                        border: "1px solid rgba(255,255,255,0.25)",
-                        borderRadius: "3px",
-                    },
-                    className: "text-xs text-white",
-                    children: tooltip.label,
-                })
-                : null,
-            availableTags.length > 0 || availableSizes.length > 0
-                ? h(
-                    "div",
-                    {
-                        className:
-                            "w-full flex flex-col gap-0.5 px-4 py-1 border-b border-slate-800 bg-black/30",
-                    },
-                    // Directory tags row.
-                    availableTags.length > 0
-                        ? h(
-                            "div",
-                            { className: "flex flex-wrap items-center gap-1" },
-                            h(
-                                "span",
-                                {
-                                    className:
-                                        "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
-                                },
-                                "Tags:",
-                            ),
-                            availableTags.map((tag) =>
-                                h(FocusableButton, {
-                                    key: tag,
-                                    id: `${api.pickerId}-tag-${tag}`,
-                                    onActivate: () => api.toggleTag(tag),
-                                    className: `text-xs px-2 py-0.5 rounded border ${
-                                        selectedTags.includes(tag)
-                                            ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
-                                            : "text-slate-400 border-slate-600"
-                                    }`,
-                                    children: `${selectedTags.includes(tag) ? "☑" : "☐"} ${tag}`,
-                                })
-                            ),
-                        )
-                        : null,
-                    // Size tags row.
-                    availableSizes.length > 0
-                        ? h(
-                            "div",
-                            { className: "flex flex-wrap items-center gap-1" },
-                            h(
-                                "span",
-                                {
-                                    className:
-                                        "text-[10px] uppercase tracking-wide text-slate-500 pr-1",
-                                },
-                                "Size:",
-                            ),
-                            availableSizes.map((size) =>
-                                h(FocusableButton, {
-                                    key: size,
-                                    id: `${api.pickerId}-size-${size}`,
-                                    onActivate: () => api.toggleSize(size),
-                                    className: `text-xs px-2 py-0.5 rounded border ${
-                                        selectedSizes.includes(size)
-                                            ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10"
-                                            : "text-slate-400 border-slate-600"
-                                    }`,
-                                    children: `${selectedSizes.includes(size) ? "☑" : "☐"} ${size}`,
-                                })
-                            ),
-                        )
-                        : null,
-                    selectedTags.length > 0 || selectedSizes.length > 0
-                        ? h(FocusableButton, {
-                            id: `${api.pickerId}-filters-clear`,
-                            onActivate: () => api.clearFilters(),
-                            className:
-                                "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white self-start",
-                            children: "Clear",
-                        })
-                        : null,
-                )
-                : null,
+        );
+
+        return h(
+            "div",
+            { className: "pkg-picker-main-div" },
+            headEl,
+            // options.renderHeaderExtra ? options.renderHeaderExtra(ctx()) : null,
+            tooltipEl,
             h(
                 "div",
-                {
-                    className: "flex flex-row flex-wrap ",
-                },
-                h(
-                    "div",
-                    {
-                        className:
-                            "grid grid-cols-4 overflow-y-auto  gap-1 px-4 py-2 border-b border-slate-800",
-                        style: {
-                            height: `18vh`,
-                        },
-                    },
-                    visibleCategories.map(({ cat, count }) =>
-                        h(FocusableButton, {
-                            key: cat.id,
-                            id: `${api.pickerId}-cat-${cat.id}`,
-                            onActivate: () => {
-                                // Jump back to the top before switching category.
-                                savedScrollRef.current = 0;
-                                if (scrollRef.current) scrollRef.current.scrollTop = 0;
-                                api.chooseCategory(cat.id);
-                            },
-                            className: `text-xs px-2 py-0.5 rounded border w-[100px] ${
-                                cat.id === categoryId
-                                    ? "text-[#ffe700] border-yellow-400"
-                                    : "text-slate-400 border-slate-600"
-                            }`,
-                            children: `${cat.label} ${count}`,
-                        })
-                    ),
-                ),
-            ),
-            h(
-                "div",
-                {
-                    className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
-                    style: {
-                        height: `18vh`,
-                    },
-                    onScroll: (event: { currentTarget: HTMLElement }) => {
-                        savedScrollRef.current = event.currentTarget.scrollTop;
-                    },
-                    ref: (node: HTMLElement | null) => {
-                        scrollRef.current = node;
-                    },
-                },
-                h(
-                    "div",
-                    { className: "flex flex-wrap gap-1.5" },
-                    visible.map((item) =>
-                        h(ObjectSwatch, {
-                            key: item.id,
-                            item,
-                            selected: item.id === selected?.id,
-                        })
-                    ),
-                ),
+                { className: "flex-1 flex flex-row overflow-hidden" },
+                filterEl,
+                itemElemnts,
             ),
         );
     };
