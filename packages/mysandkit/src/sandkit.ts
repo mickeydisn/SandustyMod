@@ -83,9 +83,13 @@ export interface SandkitApi {
         targets?: {
             register: (
                 type: string,
-                handler: (s: StructureLike, payload: { combined?: boolean }) => void,
+                handler: (
+                    s: StructureLike,
+                    payload: { combined: boolean; inputCount: number; onCount: number },
+                ) => void,
             ) => void;
         };
+        registerSenderType: (type: string, handler: (s: StructureLike) => boolean) => void;
         sources?: {
             set?: (structure: StructureLike, on: boolean) => void;
         };
@@ -157,7 +161,7 @@ export interface SandkitApi {
     events: {
         on(
             name: string,
-            fn: (payload: unknown) => void,
+            fn: (payload: Record<string, unknown>) => void,
             opts?: { guard?: { elementType: TElementType } },
         ): () => void;
     };

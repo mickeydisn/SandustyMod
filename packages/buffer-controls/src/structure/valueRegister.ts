@@ -16,8 +16,13 @@
 import "@sandmd/sandkit";
 import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
 import type { FieldKind, PathCatalogueItem } from "./shared.ts";
-import { buildSectionData, buildSectionTooltips, drawIconAndReadout, makeShape } from "./shared.ts";
-import { sectionBuild } from "./sectionStructure.ts";
+import {
+    buildSectionData,
+    buildSectionTooltips,
+    drawIconAndReadout,
+    makeShape,
+    sectionBuild,
+} from "./shared.ts";
 
 /** One registered value structure: its type id maps back to a buffer path. */
 export interface ValueStructureEntry {
@@ -42,7 +47,7 @@ export function registerValueStructures(
     const modId = list.modId;
 
     for (const item of list.catalogueItems as PathCatalogueItem[]) {
-        if (item.category !== "value") continue;
+        if (!item.tags?.includes("value")) continue;
 
         const typeId = list.structureType(item.id);
         const spriteId = spriteFor(item) ?? typeId;

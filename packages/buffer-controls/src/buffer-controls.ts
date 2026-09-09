@@ -17,7 +17,7 @@
 import "@sandmd/sandkit";
 import { loadSpriteMap } from "@sandmd/assets";
 import { JsonBuffer } from "@sandmd/buffer";
-import type { CatalogueItem } from "@sandmd/catalogue";
+import { type CatalogueItem, createPickerOverlay } from "@sandmd/catalogue";
 import type {
     BufferControlsConfig,
     BufferControlsHandles,
@@ -28,7 +28,6 @@ import type { ActionCatalogueItem } from "./structure/actionRegister.ts";
 import { registerActionStructures } from "./structure/actionRegister.ts";
 import { type PathCatalogueItem, registerPathStructures } from "./structure/varRegister.ts";
 import { formatBufferValue, registerValueStructures } from "./structure/valueRegister.ts";
-import { createVariablePicker } from "./picker.ts";
 
 export async function registerBufferControls<T extends object>(
     config: BufferControlsConfig<T>,
@@ -42,6 +41,7 @@ export async function registerBufferControls<T extends object>(
         buffer.setPath(path, value);
         buffer.commit(); // encode + bump version + notify subscribers
     };
+    console.log("[pkg-buffControl], 1 ", buffer.get(), buffer.listPaths());
 
     // -- 2. Sprites ----------------------------------------------------------
     // loadSpriteMap resolves each entry id ("number", "menu", "actionPlus", …)
@@ -62,10 +62,13 @@ export async function registerBufferControls<T extends object>(
     const bound = boundFields(buffer.listPaths());
     const { list, pathCount } = buildBufferControlList(modId, bound, config);
 
+    console.log("[pkg-buffControl], 3 ", list, pathCount);
+
     // -- 4. Structures (menu entry unlocked + one per path, per category) ----
     registerPathStructures(list, spriteFor);
     const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
     registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
+    console.log("[pkg-buffControl], 4 ", valueEntries);
 
     // -- 5. Keep every placed value structure in sync with the buffer --------
     // The value structure's draw only reads structure.data.dataValue. Whenever
@@ -98,8 +101,22 @@ export async function registerBufferControls<T extends object>(
     sandkit.api.events?.on?.("building:placed", () => refresh());
 
     // -- 6. Custom picker: icon + path rows, category tabs, no sizes ---------
-    createVariablePicker({ list, title: config.pickerTitle, spriteFor });
+    // createVariablePicker({ list, title: config.pickerTitle, spriteFor });
+    createPickerOverlay({
+        list,
+        /** Overlay id. Default `${modId}/picker`. */
+        pickerId: "buffControl:",
+        /** Overlay slot. Default "hotbar". */
+        title: config.pickerTitle,
+        /**
+         * Resolves the sprite id actually loaded for an item. Defaults to
+         * `item.spriteId ?? mod structure-type`, but mods that load sprites under
+         * their own id scheme (e.g. `modId:<id>`) must supply this so the swatches
+         * show the correct art.
+         */
 
+        spriteIdFor: spriteFor,
+    });
     console.log(`[${modId}] loaded ${pathCount} jsonBuffer paths`);
     return { buffer, list, pathCount, refresh };
 }

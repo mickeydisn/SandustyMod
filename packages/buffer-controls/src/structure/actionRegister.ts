@@ -17,8 +17,8 @@
 import "@sandmd/sandkit";
 import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
 import type { FieldKind } from "./shared.ts";
-import { makeShape } from "./shared.ts";
-import { sectionBuild } from "./sectionStructure.ts";
+import { buildSectionTooltips, makeShape, sectionBuild } from "./shared.ts";
+import { StructureLike } from "../../../mysandkit/src/structure.ts";
 
 export type ActionOp = "inc" | "dec" | "toggle";
 
@@ -62,12 +62,26 @@ export function registerActionStructures(
     const modId = list.modId;
 
     for (const item of list.catalogueItems as ActionCatalogueItem[]) {
-        if (item.category !== "action") continue;
+        if (!item.tags?.includes("action")) continue;
 
         const typeId = list.structureType(item.id);
         const spriteId = spriteFor(item) ?? typeId;
         const op = item.action ?? "inc";
         const path = item.path ?? item.id;
+
+        const draw = (
+            _state: unknown,
+            _structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
+            _render: { ctx?: CanvasRenderingContext2D },
+        ): boolean => {
+            const d = read(_structure.data?.path as string);
+            sandkit.api.structures.setSpritesheetIndexAtCell(
+                _structure.x,
+                _structure.y,
+                d ? 1 : 0,
+            );
+            return false;
+        };
 
         sandkit.api.structures.register({
             id: typeId,
@@ -77,20 +91,53 @@ export function registerActionStructures(
             hideFromBuildMenu: true,
             shape: makeShape(1, 1),
             ...sectionBuild.single(typeId),
+            ...buildSectionTooltips(),
             render: {
                 imageName: spriteId,
                 size: { width: 16, height: 16 },
             },
             copyData: true,
             defaultData: { path, kind: item.kind ?? "string", op },
+            draw,
         });
 
+        sandkit.api.events.on("structures:placed", (payload: unknown) => {
+            console.log("structures:placed", payload);
+            // @ts-ignore payload
+            const payloads: StructureLike[] = payload.structures as never;
+            for (const p of payloads) {
+                console.log("---structures:placed", p, typeId);
+                if (p.type == typeId) {
+                    console.log("------structures:placed Eq");
+                    sandkit.api.structures.setSpritesheetIndexAtCell(
+                        p.x,
+                        p.y,
+                        p.data.dataValue ? 1 : 0,
+                    );
+                }
+            }
+        });
         // Click-to-activate: engine draws hover highlight + cancels the default
         // action (docs_tech/14 Q7). `structure` has live data for this instance.
         sandkit.api.signals?.interactables?.register?.(typeId, (structure) => {
             const p = structure.data?.path;
             if (typeof p !== "string" || p.length === 0) return;
             write(p, applyAction(op, read(p)));
+        });
+
+        sandkit.api.signals?.targets?.register(
+            typeId,
+            (
+                s: StructureLike,
+                _payload: { combined: boolean; inputCount: number; onCount: number },
+            ) => {
+                console.log("Targets --- ", s);
+            },
+        );
+
+        sandkit.api.signals?.registerSenderType(typeId, (s: StructureLike) => {
+            const d = read(s.data?.path as string);
+            return d ? true : false;
         });
     }
 

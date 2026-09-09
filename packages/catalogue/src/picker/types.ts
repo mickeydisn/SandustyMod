@@ -1,22 +1,6 @@
 import type { BuildList } from "../list/index.ts";
 import { CatalogueItem } from "../strucutre/types.ts";
 
-/** Optional price shown on a picker swatch. */
-export interface PriceTag {
-    amount: number;
-    currency?: string;
-    icon?: string;
-}
-
-export interface PickerContext {
-    list: BuildList;
-    selected: CatalogueItem | undefined;
-    mirrored: boolean;
-    categoryId: string;
-    search: string;
-    repaint: () => void;
-}
-
 export interface PickerOverlayOptions {
     list: BuildList;
     /** Overlay id. Default `${modId}/picker`. */
@@ -24,12 +8,8 @@ export interface PickerOverlayOptions {
     /** Overlay slot. Default "hotbar". */
     slot?: string;
     title?: string;
-    width?: number;
-    maxHeight?: number;
-    search?: boolean;
     persistSelection?: boolean;
     itemFilter?: (item: CatalogueItem) => boolean;
-    priceFor?: (item: CatalogueItem) => PriceTag | null;
     onSelect?: (item: CatalogueItem, mirrored: boolean) => void;
     unlockTypes?: (types: string[]) => void;
     /**
@@ -39,8 +19,8 @@ export interface PickerOverlayOptions {
      * show the correct art.
      */
     spriteIdFor?: (item: CatalogueItem) => string | undefined;
-    renderHeaderExtra?: (ctx: PickerContext) => unknown;
-    renderItemBadge?: (item: CatalogueItem) => unknown;
+    //renderHeaderExtra?: (ctx: PickerContext) => unknown;
+    // renderItemBadge?: (item: CatalogueItem) => unknown;
 }
 
 export interface PickerOverlay {

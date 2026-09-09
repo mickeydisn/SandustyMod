@@ -9,10 +9,11 @@
 import "@sandmd/sandkit";
 import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/dev";
 import { registerBufferControls } from "@sandmd/buffer-controls";
+import { buildDefaultConfigRecord, ConfigFieldRecord } from "./configSchema.ts";
 
 const MOD_ID = "buffer-controls";
 
-/** The record exposed to the player (every scalar path becomes a structure). */
+/** The record exposed to the player (every scalar path becomes a structure). * /
 interface GameConfig {
     volume: number;
     muted: boolean;
@@ -20,16 +21,21 @@ interface GameConfig {
     players: { name: string; score: number }[];
 }
 
+const defaultValue = {
+    volume: 1,
+    muted: false,
+    label: "hello",
+    players: [{ name: "Bob", score: 0 }],
+};
+*/
+
+const defaultValue: ConfigFieldRecord = buildDefaultConfigRecord();
+
 void (async () => {
-    await registerBufferControls<GameConfig>({
+    await registerBufferControls<ConfigFieldRecord>({
         modId: MOD_ID,
         bufferId: `${MOD_ID}:gameConfig`,
-        defaultRecord: {
-            volume: 1,
-            muted: false,
-            label: "hello",
-            players: [{ name: "Bob", score: 0 }],
-        },
+        defaultRecord: defaultValue,
         menu: {
             label: "Buffer Controls",
             description: "Buffer Controls — opens the variable picker.",
@@ -47,7 +53,7 @@ void (async () => {
             { id: "menu", filePath: "assets/types/display.png" },
             { id: "actionPlus", filePath: "assets/types/plus.png" },
             { id: "actionMinus", filePath: "assets/types/minus.png" },
-            { id: "actionToggle", filePath: "assets/types/toggle-on.png" },
+            { id: "actionToggle", filePath: "assets/types/toggle.png" },
         ],
         pickerTitle: "Buffer controls",
     });

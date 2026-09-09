@@ -45,7 +45,6 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
     let minimized = false;
     let activeCategory = list.getCategory() || "";
     let unsubscribe: (() => void) | null = null;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     const selectItem = (item: CatalogueItem) => {
         const type = list.structureType(item.id);
@@ -173,7 +172,7 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
         );
     };
 
-    const syncNow = () => {
+    const sync = () => {
         const selected = sandkit.api.action.getSelected?.();
         const building = sandkit.enums?.ActionType?.Building;
         const ours = !!selected && selected.type === building &&
@@ -194,15 +193,7 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
     // during the event (why a single emit looked like a no-op and a second one
     // was needed). Defer the read to the next tick so the committed state is
     // visible, and coalesce bursts.
-    let syncQueued = false;
-    const sync = () => {
-        if (syncQueued) return;
-        syncQueued = true;
-        setTimeout(() => {
-            syncQueued = false;
-            syncNow();
-        }, 0);
-    };
+    // let syncQueued = false;
 
     const install = () => {
         sandkit.api.ui.overlays.register(
@@ -210,11 +201,16 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
             pickerId,
             () => sandkit.react.createElement(Panel, null),
         );
-        unsubscribe = sandkit.api.events.on("action:changed", sync);
+        unsubscribe = sandkit.api.events.on("action:changed", () => {
+            sandkit.api.schedule.nextTick(() => {
+                sync;
+            });
+        });
         // Safety net for engine paths that mutate the action without emitting
         // (docs_tech/11 §3) — a slow, cheap, read-only poll.
-        pollTimer = setInterval(syncNow, 1000);
-        sync();
+        sandkit.api.schedule.nextTick(() => {
+            sync;
+        });
     };
 
     install();
@@ -224,10 +220,6 @@ export function createVariablePicker(options: VariablePickerOptions): VariablePi
         dispose() {
             unsubscribe?.();
             unsubscribe = null;
-            if (pollTimer !== null) {
-                clearInterval(pollTimer);
-                pollTimer = null;
-            }
             open = false;
             bridge.repaint = null;
         },

@@ -22,9 +22,8 @@ export function createPickerOverlay(
 ): PickerOverlay {
     const list = options.list;
     const pickerId = options.pickerId ?? `${list.modId}/picker`;
-    const slot = options.slot ?? "hotbar";
+    const slot = "hotbar";
     const title = options.title ?? "Pick item";
-    const maxHeight = options.maxHeight ?? 400;
 
     let pickerState: PickerState = null;
     let repaint: (() => void) | null = null;
@@ -160,11 +159,10 @@ export function createPickerOverlay(
 
     const render = createPickerView({
         api: contentApi,
-        maxHeight,
         spriteIdFor: options.spriteIdFor,
         itemFilter: options.itemFilter,
-        renderItemBadge: options.renderItemBadge,
-        renderHeaderExtra: options.renderHeaderExtra,
+        // renderItemBadge: options.renderItemBadge,
+        // renderHeaderExtra: options.renderHeaderExtra,
     });
 
     /**
@@ -212,8 +210,10 @@ export function createPickerOverlay(
         // action changes (select, build-menu pick, deselect). `events.on` returns
         // an unsubscribe; we run `sync()` once after registration to catch the
         // current state (e.g. picking a structure from the build menu).
-        unsubscribe = sandkit.api.events.on("action:changed", sync);
-        sync();
+        unsubscribe = sandkit.api.events.on("action:changed", () => {
+            sandkit.api.schedule.nextTick(sync);
+        });
+        sandkit.api.schedule.nextTick(sync);
     };
 
     install();

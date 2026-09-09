@@ -10,7 +10,7 @@
 import { CatalogueItem } from "../strucutre/types.ts";
 import { compareSizes } from "../list/createBuildList.ts";
 import { h, HTMLElement } from "./react.ts";
-import type { PickerContentApi, PickerContext } from "./types.ts";
+import type { PickerContentApi } from "./types.ts";
 
 const TOOLTIP_DELAY_MS = 120;
 const SWATCH_BOX = 34;
@@ -19,7 +19,6 @@ const MAX_SWATCH_ZOOM = 4;
 /** Presentational options the view needs beyond the controller contract. */
 export interface PickerViewOptions {
     api: PickerContentApi;
-    maxHeight: number;
     spriteIdFor?: (item: CatalogueItem) => string | undefined;
     itemFilter?: (item: CatalogueItem) => boolean;
     // renderItemBadge?: (item: CatalogueItem) => unknown;
@@ -88,7 +87,7 @@ function createPickerCss() {
  * needs the controller's `setRepaint`/`repaint` hooks.
  */
 export function createPickerView(options: PickerViewOptions): () => unknown {
-    const { api, maxHeight } = options;
+    const { api } = options;
     const list = api.list;
     const search = "";
 
@@ -113,15 +112,6 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             api.repaint();
         }, TOOLTIP_DELAY_MS);
     };
-
-    const ctx = (): PickerContext => ({
-        list,
-        selected: list.getSelected(),
-        mirrored: list.isMirrored(),
-        categoryId: list.getCategory(),
-        search,
-        repaint: () => api.repaint(),
-    });
 
     const spriteSrc = (item: CatalogueItem): string | unknown => {
         const id = options.spriteIdFor?.(item) ??
@@ -438,7 +428,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         const hVerticalItemsList = (name: string, contents: unknown[]) =>
             h(
                 "div",
-                { className: "flex flex-col items-center" },
+                { className: "flex flex-col items-center  overflow-y-auto" },
                 h(
                     "span",
                     {
@@ -530,13 +520,14 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         const filterEl = h(
             "div",
             {
-                className: "flex flex-col gap-1 px-1 py-1 border-b bg-black/30",
+                className: "flex flex-col gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto",
             },
             filterClearEl,
             h(
                 "div",
                 {
-                    className: "flex flex-row gap-1 px-1 py-1 border-b bg-black/30",
+                    className:
+                        "flex flex-row gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto",
                 },
                 filterSizeEl,
                 filterTagEl,

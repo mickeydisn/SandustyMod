@@ -19,8 +19,8 @@ import {
     buildSectionTooltips,
     drawIconAndReadout,
     makeShape,
+    sectionBuild,
 } from "./shared.ts";
-import { sectionBuild } from "./sectionStructure.ts";
 
 export type { PathCatalogueItem } from "./shared.ts";
 
@@ -35,9 +35,8 @@ export function registerPathStructures(
         // Value and action structures live in their own categories and are
         // handled by registerValueStructures() / registerActionStructures() —
         // keep them out of the path register.
-        if (item.category === "value" || item.category === "action") continue;
+        if (!item.tags?.includes("variables")) continue;
         count++;
-
         const isMenu = item.id === list.menuId;
         const typeId = list.structureType(item.id);
         const spriteId = spriteFor(item) ?? typeId;
@@ -70,6 +69,7 @@ export function registerPathStructures(
         });
 
         if (isMenu) {
+            console.log("--------------------------------------------  type is unlocked ");
             sandkit.api.player.buildings.unlockByType(typeId);
         }
     }

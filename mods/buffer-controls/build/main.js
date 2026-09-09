@@ -281,7 +281,7 @@ var JsonBuffer = class {
       this.listeners.delete(fn);
     };
   }
-  constructor(modId, key, defaultRecord, assertShape) {
+  constructor(modId, key, defaultRecord, assertShape, loadFromStorage = false) {
     this.modId = modId;
     this.key = key;
     this.defaultRecord = defaultRecord;
@@ -298,7 +298,7 @@ var JsonBuffer = class {
       this.cache = this.readFromBuffer();
       this.localVersion = this.remoteVersion();
     } else {
-      const storedRecord = sandkit.api.storage.local.get(this.key);
+      const storedRecord = !loadFromStorage ? false : sandkit.api.storage.local.get(this.key);
       sandkit.api.events.on("store:save", (_payload) => {
         this.commit();
         this.save();
@@ -397,9 +397,9 @@ var createBuildList = (options) => {
     tag: /* @__PURE__ */ new Set()
   };
   const emit = (name, event) => {
-    for (const h3 of listeners[name]) {
+    for (const h2 of listeners[name]) {
       try {
-        h3(event);
+        h2(event);
       } catch (err) {
         console.error("[panel-build-list]", name, err);
       }
@@ -557,6 +557,612 @@ var createBuildList = (options) => {
   return list;
 };
 
+// ../../packages/catalogue/src/list/persistence.ts
+var KEY_SELECTED = "picker.selected";
+var KEY_MIRROR = "picker.mirror";
+var KEY_CATEGORY = "picker.category";
+var KEY_TAGS = "picker.tags";
+var KEY_SIZES = "picker.sizes";
+function restorePickerState(list) {
+  if (!sandkit.api.storage) return;
+  try {
+    const selected = sandkit.api.storage.get(list.modId, KEY_SELECTED);
+    if (typeof selected === "string" && list.catalogueItems.some((i) => i.id === selected)) {
+      list.setSelected(selected);
+    }
+    const mirrored = sandkit.api.storage.get(list.modId, KEY_MIRROR);
+    if (typeof mirrored === "boolean") list.setMirrored(mirrored);
+    const category = sandkit.api.storage.get(list.modId, KEY_CATEGORY);
+    if (typeof category === "string") list.setCategory(category);
+    const tags = sandkit.api.storage.get(list.modId, KEY_TAGS);
+    if (Array.isArray(tags)) list.setSelectedTags(tags);
+    const sizes = sandkit.api.storage.get(list.modId, KEY_SIZES);
+    if (Array.isArray(sizes)) list.setSelectedSizes(sizes);
+  } catch (err) {
+    console.warn("[picker-overlay] could not restore selection", err);
+  }
+}
+function persistSelection(list) {
+  if (!sandkit.api.storage) return;
+  try {
+    sandkit.api.storage.set(list.modId, KEY_SELECTED, list.getSelected()?.id ?? "");
+    sandkit.api.storage.set(list.modId, KEY_MIRROR, list.isMirrored());
+    sandkit.api.storage.set(list.modId, KEY_CATEGORY, list.getCategory());
+    sandkit.api.storage.set(list.modId, KEY_TAGS, list.getSelectedTags());
+    sandkit.api.storage.set(list.modId, KEY_SIZES, list.getSelectedSizes());
+  } catch (err) {
+    console.warn("[picker-overlay] could not persist selection", err);
+  }
+}
+
+// ../../packages/catalogue/src/picker/react.ts
+function h(type, props, ...children) {
+  return sandkit.react.createElement(type, props, ...children);
+}
+
+// ../../packages/catalogue/src/picker/content.ts
+var TOOLTIP_DELAY_MS = 120;
+var SWATCH_BOX = 34;
+var MAX_SWATCH_ZOOM = 4;
+function createPickerCss() {
+  console.log("[pkg-picker] injecting CSS");
+  const css = `
+        .pkg-picker-main-div {
+            width: 70vw;
+            max-width: 70vw;
+            max-height: 20vh;
+            min-height: 20vh;
+            position: fixed;
+            bottom: 6em;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;    
+            
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #334;
+            border-radius: 0.25rem;
+            box-sizing: border-box;
+            color: #ccc;
+            font-size: 1rem;
+            pointer-events: auto;
+    }
+
+    .pkg-picker-head {
+        padding: .3rem .3rem;
+        border-bottom: 1px solid #334;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .pkg-picker-tooltip {
+        font-size: 0.75rem;
+        line-height: 1rem;
+
+        position: fixed;
+        transform: translate(-50%, -100%);
+        padding: 2px 6px;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 1001;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 3px;
+        color: #fff;
+
+    }
+    `;
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+function createPickerView(options) {
+  const { api } = options;
+  const list = api.list;
+  const search = "";
+  let tooltip = null;
+  let tooltipTimer = null;
+  createPickerCss();
+  const clearTooltip = () => {
+    if (tooltipTimer) clearTimeout(tooltipTimer);
+    tooltipTimer = null;
+    if (!tooltip) return;
+    tooltip = null;
+    api.repaint();
+  };
+  const scheduleTooltip = (label, rect) => {
+    if (tooltipTimer) clearTimeout(tooltipTimer);
+    tooltipTimer = setTimeout(() => {
+      tooltipTimer = null;
+      tooltip = {
+        label,
+        x: rect.left + rect.width / 2,
+        y: rect.top
+      };
+      api.repaint();
+    }, TOOLTIP_DELAY_MS);
+  };
+  const spriteSrc = (item) => {
+    const id = options.spriteIdFor?.(item) ?? item.spriteId ?? list.structureType(item.id, false);
+    const r = sandkit.api.sprites.getById(id)?.imageAsset?.image?.src;
+    return typeof r == "string" ? r : r;
+  };
+  const FocusableButton = (props) => {
+    const navigation = sandkit.api.ui?.navigation;
+    const focusable = navigation.useFocusable({
+      id: props.id,
+      scope: api.pickerId,
+      onActivate: props.onActivate,
+      scrollIntoView: true
+    });
+    const focusClass = navigation?.controllerFocusClass?.(!!focusable?.focused) ?? "";
+    return h("button", {
+      ref: focusable?.ref,
+      type: "button",
+      onClick: props.onActivate,
+      onMouseEnter: props.onHoverStart ? (event) => {
+        props.onHoverStart(event.currentTarget.getBoundingClientRect());
+      } : void 0,
+      onMouseLeave: props.onHoverEnd,
+      className: `${props.className ?? ""} ${focusClass}`.trim()
+    }, props.children);
+  };
+  const ObjectSwatch = (props) => {
+    const src = spriteSrc(props.item);
+    function swatchZoom(width, height, box = SWATCH_BOX) {
+      const longest = Math.max(width, height);
+      if (longest <= 0) return 1;
+      return Math.max(1, Math.min(MAX_SWATCH_ZOOM, Math.floor(box / longest)));
+    }
+    const zoom = swatchZoom(props.item.width, props.item.height);
+    return h(FocusableButton, {
+      id: `${api.pickerId}-item-${props.item.id}`,
+      onHoverStart: (rect) => {
+        scheduleTooltip(`${props.item.label} \u2014 ${props.item.width}\xD7${props.item.height}`, rect);
+      },
+      onHoverEnd: clearTooltip,
+      onActivate: () => api.selectItem(props.item),
+      className: `w-10 h-10 rounded border-2 ${props.selected ? "border-yellow-400" : "border-slate-600"} hover:border-slate-400 flex items-center justify-center`,
+      children: [
+        src ? h("img", {
+          key: "img",
+          src,
+          alt: props.item.label,
+          style: {
+            width: `${props.item.width * zoom}px`,
+            height: `${props.item.height * zoom}px`,
+            maxWidth: "100%",
+            maxHeight: "100%",
+            objectFit: "contain",
+            imageRendering: "pixelated",
+            display: "block"
+          }
+        }) : h("span", {
+          key: "fallback",
+          className: "text-xs"
+        }, props.item.label.charAt(0))
+      ]
+    });
+  };
+  const Picker = () => {
+    const [, bump] = sandkit.react.useState(0);
+    const scrollRef = sandkit.react.useRef(null);
+    const savedScrollRef = sandkit.react.useRef(0);
+    const wasMinimizedRef = sandkit.react.useRef(true);
+    sandkit.react.useEffect(() => {
+      api.setRepaint(() => bump((n) => n + 1));
+      api.setClearTooltip(() => clearTooltip);
+      return () => {
+        api.setRepaint(null);
+        api.setClearTooltip(null);
+      };
+    }, []);
+    const useLayoutEffect = sandkit.react.useLayoutEffect ?? sandkit.react.useEffect;
+    useLayoutEffect(() => {
+      const minimized = api.getState()?.minimized ?? true;
+      if (!minimized && wasMinimizedRef.current && scrollRef.current) {
+        scrollRef.current.scrollTop = savedScrollRef.current;
+      }
+      wasMinimizedRef.current = minimized;
+    });
+    const state = api.getState();
+    if (!state) return null;
+    const selected = list.getSelected();
+    const categoryId = list.getCategory() || list.categories[0]?.id || "";
+    function filterItems(items, options2) {
+      const q = options2.query.trim().toLowerCase();
+      return items.filter((item) => {
+        if (item.category !== options2.categoryId) return false;
+        if (options2.itemFilter && !options2.itemFilter(item)) return false;
+        const itemTags = item.tags ?? [];
+        if (options2.tags.length > 0 && !options2.tags.some((t) => itemTags.includes(t))) {
+          return false;
+        }
+        const itemSizes = item.sizes ?? [];
+        if (options2.sizes.length > 0 && !options2.sizes.some((s) => itemSizes.includes(s))) {
+          return false;
+        }
+        if (!q) return true;
+        const hay = `${item.label} ${item.id} ${item.description ?? ""} ${itemTags.join(" ")} ${itemSizes.join(" ")}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    const selectedTags = list.getSelectedTags();
+    const availableTags = list.allTags();
+    const selectedSizes = list.getSelectedSizes();
+    const matchesTagGroup = (item) => {
+      if (options.itemFilter && !options.itemFilter(item)) return false;
+      const itemTags = item.tags ?? [];
+      if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
+        return false;
+      }
+      return true;
+    };
+    const availableSizes = (() => {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of list.catalogueItems) {
+        if (!matchesTagGroup(it)) continue;
+        for (const s of it.sizes ?? []) set.add(s);
+      }
+      return [
+        ...set
+      ].sort(compareSizes);
+    })();
+    const matchesFilters = (item) => {
+      if (options.itemFilter && !options.itemFilter(item)) return false;
+      const itemTags = item.tags ?? [];
+      if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
+        return false;
+      }
+      const itemSizes = item.sizes ?? [];
+      if (selectedSizes.length > 0 && !selectedSizes.some((s) => itemSizes.includes(s))) {
+        return false;
+      }
+      return true;
+    };
+    const visibleCategories = list.categories.map((cat) => ({
+      cat,
+      count: list.itemsInCategory(cat.id).filter(matchesFilters).length
+    })).filter((c) => c.count > 0);
+    const visible = filterItems(list.catalogueItems, {
+      categoryId,
+      query: search,
+      tags: selectedTags,
+      sizes: selectedSizes,
+      itemFilter: options.itemFilter
+    });
+    if (state.minimized) {
+      const src = selected ? spriteSrc(selected) : void 0;
+      return h("div", {
+        className: "pointer-events-auto flex items-center gap-2 bg-black bg-opacity-75 border border-slate-700 rounded px-3 py-2 ui-box text-slate-300",
+        onClick: api.expand
+      }, h("span", {
+        className: "text-white text-xs opacity-70"
+      }, api.title), h(FocusableButton, {
+        id: `${api.pickerId}-selected`,
+        onActivate: api.expand,
+        className: "flex items-center gap-2 text-xs text-white hover:text-[#ffe700]",
+        children: [
+          h("div", {
+            key: "swatch",
+            className: "w-4 h-4 rounded border border-slate-600 flex items-center justify-center",
+            style: {
+              background: "#333",
+              overflow: "hidden"
+            }
+          }, src ? h("img", {
+            src,
+            alt: "",
+            style: {
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              imageRendering: "pixelated"
+            }
+          }) : null),
+          h("span", {
+            key: "label"
+          }, selected?.label ?? "\u2014")
+        ]
+      }), list.isMirrored() ? h("span", {
+        className: "text-xs text-[#ffe700]"
+      }, "Mirrored") : null, h("span", {
+        className: "text-xs text-slate-500"
+      }, "Click to expand"));
+    }
+    const headEl = h("div", {
+      className: "pkg-picker-head bg-black/30"
+    }, h("span", {
+      className: "text-white text-xs opacity-70"
+    }, api.title), h(
+      "div",
+      {
+        className: "flex items-center gap-2"
+      },
+      /*
+               h(FocusableButton, {
+                   id: `${api.pickerId}-mirror`,
+                   onActivate: api.toggleMirror,
+                   className: `text-xs px-2 py-0.5 border rounded ${
+                       list.isMirrored()
+                           ? "text-[#ffe700] border-yellow-400"
+                           : "text-slate-300 border-slate-600"
+                   }`,
+                   children: `${list.isMirrored() ? "☑" : "☐"} Mirrored`,
+               }),
+               */
+      h(FocusableButton, {
+        id: `${api.pickerId}-minimize`,
+        onActivate: api.minimize,
+        className: "text-xs px-2 py-0.5 text-white bg-black border border-slate-600 rounded",
+        children: "\u25BE"
+      })
+    ));
+    const tooltipEl = !tooltip ? null : h("div", {
+      className: "pkg-picker-tooltip",
+      children: tooltip.label
+    });
+    const hVerticalItemsList = (name, contents) => h("div", {
+      className: "flex flex-col items-center  overflow-y-auto"
+    }, h("span", {
+      className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1"
+    }, name), h("div", {
+      className: "flex flex-col items-left gap-1  overflow-x-auto",
+      style: {
+        padding: "1px .8em 1px 1px"
+      }
+    }, ...contents));
+    const filterTagEl = availableTags.length > 0 ? hVerticalItemsList("Tag:", availableTags.map((tag) => h(FocusableButton, {
+      key: tag,
+      id: `${api.pickerId}-tag-${tag}`,
+      onActivate: () => api.toggleTag(tag),
+      className: `text-xs px-2 py-0.5 rounded border ${selectedTags.includes(tag) ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-600"}`,
+      children: `${selectedTags.includes(tag) ? "\u2611" : "\u2610"} ${tag}`
+    }))) : [];
+    const filterSizeEl = availableSizes.length > 0 ? hVerticalItemsList("Size:", availableSizes.map((size) => h(FocusableButton, {
+      key: size,
+      id: `${api.pickerId}-size-${size}`,
+      onActivate: () => api.toggleSize(size),
+      className: `text-xs px-2 py-0.5 rounded border ${selectedSizes.includes(size) ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-600"}`,
+      children: `${selectedSizes.includes(size) ? "\u2611" : "\u2610"} ${size}`
+    }))) : null;
+    const categorieEl = hVerticalItemsList("Element:", visibleCategories.map(({ cat }) => h(FocusableButton, {
+      key: cat.id,
+      id: `${api.pickerId}-cat-${cat.id}`,
+      onActivate: () => {
+        savedScrollRef.current = 0;
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+        api.chooseCategory(cat.id);
+      },
+      className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === categoryId ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
+      children: `${cat.label}`
+    })));
+    const filterClearEl = selectedTags.length > 0 || selectedSizes.length > 0 ? h(FocusableButton, {
+      id: `${api.pickerId}-filters-clear`,
+      onActivate: () => api.clearFilters(),
+      className: "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white self-start",
+      children: "Clear"
+    }) : null;
+    const filterEl = h("div", {
+      className: "flex flex-col gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto"
+    }, filterClearEl, h("div", {
+      className: "flex flex-row gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto"
+    }, filterSizeEl, filterTagEl, categorieEl));
+    const itemElemnts = h("div", {
+      className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
+      style: {
+        height: `18vh`
+      },
+      onScroll: (event) => {
+        savedScrollRef.current = event.currentTarget.scrollTop;
+      },
+      ref: (node) => {
+        scrollRef.current = node;
+      }
+    }, h("div", {
+      className: "flex flex-wrap gap-1.5"
+    }, visible.map((item) => h(ObjectSwatch, {
+      key: item.id,
+      item,
+      selected: item.id === selected?.id
+    }))));
+    return h("div", {
+      className: "pkg-picker-main-div"
+    }, headEl, tooltipEl, h("div", {
+      className: "flex-1 flex flex-row overflow-hidden"
+    }, filterEl, itemElemnts));
+  };
+  return () => h(Picker, null);
+}
+
+// ../../packages/catalogue/src/picker/overlay.ts
+function createPickerOverlay(options) {
+  const list = options.list;
+  const pickerId = options.pickerId ?? `${list.modId}/picker`;
+  const slot = "hotbar";
+  const title = options.title ?? "Pick item";
+  let pickerState = null;
+  let repaint = null;
+  let clearTooltip = null;
+  let unsubscribe = null;
+  let registered = false;
+  if (options.persistSelection !== false) restorePickerState(list);
+  const unlockTypes = options.unlockTypes ?? ((types) => {
+    for (const type of types) sandkit.api.player.buildings.unlockByType(type);
+  });
+  const persistIfEnabled = () => {
+    if (options.persistSelection !== false) persistSelection(list);
+  };
+  const selectStructure = (type) => {
+    unlockTypes([
+      type
+    ]);
+    sandkit.api.building?.selectStructure?.(type);
+  };
+  const expand = () => {
+    if (!pickerState?.minimized) return;
+    pickerState = {
+      minimized: false
+    };
+    repaint?.();
+  };
+  const minimize = () => {
+    if (!pickerState || pickerState.minimized) return;
+    clearTooltip?.();
+    pickerState = {
+      minimized: true
+    };
+    repaint?.();
+  };
+  const close = () => {
+    clearTooltip?.();
+    pickerState = null;
+    repaint?.();
+  };
+  const selectItem = (item) => {
+    const mirrored = list.isMirrored();
+    list.setSelected(item.id);
+    list.setCategory(item.category);
+    selectStructure(list.structureType(item.id, mirrored));
+    unlockTypes([
+      list.structureType(item.id, !mirrored)
+    ]);
+    options.onSelect?.(item, mirrored);
+    list.applyToBuildTool();
+    persistIfEnabled();
+    repaint?.();
+  };
+  const toggleMirror = () => {
+    const next = !list.isMirrored();
+    list.setMirrored(next);
+    const item = list.getSelected();
+    if (item) selectStructure(list.structureType(item.id, next));
+    persistIfEnabled();
+    repaint?.();
+  };
+  const chooseCategory = (categoryId) => {
+    list.setCategory(categoryId);
+    const tags = list.getSelectedTags();
+    const sizes = list.getSelectedSizes();
+    const matches = (it) => {
+      const itemTags = it.tags ?? [];
+      const itemSizes = it.sizes ?? [];
+      if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) return false;
+      if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
+      return true;
+    };
+    const item = list.itemsInCategory(categoryId).find(matches);
+    if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
+    persistIfEnabled();
+    repaint?.();
+  };
+  const toggleTag = (tag) => {
+    list.toggleTag(tag);
+    const tags = list.getSelectedTags();
+    const avail = /* @__PURE__ */ new Set();
+    for (const it of list.catalogueItems) {
+      const itemTags = it.tags ?? [];
+      if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) continue;
+      for (const s of it.sizes ?? []) avail.add(s);
+    }
+    const stale = list.getSelectedSizes().filter((s) => !avail.has(s));
+    if (stale.length > 0) {
+      list.setSelectedSizes(list.getSelectedSizes().filter((s) => avail.has(s)));
+    }
+    persistIfEnabled();
+    repaint?.();
+  };
+  const toggleSize = (size) => {
+    list.toggleSize(size);
+    persistIfEnabled();
+    repaint?.();
+  };
+  const clearFilters = () => {
+    list.setSelectedTags([]);
+    list.setSelectedSizes([]);
+    persistIfEnabled();
+    repaint?.();
+  };
+  const contentApi = {
+    pickerId,
+    title,
+    list,
+    getState: () => pickerState,
+    expand,
+    minimize,
+    selectItem,
+    toggleMirror,
+    chooseCategory,
+    toggleTag,
+    toggleSize,
+    clearFilters,
+    setRepaint(fn) {
+      repaint = fn;
+    },
+    setClearTooltip(fn) {
+      clearTooltip = fn;
+    },
+    repaint: () => repaint?.()
+  };
+  const render = createPickerView({
+    api: contentApi,
+    spriteIdFor: options.spriteIdFor,
+    itemFilter: options.itemFilter
+  });
+  const currentSelectedItem = () => {
+    const selected = sandkit.api.action.getSelected?.();
+    const building = sandkit.enums.ActionType.Building;
+    if (!selected || !building || selected.type !== building) {
+      return void 0;
+    }
+    const id = selected.id;
+    if (!id || !id.startsWith(`${list.modId}:`)) return void 0;
+    return list.itemFromType(id);
+  };
+  const sync = () => {
+    const item = currentSelectedItem();
+    if (!item) {
+      if (pickerState) close();
+      return;
+    }
+    if (item.id !== list.getSelected()?.id) {
+      list.setSelected(item.id);
+      if (pickerState) repaint?.();
+    }
+    if (!pickerState) {
+      pickerState = {
+        minimized: true
+      };
+      repaint?.();
+    }
+  };
+  const install = () => {
+    if (registered) return;
+    sandkit.api.ui.overlays.register(slot, pickerId, render);
+    registered = true;
+    unsubscribe = sandkit.api.events.on("action:changed", () => {
+      sandkit.api.schedule.nextTick(sync);
+    });
+    sandkit.api.schedule.nextTick(sync);
+  };
+  install();
+  return {
+    pickerId,
+    expand,
+    minimize,
+    close,
+    sync,
+    dispose() {
+      unsubscribe?.();
+      unsubscribe = null;
+      close();
+    }
+  };
+}
+
 // ../../packages/buffer-controls/src/structure/shared.ts
 var EXPOSED_KINDS = [
   "bool",
@@ -590,17 +1196,12 @@ function buildSectionTooltips() {
       dataFieldMessage: {
         // Generic "{field}: {field}" template — shows the bound
         // jsonBuffer path and its kind while hovering the structure.
-        messageKey: "{material}: {amount}",
+        messageKey: "{path}",
         fields: [
           {
-            param: "material",
+            param: "path",
             field: "path",
             fallback: "Unbound"
-          },
-          {
-            param: "amount",
-            field: "kind",
-            fallback: "string"
           }
         ]
       }
@@ -641,22 +1242,20 @@ function drawIconAndReadout(structure, render, opts) {
   const ry = origin.y;
   const rw = RECT_W;
   const rh = STRUCT_H;
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = "#da9c0a";
   ctx.fillRect(rx, ry, rw, rh);
-  ctx.fillStyle = "#c1812e";
+  ctx.fillStyle = "#edab11";
   ctx.fillRect(rx + 1, ry + 1, rw - 2, rh - 2);
   ctx.fillStyle = "#000000";
   ctx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
   ctx.font = "9px monospace";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillStyle = "#c1812e";
-  ctx.fillText(opts.text, rx + 6, ry + rh / 2, rw - 12);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillText(opts.text, rx + 6, ry + rh / 2 + 1, rw - 12);
   ctx.restore();
   return true;
 }
-
-// ../../packages/buffer-controls/src/structure/sectionStructure.ts
 var sectionBuild = {
   single: (typeId) => ({
     buildModes: [
@@ -694,11 +1293,16 @@ function applyAction(op, current) {
 function registerActionStructures(list, spriteFor, read, write) {
   const modId = list.modId;
   for (const item of list.catalogueItems) {
-    if (item.category !== "action") continue;
+    if (!item.tags?.includes("action")) continue;
     const typeId = list.structureType(item.id);
     const spriteId = spriteFor(item) ?? typeId;
     const op = item.action ?? "inc";
     const path = item.path ?? item.id;
+    const draw = (_state, _structure, _render) => {
+      const d = read(_structure.data?.path);
+      sandkit.api.structures.setSpritesheetIndexAtCell(_structure.x, _structure.y, d ? 1 : 0);
+      return false;
+    };
     sandkit.api.structures.register({
       id: typeId,
       categoryKey: "blocks",
@@ -707,6 +1311,7 @@ function registerActionStructures(list, spriteFor, read, write) {
       hideFromBuildMenu: true,
       shape: makeShape(1, 1),
       ...sectionBuild.single(typeId),
+      ...buildSectionTooltips(),
       render: {
         imageName: spriteId,
         size: {
@@ -719,12 +1324,31 @@ function registerActionStructures(list, spriteFor, read, write) {
         path,
         kind: item.kind ?? "string",
         op
+      },
+      draw
+    });
+    sandkit.api.events.on("structures:placed", (payload) => {
+      console.log("structures:placed", payload);
+      const payloads = payload.structures;
+      for (const p of payloads) {
+        console.log("---structures:placed", p, typeId);
+        if (p.type == typeId) {
+          console.log("------structures:placed Eq");
+          sandkit.api.structures.setSpritesheetIndexAtCell(p.x, p.y, p.data.dataValue ? 1 : 0);
+        }
       }
     });
     sandkit.api.signals?.interactables?.register?.(typeId, (structure) => {
       const p = structure.data?.path;
       if (typeof p !== "string" || p.length === 0) return;
       write(p, applyAction(op, read(p)));
+    });
+    sandkit.api.signals?.targets?.register(typeId, (s, _payload) => {
+      console.log("Targets --- ", s);
+    });
+    sandkit.api.signals?.registerSenderType(typeId, (s) => {
+      const d = read(s.data?.path);
+      return d ? true : false;
     });
   }
   console.log(`[${modId}] registered action structures`);
@@ -739,7 +1363,10 @@ var menuItem = (menuItemId, menu, filePathFor) => ({
   id: menuItemId,
   label: menu.label,
   description: menu.description,
-  category: "variables",
+  category: "menu",
+  tags: [
+    "variables"
+  ],
   width: CELL2,
   height: CELL2,
   filePath: filePathFor(menu.spriteId)
@@ -750,7 +1377,10 @@ var variableItem = (field, filePathFor) => ({
   kind: field.kind,
   label: field.path,
   description: `${field.kind} \u2014 linked to jsonBuffer path "${field.path}".`,
-  category: "variables",
+  category: field.path,
+  tags: [
+    "variables"
+  ],
   width: CELL2,
   height: ITEM_HEIGHT,
   filePath: filePathFor(field.kind)
@@ -761,7 +1391,10 @@ var valueItem = (field, filePathFor) => ({
   kind: field.kind,
   label: field.path,
   description: `${field.kind} \u2014 live value for jsonBuffer path "${field.path}".`,
-  category: "value",
+  category: field.path,
+  tags: [
+    "value"
+  ],
   width: CELL2,
   height: ITEM_HEIGHT,
   filePath: filePathFor(field.kind)
@@ -773,7 +1406,10 @@ var actionItem = (field, op, filePathFor) => ({
   kind: field.kind,
   label: `${field.path} ${ACTION_LABEL[op]}`,
   description: `${ACTION_LABEL[op]} \u2014 writes jsonBuffer path "${field.path}" then commits.`,
-  category: "action",
+  category: field.path,
+  tags: [
+    "action"
+  ],
   width: CELL2,
   height: CELL2,
   filePath: filePathFor(op)
@@ -798,20 +1434,12 @@ function boundFields(listed) {
 }
 function buildBufferControlList(modId, bound, config) {
   const filePathFor = (spriteEntryId) => config.spriteFiles.find((f) => f.id === spriteEntryId)?.filePath ?? "";
-  const categories = [
-    {
-      id: "variables",
-      label: config.categories.variables
-    },
-    {
-      id: "value",
-      label: config.categories.value
-    },
-    {
-      id: "action",
-      label: config.categories.action
-    }
-  ];
+  const categories = bound.map((field) => {
+    return {
+      id: field.path,
+      label: field.path
+    };
+  });
   const menuId = config.menuItemId ?? modId;
   const items = [
     menuItem(menuId, config.menu, filePathFor),
@@ -840,7 +1468,7 @@ function registerPathStructures(list, spriteFor) {
   const modId = list.modId;
   let count = 0;
   for (const item of list.catalogueItems) {
-    if (item.category === "value" || item.category === "action") continue;
+    if (!item.tags?.includes("variables")) continue;
     count++;
     const isMenu = item.id === list.menuId;
     const typeId = list.structureType(item.id);
@@ -864,6 +1492,7 @@ function registerPathStructures(list, spriteFor) {
       draw
     });
     if (isMenu) {
+      console.log("--------------------------------------------  type is unlocked ");
       sandkit.api.player.buildings.unlockByType(typeId);
     }
   }
@@ -880,7 +1509,7 @@ function registerValueStructures(list, spriteFor, readValue) {
   const entries = [];
   const modId = list.modId;
   for (const item of list.catalogueItems) {
-    if (item.category !== "value") continue;
+    if (!item.tags?.includes("value")) continue;
     const typeId = list.structureType(item.id);
     const spriteId = spriteFor(item) ?? typeId;
     const kind = item.kind ?? "string";
@@ -916,158 +1545,6 @@ function registerValueStructures(list, spriteFor, readValue) {
   return entries;
 }
 
-// ../../packages/buffer-controls/src/picker.ts
-var h2 = (type, props, ...children) => sandkit.react.createElement(type, props, ...children);
-function createVariablePicker(options) {
-  const list = options.list;
-  const pickerId = `${list.modId}/picker`;
-  const title = options.title ?? "Buffer variables";
-  const modPrefix = `${list.modId}:`;
-  const bridge = {
-    repaint: null
-  };
-  let open = false;
-  let minimized = false;
-  let activeCategory = list.getCategory() || "";
-  let unsubscribe = null;
-  let pollTimer = null;
-  const selectItem = (item) => {
-    const type = list.structureType(item.id);
-    sandkit.api.player.buildings.unlockByType(type);
-    list.setSelected(item.id);
-    sandkit.api.building?.selectStructure?.(type);
-    bridge.repaint?.();
-  };
-  const Row = (props) => {
-    const spriteId = options.spriteFor(props.item);
-    const src = spriteId ? sandkit.api.sprites.getById(spriteId)?.imageAsset?.image?.src : void 0;
-    const selected = list.getSelected()?.id === props.item.id;
-    return h2("button", {
-      key: props.item.id,
-      onClick: () => selectItem(props.item),
-      className: "flex items-center gap-2 w-full text-left px-3 py-1.5 rounded border text-xs whitespace-nowrap " + (selected ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-300 border-slate-700 hover:text-white hover:border-slate-500"),
-      children: [
-        src ? h2("img", {
-          src,
-          width: 16,
-          height: 16,
-          className: "shrink-0"
-        }) : h2("span", {
-          className: "w-4 h-4 shrink-0"
-        }),
-        h2("span", {
-          children: props.item.label
-        }),
-        h2("span", {
-          className: "ml-auto text-slate-500 text-[10px] uppercase",
-          children: String(props.item.kind ?? "")
-        })
-      ]
-    });
-  };
-  const Panel = () => {
-    const [, forceUpdate] = sandkit.react.useState(0);
-    if (!bridge.repaint) {
-      bridge.repaint = () => forceUpdate((n) => n + 1);
-    }
-    const categories = list.categories.filter((c) => list.countIn(c.id) > 0);
-    if (categories.length > 0 && !categories.some((c) => c.id === activeCategory)) {
-      activeCategory = categories[0].id;
-    }
-    const items = list.catalogueItems.filter((i) => i.category === activeCategory);
-    if (!open) return null;
-    if (minimized) {
-      return h2("div", {
-        className: "flex items-center gap-2 bg-slate-900/90 border border-slate-700 rounded px-3 py-1"
-      }, h2("span", {
-        className: "text-xs text-slate-300",
-        children: title
-      }), h2("button", {
-        className: "text-xs text-slate-400 hover:text-white",
-        onClick: () => {
-          minimized = false;
-          bridge.repaint?.();
-        },
-        children: "\u25B2"
-      }));
-    }
-    return h2("div", {
-      className: "flex flex-col bg-slate-900/90 border border-slate-700 rounded w-[320px] max-h-[40vh]"
-    }, h2("div", {
-      className: "flex items-center px-3 py-2 border-b border-slate-700"
-    }, h2("span", {
-      className: "text-xs text-white font-bold",
-      children: title
-    }), h2("button", {
-      className: "ml-auto text-xs text-slate-400 hover:text-white",
-      onClick: () => {
-        minimized = true;
-        bridge.repaint?.();
-      },
-      children: "\u2014"
-    })), h2("div", {
-      className: "flex items-center gap-1 px-2 py-1 border-b border-slate-700 overflow-x-auto"
-    }, categories.length > 1 ? categories.map((cat) => h2("button", {
-      key: cat.id,
-      className: "text-[10px] px-2 py-0.5 rounded border whitespace-nowrap " + (cat.id === activeCategory ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-700 hover:text-white hover:border-slate-500"),
-      onClick: () => {
-        activeCategory = cat.id;
-        list.setCategory(cat.id);
-        bridge.repaint?.();
-      },
-      children: cat.label
-    })) : null), h2("div", {
-      className: "flex flex-col gap-1 px-2 py-2 overflow-y-auto"
-    }, items.map((item) => h2(Row, {
-      key: item.id,
-      item
-    }))));
-  };
-  const syncNow = () => {
-    const selected = sandkit.api.action.getSelected?.();
-    const building = sandkit.enums?.ActionType?.Building;
-    const ours = !!selected && selected.type === building && typeof selected.id === "string" && selected.id.startsWith(modPrefix);
-    if (ours) {
-      const id = list.itemFromType(String(selected.id))?.id;
-      if (id) list.setSelected(id);
-      open = true;
-    } else {
-      open = false;
-      minimized = false;
-    }
-    bridge.repaint?.();
-  };
-  let syncQueued = false;
-  const sync = () => {
-    if (syncQueued) return;
-    syncQueued = true;
-    setTimeout(() => {
-      syncQueued = false;
-      syncNow();
-    }, 0);
-  };
-  const install = () => {
-    sandkit.api.ui.overlays.register("hotbar", pickerId, () => sandkit.react.createElement(Panel, null));
-    unsubscribe = sandkit.api.events.on("action:changed", sync);
-    pollTimer = setInterval(syncNow, 1e3);
-    sync();
-  };
-  install();
-  return {
-    pickerId,
-    dispose() {
-      unsubscribe?.();
-      unsubscribe = null;
-      if (pollTimer !== null) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-      open = false;
-      bridge.repaint = null;
-    }
-  };
-}
-
 // ../../packages/buffer-controls/src/buffer-controls.ts
 async function registerBufferControls(config) {
   const { modId } = config;
@@ -1077,6 +1554,7 @@ async function registerBufferControls(config) {
     buffer.setPath(path, value);
     buffer.commit();
   };
+  console.log("[pkg-buffControl], 1 ", buffer.get(), buffer.listPaths());
   const spriteIds = await loadSpriteMap(modId, config.spriteFiles);
   const menuItemId = config.menuItemId ?? modId;
   const spriteFor = (item) => {
@@ -1088,9 +1566,11 @@ async function registerBufferControls(config) {
   };
   const bound = boundFields(buffer.listPaths());
   const { list, pathCount } = buildBufferControlList(modId, bound, config);
+  console.log("[pkg-buffControl], 3 ", list, pathCount);
   registerPathStructures(list, spriteFor);
   const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
   registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
+  console.log("[pkg-buffControl], 4 ", valueEntries);
   const refresh = () => {
     for (const entry of valueEntries) {
       const value = readBuffer(entry.path);
@@ -1111,10 +1591,19 @@ async function registerBufferControls(config) {
   }, 500);
   refresh();
   sandkit.api.events?.on?.("building:placed", () => refresh());
-  createVariablePicker({
+  createPickerOverlay({
     list,
+    /** Overlay id. Default `${modId}/picker`. */
+    pickerId: "buffControl:",
+    /** Overlay slot. Default "hotbar". */
     title: config.pickerTitle,
-    spriteFor
+    /**
+         * Resolves the sprite id actually loaded for an item. Defaults to
+         * `item.spriteId ?? mod structure-type`, but mods that load sprites under
+         * their own id scheme (e.g. `modId:<id>`) must supply this so the swatches
+         * show the correct art.
+         */
+    spriteIdFor: spriteFor
   });
   console.log(`[${modId}] loaded ${pathCount} jsonBuffer paths`);
   return {
@@ -1125,23 +1614,234 @@ async function registerBufferControls(config) {
   };
 }
 
+// src/configSchema.ts
+var CONFIG_FIELDS = [
+  // master (panel toggles at top)
+  {
+    index: 0,
+    key: "enabled",
+    kind: "bool",
+    section: "master",
+    label: "Mod active",
+    default: true
+  },
+  {
+    index: 1,
+    key: "debugLog",
+    kind: "bool",
+    section: "master",
+    label: "Debug log",
+    default: false
+  },
+  {
+    index: 2,
+    key: "waterEnabled",
+    kind: "bool",
+    section: "master",
+    label: "Water profile",
+    default: true
+  },
+  // move
+  {
+    index: 3,
+    key: "stepMove",
+    kind: "bool",
+    section: "move",
+    label: "Movement",
+    default: true
+  },
+  {
+    index: 4,
+    key: "moveSide",
+    kind: "number",
+    section: "move",
+    label: "Side %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepMove"
+  },
+  {
+    index: 5,
+    key: "moveFloat",
+    kind: "number",
+    section: "move",
+    label: "Float %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepMove"
+  },
+  {
+    index: 6,
+    key: "moveSink",
+    kind: "number",
+    section: "move",
+    label: "Sink %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepMove"
+  },
+  // index 7 (old moveContact slot) is reused as JSON_COUNTER_INDEX by the
+  // panel (uint8 JSON buffer change signal) — see JSON_COUNTER_INDEX.
+  {
+    index: 20,
+    key: "stepForceMove",
+    kind: "bool",
+    section: "move",
+    label: "Column forces",
+    default: false
+  },
+  // grow
+  {
+    index: 8,
+    key: "stepGrow",
+    kind: "bool",
+    section: "grow",
+    label: "Grow",
+    default: false
+  },
+  {
+    index: 9,
+    key: "growInstantTouch",
+    kind: "number",
+    section: "grow",
+    label: "Instant %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepGrow"
+  },
+  {
+    index: 10,
+    key: "growOnAir",
+    kind: "number",
+    section: "grow",
+    label: "Air %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepGrow"
+  },
+  {
+    index: 11,
+    key: "growOnWall",
+    kind: "number",
+    section: "grow",
+    label: "Wall %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepGrow"
+  },
+  {
+    index: 12,
+    key: "growOnFloor",
+    kind: "number",
+    section: "grow",
+    label: "Floor %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepGrow"
+  },
+  {
+    index: 13,
+    key: "growOnCrystal",
+    kind: "number",
+    section: "grow",
+    label: "Crystal %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepGrow"
+  },
+  {
+    index: 14,
+    key: "growIfSurround",
+    kind: "number",
+    section: "grow",
+    label: "Surround %",
+    default: 0,
+    min: 0,
+    max: 100,
+    when: "stepGrow"
+  },
+  {
+    index: 15,
+    key: "growSurroundMin",
+    kind: "number",
+    section: "grow",
+    label: "Surr. min",
+    default: 0,
+    min: 0,
+    max: 8,
+    when: "stepGrow"
+  },
+  // crystal
+  {
+    index: 16,
+    key: "stepCrystalisation",
+    kind: "bool",
+    section: "crystal",
+    label: "Crystallize",
+    default: false
+  },
+  {
+    index: 17,
+    key: "crystalGrowAge",
+    kind: "number",
+    section: "crystal",
+    label: "Grow age",
+    default: 0,
+    min: 0,
+    max: 200,
+    when: "stepCrystalisation"
+  },
+  {
+    index: 18,
+    key: "crystalShape",
+    kind: "number",
+    section: "crystal",
+    label: "Shape 0\u20134",
+    default: 0,
+    min: 0,
+    max: 4,
+    when: "stepCrystalisation"
+  },
+  {
+    index: 19,
+    key: "crystalRadius",
+    kind: "number",
+    section: "crystal",
+    label: "Radius",
+    default: 0,
+    min: 0,
+    max: 6,
+    when: "stepCrystalisation"
+  }
+];
+function buildDefaultConfigRecord() {
+  const state = {};
+  for (const f of CONFIG_FIELDS) {
+    state[f.key] = f.default;
+  }
+  return state;
+}
+var bufField = Object.fromEntries(CONFIG_FIELDS.map((f) => [
+  f.key,
+  f.index
+]));
+
 // src/main.ts
 var MOD_ID = "buffer-controls";
+var defaultValue = buildDefaultConfigRecord();
 void (async () => {
   await registerBufferControls({
     modId: MOD_ID,
     bufferId: `${MOD_ID}:gameConfig`,
-    defaultRecord: {
-      volume: 1,
-      muted: false,
-      label: "hello",
-      players: [
-        {
-          name: "Bob",
-          score: 0
-        }
-      ]
-    },
+    defaultRecord: defaultValue,
     menu: {
       label: "Buffer Controls",
       description: "Buffer Controls \u2014 opens the variable picker.",
@@ -1179,19 +1879,19 @@ void (async () => {
       },
       {
         id: "menu",
-        filePath: "assets/other/display.png"
+        filePath: "assets/types/display.png"
       },
       {
         id: "actionPlus",
-        filePath: "assets/other/plus.png"
+        filePath: "assets/types/plus.png"
       },
       {
         id: "actionMinus",
-        filePath: "assets/other/minus.png"
+        filePath: "assets/types/minus.png"
       },
       {
         id: "actionToggle",
-        filePath: "assets/other/toggle-on.png"
+        filePath: "assets/types/toggle.png"
       }
     ],
     pickerTitle: "Buffer controls"

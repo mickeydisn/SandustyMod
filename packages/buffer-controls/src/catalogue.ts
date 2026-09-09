@@ -53,7 +53,8 @@ const menuItem = (
     id: menuItemId,
     label: menu.label,
     description: menu.description,
-    category: "variables",
+    category: "menu",
+    tags: ["variables"],
     width: CELL,
     height: CELL,
     filePath: filePathFor(menu.spriteId),
@@ -65,7 +66,8 @@ const variableItem = (field: BoundField, filePathFor: FilePathFor): PathCatalogu
     kind: field.kind,
     label: field.path,
     description: `${field.kind} — linked to jsonBuffer path "${field.path}".`,
-    category: "variables",
+    category: field.path,
+    tags: ["variables"],
     width: CELL,
     height: ITEM_HEIGHT,
     filePath: filePathFor(field.kind),
@@ -77,7 +79,8 @@ const valueItem = (field: BoundField, filePathFor: FilePathFor): PathCatalogueIt
     kind: field.kind,
     label: field.path,
     description: `${field.kind} — live value for jsonBuffer path "${field.path}".`,
-    category: "value",
+    category: field.path,
+    tags: ["value"],
     width: CELL,
     height: ITEM_HEIGHT,
     filePath: filePathFor(field.kind),
@@ -94,7 +97,8 @@ const actionItem = (
     kind: field.kind,
     label: `${field.path} ${ACTION_LABEL[op]}`,
     description: `${ACTION_LABEL[op]} — writes jsonBuffer path "${field.path}" then commits.`,
-    category: "action",
+    category: field.path,
+    tags: ["action"],
     width: CELL,
     height: CELL,
     filePath: filePathFor(op),
@@ -131,11 +135,17 @@ export function buildBufferControlList(
     const filePathFor: FilePathFor = (spriteEntryId) =>
         config.spriteFiles.find((f) => f.id === spriteEntryId)?.filePath ?? "";
 
-    const categories: CatalogueCategory[] = [
+    const categories: CatalogueCategory[] = bound.map((field) => {
+        return { id: field.path, label: field.path };
+    });
+
+    /*
+    [
         { id: "variables", label: config.categories.variables },
         { id: "value", label: config.categories.value },
         { id: "action", label: config.categories.action },
     ];
+    */
 
     const menuId = config.menuItemId ?? modId;
     const items: CatalogueItem[] = [

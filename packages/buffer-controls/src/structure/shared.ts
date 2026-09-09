@@ -84,10 +84,9 @@ export function buildSectionTooltips(): Record<string, unknown> {
             dataFieldMessage: {
                 // Generic "{field}: {field}" template — shows the bound
                 // jsonBuffer path and its kind while hovering the structure.
-                messageKey: "{material}: {amount}",
+                messageKey: "{path}",
                 fields: [
-                    { param: "material", field: "path", fallback: "Unbound" },
-                    { param: "amount", field: "kind", fallback: "string" },
+                    { param: "path", field: "path", fallback: "Unbound" },
                 ],
             },
         },
@@ -154,18 +153,31 @@ export function drawIconAndReadout(
     const ry = origin.y;
     const rw = RECT_W;
     const rh = STRUCT_H;
-    ctx.fillStyle = "#000000"; // outer border
+    ctx.fillStyle = "#da9c0a"; // outer border
     ctx.fillRect(rx, ry, rw, rh);
-    ctx.fillStyle = "#c1812e"; // inner border
+    ctx.fillStyle = "#edab11"; // inner border
     ctx.fillRect(rx + 1, ry + 1, rw - 2, rh - 2);
     ctx.fillStyle = "#000000"; // background
     ctx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
-    // Text: center-left inside the rectangle, color #c1812e.
+    // Text: center-left inside the rectangle, color #edab11.
     ctx.font = "9px monospace";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillStyle = "#c1812e";
-    ctx.fillText(opts.text, rx + 6, ry + rh / 2, rw - 12);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillText(opts.text, rx + 6, ry + rh / 2 + 1, rw - 12);
     ctx.restore();
     return true;
 }
+
+/**
+ * Minimal build-modes / variants block for buffer-controls structures.
+ *
+ * Every structure here is placed "single" (one cell, no rotation), so the three
+ * registers share one definition instead of repeating the block per structure.
+ */
+export const sectionBuild = {
+    single: (typeId: string) => ({
+        buildModes: [{ type: "single" }],
+        variants: [{ id: typeId, angles: [0] }],
+    }),
+};
