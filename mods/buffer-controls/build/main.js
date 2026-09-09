@@ -1292,12 +1292,25 @@ function applyAction(op, current) {
 }
 function registerActionStructures(list, spriteFor, read, write) {
   const modId = list.modId;
+  const actionItems = [];
+  const compute = (structure) => {
+    const p = structure.data?.path;
+    if (typeof p !== "string" || p.length === 0) return false;
+    return read(p) ? true : false;
+  };
+  const push = (structure, on) => {
+    sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, on);
+  };
   for (const item of list.catalogueItems) {
     if (!item.tags?.includes("action")) continue;
     const typeId = list.structureType(item.id);
     const spriteId = spriteFor(item) ?? typeId;
     const op = item.action ?? "inc";
     const path = item.path ?? item.id;
+    actionItems.push({
+      typeId,
+      path
+    });
     const draw = (_state, _structure, _render) => {
       const d = read(_structure.data?.path);
       sandkit.api.structures.setSpritesheetIndexAtCell(_structure.x, _structure.y, d ? 1 : 0);
@@ -1327,31 +1340,26 @@ function registerActionStructures(list, spriteFor, read, write) {
       },
       draw
     });
-    sandkit.api.events.on("structures:placed", (payload) => {
-      console.log("structures:placed", payload);
-      const payloads = payload.structures;
-      for (const p of payloads) {
-        console.log("---structures:placed", p, typeId);
-        if (p.type == typeId) {
-          console.log("------structures:placed Eq");
-          sandkit.api.structures.setSpritesheetIndexAtCell(p.x, p.y, p.data.dataValue ? 1 : 0);
-        }
-      }
-    });
     sandkit.api.signals?.interactables?.register?.(typeId, (structure) => {
       const p = structure.data?.path;
       if (typeof p !== "string" || p.length === 0) return;
       write(p, applyAction(op, read(p)));
+      push(structure, compute(structure));
     });
-    sandkit.api.signals?.targets?.register(typeId, (s, _payload) => {
-      console.log("Targets --- ", s);
-    });
-    sandkit.api.signals?.registerSenderType(typeId, (s) => {
-      const d = read(s.data?.path);
-      return d ? true : false;
-    });
+    sandkit.api.signals?.registerSenderType(typeId, (s) => compute(s));
   }
-  console.log(`[${modId}] registered action structures`);
+  const refreshSignals = () => {
+    console.log("REFRESH SINAL : ", actionItems);
+    for (const a of actionItems) {
+      sandkit.api.structures.forEachOfType(a.typeId, (structure) => {
+        push(structure, compute(structure));
+      });
+    }
+  };
+  console.log(`[${modId}] registered action structures (${actionItems.length} types)`);
+  return {
+    refreshSignals
+  };
 }
 
 // ../../packages/buffer-controls/src/catalogue.ts
@@ -1569,9 +1577,10 @@ async function registerBufferControls(config) {
   console.log("[pkg-buffControl], 3 ", list, pathCount);
   registerPathStructures(list, spriteFor);
   const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
-  registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
+  const { refreshSignals } = registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
   console.log("[pkg-buffControl], 4 ", valueEntries);
   const refresh = () => {
+    refreshSignals();
     for (const entry of valueEntries) {
       const value = readBuffer(entry.path);
       const next = formatBufferValue(value, entry.kind);

@@ -90,6 +90,15 @@ export interface SandkitApi {
             ) => void;
         };
         registerSenderType: (type: string, handler: (s: StructureLike) => boolean) => void;
+        /**
+         * Push a sender cell's current output: sets every outgoing link's `.on`
+         * and marks each receiver dirty so the next propagation pass re-applies
+         * it (bundle `setAll`, 63921-63936). This is how vanilla signal devices
+         * emit a value change — call it whenever the sender's output changes.
+         */
+        setAll?: (cell: { x: number; y: number }, on: boolean) => void;
+        /** Force a single sender cell's outgoing wire state (bundle `setOutputAtCell`). */
+        setOutputAtCell?: (x: number, y: number, on: boolean) => void;
         sources?: {
             set?: (structure: StructureLike, on: boolean) => void;
         };

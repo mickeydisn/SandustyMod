@@ -21,8 +21,8 @@ import {
     type PathCatalogueItem,
     resolveBindingPath,
 } from "./structure/shared.ts";
-import type { ActionCatalogueItem, ActionOp } from "./structure/actionRegister.ts";
-import { ACTION_LABEL } from "./structure/actionRegister.ts";
+import type { ActionCatalogueItem, ActionOp } from "./structure/actions/actionRegister.ts";
+import { ACTION_LABEL } from "./structure/actions/actionRegister.ts";
 
 const CELL = 16;
 /** Variable/value structures are 1 cell wide × 6 cells tall. */

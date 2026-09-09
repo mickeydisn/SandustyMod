@@ -24,8 +24,8 @@ import type {
     BufferControlsKindSprites,
 } from "./types.ts";
 import { boundFields, buildBufferControlList } from "./catalogue.ts";
-import type { ActionCatalogueItem } from "./structure/actionRegister.ts";
-import { registerActionStructures } from "./structure/actionRegister.ts";
+import type { ActionCatalogueItem } from "./structure/actions/actionRegister.ts";
+import { registerActionNumberStructures } from "./structure/actions/actionNumberRegister.ts";
 import { type PathCatalogueItem, registerPathStructures } from "./structure/varRegister.ts";
 import { formatBufferValue, registerValueStructures } from "./structure/valueRegister.ts";
 
@@ -67,7 +67,13 @@ export async function registerBufferControls<T extends object>(
     // -- 4. Structures (menu entry unlocked + one per path, per category) ----
     registerPathStructures(list, spriteFor);
     const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
-    registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
+
+    const { refreshSignals } = registerActionNumberStructures(
+        list,
+        spriteFor,
+        readBuffer,
+        writeBuffer,
+    );
     console.log("[pkg-buffControl], 4 ", valueEntries);
 
     // -- 5. Keep every placed value structure in sync with the buffer --------
@@ -76,6 +82,10 @@ export async function registerBufferControls<T extends object>(
     // walks the live world) and setData the current value of their path, so the
     // draw always shows the LAST buffer value.
     const refresh = () => {
+        // Push every action structure's signal output (recompute + setAll on
+        // each placed action) so connected receivers re-apply it. Event-driven:
+        // runs only when the buffer actually changes, never per-frame.
+        refreshSignals();
         for (const entry of valueEntries) {
             const value = readBuffer(entry.path);
             const next = formatBufferValue(value, entry.kind);
