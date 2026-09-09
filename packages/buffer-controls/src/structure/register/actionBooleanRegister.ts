@@ -1,7 +1,7 @@
 /** */
 import "@sandmd/sandkit";
 import { buildSectionTooltips, makeShape, sectionBuild } from "../shared.ts";
-import type { StructureLike } from "../../../../mysandkit/src/structure.ts";
+import type { StructureLike } from "@sandmd/sandkit";
 import { type ActionOp, ActionRegisterResult, applyAction } from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
 
