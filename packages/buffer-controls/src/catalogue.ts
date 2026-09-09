@@ -21,8 +21,8 @@ import {
     type PathCatalogueItem,
     resolveBindingPath,
 } from "./structure/shared.ts";
-import type { ActionCatalogueItem, ActionOp } from "./structure/actions/actionRegister.ts";
-import { ACTION_LABEL } from "./structure/actions/actionRegister.ts";
+import type { ActionCatalogueItem, ActionOp } from "./structure/register/actionRegister.ts";
+import { ACTION_LABEL } from "./structure/register/actionRegister.ts";
 
 const CELL = 16;
 /** Variable/value structures are 1 cell wide × 6 cells tall. */
@@ -40,7 +40,7 @@ export interface BoundField {
 export type FilePathFor = (spriteEntryId: string) => string;
 
 export interface CatalogueResult {
-    list: BuildList;
+    buildList: BuildList;
     /** Number of scalar paths exposed. */
     pathCount: number;
 }
@@ -166,5 +166,5 @@ export function buildBufferControlList(
         selectedId: bound[0]?.path,
     });
 
-    return { list, pathCount: bound.length };
+    return { buildList: list, pathCount: bound.length };
 }

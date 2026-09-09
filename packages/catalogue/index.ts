@@ -1,4 +1,4 @@
-export { createBuildList } from "./src/list/index.ts";
+export { createBuildList, typeOfCatalogueItem } from "./src/list/index.ts";
 export type { BuildList, CatalogueCategory } from "./src/list/index.ts";
 
 export { createPickerOverlay } from "./src/picker/index.ts";

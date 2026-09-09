@@ -1274,7 +1274,7 @@ var sectionBuild = {
   })
 };
 
-// ../../packages/buffer-controls/src/structure/actionRegister.ts
+// ../../packages/buffer-controls/src/structure/register/actionRegister.ts
 var ACTION_LABEL = {
   inc: "+1",
   dec: "-1",
@@ -1289,77 +1289,6 @@ function applyAction(op, current) {
     case "toggle":
       return !current;
   }
-}
-function registerActionStructures(list, spriteFor, read, write) {
-  const modId = list.modId;
-  const actionItems = [];
-  const compute = (structure) => {
-    const p = structure.data?.path;
-    if (typeof p !== "string" || p.length === 0) return false;
-    return read(p) ? true : false;
-  };
-  const push = (structure, on) => {
-    sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, on);
-  };
-  for (const item of list.catalogueItems) {
-    if (!item.tags?.includes("action")) continue;
-    const typeId = list.structureType(item.id);
-    const spriteId = spriteFor(item) ?? typeId;
-    const op = item.action ?? "inc";
-    const path = item.path ?? item.id;
-    actionItems.push({
-      typeId,
-      path
-    });
-    const draw = (_state, _structure, _render) => {
-      const d = read(_structure.data?.path);
-      sandkit.api.structures.setSpritesheetIndexAtCell(_structure.x, _structure.y, d ? 1 : 0);
-      return false;
-    };
-    sandkit.api.structures.register({
-      id: typeId,
-      categoryKey: "blocks",
-      name: item.label,
-      description: item.description,
-      hideFromBuildMenu: true,
-      shape: makeShape(1, 1),
-      ...sectionBuild.single(typeId),
-      ...buildSectionTooltips(),
-      render: {
-        imageName: spriteId,
-        size: {
-          width: 16,
-          height: 16
-        }
-      },
-      copyData: true,
-      defaultData: {
-        path,
-        kind: item.kind ?? "string",
-        op
-      },
-      draw
-    });
-    sandkit.api.signals?.interactables?.register?.(typeId, (structure) => {
-      const p = structure.data?.path;
-      if (typeof p !== "string" || p.length === 0) return;
-      write(p, applyAction(op, read(p)));
-      push(structure, compute(structure));
-    });
-    sandkit.api.signals?.registerSenderType(typeId, (s) => compute(s));
-  }
-  const refreshSignals = () => {
-    console.log("REFRESH SINAL : ", actionItems);
-    for (const a of actionItems) {
-      sandkit.api.structures.forEachOfType(a.typeId, (structure) => {
-        push(structure, compute(structure));
-      });
-    }
-  };
-  console.log(`[${modId}] registered action structures (${actionItems.length} types)`);
-  return {
-    refreshSignals
-  };
 }
 
 // ../../packages/buffer-controls/src/catalogue.ts
@@ -1466,91 +1395,276 @@ function buildBufferControlList(modId, bound, config) {
     selectedId: bound[0]?.path
   });
   return {
-    list,
+    buildList: list,
     pathCount: bound.length
   };
 }
 
-// ../../packages/buffer-controls/src/structure/varRegister.ts
-function registerPathStructures(list, spriteFor) {
-  const modId = list.modId;
-  let count = 0;
-  for (const item of list.catalogueItems) {
-    if (!item.tags?.includes("variables")) continue;
-    count++;
-    const isMenu = item.id === list.menuId;
-    const typeId = list.structureType(item.id);
-    const spriteId = spriteFor(item) ?? typeId;
-    const draw = (_state, structure, render) => drawIconAndReadout(structure, render, {
-      spriteId,
-      // Path structure: the readout shows the bound jsonBuffer path.
-      text: String(structure.data?.path ?? item.label ?? item.id)
-    });
-    sandkit.api.structures.register({
-      id: typeId,
-      categoryKey: "blocks",
-      name: item.label,
-      description: isMenu ? item.description : `${item.kind ?? "string"} \u2014 linked to jsonBuffer path "${item.path ?? item.id}".`,
-      hideFromBuildMenu: !isMenu,
-      shape: makeShape(1, 1),
-      ...sectionBuild.single(typeId),
-      ...isMenu ? buildMenuRender(item, spriteId) : {},
-      ...buildSectionTooltips(),
-      ...buildSectionData(item, spriteId),
-      draw
-    });
-    if (isMenu) {
-      console.log("--------------------------------------------  type is unlocked ");
-      sandkit.api.player.buildings.unlockByType(typeId);
-    }
-  }
-  console.log(`[${modId}] registered ${count} buffer structures`);
-}
-
-// ../../packages/buffer-controls/src/structure/valueRegister.ts
+// ../../packages/buffer-controls/src/structure/register/valueRegister.ts
 function formatBufferValue(value, kind) {
   if (kind === "string") return String(value ?? "");
   if (kind === "number") return String(value ?? 0);
   return String(value ?? false);
 }
-function registerValueStructures(list, spriteFor, readValue) {
+function registerValueStructures(ops) {
+  if (!ops.item.tags?.includes("value")) return;
   const entries = [];
-  const modId = list.modId;
-  for (const item of list.catalogueItems) {
-    if (!item.tags?.includes("value")) continue;
-    const typeId = list.structureType(item.id);
-    const spriteId = spriteFor(item) ?? typeId;
-    const kind = item.kind ?? "string";
-    const path = item.path ?? item.id;
-    const value = formatBufferValue(readValue(path), kind);
-    const draw = (_state, structure, render) => drawIconAndReadout(structure, render, {
-      spriteId,
-      // Value structure: the readout shows the last buffer value,
-      // refreshed on every buffer update via setData({ dataValue }).
-      text: String(structure.data?.dataValue ?? value)
-    });
-    sandkit.api.structures.register({
-      id: typeId,
-      categoryKey: "blocks",
-      name: item.label,
-      description: `live value \u2014 linked to jsonBuffer path "${path}".`,
-      hideFromBuildMenu: true,
-      shape: makeShape(1, 1),
-      ...sectionBuild.single(typeId),
-      ...buildSectionTooltips(),
-      ...buildSectionData(item, spriteId, {
-        dataValue: value
-      }),
-      draw
-    });
-    entries.push({
-      typeId,
+  const spriteId = ops.spriteFor(ops.item) ?? ops.typeId;
+  const kind = ops.item.kind ?? "string";
+  const path = ops.item.path ?? ops.item.id;
+  const value = formatBufferValue(ops.read(path), kind);
+  const draw = (_state, structure, render) => drawIconAndReadout(structure, render, {
+    spriteId,
+    // Value structure: the readout shows the last buffer value,
+    // refreshed on every buffer update via setData({ dataValue }).
+    text: String(structure.data?.dataValue ?? value)
+  });
+  sandkit.api.structures.register({
+    id: ops.typeId,
+    categoryKey: "blocks",
+    name: ops.item.label,
+    description: `live value \u2014 linked to jsonBuffer path "${path}".`,
+    hideFromBuildMenu: true,
+    shape: makeShape(1, 1),
+    ...sectionBuild.single(ops.typeId),
+    ...buildSectionTooltips(),
+    ...buildSectionData(ops.item, spriteId, {
+      dataValue: value
+    }),
+    draw
+  });
+  entries.push({
+    typeId: ops.typeId,
+    path,
+    kind
+  });
+  return {
+    entries
+  };
+}
+
+// ../../packages/buffer-controls/src/structure/register/menuRegister.ts
+function registerMenuStructures(ops) {
+  if (ops.item.category !== "menu") return;
+  const spriteId = ops.spriteFor(ops.item) ?? ops.typeId;
+  const draw = (_state, structure, render) => drawIconAndReadout(structure, render, {
+    spriteId,
+    // Path structure: the readout shows the bound jsonBuffer path.
+    text: String(structure.data?.path ?? ops.item.label ?? ops.item.id)
+  });
+  sandkit.api.structures.register({
+    id: ops.typeId,
+    categoryKey: "blocks",
+    name: ops.item.label,
+    description: ops.item.description,
+    hideFromBuildMenu: false,
+    shape: makeShape(1, 1),
+    ...sectionBuild.single(ops.typeId),
+    ...buildMenuRender(ops.item, spriteId),
+    ...buildSectionTooltips(),
+    ...buildSectionData(ops.item, spriteId),
+    draw
+  });
+  sandkit.api.player.buildings.unlockByType(ops.typeId);
+}
+
+// ../../packages/buffer-controls/src/structure/register/varRegister.ts
+function registerPathStructures(ops) {
+  if (!ops.item.tags?.includes("variables") || ops.item.category === "menu") return;
+  const spriteId = ops.spriteFor(ops.item) ?? ops.typeId;
+  const draw = (_state, structure, render) => drawIconAndReadout(structure, render, {
+    spriteId,
+    // Path structure: the readout shows the bound jsonBuffer path.
+    text: String(structure.data?.path ?? ops.item.label ?? ops.item.id)
+  });
+  sandkit.api.structures.register({
+    id: ops.typeId,
+    categoryKey: "blocks",
+    name: ops.item.label,
+    description: `${ops.item.kind ?? "string"} \u2014 linked to jsonBuffer path "${ops.item.path ?? ops.item.id}".`,
+    hideFromBuildMenu: true,
+    shape: makeShape(1, 1),
+    ...sectionBuild.single(ops.typeId),
+    ...buildSectionTooltips(),
+    ...buildSectionData(ops.item, spriteId),
+    draw
+  });
+}
+
+// ../../packages/buffer-controls/src/structure/register/actionNumberRegister.ts
+function registerActionNumberStructures(ops) {
+  if (!ops.item.tags?.includes("action") || ops.item.kind !== "number") return;
+  const computeSignal = (structure) => {
+    const p = structure.data?.path;
+    if (typeof p !== "string" || p.length === 0) return false;
+    return ops.read(p) ? true : false;
+  };
+  const pushSignal = (structure) => {
+    sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
+  };
+  const act = (structure, op2) => {
+    const p = structure.data?.path;
+    if (typeof p !== "string" || p.length === 0) return;
+    ops.write(p, applyAction(op2, ops.read(p)));
+    pushSignal(structure);
+  };
+  const draw = (_state, structure, _render) => {
+    const d = ops.read(structure.data?.path);
+    sandkit.api.structures.setSpritesheetIndexAtCell(structure.x, structure.y, d ? 1 : 0);
+    return false;
+  };
+  const actionItems = [];
+  const spriteId = ops.spriteFor(ops.item) ?? ops.typeId;
+  const op = ops.item.action ?? "inc";
+  const path = ops.item.path ?? ops.item.id;
+  actionItems.push({
+    typeId: ops.typeId,
+    path
+  });
+  sandkit.api.structures.register({
+    id: ops.typeId,
+    categoryKey: "blocks",
+    name: ops.item.label,
+    description: ops.item.description,
+    hideFromBuildMenu: true,
+    shape: makeShape(1, 1),
+    ...sectionBuild.single(ops.typeId),
+    ...buildSectionTooltips(),
+    render: {
+      imageName: spriteId,
+      size: {
+        width: 16,
+        height: 16
+      }
+    },
+    copyData: true,
+    defaultData: {
       path,
-      kind
-    });
+      kind: ops.item.kind ?? "string",
+      op
+    },
+    draw
+  });
+  sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
+    act(structure, op);
+  });
+  sandkit.api.signals?.registerSenderType(ops.typeId, (s) => computeSignal(s));
+  return {
+    refreshSignals: () => {
+      for (const a of actionItems) {
+        sandkit.api.structures.forEachOfType(a.typeId, (structure) => {
+          pushSignal(structure);
+        });
+      }
+    }
+  };
+}
+
+// ../../packages/buffer-controls/src/structure/register/actionBooleanRegister.ts
+function registerBooleanActionStructures(ops) {
+  if (!ops.item.tags?.includes("action") || ops.item.kind !== "bool") return;
+  const actionItems = [];
+  const computeSignal = (structure) => {
+    const p = structure.data?.path;
+    if (typeof p !== "string" || p.length === 0) return false;
+    return ops.read(p) ? true : false;
+  };
+  const pushSignal = (structure) => {
+    sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
+  };
+  const act = (structure, op2) => {
+    const p = structure.data?.path;
+    if (typeof p !== "string" || p.length === 0) return;
+    ops.write(p, applyAction(op2, ops.read(p)));
+    pushSignal(structure);
+  };
+  const draw = (_state, structure, _render) => {
+    const d = ops.read(structure.data?.path);
+    sandkit.api.structures.setSpritesheetIndexAtCell(structure.x, structure.y, d ? 1 : 0);
+    return false;
+  };
+  const spriteId = ops.spriteFor(ops.item) ?? ops.typeId;
+  const op = ops.item.action ?? "inc";
+  const path = ops.item.path ?? ops.item.id;
+  actionItems.push({
+    typeId: ops.typeId,
+    path
+  });
+  sandkit.api.structures.register({
+    id: ops.typeId,
+    categoryKey: "blocks",
+    name: ops.item.label,
+    description: ops.item.description,
+    hideFromBuildMenu: true,
+    shape: makeShape(1, 1),
+    ...sectionBuild.single(ops.typeId),
+    ...buildSectionTooltips(),
+    render: {
+      imageName: spriteId,
+      size: {
+        width: 16,
+        height: 16
+      }
+    },
+    copyData: true,
+    defaultData: {
+      path,
+      kind: ops.item.kind ?? "string",
+      op
+    },
+    draw
+  });
+  sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
+    act(structure, op);
+  });
+  sandkit.api.signals?.registerSenderType(ops.typeId, (s) => computeSignal(s));
+  const refreshSignals = () => {
+    for (const a of actionItems) {
+      sandkit.api.structures.forEachOfType(a.typeId, (structure) => {
+        pushSignal(structure);
+      });
+    }
+  };
+  return {
+    refreshSignals
+  };
+}
+
+// ../../packages/buffer-controls/src/structure/register.ts
+function registerStructures(buffer, list, spriteFor) {
+  const readBuffer = (path) => buffer.getPath(path);
+  const writeBuffer = (path, value) => {
+    buffer.setPath(path, value);
+    buffer.commit();
+  };
+  const refreshers = [];
+  const valueEntries = [];
+  for (const item of list.catalogueItems) {
+    const ops = {
+      // Structure type id is the catalogue-prefixed type (`modId:item/<id>`),
+      // which is what list.structureType / picker select / unlock all use.
+      typeId: list.structureType(item.id),
+      item,
+      spriteFor,
+      read: readBuffer,
+      write: writeBuffer
+    };
+    registerMenuStructures(ops);
+    registerPathStructures(ops);
+    const value = registerValueStructures(ops);
+    if (value) valueEntries.push(...value.entries);
+    const number = registerActionNumberStructures(ops);
+    if (number) refreshers.push(number.refreshSignals);
+    const boolean = registerBooleanActionStructures(ops);
+    if (boolean) refreshers.push(boolean.refreshSignals);
   }
-  console.log(`[${modId}] registered ${entries.length} value structures`);
-  return entries;
+  console.log(`[${list.modId}] registered structures (${valueEntries.length} value types, ${refreshers.length} action registers)`);
+  return {
+    valueEntries,
+    refreshSignals: () => {
+      for (const refresh of refreshers) refresh();
+    }
+  };
 }
 
 // ../../packages/buffer-controls/src/buffer-controls.ts
@@ -1558,10 +1672,6 @@ async function registerBufferControls(config) {
   const { modId } = config;
   const buffer = new JsonBuffer(modId, config.bufferId, config.defaultRecord);
   const readBuffer = (path) => buffer.getPath(path);
-  const writeBuffer = (path, value) => {
-    buffer.setPath(path, value);
-    buffer.commit();
-  };
   console.log("[pkg-buffControl], 1 ", buffer.get(), buffer.listPaths());
   const spriteIds = await loadSpriteMap(modId, config.spriteFiles);
   const menuItemId = config.menuItemId ?? modId;
@@ -1573,11 +1683,9 @@ async function registerBufferControls(config) {
     return spriteIds[config.sprites.kind[kind] ?? "string"];
   };
   const bound = boundFields(buffer.listPaths());
-  const { list, pathCount } = buildBufferControlList(modId, bound, config);
-  console.log("[pkg-buffControl], 3 ", list, pathCount);
-  registerPathStructures(list, spriteFor);
-  const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
-  const { refreshSignals } = registerActionStructures(list, spriteFor, readBuffer, writeBuffer);
+  const { buildList, pathCount } = buildBufferControlList(modId, bound, config);
+  console.log("[pkg-buffControl], 3 ", buildList, pathCount);
+  const { refreshSignals, valueEntries } = registerStructures(buffer, buildList, spriteFor);
   console.log("[pkg-buffControl], 4 ", valueEntries);
   const refresh = () => {
     refreshSignals();
@@ -1601,7 +1709,7 @@ async function registerBufferControls(config) {
   refresh();
   sandkit.api.events?.on?.("building:placed", () => refresh());
   createPickerOverlay({
-    list,
+    list: buildList,
     /** Overlay id. Default `${modId}/picker`. */
     pickerId: "buffControl:",
     /** Overlay slot. Default "hotbar". */
@@ -1617,7 +1725,7 @@ async function registerBufferControls(config) {
   console.log(`[${modId}] loaded ${pathCount} jsonBuffer paths`);
   return {
     buffer,
-    list,
+    list: buildList,
     pathCount,
     refresh
   };

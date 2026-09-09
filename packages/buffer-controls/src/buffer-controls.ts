@@ -24,10 +24,10 @@ import type {
     BufferControlsKindSprites,
 } from "./types.ts";
 import { boundFields, buildBufferControlList } from "./catalogue.ts";
-import type { ActionCatalogueItem } from "./structure/actions/actionRegister.ts";
-import { registerActionNumberStructures } from "./structure/actions/actionNumberRegister.ts";
-import { type PathCatalogueItem, registerPathStructures } from "./structure/varRegister.ts";
-import { formatBufferValue, registerValueStructures } from "./structure/valueRegister.ts";
+import type { ActionCatalogueItem } from "./structure/register/actionRegister.ts";
+import { type PathCatalogueItem } from "./structure/shared.ts";
+import { formatBufferValue } from "./structure/register/valueRegister.ts";
+import { registerStructures } from "./structure/register.ts";
 
 export async function registerBufferControls<T extends object>(
     config: BufferControlsConfig<T>,
@@ -37,10 +37,6 @@ export async function registerBufferControls<T extends object>(
     // -- 1. The jsonBuffer record we expose to the player --------------------
     const buffer = new JsonBuffer<T>(modId, config.bufferId, config.defaultRecord);
     const readBuffer = (path: string): unknown => buffer.getPath(path);
-    const writeBuffer = (path: string, value: unknown): void => {
-        buffer.setPath(path, value);
-        buffer.commit(); // encode + bump version + notify subscribers
-    };
     console.log("[pkg-buffControl], 1 ", buffer.get(), buffer.listPaths());
 
     // -- 2. Sprites ----------------------------------------------------------
@@ -50,30 +46,28 @@ export async function registerBufferControls<T extends object>(
     const menuItemId = config.menuItemId ?? modId;
     const spriteFor = (item: CatalogueItem): string | undefined => {
         if (item.id === menuItemId) return spriteIds[config.menu.spriteId];
+
         const action = (item as ActionCatalogueItem).action;
         if (action) return spriteIds[config.sprites.action[action]];
+
         const kind = ((item as PathCatalogueItem).kind ?? "string") as
             | keyof BufferControlsKindSprites
             | string;
+
         return spriteIds[config.sprites.kind[kind as keyof BufferControlsKindSprites] ?? "string"];
     };
 
     // -- 3. BuildingList: one item per scalar path in the record -------------
     const bound = boundFields(buffer.listPaths());
-    const { list, pathCount } = buildBufferControlList(modId, bound, config);
+    const { buildList: buildList, pathCount } = buildBufferControlList(modId, bound, config);
 
-    console.log("[pkg-buffControl], 3 ", list, pathCount);
+    console.log("[pkg-buffControl], 3 ", buildList, pathCount);
 
-    // -- 4. Structures (menu entry unlocked + one per path, per category) ----
-    registerPathStructures(list, spriteFor);
-    const valueEntries = registerValueStructures(list, spriteFor, readBuffer);
+    // -- 4. Structures — one loop registers every catalogue item across all
+    //        categories (menu / variable / value / action) via the register/*
+    //        modules, and returns the runtime handles we need to keep synced. ---
+    const { refreshSignals, valueEntries } = registerStructures(buffer, buildList, spriteFor);
 
-    const { refreshSignals } = registerActionNumberStructures(
-        list,
-        spriteFor,
-        readBuffer,
-        writeBuffer,
-    );
     console.log("[pkg-buffControl], 4 ", valueEntries);
 
     // -- 5. Keep every placed value structure in sync with the buffer --------
@@ -113,7 +107,7 @@ export async function registerBufferControls<T extends object>(
     // -- 6. Custom picker: icon + path rows, category tabs, no sizes ---------
     // createVariablePicker({ list, title: config.pickerTitle, spriteFor });
     createPickerOverlay({
-        list,
+        list: buildList,
         /** Overlay id. Default `${modId}/picker`. */
         pickerId: "buffControl:",
         /** Overlay slot. Default "hotbar". */
@@ -128,5 +122,5 @@ export async function registerBufferControls<T extends object>(
         spriteIdFor: spriteFor,
     });
     console.log(`[${modId}] loaded ${pathCount} jsonBuffer paths`);
-    return { buffer, list, pathCount, refresh };
+    return { buffer, list: buildList, pathCount, refresh };
 }
