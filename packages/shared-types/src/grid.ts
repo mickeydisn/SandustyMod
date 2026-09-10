@@ -31,17 +31,10 @@ export type DirectionName =
     | "sides"
     | "cross";
 
-/*
-const DirectionIndex = {
-  | "top"
-  | "bottom"
-  | "left"
-  | "right"
-  | "sides"
-  | "cross";
-}
-*/
+/** Relative step on the grid — an alias of `Point` for delta call sites. */
+export type IDelta = Point;
 
+/** 8-compass delta for each `Direction` heading, indexed by heading value. */
 export const DELTAS_INDEX: Point[] = [
     { x: 0, y: -1 }, // UP
     { x: 1, y: -1 }, // RIGHT_UP
@@ -52,3 +45,18 @@ export const DELTAS_INDEX: Point[] = [
     { x: -1, y: 0 }, // LEFT
     { x: -1, y: -1 }, // LEFT_UP
 ];
+
+/** Which compass headings each `DirectionName` expands to. */
+export const DIR_NAME_MAP: Record<DirectionName, Direction[]> = {
+    top: [Direction.UP],
+    bottom: [Direction.DOWN],
+    left: [Direction.LEFT],
+    right: [Direction.RIGHT],
+    sides: [Direction.LEFT, Direction.RIGHT],
+    cross: [
+        Direction.RIGHT_UP,
+        Direction.RIGHT_DOWN,
+        Direction.LEFT_UP,
+        Direction.LEFT_DOWN,
+    ],
+};

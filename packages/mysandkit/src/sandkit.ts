@@ -46,6 +46,9 @@ export interface SandkitApi {
         register(def: Record<string, unknown>): { elementType: TElementType };
         replaceAtCell(x: number, y: number, t: TElementType): void;
         getResolvedTypeAtCell(x: number, y: number): number;
+        // Worker-thread simulation only (not reliable on the main thread).
+        swapCells(x: number, y: number, nx: number, ny: number): boolean;
+        moveBetweenCells(x: number, y: number, nx: number, ny: number): boolean;
 
         setPhysicsAtCell(x: number, y: number, skip: number): boolean; // 1 to skip , 0 to normal
         addParticleVelocityAtCell(

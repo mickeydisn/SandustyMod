@@ -1,4 +1,4 @@
 {
-  "name": "@sandmd/types",
-  "exports": "./index.ts"
+    "name": "@sandmd/types",
+    "exports": "./index.ts"
 }

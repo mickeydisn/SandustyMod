@@ -2,96 +2,69 @@
  * Worker entry — Sandustry simulation thread.
  * Build: deno task build:worker
  */
-
+import "@sandmd/sandkit";
 import { MOD_ID, VERSION } from "../shared/ids.ts";
+import { GridNear, runProfile } from "@sandmd/element-profiles";
+import { profiles } from "./definition/profiles.ts";
+import { ElementType } from "../shared/elements.ts";
 import { WaterCfg } from "./definition/config.ts";
 
-import { runProfile } from "./pipeline.ts";
-
-import { profiles } from "./definition/profiles.ts";
-import { GridNear } from "./utils/gridnear.ts";
-import { ElementTypeInWorker as ElementType } from "./elementResolve.ts";
-
 function dispatchSeed(
-  x: number,
-  y: number,
-  elementType: number,
-  c: any,
+    x: number,
+    y: number,
+    elementType: number,
+    cancel: any,
 ): boolean {
-  if (!WaterCfg.modEnabled()) return false;
+    if (!WaterCfg.modEnabled()) return false;
 
-  for (const getProfile of Object.values(profiles)) {
-    const profile = getProfile();
-    if (profile.seedType == null || elementType != profile.seedType) {
-      continue;
+    for (const getProfile of Object.values(profiles)) {
+        const profile = getProfile();
+        if (profile.seedType == null || elementType !== profile.seedType) {
+            continue;
+        }
+        if (
+            profile.liquidType == null || !GridNear.isNear(x, y, profile.liquidType)
+        ) {
+            continue;
+        }
+
+        // Reset physics so the seed can move, then run its profile.
+        sandkit.api.elements.setPhysicsAtCell(x, y, 1);
+        cancel.cancel();
+        runProfile(x, y, profile);
+
+        // Wake the seed's chunk and the cell above (next to fall).
+        sandkit.api.grid.reportActivityAtCell(x, y);
+        sandkit.api.grid.reportActivityAtCell(x, y - 1);
+        return true;
     }
-    if (
-      profile.liquidType == null || !GridNear.isNear(x, y, profile.liquidType)
-    ) {
-      continue;
-    }
 
-    // Reset physics for the seed cell to ensure it can move
-    sandkit.api.elements.setPhysicsAtCell(x, y, 1);
-    // Cancel the default behavior of the seed update to allow custom logic
-    c.cancel();
-    // Run the profile for the seed at the specified coordinates
-    runProfile(x, y, profile);
-
-    // Active Near Cell
-    sandkit.api.grid.reportActivityAtCell(x, y); // wake the seed's chunk
-    sandkit.api.grid.reportActivityAtCell(x, y - 1); // wake the cell ABOVE (next to fall)
-
-    return true;
-  }
-  sandkit.api.elements.setPhysicsAtCell(x, y, 0);
-  return false;
+    sandkit.api.elements.setPhysicsAtCell(x, y, 0);
+    return false;
 }
+
 try {
-  // sandkit.api.events.on(
-  //	"element:moved",
-  //	(payload) => {
-  sandkit.api.hooks.intercept(
-    "element:update",
-    (payload, cancel) => {
-      try {
-        const p = payload as { x: number; y: number; elementType?: number };
-        const isDispatch = dispatchSeed(p.x, p.y, p.elementType || 0, cancel);
-        return isDispatch;
-      } catch (e) {
-        console.error('hooks.intercept("element:updated")', e);
-      }
-    },
-    { guard: { elementType: ElementType.astroSeed } },
-  );
+    const seedTypes = [
+        ElementType.astroSeed,
+        ElementType.astroGoldPowder,
+        ElementType.astroCopperPowder,
+    ];
 
-  sandkit.api.hooks.intercept(
-    "element:update",
-    (payload, cancel) => {
-      try {
-        const p = payload as { x: number; y: number; elementType?: number };
-        const isDispatch = dispatchSeed(p.x, p.y, p.elementType || 0, cancel);
-        return isDispatch;
-      } catch (e) {
-        console.error('hooks.intercept("element:updated")', e);
-      }
-    },
-    { guard: { elementType: ElementType.astroGoldPowder } },
-  );
-
-  sandkit.api.hooks.intercept(
-    "element:update",
-    (payload, cancel) => {
-      try {
-        const p = payload as { x: number; y: number; elementType?: number };
-        const isDispatch = dispatchSeed(p.x, p.y, p.elementType || 0, cancel);
-        return isDispatch;
-      } catch (e) {
-        console.error('hooks.intercept("element:updated")', e);
-      }
-    },
-    { guard: { elementType: ElementType.astroCopperPowder } },
-  );
+    for (const elementType of seedTypes) {
+        if (!elementType) continue;
+        sandkit.api.hooks.intercept(
+            "element:update",
+            (payload, cancel) => {
+                try {
+                    const p = payload as { x: number; y: number; elementType?: number };
+                    return dispatchSeed(p.x, p.y, p.elementType || 0, cancel);
+                } catch (e) {
+                    console.error('hooks.intercept("element:update")', e);
+                }
+            },
+            { guard: { elementType } },
+        );
+    }
 } catch (e) {
-  console.error(`[${MOD_ID} v${VERSION}] moved failed:`, e);
+    console.error(`[${MOD_ID} v${VERSION}] update intercept failed:`, e);
 }

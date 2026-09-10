@@ -1,0 +1,7 @@
+{
+    "name": "@sandmd/element-profiles",
+    "exports": "./src/index.ts",
+    "compilerOptions": {
+        "lib": ["deno.window", "dom"]
+    }
+}

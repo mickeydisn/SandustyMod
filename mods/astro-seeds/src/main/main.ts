@@ -10,24 +10,24 @@ import { registerElement } from "./register.ts";
 import { safe } from "../shared/utils.ts";
 
 try {
-  const api = sandkit.api;
-  // CALL i18nRegister
-  registerI18n();
+    const api = sandkit.api;
+    // CALL i18nRegister
+    registerI18n();
 
-  // Register Element
-  registerElement();
+    // Register Element
+    registerElement();
 
-  mountPanel();
-  pushBuffer();
+    mountPanel();
+    pushBuffer();
 
-  // MESSAGE TO USER
-  safe(() =>
-    api.events.on("game:ready", () => {
-      api.ui.toast(`Astro Seeds v${VERSION} — Alt+A panel`, {});
-    })
-  );
-  console.log(`[${MOD_ID} v${VERSION}] main loaded `);
+    // MESSAGE TO USER
+    safe(() =>
+        api.events.on("game:ready", () => {
+            api.ui.toast(`Astro Seeds v${VERSION} — Alt+A panel`, {});
+        })
+    );
+    console.log(`[${MOD_ID} v${VERSION}] main loaded `);
 } catch (e) {
-  console.log(e);
+    console.log(e);
 }
 /*  */
