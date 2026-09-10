@@ -2,7 +2,7 @@
  * Single source of truth for water/runtime config.
  * Add a field here → buffer slot, defaults, and panel row follow.
  */
-import { TElementType } from "@sandmd/types";
+import { TElementType } from "@sandmd/shared";
 
 export const BUF_LENGTH = 32;
 

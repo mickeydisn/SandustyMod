@@ -3,11 +3,11 @@
  * Build: deno task build:worker
  */
 import "@sandmd/sandkit";
-import { MOD_ID, VERSION } from "../shared/ids.ts";
+import { MOD_ID, VERSION } from "../config/ids.ts";
 import { GridNear, runProfile } from "@sandmd/element-profiles";
-import { ElementType } from "../shared/elements/index.ts";
-import { PROFILE_SPECS, profiles } from "./definition/profiles.ts";
-import { WaterCfg } from "./definition/config.ts";
+import { ElementType } from "../shared/resolve.ts";
+import { WaterCfg } from "./config.ts";
+import { PROFILE_SPECS, profiles } from "../config/profileCatalogue.ts";
 
 function dispatchSeed(
     x: number,

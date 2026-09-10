@@ -5,9 +5,12 @@
  * `createElementProfileFactory` builds the lazy closures, so adding a
  * conf = adding one spec object. Reusable via createProfileFactories.
  */
-import { forceEntries, WaterCfg } from "./config.ts";
-import type { ProfileSpec } from "./elementProfileFactory.ts";
-import { createElementProfileFactory, createProfileFactories } from "./elementProfileFactory.ts";
+import { forceEntries, WaterCfg } from "../worker/config.ts";
+import type { ProfileSpec } from "../worker/elementProfileFactory.ts";
+import {
+    createElementProfileFactory,
+    createProfileFactories,
+} from "../worker/elementProfileFactory.ts";
 
 /** All seed behaviours, grouped per element. */
 export const PROFILE_SPECS: readonly ProfileSpec[] = [

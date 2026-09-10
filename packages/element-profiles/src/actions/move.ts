@@ -9,7 +9,7 @@ import {
     type DirectionName,
     type IDelta,
     type TElementType,
-} from "@sandmd/types";
+} from "@sandmd/shared";
 import { Grid } from "../grid.ts";
 import type { Ctx, MoveFn } from "../types.ts";
 import { resolveNum } from "../resolve.ts";

@@ -2,7 +2,7 @@
  * Neighbourhood queries over the 8 compass headings — "is anything X near this
  * cell" style checks used by the growth actions.
  */
-import { DELTAS_INDEX, type IDelta, type TElementType } from "@sandmd/types";
+import { DELTAS_INDEX, type IDelta, type TElementType } from "@sandmd/shared";
 import { Grid } from "./grid.ts";
 
 export const GridNear = {

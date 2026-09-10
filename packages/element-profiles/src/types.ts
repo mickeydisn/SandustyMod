@@ -7,8 +7,8 @@
  * it can be shared verbatim between the worker (which simulates) and the main
  * thread (which edits config via the panel).
  */
-import type { TElementType } from "@sandmd/types";
-import type { DirectionName } from "@sandmd/types";
+import type { TElementType } from "@sandmd/shared";
+import type { DirectionName } from "@sandmd/shared";
 
 export interface Vec2 {
     x: number;

@@ -1,5 +1,5 @@
 // import { SandkitReact } from "./react.ts";
-import { SandkitSprite, SandkitStructure, StructureLike } from "./structure.ts";
+import { SandkitSprite, SandkitStructure, StructureLike } from "@sandmd/shared";
 import type { SandkitReact } from "./react.ts";
 
 export type TElementType = number;

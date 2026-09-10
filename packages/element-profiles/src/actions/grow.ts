@@ -2,7 +2,7 @@
  * Growth actions. Each factory returns a `GrowFn` that reports whether the
  * seed "matured" this tick (and by how much age) or explicitly says no-match.
  */
-import type { IDelta, TElementType } from "@sandmd/types";
+import type { IDelta, TElementType } from "@sandmd/shared";
 import type { GrowFn, GrowResult } from "../types.ts";
 import { Grid } from "../grid.ts";
 import { GridNear } from "../near.ts";

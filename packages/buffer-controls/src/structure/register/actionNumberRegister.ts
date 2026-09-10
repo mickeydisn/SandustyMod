@@ -9,7 +9,7 @@
  */
 import "@sandmd/sandkit";
 
-import type { StructureLike } from "@sandmd/sandkit";
+import type { StructureLike } from "@sandmd/shared";
 import { type ActionOp, ActionRegisterResult, applyAction } from "./actionRegister.ts";
 import { buildSectionTooltips, makeShape, sectionBuild } from "../shared.ts";
 import type { registerStructureOps } from "../register.ts";
@@ -94,7 +94,7 @@ export function registerActionNumberStructures(
     return {
         refreshSignals: (): void => {
             for (const a of actionItems) {
-                sandkit.api.structures.forEachOfType(a.typeId, (structure) => {
+                sandkit.api.structures.forEachOfType(a.typeId, (structure: StructureLike) => {
                     pushSignal(structure);
                 });
             }

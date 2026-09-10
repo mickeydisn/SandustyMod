@@ -1,6 +1,6 @@
 const api = sandkit.api;
 import { ASTRO_ELEMENTS } from "../shared/elements/index.ts";
-import { MOD_ID } from "../shared/ids.ts";
+import { MOD_ID } from "../config/ids.ts";
 
 export const registerI18n = () => {
     api.i18n.register("en", {

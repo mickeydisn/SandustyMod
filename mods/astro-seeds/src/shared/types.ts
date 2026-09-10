@@ -5,7 +5,8 @@
  * physics and toolbox concerns live together so `catalogue.ts` is the single
  * source of truth. Worker/main/panel all derive from it.
  */
-import type { TElementType } from "@sandmd/types";
+import type { TElementType } from "@sandmd/shared";
+import { CrystalSpec, GrowSpec, MoveSpec, NumThunk } from "../worker/elementProfileFactory.ts";
 
 export type TVanillaElementKey =
     | "liquidGold"
@@ -69,3 +70,32 @@ export interface ReactionSpec {
     outputA: TElementTypeKey | null;
     outputB: TElementTypeKey | null;
 }
+
+// ------------------------------------__
+
+/** Full declarative description of one seed profile. */
+export type ProfileSpec = {
+    // Identity
+    id: string;
+    seedKey: TElementTypeKey;
+    liquidKey: TElementTypeKey;
+    crystalKey: TElementTypeKey;
+    // Maturity
+    growAge: NumThunk;
+    // Pipeline phases
+    moves: MoveSpec[];
+    grow: GrowSpec[];
+    crystallization: CrystalSpec[];
+    // Guards evaluated at build time (e.g. panel toggles)
+    whenMove?: () => boolean;
+    whenGrow?: () => boolean;
+    whenCrystal?: () => boolean;
+};
+
+// ------------------------------------
+
+export type ElementConfig = {
+    spec: AstroElementSpec;
+    reactions: ReactionSpec[];
+    profiles?: ProfileSpec[];
+};

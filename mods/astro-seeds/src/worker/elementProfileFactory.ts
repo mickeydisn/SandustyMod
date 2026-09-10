@@ -13,9 +13,9 @@ import type {
     Profile,
 } from "@sandmd/element-profiles";
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles";
-import { ASTRO_FIELD } from "../../shared/ids.ts";
-import { ElementType } from "../../shared/elements/index.ts";
-import type { TElementTypeKey } from "../../shared/elements/index.ts";
+import { ASTRO_FIELD } from "../config/ids.ts";
+import { TElementTypeKey } from "../shared/types.ts";
+import { ElementType } from "../shared/resolve.ts";
 
 /** Live numeric thunk — literal or config reader, resolved per tick. */
 export type NumThunk = number | (() => number);

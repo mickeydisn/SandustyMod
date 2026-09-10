@@ -4,7 +4,7 @@
  * breaks the profile loop.
  */
 import "@sandmd/sandkit";
-import type { TElementType } from "@sandmd/types";
+import type { TElementType } from "@sandmd/shared";
 
 export const Grid = {
     // TYPE

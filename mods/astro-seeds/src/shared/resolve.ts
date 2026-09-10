@@ -5,10 +5,10 @@
  * grouped catalogue so registration and resolution never drift apart.
  */
 import "@sandmd/sandkit";
-import { ASTRO_ELEMENTS } from "./catalogue.ts";
-import { safe } from "../utils.ts";
+import { ASTRO_ELEMENTS } from "../config/util.ts";
+import { safe } from "./utils.ts";
 import type { TElementTypeIDs, TVanillaElementKey } from "./types.ts";
-import type { TElementType } from "@sandmd/types";
+import type { TElementType } from "@sandmd/shared";
 
 function resolveType(ids: string[]): TElementType {
     for (const id of ids) {

@@ -5,16 +5,16 @@
  * physics, toolbox label and worker role. Add a field here and registration,
  * i18n, panel toolbox and profiles follow without a second source of truth.
  */
-import { MOD_ID } from "../ids.ts";
-import { safe } from "../utils.ts";
-import type { AstroElementSpec, ReactionSpec, TAstroElementKey } from "./types.ts";
+import { MOD_ID } from "./ids.ts";
+import { safe } from "../shared/utils.ts";
+import type { AstroElementSpec, ReactionSpec, TAstroElementKey } from "../shared/types.ts";
 
-function matterPowder(): number {
+export function matterPowder(): number {
     const MatterType = safe(() => sandkit.enums?.MatterType) as Record<string, number> | null;
     return MatterType?.Powder ?? 8;
 }
 
-function matterStatic(): number {
+export function matterStatic(): number {
     const MatterType = safe(() => sandkit.enums?.MatterType) as Record<string, number> | null;
     return MatterType?.Static ?? 5;
 }
@@ -23,7 +23,7 @@ function matterStatic(): number {
 const LIQUID_COPPER_DENSITY = 150;
 const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
 
-function spec(entry: Omit<AstroElementSpec, "id"> & { slug: string }): AstroElementSpec {
+export function spec(entry: Omit<AstroElementSpec, "id"> & { slug: string }): AstroElementSpec {
     return { ...entry, id: `${MOD_ID}:${entry.slug}` };
 }
 
@@ -143,8 +143,8 @@ export const ASTRO_ELEMENT_BY_KEY: Record<TAstroElementKey, AstroElementSpec> = 
 /** Contact reactions described with keys — resolved to types at register time. */
 export const ASTRO_REACTIONS: readonly ReactionSpec[] = [
     { inputA: "seedBase", inputB: "voidPetal", outputA: "astroVoidSeed", outputB: null },
-    { inputA: "astroVoidSeed", inputB: "florinol", outputA: "astroSeed", outputB: null },
     { inputA: "astroGoldCrystal", inputB: "fire", outputA: "astroGoldPowder", outputB: "fire" },
+    { inputA: "astroVoidSeed", inputB: "florinol", outputA: "astroSeed", outputB: null },
     { inputA: "astroCopperCrystal", inputB: "fire", outputA: "astroCopperPowder", outputB: "fire" },
     { inputA: "astroWaterCrystal", inputB: "fire", outputA: "astroWaterPowder", outputB: "fire" },
 ];

@@ -2,7 +2,7 @@
  * Main-thread registration — elements, reactions, tech.
  * All content derives from the grouped catalogues (no inline element data).
  */
-import { MOD_ID } from "../shared/ids.ts";
+import { MOD_ID } from "../config/ids.ts";
 import { ASTRO_ELEMENTS, ASTRO_REACTIONS } from "../shared/elements/index.ts";
 import { ElementType } from "../shared/elements/index.ts";
 import { safe } from "../shared/utils.ts";

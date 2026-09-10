@@ -3,7 +3,7 @@
  */
 import "@sandmd/sandkit";
 
-import { MOD_ID, VERSION } from "../shared/ids.ts";
+import { MOD_ID, VERSION } from "../config/ids.ts";
 import { mountPanel, pushBuffer } from "./panel.ts";
 import { registerI18n } from "./i18n.ts";
 import { registerElement } from "./register.ts";

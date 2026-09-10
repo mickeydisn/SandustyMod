@@ -4,7 +4,7 @@
  * type, then resets the seed's age field.
  */
 import "@sandmd/sandkit";
-import type { TElementType } from "@sandmd/types";
+import type { TElementType } from "@sandmd/shared";
 import type { CrystallizeFn, Ctx } from "../types.ts";
 import { Grid } from "../grid.ts";
 import { GridNear } from "../near.ts";

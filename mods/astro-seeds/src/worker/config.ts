@@ -5,12 +5,12 @@ import {
     DEFAULT_FORCE_CONFIG,
     JSON_BUF_LENGTH,
     JSON_COUNTER_INDEX,
-} from "../../shared/configSchema.ts";
+} from "../config/configSchema.ts";
 import type { ColumnForceEntry, ForceConfig } from "@sandmd/element-profiles";
-import type { DirectionName } from "@sandmd/types";
-import type { TElementType } from "../../shared/elements/index.ts";
+import type { DirectionName } from "@sandmd/shared";
+import type { TElementType } from "@sandmd/shared";
 
-import { MOD_ID, VERSION } from "../../shared/ids.ts";
+import { MOD_ID, VERSION } from "../config/ids.ts";
 
 let cfgBuf: Uint16Array | null = null;
 try {

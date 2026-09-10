@@ -14,10 +14,10 @@ import {
     JSON_COUNTER_INDEX,
 } from "../shared/configSchema.ts";
 import type { ColumnForceEntry, ForceConfig } from "@sandmd/element-profiles";
-import type { DirectionName } from "@sandmd/types";
+import type { DirectionName } from "@sandmd/shared";
 import type { TElementType } from "../shared/elements/index.ts";
 import { ASTRO_ELEMENTS } from "../shared/elements/index.ts";
-import { MOD_ID, VERSION } from "../shared/ids.ts";
+import { MOD_ID, VERSION } from "../config/ids.ts";
 import { safe } from "../shared/utils.ts";
 
 type ReactLike = {
