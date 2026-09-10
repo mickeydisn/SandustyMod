@@ -199,9 +199,16 @@ Storage (durable)                 Shared memory (live)
 
 ## Example
 
-See [`exemple/main.ts`](./exemple/main.ts) for five worked entry points:
-lifecycle, dot/bracket paths + introspection, subscriptions, `assertShape`
-validation, and two buffers staying in sync over one shared key.
+Worked entry points live under [`exemple/`](./exemple), one subdirectory per type:
+
+- [`exemple/jsonBuffer/main.ts`](./exemple/jsonBuffer/main.ts) — the plain
+  versioned JSON mailbox (`JsonBuffer`): two instances sharing one key, the
+  version gate, path access, introspection and subscriptions.
+- [`exemple/jsonMapBuffer/main.ts`](./exemple/jsonMapBuffer/main.ts) — the
+  atomic-counter variant (`JsonMapBuffer`): auto-mapped numeric leaves, the
+  race-free `increment()` CAS loop, per-path logs, and cross-thread visibility.
+
+Each file documents its own run command from the repo root.
 
 ## What can be planned next ?
 

@@ -92,20 +92,19 @@ export async function registerBufferControls<T extends object>(
         }
     };
 
-    // React to local commits (including action clicks) AND to changes another
-    // side wrote: pull() is a cheap version-compare and fires the subscription
-    // only on a real change. The 500 ms poll mirrors the pattern the game uses.
+    // React to local commits — every buffer write in this mod happens on the
+    // main thread (action structures call writeBuffer() -> commit()), so the
+    // subscribe/notify path below covers all changes. No polling needed.
+    // If a worker ever writes the buffer too, have it push a custom event via
+    // sandkit.api.main.emitEvent("buffer:changed") (worker side) and pull() it
+    // in a listener here instead of re-adding a setInterval.
     buffer.subscribe(() => refresh());
-    setInterval(() => {
-        buffer.pull();
-    }, 500);
     // Refresh once so value structures placed in an earlier session pick up
     // the current buffer value immediately, then on new placements too.
     refresh();
     sandkit.api.events?.on?.("building:placed", () => refresh());
 
-    // -- 6. Custom picker: icon + path rows, category tabs, no sizes ---------
-    // createVariablePicker({ list, title: config.pickerTitle, spriteFor });
+    // -- 6. Custom picker: icon + path rows, category tabs -------------------
     createPickerOverlay({
         list: buildList,
         /** Overlay id. Default `${modId}/picker`. */

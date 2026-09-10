@@ -16,6 +16,7 @@ export class JsonBuffer<T extends object> {
 
     private cache: T;
     private localVersion: number;
+    private useAtomics = true;
 
     private listeners = new Set<(state: T) => void>();
     private notify = () => {
@@ -44,6 +45,14 @@ export class JsonBuffer<T extends object> {
             type: "int32",
             length: 1,
         }) as Int32Array;
+        // sandkit's shared buffers are backed by SharedArrayBuffer, so Atomics
+        // work; fall back to plain reads/writes if the host returns a plain buffer.
+        try {
+            Atomics.load(this.versionView, 0);
+        } catch {
+            console.log("ATOMIC ---");
+            this.useAtomics = false;
+        }
         this.dataView = ensureBuffer(`${key}:json`, {
             type: "uint8",
             length: DEFAULT_MAX_BYTES,
@@ -71,7 +80,7 @@ export class JsonBuffer<T extends object> {
     }
 
     public remoteVersion = () => {
-        return this.versionView[0];
+        return this.useAtomics ? Atomics.load(this.versionView, 0) : this.versionView[0];
     };
     public version = () => {
         return this.localVersion;
@@ -126,7 +135,11 @@ export class JsonBuffer<T extends object> {
     public commit() {
         this.assertShape?.(this.cache);
         encodeJsonInBuffer(this.dataView, this.cache);
-        this.localVersion = this.remoteVersion() + 1;
+        // Bump the SHARED version counter atomically so sibling workers/instances
+        // see the new version; falls back to a plain write when Atomics is unavailable.
+        this.localVersion = this.useAtomics
+            ? Atomics.add(this.versionView, 0, 1) + 1
+            : (this.versionView[0] += 1);
         this.notify();
     }
 

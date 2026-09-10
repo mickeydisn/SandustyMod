@@ -271,6 +271,7 @@ var JsonBuffer = class {
   assertShape;
   cache;
   localVersion;
+  useAtomics = true;
   listeners = /* @__PURE__ */ new Set();
   notify = () => {
     for (const fn of this.listeners) fn(this.cache);
@@ -290,6 +291,12 @@ var JsonBuffer = class {
       type: "int32",
       length: 1
     });
+    try {
+      Atomics.load(this.versionView, 0);
+    } catch {
+      console.log("ATOMIC ---");
+      this.useAtomics = false;
+    }
     this.dataView = ensureBuffer(`${key}:json`, {
       type: "uint8",
       length: DEFAULT_MAX_BYTES
@@ -309,7 +316,7 @@ var JsonBuffer = class {
     }
   }
   remoteVersion = () => {
-    return this.versionView[0];
+    return this.useAtomics ? Atomics.load(this.versionView, 0) : this.versionView[0];
   };
   version = () => {
     return this.localVersion;
@@ -351,7 +358,7 @@ var JsonBuffer = class {
   commit() {
     this.assertShape?.(this.cache);
     encodeJsonInBuffer(this.dataView, this.cache);
-    this.localVersion = this.remoteVersion() + 1;
+    this.localVersion = this.useAtomics ? Atomics.add(this.versionView, 0, 1) + 1 : this.versionView[0] += 1;
     this.notify();
   }
   save() {
@@ -1703,9 +1710,6 @@ async function registerBufferControls(config) {
     }
   };
   buffer.subscribe(() => refresh());
-  setInterval(() => {
-    buffer.pull();
-  }, 500);
   refresh();
   sandkit.api.events?.on?.("building:placed", () => refresh());
   createPickerOverlay({
