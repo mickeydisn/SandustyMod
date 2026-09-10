@@ -1,5 +1,5 @@
 const api = sandkit.api;
-import { elementConfig } from "../shared/elementConfig.ts";
+import { ASTRO_ELEMENTS } from "../shared/elements/index.ts";
 import { MOD_ID } from "../shared/ids.ts";
 
 export const registerI18n = () => {
@@ -8,7 +8,7 @@ export const registerI18n = () => {
         [`${MOD_ID}.tech.description`]: "Seed–crystal profiles over liquids.",
     });
 
-    for (const [_, conf] of Object.entries(elementConfig)) {
+    for (const conf of ASTRO_ELEMENTS) {
         api.i18n.register("en", {
             [`${conf.id}|name`]: conf.name,
             [`${conf.id}|description`]: conf.description,

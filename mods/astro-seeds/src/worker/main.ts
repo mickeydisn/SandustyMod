@@ -5,8 +5,8 @@
 import "@sandmd/sandkit";
 import { MOD_ID, VERSION } from "../shared/ids.ts";
 import { GridNear, runProfile } from "@sandmd/element-profiles";
-import { profiles } from "./definition/profiles.ts";
-import { ElementType } from "../shared/elements.ts";
+import { ElementType } from "../shared/elements/index.ts";
+import { PROFILE_SPECS, profiles } from "./definition/profiles.ts";
 import { WaterCfg } from "./definition/config.ts";
 
 function dispatchSeed(
@@ -44,11 +44,9 @@ function dispatchSeed(
 }
 
 try {
-    const seedTypes = [
-        ElementType.astroSeed,
-        ElementType.astroGoldPowder,
-        ElementType.astroCopperPowder,
-    ];
+    // Seeds driven by the worker loop — one hook per distinct seedKey in specs.
+    const seedKeys = [...new Set(PROFILE_SPECS.map((s) => s.seedKey))];
+    const seedTypes = seedKeys.map((k) => ElementType[k]);
 
     for (const elementType of seedTypes) {
         if (!elementType) continue;

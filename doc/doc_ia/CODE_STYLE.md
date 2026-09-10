@@ -2,14 +2,6 @@
 
 This document distills the conventions currently in use across the
 `@sandmd/*` packages so future development follows the same patterns.
-It is **derived from real code**, not aspirational rules:
-
-- `packages/catalogue/src/strucutre/*` — data model + structure factory
-- `packages/catalogue/src/list/*` — catalogue + selection controller
-- `packages/catalogue/src/picker/*` — overlay / UI-agnostic picker
-- `packages/buffer/src/**` — shared-buffer JSON store + path utilities
-
-Use this as a checklist when writing new code in the workspace.
 
 ---
 

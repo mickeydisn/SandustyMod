@@ -8,7 +8,7 @@ import {
 } from "../../shared/configSchema.ts";
 import type { ColumnForceEntry, ForceConfig } from "@sandmd/element-profiles";
 import type { DirectionName } from "@sandmd/types";
-import type { TElementType } from "../../shared/elementTypes.ts";
+import type { TElementType } from "../../shared/elements/index.ts";
 
 import { MOD_ID, VERSION } from "../../shared/ids.ts";
 

@@ -15,7 +15,8 @@ import {
 } from "../shared/configSchema.ts";
 import type { ColumnForceEntry, ForceConfig } from "@sandmd/element-profiles";
 import type { DirectionName } from "@sandmd/types";
-import type { TElementType } from "../shared/elementTypes.ts";
+import type { TElementType } from "../shared/elements/index.ts";
+import { ASTRO_ELEMENTS } from "../shared/elements/index.ts";
 import { MOD_ID, VERSION } from "../shared/ids.ts";
 import { safe } from "../shared/utils.ts";
 
@@ -77,17 +78,20 @@ const forceToolbox = new Set<string>(); // e.g. "3:matchTypes", "0:excludeTypes"
 let jsonCounter = 0;
 
 // Toolbox options for match/free/exclude type lists (creative-mode style).
-const FORCE_TYPE_CANDIDATES: readonly { id: string; label: string }[] = [
+// Derived from the grouped catalogue — add an element there and it appears.
+const VANILLA_CANDIDATES: readonly { id: string; label: string }[] = [
     { id: "water", label: "Water" },
     { id: "liquidGold", label: "Gold liq." },
     { id: "liquidCopper", label: "Copper liq." },
-    { id: `${MOD_ID}:astro-seed`, label: "Seed" },
-    { id: `${MOD_ID}:astro-gold-crystal`, label: "Cry. Gold" },
-    { id: `${MOD_ID}:astro-copper-crystal`, label: "Cry. Copper" },
-    { id: `${MOD_ID}:astro-water-crystal`, label: "Cry. Water" },
-    { id: `${MOD_ID}:astro-gold`, label: "Astro Gold" },
-    { id: `${MOD_ID}:astro-copper`, label: "Astro Copper" },
-    { id: `${MOD_ID}:astro-water`, label: "Astro Water" },
+];
+
+function catalogueCandidates(): { id: string; label: string }[] {
+    return ASTRO_ELEMENTS.map((e) => ({ id: e.id, label: e.toolboxLabel }));
+}
+
+const FORCE_TYPE_CANDIDATES: readonly { id: string; label: string }[] = [
+    ...VANILLA_CANDIDATES,
+    ...catalogueCandidates(),
 ];
 
 // Lazily-resolved toolbox options — resolved on first render (after element
@@ -643,7 +647,7 @@ export function mountPanel(): void {
                 ),
                 ...bools.map((f) => h(Toggle, { key: f.key, field: f })),
                 ...nums.map((f) => h(Stepper, { key: f.key, field: f })),
-                !!state.stepForceMove ? h(ForceEditor, { key: "forceEditor" }) : null,
+                state.stepForceMove ? h(ForceEditor, { key: "forceEditor" }) : null,
             );
         };
 

@@ -366,6 +366,9 @@ var JsonBuffer = class {
   }
 };
 
+// ../../packages/buffer/src/json-map-buffer.ts
+var DEFAULT_MAX_BYTES2 = 64 * 1024;
+
 // ../../packages/catalogue/src/list/createBuildList.ts
 var MIRROR_SUFFIX = "~mirrored";
 function compareSizes(a, b) {

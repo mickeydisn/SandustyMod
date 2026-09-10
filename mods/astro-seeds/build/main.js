@@ -251,10 +251,7 @@ var DEFAULT_FORCE_CONFIG = {
   ]
 };
 
-// src/main/panel.ts
-var api = sandkit.api;
-var React = sandkit.react;
-var h = React?.createElement.bind(React);
+// src/shared/utils.ts
 function safe(fn, fallback = null) {
   try {
     return fn();
@@ -262,6 +259,372 @@ function safe(fn, fallback = null) {
     return fallback;
   }
 }
+
+// src/shared/elements/catalogue.ts
+function matterPowder() {
+  const MatterType = safe(() => sandkit.enums?.MatterType);
+  return MatterType?.Powder ?? 8;
+}
+function matterStatic() {
+  const MatterType = safe(() => sandkit.enums?.MatterType);
+  return MatterType?.Static ?? 5;
+}
+var LIQUID_COPPER_DENSITY = 150;
+var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
+function spec(entry) {
+  return {
+    ...entry,
+    id: `${MOD_ID}:${entry.slug}`
+  };
+}
+var ASTRO_ELEMENTS = [
+  spec({
+    key: "astroVoidSeed",
+    slug: "astro-void-seed",
+    name: "Astro Void Seed",
+    description: "Mix with Florinol \u2192 Astro Seed.",
+    colors: [
+      [
+        80,
+        40,
+        140
+      ],
+      [
+        60,
+        20,
+        110
+      ],
+      [
+        100,
+        50,
+        160
+      ]
+    ],
+    density: 90,
+    metaColor: 5253260,
+    matterType: matterPowder(),
+    toolboxLabel: "Void Seed",
+    isSeed: false,
+    isCrystal: false
+  }),
+  spec({
+    key: "astroSeed",
+    slug: "astro-seed",
+    name: "Astro Seed",
+    description: "Liquid Gold / Copper / Water \u2192 crystals.",
+    colors: [
+      [
+        180,
+        220,
+        255
+      ],
+      [
+        140,
+        190,
+        255
+      ],
+      [
+        100,
+        160,
+        240
+      ],
+      [
+        220,
+        240,
+        255
+      ]
+    ],
+    density: SEED_DENSITY,
+    metaColor: 9357567,
+    matterType: matterPowder(),
+    toolboxLabel: "Seed",
+    isSeed: true,
+    isCrystal: false
+  }),
+  spec({
+    key: "astroGoldCrystal",
+    slug: "astro-gold-crystal",
+    name: "Astro Gold Crystal",
+    description: "From Liquid Gold. Burn \u2192 Astro Gold.",
+    colors: [
+      [
+        210,
+        160,
+        255
+      ],
+      [
+        180,
+        120,
+        240
+      ],
+      [
+        230,
+        190,
+        255
+      ],
+      [
+        160,
+        90,
+        220
+      ]
+    ],
+    density: 200,
+    metaColor: 11827440,
+    matterType: matterStatic(),
+    toolboxLabel: "Cry. Gold",
+    isSeed: false,
+    isCrystal: true
+  }),
+  spec({
+    key: "astroGoldPowder",
+    slug: "astro-gold",
+    name: "Astro Gold Powder",
+    description: "Powder from gold crystal + Fire.",
+    colors: [
+      [
+        180,
+        255,
+        90
+      ],
+      [
+        150,
+        230,
+        60
+      ]
+    ],
+    density: SEED_DENSITY,
+    metaColor: 11819760,
+    matterType: matterPowder(),
+    toolboxLabel: "Astro Gold",
+    isSeed: true,
+    isCrystal: false
+  }),
+  spec({
+    key: "astroCopperCrystal",
+    slug: "astro-copper-crystal",
+    name: "Astro Copper Crystal",
+    description: "From Liquid Copper. Burn \u2192 Astro Copper.",
+    colors: [
+      [
+        200,
+        120,
+        80
+      ],
+      [
+        180,
+        90,
+        50
+      ],
+      [
+        220,
+        140,
+        90
+      ],
+      [
+        160,
+        70,
+        40
+      ]
+    ],
+    density: 0,
+    metaColor: 13138e3,
+    matterType: matterStatic(),
+    toolboxLabel: "Cry. Copper",
+    isSeed: false,
+    isCrystal: true
+  }),
+  spec({
+    key: "astroCopperPowder",
+    slug: "astro-copper",
+    name: "Astro Copper",
+    description: "Powder from copper crystal + Fire.",
+    colors: [
+      [
+        240,
+        80,
+        40
+      ],
+      [
+        180,
+        60,
+        20
+      ]
+    ],
+    density: SEED_DENSITY,
+    metaColor: 11822120,
+    matterType: matterPowder(),
+    toolboxLabel: "Astro Copper",
+    isSeed: true,
+    isCrystal: false
+  }),
+  spec({
+    key: "astroWaterCrystal",
+    slug: "astro-water-crystal",
+    name: "Astro Water Crystal",
+    description: "From Water (panel). Burn \u2192 Astro Water.",
+    colors: [
+      [
+        60,
+        100,
+        155
+      ],
+      [
+        40,
+        90,
+        155
+      ],
+      [
+        0,
+        60,
+        155
+      ]
+    ],
+    density: 0,
+    metaColor: 9357567,
+    matterType: matterStatic(),
+    toolboxLabel: "Cry. Water",
+    isSeed: false,
+    isCrystal: true
+  }),
+  spec({
+    key: "astroWaterPowder",
+    slug: "astro-water",
+    name: "Astro Water",
+    description: "Powder from water crystal + Fire.",
+    colors: [
+      [
+        180,
+        120,
+        155
+      ],
+      [
+        180,
+        90,
+        155
+      ],
+      [
+        220,
+        140,
+        155
+      ]
+    ],
+    density: 280,
+    metaColor: 9357567,
+    matterType: matterPowder(),
+    toolboxLabel: "Astro Water",
+    isSeed: true,
+    isCrystal: false
+  })
+];
+var ASTRO_ELEMENT_BY_KEY = Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
+  e.key,
+  e
+]));
+var ASTRO_REACTIONS = [
+  {
+    inputA: "seedBase",
+    inputB: "voidPetal",
+    outputA: "astroVoidSeed",
+    outputB: null
+  },
+  {
+    inputA: "astroVoidSeed",
+    inputB: "florinol",
+    outputA: "astroSeed",
+    outputB: null
+  },
+  {
+    inputA: "astroGoldCrystal",
+    inputB: "fire",
+    outputA: "astroGoldPowder",
+    outputB: "fire"
+  },
+  {
+    inputA: "astroCopperCrystal",
+    inputB: "fire",
+    outputA: "astroCopperPowder",
+    outputB: "fire"
+  },
+  {
+    inputA: "astroWaterCrystal",
+    inputB: "fire",
+    outputA: "astroWaterPowder",
+    outputB: "fire"
+  }
+];
+
+// src/shared/elements/resolve.ts
+function resolveType(ids) {
+  for (const id of ids) {
+    const t = safe(() => sandkit.api.elements.getTypeFromId(id));
+    if (t != null) return t;
+  }
+  return 0;
+}
+var VANILLA_ALIASES = {
+  liquidGold: [
+    "liquidGold",
+    "liquidgold",
+    "LiquidGold",
+    "goldLiquid",
+    "liquid_gold"
+  ],
+  liquidCopper: [
+    "liquidCopper",
+    "liquidcopper",
+    "LiquidCopper",
+    "copperLiquid",
+    "liquid_copper"
+  ],
+  florinol: [
+    "florinol",
+    "Florinol",
+    "florin",
+    "Florin"
+  ],
+  voidPetal: [
+    "voidPetal",
+    "voidpetal",
+    "VoidPetal",
+    "void_petal",
+    "petalium"
+  ],
+  seedBase: [
+    "seed",
+    "Seed"
+  ],
+  fire: [
+    "fire",
+    "Fire"
+  ],
+  water: [
+    "water",
+    "Water"
+  ]
+};
+function resolveVanilla() {
+  return Object.fromEntries(Object.entries(VANILLA_ALIASES).map(([key, aliases]) => [
+    key,
+    resolveType(aliases)
+  ]));
+}
+function resolveAstro() {
+  return Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
+    e.key,
+    resolveType([
+      e.id
+    ])
+  ]));
+}
+var ElementType = {
+  ...resolveVanilla(),
+  ...resolveAstro()
+};
+
+// src/main/panel.ts
+var api = sandkit.api;
+var React = sandkit.react;
+var h = React?.createElement.bind(React);
 function toast(msg) {
   safe(() => api.ui.toast(msg));
 }
@@ -271,7 +634,7 @@ function isModEnabled() {
 }
 var state = createDefaultState();
 var panelOpen = true;
-var buf = api.shared.buffers.create("astroConfig", {
+var buf = api.shared.buffers.ensure("astroConfig", {
   type: "uint16",
   length: BUF_LENGTH
 });
@@ -279,7 +642,7 @@ var jsonBuf = null;
 function ensureJsonBuf() {
   if (jsonBuf) return jsonBuf;
   try {
-    jsonBuf = api.shared.buffers.create("astroJson", {
+    jsonBuf = api.shared.buffers.ensure("astroJson", {
       type: "uint8",
       length: JSON_BUF_LENGTH
     });
@@ -293,7 +656,7 @@ var forceConfig = JSON.parse(JSON.stringify(DEFAULT_FORCE_CONFIG));
 var forceExpanded = /* @__PURE__ */ new Set();
 var forceToolbox = /* @__PURE__ */ new Set();
 var jsonCounter = 0;
-var FORCE_TYPE_CANDIDATES = [
+var VANILLA_CANDIDATES = [
   {
     id: "water",
     label: "Water"
@@ -305,35 +668,17 @@ var FORCE_TYPE_CANDIDATES = [
   {
     id: "liquidCopper",
     label: "Copper liq."
-  },
-  {
-    id: `${MOD_ID}:astro-seed`,
-    label: "Seed"
-  },
-  {
-    id: `${MOD_ID}:astro-gold-crystal`,
-    label: "Cry. Gold"
-  },
-  {
-    id: `${MOD_ID}:astro-copper-crystal`,
-    label: "Cry. Copper"
-  },
-  {
-    id: `${MOD_ID}:astro-water-crystal`,
-    label: "Cry. Water"
-  },
-  {
-    id: `${MOD_ID}:astro-gold`,
-    label: "Astro Gold"
-  },
-  {
-    id: `${MOD_ID}:astro-copper`,
-    label: "Astro Copper"
-  },
-  {
-    id: `${MOD_ID}:astro-water`,
-    label: "Astro Water"
   }
+];
+function catalogueCandidates() {
+  return ASTRO_ELEMENTS.map((e) => ({
+    id: e.id,
+    label: e.toolboxLabel
+  }));
+}
+var FORCE_TYPE_CANDIDATES = [
+  ...VANILLA_CANDIDATES,
+  ...catalogueCandidates()
 ];
 var resolvedForceTypes = null;
 function forceTypes() {
@@ -830,7 +1175,7 @@ function mountPanel() {
       })), ...nums.map((f) => h(Stepper, {
         key: f.key,
         field: f
-      })), !!state.stepForceMove ? h(ForceEditor, {
+      })), state.stepForceMove ? h(ForceEditor, {
         key: "forceEditor"
       }) : null);
     };
@@ -909,227 +1254,6 @@ function mountPanel() {
   }, true));
 }
 
-// src/shared/elementConfig.ts
-function safe2(fn, fallback = null) {
-  try {
-    return fn();
-  } catch {
-    return fallback;
-  }
-}
-var MatterType = safe2(() => sandkit.enums?.MatterType) || {};
-var MT_POWDER = MatterType.Powder ?? 8;
-var MT_STATIC = MatterType.Static ?? 5;
-var LIQUID_COPPER_DENSITY = 150;
-var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
-var elementConfig = {
-  astroVoidSeed: {
-    id: `${MOD_ID}:astro-void-seed`,
-    name: "Astro Void Seed",
-    description: "Mix with Florinol \u2192 Astro Seed.",
-    colors: [
-      [
-        80,
-        40,
-        140
-      ],
-      [
-        60,
-        20,
-        110
-      ],
-      [
-        100,
-        50,
-        160
-      ]
-    ],
-    density: 90,
-    metaColor: 5253260,
-    matterType: MT_POWDER
-  },
-  astroSeed: {
-    id: `${MOD_ID}:astro-seed`,
-    name: "Astro Seed",
-    description: "Liquid Gold / Copper / Water \u2192 crystals.",
-    colors: [
-      [
-        180,
-        220,
-        255
-      ],
-      [
-        140,
-        190,
-        255
-      ],
-      [
-        100,
-        160,
-        240
-      ],
-      [
-        220,
-        240,
-        255
-      ]
-    ],
-    density: SEED_DENSITY,
-    metaColor: 9357567,
-    matterType: MT_POWDER
-  },
-  astroGoldCrystal: {
-    id: `${MOD_ID}:astro-gold-crystal`,
-    name: "Astro Gold Crystal",
-    description: "From Liquid Gold. Burn \u2192 Astro Gold.",
-    colors: [
-      [
-        210,
-        160,
-        255
-      ],
-      [
-        180,
-        120,
-        240
-      ],
-      [
-        230,
-        190,
-        255
-      ],
-      [
-        160,
-        90,
-        220
-      ]
-    ],
-    density: 200,
-    metaColor: 11827440,
-    matterType: MT_STATIC
-  },
-  astroGoldPowder: {
-    id: `${MOD_ID}:astro-gold`,
-    name: "Astro Gold Powder",
-    description: "Powder from gold crystal + Fire.",
-    colors: [
-      [
-        180,
-        255,
-        90
-      ],
-      [
-        150,
-        230,
-        60
-      ]
-    ],
-    density: SEED_DENSITY,
-    metaColor: 11819760,
-    matterType: MT_POWDER
-  },
-  astroCopperCrystal: {
-    id: `${MOD_ID}:astro-copper-crystal`,
-    name: "Astro Copper Crystal",
-    description: "From Liquid Copper. Burn \u2192 Astro Copper.",
-    colors: [
-      [
-        200,
-        120,
-        80
-      ],
-      [
-        180,
-        90,
-        50
-      ],
-      [
-        220,
-        140,
-        90
-      ],
-      [
-        160,
-        70,
-        40
-      ]
-    ],
-    density: 0,
-    metaColor: 13138e3,
-    matterType: MT_STATIC
-  },
-  astroCopperPowder: {
-    id: `${MOD_ID}:astro-copper`,
-    name: "Astro Copper",
-    description: "Powder from copper crystal + Fire.",
-    colors: [
-      [
-        240,
-        80,
-        40
-      ],
-      [
-        180,
-        60,
-        20
-      ]
-    ],
-    density: SEED_DENSITY,
-    metaColor: 11822120,
-    matterType: MT_POWDER
-  },
-  astroWaterCrystal: {
-    id: `${MOD_ID}:astro-water-crystal`,
-    name: "Astro Water Crystal",
-    description: "From Water (panel). Burn \u2192 Astro Water.",
-    colors: [
-      [
-        60,
-        100,
-        155
-      ],
-      [
-        40,
-        90,
-        155
-      ],
-      [
-        0,
-        60,
-        155
-      ]
-    ],
-    density: 0,
-    metaColor: 9357567,
-    matterType: MT_STATIC
-  },
-  astroWaterPowder: {
-    id: `${MOD_ID}:astro-water`,
-    name: "Astro Water",
-    description: "Powder from water crystal + Fire.",
-    colors: [
-      [
-        180,
-        120,
-        155
-      ],
-      [
-        180,
-        90,
-        155
-      ],
-      [
-        220,
-        140,
-        155
-      ]
-    ],
-    density: 280,
-    metaColor: 9357567,
-    matterType: MT_POWDER
-  }
-};
-
 // src/main/i18n.ts
 var api2 = sandkit.api;
 var registerI18n = () => {
@@ -1137,7 +1261,7 @@ var registerI18n = () => {
     [`${MOD_ID}.tech.name`]: "Astro Seeds",
     [`${MOD_ID}.tech.description`]: "Seed\u2013crystal profiles over liquids."
   });
-  for (const [_, conf] of Object.entries(elementConfig)) {
+  for (const conf of ASTRO_ELEMENTS) {
     api2.i18n.register("en", {
       [`${conf.id}|name`]: conf.name,
       [`${conf.id}|description`]: conf.description
@@ -1145,82 +1269,10 @@ var registerI18n = () => {
   }
 };
 
-// src/main/elementResolve.ts
-function resolveType(ids) {
-  for (const id of ids) {
-    try {
-      const t = sandkit.api.elements.getTypeFromId(id);
-      if (t != null) return t;
-    } catch {
-    }
-  }
-  console.error("elementTypes.ts , resolveType Unknow: ", ids);
-  return 0;
-}
-var ElementType = {
-  liquidGold: resolveType([
-    "liquidGold",
-    "liquidgold",
-    "LiquidGold",
-    "goldLiquid",
-    "liquid_gold"
-  ]),
-  liquidCopper: resolveType([
-    "liquidCopper",
-    "liquidcopper",
-    "LiquidCopper",
-    "copperLiquid",
-    "liquid_copper"
-  ]),
-  florinol: resolveType([
-    "florinol",
-    "Florinol",
-    "florin",
-    "Florin"
-  ]),
-  voidPetal: resolveType([
-    "voidPetal",
-    "voidpetal",
-    "VoidPetal",
-    "void_petal",
-    "petalium"
-  ]),
-  seedBase: resolveType([
-    "seed",
-    "Seed"
-  ]),
-  fire: resolveType([
-    "fire",
-    "Fire"
-  ]),
-  water: resolveType([
-    "water",
-    "Water"
-  ]),
-  // mod types
-  astroVoidSeed: 0,
-  astroSeed: 0,
-  astroGoldCrystal: 0,
-  astroGoldPowder: 0,
-  astroCopperCrystal: 0,
-  astroCopperPowder: 0,
-  astroWaterCrystal: 0,
-  astroWaterPowder: 0
-};
-
-// src/shared/utils.ts
-function safe3(fn, fallback = null) {
-  try {
-    return fn();
-  } catch {
-    return fallback;
-  }
-}
-
 // src/main/register.ts
 var api3 = sandkit.api;
 var registerElement = () => {
-  for (const [key, conf] of Object.entries(elementConfig)) {
+  for (const conf of ASTRO_ELEMENTS) {
     const elementTypeId = api3.elements.register({
       id: conf.id,
       nameKey: `${conf.id}|name`,
@@ -1233,42 +1285,20 @@ var registerElement = () => {
       matterType: conf.matterType
     }).elementType;
     console.log("Register", conf, elementTypeId);
-    ElementType[key] = elementTypeId;
+    ElementType[conf.key] = elementTypeId;
     api3.discoveries.addElementByType(elementTypeId);
   }
-  api3.reactions.registerContact({
-    inputA: ElementType.seedBase,
-    inputB: ElementType.voidPetal,
-    outputA: ElementType.astroVoidSeed,
-    outputB: null
-  });
-  api3.reactions.registerContact({
-    inputA: ElementType.astroVoidSeed,
-    inputB: ElementType.florinol,
-    outputA: ElementType.astroSeed,
-    outputB: null
-  });
-  api3.reactions.registerContact({
-    inputA: ElementType.astroGoldCrystal,
-    inputB: ElementType.fire,
-    outputA: ElementType.astroGoldPowder,
-    outputB: ElementType.fire
-  });
-  api3.reactions.registerContact({
-    inputA: ElementType.astroCopperCrystal,
-    inputB: ElementType.fire,
-    outputA: ElementType.astroCopperPowder,
-    outputB: ElementType.fire
-  });
-  api3.reactions.registerContact({
-    inputA: ElementType.astroWaterCrystal,
-    inputB: ElementType.fire,
-    outputA: ElementType.astroWaterPowder,
-    outputB: ElementType.fire
-  });
+  for (const r of ASTRO_REACTIONS) {
+    api3.reactions.registerContact({
+      inputA: ElementType[r.inputA],
+      inputB: ElementType[r.inputB],
+      outputA: r.outputA ? ElementType[r.outputA] : null,
+      outputB: r.outputB ? ElementType[r.outputB] : null
+    });
+  }
 };
 try {
-  const parent = safe3(() => sandkit.enums?.Tech?.SteamTurbine) || safe3(() => sandkit.enums?.Tech?.KineticPress) || null;
+  const parent = safe(() => sandkit.enums?.Tech?.SteamTurbine) || safe(() => sandkit.enums?.Tech?.KineticPress) || null;
   if (parent != null) {
     api3.tech.registerNode(`${MOD_ID}:astro-seeds`, {
       nameKey: `${MOD_ID}.tech.name`,
@@ -1288,7 +1318,7 @@ try {
   registerElement();
   mountPanel();
   pushBuffer();
-  safe3(() => api4.events.on("game:ready", () => {
+  safe(() => api4.events.on("game:ready", () => {
     api4.ui.toast(`Astro Seeds v${VERSION} \u2014 Alt+A panel`, {});
   }));
   console.log(`[${MOD_ID} v${VERSION}] main loaded `);
