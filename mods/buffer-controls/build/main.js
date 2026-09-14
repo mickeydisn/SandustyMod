@@ -1680,7 +1680,7 @@ function registerStructures(buffer, list, spriteFor) {
 // ../../packages/buffer-controls/src/buffer-controls.ts
 async function registerBufferControls(config) {
   const { modId } = config;
-  const buffer = new JsonBuffer(modId, config.bufferId, config.defaultRecord);
+  const buffer = new JsonBuffer(modId, config.bufferId, config.defaultRecord, void 0, config.persist ?? true);
   const readBuffer = (path) => buffer.getPath(path);
   console.log("[pkg-buffControl], 1 ", buffer.get(), buffer.listPaths());
   const spriteIds = await loadSpriteMap(modId, config.spriteFiles);

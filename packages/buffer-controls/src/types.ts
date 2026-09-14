@@ -56,6 +56,11 @@ export interface BufferControlsConfig<T extends object = Record<string, unknown>
     bufferId: string;
     /** Initial record written to the buffer. */
     defaultRecord: T;
+    /**
+     * Persist the record to `sandkit.api.storage.local` on `store:save` and
+     * restore it when the game reloads. Default `true`.
+     */
+    persist?: boolean;
     /** Menu-entry settings. */
     menu: BufferControlsMenu;
     /** Id of the menu entry structure. Defaults to `modId`. */

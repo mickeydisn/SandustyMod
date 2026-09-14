@@ -35,7 +35,15 @@ export async function registerBufferControls<T extends object>(
     const { modId } = config;
 
     // -- 1. The jsonBuffer record we expose to the player --------------------
-    const buffer = new JsonBuffer<T>(modId, config.bufferId, config.defaultRecord);
+    // `persist` defaults to true: JsonBuffer.loadFromStorage is opt-in and must
+    // be enabled here or the record is only saved, never restored on reload.
+    const buffer = new JsonBuffer<T>(
+        modId,
+        config.bufferId,
+        config.defaultRecord,
+        undefined,
+        config.persist ?? true,
+    );
     const readBuffer = (path: string): unknown => buffer.getPath(path);
     console.log("[pkg-buffControl], 1 ", buffer.get(), buffer.listPaths());
 
