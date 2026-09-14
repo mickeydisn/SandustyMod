@@ -1,8 +1,9 @@
 import { MatterType } from "@sandmd/shared";
-import { ElementConfig } from "../../shared/types.ts";
+import { AstroElementConfig } from "../../element/types.ts";
 import { spec } from "../util.ts";
+import { TElementKey } from "../catalogue.ts";
 
-export const astroCopperCrystal: ElementConfig = {
+export const astroCopperCrystal: AstroElementConfig<TElementKey> = {
     spec: spec({
         key: "astroCopperCrystal",
         slug: "astro-copper-crystal",
@@ -17,4 +18,4 @@ export const astroCopperCrystal: ElementConfig = {
         isCrystal: true,
     }),
     reactions: [],
-};
+} satisfies AstroElementConfig<TElementKey>;

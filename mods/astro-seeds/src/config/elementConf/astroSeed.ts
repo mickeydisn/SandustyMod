@@ -1,13 +1,14 @@
 import { MatterType } from "@sandmd/shared";
-import { forceEntries } from "../../worker/config.ts";
-import { ElementConfig } from "../../shared/types.ts";
+// import { forceEntries } from "../../worker/config.ts";
 import { spec } from "../util.ts";
+import { AstroElementConfig } from "../../element/types.ts";
+import { TElementKey } from "../catalogue.ts";
 
 // Extract density — keep seeds just under liquid copper so they sink slowly.
 const LIQUID_COPPER_DENSITY = 150;
 const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
 
-export const astroSeed: ElementConfig = {
+export const astroSeed = {
     spec: spec({
         key: "astroSeed",
         slug: "astro-seed",
@@ -63,8 +64,9 @@ export const astroSeed: ElementConfig = {
             crystallization: [{ kind: "cross", radius: 1 }],
         },
     ],
-};
+} satisfies AstroElementConfig<TElementKey>;
 
+/*
 const astroSeed_Water = {
     // Live panel-driven profile: guards + thunks read WaterCfg per build.
     id: "water",
@@ -110,3 +112,4 @@ const astroSeed_Water = {
     whenGrow: () => WaterCfg.stepGrow(),
     whenCrystal: () => WaterCfg.stepCrystalisation(),
 };
+*/

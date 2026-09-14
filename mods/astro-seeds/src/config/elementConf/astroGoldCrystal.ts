@@ -1,8 +1,10 @@
 import { MatterType } from "@sandmd/shared";
-import { ElementConfig } from "../../shared/types.ts";
-import { spec } from "../catalogue.ts";
+import { AstroElementConfig } from "../../element/types.ts";
+import { TElementKey } from "../catalogue.ts";
 
-export const astroGoldCrystal: ElementConfig = {
+import { spec } from "../util.ts";
+
+export const astroGoldCrystal = {
     spec: spec({
         key: "astroGoldCrystal",
         slug: "astro-gold-crystal",
@@ -11,10 +13,10 @@ export const astroGoldCrystal: ElementConfig = {
         colors: [[210, 160, 255], [180, 120, 240], [230, 190, 255], [160, 90, 220]],
         density: 200,
         metaColor: 0xb478f0,
-        matterType: MatterType.,
+        matterType: MatterType.Static,
         toolboxLabel: "Cry. Gold",
         isSeed: false,
         isCrystal: true,
     }),
     reactions: [],
-};
+} satisfies AstroElementConfig<TElementKey>;

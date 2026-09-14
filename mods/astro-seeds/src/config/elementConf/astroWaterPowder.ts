@@ -1,8 +1,9 @@
 import { MatterType } from "@sandmd/shared";
-import { ElementConfig } from "../../shared/types.ts";
 import { spec } from "../util.ts";
+import { AstroElementConfig } from "../../element/types.ts";
+import { TElementKey } from "../catalogue.ts";
 
-export const astroWaterPowder: ElementConfig = {
+export const astroWaterPowder = {
     spec: spec({
         key: "astroWaterPowder",
         slug: "astro-water",
@@ -22,4 +23,4 @@ export const astroWaterPowder: ElementConfig = {
         outputA: "astroWaterPowder",
         outputB: "fire",
     }],
-};
+} satisfies AstroElementConfig<TElementKey>;

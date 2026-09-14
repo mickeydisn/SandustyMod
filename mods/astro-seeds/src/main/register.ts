@@ -3,15 +3,16 @@
  * All content derives from the grouped catalogues (no inline element data).
  */
 import { MOD_ID } from "../config/ids.ts";
-import { ASTRO_ELEMENTS, ASTRO_REACTIONS } from "../shared/elements/index.ts";
-import { ElementType } from "../shared/elements/index.ts";
+import { ASTRO_ELEMENTS, ASTRO_REACTIONS } from "../config/catalogue.ts";
+import { ElementType } from "../shared/resolve.ts";
 import { safe } from "../shared/utils.ts";
 
 const api = sandkit.api;
 
 export const registerElement = () => {
     // Register elements in catalogue order.
-    for (const conf of ASTRO_ELEMENTS) {
+    for (const confEl of ASTRO_ELEMENTS) {
+        const conf = confEl.spec;
         const elementTypeId = api.elements.register({
             id: conf.id,
             nameKey: `${conf.id}|name`,

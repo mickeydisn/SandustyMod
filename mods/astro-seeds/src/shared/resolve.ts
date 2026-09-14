@@ -5,10 +5,9 @@
  * grouped catalogue so registration and resolution never drift apart.
  */
 import "@sandmd/sandkit";
-import { ASTRO_ELEMENTS } from "../config/util.ts";
 import { safe } from "./utils.ts";
-import type { TElementTypeIDs, TVanillaElementKey } from "./types.ts";
 import type { TElementType } from "@sandmd/shared";
+import { ASTRO_ELEMENTS, TVanillaElementKey } from "../config/catalogue.ts";
 
 function resolveType(ids: string[]): TElementType {
     for (const id of ids) {
@@ -37,17 +36,17 @@ function resolveVanilla(): Record<TVanillaElementKey, TElementType> {
 
 function resolveAstro(): Record<string, TElementType> {
     return Object.fromEntries(
-        ASTRO_ELEMENTS.map((e) => [e.key, resolveType([e.id])]),
+        ASTRO_ELEMENTS.map((e) => [e.spec.key, resolveType([e.spec.id])]),
     );
 }
 
-/**
+/*
  * Resolved element-type numbers shared by main and worker.
  *
  * Main thread: astro entries are 0 until `registerElement()` fills them in.
  * Worker thread: astro entries resolve because main registered first.
  */
-export const ElementType: TElementTypeIDs = {
+export const ElementType: Record<string, TElementType> = {
     ...resolveVanilla(),
     ...resolveAstro(),
-} as TElementTypeIDs;
+} as Record<string, TElementType>;

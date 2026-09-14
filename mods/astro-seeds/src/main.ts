@@ -3,11 +3,11 @@
  */
 import "@sandmd/sandkit";
 
-import { MOD_ID, VERSION } from "../config/ids.ts";
-import { mountPanel, pushBuffer } from "./panel.ts";
-import { registerI18n } from "./i18n.ts";
-import { registerElement } from "./register.ts";
-import { safe } from "../shared/utils.ts";
+import { MOD_ID, VERSION } from "./config/ids.ts";
+import { pushBuffer } from "../../../__archive/panel.ts";
+import { registerI18n } from "./main/i18n.ts";
+import { registerElement } from "./main/register.ts";
+import { safe } from "./shared/utils.ts";
 
 try {
     const api = sandkit.api;
@@ -17,7 +17,7 @@ try {
     // Register Element
     registerElement();
 
-    mountPanel();
+    // mountPanel();
     pushBuffer();
 
     // MESSAGE TO USER

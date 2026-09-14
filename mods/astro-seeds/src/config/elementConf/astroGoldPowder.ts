@@ -1,12 +1,14 @@
 import { MatterType } from "@sandmd/shared";
-import { ElementConfig } from "../../shared/types.ts";
+import { AstroElementConfig } from "../../element/types.ts";
+import { TElementKey } from "../catalogue.ts";
+
 import { spec } from "../util.ts";
 
 // Extract density — keep seeds just under liquid copper so they sink slowly.
 const LIQUID_COPPER_DENSITY = 150;
 const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
 
-export const astroGoldCrystal: ElementConfig = {
+export const astroGoldPowder = {
     spec: spec({
         key: "astroGoldPowder",
         slug: "astro-gold",
@@ -66,4 +68,4 @@ export const astroGoldCrystal: ElementConfig = {
             crystallization: [],
         },
     ],
-};
+} satisfies AstroElementConfig<TElementKey>;

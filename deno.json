@@ -3,6 +3,16 @@
     "./packages/*",
     "./mods/*"
   ],
+  
+  "exclude": [
+    "__archive",
+    "__bundel",
+    "__scraped-mods",
+    "__pakages",
+    "sandgenerator-web",
+    "__*",
+    "build*"
+  ],
  "fmt": {
     "useTabs": false,
     "lineWidth": 100,
@@ -15,6 +25,7 @@
   },
   "tasks": {
     "fmt": "deno fmt",
-    "lint": "deno lint"
+    "lint": "deno lint",
+    "check": "deno check ."
   }
 }

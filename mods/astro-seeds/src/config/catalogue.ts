@@ -5,22 +5,67 @@
  * physics, toolbox label and worker role. Add a field here and registration,
  * i18n, panel toolbox and profiles follow without a second source of truth.
  */
-import type { AstroElementSpec, ReactionSpec, TAstroElementKey } from "../shared/types.ts";
 
-export const ASTRO_ELEMENTS: readonly AstroElementSpec[] = [];
-/** Ordered catalogue — index order is the registration order. */
-export const ASTRO_ELEMENTS: readonly AstroElementSpec[] = [];
+import { AstroElementConfig, AstroElementSpec, ReactionSpec } from "../element/types.ts";
+import { astroCopperCrystal } from "./elementConf/astroCopperCrystal.ts";
+import { astroCopperPowder } from "./elementConf/astroCopperPowder.ts";
+import { astroGoldCrystal } from "./elementConf/astroGoldCrystal.ts";
+import { astroGoldPowder } from "./elementConf/astroGoldPowder.ts";
+import { astroSeed } from "./elementConf/astroSeed.ts";
+import { astroVoidSeed } from "./elementConf/astroVoidSeed.ts";
+import { astroWaterCrystal } from "./elementConf/astroWaterCrystal.ts";
+import { astroWaterPowder } from "./elementConf/astroWaterPowder.ts";
+
+export type TVanillaElementKey =
+    | "liquidGold"
+    | "liquidCopper"
+    | "florinol"
+    | "voidPetal"
+    | "seedBase"
+    | "fire"
+    | "water";
+
+export type TAddedElementKey =
+    | "astroVoidSeed"
+    | "astroSeed"
+    | "astroGoldCrystal"
+    | "astroGoldPowder"
+    | "astroCopperCrystal"
+    | "astroCopperPowder"
+    | "astroWaterCrystal"
+    | "astroWaterPowder";
+
+export type TElementKey = TVanillaElementKey | TAddedElementKey;
+
+// ---------------------
+// ---------------------
+// ---------------------
+
+export const ASTRO_ELEMENTS = [
+    astroCopperCrystal,
+    astroCopperPowder,
+    astroGoldCrystal,
+    astroGoldPowder,
+    astroSeed,
+    astroVoidSeed,
+    astroWaterCrystal,
+    astroWaterPowder,
+] as const satisfies readonly AstroElementConfig<TElementKey>[];
+
+// ---------------------
+// ---------------------
+// ---------------------
+
+// Generic helper — reusable for any tuple of AstroElementConfig
+export type AstroElementKeys<T extends readonly AstroElementConfig<TElementKey>[]> =
+    T[number]["spec"]["key"];
 
 /** Key → spec lookup (registration, i18n, panel). */
-export const ASTRO_ELEMENT_BY_KEY: Record<TAstroElementKey, AstroElementSpec> = Object.fromEntries(
-    ASTRO_ELEMENTS.map((e) => [e.key, e]),
-) as Record<TAstroElementKey, AstroElementSpec>;
+export const ASTRO_ELEMENT_BY_KEY: Record<TElementKey, AstroElementSpec> = Object.fromEntries(
+    ASTRO_ELEMENTS.map((e) => [e.spec.key, e.spec]),
+) as Record<TElementKey, AstroElementSpec>;
 
 /** Contact reactions described with keys — resolved to types at register time. */
-export const ASTRO_REACTIONS: readonly ReactionSpec[] = [
-    { inputA: "seedBase", inputB: "voidPetal", outputA: "astroVoidSeed", outputB: null },
-    { inputA: "astroGoldCrystal", inputB: "fire", outputA: "astroGoldPowder", outputB: "fire" },
-    { inputA: "astroVoidSeed", inputB: "florinol", outputA: "astroSeed", outputB: null },
-    { inputA: "astroCopperCrystal", inputB: "fire", outputA: "astroCopperPowder", outputB: "fire" },
-    { inputA: "astroWaterCrystal", inputB: "fire", outputA: "astroWaterPowder", outputB: "fire" },
-];
+export const ASTRO_REACTIONS: readonly ReactionSpec<TElementKey>[] = ASTRO_ELEMENTS.flatMap((c) =>
+    c.reactions
+);

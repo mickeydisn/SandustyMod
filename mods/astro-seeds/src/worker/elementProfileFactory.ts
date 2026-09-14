@@ -14,36 +14,35 @@ import type {
 } from "@sandmd/element-profiles";
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles";
 import { ASTRO_FIELD } from "../config/ids.ts";
-import { TElementTypeKey } from "../shared/types.ts";
 import { ElementType } from "../shared/resolve.ts";
 
 /** Live numeric thunk — literal or config reader, resolved per tick. */
 export type NumThunk = number | (() => number);
 
 /** Declarative move step: basic drift, column-force, or gated group. */
-export type MoveSpec =
+export type MoveSpec<ElType extends string> =
     | { kind: "up"; chance: NumThunk; when?: () => boolean }
     | { kind: "side"; chance: NumThunk; when?: () => boolean }
     | { kind: "down"; chance: NumThunk; when?: () => boolean }
-    | { kind: "columnForce"; opts: ColumnForceOptsSpec; when?: () => boolean }
+    | { kind: "columnForce"; opts: ColumnForceOptsSpec<ElType>; when?: () => boolean }
     | { kind: "columnForceFrom"; entries: () => readonly ColumnForceEntry[]; when?: () => boolean }
-    | { kind: "gated"; when: () => boolean; moves: MoveSpec[] };
+    | { kind: "gated"; when: () => boolean; moves: MoveSpec<ElType>[] };
 
 /** ColumnForce options with thunks — mirrors `Move.columnForce` opts. */
-export interface ColumnForceOptsSpec {
+export interface ColumnForceOptsSpec<ElType extends string> {
     // Rate / shape
     rate: NumThunk;
     rangeN: NumThunk;
     maxK: NumThunk;
     // Direction + type sets (keys resolved lazily at build time)
     directions: string[];
-    matchKeys?: TElementTypeKey[];
-    freeKeys?: TElementTypeKey[];
-    excludeKeys?: TElementTypeKey[];
+    matchKeys?: ElType[];
+    freeKeys?: ElType[];
+    excludeKeys?: ElType[];
 }
 
 /** Declarative grow step. */
-export type GrowSpec =
+export type GrowSpec<ElType extends string> =
     | { kind: "ageAlways" }
     | { kind: "instantChance"; rate: NumThunk }
     | { kind: "ageOnFloor"; rate: NumThunk }
@@ -51,7 +50,7 @@ export type GrowSpec =
     | { kind: "ageOnAir"; rate: NumThunk }
     | { kind: "ageOnCrystal"; rate: NumThunk }
     | { kind: "ageOnSurround"; rate: NumThunk; minCount: NumThunk }
-    | { kind: "blockOn"; blockKey: TElementTypeKey };
+    | { kind: "blockOn"; blockKey: ElType };
 
 /** Declarative crystallization step. */
 export type CrystalSpec =
@@ -63,17 +62,17 @@ export type CrystalSpec =
     | { kind: "fromShape"; shape: NumThunk; radius: NumThunk };
 
 /** Full declarative description of one seed profile. */
-export interface ProfileSpec {
+export interface ProfileSpec<ElType extends string> {
     // Identity
     id: string;
-    seedKey: TElementTypeKey;
-    liquidKey: TElementTypeKey;
-    crystalKey: TElementTypeKey;
+    seedKey: ElType;
+    liquidKey: ElType;
+    crystalKey: ElType;
     // Maturity
     growAge: NumThunk;
     // Pipeline phases
-    moves: MoveSpec[];
-    grow: GrowSpec[];
+    moves: MoveSpec<ElType>[];
+    grow: GrowSpec<ElType>[];
     crystallization: CrystalSpec[];
     // Guards evaluated at build time (e.g. panel toggles)
     whenMove?: () => boolean;
@@ -81,7 +80,7 @@ export interface ProfileSpec {
     whenCrystal?: () => boolean;
 }
 
-function buildMoves(specs: MoveSpec[]): MoveFn[] {
+function buildMoves<ElType extends string>(specs: MoveSpec<ElType>[]): MoveFn[] {
     const out: MoveFn[] = [];
     for (const spec of specs) {
         if (spec.kind === "gated") {
@@ -97,12 +96,12 @@ function buildMoves(specs: MoveSpec[]): MoveFn[] {
             const o = spec.opts;
             out.push(Move.columnForce({
                 rateFn: o.rate,
-                matchTypes: (o.matchKeys ?? []).map((k) => ElementType[k]),
+                matchTypes: (o.matchKeys ?? []).map((k) => ElementType[k as string]),
                 directions: [...o.directions] as never,
                 rangeNFn: o.rangeN,
                 maxKFn: o.maxK,
-                freeTypes: (o.freeKeys ?? []).map((k) => ElementType[k]),
-                excludeTypes: (o.excludeKeys ?? []).map((k) => ElementType[k]),
+                freeTypes: (o.freeKeys ?? []).map((k) => ElementType[k as string]),
+                excludeTypes: (o.excludeKeys ?? []).map((k) => ElementType[k as string]),
             }));
         } else {
             for (const e of spec.entries()) {
@@ -121,7 +120,7 @@ function buildMoves(specs: MoveSpec[]): MoveFn[] {
     return out;
 }
 
-function buildGrow(spec: GrowSpec): GrowFn {
+function buildGrow<ElType extends string>(spec: GrowSpec<ElType>): GrowFn {
     if (spec.kind === "ageAlways") return Grow.ageAlways();
     if (spec.kind === "instantChance") return Grow.instantChance(spec.rate);
     if (spec.kind === "ageOnFloor") return Grow.ageOnFloor(spec.rate);
@@ -129,7 +128,7 @@ function buildGrow(spec: GrowSpec): GrowFn {
     if (spec.kind === "ageOnAir") return Grow.ageOnAir(spec.rate);
     if (spec.kind === "ageOnCrystal") return Grow.ageOnCrystal(spec.rate);
     if (spec.kind === "ageOnSurround") return Grow.ageOnSurround(spec.rate, spec.minCount);
-    return Grow.blockOn(ElementType[spec.blockKey]);
+    return Grow.blockOn(ElementType[spec.blockKey as string]);
 }
 
 function buildCrystal(spec: CrystalSpec): CrystallizeFn {
@@ -145,12 +144,14 @@ function buildCrystal(spec: CrystalSpec): CrystallizeFn {
  * Generic factory: declarative spec in, lazy `() => Profile` out.
  * Type/age lookups stay lazy so worker config + registration order work.
  */
-export function createElementProfileFactory(spec: ProfileSpec): () => Profile {
+export function createElementProfileFactory<ElType extends string>(
+    spec: ProfileSpec<ElType>,
+): () => Profile {
     return () => ({
         id: spec.id,
-        seedType: ElementType[spec.seedKey],
-        liquidType: ElementType[spec.liquidKey],
-        crystalType: ElementType[spec.crystalKey],
+        seedType: ElementType[spec.seedKey as string],
+        liquidType: ElementType[spec.liquidKey as string],
+        crystalType: ElementType[spec.crystalKey as string],
         ageField: ASTRO_FIELD.AGE,
         growAge: () => (typeof spec.growAge === "function" ? spec.growAge() : spec.growAge),
         moves: spec.whenMove && !spec.whenMove() ? [] : buildMoves(spec.moves),
@@ -162,8 +163,8 @@ export function createElementProfileFactory(spec: ProfileSpec): () => Profile {
 }
 
 /** Build many factories from many specs — the multi-conf entry point. */
-export function createProfileFactories(
-    specs: readonly ProfileSpec[],
+export function createProfileFactories<ElType extends string>(
+    specs: readonly ProfileSpec<ElType>[],
 ): Record<string, () => Profile> {
     return Object.fromEntries(specs.map((s) => [s.id, createElementProfileFactory(s)]));
 }
