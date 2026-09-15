@@ -1,0 +1,13 @@
+{
+    "manifestVersion": 1,
+    "id": "md-admin-structure",
+    "name": "MdAdmin Structure",
+    "version": "0.1.0",
+    "apiVersion": 1,
+    "entry": "main.js",
+    "main": "main.ts",
+    "author": "MickeyDisn",
+    "description": "Dev panel listing all structures — filter by mod and by hideFromBuildMenu, with a one-click unlock (api.player.buildings.unlockById).",
+    "dependencies": [],
+    "loadOrder": 0
+}

@@ -9,6 +9,7 @@ export interface StructureOptions {
         description?: string;
         categoryKey?: string;
         order?: number;
+        hideFromBuildMenu?: boolean;
         render?: { imageName: string; size: { width: number; height: number } };
         shape?: number[][];
         variants?: Array<{ id: string; angles: number[] }>;
@@ -39,10 +40,12 @@ export function buildStructureDefinition(
         buildModes: def.buildModes ?? [{ type: "single" }],
         variants: def.variants ?? [{ id: opts.id, angles: [0] }],
         shape: def.shape ?? _shapeEmpty,
+        hideFromBuildMenu: def.hideFromBuildMenu ?? false,
         render: def.render ?? {
             imageName: opts.spriteId,
             size: opts.renderSize ?? { width: 16, height: 16 },
         },
+
         copyData: true,
         defaultData: {
             ...(opts.defaultData ?? {}),

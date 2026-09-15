@@ -34,6 +34,7 @@ export function registerIconStructures(
                     nameKey: isMenu ? item.label : undefined,
                     description: isMenu ? item.description : undefined,
                     categoryKey: "blocks",
+                    hideFromBuildMenu: isMenu ? false : true,
                     order: 0,
                     buildModes: [
                         { type: "single" },
@@ -56,7 +57,6 @@ export function registerIconStructures(
             sandkit.api.structures.register({
                 // alwaysUnlocked: true,
                 // rejectWhenBlocked: false,
-                hideFromBuildMenu: false,
                 ...def,
                 draw: custumDraw,
             });

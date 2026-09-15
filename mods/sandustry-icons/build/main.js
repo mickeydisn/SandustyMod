@@ -292,12 +292,68 @@ function h(type, props, ...children) {
 var TOOLTIP_DELAY_MS = 120;
 var SWATCH_BOX = 34;
 var MAX_SWATCH_ZOOM = 4;
+function createPickerCss() {
+  console.log("[pkg-picker] injecting CSS");
+  const css = `
+        .pkg-picker-main-div {
+            width: 70vw;
+            max-width: 70vw;
+            max-height: 20vh;
+            min-height: 20vh;
+            position: fixed;
+            bottom: 6em;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;    
+            
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #334;
+            border-radius: 0.25rem;
+            box-sizing: border-box;
+            color: #ccc;
+            font-size: 1rem;
+            pointer-events: auto;
+    }
+
+    .pkg-picker-head {
+        padding: .3rem .3rem;
+        border-bottom: 1px solid #334;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .pkg-picker-tooltip {
+        font-size: 0.75rem;
+        line-height: 1rem;
+
+        position: fixed;
+        transform: translate(-50%, -100%);
+        padding: 2px 6px;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 1001;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 3px;
+        color: #fff;
+
+    }
+    `;
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
+}
 function createPickerView(options) {
-  const { api, maxHeight } = options;
+  const { api } = options;
   const list = api.list;
   const search = "";
   let tooltip = null;
   let tooltipTimer = null;
+  createPickerCss();
   const clearTooltip = () => {
     if (tooltipTimer) clearTimeout(tooltipTimer);
     tooltipTimer = null;
@@ -317,14 +373,6 @@ function createPickerView(options) {
       api.repaint();
     }, TOOLTIP_DELAY_MS);
   };
-  const ctx = () => ({
-    list,
-    selected: list.getSelected(),
-    mirrored: list.isMirrored(),
-    categoryId: list.getCategory(),
-    search,
-    repaint: () => api.repaint()
-  });
   const spriteSrc = (item) => {
     const id = options.spriteIdFor?.(item) ?? item.spriteId ?? list.structureType(item.id, false);
     const r = sandkit.api.sprites.getById(id)?.imageAsset?.image?.src;
@@ -383,10 +431,7 @@ function createPickerView(options) {
         }) : h("span", {
           key: "fallback",
           className: "text-xs"
-        }, props.item.label.charAt(0)),
-        options.renderItemBadge ? h("span", {
-          key: "badge"
-        }, options.renderItemBadge(props.item)) : null
+        }, props.item.label.charAt(0))
       ]
     });
   };
@@ -516,85 +561,63 @@ function createPickerView(options) {
         className: "text-xs text-slate-500"
       }, "Click to expand"));
     }
-    return h("div", {
-      className: "pointer-events-auto flex min-h-0 flex-col overflow-hidden bg-black bg-opacity-75 border border-slate-700 rounded ui-box text-slate-300",
-      style: {
-        width: `75vw`,
-        maxWidth: `75vw`,
-        maxHeight: `${maxHeight}px`,
-        position: "fixed",
-        bottom: "80px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 1e3
-      }
-    }, h("div", {
-      className: "px-4 py-2 border-b border-slate-800 flex items-center justify-between"
+    const headEl = h("div", {
+      className: "pkg-picker-head bg-black/30"
     }, h("span", {
       className: "text-white text-xs opacity-70"
-    }, api.title), h("div", {
-      className: "flex items-center gap-2"
-    }, h(FocusableButton, {
-      id: `${api.pickerId}-mirror`,
-      onActivate: api.toggleMirror,
-      className: `text-xs px-2 py-0.5 border rounded ${list.isMirrored() ? "text-[#ffe700] border-yellow-400" : "text-slate-300 border-slate-600"}`,
-      children: `${list.isMirrored() ? "\u2611" : "\u2610"} Mirrored`
-    }), h(FocusableButton, {
-      id: `${api.pickerId}-minimize`,
-      onActivate: api.minimize,
-      className: "text-xs px-2 py-0.5 text-white bg-black border border-slate-600 rounded",
-      children: "Minimize \u25BE"
-    }))), options.renderHeaderExtra ? options.renderHeaderExtra(ctx()) : null, tooltip ? h("div", {
-      style: {
-        position: "fixed",
-        left: `${tooltip.x}px`,
-        top: `${tooltip.y - 8}px`,
-        transform: "translate(-50%, -100%)",
-        padding: "2px 6px",
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
-        zIndex: 1001,
-        background: "rgba(0,0,0,0.9)",
-        border: "1px solid rgba(255,255,255,0.25)",
-        borderRadius: "3px"
+    }, api.title), h(
+      "div",
+      {
+        className: "flex items-center gap-2"
       },
-      className: "text-xs text-white",
+      /*
+               h(FocusableButton, {
+                   id: `${api.pickerId}-mirror`,
+                   onActivate: api.toggleMirror,
+                   className: `text-xs px-2 py-0.5 border rounded ${
+                       list.isMirrored()
+                           ? "text-[#ffe700] border-yellow-400"
+                           : "text-slate-300 border-slate-600"
+                   }`,
+                   children: `${list.isMirrored() ? "☑" : "☐"} Mirrored`,
+               }),
+               */
+      h(FocusableButton, {
+        id: `${api.pickerId}-minimize`,
+        onActivate: api.minimize,
+        className: "text-xs px-2 py-0.5 text-white bg-black border border-slate-600 rounded",
+        children: "\u25BE"
+      })
+    ));
+    const tooltipEl = !tooltip ? null : h("div", {
+      className: "pkg-picker-tooltip",
       children: tooltip.label
-    }) : null, availableTags.length > 0 || availableSizes.length > 0 ? h("div", {
-      className: "w-full flex flex-col gap-0.5 px-4 py-1 border-b border-slate-800 bg-black/30"
-    }, availableTags.length > 0 ? h("div", {
-      className: "flex flex-wrap items-center gap-1"
+    });
+    const hVerticalItemsList = (name, contents) => h("div", {
+      className: "flex flex-col items-center  overflow-y-auto"
     }, h("span", {
       className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1"
-    }, "Tags:"), availableTags.map((tag) => h(FocusableButton, {
+    }, name), h("div", {
+      className: "flex flex-col items-left gap-1  overflow-x-auto",
+      style: {
+        padding: "1px .8em 1px 1px"
+      }
+    }, ...contents));
+    const filterTagEl = availableTags.length > 0 ? hVerticalItemsList("Tag:", availableTags.map((tag) => h(FocusableButton, {
       key: tag,
       id: `${api.pickerId}-tag-${tag}`,
       onActivate: () => api.toggleTag(tag),
       className: `text-xs px-2 py-0.5 rounded border ${selectedTags.includes(tag) ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-600"}`,
       children: `${selectedTags.includes(tag) ? "\u2611" : "\u2610"} ${tag}`
-    }))) : null, availableSizes.length > 0 ? h("div", {
-      className: "flex flex-wrap items-center gap-1"
-    }, h("span", {
-      className: "text-[10px] uppercase tracking-wide text-slate-500 pr-1"
-    }, "Size:"), availableSizes.map((size) => h(FocusableButton, {
+    }))) : [];
+    const filterSizeEl = availableSizes.length > 0 ? hVerticalItemsList("Size:", availableSizes.map((size) => h(FocusableButton, {
       key: size,
       id: `${api.pickerId}-size-${size}`,
       onActivate: () => api.toggleSize(size),
       className: `text-xs px-2 py-0.5 rounded border ${selectedSizes.includes(size) ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-600"}`,
       children: `${selectedSizes.includes(size) ? "\u2611" : "\u2610"} ${size}`
-    }))) : null, selectedTags.length > 0 || selectedSizes.length > 0 ? h(FocusableButton, {
-      id: `${api.pickerId}-filters-clear`,
-      onActivate: () => api.clearFilters(),
-      className: "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white self-start",
-      children: "Clear"
-    }) : null) : null, h("div", {
-      className: "flex flex-row flex-wrap "
-    }, h("div", {
-      className: "grid grid-cols-4 overflow-y-auto  gap-1 px-4 py-2 border-b border-slate-800",
-      style: {
-        height: `18vh`
-      }
-    }, visibleCategories.map(({ cat, count }) => h(FocusableButton, {
+    }))) : null;
+    const categorieEl = hVerticalItemsList("Element:", visibleCategories.map(({ cat }) => h(FocusableButton, {
       key: cat.id,
       id: `${api.pickerId}-cat-${cat.id}`,
       onActivate: () => {
@@ -603,8 +626,20 @@ function createPickerView(options) {
         api.chooseCategory(cat.id);
       },
       className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === categoryId ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
-      children: `${cat.label} ${count}`
-    })))), h("div", {
+      children: `${cat.label}`
+    })));
+    const filterClearEl = selectedTags.length > 0 || selectedSizes.length > 0 ? h(FocusableButton, {
+      id: `${api.pickerId}-filters-clear`,
+      onActivate: () => api.clearFilters(),
+      className: "text-xs px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:text-white self-start",
+      children: "Clear"
+    }) : null;
+    const filterEl = h("div", {
+      className: "flex flex-col gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto"
+    }, filterClearEl, h("div", {
+      className: "flex flex-row gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto"
+    }, filterSizeEl, filterTagEl, categorieEl));
+    const itemElemnts = h("div", {
       className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
       style: {
         height: `18vh`
@@ -621,7 +656,12 @@ function createPickerView(options) {
       key: item.id,
       item,
       selected: item.id === selected?.id
-    })))));
+    }))));
+    return h("div", {
+      className: "pkg-picker-main-div"
+    }, headEl, tooltipEl, h("div", {
+      className: "flex-1 flex flex-row overflow-hidden"
+    }, filterEl, itemElemnts));
   };
   return () => h(Picker, null);
 }
@@ -630,9 +670,8 @@ function createPickerView(options) {
 function createPickerOverlay(options) {
   const list = options.list;
   const pickerId = options.pickerId ?? `${list.modId}/picker`;
-  const slot = options.slot ?? "hotbar";
+  const slot = "hotbar";
   const title = options.title ?? "Pick item";
-  const maxHeight = options.maxHeight ?? 400;
   let pickerState = null;
   let repaint = null;
   let clearTooltip = null;
@@ -758,11 +797,8 @@ function createPickerOverlay(options) {
   };
   const render = createPickerView({
     api: contentApi,
-    maxHeight,
     spriteIdFor: options.spriteIdFor,
-    itemFilter: options.itemFilter,
-    renderItemBadge: options.renderItemBadge,
-    renderHeaderExtra: options.renderHeaderExtra
+    itemFilter: options.itemFilter
   });
   const currentSelectedItem = () => {
     const selected = sandkit.api.action.getSelected?.();
@@ -795,8 +831,10 @@ function createPickerOverlay(options) {
     if (registered) return;
     sandkit.api.ui.overlays.register(slot, pickerId, render);
     registered = true;
-    unsubscribe = sandkit.api.events.on("action:changed", sync);
-    sync();
+    unsubscribe = sandkit.api.events.on("action:changed", () => {
+      sandkit.api.schedule.nextTick(sync);
+    });
+    sandkit.api.schedule.nextTick(sync);
   };
   install();
   return {
@@ -838,6 +876,7 @@ function buildStructureDefinition(opts) {
       }
     ],
     shape: def.shape ?? _shapeEmpty,
+    hideFromBuildMenu: def.hideFromBuildMenu ?? false,
     render: def.render ?? {
       imageName: opts.spriteId,
       size: opts.renderSize ?? {
@@ -30068,6 +30107,7 @@ function registerIconStructures(buildList, spriteIds) {
           nameKey: isMenu ? item.label : void 0,
           description: isMenu ? item.description : void 0,
           categoryKey: "blocks",
+          hideFromBuildMenu: isMenu ? false : true,
           order: 0,
           buildModes: [
             {
@@ -30098,7 +30138,6 @@ function registerIconStructures(buildList, spriteIds) {
       sandkit.api.structures.register({
         // alwaysUnlocked: true,
         // rejectWhenBlocked: false,
-        hideFromBuildMenu: false,
         ...def,
         draw: custumDraw
       });

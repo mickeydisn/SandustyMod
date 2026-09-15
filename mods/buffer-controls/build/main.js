@@ -1557,6 +1557,7 @@ function registerActionNumberStructures(ops) {
     },
     draw
   });
+  sandkit.api.player.buildings.unlockByType(ops.typeId);
   sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
     act(structure, op);
   });
