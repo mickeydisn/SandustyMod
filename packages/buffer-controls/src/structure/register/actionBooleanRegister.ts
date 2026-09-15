@@ -73,6 +73,8 @@ export function registerBooleanActionStructures(
         defaultData: { path, kind: ops.item.kind ?? "string", op },
         draw,
     });
+    // Unlock the buildings
+    sandkit.api.player.buildings.unlockByType(ops.typeId);
 
     // Click-to-activate: engine draws hover highlight + cancels the default
     // action (docs_tech/14 Q7). `structure` has live data for this instance.

@@ -2,7 +2,7 @@ import { MatterType } from "@sandmd/shared";
 import { AstroElementConfig } from "../../element/types.ts";
 
 import { spec } from "../util.ts";
-import { TElementKey } from "../catalogue.ts";
+import { TElementKey } from "../keys.ts";
 
 // Extract density — keep seeds just under liquid copper so they sink slowly.
 const LIQUID_COPPER_DENSITY = 150;

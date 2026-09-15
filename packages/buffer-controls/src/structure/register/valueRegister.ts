@@ -63,6 +63,8 @@ export function registerValueStructures(ops: registerStructureOps): ValueRegiste
         ...buildSectionData(ops.item, spriteId, { dataValue: value }),
         draw,
     });
+    // Unlock the buildings
+    sandkit.api.player.buildings.unlockByType(ops.typeId);
 
     entries.push({ typeId: ops.typeId, path, kind });
 

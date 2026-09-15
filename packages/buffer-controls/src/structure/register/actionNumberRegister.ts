@@ -80,6 +80,8 @@ export function registerActionNumberStructures(
         defaultData: { path, kind: ops.item.kind ?? "string", op },
         draw,
     });
+    // Unlock the buildings
+    sandkit.api.player.buildings.unlockByType(ops.typeId);
 
     // Click-to-activate:
     sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {

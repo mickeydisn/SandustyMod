@@ -1,6 +1,6 @@
 import { MatterType } from "@sandmd/shared";
 import { AstroElementConfig } from "../../element/types.ts";
-import { TElementKey } from "../catalogue.ts";
+import { TElementKey } from "../keys.ts";
 
 import { spec } from "../util.ts";
 

@@ -43,4 +43,6 @@ export function registerPathStructures(ops: registerStructureOps): ActionRegiste
         ...buildSectionData(ops.item, spriteId),
         draw,
     });
+    // Unlock the buildings
+    sandkit.api.player.buildings.unlockByType(ops.typeId);
 }

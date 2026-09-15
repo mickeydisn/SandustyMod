@@ -1,6 +1,6 @@
 import { MatterType } from "@sandmd/shared";
 import { AstroElementConfig } from "../../element/types.ts";
-import { TElementKey } from "../catalogue.ts";
+import { TElementKey } from "../keys.ts";
 
 import { spec } from "../util.ts";
 
@@ -41,7 +41,7 @@ export const astroGoldPowder = {
                 { kind: "down", chance: 8 },
                 {
                     kind: "columnForce",
-                    opts: { rate: -80, rangeN: 8, maxK: 1, directions: ["top", "bottom", "sides"] },
+                    opts: { rate: -50, rangeN: 4, maxK: 1, directions: ["top", "bottom", "sides"] },
                 },
                 {
                     kind: "columnForce",
@@ -49,7 +49,7 @@ export const astroGoldPowder = {
                         rate: -10,
                         rangeN: 2,
                         maxK: 1,
-                        directions: ["top", "bottom", "sides", "cross"],
+                        directions: ["top", "bottom", "sides"],
                         matchKeys: ["astroGoldPowder"],
                     },
                 },
@@ -57,9 +57,9 @@ export const astroGoldPowder = {
                     kind: "columnForce",
                     opts: {
                         rate: 90,
-                        rangeN: 6,
+                        rangeN: 4,
                         maxK: 1,
-                        directions: ["top", "bottom", "sides", "cross"],
+                        directions: ["top", "bottom", "sides"],
                         matchKeys: ["astroCopperPowder"],
                     },
                 },

@@ -1,0 +1,13 @@
+{
+    "manifestVersion": 1,
+    "id": "mdadmin",
+    "name": "MdAdmin",
+    "version": "0.1.0",
+    "apiVersion": 1,
+    "entry": "main.js",
+    "main": "main.ts",
+    "author": "MickeyDisn",
+    "description": "Dev helper. Opens the DevTools console and prints every registered element with the mod that owns it.",
+    "dependencies": [],
+    "loadOrder": 0
+}

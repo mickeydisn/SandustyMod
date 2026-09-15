@@ -6,7 +6,7 @@
         "build:toGame": "cp -r build/. /Users/mickey/Library/Application\\ Support/sandustry/mods/astro-seed-mod",
 
         "build": "deno task build:main  && deno task build:worker && deno task build:modinfo && deno task build:toGame",
-        "check": "deno check src/main/main.ts src/worker/main.ts"
+        "check": "deno check src/main.ts src/worker.ts"
     },
     "compilerOptions": {
         "lib": ["deno.window", "dom"],

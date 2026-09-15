@@ -7,7 +7,8 @@
 import "@sandmd/sandkit";
 import { safe } from "./utils.ts";
 import type { TElementType } from "@sandmd/shared";
-import { ASTRO_ELEMENTS, TVanillaElementKey } from "../config/catalogue.ts";
+import { ASTRO_ELEMENTS } from "../config/catalogue.ts";
+import type { TVanillaElementKey } from "../config/keys.ts";
 
 function resolveType(ids: string[]): TElementType {
     for (const id of ids) {

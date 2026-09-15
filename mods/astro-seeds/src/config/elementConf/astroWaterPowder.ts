@@ -1,7 +1,7 @@
 import { MatterType } from "@sandmd/shared";
 import { spec } from "../util.ts";
 import { AstroElementConfig } from "../../element/types.ts";
-import { TElementKey } from "../catalogue.ts";
+import { TElementKey } from "../keys.ts";
 
 export const astroWaterPowder = {
     spec: spec({

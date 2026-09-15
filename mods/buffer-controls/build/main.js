@@ -1443,6 +1443,7 @@ function registerValueStructures(ops) {
     }),
     draw
   });
+  sandkit.api.player.buildings.unlockByType(ops.typeId);
   entries.push({
     typeId: ops.typeId,
     path,
@@ -1499,6 +1500,7 @@ function registerPathStructures(ops) {
     ...buildSectionData(ops.item, spriteId),
     draw
   });
+  sandkit.api.player.buildings.unlockByType(ops.typeId);
 }
 
 // ../../packages/buffer-controls/src/structure/register/actionNumberRegister.ts
@@ -1624,6 +1626,7 @@ function registerBooleanActionStructures(ops) {
     },
     draw
   });
+  sandkit.api.player.buildings.unlockByType(ops.typeId);
   sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
     act(structure, op);
   });

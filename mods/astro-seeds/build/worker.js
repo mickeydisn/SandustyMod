@@ -1,13 +1,3 @@
-// src/shared/ids.ts
-var MOD_ID = "astro.seeds";
-var VERSION = "3.1.0";
-var ASTRO_FIELD = /* @__PURE__ */ function(ASTRO_FIELD2) {
-  ASTRO_FIELD2[ASTRO_FIELD2["AGE"] = 1] = "AGE";
-  ASTRO_FIELD2[ASTRO_FIELD2["VX"] = 2] = "VX";
-  ASTRO_FIELD2[ASTRO_FIELD2["VY"] = 3] = "VY";
-  return ASTRO_FIELD2;
-}({});
-
 // ../../packages/element-profiles/src/grid.ts
 var Grid = {
   // TYPE
@@ -84,7 +74,7 @@ var Grid = {
   }
 };
 
-// ../../packages/shared-types/src/grid.ts
+// ../../packages/shared/src/grid.ts
 var Direction = /* @__PURE__ */ function(Direction2) {
   Direction2[Direction2["UP"] = 0] = "UP";
   Direction2[Direction2["RIGHT_UP"] = 1] = "RIGHT_UP";
@@ -154,6 +144,19 @@ var DIR_NAME_MAP = {
     Direction.LEFT_DOWN
   ]
 };
+
+// ../../packages/shared/src/elements.ts
+var MatterType = /* @__PURE__ */ function(MatterType2) {
+  MatterType2[MatterType2["Solid"] = 1] = "Solid";
+  MatterType2[MatterType2["Liquid"] = 2] = "Liquid";
+  MatterType2[MatterType2["Particle"] = 3] = "Particle";
+  MatterType2[MatterType2["Gas"] = 4] = "Gas";
+  MatterType2[MatterType2["Static"] = 5] = "Static";
+  MatterType2[MatterType2["Slushy"] = 6] = "Slushy";
+  MatterType2[MatterType2["Wisp"] = 7] = "Wisp";
+  MatterType2[MatterType2["Powder"] = 8] = "Powder";
+  return MatterType2;
+}({});
 
 // ../../packages/element-profiles/src/near.ts
 var GridNear = {
@@ -613,155 +616,27 @@ function runProfile(x, y, profile) {
   return true;
 }
 
-// src/shared/utils.ts
-function safe(fn, fallback = null) {
-  try {
-    return fn();
-  } catch {
-    return fallback;
-  }
-}
+// src/config/ids.ts
+var MOD_ID = "astro.seeds";
+var VERSION = "3.1.0";
+var ASTRO_FIELD = /* @__PURE__ */ function(ASTRO_FIELD2) {
+  ASTRO_FIELD2[ASTRO_FIELD2["AGE"] = 1] = "AGE";
+  ASTRO_FIELD2[ASTRO_FIELD2["VX"] = 2] = "VX";
+  ASTRO_FIELD2[ASTRO_FIELD2["VY"] = 3] = "VY";
+  return ASTRO_FIELD2;
+}({});
 
-// src/shared/elements/catalogue.ts
-function matterPowder() {
-  const MatterType = safe(() => sandkit.enums?.MatterType);
-  return MatterType?.Powder ?? 8;
-}
-function matterStatic() {
-  const MatterType = safe(() => sandkit.enums?.MatterType);
-  return MatterType?.Static ?? 5;
-}
-var LIQUID_COPPER_DENSITY = 150;
-var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
+// src/config/util.ts
 function spec(entry) {
   return {
     ...entry,
     id: `${MOD_ID}:${entry.slug}`
   };
 }
-var ASTRO_ELEMENTS = [
-  spec({
-    key: "astroVoidSeed",
-    slug: "astro-void-seed",
-    name: "Astro Void Seed",
-    description: "Mix with Florinol \u2192 Astro Seed.",
-    colors: [
-      [
-        80,
-        40,
-        140
-      ],
-      [
-        60,
-        20,
-        110
-      ],
-      [
-        100,
-        50,
-        160
-      ]
-    ],
-    density: 90,
-    metaColor: 5253260,
-    matterType: matterPowder(),
-    toolboxLabel: "Void Seed",
-    isSeed: false,
-    isCrystal: false
-  }),
-  spec({
-    key: "astroSeed",
-    slug: "astro-seed",
-    name: "Astro Seed",
-    description: "Liquid Gold / Copper / Water \u2192 crystals.",
-    colors: [
-      [
-        180,
-        220,
-        255
-      ],
-      [
-        140,
-        190,
-        255
-      ],
-      [
-        100,
-        160,
-        240
-      ],
-      [
-        220,
-        240,
-        255
-      ]
-    ],
-    density: SEED_DENSITY,
-    metaColor: 9357567,
-    matterType: matterPowder(),
-    toolboxLabel: "Seed",
-    isSeed: true,
-    isCrystal: false
-  }),
-  spec({
-    key: "astroGoldCrystal",
-    slug: "astro-gold-crystal",
-    name: "Astro Gold Crystal",
-    description: "From Liquid Gold. Burn \u2192 Astro Gold.",
-    colors: [
-      [
-        210,
-        160,
-        255
-      ],
-      [
-        180,
-        120,
-        240
-      ],
-      [
-        230,
-        190,
-        255
-      ],
-      [
-        160,
-        90,
-        220
-      ]
-    ],
-    density: 200,
-    metaColor: 11827440,
-    matterType: matterStatic(),
-    toolboxLabel: "Cry. Gold",
-    isSeed: false,
-    isCrystal: true
-  }),
-  spec({
-    key: "astroGoldPowder",
-    slug: "astro-gold",
-    name: "Astro Gold Powder",
-    description: "Powder from gold crystal + Fire.",
-    colors: [
-      [
-        180,
-        255,
-        90
-      ],
-      [
-        150,
-        230,
-        60
-      ]
-    ],
-    density: SEED_DENSITY,
-    metaColor: 11819760,
-    matterType: matterPowder(),
-    toolboxLabel: "Astro Gold",
-    isSeed: true,
-    isCrystal: false
-  }),
-  spec({
+
+// src/config/elementConf/astroCopperCrystal.ts
+var astroCopperCrystal = {
+  spec: spec({
     key: "astroCopperCrystal",
     slug: "astro-copper-crystal",
     name: "Astro Copper Crystal",
@@ -790,12 +665,19 @@ var ASTRO_ELEMENTS = [
     ],
     density: 0,
     metaColor: 13138e3,
-    matterType: matterStatic(),
+    matterType: MatterType.Static,
     toolboxLabel: "Cry. Copper",
     isSeed: false,
     isCrystal: true
   }),
-  spec({
+  reactions: []
+};
+
+// src/config/elementConf/astroCopperPowder.ts
+var LIQUID_COPPER_DENSITY = 150;
+var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
+var astroCopperPowder = {
+  spec: spec({
     key: "astroCopperPowder",
     slug: "astro-copper",
     name: "Astro Copper",
@@ -814,12 +696,414 @@ var ASTRO_ELEMENTS = [
     ],
     density: SEED_DENSITY,
     metaColor: 11822120,
-    matterType: matterPowder(),
+    matterType: MatterType.Powder,
     toolboxLabel: "Astro Copper",
     isSeed: true,
     isCrystal: false
   }),
-  spec({
+  reactions: [
+    {
+      inputA: "astroCopperCrystal",
+      inputB: "fire",
+      outputA: "astroCopperPowder",
+      outputB: "fire"
+    }
+  ],
+  profiles: [
+    {
+      id: "astroCopper-in-water",
+      seedKey: "astroCopperPowder",
+      liquidKey: "water",
+      crystalKey: "astroCopperCrystal",
+      growAge: 10,
+      moves: [
+        {
+          kind: "up",
+          chance: 5
+        },
+        {
+          kind: "side",
+          chance: 5
+        },
+        {
+          kind: "down",
+          chance: 5
+        },
+        {
+          kind: "columnForce",
+          opts: {
+            rate: -80,
+            rangeN: 8,
+            maxK: 1,
+            directions: [
+              "top",
+              "bottom",
+              "sides"
+            ]
+          }
+        },
+        {
+          kind: "columnForce",
+          opts: {
+            rate: 30,
+            rangeN: 2,
+            maxK: 1,
+            directions: [
+              "top",
+              "bottom",
+              "sides",
+              "cross"
+            ],
+            matchKeys: [
+              "astroGoldPowder"
+            ]
+          }
+        },
+        {
+          kind: "columnForce",
+          opts: {
+            rate: -20,
+            rangeN: 4,
+            maxK: 1,
+            directions: [
+              "top",
+              "bottom",
+              "sides",
+              "cross"
+            ],
+            matchKeys: [
+              "astroCopperPowder"
+            ]
+          }
+        }
+      ],
+      grow: [],
+      crystallization: []
+    }
+  ]
+};
+
+// src/config/elementConf/astroGoldCrystal.ts
+var astroGoldCrystal = {
+  spec: spec({
+    key: "astroGoldCrystal",
+    slug: "astro-gold-crystal",
+    name: "Astro Gold Crystal",
+    description: "From Liquid Gold. Burn \u2192 Astro Gold.",
+    colors: [
+      [
+        210,
+        160,
+        255
+      ],
+      [
+        180,
+        120,
+        240
+      ],
+      [
+        230,
+        190,
+        255
+      ],
+      [
+        160,
+        90,
+        220
+      ]
+    ],
+    density: 200,
+    metaColor: 11827440,
+    matterType: MatterType.Static,
+    toolboxLabel: "Cry. Gold",
+    isSeed: false,
+    isCrystal: true
+  }),
+  reactions: []
+};
+
+// src/config/elementConf/astroGoldPowder.ts
+var LIQUID_COPPER_DENSITY2 = 150;
+var SEED_DENSITY2 = Math.max(1, LIQUID_COPPER_DENSITY2 - 5);
+var astroGoldPowder = {
+  spec: spec({
+    key: "astroGoldPowder",
+    slug: "astro-gold",
+    name: "Astro Gold Powder",
+    description: "Powder from gold crystal + Fire.",
+    colors: [
+      [
+        180,
+        255,
+        90
+      ],
+      [
+        150,
+        230,
+        60
+      ]
+    ],
+    density: SEED_DENSITY2,
+    metaColor: 11819760,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Astro Gold",
+    isSeed: true,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "astroGoldCrystal",
+      inputB: "fire",
+      outputA: "astroGoldPowder",
+      outputB: "fire"
+    }
+  ],
+  profiles: [
+    {
+      id: "astroGold-in-water",
+      seedKey: "astroGoldPowder",
+      liquidKey: "water",
+      crystalKey: "astroGoldCrystal",
+      growAge: 10,
+      moves: [
+        {
+          kind: "up",
+          chance: 8
+        },
+        {
+          kind: "side",
+          chance: 8
+        },
+        {
+          kind: "down",
+          chance: 8
+        },
+        {
+          kind: "columnForce",
+          opts: {
+            rate: -50,
+            rangeN: 4,
+            maxK: 1,
+            directions: [
+              "top",
+              "bottom",
+              "sides"
+            ]
+          }
+        },
+        {
+          kind: "columnForce",
+          opts: {
+            rate: -10,
+            rangeN: 2,
+            maxK: 1,
+            directions: [
+              "top",
+              "bottom",
+              "sides"
+            ],
+            matchKeys: [
+              "astroGoldPowder"
+            ]
+          }
+        },
+        {
+          kind: "columnForce",
+          opts: {
+            rate: 90,
+            rangeN: 4,
+            maxK: 1,
+            directions: [
+              "top",
+              "bottom",
+              "sides"
+            ],
+            matchKeys: [
+              "astroCopperPowder"
+            ]
+          }
+        }
+      ],
+      grow: [],
+      crystallization: []
+    }
+  ]
+};
+
+// src/config/elementConf/astroSeed.ts
+var LIQUID_COPPER_DENSITY3 = 150;
+var SEED_DENSITY3 = Math.max(1, LIQUID_COPPER_DENSITY3 - 5);
+var astroSeed = {
+  spec: spec({
+    key: "astroSeed",
+    slug: "astro-seed",
+    name: "Astro Seed",
+    description: "Liquid Gold / Copper / Water \u2192 crystals.",
+    colors: [
+      [
+        180,
+        220,
+        255
+      ],
+      [
+        140,
+        190,
+        255
+      ],
+      [
+        100,
+        160,
+        240
+      ],
+      [
+        220,
+        240,
+        255
+      ]
+    ],
+    density: SEED_DENSITY3,
+    metaColor: 9357567,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Seed",
+    isSeed: true,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "astroVoidSeed",
+      inputB: "florinol",
+      outputA: "astroSeed",
+      outputB: null
+    }
+  ],
+  profiles: [
+    {
+      id: "astroSeed-in-gold",
+      seedKey: "astroSeed",
+      liquidKey: "liquidGold",
+      crystalKey: "astroGoldCrystal",
+      growAge: 50,
+      moves: [
+        {
+          kind: "side",
+          chance: 15
+        },
+        {
+          kind: "down",
+          chance: 20
+        }
+      ],
+      grow: [
+        {
+          kind: "ageOnSurround",
+          rate: 100,
+          minCount: 4
+        }
+      ],
+      crystallization: [
+        {
+          kind: "disk",
+          radius: 1
+        }
+      ]
+    },
+    {
+      id: "astroSeed-in-copper",
+      seedKey: "astroSeed",
+      liquidKey: "liquidCopper",
+      crystalKey: "astroCopperCrystal",
+      growAge: 10,
+      moves: [
+        {
+          kind: "up",
+          chance: 0
+        },
+        {
+          kind: "side",
+          chance: 15
+        },
+        {
+          kind: "down",
+          chance: 35
+        }
+      ],
+      grow: [
+        {
+          kind: "blockOn",
+          blockKey: "water"
+        },
+        {
+          kind: "instantChance",
+          rate: 0
+        },
+        {
+          kind: "ageOnFloor",
+          rate: 60
+        },
+        {
+          kind: "ageOnWall",
+          rate: 70
+        },
+        // { kind: "ageOnAir", rate: 30 },
+        {
+          kind: "ageOnCrystal",
+          rate: 100
+        }
+      ],
+      crystallization: [
+        {
+          kind: "cross",
+          radius: 1
+        }
+      ]
+    }
+  ]
+};
+
+// src/config/elementConf/astroVoidSeed.ts
+var astroVoidSeed = {
+  spec: spec({
+    key: "astroVoidSeed",
+    slug: "astro-void-seed",
+    name: "Astro Void Seed",
+    description: "Mix with Florinol \u2192 Astro Seed.",
+    colors: [
+      [
+        80,
+        40,
+        140
+      ],
+      [
+        60,
+        20,
+        110
+      ],
+      [
+        100,
+        50,
+        160
+      ]
+    ],
+    density: 90,
+    metaColor: 5253260,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Void Seed",
+    isSeed: false,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "seedBase",
+      inputB: "voidPetal",
+      outputA: "astroVoidSeed",
+      outputB: null
+    }
+  ]
+};
+
+// src/config/elementConf/astroWaterCrystal.ts
+var astroWaterCrystal = {
+  spec: spec({
     key: "astroWaterCrystal",
     slug: "astro-water-crystal",
     name: "Astro Water Crystal",
@@ -843,12 +1127,17 @@ var ASTRO_ELEMENTS = [
     ],
     density: 0,
     metaColor: 9357567,
-    matterType: matterStatic(),
+    matterType: MatterType.Static,
     toolboxLabel: "Cry. Water",
     isSeed: false,
     isCrystal: true
   }),
-  spec({
+  reactions: []
+};
+
+// src/config/elementConf/astroWaterPowder.ts
+var astroWaterPowder = {
+  spec: spec({
     key: "astroWaterPowder",
     slug: "astro-water",
     name: "Astro Water",
@@ -872,18 +1161,48 @@ var ASTRO_ELEMENTS = [
     ],
     density: 280,
     metaColor: 9357567,
-    matterType: matterPowder(),
+    matterType: MatterType.Powder,
     toolboxLabel: "Astro Water",
     isSeed: true,
     isCrystal: false
-  })
+  }),
+  reactions: [
+    {
+      inputA: "astroWaterCrystal",
+      inputB: "fire",
+      outputA: "astroWaterPowder",
+      outputB: "fire"
+    }
+  ]
+};
+
+// src/config/catalogue.ts
+var ASTRO_ELEMENTS = [
+  astroCopperCrystal,
+  astroCopperPowder,
+  astroGoldCrystal,
+  astroGoldPowder,
+  astroSeed,
+  astroVoidSeed,
+  astroWaterCrystal,
+  astroWaterPowder
 ];
 var ASTRO_ELEMENT_BY_KEY = Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
-  e.key,
-  e
+  e.spec.key,
+  e.spec
 ]));
+var ASTRO_REACTIONS = ASTRO_ELEMENTS.flatMap((c) => c.reactions);
 
-// src/shared/elements/resolve.ts
+// src/shared/utils.ts
+function safe(fn, fallback = null) {
+  try {
+    return fn();
+  } catch {
+    return fallback;
+  }
+}
+
+// src/shared/resolve.ts
 function resolveType(ids) {
   for (const id of ids) {
     const t = safe(() => sandkit.api.elements.getTypeFromId(id));
@@ -940,9 +1259,9 @@ function resolveVanilla() {
 }
 function resolveAstro() {
   return Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
-    e.key,
+    e.spec.key,
     resolveType([
-      e.id
+      e.spec.id
     ])
   ]));
 }
@@ -951,382 +1270,7 @@ var ElementType = {
   ...resolveAstro()
 };
 
-// src/shared/configSchema.ts
-var BUF_LENGTH = 32;
-var JSON_BUF_LENGTH = 2048;
-var JSON_COUNTER_INDEX = 7;
-var CONFIG_FIELDS = [
-  // master (panel toggles at top)
-  {
-    index: 0,
-    key: "enabled",
-    kind: "bool",
-    section: "master",
-    label: "Mod active",
-    default: true
-  },
-  {
-    index: 1,
-    key: "debugLog",
-    kind: "bool",
-    section: "master",
-    label: "Debug log",
-    default: false
-  },
-  {
-    index: 2,
-    key: "waterEnabled",
-    kind: "bool",
-    section: "master",
-    label: "Water profile",
-    default: true
-  },
-  // move
-  {
-    index: 3,
-    key: "stepMove",
-    kind: "bool",
-    section: "move",
-    label: "Movement",
-    default: true
-  },
-  {
-    index: 4,
-    key: "moveSide",
-    kind: "number",
-    section: "move",
-    label: "Side %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepMove"
-  },
-  {
-    index: 5,
-    key: "moveFloat",
-    kind: "number",
-    section: "move",
-    label: "Float %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepMove"
-  },
-  {
-    index: 6,
-    key: "moveSink",
-    kind: "number",
-    section: "move",
-    label: "Sink %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepMove"
-  },
-  // index 7 (old moveContact slot) is reused as JSON_COUNTER_INDEX by the
-  // panel (uint8 JSON buffer change signal) — see JSON_COUNTER_INDEX.
-  {
-    index: 20,
-    key: "stepForceMove",
-    kind: "bool",
-    section: "move",
-    label: "Column forces",
-    default: false
-  },
-  // grow
-  {
-    index: 8,
-    key: "stepGrow",
-    kind: "bool",
-    section: "grow",
-    label: "Grow",
-    default: false
-  },
-  {
-    index: 9,
-    key: "growInstantTouch",
-    kind: "number",
-    section: "grow",
-    label: "Instant %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepGrow"
-  },
-  {
-    index: 10,
-    key: "growOnAir",
-    kind: "number",
-    section: "grow",
-    label: "Air %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepGrow"
-  },
-  {
-    index: 11,
-    key: "growOnWall",
-    kind: "number",
-    section: "grow",
-    label: "Wall %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepGrow"
-  },
-  {
-    index: 12,
-    key: "growOnFloor",
-    kind: "number",
-    section: "grow",
-    label: "Floor %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepGrow"
-  },
-  {
-    index: 13,
-    key: "growOnCrystal",
-    kind: "number",
-    section: "grow",
-    label: "Crystal %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepGrow"
-  },
-  {
-    index: 14,
-    key: "growIfSurround",
-    kind: "number",
-    section: "grow",
-    label: "Surround %",
-    default: 0,
-    min: 0,
-    max: 100,
-    when: "stepGrow"
-  },
-  {
-    index: 15,
-    key: "growSurroundMin",
-    kind: "number",
-    section: "grow",
-    label: "Surr. min",
-    default: 0,
-    min: 0,
-    max: 8,
-    when: "stepGrow"
-  },
-  // crystal
-  {
-    index: 16,
-    key: "stepCrystalisation",
-    kind: "bool",
-    section: "crystal",
-    label: "Crystallize",
-    default: false
-  },
-  {
-    index: 17,
-    key: "crystalGrowAge",
-    kind: "number",
-    section: "crystal",
-    label: "Grow age",
-    default: 0,
-    min: 0,
-    max: 200,
-    when: "stepCrystalisation"
-  },
-  {
-    index: 18,
-    key: "crystalShape",
-    kind: "number",
-    section: "crystal",
-    label: "Shape 0\u20134",
-    default: 0,
-    min: 0,
-    max: 4,
-    when: "stepCrystalisation"
-  },
-  {
-    index: 19,
-    key: "crystalRadius",
-    kind: "number",
-    section: "crystal",
-    label: "Radius",
-    default: 0,
-    min: 0,
-    max: 6,
-    when: "stepCrystalisation"
-  }
-];
-var bufField = Object.fromEntries(CONFIG_FIELDS.map((f) => [
-  f.key,
-  f.index
-]));
-var DEFAULT_FORCE_CONFIG = {
-  columnForce: [
-    {
-      rateFn: -50,
-      matchTypes: [],
-      directions: [
-        "sides"
-      ],
-      rangeNFn: 10,
-      maxKFn: 5,
-      freeTypes: [],
-      excludeTypes: []
-    }
-  ]
-};
-
-// src/worker/definition/config.ts
-var cfgBuf = null;
-try {
-  cfgBuf = sandkit.api.shared.buffers.ensure("astroConfig", {
-    type: "uint16",
-    length: BUF_LENGTH
-  });
-} catch (e) {
-  console.error(`[${MOD_ID} v${VERSION}] config buffer missing:`, e);
-}
-var jsonBuf = null;
-try {
-  jsonBuf = sandkit.api.shared.buffers.ensure("astroJson", {
-    type: "uint8",
-    length: JSON_BUF_LENGTH
-  });
-} catch (e) {
-  console.error(`[${MOD_ID} v${VERSION}] astroJson buffer missing:`, e);
-}
-function u16(i, fallback = 0) {
-  if (!cfgBuf) return fallback;
-  const v = cfgBuf[i];
-  if (v === void 0 || v === null) return fallback;
-  return v;
-}
-function bool(key) {
-  const i = bufField[key];
-  if (i === void 0) return false;
-  return u16(i, 0) !== 0;
-}
-function num(key) {
-  const i = bufField[key];
-  if (i === void 0) return 0;
-  return u16(i, 0);
-}
-var WaterCfg = {
-  modEnabled: () => bool("enabled"),
-  debug: () => bool("debugLog"),
-  enabled: () => bool("waterEnabled"),
-  stepMove: () => bool("stepMove"),
-  moveSide: () => num("moveSide"),
-  moveFloat: () => num("moveFloat"),
-  moveSink: () => num("moveSink"),
-  stepForceMove: () => bool("stepForceMove"),
-  stepGrow: () => bool("stepGrow"),
-  growInstantTouch: () => num("growInstantTouch"),
-  growOnAir: () => num("growOnAir"),
-  growOnWall: () => num("growOnWall"),
-  growOnFloor: () => num("growOnFloor"),
-  growOnCrystal: () => num("growOnCrystal"),
-  growIfSurround: () => num("growIfSurround"),
-  growSurroundMin: () => num("growSurroundMin"),
-  stepCrystalisation: () => bool("stepCrystalisation"),
-  crystalGrowAge: () => Math.max(0, num("crystalGrowAge")),
-  crystalShape: () => num("crystalShape"),
-  crystalRadius: () => Math.max(0, num("crystalRadius"))
-};
-function toNum(v, d = 0) {
-  return typeof v === "number" && Number.isFinite(v) ? v : d;
-}
-function toTypeArr(v) {
-  if (!Array.isArray(v)) return [];
-  const out = [];
-  for (const t of v) {
-    if (typeof t === "number" && Number.isInteger(t)) out.push(t);
-  }
-  return out;
-}
-function toDirArr(v) {
-  if (!Array.isArray(v)) return [];
-  const known = [
-    "top",
-    "bottom",
-    "left",
-    "right",
-    "sides"
-  ];
-  const out = /* @__PURE__ */ new Set();
-  for (const d of v) {
-    if (typeof d === "string" && known.includes(d)) {
-      out.add(d);
-    }
-  }
-  return [
-    ...out
-  ];
-}
-function readJsonString(buffer) {
-  try {
-    const end = buffer.indexOf(0);
-    const bytes = buffer.slice(0, end === -1 ? buffer.length : end);
-    return new TextDecoder().decode(bytes);
-  } catch (e) {
-    console.error("readJsonString failed", e);
-  }
-  return "";
-}
-function parseForceConfig(raw) {
-  if (!raw) return DEFAULT_FORCE_CONFIG;
-  try {
-    const obj = JSON.parse(raw);
-    if (!Array.isArray(obj.columnForce)) return DEFAULT_FORCE_CONFIG;
-    const columnForce = [];
-    for (const rawEntry of obj.columnForce) {
-      if (!rawEntry || typeof rawEntry !== "object" || Array.isArray(rawEntry)) continue;
-      const e = rawEntry;
-      columnForce.push({
-        rateFn: toNum(e.rateFn),
-        matchTypes: toTypeArr(e.matchTypes),
-        directions: toDirArr(e.directions),
-        rangeNFn: Math.max(0, toNum(e.rangeNFn, 10)),
-        maxKFn: Math.max(0, toNum(e.maxKFn, 3)),
-        freeTypes: toTypeArr(e.freeTypes),
-        excludeTypes: toTypeArr(e.excludeTypes)
-      });
-    }
-    return {
-      columnForce
-    };
-  } catch {
-    return DEFAULT_FORCE_CONFIG;
-  }
-}
-var cacheCounter = -1;
-var cacheConfig = null;
-function forceConfig() {
-  const counter = u16(JSON_COUNTER_INDEX, -1);
-  if (counter !== cacheCounter || !cacheConfig) {
-    cacheCounter = counter;
-    cacheConfig = parseForceConfig(jsonBuf ? readJsonString(jsonBuf) : "");
-  }
-  return cacheConfig;
-}
-function forceEntries() {
-  return forceConfig().columnForce;
-}
-var seen = /* @__PURE__ */ new Set();
-for (const f of CONFIG_FIELDS) {
-  if (seen.has(f.index)) {
-    console.error(`[${MOD_ID}] duplicate buf index`, f.index, f.key);
-  }
-  seen.add(f.index);
-}
-
-// src/worker/definition/elementProfileFactory.ts
+// src/worker/elementProfileFactory.ts
 function buildMoves(specs) {
   const out = [];
   for (const spec2 of specs) {
@@ -1414,348 +1358,45 @@ function createProfileFactories(specs) {
   ]));
 }
 
-// src/worker/definition/profileCatalogue.ts
-var PROFILE_SPECS = [
-  {
-    id: "astroSeed-in-gold",
-    seedKey: "astroSeed",
-    liquidKey: "liquidGold",
-    crystalKey: "astroGoldCrystal",
-    growAge: 40,
-    moves: [
-      {
-        kind: "side",
-        chance: 15
-      },
-      {
-        kind: "down",
-        chance: 20
-      }
-    ],
-    grow: [
-      {
-        kind: "ageAlways"
-      }
-    ],
-    crystallization: [
-      {
-        kind: "disk",
-        radius: 1
-      }
-    ]
-  },
-  {
-    id: "astroSeed-in-copper",
-    seedKey: "astroSeed",
-    liquidKey: "liquidCopper",
-    crystalKey: "astroCopperCrystal",
-    growAge: 10,
-    moves: [
-      {
-        kind: "up",
-        chance: 0
-      },
-      {
-        kind: "side",
-        chance: 15
-      },
-      {
-        kind: "down",
-        chance: 35
-      }
-    ],
-    grow: [
-      {
-        kind: "blockOn",
-        blockKey: "water"
-      },
-      {
-        kind: "instantChance",
-        rate: 0
-      },
-      {
-        kind: "ageOnFloor",
-        rate: 60
-      },
-      {
-        kind: "ageOnWall",
-        rate: 70
-      },
-      {
-        kind: "ageOnAir",
-        rate: 30
-      },
-      {
-        kind: "ageOnCrystal",
-        rate: 100
-      }
-    ],
-    crystallization: [
-      {
-        kind: "cross",
-        radius: 1
-      }
-    ]
-  },
-  {
-    id: "astroGold-in-water",
-    seedKey: "astroGoldPowder",
-    liquidKey: "water",
-    crystalKey: "astroGoldCrystal",
-    growAge: 10,
-    moves: [
-      {
-        kind: "up",
-        chance: 8
-      },
-      {
-        kind: "side",
-        chance: 8
-      },
-      {
-        kind: "down",
-        chance: 8
-      },
-      {
-        kind: "columnForce",
-        opts: {
-          rate: -80,
-          rangeN: 8,
-          maxK: 1,
-          directions: [
-            "top",
-            "bottom",
-            "sides"
-          ]
-        }
-      },
-      {
-        kind: "columnForce",
-        opts: {
-          rate: -10,
-          rangeN: 2,
-          maxK: 1,
-          directions: [
-            "top",
-            "bottom",
-            "sides",
-            "cross"
-          ],
-          matchKeys: [
-            "astroGoldPowder"
-          ]
-        }
-      },
-      {
-        kind: "columnForce",
-        opts: {
-          rate: 90,
-          rangeN: 6,
-          maxK: 1,
-          directions: [
-            "top",
-            "bottom",
-            "sides",
-            "cross"
-          ],
-          matchKeys: [
-            "astroCopperPowder"
-          ]
-        }
-      }
-    ],
-    grow: [],
-    crystallization: []
-  },
-  {
-    id: "astroCopper-in-water",
-    seedKey: "astroCopperPowder",
-    liquidKey: "water",
-    crystalKey: "astroCopperCrystal",
-    growAge: 10,
-    moves: [
-      {
-        kind: "up",
-        chance: 5
-      },
-      {
-        kind: "side",
-        chance: 5
-      },
-      {
-        kind: "down",
-        chance: 5
-      },
-      {
-        kind: "columnForce",
-        opts: {
-          rate: -80,
-          rangeN: 8,
-          maxK: 1,
-          directions: [
-            "top",
-            "bottom",
-            "sides"
-          ]
-        }
-      },
-      {
-        kind: "columnForce",
-        opts: {
-          rate: 30,
-          rangeN: 2,
-          maxK: 1,
-          directions: [
-            "top",
-            "bottom",
-            "sides",
-            "cross"
-          ],
-          matchKeys: [
-            "astroGoldPowder"
-          ]
-        }
-      },
-      {
-        kind: "columnForce",
-        opts: {
-          rate: -20,
-          rangeN: 4,
-          maxK: 1,
-          directions: [
-            "top",
-            "bottom",
-            "sides",
-            "cross"
-          ],
-          matchKeys: [
-            "astroCopperPowder"
-          ]
-        }
-      }
-    ],
-    grow: [],
-    crystallization: []
-  },
-  {
-    // Live panel-driven profile: guards + thunks read WaterCfg per build.
-    id: "water",
-    seedKey: "astroSeed",
-    liquidKey: "water",
-    crystalKey: "astroWaterCrystal",
-    growAge: () => WaterCfg.crystalGrowAge(),
-    moves: [
-      {
-        kind: "gated",
-        when: () => WaterCfg.stepForceMove(),
-        moves: [
-          {
-            kind: "columnForceFrom",
-            entries: () => forceEntries()
-          }
-        ]
-      },
-      {
-        kind: "gated",
-        when: () => WaterCfg.stepMove(),
-        moves: [
-          {
-            kind: "up",
-            chance: () => WaterCfg.moveFloat()
-          },
-          {
-            kind: "side",
-            chance: () => WaterCfg.moveSide()
-          },
-          {
-            kind: "down",
-            chance: () => WaterCfg.moveSink()
-          }
-        ]
-      }
-    ],
-    grow: [
-      {
-        kind: "instantChance",
-        rate: () => WaterCfg.growInstantTouch()
-      },
-      {
-        kind: "ageOnFloor",
-        rate: () => WaterCfg.growOnFloor()
-      },
-      {
-        kind: "ageOnWall",
-        rate: () => WaterCfg.growOnWall()
-      },
-      {
-        kind: "ageOnAir",
-        rate: () => WaterCfg.growOnAir()
-      },
-      {
-        kind: "ageOnCrystal",
-        rate: () => WaterCfg.growOnCrystal()
-      },
-      {
-        kind: "ageOnSurround",
-        rate: () => WaterCfg.growIfSurround(),
-        minCount: () => WaterCfg.growSurroundMin()
-      }
-    ],
-    crystallization: [
-      {
-        kind: "fromShape",
-        shape: () => WaterCfg.crystalShape(),
-        radius: () => WaterCfg.crystalRadius()
-      }
-    ],
-    whenGrow: () => WaterCfg.stepGrow(),
-    whenCrystal: () => WaterCfg.stepCrystalisation()
-  }
-];
-var profileFactories = createProfileFactories(PROFILE_SPECS);
-var profiles = Object.values(profileFactories);
-
-// src/worker/main.ts
+// src/worker/build.ts
+var api = sandkit.api;
+var profileFactories = createProfileFactories(ASTRO_ELEMENTS.flatMap((el) => el.profiles ?? []));
 function dispatchSeed(x, y, elementType, cancel) {
-  if (!WaterCfg.modEnabled()) return false;
-  for (const getProfile of Object.values(profiles)) {
+  for (const getProfile of Object.values(profileFactories)) {
     const profile = getProfile();
-    if (profile.seedType == null || elementType !== profile.seedType) {
-      continue;
-    }
-    if (profile.liquidType == null || !GridNear.isNear(x, y, profile.liquidType)) {
-      continue;
-    }
-    sandkit.api.elements.setPhysicsAtCell(x, y, 1);
+    if (profile.seedType == null || elementType !== profile.seedType) continue;
+    if (profile.liquidType == null || !GridNear.isNear(x, y, profile.liquidType)) continue;
+    api.elements.setPhysicsAtCell(x, y, 1);
     cancel.cancel();
     runProfile(x, y, profile);
-    sandkit.api.grid.reportActivityAtCell(x, y);
-    sandkit.api.grid.reportActivityAtCell(x, y - 1);
+    api.grid.reportActivityAtCell(x, y);
+    api.grid.reportActivityAtCell(x, y - 1);
     return true;
   }
-  sandkit.api.elements.setPhysicsAtCell(x, y, 0);
+  api.elements.setPhysicsAtCell(x, y, 0);
   return false;
 }
-try {
-  const seedKeys = [
-    ...new Set(PROFILE_SPECS.map((s) => s.seedKey))
+function buildWorker() {
+  const seedTypes = [
+    ...new Set(ASTRO_ELEMENTS.flatMap((el) => (el.profiles ?? []).map((p) => ElementType[p.seedKey])))
   ];
-  const seedTypes = seedKeys.map((k) => ElementType[k]);
   for (const elementType of seedTypes) {
     if (!elementType) continue;
-    sandkit.api.hooks.intercept("element:update", (payload, cancel) => {
-      try {
-        const p = payload;
-        return dispatchSeed(p.x, p.y, p.elementType || 0, cancel);
-      } catch (e) {
-        console.error('hooks.intercept("element:update")', e);
-      }
+    api.hooks.intercept("element:update", (payload, cancel) => {
+      const p = payload;
+      return dispatchSeed(p.x, p.y, p.elementType || 0, cancel);
     }, {
       guard: {
         elementType
       }
     });
   }
+  console.log(`[${MOD_ID} v${VERSION}] worker loaded`, seedTypes);
+}
+
+// src/worker.ts
+try {
+  buildWorker();
 } catch (e) {
-  console.error(`[${MOD_ID} v${VERSION}] update intercept failed:`, e);
+  console.error("[astro.seeds] worker failed:", e);
 }

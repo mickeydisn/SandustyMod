@@ -60,6 +60,7 @@ void (async () => {
 })();
 
 try {
+    // const MOD_ID = "";
     findOrphanedObjects(MOD_ID);
     pruneStaleBuildings(MOD_ID);
 } catch (e) {

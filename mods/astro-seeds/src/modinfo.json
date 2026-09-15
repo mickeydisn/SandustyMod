@@ -7,7 +7,7 @@
     "entry": "main.js",
     "workerEntry": "worker.js",
     "author": "MickeyDisn",
-    "description": "Astro Seeds v2.3\n\nGold & Copper fixed. Water configured in-game (Alt+A panel).\nMOVE → GROW → CRYSTALLIZATION.\n",
+    "description": "Astro Seeds v3.1.0\n\nGold & Copper fixed. Seed–crystal profiles over liquids.\nMOVE → GROW → CRYSTALLIZATION.\n",
     "dependencies": [],
     "loadOrder": 0,
     "configSchema": {

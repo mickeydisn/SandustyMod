@@ -6,7 +6,6 @@
  * closure, so adding a new element means adding one spec — no new function.
  */
 import type {
-    ColumnForceEntry,
     CrystallizeFn,
     GrowFn,
     MoveFn,
@@ -15,70 +14,12 @@ import type {
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles";
 import { ASTRO_FIELD } from "../config/ids.ts";
 import { ElementType } from "../shared/resolve.ts";
-
-/** Live numeric thunk — literal or config reader, resolved per tick. */
-export type NumThunk = number | (() => number);
-
-/** Declarative move step: basic drift, column-force, or gated group. */
-export type MoveSpec<ElType extends string> =
-    | { kind: "up"; chance: NumThunk; when?: () => boolean }
-    | { kind: "side"; chance: NumThunk; when?: () => boolean }
-    | { kind: "down"; chance: NumThunk; when?: () => boolean }
-    | { kind: "columnForce"; opts: ColumnForceOptsSpec<ElType>; when?: () => boolean }
-    | { kind: "columnForceFrom"; entries: () => readonly ColumnForceEntry[]; when?: () => boolean }
-    | { kind: "gated"; when: () => boolean; moves: MoveSpec<ElType>[] };
-
-/** ColumnForce options with thunks — mirrors `Move.columnForce` opts. */
-export interface ColumnForceOptsSpec<ElType extends string> {
-    // Rate / shape
-    rate: NumThunk;
-    rangeN: NumThunk;
-    maxK: NumThunk;
-    // Direction + type sets (keys resolved lazily at build time)
-    directions: string[];
-    matchKeys?: ElType[];
-    freeKeys?: ElType[];
-    excludeKeys?: ElType[];
-}
-
-/** Declarative grow step. */
-export type GrowSpec<ElType extends string> =
-    | { kind: "ageAlways" }
-    | { kind: "instantChance"; rate: NumThunk }
-    | { kind: "ageOnFloor"; rate: NumThunk }
-    | { kind: "ageOnWall"; rate: NumThunk }
-    | { kind: "ageOnAir"; rate: NumThunk }
-    | { kind: "ageOnCrystal"; rate: NumThunk }
-    | { kind: "ageOnSurround"; rate: NumThunk; minCount: NumThunk }
-    | { kind: "blockOn"; blockKey: ElType };
-
-/** Declarative crystallization step. */
-export type CrystalSpec =
-    | { kind: "disk"; radius: NumThunk }
-    | { kind: "cross"; radius: NumThunk }
-    | { kind: "ring"; radius: NumThunk }
-    | { kind: "column"; radius: NumThunk }
-    | { kind: "single" }
-    | { kind: "fromShape"; shape: NumThunk; radius: NumThunk };
-
-/** Full declarative description of one seed profile. */
-export interface ProfileSpec<ElType extends string> {
-    // Identity
-    id: string;
-    seedKey: ElType;
-    liquidKey: ElType;
-    crystalKey: ElType;
-    // Maturity
-    growAge: NumThunk;
-    // Pipeline phases
-    moves: MoveSpec<ElType>[];
-    grow: GrowSpec<ElType>[];
-    crystallization: CrystalSpec[];
-    // Guards evaluated at build time (e.g. panel toggles)
-    whenMove?: () => boolean;
-    whenGrow?: () => boolean;
-    whenCrystal?: () => boolean;
-}
+import type {
+    CrystalSpec,
+    GrowSpec,
+    MoveSpec,
+    ProfileSpec,
+} from "../element/types.ts";
 
 function buildMoves<ElType extends string>(specs: MoveSpec<ElType>[]): MoveFn[] {
     const out: MoveFn[] = [];

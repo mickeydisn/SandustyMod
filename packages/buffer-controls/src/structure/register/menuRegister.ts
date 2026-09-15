@@ -44,6 +44,6 @@ export function registerMenuStructures(ops: registerStructureOps): ActionRegiste
         draw,
     });
 
-    // Unlock the buildings ( show in the menu )
+    // Unlock the buildings
     sandkit.api.player.buildings.unlockByType(ops.typeId);
 }
