@@ -67,13 +67,14 @@ export const astroSeed = {
             ],
             grow: [
                 // { kind: "blockOn", blockKey: "water" },
+                { kind: "ageOnSurround", rate: 20, minCount: 4 },
                 { kind: "instantChance", rate: 0 },
                 { kind: "ageOnFloor", rate: 60 },
                 { kind: "ageOnWall", rate: 70 },
                 // { kind: "ageOnAir", rate: 30 },
                 { kind: "ageOnCrystal", rate: 100 },
             ],
-            crystallization: [{ kind: "cross", radius: 1 }],
+            crystallization: [{ kind: "cross", radius: 2 }],
         },
     ],
 } satisfies AstroElementConfig<TElementKey>;

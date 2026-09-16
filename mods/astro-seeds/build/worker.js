@@ -1517,43 +1517,6 @@ var MASK_DIAGONAL = [
     1
   ]
 ];
-var MASK_FULL = [
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    0,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ]
-];
 var MASK_GRAVITY = [
   [
     0,
@@ -1725,7 +1688,7 @@ var astroCopperPowder = {
           matchKeys: [
             "liquidGold"
           ],
-          weight: 1,
+          weight: 0.1,
           mask: MASK_GRAVITY
         },
         {
@@ -1766,23 +1729,7 @@ var astroCopperPowder = {
           matchKeys: [
             "astroGoldPowder"
           ],
-          weight: 5
-        },
-        // Flow memory — align with the movement vector neighbours
-        // stored last tick (flocking; keeps drifting seeds coherent).
-        {
-          kind: "memory",
-          chance: 100,
-          weight: 5,
-          mask: MASK_FULL
-        },
-        // Inertia — own last-tick flow vector drives a matching vote
-        // gradient (straight-line persistence on top of flocking).
-        {
-          kind: "inertia",
-          chance: 50,
-          weight: 0.1,
-          mode: "ahead"
+          weight: 1
         }
       ],
       grow: [],
@@ -2260,6 +2207,11 @@ var astroSeed = {
       grow: [
         // { kind: "blockOn", blockKey: "water" },
         {
+          kind: "ageOnSurround",
+          rate: 20,
+          minCount: 4
+        },
+        {
           kind: "instantChance",
           rate: 0
         },
@@ -2280,7 +2232,7 @@ var astroSeed = {
       crystallization: [
         {
           kind: "cross",
-          radius: 1
+          radius: 2
         }
       ]
     }

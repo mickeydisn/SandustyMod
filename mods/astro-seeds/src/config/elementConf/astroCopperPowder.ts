@@ -123,7 +123,7 @@ export const astroCopperPowder = {
                     kind: "channel",
                     chance: 1,
                     matchKeys: ["liquidGold"],
-                    weight: 1,
+                    weight: .1,
                     mask: MASK_GRAVITY,
                 },
                 {
@@ -151,13 +151,13 @@ export const astroCopperPowder = {
                     mask: MASK_DIAGONAL,
                 },
                 // Cluster — any nearby gold powder pulls this copper in.
-                { kind: "channel", chance: 90, matchKeys: ["astroGoldPowder"], weight: 5 },
+                { kind: "channel", chance: 90, matchKeys: ["astroGoldPowder"], weight: 1 },
                 // Flow memory — align with the movement vector neighbours
                 // stored last tick (flocking; keeps drifting seeds coherent).
-                { kind: "memory", chance: 100, weight: 5, mask: MASK_FULL },
+                // { kind: "memory", chance: 10, weight: 1, mask: MASK_FULL },
                 // Inertia — own last-tick flow vector drives a matching vote
                 // gradient (straight-line persistence on top of flocking).
-                { kind: "inertia", chance: 50, weight: .1, mode: "ahead" },
+                // { kind: "inertia", chance: 10, weight: 1, mode: "ahead" },
             ],
             grow: [],
             crystallization: [],
