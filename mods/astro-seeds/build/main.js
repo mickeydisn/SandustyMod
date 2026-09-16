@@ -125,6 +125,23 @@ var MASK_CROSS = [
     0
   ]
 ];
+var MASK_PLUS = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
 var MASK_DIAGONAL = [
   [
     1,
@@ -140,23 +157,6 @@ var MASK_DIAGONAL = [
     1,
     0,
     1
-  ]
-];
-var MASK_NEGATIF = [
-  [
-    0,
-    -1,
-    0
-  ],
-  [
-    -1,
-    0,
-    -1
-  ],
-  [
-    0,
-    -1,
-    0
   ]
 ];
 var MASK_GRAVITY = [
@@ -312,7 +312,11 @@ var astroCopperPowder = {
       crystalKey: "astroCopperCrystal",
       growAge: 10,
       // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      // memDecay integrates it into a real fading velocity; memBounce
+      // reflects it off walls/floor so landing seeds rebound upward.
       memField: ASTRO_FIELD.VX,
+      memDecay: 0.9,
+      memBounce: true,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
         {
@@ -336,8 +340,8 @@ var astroCopperPowder = {
             "structure"
           ],
           chance: 100,
-          weight: -5,
-          mask: MASK_NEGATIF
+          weight: -10,
+          mask: MASK_PLUS
         },
         // Lattice — own kind repels orthogonally but attracts
         // diagonally, so copper settles into diagonal chains instead
@@ -348,7 +352,7 @@ var astroCopperPowder = {
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: -5,
+          weight: -2,
           mask: MASK_CROSS
         },
         {
@@ -357,7 +361,7 @@ var astroCopperPowder = {
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: 5,
+          weight: 2,
           mask: MASK_DIAGONAL
         },
         // Cluster — any nearby gold powder pulls this copper in.
@@ -374,7 +378,7 @@ var astroCopperPowder = {
         {
           kind: "memory",
           chance: 100,
-          weight: 1
+          weight: 2
         }
       ],
       grow: [],
@@ -459,7 +463,7 @@ var MASK_SIDE = [
     0
   ]
 ];
-var MASK_CROSS2 = [
+var MASK_PLUS2 = [
   [
     0,
     1,
@@ -491,6 +495,43 @@ var MASK_ALL = [
     1,
     1,
     1
+  ]
+];
+var MASK_OUT = [
+  [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  [
+    1,
+    0,
+    0,
+    0,
+    1
+  ],
+  [
+    1,
+    0,
+    0,
+    0,
+    1
+  ],
+  [
+    1,
+    0,
+    0,
+    0,
+    1
+  ],
+  [
+    1,
+    1,
+    1,
+    1,
+    0
   ]
 ];
 var astroGoldPowder = {
@@ -596,14 +637,18 @@ var astroGoldPowder = {
       crystalKey: "astroGoldCrystal",
       growAge: 10,
       // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      // memDecay integrates it into a real fading velocity; memBounce
+      // reflects it off walls/floor so landing seeds rebound upward.
       memField: ASTRO_FIELD.VX,
+      memDecay: 0.1,
+      memBounce: true,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
         // { kind: "trailEat", chance: 1, replaceKey: "sand" },
         // Jitter — uniform random draw over the 8 neighbours.
         {
           kind: "random",
-          chance: 40,
+          chance: 80,
           mask: MASK_SIDE
         },
         {
@@ -630,38 +675,49 @@ var astroGoldPowder = {
           ],
           chance: 100,
           weight: -15,
-          mask: MASK_ALL
+          mask: MASK_PLUS2
         },
         // Dispersed — own kind beside it pushes back (orthogonal only,
         // so diagonal neighbours stay free to settle).
         {
           kind: "channel",
-          chance: 10,
+          chance: 80,
           matchKeys: [
             "astroGoldPowder"
           ],
           weight: -1,
-          mask: MASK_CROSS2
+          mask: MASK_ALL
         },
-        // Cluster — any nearby copper powder pulls this gold in.
         {
           kind: "channel",
-          chance: 20,
+          chance: 50,
+          matchKeys: [
+            "astroGoldPowder"
+          ],
+          weight: 0.4,
+          mask: MASK_OUT
+        },
+        {
+          kind: "channel",
+          chance: 50,
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: -2
+          weight: -5,
+          mask: MASK_ALL
         },
+        // Cluster — any nearby copper powder pulls this gold in.
+        // { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
         // Flow memory — align with the movement vector neighbours
         // stored last tick (flocking; keeps drifting seeds coherent).
-        // { kind: "memory", chance: 100, weight: 10 },
+        // { kind: "memory", chance: 100, weight: .1 },
         // Inertia — own last-tick flow vector drives a matching vote
         // gradient (straight-line persistence on top of flocking).
         {
           kind: "inertia",
-          chance: 100,
-          weight: 1,
-          mode: "ahead"
+          chance: 1,
+          weight: 0.1,
+          mode: "full"
         }
       ],
       grow: [],

@@ -1,5 +1,7 @@
 // ../../packages/element-profiles/src/grid.ts
 var cachedEmpty = null;
+var MEM_BIAS = 128;
+var MEM_SCALE = 4;
 var Grid = {
   // TYPE
   getTypeAt(x, y) {
@@ -53,6 +55,26 @@ var Grid = {
       return 0;
     }
   },
+  /**
+     * Signed vector storage for the vote-memory channel.
+     *
+     * The engine's data fields cannot be relied on to hold negative numbers
+     * (cell fields are typically unsigned bytes — a stored -2 comes back as
+     * 0 or garbage, which silently erased every "up"/"left" velocity while
+     * "down"/"right" survived). So vectors are encoded as
+     * `round(v * MEM_SCALE) + MEM_BIAS`, clamped to 1..255. Raw `0` is
+     * reserved for "no memory" — an encoded zero vector reads back as 128.
+     * This round-trips correctly whether the field is a byte, int or float.
+     */
+  readVecAt(x, y, field) {
+    const raw = Grid.readFieldRawAt(x, y, field);
+    if (raw <= 0) return 0;
+    return (raw - MEM_BIAS) / MEM_SCALE;
+  },
+  writeVecAt(x, y, field, v) {
+    const raw = Math.round(v * MEM_SCALE) + MEM_BIAS;
+    Grid.writeFieldAt(x, y, field, raw < 1 ? 1 : raw > 255 ? 255 : raw);
+  },
   writeFieldAt(x, y, field, value) {
     try {
       sandkit.api.elements.setDataFieldAtCell(x, y, field, value);
@@ -93,8 +115,12 @@ var Grid = {
     return cachedEmpty;
   },
   // MOVE
-  swapCell(x, y, nx, ny, liquidType) {
-    if (liquidType == null || !Grid.isTypeAt(nx, ny, liquidType)) return null;
+  swapCell(x, y, nx, ny, passable) {
+    const ok = passable == null ? [] : typeof passable === "number" ? [
+      passable
+    ] : passable;
+    const t = this.getTypeAt(nx, ny);
+    if (t == null || !ok.includes(t)) return null;
     try {
       if (sandkit.api.elements.swapCells?.(x, y, nx, ny) === true) {
         return {
@@ -957,9 +983,8 @@ var Move = {
           const i = (oy + s.half) * s.size + (ox + s.half);
           const m = mask ? mask[i] : 1;
           if (m === 0) continue;
-          const vx = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f);
-          if (vx === 0) continue;
-          const vy = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f + 1);
+          const vx = Grid.readVecAt(ctx.x + ox, ctx.y + oy, f);
+          const vy = Grid.readVecAt(ctx.x + ox, ctx.y + oy, f + 1);
           if (vx === 0 && vy === 0) continue;
           const align = (vx > 0 ? 1 : vx < 0 ? -1 : 0) * Math.sign(ox) + (vy > 0 ? 1 : vy < 0 ? -1 : 0) * Math.sign(oy);
           if (align === 0) continue;
@@ -993,9 +1018,9 @@ var Move = {
       if (!w) return ctx;
       const f = ctx.profile.memField;
       if (f == null) return ctx;
-      const vx = Grid.readFieldRawAt(ctx.x, ctx.y, f);
-      if (vx === 0) return ctx;
-      const vy = Grid.readFieldRawAt(ctx.x, ctx.y, f + 1);
+      const vx = Grid.readVecAt(ctx.x, ctx.y, f);
+      const vy = Grid.readVecAt(ctx.x, ctx.y, f + 1);
+      if (vx === 0 && vy === 0) return ctx;
       const mag = Math.sqrt(vx * vx + vy * vy);
       if (mag === 0) return ctx;
       const aheadOnly = opts.mode === "ahead";
@@ -1326,15 +1351,37 @@ function runProfile(x, y, profile) {
       Grid.resetFieldAt(ctx.x, ctx.y, profile.ageField);
     }
   }
+  let pvx = 0;
+  let pvy = 0;
+  if (profile.memField != null) {
+    pvx = Grid.readVecAt(ctx.x, ctx.y, profile.memField);
+    pvy = Grid.readVecAt(ctx.x, ctx.y, profile.memField + 1);
+  }
   for (const fn of profile.moves) {
     ctx = fn(ctx);
   }
+  const tick = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
+  const passable = new Set(ctx.profile.passableTypes ?? []);
+  passable.add(ctx.profile.liquidType);
+  const s = ctx.sense;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      if (ox === 0 && oy === 0) continue;
+      const i = (oy + s.half) * s.size + (ox + s.half);
+      if (!passable.has(s.cells[i] ?? 0)) ctx.votes[i] = 0;
+    }
+  }
   const { dx, dy } = Vote.reduce(ctx.votes, SENSE_SIZE, SENSE_CENTER, 0);
+  let moved = false;
   if (dx !== 0 || dy !== 0) {
     const ox = ctx.x;
     const oy = ctx.y;
-    const r = Grid.swapCell(ctx.x, ctx.y, ctx.x + dx, ctx.y + dy, ctx.profile.liquidType);
+    const r = Grid.swapCell(ctx.x, ctx.y, ctx.x + dx, ctx.y + dy, ctx.profile.passableTypes ? [
+      ctx.profile.liquidType,
+      ...ctx.profile.passableTypes
+    ] : ctx.profile.liquidType);
     if (r) {
+      moved = true;
       for (const eat of ctx.trailEat) {
         if (roll(resolveNum(eat.chance))) Grid.eatAt(ox, oy, eat.replaceType);
       }
@@ -1346,9 +1393,15 @@ function runProfile(x, y, profile) {
     }
   }
   if (profile.memField != null) {
-    const { vx, vy } = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
-    Grid.writeFieldAt(ctx.x, ctx.y, profile.memField, vx);
-    Grid.writeFieldAt(ctx.x, ctx.y, profile.memField + 1, vy);
+    const d = profile.memDecay ?? 0;
+    let vx = pvx * d + tick.vx;
+    let vy = pvy * d + tick.vy;
+    if (!moved && profile.memBounce && (pvx !== 0 || pvy !== 0) && Vote.any(ctx.votes)) {
+      vx = -pvx * d;
+      vy = -pvy * d;
+    }
+    Grid.writeVecAt(ctx.x, ctx.y, profile.memField, vx);
+    Grid.writeVecAt(ctx.x, ctx.y, profile.memField + 1, vy);
   }
   return true;
 }
@@ -1430,6 +1483,23 @@ var MASK_CROSS = [
     0
   ]
 ];
+var MASK_PLUS = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
 var MASK_DIAGONAL = [
   [
     1,
@@ -1445,23 +1515,6 @@ var MASK_DIAGONAL = [
     1,
     0,
     1
-  ]
-];
-var MASK_NEGATIF = [
-  [
-    0,
-    -1,
-    0
-  ],
-  [
-    -1,
-    0,
-    -1
-  ],
-  [
-    0,
-    -1,
-    0
   ]
 ];
 var MASK_GRAVITY = [
@@ -1617,7 +1670,11 @@ var astroCopperPowder = {
       crystalKey: "astroCopperCrystal",
       growAge: 10,
       // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      // memDecay integrates it into a real fading velocity; memBounce
+      // reflects it off walls/floor so landing seeds rebound upward.
       memField: ASTRO_FIELD.VX,
+      memDecay: 0.9,
+      memBounce: true,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
         {
@@ -1641,8 +1698,8 @@ var astroCopperPowder = {
             "structure"
           ],
           chance: 100,
-          weight: -5,
-          mask: MASK_NEGATIF
+          weight: -10,
+          mask: MASK_PLUS
         },
         // Lattice — own kind repels orthogonally but attracts
         // diagonally, so copper settles into diagonal chains instead
@@ -1653,7 +1710,7 @@ var astroCopperPowder = {
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: -5,
+          weight: -2,
           mask: MASK_CROSS
         },
         {
@@ -1662,7 +1719,7 @@ var astroCopperPowder = {
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: 5,
+          weight: 2,
           mask: MASK_DIAGONAL
         },
         // Cluster — any nearby gold powder pulls this copper in.
@@ -1679,7 +1736,7 @@ var astroCopperPowder = {
         {
           kind: "memory",
           chance: 100,
-          weight: 1
+          weight: 2
         }
       ],
       grow: [],
@@ -1764,7 +1821,7 @@ var MASK_SIDE = [
     0
   ]
 ];
-var MASK_CROSS2 = [
+var MASK_PLUS2 = [
   [
     0,
     1,
@@ -1796,6 +1853,43 @@ var MASK_ALL = [
     1,
     1,
     1
+  ]
+];
+var MASK_OUT = [
+  [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  [
+    1,
+    0,
+    0,
+    0,
+    1
+  ],
+  [
+    1,
+    0,
+    0,
+    0,
+    1
+  ],
+  [
+    1,
+    0,
+    0,
+    0,
+    1
+  ],
+  [
+    1,
+    1,
+    1,
+    1,
+    0
   ]
 ];
 var astroGoldPowder = {
@@ -1901,14 +1995,18 @@ var astroGoldPowder = {
       crystalKey: "astroGoldCrystal",
       growAge: 10,
       // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      // memDecay integrates it into a real fading velocity; memBounce
+      // reflects it off walls/floor so landing seeds rebound upward.
       memField: ASTRO_FIELD.VX,
+      memDecay: 0.1,
+      memBounce: true,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
         // { kind: "trailEat", chance: 1, replaceKey: "sand" },
         // Jitter — uniform random draw over the 8 neighbours.
         {
           kind: "random",
-          chance: 40,
+          chance: 80,
           mask: MASK_SIDE
         },
         {
@@ -1935,38 +2033,49 @@ var astroGoldPowder = {
           ],
           chance: 100,
           weight: -15,
-          mask: MASK_ALL
+          mask: MASK_PLUS2
         },
         // Dispersed — own kind beside it pushes back (orthogonal only,
         // so diagonal neighbours stay free to settle).
         {
           kind: "channel",
-          chance: 10,
+          chance: 80,
           matchKeys: [
             "astroGoldPowder"
           ],
           weight: -1,
-          mask: MASK_CROSS2
+          mask: MASK_ALL
         },
-        // Cluster — any nearby copper powder pulls this gold in.
         {
           kind: "channel",
-          chance: 20,
+          chance: 50,
+          matchKeys: [
+            "astroGoldPowder"
+          ],
+          weight: 0.4,
+          mask: MASK_OUT
+        },
+        {
+          kind: "channel",
+          chance: 50,
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: -2
+          weight: -5,
+          mask: MASK_ALL
         },
+        // Cluster — any nearby copper powder pulls this gold in.
+        // { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
         // Flow memory — align with the movement vector neighbours
         // stored last tick (flocking; keeps drifting seeds coherent).
-        // { kind: "memory", chance: 100, weight: 10 },
+        // { kind: "memory", chance: 100, weight: .1 },
         // Inertia — own last-tick flow vector drives a matching vote
         // gradient (straight-line persistence on top of flocking).
         {
           kind: "inertia",
-          chance: 100,
-          weight: 1,
-          mode: "ahead"
+          chance: 1,
+          weight: 0.1,
+          mode: "full"
         }
       ],
       grow: [],
@@ -2357,8 +2466,35 @@ var ElementType = {
 };
 
 // src/worker/elementProfileFactory.ts
+var structureTypes = null;
+function structureTypeSet() {
+  if (structureTypes !== null) return structureTypes;
+  structureTypes = /* @__PURE__ */ new Set();
+  try {
+    const getDef = sandkit.api.elements.getDefinitionByType;
+    if (getDef) {
+      for (const t of Object.values(ElementType)) {
+        if (t == null || t === 0) continue;
+        const def = getDef.call(sandkit.api.elements, t);
+        if (def && def.matterType === MatterType.Static) structureTypes.add(t);
+      }
+    }
+  } catch {
+  }
+  return structureTypes;
+}
 function keysOf(keys) {
-  return keys == null ? void 0 : keys.filter((k) => k !== "empty").map((k) => k === "structure" ? MatterType.Static : ElementType[k]);
+  if (keys == null) return void 0;
+  const out = [];
+  for (const k of keys) {
+    if (k === "empty") continue;
+    if (k === "structure") {
+      for (const t of structureTypeSet()) out.push(t);
+    } else {
+      out.push(ElementType[k]);
+    }
+  }
+  return out;
 }
 function keyOf(key) {
   return key == null || key === "empty" ? null : ElementType[key] ?? null;
@@ -2477,11 +2613,20 @@ function createElementProfileFactory(spec2) {
     seedType: ElementType[spec2.seedKey],
     liquidType: ElementType[spec2.liquidKey],
     crystalType: ElementType[spec2.crystalKey],
-    tickSpeed: 10,
+    tickSpeed: 50,
     ageField: ASTRO_FIELD.AGE,
     // Vote-memory vector storage (vx @ VX, vy @ VX+1). Opt-in per profile
-    // so profiles without `Move.memory` never write fields.
+    // so profiles without `Move.memory` never write fields. `memDecay`
+    // integrates it into a decaying velocity; `memBounce` reflects it
+    // off blocked moves (walls / floor).
     memField: spec2.memField,
+    memDecay: typeof spec2.memDecay === "function" ? spec2.memDecay() : spec2.memDecay,
+    memBounce: spec2.memBounce,
+    // `keysOf` skips "empty" (match lists use matchEmpty instead) —
+    // for passability 0 must be an explicit member, so resolve here.
+    passableTypes: spec2.passableKeys?.map((k) => k === "empty" ? 0 : k === "structure" ? [
+      ...structureTypeSet()
+    ] : ElementType[k]).flat(),
     growAge: () => typeof spec2.growAge === "function" ? spec2.growAge() : spec2.growAge,
     moves: spec2.whenMove && !spec2.whenMove() ? [] : buildMoves(spec2.moves),
     grow: spec2.whenGrow && !spec2.whenGrow() ? [] : spec2.grow.map(buildGrow),

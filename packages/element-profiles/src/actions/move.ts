@@ -339,9 +339,8 @@ export const Move = {
                     const i = (oy + s.half) * s.size + (ox + s.half);
                     const m = mask ? mask[i] : 1;
                     if (m === 0) continue;
-                    const vx = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f);
-                    if (vx === 0) continue;
-                    const vy = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f + 1);
+                    const vx = Grid.readVecAt(ctx.x + ox, ctx.y + oy, f);
+                    const vy = Grid.readVecAt(ctx.x + ox, ctx.y + oy, f + 1);
                     if (vx === 0 && vy === 0) continue;
                     const align = (vx > 0 ? 1 : vx < 0 ? -1 : 0) * Math.sign(ox) +
                         (vy > 0 ? 1 : vy < 0 ? -1 : 0) * Math.sign(oy);
@@ -377,9 +376,9 @@ export const Move = {
             if (!w) return ctx;
             const f = ctx.profile.memField;
             if (f == null) return ctx;
-            const vx = Grid.readFieldRawAt(ctx.x, ctx.y, f);
-            if (vx === 0) return ctx;
-            const vy = Grid.readFieldRawAt(ctx.x, ctx.y, f + 1);
+            const vx = Grid.readVecAt(ctx.x, ctx.y, f);
+            const vy = Grid.readVecAt(ctx.x, ctx.y, f + 1);
+            if (vx === 0 && vy === 0) return ctx;
             const mag = Math.sqrt(vx * vx + vy * vy);
             if (mag === 0) return ctx;
             const aheadOnly = opts.mode === "ahead";

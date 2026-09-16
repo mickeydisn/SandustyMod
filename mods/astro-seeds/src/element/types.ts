@@ -170,6 +170,16 @@ export interface ProfileSpec<ElType extends string> {
      * Required for `Move.memory` to see neighbours; omit = no memory.
      */
     memField?: number;
+    /** Velocity decay for the stored vector (`v' = v*memDecay + votes`). ~0.9 = momentum. */
+    memDecay?: NumThunk;
+    /** Flip the stored vector when a pending velocity gets blocked (wall bounce). */
+    memBounce?: boolean;
+    /**
+     * Extra element types the seed may step into besides `liquidKey`
+     * (e.g. `["empty"]` to swim out of the liquid into open air).
+     * Omit = the move phase can only ever enter `liquidKey` cells.
+     */
+    passableKeys?: readonly (ElType | "empty" | "structure")[];
     // Pipeline phases
     moves: MoveSpec<ElType>[];
     grow: GrowSpec<ElType>[];

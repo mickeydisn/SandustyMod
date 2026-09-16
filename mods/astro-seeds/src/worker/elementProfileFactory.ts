@@ -11,6 +11,9 @@ import { MatterType } from "@sandmd/shared";
 import { ASTRO_FIELD } from "../config/ids.ts";
 import { ElementType } from "../shared/resolve.ts";
 import type { CrystalSpec, GrowSpec, MoveSpec, ProfileSpec } from "../element/types.ts";
+import "@sandmd/sandkit";
+
+let structureTypes: Set<number> | null = null;
 
 /**
  * Resolve catalogue keys → numeric element types.
@@ -22,15 +25,46 @@ import type { CrystalSpec, GrowSpec, MoveSpec, ProfileSpec } from "../element/ty
  * Special keys (usable anywhere a match key is expected):
  * - `"empty"` → 0. Never appears in the returned list — match lists use it
  *   via `matchEmpty: true` instead (see `keysChannel`).
- * - `"structure"` → `MatterType.Static`, the matter type every structure
- *   element (seeds, crystals) is registered with.
+ * - `"structure"` → every registered element type whose definition is
+ *   `MatterType.Static` (crystals, seeds, structures). Element type ids and
+ *   matter types are DIFFERENT namespaces — comparing a cell's type against
+ *   `MatterType.Static` itself would match whatever element happens to own
+ *   that numeric id, so the set must be resolved via `getDefinitionByType`.
+ *   Computed once, lazily, on first use in the worker (all elements are
+ *   registered by then).
  */
+function structureTypeSet(): Set<number> {
+    if (structureTypes !== null) return structureTypes;
+    structureTypes = new Set<number>();
+    try {
+        const getDef = sandkit.api.elements.getDefinitionByType;
+        if (getDef) {
+            for (const t of Object.values(ElementType)) {
+                if (t == null || t === 0) continue;
+                const def = getDef.call(sandkit.api.elements, t);
+                if (def && def.matterType === MatterType.Static) structureTypes.add(t);
+            }
+        }
+    } catch {
+        /* leave empty — structure cells simply never match */
+    }
+    return structureTypes;
+}
+
 function keysOf<ElType extends string>(
     keys?: readonly (ElType | "empty" | "structure")[],
 ): number[] | undefined {
-    return keys == null ? undefined : keys
-        .filter((k) => k !== "empty")
-        .map((k) => (k === "structure" ? MatterType.Static : ElementType[k as string]));
+    if (keys == null) return undefined;
+    const out: number[] = [];
+    for (const k of keys) {
+        if (k === "empty") continue;
+        if (k === "structure") {
+            for (const t of structureTypeSet()) out.push(t);
+        } else {
+            out.push(ElementType[k as string]);
+        }
+    }
+    return out;
 }
 
 /** One key → numeric type. `undefined`/`"empty"` means "clear to empty". */
@@ -154,11 +188,24 @@ export function createElementProfileFactory<ElType extends string>(
         seedType: ElementType[spec.seedKey as string],
         liquidType: ElementType[spec.liquidKey as string],
         crystalType: ElementType[spec.crystalKey as string],
-        tickSpeed: 10,
+        tickSpeed: 50,
         ageField: ASTRO_FIELD.AGE,
         // Vote-memory vector storage (vx @ VX, vy @ VX+1). Opt-in per profile
-        // so profiles without `Move.memory` never write fields.
+        // so profiles without `Move.memory` never write fields. `memDecay`
+        // integrates it into a decaying velocity; `memBounce` reflects it
+        // off blocked moves (walls / floor).
         memField: spec.memField,
+        memDecay: typeof spec.memDecay === "function" ? spec.memDecay() : spec.memDecay,
+        memBounce: spec.memBounce,
+        // `keysOf` skips "empty" (match lists use matchEmpty instead) —
+        // for passability 0 must be an explicit member, so resolve here.
+        passableTypes: spec.passableKeys?.map((k) =>
+            k === "empty"
+                ? 0
+                : k === "structure"
+                ? [...structureTypeSet()]
+                : ElementType[k as string]
+        ).flat(),
         growAge: () => (typeof spec.growAge === "function" ? spec.growAge() : spec.growAge),
         moves: spec.whenMove && !spec.whenMove() ? [] : buildMoves(spec.moves),
         grow: spec.whenGrow && !spec.whenGrow() ? [] : spec.grow.map(buildGrow),

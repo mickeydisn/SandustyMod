@@ -55,6 +55,12 @@ export function reduceVotes(
     return Vote.reduce(votes, size, center, threshold);
 }
 
+/**
+ * Run the grow/crystallize/move pipeline for one seed cell.
+ * Returns true when the profile ran (caller should cancel the vanilla
+ * update), false when the cell is not a valid seed-in-liquid (caller
+ * should let the vanilla update run).
+ */
 export function runProfile(x: number, y: number, profile: Profile): boolean {
     // Sample the 5x5 sense window ONCE — the only neighbour reads this tick.
     // (Seed + liquid guards stay engine reads: they gate whether we run at all.)
@@ -120,13 +126,42 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
     // MOVE: every move fn adds its single-channel votes into ctx.votes;
     // the pipeline reduces the summed matrix once (see `Vote.reduce`, which
     // also ignores the centre cell — a seed never votes for itself).
+    //
+    // Previous movement vector, read from the seed's own cell BEFORE any
+    // swap — the engine's swap may not carry data fields, so reading after
+    // the move would return the previous occupant's values.
+    let pvx = 0;
+    let pvy = 0;
+    if (profile.memField != null) {
+        pvx = Grid.readVecAt(ctx.x, ctx.y, profile.memField);
+        pvy = Grid.readVecAt(ctx.x, ctx.y, profile.memField + 1);
+    }
     for (const fn of profile.moves) {
         ctx = fn(ctx);
+    }
+
+    // Memory keeps the RAW vector — wall repulsion must survive in the flow
+    // memory for bounce/steering — but the STEP direction is chosen only
+    // among cells the seed can actually enter. A vote sitting on a blocked
+    // cell can never become a legal step; letting it steer just aims the
+    // single swap attempt at the wall (e.g. "down" into the floor), the
+    // swap fails, and the legal directions (e.g. back up) are never tried.
+    const tick = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
+    const passable = new Set<number>(ctx.profile.passableTypes ?? []);
+    passable.add(ctx.profile.liquidType);
+    const s = ctx.sense;
+    for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+            if (ox === 0 && oy === 0) continue;
+            const i = (oy + s.half) * s.size + (ox + s.half);
+            if (!passable.has(s.cells[i] ?? 0)) ctx.votes[i] = 0;
+        }
     }
 
     const { dx, dy } = Vote.reduce(ctx.votes, SENSE_SIZE, SENSE_CENTER, 0);
 
     // Step into the occupied/target cell (single adjacent step).
+    let moved = false;
     if (dx !== 0 || dy !== 0) {
         const ox = ctx.x;
         const oy = ctx.y;
@@ -135,9 +170,12 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
             ctx.y,
             ctx.x + dx,
             ctx.y + dy,
-            ctx.profile.liquidType,
+            ctx.profile.passableTypes
+                ? [ctx.profile.liquidType, ...ctx.profile.passableTypes]
+                : ctx.profile.liquidType,
         );
         if (r) {
+            moved = true;
             // Move succeeded — apply deferred trail-eat to the vacated cell.
             for (const eat of ctx.trailEat) {
                 if (roll(resolveNum(eat.chance))) Grid.eatAt(ox, oy, eat.replaceType);
@@ -146,16 +184,34 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
         }
     }
 
-    // Vote memory: store this tick's raw vote vector in the seed's data
-    // fields (written AFTER the swap so the memory sits on the seed's final
-    // cell whether or not the engine's swap carries data fields). Writing
-    // zeros on an idle tick acts as a natural decay. `Move.memory()` reads
-    // neighbouring cells' vectors back as alignment votes.
+    // Vote memory: integrate this tick's raw vote vector with the previous
+    // one (written AFTER the swap so the memory sits on the seed's final
+    // cell whether or not the engine's swap carries data fields).
+    //
+    //   v' = v * memDecay + votes
+    //
+    // `memDecay` (default 0 = old behaviour: memory is just this tick's
+    // votes and wipes out on idle ticks) turns the stored vector into a
+    // decaying velocity — the momentum `Move.inertia` reads back.
+    //
+    // Bounce: when the seed had a pending velocity but the reduce produced
+    // no step while votes WERE cast (wall repulsion cancelled them, or the
+    // target cell was blocked), flip the pending vector — a collision
+    // reflection — so the next ticks push away from the surface.
     if (profile.memField != null) {
-        const { vx, vy } = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
-        Grid.writeFieldAt(ctx.x, ctx.y, profile.memField, vx);
-        Grid.writeFieldAt(ctx.x, ctx.y, profile.memField + 1, vy);
+        const d = profile.memDecay ?? 0;
+        // `tick` was captured before passability gating (raw votes).
+        let vx = pvx * d + tick.vx;
+        let vy = pvy * d + tick.vy;
+        if (!moved && profile.memBounce && (pvx !== 0 || pvy !== 0) && Vote.any(ctx.votes)) {
+            vx = -pvx * d;
+            vy = -pvy * d;
+        }
+        Grid.writeVecAt(ctx.x, ctx.y, profile.memField, vx);
+        Grid.writeVecAt(ctx.x, ctx.y, profile.memField + 1, vy);
     }
 
+    // Final swap cell: the engine may revisit it later in this sweep — that
+    // is vanilla behaviour, left untouched.
     return true;
 }

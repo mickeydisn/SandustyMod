@@ -30,6 +30,20 @@ export interface Profile {
      * stored vectors back as alignment votes. Reuses two free fields.
      */
     memField?: number;
+    /**
+     * Velocity decay for the stored vector: `v' = v*memDecay + this tick's
+     * votes`. 0 (default) = memory is just the current tick's votes and
+     * dies on idle ticks; ~0.9 = fading momentum across ticks.
+     */
+    memDecay?: number;
+    /** Flip the stored vector when a pending velocity gets blocked (wall bounce). */
+    memBounce?: boolean;
+    /**
+     * Extra element types the seed may step into besides `liquidType`
+     * (e.g. `[0]` to swim into empty cells). Without this the move phase
+     * can only ever enter `liquidType` cells.
+     */
+    passableTypes?: readonly TElementType[];
     growAge: () => number;
     moves: MoveFn[];
     grow: GrowFn[];

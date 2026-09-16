@@ -8,6 +8,14 @@ import type { TElementType } from "@sandmd/shared";
 
 let cachedEmpty: TElementType | null = null;
 
+/**
+ * Vote-memory vector encoding (see `Grid.readVecAt`). Scale 4 keeps the
+ * quantisation step at 0.25 velocity units; a full-strength tick vector
+ * (~±30) then encodes to ~248, inside the 1..255 byte range.
+ */
+const MEM_BIAS = 128;
+const MEM_SCALE = 4;
+
 export const Grid = {
     // TYPE
     getTypeAt(x: number, y: number): TElementType {
@@ -70,6 +78,29 @@ export const Grid = {
             return 0;
         }
     },
+
+    /**
+     * Signed vector storage for the vote-memory channel.
+     *
+     * The engine's data fields cannot be relied on to hold negative numbers
+     * (cell fields are typically unsigned bytes — a stored -2 comes back as
+     * 0 or garbage, which silently erased every "up"/"left" velocity while
+     * "down"/"right" survived). So vectors are encoded as
+     * `round(v * MEM_SCALE) + MEM_BIAS`, clamped to 1..255. Raw `0` is
+     * reserved for "no memory" — an encoded zero vector reads back as 128.
+     * This round-trips correctly whether the field is a byte, int or float.
+     */
+    readVecAt(x: number, y: number, field: number): number {
+        const raw = Grid.readFieldRawAt(x, y, field);
+        if (raw <= 0) return 0; // unset / no memory
+        return (raw - MEM_BIAS) / MEM_SCALE;
+    },
+
+    writeVecAt(x: number, y: number, field: number, v: number): void {
+        const raw = Math.round(v * MEM_SCALE) + MEM_BIAS;
+        Grid.writeFieldAt(x, y, field, raw < 1 ? 1 : raw > 255 ? 255 : raw);
+    },
+
     writeFieldAt(x: number, y: number, field: number, value: number): void {
         try {
             sandkit.api.elements.setDataFieldAtCell(x, y, field, value);
@@ -110,9 +141,13 @@ export const Grid = {
         y: number,
         nx: number,
         ny: number,
-        liquidType: TElementType | null,
+        passable: readonly TElementType[] | TElementType | null,
     ): { x: number; y: number } | null {
-        if (liquidType == null || !Grid.isTypeAt(nx, ny, liquidType)) return null;
+        const ok = passable == null
+            ? []
+            : typeof passable === "number" ? [passable] : passable;
+        const t = this.getTypeAt(nx, ny);
+        if (t == null || !ok.includes(t)) return null;
         try {
             if (sandkit.api.elements.swapCells?.(x, y, nx, ny) === true) {
                 return { x: nx, y: ny };

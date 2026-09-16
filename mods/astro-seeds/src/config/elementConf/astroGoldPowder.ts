@@ -16,16 +16,26 @@ const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
 // ---------------------
 const MASK_VERT = [[0, 1, 0], [0, 0, 0], [0, 1, 0]]; // orthogonal neighbours
 const MASK_SIDE = [[0, 0, 0], [1, 0, 1], [0, 0, 0]]; // orthogonal neighbours
+// deno-lint-ignore no-unused-vars
 const MASK_CROSS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
+const MASK_PLUS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
 const MASK_ALL = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]; // orthogonal neighbours
 // Gravity probe: the two cells straight below the seed, near row weighted
 // heavier than the far one, so a column of liquid gold pulls the seed down.
+// deno-lint-ignore no-unused-vars -- kept for the commented-out gravity channel
 const MASK_GRAVITY = [
     [0, 0, 0, 0, 0],
     [0, 0, .5, 0, 0],
     [0, 0, 0, 0, 0],
     [0, 0, 1, 0, 0],
     [0, 0, 0.5, 0, 0],
+];
+const MASK_OUT = [
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
 ];
 
 export const astroGoldPowder = {
@@ -93,12 +103,16 @@ export const astroGoldPowder = {
             crystalKey: "astroGoldCrystal",
             growAge: 10,
             // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+            // memDecay integrates it into a real fading velocity; memBounce
+            // reflects it off walls/floor so landing seeds rebound upward.
             memField: ASTRO_FIELD.VX,
+            memDecay: 0.1,
+            memBounce: true,
             moves: [
                 // Jitter — uniform random draw over the 8 neighbours.
                 // { kind: "trailEat", chance: 1, replaceKey: "sand" },
                 // Jitter — uniform random draw over the 8 neighbours.
-                { kind: "random", chance: 40, mask: MASK_SIDE },
+                { kind: "random", chance: 80, mask: MASK_SIDE },
                 { kind: "random", chance: 80, mask: MASK_VERT },
                 // Gravity — liquid gold below pulls the seed down.
                 /*
@@ -116,25 +130,39 @@ export const astroGoldPowder = {
                     matchKeys: ["empty", "structure"],
                     chance: 100,
                     weight: -15,
-                    mask: MASK_ALL,
+                    mask: MASK_PLUS,
                 },
                 // Dispersed — own kind beside it pushes back (orthogonal only,
                 // so diagonal neighbours stay free to settle).
                 {
                     kind: "channel",
-                    chance: 10,
+                    chance: 80,
                     matchKeys: ["astroGoldPowder"],
                     weight: -1,
-                    mask: MASK_CROSS,
+                    mask: MASK_ALL,
+                },
+                {
+                    kind: "channel",
+                    chance: 50,
+                    matchKeys: ["astroGoldPowder"],
+                    weight: .4,
+                    mask: MASK_OUT,
+                },
+                {
+                    kind: "channel",
+                    chance: 50,
+                    matchKeys: ["astroCopperPowder"],
+                    weight: -5,
+                    mask: MASK_ALL,
                 },
                 // Cluster — any nearby copper powder pulls this gold in.
-                { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
+                // { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
                 // Flow memory — align with the movement vector neighbours
                 // stored last tick (flocking; keeps drifting seeds coherent).
-                // { kind: "memory", chance: 100, weight: 10 },
+                // { kind: "memory", chance: 100, weight: .1 },
                 // Inertia — own last-tick flow vector drives a matching vote
                 // gradient (straight-line persistence on top of flocking).
-                { kind: "inertia", chance: 100, weight: 1, mode: "ahead" },
+                { kind: "inertia", chance: 1, weight: .1, mode: "full" },
             ],
             grow: [],
             crystallization: [],
