@@ -102,6 +102,77 @@ var astroCopperCrystal = {
 // src/config/elementConf/astroCopperPowder.ts
 var LIQUID_COPPER_DENSITY = 150;
 var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
+var MASK_CROSS = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
+var MASK_DIAGONAL = [
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    0,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ]
+];
+var MASK_GRAVITY = [
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    1,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ]
+];
 var astroCopperPowder = {
   spec: spec({
     key: "astroCopperPowder",
@@ -157,63 +228,110 @@ var astroCopperPowder = {
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -30,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ]
-          }
+          rate: -30,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: 20,
-            rangeN: 2,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides",
-              "cross"
-            ],
-            matchKeys: [
-              "astroGoldPowder"
-            ]
-          }
+          rate: 20,
+          rangeN: 2,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides",
+            "cross"
+          ],
+          matchKeys: [
+            "astroGoldPowder"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -40,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ],
-            matchKeys: [
-              "astroCopperPowder"
-            ]
-          }
+          rate: -40,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ],
+          matchKeys: [
+            "astroCopperPowder"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: 40,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "cross"
-            ],
-            matchKeys: [
-              "astroCopperPowder"
-            ]
-          }
+          rate: 40,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "cross"
+          ],
+          matchKeys: [
+            "astroCopperPowder"
+          ]
+        }
+      ],
+      grow: [],
+      crystallization: []
+    },
+    {
+      id: "astroCopper-in-liquid-gold",
+      seedKey: "astroCopperPowder",
+      liquidKey: "liquidGold",
+      crystalKey: "astroCopperCrystal",
+      growAge: 10,
+      moves: [
+        // Jitter — uniform random draw over the 8 neighbours.
+        {
+          kind: "random",
+          chance: 30
+        },
+        // Gravity — liquid gold below pulls the seed down.
+        {
+          kind: "channel",
+          chance: 1,
+          matchKeys: [
+            "liquidGold"
+          ],
+          weight: 1,
+          mask: MASK_GRAVITY
+        },
+        // Lattice — own kind repels orthogonally but attracts
+        // diagonally, so copper settles into diagonal chains instead
+        // of stacking into a solid blob.
+        {
+          kind: "channel",
+          matchKeys: [
+            "astroCopperPowder"
+          ],
+          weight: -1,
+          mask: MASK_CROSS
+        },
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroCopperPowder"
+          ],
+          weight: 1,
+          mask: MASK_DIAGONAL
+        },
+        // Cluster — any nearby gold powder pulls this copper in.
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroGoldPowder"
+          ],
+          weight: 2
         }
       ],
       grow: [],
@@ -264,6 +382,60 @@ var astroGoldCrystal = {
 // src/config/elementConf/astroGoldPowder.ts
 var LIQUID_COPPER_DENSITY2 = 150;
 var SEED_DENSITY2 = Math.max(1, LIQUID_COPPER_DENSITY2 - 5);
+var MASK_CROSS2 = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
+var MASK_GRAVITY2 = [
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    1,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ]
+];
 var astroGoldPowder = {
   spec: spec({
     key: "astroGoldPowder",
@@ -319,48 +491,88 @@ var astroGoldPowder = {
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -30,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ]
-          }
+          rate: -30,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -20,
-            rangeN: 2,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ],
-            matchKeys: [
-              "astroGoldPowder"
-            ]
-          }
+          rate: -20,
+          rangeN: 2,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ],
+          matchKeys: [
+            "astroGoldPowder"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: 80,
-            rangeN: 5,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ],
-            matchKeys: [
-              "astroCopperPowder"
-            ]
-          }
+          rate: 80,
+          rangeN: 5,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ],
+          matchKeys: [
+            "astroCopperPowder"
+          ]
+        }
+      ],
+      grow: [],
+      crystallization: []
+    },
+    {
+      id: "astroGold-in-liquid-gold",
+      seedKey: "astroGoldPowder",
+      liquidKey: "liquidGold",
+      crystalKey: "astroGoldCrystal",
+      growAge: 10,
+      moves: [
+        // Jitter — uniform random draw over the 8 neighbours.
+        {
+          kind: "random",
+          chance: 30
+        },
+        // Gravity — liquid gold below pulls the seed down.
+        {
+          kind: "channel",
+          chance: 1,
+          matchKeys: [
+            "liquidGold"
+          ],
+          weight: 0.2,
+          mask: MASK_GRAVITY2
+        },
+        // Dispersed — own kind beside it pushes back (orthogonal only,
+        // so diagonal neighbours stay free to settle).
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroGoldPowder"
+          ],
+          weight: -1,
+          mask: MASK_CROSS2
+        },
+        // Cluster — any nearby copper powder pulls this gold in.
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroCopperPowder"
+          ],
+          weight: -1
         }
       ],
       grow: [],

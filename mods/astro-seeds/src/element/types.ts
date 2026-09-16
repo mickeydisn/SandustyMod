@@ -1,30 +1,80 @@
-import type { ColumnForceEntry } from "@sandmd/element-profiles";
+import type { ColumnForceEntry, CompassGroup } from "@sandmd/element-profiles";
 
 // ------------------------------------__
 
 // = Live numeric thunk — a literal or a `() => number` resolved per tick.
 export type NumThunk = number | (() => number);
 
-// = Declarative move step: basic drift, column-force, or gated group.
+// = Per-offset multipliers for a vote channel: nested rows or flat row-major
+// (3x3 works inside the 5x5 window: centre-cropped/padded with 0).
+// Data-only on purpose, so a spec stays JSON-serializable for the panel.
+export type MaskSpec = readonly (readonly number[])[] | readonly number[];
+
+// = Declarative move step: each entry is ONE single-channel vote.
+// The pipeline sums all votes into its 5x5 matrix and reduces once
+// (centroid rule), so stacking entries = multi-channel behaviour.
+// Fields sit inline on the spec (no nested `opts`) — `kind` plus the
+// channel's own options, exactly like `Move.channel(...)` spread out.
 export type MoveSpec<ElType extends string> =
     | { kind: "up"; chance: NumThunk; when?: () => boolean }
     | { kind: "side"; chance: NumThunk; when?: () => boolean }
     | { kind: "down"; chance: NumThunk; when?: () => boolean }
-    | { kind: "columnForce"; opts: ColumnForceOptsSpec<ElType>; when?: () => boolean }
+    | { kind: "random"; chance: NumThunk; mask?: MaskSpec; when?: () => boolean }
+    | ({ kind: "channel"; when?: () => boolean } & ChannelSpec<ElType>)
+    | ({ kind: "columnForce"; when?: () => boolean } & ColumnForceSpec<ElType>)
     | { kind: "columnForceFrom"; entries: () => readonly ColumnForceEntry[]; when?: () => boolean }
+    | ({ kind: "trailEat"; when?: () => boolean } & TrailEatSpec<ElType>)
     | { kind: "gated"; when: () => boolean; moves: MoveSpec<ElType>[] };
 
-/** ColumnForce options with thunks — mirrors `Move.columnForce` opts. */
-export interface ColumnForceOptsSpec<ElType extends string> {
-    // Rate / shape
+/** ColumnForce with key indirection — mirrors `Move.columnForce` opts. */
+export interface ColumnForceSpec<ElType extends string> {
+    /** Attract (+) / repel (-). 0 = off. */
     rate: NumThunk;
+    /** Compass groups to cast from. Default `["bottom"]`. */
+    directions: CompassGroup[];
+    /** Max ray length in cells. Default 10. */
     rangeN: NumThunk;
+    /** Max rays allowed to vote per tick. Default 3. */
     maxK: NumThunk;
-    // Direction + type sets (keys resolved lazily at build time)
-    directions: string[];
+    /** Keys that make the ray opaque and vote; empty = any non-excluded. */
     matchKeys?: ElType[];
+    /** Extra transparent keys (liquid is always transparent). */
     freeKeys?: ElType[];
+    /** Keys the ray never votes for (seed key is always excluded). */
     excludeKeys?: ElType[];
+}
+
+/** Trail-eat with key indirection — mirrors `Move.trailEat` opts. */
+export interface TrailEatSpec<ElType extends string> {
+    /** 0-100 chance per tick, rolled after the move happened. */
+    chance: NumThunk;
+    /**
+     * Key to stamp on the vacated origin cell after a successful swap.
+     * Omit (or `"empty"`) = clear to empty.
+     */
+    replaceKey?: ElType | "empty";
+}
+
+/** Single-channel vote with key indirection — mirrors `Move.channel` opts. */
+export interface ChannelSpec<ElType extends string> {
+    /**
+     * Keys that vote with this channel. Omit = any non-excluded type
+     * (the seed itself is always excluded); empty + `matchEmpty`
+     * with no `excludeKeys` therefore = "any neighbour".
+     */
+    matchKeys?: ElType[];
+    /** When true, empty cells vote with this channel. */
+    matchEmpty?: boolean;
+    /** Signed vote strength. Negative = repulsion. */
+    weight: NumThunk;
+    /** Global multiplier. Negative inverts the channel. */
+    rate?: NumThunk;
+    /** 0-100 chance gate per tick. */
+    chance?: NumThunk;
+    /** Keys that never vote (seed key is always excluded). */
+    excludeKeys?: ElType[];
+    /** Per-offset multipliers. Omit = all 1. Centre is always ignored. */
+    mask?: MaskSpec;
 }
 
 /** Declarative grow step. */
@@ -36,7 +86,24 @@ export type GrowSpec<ElType extends string> =
     | { kind: "ageOnAir"; rate: NumThunk }
     | { kind: "ageOnCrystal"; rate: NumThunk }
     | { kind: "ageOnSurround"; rate: NumThunk; minCount: NumThunk }
-    | { kind: "blockOn"; blockKey: ElType };
+    | { kind: "blockOn"; blockKey: ElType }
+    | ({ kind: "eat" } & GrowEatSpec<ElType>);
+
+/** Grow-eat with key indirection — mirrors `Grow.eat` opts. */
+export interface GrowEatSpec<ElType extends string> {
+    /** 0-100 chance per tick. */
+    chance: NumThunk;
+    /**
+     * Key to stamp on the eaten neighbour cell.
+     * Omit (or `"empty"`) = clear to empty.
+     */
+    replaceKey?: ElType | "empty";
+    /**
+     * Which neighbour keys count as food.
+     * Omit = the profile's own `liquidKey`.
+     */
+    matchKeys?: ElType[];
+}
 
 /** Declarative crystallization step. */
 export type CrystalSpec =

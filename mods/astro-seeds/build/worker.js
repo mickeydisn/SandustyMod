@@ -1,4 +1,5 @@
 // ../../packages/element-profiles/src/grid.ts
+var cachedEmpty = null;
 var Grid = {
   // TYPE
   getTypeAt(x, y) {
@@ -49,6 +50,36 @@ var Grid = {
   resetFieldAt(x, y, field) {
     Grid.writeFieldAt(x, y, field, 0);
   },
+  /**
+     * Best-effort numeric type for "empty" used to clear eaten cells.
+     * Probes common empty ids, falls back to 0 (universally empty).
+     * Cached after first lookup.
+     */
+  emptyType() {
+    if (cachedEmpty != null) return cachedEmpty;
+    const ids = [
+      "empty",
+      "Empty",
+      "air",
+      "Air",
+      "void",
+      "Void",
+      "none",
+      "None"
+    ];
+    for (const id of ids) {
+      try {
+        const t = sandkit.api.elements.getTypeFromId(id);
+        if (t != null) {
+          cachedEmpty = t;
+          return t;
+        }
+      } catch {
+      }
+    }
+    cachedEmpty = 0;
+    return cachedEmpty;
+  },
   // MOVE
   swapCell(x, y, nx, ny, liquidType) {
     if (liquidType == null || !Grid.isTypeAt(nx, ny, liquidType)) return null;
@@ -71,8 +102,96 @@ var Grid = {
     } catch {
     }
     return null;
+  },
+  /**
+     * Eat helper — replace whatever is at a cell with `replaceType`,
+     * or clear to empty when `replaceType` is null.
+     * Never touches the seed itself; caller must guard that.
+     */
+  eatAt(x, y, replaceType) {
+    try {
+      if (replaceType == null) {
+        const empty = Grid.emptyType();
+        if (empty != null) {
+          sandkit.api.elements.replaceAtCell(x, y, empty);
+        }
+      } else {
+        sandkit.api.elements.replaceAtCell(x, y, replaceType);
+      }
+    } catch {
+    }
+  },
+  /**
+     * Pick a random 8-neighbour cell of (`x`,`y`) whose type is in
+     * `matchTypes`. Returns null when none match.
+     */
+  randomNearCell(x, y, matchTypes) {
+    const match = typeof matchTypes === "number" ? [
+      matchTypes
+    ] : matchTypes;
+    const order = [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ];
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [
+        order[j],
+        order[i]
+      ];
+    }
+    for (const k of order) {
+      const d = EAT_DELTAS[k];
+      if (Grid.isTypeAt(x + d.x, y + d.y, match)) {
+        return {
+          x: x + d.x,
+          y: y + d.y
+        };
+      }
+    }
+    return null;
   }
 };
+var EAT_DELTAS = [
+  {
+    x: 0,
+    y: -1
+  },
+  {
+    x: 1,
+    y: -1
+  },
+  {
+    x: 1,
+    y: 0
+  },
+  {
+    x: 1,
+    y: 1
+  },
+  {
+    x: 0,
+    y: 1
+  },
+  {
+    x: -1,
+    y: 1
+  },
+  {
+    x: -1,
+    y: 0
+  },
+  {
+    x: -1,
+    y: -1
+  }
+];
 
 // ../../packages/shared/src/grid.ts
 var Direction = /* @__PURE__ */ function(Direction2) {
@@ -166,6 +285,9 @@ var GridNear = {
     }
     return false;
   },
+  getNear(x, y, deltas = DELTAS_INDEX) {
+    return deltas.map((d) => Grid.getTypeAt(x + d.x, y + d.y));
+  },
   isNear(x, y, includeType, deltas = DELTAS_INDEX) {
     for (const d of deltas) {
       if (Grid.isTypeAt(x + d.x, y + d.y, includeType)) return true;
@@ -201,92 +323,528 @@ var GridNear = {
   }
 };
 
+// ../../packages/element-profiles/src/sense.ts
+function idx(s, ox, oy) {
+  return (oy + s.half) * s.size + (ox + s.half);
+}
+function inWindow(s, ox, oy) {
+  return ox >= -s.half && ox <= s.half && oy >= -s.half && oy <= s.half;
+}
+var Sense = {
+  /** Window index of offset (`ox`,`oy`), or `-1` when outside the window. */
+  index(s, ox, oy) {
+    return inWindow(s, ox, oy) ? idx(s, ox, oy) : -1;
+  },
+  /** Type at offset (`0` = empty). Out of window → 0. */
+  at(s, ox, oy) {
+    if (!inWindow(s, ox, oy)) return 0;
+    return s.cells[idx(s, ox, oy)];
+  },
+  /** True when the offset cell's type is in `match` (0 never matches). */
+  is(s, ox, oy, match) {
+    if (!inWindow(s, ox, oy)) return false;
+    const t = s.cells[idx(s, ox, oy)];
+    if (t == null || t === 0) return false;
+    const list = typeof match === "number" ? [
+      match
+    ] : match;
+    return list.includes(t);
+  },
+  /** True when the offset cell is empty (type 0/null). */
+  isEmpty(s, ox, oy) {
+    if (!inWindow(s, ox, oy)) return false;
+    const t = s.cells[idx(s, ox, oy)];
+    return t == null || t === 0;
+  },
+  /** Count offsets whose type is in `match` (0 never counts). */
+  count(s, match, offsets) {
+    const list = typeof match === "number" ? [
+      match
+    ] : match;
+    let n = 0;
+    if (offsets) {
+      for (const o of offsets) {
+        if (!inWindow(s, o.x, o.y)) continue;
+        const t = s.cells[idx(s, o.x, o.y)];
+        if (t != null && t !== 0 && list.includes(t)) n++;
+      }
+      return n;
+    }
+    for (let i = 0; i < s.cells.length; i++) {
+      if (i === s.center) continue;
+      const t = s.cells[i];
+      if (t != null && t !== 0 && list.includes(t)) n++;
+    }
+    return n;
+  },
+  /** True when any window cell (excl. centre) matches. */
+  isNear(s, match) {
+    const list = typeof match === "number" ? [
+      match
+    ] : match;
+    for (let i = 0; i < s.cells.length; i++) {
+      if (i === s.center) continue;
+      const t = s.cells[i];
+      if (t != null && t !== 0 && list.includes(t)) return true;
+    }
+    return false;
+  },
+  /** True when any window cell (excl. centre) is empty. */
+  isNearEmpty(s, offsets) {
+    if (offsets) {
+      for (const o of offsets) {
+        if (this.isEmpty(s, o.x, o.y)) return true;
+      }
+      return false;
+    }
+    for (let i = 0; i < s.cells.length; i++) {
+      if (i === s.center) continue;
+      const t = s.cells[i];
+      if (t == null || t === 0) return true;
+    }
+    return false;
+  },
+  /**
+     * Uniform-random offset (excl. centre) whose type is in `match`.
+     * Returns null when nothing matches.
+     */
+  random(s, match) {
+    const list = typeof match === "number" ? [
+      match
+    ] : match;
+    let pick = -1;
+    let n = 0;
+    for (let i = 0; i < s.cells.length; i++) {
+      if (i === s.center) continue;
+      const t = s.cells[i];
+      if (t == null || t === 0 || !list.includes(t)) continue;
+      n++;
+      if (Math.random() * n < 1) pick = i;
+    }
+    if (pick < 0) return null;
+    return {
+      x: pick % s.size - s.half,
+      y: Math.floor(pick / s.size) - s.half
+    };
+  }
+};
+
 // ../../packages/element-profiles/src/resolve.ts
 function resolveNum(v, fallback = 0) {
   if (typeof v === "function") return v();
   if (v === void 0 || v === null) return fallback;
   return v;
 }
+function roll(chance) {
+  return chance >= 100 || chance > 0 && Math.random() * 100 < chance;
+}
+
+// ../../packages/element-profiles/src/vote.ts
+var Vote = {
+  /** Zero the accumulator — the pipeline does this once per tick. */
+  clear(votes) {
+    return votes.fill(0);
+  },
+  /**
+     * Add `weight` at a window index. `-1` (what `Sense.index` returns for
+     * offsets outside the window) is ignored, so callers never bound-check.
+     * Index `0` IS a valid window cell (top-left of the 5x5).
+     */
+  add(votes, i, weight = 1) {
+    if (i >= 0 && weight !== 0) votes[i] += weight;
+  },
+  /** Add `weight` at window offset (`ox`,`oy`). Out of window = no-op. */
+  addAt(votes, sense, ox, oy, weight = 1) {
+    Vote.add(votes, Sense.index(sense, ox, oy), weight);
+  },
+  /**
+     * Reduce a type list to a lookup set. `0`/`null` entries are dropped —
+     * `0` means "empty", which only `matchEmpty` may claim.
+     */
+  set(types) {
+    const out = /* @__PURE__ */ new Set();
+    if (types == null) return out;
+    const raw = typeof types === "number" ? [
+      types
+    ] : types;
+    for (const t of raw) {
+      if (t != null && t !== 0) out.add(t);
+    }
+    return out;
+  },
+  /** True when at least one cell holds a vote. */
+  any(votes) {
+    for (let i = 0; i < votes.length; i++) {
+      if (votes[i] !== 0) return true;
+    }
+    return false;
+  },
+  /** Number of voting cells (channels never stamp the centre). */
+  count(votes) {
+    let n = 0;
+    for (let i = 0; i < votes.length; i++) {
+      if (votes[i] !== 0) n++;
+    }
+    return n;
+  },
+  /**
+     * Compile a mask once per window size into a flat lookup that `channel`
+     * indexes directly — the per-tick path allocates nothing. Masks are
+     * centre-cropped/padded with 0, so a 3x3 works inside the 5x5 window.
+     * Returns `null` when the mask is absent or all-zero ("all offsets 1").
+     */
+  mask(mask, size) {
+    if (!mask) return null;
+    const half = Math.floor(size / 2);
+    const out = new Float64Array(size * size);
+    let any = false;
+    if (typeof mask === "function") {
+      for (let oy = -half; oy <= half; oy++) {
+        for (let ox = -half; ox <= half; ox++) {
+          if (ox === 0 && oy === 0) continue;
+          const v = mask(ox, oy);
+          out[(oy + half) * size + (ox + half)] = v;
+          if (v !== 0) any = true;
+        }
+      }
+      return any ? out : null;
+    }
+    let rows;
+    if (mask.length > 0 && Array.isArray(mask[0])) {
+      rows = mask;
+    } else {
+      const arr = mask;
+      const sq = Math.sqrt(arr.length);
+      if (!Number.isInteger(sq) || sq < 2) return null;
+      const built = [];
+      for (let r = 0; r < sq; r++) built.push(arr.slice(r * sq, (r + 1) * sq));
+      rows = built;
+    }
+    let mw = 0;
+    for (const r of rows) mw = Math.max(mw, r.length);
+    if (rows.length === 0 || mw === 0) return null;
+    const ox0 = half - Math.floor(mw / 2);
+    const oy0 = half - Math.floor(rows.length / 2);
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        const x = c + ox0;
+        const y = r + oy0;
+        if (x < 0 || y < 0 || x >= size || y >= size) continue;
+        if (x === half && y === half) continue;
+        const v = rows[r][c];
+        out[y * size + x] = v;
+        if (v !== 0) any = true;
+      }
+    }
+    return any ? out : null;
+  },
+  /**
+     * Stamp ONE channel into `ctx.votes`: every offset except the centre
+     * whose cell matches (`match`, or any non-excluded type when `match` is
+     * empty; empties only when `matchEmpty`) gets `weight x mask`.
+     * Returns how many cells voted — `columnForce` uses this to honour `maxK`.
+     */
+  channel(ctx, ch) {
+    if (ch.weight === 0) return 0;
+    const s = ctx.sense;
+    const v = ctx.votes;
+    const { match, exclude, matchEmpty = false, weight, mask } = ch;
+    const anyType = !match || match.size === 0;
+    let n = 0;
+    for (let i = 0; i < v.length; i++) {
+      if (i === s.center) continue;
+      const m = mask ? mask[i] : 1;
+      if (m === 0) continue;
+      const t = s.cells[i];
+      const hit = t == null || t === 0 ? matchEmpty : anyType ? !(exclude?.has(t) ?? false) : match.has(t);
+      if (!hit) continue;
+      v[i] += weight * m;
+      n++;
+    }
+    return n;
+  },
+  /** Centroid reduce: offset-weighted vote vector → one 8-way step. */
+  reduce(votes, size, center, threshold = 0) {
+    const half = Math.floor(size / 2);
+    let vx = 0;
+    let vy = 0;
+    for (let i = 0; i < votes.length; i++) {
+      if (i === center) continue;
+      const s = votes[i];
+      if (!s) continue;
+      vx += s * (i % size - half);
+      vy += s * (Math.floor(i / size) - half);
+    }
+    return {
+      dx: Math.abs(vx) > threshold ? vx > 0 ? 1 : -1 : 0,
+      dy: Math.abs(vy) > threshold ? vy > 0 ? 1 : -1 : 0
+    };
+  }
+};
 
 // ../../packages/element-profiles/src/actions/move.ts
-function random100() {
-  return Math.random() * 100;
+var DX8 = [
+  0,
+  1,
+  1,
+  1,
+  0,
+  -1,
+  -1,
+  -1
+];
+var DY8 = [
+  -1,
+  -1,
+  0,
+  1,
+  1,
+  1,
+  0,
+  -1
+];
+function dirSteps(name) {
+  switch (name) {
+    case "top":
+      return [
+        [
+          0,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          1,
+          -1
+        ]
+      ];
+    case "bottom":
+      return [
+        [
+          0,
+          1
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ];
+    case "left":
+      return [
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          1
+        ]
+      ];
+    case "right":
+      return [
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          1
+        ]
+      ];
+    case "sides":
+      return [
+        [
+          -1,
+          0
+        ],
+        [
+          1,
+          0
+        ]
+      ];
+    case "cross":
+      return [
+        [
+          1,
+          1
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ]
+      ];
+    default:
+      return [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ];
+  }
+}
+function columnRay(ctx, dx, dy, rangeN, rate2, match, free, exclude) {
+  const steps = Math.min(rangeN, ctx.sense.half);
+  for (let n = 1; n <= steps; n++) {
+    const ox = dx * n;
+    const oy = dy * n;
+    const t = Sense.at(ctx.sense, ox, oy);
+    if (t === 0 || free.has(t)) continue;
+    const hit = match.size > 0 ? match.has(t) : !exclude.has(t);
+    if (hit) {
+      Vote.add(ctx.votes, Sense.index(ctx.sense, ox, oy), rate2 > 0 ? 1 : -1);
+      return true;
+    }
+    return false;
+  }
+  return false;
 }
 var Move = {
+  /** Vote one cell left or right (fair coin). */
   side(chanceFn) {
     return (ctx) => {
       const chance = resolveNum(chanceFn);
-      if (chance <= 0 || random100() >= chance) return ctx;
+      if (!roll(chance) || ctx.sense.half < 1) return ctx;
       const dir = Math.random() < 0.5 ? -1 : 1;
-      return {
-        ...ctx,
-        dx: ctx.dx + dir
-      };
+      Vote.addAt(ctx.votes, ctx.sense, dir, 0, 1);
+      return ctx;
     };
   },
+  /** Vote the cell above. */
   up(chanceFn) {
     return (ctx) => {
-      const chance = resolveNum(chanceFn);
-      if (chance <= 0 || random100() >= chance) return ctx;
-      return {
-        ...ctx,
-        dy: ctx.dy - 1
-      };
+      if (!roll(resolveNum(chanceFn)) || ctx.sense.half < 1) return ctx;
+      Vote.addAt(ctx.votes, ctx.sense, 0, -1, 1);
+      return ctx;
     };
   },
+  /** Vote the cell below. */
   down(chanceFn) {
     return (ctx) => {
-      const chance = resolveNum(chanceFn);
-      if (chance <= 0 || random100() >= chance) return ctx;
-      return {
-        ...ctx,
-        dy: ctx.dy + 1
-      };
-    };
-  },
-  /**
-     * Directional attraction on a list of deltas:
-     *   - `rate`: 0 off; >0 attract; <0 push. The seed type is never a target.
-     *   - `freeTypes`: cells the seed can pass through without counting as a hit.
-     *   - `matchTypes`: hit set. Empty = "any type not in excludeTypes".
-     * Walks `deltas` in order and applies the first hit (unless `cumul`).
-     */
-  forceDelta(opts) {
-    return (ctx) => {
-      const rate2 = resolveNum(opts.rate);
-      if (!rate2) return ctx;
-      if (random100() >= Math.min(100, Math.abs(rate2))) return ctx;
-      const f = rate2 > 0 ? 1 : -1;
-      let countMatch = 0;
-      for (const d of opts.deltas) {
-        const dx = ctx.dx + Math.min(1, Math.max(-1, d.x)) * f;
-        const dy = ctx.dy + Math.min(1, Math.max(-1, d.y)) * f;
-        if (Grid.isTypeAt(ctx.x + d.x, ctx.y + d.y, opts.freeTypes)) {
-          continue;
-        }
-        if (opts.matchTypes.length > 0 && Grid.isTypeAt(ctx.x + d.x, ctx.y + d.y, opts.matchTypes)) {
-          countMatch += 1;
-          ctx = {
-            ...ctx,
-            dx,
-            dy
-          };
-        } else if (opts.matchTypes.length === 0 && !Grid.isTypeAt(ctx.x + d.x, ctx.y + d.y, opts.excludeTypes)) {
-          countMatch += 1;
-          ctx = {
-            ...ctx,
-            dx,
-            dy
-          };
-        }
-        if (!opts.cumul && countMatch > 0) break;
-      }
+      if (!roll(resolveNum(chanceFn)) || ctx.sense.half < 1) return ctx;
+      Vote.addAt(ctx.votes, ctx.sense, 0, 1, 1);
       return ctx;
     };
   },
   /**
-     * Column attract / push-back along a liquid. Casts a ray of `rangeN` cells
-     * per compass direction and lets the first non-free occupant steer the seed.
+     * Random-matrix walk: one uniform draw over the window offsets allowed by
+     * `mask` (default: the 8 neighbours), voting the picked cell. Same shape
+     * as stacking `side`/`up`/`down`, but uniform across all allowed offsets.
+     * The draw list is compiled once from the mask (centre always excluded).
+     */
+  random(chanceFn, mask) {
+    let dirs = null;
+    return (ctx) => {
+      if (!roll(resolveNum(chanceFn)) || ctx.sense.half < 1) return ctx;
+      const s = ctx.sense;
+      if (!dirs) {
+        dirs = [];
+        const m = mask ? Vote.mask(mask, s.size) : null;
+        if (m) {
+          for (let i = 0; i < m.length; i++) {
+            if (m[i] !== 0) dirs.push(i);
+          }
+        } else {
+          for (let k = 0; k < 8; k++) {
+            dirs.push((DY8[k] + s.half) * s.size + (DX8[k] + s.half));
+          }
+        }
+      }
+      if (dirs.length === 0) return ctx;
+      Vote.add(ctx.votes, dirs[Math.floor(Math.random() * dirs.length)], 1);
+      return ctx;
+    };
+  },
+  /**
+     * Single-channel vote: every sense cell whose type matches adds
+     * `weight x rate x mask` to the pipeline sum. One channel per call —
+     * stack calls for multi-channel steering.
+     *
+     * Compilation is lazy (first tick): the type sets and the mask need the
+     * live seed type and window size, and are then reused allocation-free.
+     */
+  channel(opts) {
+    let inited = false;
+    let match = /* @__PURE__ */ new Set();
+    let exclude = /* @__PURE__ */ new Set();
+    let maskSize = -1;
+    let mask = null;
+    return (ctx) => {
+      if (!roll(resolveNum(opts.chance ?? 100))) return ctx;
+      const weight = resolveNum(opts.weight) * resolveNum(opts.rate ?? 1);
+      if (!weight) return ctx;
+      if (!inited) {
+        inited = true;
+        match = Vote.set(opts.matchTypes);
+        exclude = Vote.set(opts.excludeTypes);
+        exclude.add(ctx.profile.seedType);
+      }
+      if (maskSize !== ctx.sense.size) {
+        maskSize = ctx.sense.size;
+        mask = Vote.mask(opts.mask, maskSize);
+      }
+      Vote.channel(ctx, {
+        match,
+        exclude,
+        matchEmpty: opts.matchEmpty,
+        weight,
+        mask
+      });
+      return ctx;
+    };
+  },
+  /**
+     * ColumnForce: cast rays in `directions` and let the first opaque cell
+     * of each ray vote ±1. Stacking directions composes a force field.
      */
   columnForce(opts = {}) {
     const { rateFn = 0, matchTypes = [], directions = [
@@ -298,40 +856,46 @@ var Move = {
       const maxK = resolveNum(maxKFn);
       if (!rate2) return ctx;
       if (rangeN <= 0 || maxK <= 0) return ctx;
-      const freeList = [
+      if (!roll(Math.min(100, Math.abs(rate2)))) return ctx;
+      const free = Vote.set([
         ctx.profile.liquidType,
-        ...freeTypes.filter((v) => v !== null)
-      ];
-      const matchList = [
-        ...matchTypes.filter((v) => v !== null)
-      ];
-      const excludeList = [
+        ...freeTypes
+      ]);
+      const match = Vote.set(matchTypes);
+      const exclude = Vote.set([
         ctx.profile.seedType,
-        ...excludeTypes.filter((v) => v !== null)
-      ];
-      if (directions.length === 0) return ctx;
-      const dirs = [
-        ...new Set(directions.map((d) => DIR_NAME_MAP[d]).flat())
-      ];
-      for (const dir of dirs) {
-        const d = DELTAS_INDEX[dir];
-        const deltas = Array.from({
-          length: rangeN
-        }, (_, n) => ({
-          x: d.x * -(n + 1),
-          y: d.y * -(n + 1)
-        }));
-        ctx = Move.forceDelta({
-          rate: rate2,
-          deltas,
-          freeTypes: freeList,
-          matchTypes: matchList,
-          excludeTypes: excludeList,
-          cumul: false
-        })(ctx);
+        ...excludeTypes
+      ]);
+      let voted = 0;
+      for (const name of directions) {
+        if (voted >= maxK) break;
+        for (const [dx, dy] of dirSteps(name)) {
+          if (voted >= maxK) break;
+          if (columnRay(ctx, dx, dy, rangeN, rate2, match, free, exclude)) voted++;
+        }
       }
       return ctx;
     };
+  },
+  /**
+     * Trail-eat: deferred intent applied to the origin cell *after* a
+     * successful move swap (see `runProfile`). Reads no engine state —
+     * the pipeline applies it only when the centroid step actually moved.
+     *
+     * Multiple `trailEat` intents stack; each rolls its own chance.
+     */
+  trailEat(opts) {
+    const replaceType = opts.replaceType ?? null;
+    return (ctx) => ({
+      ...ctx,
+      trailEat: [
+        ...ctx.trailEat,
+        {
+          chance: opts.chance,
+          replaceType
+        }
+      ]
+    });
   }
 };
 
@@ -359,42 +923,31 @@ var Grow = {
     });
   },
   ageOnAir(rateFn) {
-    return (ctx) => GridNear.isNearEmpty(ctx.x, ctx.y) ? rate(resolveNum(rateFn), "air") : noMatch();
+    return (ctx) => Sense.isNearEmpty(ctx.sense) ? rate(resolveNum(rateFn), "air") : noMatch();
   },
   ageOnFloor(rateFn) {
     return (ctx) => {
-      const under = !Grid.isNotTypeAt(ctx.x, ctx.y + 1, [
-        ctx.profile.seedType,
-        ctx.profile.liquidType
-      ]);
-      return under ? noMatch() : rate(resolveNum(rateFn), "floor");
+      const below = Sense.at(ctx.sense, 0, 1);
+      const solid = below !== 0 && below !== ctx.profile.seedType && below !== ctx.profile.liquidType;
+      return solid ? rate(resolveNum(rateFn), "floor") : noMatch();
     };
   },
   ageOnWall(rateFn) {
     return (ctx) => {
-      const sideOffsets = [
-        {
-          x: 1,
-          y: 0
-        },
-        {
-          x: -1,
-          y: 0
-        }
-      ];
-      return GridNear.isNotNear(ctx.x, ctx.y, [
-        ctx.profile.seedType,
-        ctx.profile.liquidType
-      ], sideOffsets) ? rate(resolveNum(rateFn), "wall") : noMatch();
+      const hit = [
+        Sense.at(ctx.sense, 1, 0),
+        Sense.at(ctx.sense, -1, 0)
+      ].some((t) => t !== 0 && t !== ctx.profile.seedType && t !== ctx.profile.liquidType);
+      return hit ? rate(resolveNum(rateFn), "wall") : noMatch();
     };
   },
   ageOnCrystal(rateFn) {
-    return (ctx) => ctx.profile.crystalType != null && GridNear.isNear(ctx.x, ctx.y, ctx.profile.crystalType) ? rate(resolveNum(rateFn), "crystal") : noMatch();
+    return (ctx) => ctx.profile.crystalType != null && Sense.isNear(ctx.sense, ctx.profile.crystalType) ? rate(resolveNum(rateFn), "crystal") : noMatch();
   },
   ageOnSurround(rateFn, minCountFn) {
     return (ctx) => {
       const minCount = resolveNum(minCountFn, 6);
-      const n = GridNear.countNear(ctx.x, ctx.y, ctx.profile.liquidType);
+      const n = Sense.count(ctx.sense, ctx.profile.liquidType);
       return n >= minCount ? rate(resolveNum(rateFn), "surround") : noMatch();
     };
   },
@@ -406,7 +959,7 @@ var Grow = {
   blockOn(blockType) {
     return (ctx) => {
       if (ctx.profile.liquidType === blockType) return noMatch();
-      if (blockType != null && GridNear.isNear(ctx.x, ctx.y, blockType)) {
+      if (blockType != null && Sense.isNear(ctx.sense, blockType)) {
         ctx.blocked = true;
         return {
           matched: true,
@@ -425,89 +978,110 @@ var Grow = {
       }
       return noMatch();
     };
+  },
+  /**
+     * Eat a random neighbouring cell from the sense matrix and report it as
+     * growth. Picks one uniform-random window cell (excl. centre) whose type
+     * is in `matchTypes` (default: the profile's `liquidType`), rolls
+     * `chance`, then clears it or replaces it via `Grid.eatAt` using ENGINE
+     * coordinates (sense offset + seed position).
+     * Returns `matched: true, delta: 1` on success so it composes with the
+     * first-match grow chain and actually ages the seed.
+     */
+  eat(opts) {
+    const replaceType = opts.replaceType ?? null;
+    return (ctx) => {
+      const chance = resolveNum(opts.chance);
+      if (chance <= 0 || Math.random() * 100 >= chance) return noMatch();
+      const match = opts.matchTypes ?? ctx.profile.liquidType;
+      if (match == null) return noMatch();
+      const off = Sense.random(ctx.sense, match);
+      if (!off) return noMatch();
+      Grid.eatAt(ctx.x + off.x, ctx.y + off.y, replaceType);
+      return {
+        matched: true,
+        delta: 1,
+        tag: "eat",
+        rate: chance
+      };
+    };
   }
 };
 
 // ../../packages/element-profiles/src/actions/crystallize.ts
-function disk(cx, cy, liquid, r) {
+function diskOffsets(r, senseHalf) {
   const cells = [];
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
+  const rr = Math.min(r, senseHalf);
+  for (let dy = -rr; dy <= rr; dy++) {
+    for (let dx = -rr; dx <= rr; dx++) {
       if (dx * dx + dy * dy > r * r + 0.5) continue;
-      if (Grid.isTypeAt(cx + dx, cy + dy, liquid)) {
-        cells.push({
-          x: cx + dx,
-          y: cy + dy
-        });
-      }
-    }
-  }
-  return cells;
-}
-function cross(cx, cy, liquid, r) {
-  const cells = [];
-  for (let i = 1; i <= r; i++) {
-    for (const [x, y] of [
-      [
-        cx + i,
-        cy
-      ],
-      [
-        cx - i,
-        cy
-      ],
-      [
-        cx,
-        cy + i
-      ],
-      [
-        cx,
-        cy - i
-      ]
-    ]) {
-      if (Grid.isTypeAt(x, y, liquid)) cells.push({
-        x,
-        y
+      cells.push({
+        x: dx,
+        y: dy
       });
     }
   }
   return cells;
 }
-function ring(cx, cy, liquid, r) {
+function crossOffsets(r, senseHalf) {
   const cells = [];
-  const r2 = r * r;
-  const i2 = Math.max(0, r - 1) ** 2;
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
-      const d = dx * dx + dy * dy;
-      if (d > r2 + 0.5 || d < i2 - 0.5) continue;
-      if (Grid.isTypeAt(cx + dx, cy + dy, liquid)) {
-        cells.push({
-          x: cx + dx,
-          y: cy + dy
-        });
-      }
-    }
-  }
-  return cells;
-}
-function column(cx, cy, liquid, r) {
-  const cells = [];
-  for (let dy = -r; dy <= r; dy++) {
-    if (dy === 0) continue;
-    if (Grid.isTypeAt(cx, cy + dy, liquid)) cells.push({
-      x: cx,
-      y: cy + dy
+  const rr = Math.min(r, senseHalf);
+  for (let i = 1; i <= rr; i++) {
+    cells.push({
+      x: i,
+      y: 0
+    }, {
+      x: -i,
+      y: 0
+    }, {
+      x: 0,
+      y: i
+    }, {
+      x: 0,
+      y: -i
     });
   }
   return cells;
 }
-function commit(ctx, cells) {
-  const { seedType, crystalType, ageField } = ctx.profile;
-  if (seedType == null || !Grid.isTypeAt(ctx.x, ctx.y, seedType)) return false;
-  if (cells.length < 1) return false;
-  for (const c of cells) {
-    sandkit.api.elements.replaceAtCell(c.x, c.y, crystalType);
+function ringOffsets(r, senseHalf) {
+  const cells = [];
+  const rr = Math.min(r, senseHalf);
+  const r2 = r * r;
+  const i2 = Math.max(0, r - 1) ** 2;
+  for (let dy = -rr; dy <= rr; dy++) {
+    for (let dx = -rr; dx <= rr; dx++) {
+      const d = dx * dx + dy * dy;
+      if (d > r2 + 0.5 || d < i2 - 0.5) continue;
+      cells.push({
+        x: dx,
+        y: dy
+      });
+    }
+  }
+  return cells;
+}
+function columnOffsets(r, senseHalf) {
+  const cells = [];
+  const rr = Math.min(r, senseHalf);
+  for (let dy = -rr; dy <= rr; dy++) {
+    if (dy === 0) continue;
+    cells.push({
+      x: 0,
+      y: dy
+    });
+  }
+  return cells;
+}
+function commit(ctx, offsets) {
+  const { seedType, crystalType, ageField, liquidType } = ctx.profile;
+  if (seedType == null || Sense.at(ctx.sense, 0, 0) !== seedType) return false;
+  const targets = [];
+  for (const o of offsets) {
+    if (Sense.is(ctx.sense, o.x, o.y, liquidType)) targets.push(o);
+  }
+  if (targets.length < 1) return false;
+  for (const t of targets) {
+    sandkit.api.elements.replaceAtCell(ctx.x + t.x, ctx.y + t.y, crystalType);
   }
   sandkit.api.elements.replaceAtCell(ctx.x, ctx.y, crystalType);
   Grid.resetFieldAt(ctx.x, ctx.y, ageField);
@@ -515,21 +1089,21 @@ function commit(ctx, cells) {
 }
 var Crystallization = {
   disk(radiusFn) {
-    return (ctx) => commit(ctx, disk(ctx.x, ctx.y, ctx.profile.liquidType, resolveNum(radiusFn)));
+    return (ctx) => commit(ctx, diskOffsets(resolveNum(radiusFn), ctx.sense.half));
   },
   cross(radiusFn) {
-    return (ctx) => commit(ctx, cross(ctx.x, ctx.y, ctx.profile.liquidType, resolveNum(radiusFn)));
+    return (ctx) => commit(ctx, crossOffsets(resolveNum(radiusFn), ctx.sense.half));
   },
   ring(radiusFn) {
-    return (ctx) => commit(ctx, ring(ctx.x, ctx.y, ctx.profile.liquidType, resolveNum(radiusFn)));
+    return (ctx) => commit(ctx, ringOffsets(resolveNum(radiusFn), ctx.sense.half));
   },
   column(radiusFn) {
-    return (ctx) => commit(ctx, column(ctx.x, ctx.y, ctx.profile.liquidType, resolveNum(radiusFn)));
+    return (ctx) => commit(ctx, columnOffsets(resolveNum(radiusFn), ctx.sense.half));
   },
   single() {
     return (ctx) => {
-      if (!GridNear.isNear(ctx.x, ctx.y, ctx.profile.liquidType)) return false;
-      if (ctx.profile.seedType == null || !Grid.isTypeAt(ctx.x, ctx.y, ctx.profile.seedType)) {
+      if (!Sense.isNear(ctx.sense, ctx.profile.liquidType)) return false;
+      if (ctx.profile.seedType == null || Sense.at(ctx.sense, 0, 0) !== ctx.profile.seedType) {
         return false;
       }
       if (ctx.profile.crystalType == null) return false;
@@ -552,9 +1126,43 @@ var Crystallization = {
 };
 
 // ../../packages/element-profiles/src/pipeline.ts
+var SENSE_SIZE = 5;
+var SENSE_N = SENSE_SIZE * SENSE_SIZE;
+var SENSE_HALF = Math.floor(SENSE_SIZE / 2);
+var SENSE_CENTER = SENSE_HALF * SENSE_SIZE + SENSE_HALF;
+var senseCells = new Int32Array(SENSE_N);
+var voteAcc = new Float64Array(SENSE_N);
+function sampleSense(x, y) {
+  for (let dy = -SENSE_HALF; dy <= SENSE_HALF; dy++) {
+    for (let dx = -SENSE_HALF; dx <= SENSE_HALF; dx++) {
+      const i = (dy + SENSE_HALF) * SENSE_SIZE + (dx + SENSE_HALF);
+      let t = 0;
+      try {
+        t = Grid.getTypeAt(x + dx, y + dy) ?? 0;
+      } catch {
+        t = 0;
+      }
+      senseCells[i] = t;
+    }
+  }
+  return {
+    size: SENSE_SIZE,
+    half: SENSE_HALF,
+    cells: senseCells,
+    center: SENSE_CENTER
+  };
+}
 function runProfile(x, y, profile) {
-  if (!Grid.isTypeAt(x, y, profile.seedType)) return false;
-  if (!GridNear.isNear(x, y, profile.liquidType)) {
+  const sense = sampleSense(x, y);
+  if (sense.cells[SENSE_CENTER] !== profile.seedType) return false;
+  let liquidNear = false;
+  for (let i = 0; i < SENSE_N; i++) {
+    if (i !== SENSE_CENTER && sense.cells[i] === profile.liquidType) {
+      liquidNear = true;
+      break;
+    }
+  }
+  if (!liquidNear) {
     Grid.resetFieldAt(x, y, profile.ageField);
     return false;
   }
@@ -562,24 +1170,20 @@ function runProfile(x, y, profile) {
     x,
     y,
     profile,
-    dx: 0,
-    dy: 0,
+    sense,
+    votes: Vote.clear(voteAcc),
     age: Grid.readFieldAt(x, y, profile.ageField),
     blocked: false,
     tryInstant: false,
-    stuck: false
+    stuck: false,
+    trailEat: []
   };
   let delta = 0;
-  let tag = "-";
   for (const fn of profile.grow) {
     const result = fn(ctx);
-    if (ctx.blocked) {
-      tag = result.tag || "blocked";
-      break;
-    }
+    if (ctx.blocked) break;
     if (result.matched) {
       delta = result.delta || 0;
-      tag = result.tag || "-";
       break;
     }
   }
@@ -603,15 +1207,21 @@ function runProfile(x, y, profile) {
   for (const fn of profile.moves) {
     ctx = fn(ctx);
   }
-  if (ctx.dx !== 0 || ctx.dy !== 0) {
-    const r = Grid.swapCell(ctx.x, ctx.y, ctx.x + Math.min(1, Math.max(-1, ctx.dx)), ctx.y + Math.min(1, Math.max(-1, ctx.dy)), ctx.profile.liquidType);
-    ctx = r ? {
-      ...ctx,
-      x: r.x,
-      y: r.y,
-      dx: 0,
-      dy: 0
-    } : ctx;
+  const { dx, dy } = Vote.reduce(ctx.votes, SENSE_SIZE, SENSE_CENTER, 0);
+  if (dx !== 0 || dy !== 0) {
+    const ox = ctx.x;
+    const oy = ctx.y;
+    const r = Grid.swapCell(ctx.x, ctx.y, ctx.x + dx, ctx.y + dy, ctx.profile.liquidType);
+    if (r) {
+      for (const eat of ctx.trailEat) {
+        if (roll(resolveNum(eat.chance))) Grid.eatAt(ox, oy, eat.replaceType);
+      }
+      ctx = {
+        ...ctx,
+        x: r.x,
+        y: r.y
+      };
+    }
   }
   return true;
 }
@@ -676,6 +1286,77 @@ var astroCopperCrystal = {
 // src/config/elementConf/astroCopperPowder.ts
 var LIQUID_COPPER_DENSITY = 150;
 var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
+var MASK_CROSS = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
+var MASK_DIAGONAL = [
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    0,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ]
+];
+var MASK_GRAVITY = [
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    1,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ]
+];
 var astroCopperPowder = {
   spec: spec({
     key: "astroCopperPowder",
@@ -731,63 +1412,110 @@ var astroCopperPowder = {
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -30,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ]
-          }
+          rate: -30,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: 20,
-            rangeN: 2,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides",
-              "cross"
-            ],
-            matchKeys: [
-              "astroGoldPowder"
-            ]
-          }
+          rate: 20,
+          rangeN: 2,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides",
+            "cross"
+          ],
+          matchKeys: [
+            "astroGoldPowder"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -40,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ],
-            matchKeys: [
-              "astroCopperPowder"
-            ]
-          }
+          rate: -40,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ],
+          matchKeys: [
+            "astroCopperPowder"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: 40,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "cross"
-            ],
-            matchKeys: [
-              "astroCopperPowder"
-            ]
-          }
+          rate: 40,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "cross"
+          ],
+          matchKeys: [
+            "astroCopperPowder"
+          ]
+        }
+      ],
+      grow: [],
+      crystallization: []
+    },
+    {
+      id: "astroCopper-in-liquid-gold",
+      seedKey: "astroCopperPowder",
+      liquidKey: "liquidGold",
+      crystalKey: "astroCopperCrystal",
+      growAge: 10,
+      moves: [
+        // Jitter — uniform random draw over the 8 neighbours.
+        {
+          kind: "random",
+          chance: 30
+        },
+        // Gravity — liquid gold below pulls the seed down.
+        {
+          kind: "channel",
+          chance: 1,
+          matchKeys: [
+            "liquidGold"
+          ],
+          weight: 1,
+          mask: MASK_GRAVITY
+        },
+        // Lattice — own kind repels orthogonally but attracts
+        // diagonally, so copper settles into diagonal chains instead
+        // of stacking into a solid blob.
+        {
+          kind: "channel",
+          matchKeys: [
+            "astroCopperPowder"
+          ],
+          weight: -1,
+          mask: MASK_CROSS
+        },
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroCopperPowder"
+          ],
+          weight: 1,
+          mask: MASK_DIAGONAL
+        },
+        // Cluster — any nearby gold powder pulls this copper in.
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroGoldPowder"
+          ],
+          weight: 2
         }
       ],
       grow: [],
@@ -838,6 +1566,60 @@ var astroGoldCrystal = {
 // src/config/elementConf/astroGoldPowder.ts
 var LIQUID_COPPER_DENSITY2 = 150;
 var SEED_DENSITY2 = Math.max(1, LIQUID_COPPER_DENSITY2 - 5);
+var MASK_CROSS2 = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
+var MASK_GRAVITY2 = [
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    1,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0.5,
+    0,
+    0
+  ]
+];
 var astroGoldPowder = {
   spec: spec({
     key: "astroGoldPowder",
@@ -893,48 +1675,88 @@ var astroGoldPowder = {
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -30,
-            rangeN: 4,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ]
-          }
+          rate: -30,
+          rangeN: 4,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: -20,
-            rangeN: 2,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ],
-            matchKeys: [
-              "astroGoldPowder"
-            ]
-          }
+          rate: -20,
+          rangeN: 2,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ],
+          matchKeys: [
+            "astroGoldPowder"
+          ]
         },
         {
           kind: "columnForce",
-          opts: {
-            rate: 80,
-            rangeN: 5,
-            maxK: 1,
-            directions: [
-              "top",
-              "bottom",
-              "sides"
-            ],
-            matchKeys: [
-              "astroCopperPowder"
-            ]
-          }
+          rate: 80,
+          rangeN: 5,
+          maxK: 1,
+          directions: [
+            "top",
+            "bottom",
+            "sides"
+          ],
+          matchKeys: [
+            "astroCopperPowder"
+          ]
+        }
+      ],
+      grow: [],
+      crystallization: []
+    },
+    {
+      id: "astroGold-in-liquid-gold",
+      seedKey: "astroGoldPowder",
+      liquidKey: "liquidGold",
+      crystalKey: "astroGoldCrystal",
+      growAge: 10,
+      moves: [
+        // Jitter — uniform random draw over the 8 neighbours.
+        {
+          kind: "random",
+          chance: 30
+        },
+        // Gravity — liquid gold below pulls the seed down.
+        {
+          kind: "channel",
+          chance: 1,
+          matchKeys: [
+            "liquidGold"
+          ],
+          weight: 0.2,
+          mask: MASK_GRAVITY2
+        },
+        // Dispersed — own kind beside it pushes back (orthogonal only,
+        // so diagonal neighbours stay free to settle).
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroGoldPowder"
+          ],
+          weight: -1,
+          mask: MASK_CROSS2
+        },
+        // Cluster — any nearby copper powder pulls this gold in.
+        {
+          kind: "channel",
+          chance: 40,
+          matchKeys: [
+            "astroCopperPowder"
+          ],
+          weight: -1
         }
       ],
       grow: [],
@@ -1315,6 +2137,12 @@ var ElementType = {
 };
 
 // src/worker/elementProfileFactory.ts
+function keysOf(keys) {
+  return keys?.map((k) => ElementType[k]);
+}
+function keyOf(key) {
+  return key == null || key === "empty" ? null : ElementType[key] ?? null;
+}
 function buildMoves(specs) {
   const out = [];
   for (const spec2 of specs) {
@@ -1327,18 +2155,31 @@ function buildMoves(specs) {
     if (spec2.kind === "up") out.push(Move.up(spec2.chance));
     else if (spec2.kind === "side") out.push(Move.side(spec2.chance));
     else if (spec2.kind === "down") out.push(Move.down(spec2.chance));
-    else if (spec2.kind === "columnForce") {
-      const o = spec2.opts;
+    else if (spec2.kind === "random") out.push(Move.random(spec2.chance, spec2.mask));
+    else if (spec2.kind === "channel") {
+      out.push(Move.channel({
+        matchTypes: keysOf(spec2.matchKeys),
+        matchEmpty: spec2.matchEmpty,
+        weight: spec2.weight,
+        rate: spec2.rate,
+        chance: spec2.chance,
+        excludeTypes: keysOf(spec2.excludeKeys),
+        mask: spec2.mask
+      }));
+    } else if (spec2.kind === "trailEat") {
+      out.push(Move.trailEat({
+        chance: spec2.chance,
+        replaceType: keyOf(spec2.replaceKey)
+      }));
+    } else if (spec2.kind === "columnForce") {
       out.push(Move.columnForce({
-        rateFn: o.rate,
-        matchTypes: (o.matchKeys ?? []).map((k) => ElementType[k]),
-        directions: [
-          ...o.directions
-        ],
-        rangeNFn: o.rangeN,
-        maxKFn: o.maxK,
-        freeTypes: (o.freeKeys ?? []).map((k) => ElementType[k]),
-        excludeTypes: (o.excludeKeys ?? []).map((k) => ElementType[k])
+        rateFn: spec2.rate,
+        matchTypes: keysOf(spec2.matchKeys) ?? [],
+        directions: spec2.directions,
+        rangeNFn: spec2.rangeN,
+        maxKFn: spec2.maxK,
+        freeTypes: keysOf(spec2.freeKeys) ?? [],
+        excludeTypes: keysOf(spec2.excludeKeys) ?? []
       }));
     } else {
       for (const e of spec2.entries()) {
@@ -1372,6 +2213,14 @@ function buildGrow(spec2) {
   if (spec2.kind === "ageOnAir") return Grow.ageOnAir(spec2.rate);
   if (spec2.kind === "ageOnCrystal") return Grow.ageOnCrystal(spec2.rate);
   if (spec2.kind === "ageOnSurround") return Grow.ageOnSurround(spec2.rate, spec2.minCount);
+  if (spec2.kind === "eat") {
+    return Grow.eat({
+      chance: spec2.chance,
+      replaceType: keyOf(spec2.replaceKey),
+      // Omit = profile's own liquid (Grow.eat resolves it per tick).
+      matchTypes: keysOf(spec2.matchKeys)
+    });
+  }
   return Grow.blockOn(ElementType[spec2.blockKey]);
 }
 function buildCrystal(spec2) {

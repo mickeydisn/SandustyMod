@@ -6,6 +6,8 @@
 import "@sandmd/sandkit";
 import type { TElementType } from "@sandmd/shared";
 
+let cachedEmpty: TElementType | null = null;
+
 export const Grid = {
     // TYPE
     getTypeAt(x: number, y: number): TElementType {
@@ -67,6 +69,29 @@ export const Grid = {
         Grid.writeFieldAt(x, y, field, 0);
     },
 
+    /**
+     * Best-effort numeric type for "empty" used to clear eaten cells.
+     * Probes common empty ids, falls back to 0 (universally empty).
+     * Cached after first lookup.
+     */
+    emptyType(): TElementType {
+        if (cachedEmpty != null) return cachedEmpty;
+        const ids = ["empty", "Empty", "air", "Air", "void", "Void", "none", "None"];
+        for (const id of ids) {
+            try {
+                const t = sandkit.api.elements.getTypeFromId(id);
+                if (t != null) {
+                    cachedEmpty = t;
+                    return t;
+                }
+            } catch {
+                /* try next */
+            }
+        }
+        cachedEmpty = 0 as TElementType;
+        return cachedEmpty;
+    },
+
     // MOVE
     swapCell(
         x: number,
@@ -92,4 +117,63 @@ export const Grid = {
         }
         return null;
     },
+
+    /**
+     * Eat helper — replace whatever is at a cell with `replaceType`,
+     * or clear to empty when `replaceType` is null.
+     * Never touches the seed itself; caller must guard that.
+     */
+    eatAt(x: number, y: number, replaceType: TElementType | null): void {
+        try {
+            if (replaceType == null) {
+                // No `removeAtCell` in the worker typings — clearing via
+                // `replaceAtCell(emptyType)` is equivalent. `getTypeFromId`
+                // probes common empty ids; falls back to 0 (empty).
+                const empty = Grid.emptyType();
+                if (empty != null) {
+                    sandkit.api.elements.replaceAtCell(x, y, empty);
+                }
+            } else {
+                sandkit.api.elements.replaceAtCell(x, y, replaceType);
+            }
+        } catch {
+            /* ignore */
+        }
+    },
+
+    /**
+     * Pick a random 8-neighbour cell of (`x`,`y`) whose type is in
+     * `matchTypes`. Returns null when none match.
+     */
+    randomNearCell(
+        x: number,
+        y: number,
+        matchTypes: TElementType[] | TElementType,
+    ): { x: number; y: number } | null {
+        const match = typeof matchTypes === "number" ? [matchTypes] : matchTypes;
+        // Fisher-Yates over the 8 offsets so the pick is uniform.
+        const order = [0, 1, 2, 3, 4, 5, 6, 7];
+        for (let i = order.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [order[i], order[j]] = [order[j], order[i]];
+        }
+        for (const k of order) {
+            const d = EAT_DELTAS[k];
+            if (Grid.isTypeAt(x + d.x, y + d.y, match)) {
+                return { x: x + d.x, y: y + d.y };
+            }
+        }
+        return null;
+    },
 };
+
+const EAT_DELTAS = [
+    { x: 0, y: -1 },
+    { x: 1, y: -1 },
+    { x: 1, y: 0 },
+    { x: 1, y: 1 },
+    { x: 0, y: 1 },
+    { x: -1, y: 1 },
+    { x: -1, y: 0 },
+    { x: -1, y: -1 },
+];

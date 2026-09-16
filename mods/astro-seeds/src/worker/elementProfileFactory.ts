@@ -5,21 +5,27 @@
  * `createElementProfileFactory()` turns that data into a `() => Profile`
  * closure, so adding a new element means adding one spec — no new function.
  */
-import type {
-    CrystallizeFn,
-    GrowFn,
-    MoveFn,
-    Profile,
-} from "@sandmd/element-profiles";
+import type { CrystallizeFn, GrowFn, MoveFn, Profile } from "@sandmd/element-profiles";
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles";
 import { ASTRO_FIELD } from "../config/ids.ts";
 import { ElementType } from "../shared/resolve.ts";
-import type {
-    CrystalSpec,
-    GrowSpec,
-    MoveSpec,
-    ProfileSpec,
-} from "../element/types.ts";
+import type { CrystalSpec, GrowSpec, MoveSpec, ProfileSpec } from "../element/types.ts";
+
+/**
+ * Resolve catalogue keys → numeric element types.
+ *
+ * Called from inside `getProfile()`, i.e. per tick, NOT at module scope:
+ * `ElementType[key]` is only meaningful after the main thread has registered
+ * the elements, so a catalogue file must never capture these numbers itself.
+ */
+function keysOf<ElType extends string>(keys?: ElType[]): number[] | undefined {
+    return keys?.map((k) => ElementType[k as string]);
+}
+
+/** One key → numeric type. `undefined`/`"empty"` means "clear to empty". */
+function keyOf<ElType extends string>(key?: ElType | "empty"): number | null {
+    return key == null || key === "empty" ? null : (ElementType[key as string] ?? null);
+}
 
 function buildMoves<ElType extends string>(specs: MoveSpec<ElType>[]): MoveFn[] {
     const out: MoveFn[] = [];
@@ -33,16 +39,28 @@ function buildMoves<ElType extends string>(specs: MoveSpec<ElType>[]): MoveFn[] 
         if (spec.kind === "up") out.push(Move.up(spec.chance));
         else if (spec.kind === "side") out.push(Move.side(spec.chance));
         else if (spec.kind === "down") out.push(Move.down(spec.chance));
-        else if (spec.kind === "columnForce") {
-            const o = spec.opts;
+        else if (spec.kind === "random") out.push(Move.random(spec.chance, spec.mask));
+        else if (spec.kind === "channel") {
+            out.push(Move.channel({
+                matchTypes: keysOf<ElType>(spec.matchKeys),
+                matchEmpty: spec.matchEmpty,
+                weight: spec.weight,
+                rate: spec.rate,
+                chance: spec.chance,
+                excludeTypes: keysOf<ElType>(spec.excludeKeys),
+                mask: spec.mask,
+            }));
+        } else if (spec.kind === "trailEat") {
+            out.push(Move.trailEat({ chance: spec.chance, replaceType: keyOf(spec.replaceKey) }));
+        } else if (spec.kind === "columnForce") {
             out.push(Move.columnForce({
-                rateFn: o.rate,
-                matchTypes: (o.matchKeys ?? []).map((k) => ElementType[k as string]),
-                directions: [...o.directions] as never,
-                rangeNFn: o.rangeN,
-                maxKFn: o.maxK,
-                freeTypes: (o.freeKeys ?? []).map((k) => ElementType[k as string]),
-                excludeTypes: (o.excludeKeys ?? []).map((k) => ElementType[k as string]),
+                rateFn: spec.rate,
+                matchTypes: keysOf<ElType>(spec.matchKeys) ?? [],
+                directions: spec.directions,
+                rangeNFn: spec.rangeN,
+                maxKFn: spec.maxK,
+                freeTypes: keysOf<ElType>(spec.freeKeys) ?? [],
+                excludeTypes: keysOf<ElType>(spec.excludeKeys) ?? [],
             }));
         } else {
             for (const e of spec.entries()) {
@@ -69,6 +87,14 @@ function buildGrow<ElType extends string>(spec: GrowSpec<ElType>): GrowFn {
     if (spec.kind === "ageOnAir") return Grow.ageOnAir(spec.rate);
     if (spec.kind === "ageOnCrystal") return Grow.ageOnCrystal(spec.rate);
     if (spec.kind === "ageOnSurround") return Grow.ageOnSurround(spec.rate, spec.minCount);
+    if (spec.kind === "eat") {
+        return Grow.eat({
+            chance: spec.chance,
+            replaceType: keyOf(spec.replaceKey),
+            // Omit = profile's own liquid (Grow.eat resolves it per tick).
+            matchTypes: keysOf<ElType>(spec.matchKeys),
+        });
+    }
     return Grow.blockOn(ElementType[spec.blockKey as string]);
 }
 

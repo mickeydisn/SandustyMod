@@ -15,14 +15,25 @@ export type {
     GrowResult,
     MoveFn,
     Profile,
+    SenseMatrix,
+    TrailEat,
     Vec2,
 } from "./types.ts";
 
 export { Grid } from "./grid.ts";
 export { GridNear } from "./near.ts";
+export { Sense } from "./sense.ts";
 export { resolveNum } from "./resolve.ts";
 
 export { Crystallization, Grow, Move } from "./actions/index.ts";
-export type { ColumnForceOpts, MoveForceOpts } from "./actions/move.ts";
+export type {
+    ChannelOpts,
+    ColumnForceOpts,
+    CompassGroup,
+    EatOpts,
+    GrowEatOpts,
+} from "./actions/index.ts";
 
-export { runProfile } from "./pipeline.ts";
+export { reduceVotes, runProfile, SENSE_SIZE } from "./pipeline.ts";
+export { Vote } from "./vote.ts";
+export type { VoteChannel, VoteMask } from "./vote.ts";

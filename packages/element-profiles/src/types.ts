@@ -32,16 +32,48 @@ export type MoveFn = (ctx: Ctx) => Ctx;
 export type GrowFn = (ctx: Ctx) => GrowResult;
 export type CrystallizeFn = (ctx: Ctx) => boolean;
 
+export interface SenseMatrix {
+    /** Odd window size (3, 5, 7…). */
+    size: number;
+    /** Half-size: `offsets` run over `x,y ∈ [-half..half]`. */
+    half: number;
+    /** Resolved element type per window cell, row-major (0 = empty). */
+    cells: Int32Array;
+    /** Centre index (the seed's own cell). */
+    center: number;
+}
+
 export interface Ctx {
     x: number;
     y: number;
-    dx: number;
-    dy: number;
     profile: Profile;
+    /**
+     * 5x5 sense window sampled once per tick by the pipeline.
+     * Every move/grow/crystallize fn reads neighbour types from here —
+     * no further engine reads on the hot path.
+     */
+    sense: SenseMatrix;
+    /**
+     * Additive vote matrix the pipeline reduces with the centroid rule.
+     * Move fns add their (single-channel) votes here; the pipeline owns
+     * the only allocation. `votes[center]` is ignored by the reducer.
+     */
+    votes: Float64Array;
     age: number;
     blocked: boolean;
     tryInstant: boolean;
     stuck: boolean;
+    /**
+     * Deferred trail-eat requests collected by `Move.trailEat()` intents.
+     * Applied by the pipeline to the origin cell *after* a successful swap.
+     * `replaceType: null` = clear to empty, otherwise `replaceAtCell`.
+     */
+    trailEat: TrailEat[];
+}
+
+export interface TrailEat {
+    chance: number | (() => number);
+    replaceType: TElementType | null;
 }
 
 export interface GrowResult {

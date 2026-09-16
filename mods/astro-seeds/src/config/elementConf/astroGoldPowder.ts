@@ -8,6 +8,22 @@ import { spec } from "../util.ts";
 const LIQUID_COPPER_DENSITY = 150;
 const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
 
+// ---------------------
+// Vote-matrix masks. The pipeline samples a 5x5 window around the seed and
+// sums every channel into it, so a 3x3 mask is centre-cropped into that
+// window — each entry is the multiplier of the cell at that offset.
+// ---------------------
+const MASK_CROSS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
+// Gravity probe: the two cells straight below the seed, near row weighted
+// heavier than the far one, so a column of liquid gold pulls the seed down.
+const MASK_GRAVITY = [
+    [0, 0, 0, 0, 0],
+    [0, 0, .5, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 0.5, 0, 0],
+];
+
 export const astroGoldPowder = {
     spec: spec({
         key: "astroGoldPowder",
@@ -41,28 +57,59 @@ export const astroGoldPowder = {
                 { kind: "down", chance: 8 },
                 {
                     kind: "columnForce",
-                    opts: { rate: -30, rangeN: 4, maxK: 1, directions: ["top", "bottom", "sides"] },
+                    rate: -30,
+                    rangeN: 4,
+                    maxK: 1,
+                    directions: ["top", "bottom", "sides"],
                 },
                 {
                     kind: "columnForce",
-                    opts: {
-                        rate: -20,
-                        rangeN: 2,
-                        maxK: 1,
-                        directions: ["top", "bottom", "sides"],
-                        matchKeys: ["astroGoldPowder"],
-                    },
+                    rate: -20,
+                    rangeN: 2,
+                    maxK: 1,
+                    directions: ["top", "bottom", "sides"],
+                    matchKeys: ["astroGoldPowder"],
                 },
                 {
                     kind: "columnForce",
-                    opts: {
-                        rate: 80,
-                        rangeN: 5,
-                        maxK: 1,
-                        directions: ["top", "bottom", "sides"],
-                        matchKeys: ["astroCopperPowder"],
-                    },
+                    rate: 80,
+                    rangeN: 5,
+                    maxK: 1,
+                    directions: ["top", "bottom", "sides"],
+                    matchKeys: ["astroCopperPowder"],
                 },
+            ],
+            grow: [],
+            crystallization: [],
+        },
+        {
+            id: "astroGold-in-liquid-gold",
+            seedKey: "astroGoldPowder",
+            liquidKey: "liquidGold",
+            crystalKey: "astroGoldCrystal",
+            growAge: 10,
+            moves: [
+                // Jitter — uniform random draw over the 8 neighbours.
+                { kind: "random", chance: 30 },
+                // Gravity — liquid gold below pulls the seed down.
+                {
+                    kind: "channel",
+                    chance: 1,
+                    matchKeys: ["liquidGold"],
+                    weight: .2,
+                    mask: MASK_GRAVITY,
+                },
+                // Dispersed — own kind beside it pushes back (orthogonal only,
+                // so diagonal neighbours stay free to settle).
+                {
+                    kind: "channel",
+                    chance: 40,
+                    matchKeys: ["astroGoldPowder"],
+                    weight: -1,
+                    mask: MASK_CROSS,
+                },
+                // Cluster — any nearby copper powder pulls this gold in.
+                { kind: "channel", chance: 40, matchKeys: ["astroCopperPowder"], weight: -1 },
             ],
             grow: [],
             crystallization: [],
