@@ -71,6 +71,8 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
         Grid.resetFieldAt(x, y, profile.ageField);
         return false;
     }
+    // Is valid but do nothing a this tick
+    if (!roll(resolveNum(profile.tickSpeed))) return true;
 
     let ctx: Ctx = {
         x,

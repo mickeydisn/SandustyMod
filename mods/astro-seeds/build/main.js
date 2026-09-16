@@ -292,7 +292,7 @@ var astroCopperPowder = {
         // Jitter — uniform random draw over the 8 neighbours.
         {
           kind: "random",
-          chance: 30
+          chance: 80
         },
         // Gravity — liquid gold below pulls the seed down.
         {
@@ -309,29 +309,30 @@ var astroCopperPowder = {
         // of stacking into a solid blob.
         {
           kind: "channel",
+          chance: 90,
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: -1,
+          weight: -5,
           mask: MASK_CROSS
         },
         {
           kind: "channel",
-          chance: 40,
+          chance: 90,
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: 1,
+          weight: 5,
           mask: MASK_DIAGONAL
         },
         // Cluster — any nearby gold powder pulls this copper in.
         {
           kind: "channel",
-          chance: 40,
+          chance: 90,
           matchKeys: [
             "astroGoldPowder"
           ],
-          weight: 2
+          weight: 5
         }
       ],
       grow: [],
@@ -541,8 +542,14 @@ var astroGoldPowder = {
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
         {
+          kind: "trailEat",
+          chance: 1,
+          replaceKey: "sand"
+        },
+        // Jitter — uniform random draw over the 8 neighbours.
+        {
           kind: "random",
-          chance: 30
+          chance: 80
         },
         // Gravity — liquid gold below pulls the seed down.
         {
@@ -558,7 +565,7 @@ var astroGoldPowder = {
         // so diagonal neighbours stay free to settle).
         {
           kind: "channel",
-          chance: 40,
+          chance: 10,
           matchKeys: [
             "astroGoldPowder"
           ],
@@ -568,11 +575,11 @@ var astroGoldPowder = {
         // Cluster — any nearby copper powder pulls this gold in.
         {
           kind: "channel",
-          chance: 40,
+          chance: 20,
           matchKeys: [
             "astroCopperPowder"
           ],
-          weight: -1
+          weight: -2
         }
       ],
       grow: [],

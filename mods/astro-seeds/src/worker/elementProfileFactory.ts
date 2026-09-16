@@ -119,6 +119,7 @@ export function createElementProfileFactory<ElType extends string>(
         seedType: ElementType[spec.seedKey as string],
         liquidType: ElementType[spec.liquidKey as string],
         crystalType: ElementType[spec.crystalKey as string],
+        tickSpeed: 10,
         ageField: ASTRO_FIELD.AGE,
         growAge: () => (typeof spec.growAge === "function" ? spec.growAge() : spec.growAge),
         moves: spec.whenMove && !spec.whenMove() ? [] : buildMoves(spec.moves),

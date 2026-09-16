@@ -90,7 +90,9 @@ export const astroGoldPowder = {
             growAge: 10,
             moves: [
                 // Jitter — uniform random draw over the 8 neighbours.
-                { kind: "random", chance: 30 },
+                { kind: "trailEat", chance: 1, replaceKey: "sand" },
+                // Jitter — uniform random draw over the 8 neighbours.
+                { kind: "random", chance: 80 },
                 // Gravity — liquid gold below pulls the seed down.
                 {
                     kind: "channel",
@@ -99,17 +101,23 @@ export const astroGoldPowder = {
                     weight: .2,
                     mask: MASK_GRAVITY,
                 },
+                {
+                    kind: "channel",
+                    matchKeys: ["empty"],
+                    chance: 100,
+                    weight: 5,
+                },
                 // Dispersed — own kind beside it pushes back (orthogonal only,
                 // so diagonal neighbours stay free to settle).
                 {
                     kind: "channel",
-                    chance: 40,
+                    chance: 10,
                     matchKeys: ["astroGoldPowder"],
                     weight: -1,
                     mask: MASK_CROSS,
                 },
                 // Cluster — any nearby copper powder pulls this gold in.
-                { kind: "channel", chance: 40, matchKeys: ["astroCopperPowder"], weight: -1 },
+                { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
             ],
             grow: [],
             crystallization: [],

@@ -20,6 +20,7 @@ export interface Profile {
     seedType: TElementType;
     liquidType: TElementType;
     crystalType: TElementType;
+    tickSpeed: number;
     /** Per-instance data-field index that holds the seed's accumulated age. */
     ageField: number;
     growAge: () => number;

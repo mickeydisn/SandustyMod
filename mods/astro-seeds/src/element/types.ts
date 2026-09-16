@@ -121,6 +121,8 @@ export interface ProfileSpec<ElType extends string> {
     seedKey: ElType;
     liquidKey: ElType;
     crystalKey: ElType;
+    // Random tick to run the profile
+    tickSpeed?: NumThunk;
     // Maturity
     growAge: NumThunk;
     // Pipeline phases

@@ -184,7 +184,7 @@ export const Move = {
                 }
             }
             if (dirs.length === 0) return ctx;
-            Vote.add(ctx.votes, dirs[Math.floor(Math.random() * dirs.length)], 1);
+            Vote.add(ctx.votes, dirs[Math.floor(Math.random() * dirs.length)], .1);
             return ctx;
         };
     },
