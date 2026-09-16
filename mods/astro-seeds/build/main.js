@@ -130,9 +130,9 @@ var astroCopperPowder = {
   reactions: [
     {
       inputA: "astroCopperCrystal",
-      inputB: "fire",
+      inputB: "water",
       outputA: "astroCopperPowder",
-      outputB: "fire"
+      outputB: "water"
     }
   ],
   profiles: [
@@ -149,7 +149,7 @@ var astroCopperPowder = {
         },
         {
           kind: "side",
-          chance: 5
+          chance: 10
         },
         {
           kind: "down",
@@ -158,8 +158,8 @@ var astroCopperPowder = {
         {
           kind: "columnForce",
           opts: {
-            rate: -80,
-            rangeN: 8,
+            rate: -30,
+            rangeN: 4,
             maxK: 1,
             directions: [
               "top",
@@ -171,7 +171,7 @@ var astroCopperPowder = {
         {
           kind: "columnForce",
           opts: {
-            rate: 30,
+            rate: 20,
             rangeN: 2,
             maxK: 1,
             directions: [
@@ -188,13 +188,26 @@ var astroCopperPowder = {
         {
           kind: "columnForce",
           opts: {
-            rate: -20,
+            rate: -40,
             rangeN: 4,
             maxK: 1,
             directions: [
               "top",
               "bottom",
-              "sides",
+              "sides"
+            ],
+            matchKeys: [
+              "astroCopperPowder"
+            ]
+          }
+        },
+        {
+          kind: "columnForce",
+          opts: {
+            rate: 40,
+            rangeN: 4,
+            maxK: 1,
+            directions: [
               "cross"
             ],
             matchKeys: [
@@ -307,7 +320,7 @@ var astroGoldPowder = {
         {
           kind: "columnForce",
           opts: {
-            rate: -50,
+            rate: -30,
             rangeN: 4,
             maxK: 1,
             directions: [
@@ -320,7 +333,7 @@ var astroGoldPowder = {
         {
           kind: "columnForce",
           opts: {
-            rate: -10,
+            rate: -20,
             rangeN: 2,
             maxK: 1,
             directions: [
@@ -336,8 +349,8 @@ var astroGoldPowder = {
         {
           kind: "columnForce",
           opts: {
-            rate: 90,
-            rangeN: 4,
+            rate: 80,
+            rangeN: 5,
             maxK: 1,
             directions: [
               "top",
@@ -404,11 +417,41 @@ var astroSeed = {
   ],
   profiles: [
     {
+      id: "astroSeed-in-sand",
+      seedKey: "astroSeed",
+      liquidKey: "sand",
+      crystalKey: "astroGoldCrystal",
+      growAge: 150,
+      moves: [
+        {
+          kind: "side",
+          chance: 15
+        },
+        {
+          kind: "down",
+          chance: 20
+        }
+      ],
+      grow: [
+        {
+          kind: "ageOnSurround",
+          rate: 100,
+          minCount: 4
+        }
+      ],
+      crystallization: [
+        {
+          kind: "disk",
+          radius: 1
+        }
+      ]
+    },
+    {
       id: "astroSeed-in-gold",
       seedKey: "astroSeed",
       liquidKey: "liquidGold",
       crystalKey: "astroGoldCrystal",
-      growAge: 50,
+      growAge: 150,
       moves: [
         {
           kind: "side",
@@ -438,7 +481,7 @@ var astroSeed = {
       seedKey: "astroSeed",
       liquidKey: "liquidCopper",
       crystalKey: "astroCopperCrystal",
-      growAge: 10,
+      growAge: 40,
       moves: [
         {
           kind: "up",
@@ -446,7 +489,7 @@ var astroSeed = {
         },
         {
           kind: "side",
-          chance: 15
+          chance: 25
         },
         {
           kind: "down",
@@ -454,10 +497,7 @@ var astroSeed = {
         }
       ],
       grow: [
-        {
-          kind: "blockOn",
-          blockKey: "water"
-        },
+        // { kind: "blockOn", blockKey: "water" },
         {
           kind: "instantChance",
           rate: 0
@@ -675,6 +715,10 @@ var VANILLA_ALIASES = {
   water: [
     "water",
     "Water"
+  ],
+  sand: [
+    "sand",
+    "Sand"
   ]
 };
 function resolveVanilla() {

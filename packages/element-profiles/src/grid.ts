@@ -8,7 +8,7 @@ import type { TElementType } from "@sandmd/shared";
 
 export const Grid = {
     // TYPE
-    getTypeAt(x: number, y: number): number {
+    getTypeAt(x: number, y: number): TElementType {
         return sandkit.api.elements.getResolvedTypeAtCell(x, y);
     },
 

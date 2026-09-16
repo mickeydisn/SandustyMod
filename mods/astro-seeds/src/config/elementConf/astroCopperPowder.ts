@@ -24,9 +24,9 @@ export const astroCopperPowder = {
     }),
     reactions: [{
         inputA: "astroCopperCrystal",
-        inputB: "fire",
+        inputB: "water",
         outputA: "astroCopperPowder",
-        outputB: "fire",
+        outputB: "water",
     }],
     profiles: [
         {
@@ -37,16 +37,16 @@ export const astroCopperPowder = {
             growAge: 10,
             moves: [
                 { kind: "up", chance: 5 },
-                { kind: "side", chance: 5 },
+                { kind: "side", chance: 10 },
                 { kind: "down", chance: 5 },
                 {
                     kind: "columnForce",
-                    opts: { rate: -80, rangeN: 8, maxK: 1, directions: ["top", "bottom", "sides"] },
+                    opts: { rate: -30, rangeN: 4, maxK: 1, directions: ["top", "bottom", "sides"] },
                 },
                 {
                     kind: "columnForce",
                     opts: {
-                        rate: 30,
+                        rate: 20,
                         rangeN: 2,
                         maxK: 1,
                         directions: ["top", "bottom", "sides", "cross"],
@@ -56,10 +56,20 @@ export const astroCopperPowder = {
                 {
                     kind: "columnForce",
                     opts: {
-                        rate: -20,
+                        rate: -40,
                         rangeN: 4,
                         maxK: 1,
-                        directions: ["top", "bottom", "sides", "cross"],
+                        directions: ["top", "bottom", "sides"],
+                        matchKeys: ["astroCopperPowder"],
+                    },
+                },
+                {
+                    kind: "columnForce",
+                    opts: {
+                        rate: 40,
+                        rangeN: 4,
+                        maxK: 1,
+                        directions: ["cross"],
                         matchKeys: ["astroCopperPowder"],
                     },
                 },

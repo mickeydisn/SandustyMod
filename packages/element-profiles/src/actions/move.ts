@@ -8,11 +8,13 @@ import {
     type Direction,
     type DirectionName,
     type IDelta,
+    Point,
     type TElementType,
 } from "@sandmd/shared";
 import { Grid } from "../grid.ts";
 import type { Ctx, MoveFn } from "../types.ts";
 import { resolveNum } from "../resolve.ts";
+import { GridNear } from "../near.ts";
 
 export interface ColumnForceOpts {
     rateFn?: number | (() => number);
@@ -161,4 +163,26 @@ export const Move = {
             return ctx;
         };
     },
+
+    test(chanceFn: number | (() => number)): MoveFn {
+        return (ctx) => {
+            const chance = resolveNum(chanceFn);
+            if (chance <= 0 || random100() >= chance) return ctx;
+
+            GridNear.getNear(ctx.x, ctx.dy, DELTAS_INDEX);
+
+            return { ...ctx, dy: ctx.dy + 1 };
+        };
+    },
 };
+
+const DELTAS_INDEX: Point[] = [
+    { x: 0, y: -1 }, // UP
+    { x: 1, y: -1 }, // RIGHT_UP
+    { x: 1, y: 0 }, // RIGHT
+    { x: 1, y: 1 }, // RIGHT_DOWN
+    { x: 0, y: 1 }, // DOWN
+    { x: -1, y: 1 }, // LEFT_DOWN
+    { x: -1, y: 0 }, // LEFT
+    { x: -1, y: -1 }, // LEFT_UP
+];

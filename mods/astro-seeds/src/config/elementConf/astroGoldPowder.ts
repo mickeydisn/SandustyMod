@@ -41,12 +41,12 @@ export const astroGoldPowder = {
                 { kind: "down", chance: 8 },
                 {
                     kind: "columnForce",
-                    opts: { rate: -50, rangeN: 4, maxK: 1, directions: ["top", "bottom", "sides"] },
+                    opts: { rate: -30, rangeN: 4, maxK: 1, directions: ["top", "bottom", "sides"] },
                 },
                 {
                     kind: "columnForce",
                     opts: {
-                        rate: -10,
+                        rate: -20,
                         rangeN: 2,
                         maxK: 1,
                         directions: ["top", "bottom", "sides"],
@@ -56,8 +56,8 @@ export const astroGoldPowder = {
                 {
                     kind: "columnForce",
                     opts: {
-                        rate: 90,
-                        rangeN: 4,
+                        rate: 80,
+                        rangeN: 5,
                         maxK: 1,
                         directions: ["top", "bottom", "sides"],
                         matchKeys: ["astroCopperPowder"],

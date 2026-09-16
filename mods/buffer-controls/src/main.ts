@@ -59,7 +59,18 @@ void (async () => {
     });
 })();
 
+function openDevTools(): void {
+    try {
+        const electron = (globalThis as { electron?: { openDevTools?: () => void } }).electron;
+        electron?.openDevTools?.();
+        console.log("GAME STATE", sandkit.state);
+    } catch {
+        /* devtools bridge unavailable — non-fatal */
+    }
+}
+
 try {
+    openDevTools();
     // const MOD_ID = "";
     findOrphanedObjects(MOD_ID);
     pruneStaleBuildings(MOD_ID);

@@ -2025,7 +2025,16 @@ void (async () => {
     pickerTitle: "Buffer controls"
   });
 })();
+function openDevTools() {
+  try {
+    const electron = globalThis.electron;
+    electron?.openDevTools?.();
+    console.log("GAME STATE", sandkit.state);
+  } catch {
+  }
+}
 try {
+  openDevTools();
   findOrphanedObjects(MOD_ID);
   pruneStaleBuildings(MOD_ID);
 } catch (e) {

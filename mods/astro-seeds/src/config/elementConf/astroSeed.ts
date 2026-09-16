@@ -29,11 +29,24 @@ export const astroSeed = {
     }],
     profiles: [
         {
+            id: "astroSeed-in-sand",
+            seedKey: "astroSeed",
+            liquidKey: "sand",
+            crystalKey: "astroGoldCrystal",
+            growAge: 150,
+            moves: [
+                { kind: "side", chance: 15 },
+                { kind: "down", chance: 20 },
+            ],
+            grow: [{ kind: "ageOnSurround", rate: 100, minCount: 4 }],
+            crystallization: [{ kind: "disk", radius: 1 }],
+        },
+        {
             id: "astroSeed-in-gold",
             seedKey: "astroSeed",
             liquidKey: "liquidGold",
             crystalKey: "astroGoldCrystal",
-            growAge: 100,
+            growAge: 150,
             moves: [
                 { kind: "side", chance: 15 },
                 { kind: "down", chance: 20 },
@@ -46,14 +59,14 @@ export const astroSeed = {
             seedKey: "astroSeed",
             liquidKey: "liquidCopper",
             crystalKey: "astroCopperCrystal",
-            growAge: 10,
+            growAge: 40,
             moves: [
                 { kind: "up", chance: 0 },
-                { kind: "side", chance: 15 },
+                { kind: "side", chance: 25 },
                 { kind: "down", chance: 35 },
             ],
             grow: [
-                { kind: "blockOn", blockKey: "water" },
+                // { kind: "blockOn", blockKey: "water" },
                 { kind: "instantChance", rate: 0 },
                 { kind: "ageOnFloor", rate: 60 },
                 { kind: "ageOnWall", rate: 70 },

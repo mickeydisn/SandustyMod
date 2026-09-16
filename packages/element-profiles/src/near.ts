@@ -17,6 +17,14 @@ export const GridNear = {
         return false;
     },
 
+    getNear(
+        x: number,
+        y: number,
+        deltas: IDelta[] = DELTAS_INDEX,
+    ): TElementType[] {
+        return deltas.map((d) => Grid.getTypeAt(x + d.x, y + d.y));
+    },
+
     isNear(
         x: number,
         y: number,

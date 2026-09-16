@@ -27,6 +27,7 @@ const VANILLA_ALIASES: Record<TVanillaElementKey, string[]> = {
     seedBase: ["seed", "Seed"],
     fire: ["fire", "Fire"],
     water: ["water", "Water"],
+    sand: ["sand", "Sand"],
 };
 
 function resolveVanilla(): Record<TVanillaElementKey, TElementType> {
