@@ -186,4 +186,19 @@ export const Vote = {
             dy: Math.abs(vy) > threshold ? (vy > 0 ? 1 : -1) : 0,
         };
     },
+
+    /** Raw (non-quantized) centroid vector — what the pipeline stores as memory. */
+    vector(votes: Float64Array, size: number, center: number): { vx: number; vy: number } {
+        const half = Math.floor(size / 2);
+        let vx = 0;
+        let vy = 0;
+        for (let i = 0; i < votes.length; i++) {
+            if (i === center) continue;
+            const s = votes[i];
+            if (!s) continue;
+            vx += s * ((i % size) - half);
+            vy += s * (Math.floor(i / size) - half);
+        }
+        return { vx, vy };
+    },
 };

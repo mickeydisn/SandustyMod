@@ -31,7 +31,7 @@ export const astroSeed = {
         {
             id: "astroSeed-in-sand",
             seedKey: "astroSeed",
-            liquidKey: "sand",
+            liquidKey: "water",
             crystalKey: "astroGoldCrystal",
             growAge: 150,
             moves: [

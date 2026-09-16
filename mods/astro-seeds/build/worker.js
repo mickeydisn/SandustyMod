@@ -41,6 +41,18 @@ var Grid = {
       return 0;
     }
   },
+  /**
+     * Raw field read that keeps negative values (the age reader clamps them
+     * because the engine uses -1 as a sentinel). The vote-memory channel
+     * stores signed vectors, so it must read through this.
+     */
+  readFieldRawAt(x, y, field) {
+    try {
+      return sandkit.api.elements.getDataFieldAtCell(x, y, field) ?? 0;
+    } catch {
+      return 0;
+    }
+  },
   writeFieldAt(x, y, field, value) {
     try {
       sandkit.api.elements.setDataFieldAtCell(x, y, field, value);
@@ -579,6 +591,23 @@ var Vote = {
       dx: Math.abs(vx) > threshold ? vx > 0 ? 1 : -1 : 0,
       dy: Math.abs(vy) > threshold ? vy > 0 ? 1 : -1 : 0
     };
+  },
+  /** Raw (non-quantized) centroid vector — what the pipeline stores as memory. */
+  vector(votes, size, center) {
+    const half = Math.floor(size / 2);
+    let vx = 0;
+    let vy = 0;
+    for (let i = 0; i < votes.length; i++) {
+      if (i === center) continue;
+      const s = votes[i];
+      if (!s) continue;
+      vx += s * (i % size - half);
+      vy += s * (Math.floor(i / size) - half);
+    }
+    return {
+      vx,
+      vy
+    };
   }
 };
 
@@ -896,6 +925,98 @@ var Move = {
         }
       ]
     });
+  },
+  /**
+     * Vote-memory channel: each neighbour's stored movement vector (written
+     * by the pipeline to `profile.memField`/`memField+1` after its last swap)
+     * is re-voted at that neighbour's offset, scaled by how aligned the
+     * vector is with the offset direction:
+     *   vote += weight * mask * (vx * signX + vy * signY)
+     * so neighbours already flowing away in a direction reinforce moving that
+     * way (flocking/flow alignment); opposing vectors cancel naturally.
+     * Needs `memField` set on the owning Profile — a no-op otherwise.
+     */
+  memory(opts) {
+    let maskSize = -1;
+    let mask = null;
+    return (ctx) => {
+      const chance = resolveNum(opts.chance ?? 100);
+      if (chance <= 0 || !roll(chance)) return ctx;
+      const w = resolveNum(opts.weight) * resolveNum(opts.rate ?? 1);
+      if (!w) return ctx;
+      const f = ctx.profile.memField;
+      if (f == null) return ctx;
+      const s = ctx.sense;
+      if (maskSize !== s.size) {
+        maskSize = s.size;
+        mask = Vote.mask(opts.mask, s.size);
+      }
+      for (let oy = -s.half; oy <= s.half; oy++) {
+        for (let ox = -s.half; ox <= s.half; ox++) {
+          if (ox === 0 && oy === 0) continue;
+          const i = (oy + s.half) * s.size + (ox + s.half);
+          const m = mask ? mask[i] : 1;
+          if (m === 0) continue;
+          const vx = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f);
+          if (vx === 0) continue;
+          const vy = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f + 1);
+          if (vx === 0 && vy === 0) continue;
+          const align = (vx > 0 ? 1 : vx < 0 ? -1 : 0) * Math.sign(ox) + (vy > 0 ? 1 : vy < 0 ? -1 : 0) * Math.sign(oy);
+          if (align === 0) continue;
+          ctx.votes[i] += w * m * align;
+        }
+      }
+      return ctx;
+    };
+  },
+  /**
+     * Inertia channel — the self variant of `Move.memory`. Instead of
+     * scanning neighbours, it reads the seed's OWN stored movement vector
+     * (2 field reads, no window scan) and builds a vote matrix that matches
+     * it: every offset votes by its normalized dot product with the vector,
+     *
+     *   vote += weight * mask * (ox * vx + oy * vy) / |v|
+     *
+     * which is a linear gradient pointing along last tick's flow — cells in
+     * front of the motion are voted in, cells behind voted out (or skipped
+     * with `mode: "ahead"`). Faster than `memory` (2 reads vs 2 x 24) and
+     * gives straight-line persistence; combine both for flocking + inertia.
+     * Needs `memField` set on the owning Profile — a no-op otherwise.
+     */
+  inertia(opts) {
+    let maskSize = -1;
+    let mask = null;
+    return (ctx) => {
+      const chance = resolveNum(opts.chance ?? 100);
+      if (chance <= 0 || !roll(chance)) return ctx;
+      const w = resolveNum(opts.weight) * resolveNum(opts.rate ?? 1);
+      if (!w) return ctx;
+      const f = ctx.profile.memField;
+      if (f == null) return ctx;
+      const vx = Grid.readFieldRawAt(ctx.x, ctx.y, f);
+      if (vx === 0) return ctx;
+      const vy = Grid.readFieldRawAt(ctx.x, ctx.y, f + 1);
+      const mag = Math.sqrt(vx * vx + vy * vy);
+      if (mag === 0) return ctx;
+      const aheadOnly = opts.mode === "ahead";
+      const s = ctx.sense;
+      if (maskSize !== s.size) {
+        maskSize = s.size;
+        mask = Vote.mask(opts.mask, s.size);
+      }
+      for (let oy = -s.half; oy <= s.half; oy++) {
+        for (let ox = -s.half; ox <= s.half; ox++) {
+          if (ox === 0 && oy === 0) continue;
+          const i = (oy + s.half) * s.size + (ox + s.half);
+          const m = mask ? mask[i] : 1;
+          if (m === 0) continue;
+          const dot = (ox * vx + oy * vy) / mag;
+          if (aheadOnly && dot <= 0) continue;
+          ctx.votes[i] += w * m * dot;
+        }
+      }
+      return ctx;
+    };
   }
 };
 
@@ -1224,6 +1345,11 @@ function runProfile(x, y, profile) {
       };
     }
   }
+  if (profile.memField != null) {
+    const { vx, vy } = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
+    Grid.writeFieldAt(ctx.x, ctx.y, profile.memField, vx);
+    Grid.writeFieldAt(ctx.x, ctx.y, profile.memField + 1, vy);
+  }
   return true;
 }
 
@@ -1319,6 +1445,23 @@ var MASK_DIAGONAL = [
     1,
     0,
     1
+  ]
+];
+var MASK_NEGATIF = [
+  [
+    0,
+    -1,
+    0
+  ],
+  [
+    -1,
+    0,
+    -1
+  ],
+  [
+    0,
+    -1,
+    0
   ]
 ];
 var MASK_GRAVITY = [
@@ -1473,6 +1616,8 @@ var astroCopperPowder = {
       liquidKey: "liquidGold",
       crystalKey: "astroCopperCrystal",
       growAge: 10,
+      // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      memField: ASTRO_FIELD.VX,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
         {
@@ -1488,6 +1633,16 @@ var astroCopperPowder = {
           ],
           weight: 1,
           mask: MASK_GRAVITY
+        },
+        {
+          kind: "channel",
+          matchKeys: [
+            "empty",
+            "structure"
+          ],
+          chance: 100,
+          weight: -5,
+          mask: MASK_NEGATIF
         },
         // Lattice — own kind repels orthogonally but attracts
         // diagonally, so copper settles into diagonal chains instead
@@ -1518,6 +1673,13 @@ var astroCopperPowder = {
             "astroGoldPowder"
           ],
           weight: 5
+        },
+        // Flow memory — align with the movement vector neighbours
+        // stored last tick (flocking; keeps drifting seeds coherent).
+        {
+          kind: "memory",
+          chance: 100,
+          weight: 1
         }
       ],
       grow: [],
@@ -1568,6 +1730,40 @@ var astroGoldCrystal = {
 // src/config/elementConf/astroGoldPowder.ts
 var LIQUID_COPPER_DENSITY2 = 150;
 var SEED_DENSITY2 = Math.max(1, LIQUID_COPPER_DENSITY2 - 5);
+var MASK_VERT = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
+var MASK_SIDE = [
+  [
+    0,
+    0,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    0,
+    0
+  ]
+];
 var MASK_CROSS2 = [
   [
     0,
@@ -1585,41 +1781,21 @@ var MASK_CROSS2 = [
     0
   ]
 ];
-var MASK_GRAVITY2 = [
+var MASK_ALL = [
   [
-    0,
-    0,
-    0,
-    0,
-    0
+    1,
+    1,
+    1
   ],
   [
-    0,
-    0,
-    0.5,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
-    0,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
     1,
     0,
-    0
+    1
   ],
   [
-    0,
-    0,
-    0.5,
-    0,
-    0
+    1,
+    1,
+    1
   ]
 ];
 var astroGoldPowder = {
@@ -1724,27 +1900,42 @@ var astroGoldPowder = {
       liquidKey: "liquidGold",
       crystalKey: "astroGoldCrystal",
       growAge: 10,
+      // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      memField: ASTRO_FIELD.VX,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
-        {
-          kind: "trailEat",
-          chance: 1,
-          replaceKey: "sand"
-        },
+        // { kind: "trailEat", chance: 1, replaceKey: "sand" },
         // Jitter — uniform random draw over the 8 neighbours.
         {
           kind: "random",
-          chance: 80
+          chance: 40,
+          mask: MASK_SIDE
+        },
+        {
+          kind: "random",
+          chance: 80,
+          mask: MASK_VERT
         },
         // Gravity — liquid gold below pulls the seed down.
+        /*
+                        {
+                            kind: "channel",
+                            chance: 1,
+                            matchKeys: ["liquidGold"],
+                            weight: .1,
+                            mask: MASK_GRAVITY,
+        
+                        },
+                        */
         {
           kind: "channel",
-          chance: 1,
           matchKeys: [
-            "liquidGold"
+            "empty",
+            "structure"
           ],
-          weight: 0.2,
-          mask: MASK_GRAVITY2
+          chance: 100,
+          weight: -15,
+          mask: MASK_ALL
         },
         // Dispersed — own kind beside it pushes back (orthogonal only,
         // so diagonal neighbours stay free to settle).
@@ -1765,6 +1956,17 @@ var astroGoldPowder = {
             "astroCopperPowder"
           ],
           weight: -2
+        },
+        // Flow memory — align with the movement vector neighbours
+        // stored last tick (flocking; keeps drifting seeds coherent).
+        // { kind: "memory", chance: 100, weight: 10 },
+        // Inertia — own last-tick flow vector drives a matching vote
+        // gradient (straight-line persistence on top of flocking).
+        {
+          kind: "inertia",
+          chance: 100,
+          weight: 1,
+          mode: "ahead"
         }
       ],
       grow: [],
@@ -1823,7 +2025,7 @@ var astroSeed = {
     {
       id: "astroSeed-in-sand",
       seedKey: "astroSeed",
-      liquidKey: "sand",
+      liquidKey: "water",
       crystalKey: "astroGoldCrystal",
       growAge: 150,
       moves: [
@@ -2123,6 +2325,16 @@ var VANILLA_ALIASES = {
   sand: [
     "sand",
     "Sand"
+  ],
+  empty: [
+    "empty",
+    "Empty",
+    "air",
+    "Air",
+    "void",
+    "Void",
+    "none",
+    "None"
   ]
 };
 function resolveVanilla() {
@@ -2146,10 +2358,16 @@ var ElementType = {
 
 // src/worker/elementProfileFactory.ts
 function keysOf(keys) {
-  return keys?.map((k) => ElementType[k]);
+  return keys == null ? void 0 : keys.filter((k) => k !== "empty").map((k) => k === "structure" ? MatterType.Static : ElementType[k]);
 }
 function keyOf(key) {
   return key == null || key === "empty" ? null : ElementType[key] ?? null;
+}
+function keysChannel(keys) {
+  return {
+    matchTypes: keysOf(keys),
+    matchEmpty: keys?.includes("empty") ?? void 0
+  };
 }
 function buildMoves(specs) {
   const out = [];
@@ -2166,13 +2384,27 @@ function buildMoves(specs) {
     else if (spec2.kind === "random") out.push(Move.random(spec2.chance, spec2.mask));
     else if (spec2.kind === "channel") {
       out.push(Move.channel({
-        matchTypes: keysOf(spec2.matchKeys),
-        matchEmpty: spec2.matchEmpty,
+        ...keysChannel(spec2.matchKeys),
         weight: spec2.weight,
         rate: spec2.rate,
         chance: spec2.chance,
         excludeTypes: keysOf(spec2.excludeKeys),
         mask: spec2.mask
+      }));
+    } else if (spec2.kind === "memory") {
+      out.push(Move.memory({
+        chance: spec2.chance,
+        weight: spec2.weight,
+        rate: spec2.rate,
+        mask: spec2.mask
+      }));
+    } else if (spec2.kind === "inertia") {
+      out.push(Move.inertia({
+        chance: spec2.chance,
+        weight: spec2.weight,
+        rate: spec2.rate,
+        mask: spec2.mask,
+        mode: spec2.mode
       }));
     } else if (spec2.kind === "trailEat") {
       out.push(Move.trailEat({
@@ -2247,6 +2479,9 @@ function createElementProfileFactory(spec2) {
     crystalType: ElementType[spec2.crystalKey],
     tickSpeed: 10,
     ageField: ASTRO_FIELD.AGE,
+    // Vote-memory vector storage (vx @ VX, vy @ VX+1). Opt-in per profile
+    // so profiles without `Move.memory` never write fields.
+    memField: spec2.memField,
     growAge: () => typeof spec2.growAge === "function" ? spec2.growAge() : spec2.growAge,
     moves: spec2.whenMove && !spec2.whenMove() ? [] : buildMoves(spec2.moves),
     grow: spec2.whenGrow && !spec2.whenGrow() ? [] : spec2.grow.map(buildGrow),

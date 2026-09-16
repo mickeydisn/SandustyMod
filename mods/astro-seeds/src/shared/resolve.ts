@@ -28,6 +28,7 @@ const VANILLA_ALIASES: Record<TVanillaElementKey, string[]> = {
     fire: ["fire", "Fire"],
     water: ["water", "Water"],
     sand: ["sand", "Sand"],
+    empty: ["empty", "Empty", "air", "Air", "void", "Void", "none", "None"],
 };
 
 function resolveVanilla(): Record<TVanillaElementKey, TElementType> {

@@ -58,11 +58,13 @@ function dispatchSeed(
 
 /** Install one `element:update` hook per distinct seed type in the catalogue. */
 export function buildWorker(): void {
-    const seedTypes = [...new Set(
-        (ASTRO_ELEMENTS as readonly AstroElementConfig<string>[]).flatMap((el) =>
-            (el.profiles ?? []).map((p) => ElementType[p.seedKey]),
+    const seedTypes = [
+        ...new Set(
+            (ASTRO_ELEMENTS as readonly AstroElementConfig<string>[]).flatMap((el) =>
+                (el.profiles ?? []).map((p) => ElementType[p.seedKey])
+            ),
         ),
-    )];
+    ];
 
     for (const elementType of seedTypes) {
         if (!elementType) continue;

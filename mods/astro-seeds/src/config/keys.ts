@@ -14,7 +14,8 @@ export type TVanillaElementKey =
     | "seedBase"
     | "fire"
     | "water"
-    | "sand";
+    | "sand"
+    | "empty";
 
 export type TAddedElementKey =
     | "astroVoidSeed"

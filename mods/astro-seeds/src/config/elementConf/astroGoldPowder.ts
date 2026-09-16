@@ -1,6 +1,7 @@
 import { MatterType } from "@sandmd/shared";
 import { AstroElementConfig } from "../../element/types.ts";
 import { TElementKey } from "../keys.ts";
+import { ASTRO_FIELD } from "../ids.ts";
 
 import { spec } from "../util.ts";
 
@@ -13,7 +14,10 @@ const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
 // sums every channel into it, so a 3x3 mask is centre-cropped into that
 // window — each entry is the multiplier of the cell at that offset.
 // ---------------------
+const MASK_VERT = [[0, 1, 0], [0, 0, 0], [0, 1, 0]]; // orthogonal neighbours
+const MASK_SIDE = [[0, 0, 0], [1, 0, 1], [0, 0, 0]]; // orthogonal neighbours
 const MASK_CROSS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
+const MASK_ALL = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]; // orthogonal neighbours
 // Gravity probe: the two cells straight below the seed, near row weighted
 // heavier than the far one, so a column of liquid gold pulls the seed down.
 const MASK_GRAVITY = [
@@ -88,24 +92,31 @@ export const astroGoldPowder = {
             liquidKey: "liquidGold",
             crystalKey: "astroGoldCrystal",
             growAge: 10,
+            // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+            memField: ASTRO_FIELD.VX,
             moves: [
                 // Jitter — uniform random draw over the 8 neighbours.
-                { kind: "trailEat", chance: 1, replaceKey: "sand" },
+                // { kind: "trailEat", chance: 1, replaceKey: "sand" },
                 // Jitter — uniform random draw over the 8 neighbours.
-                { kind: "random", chance: 80 },
+                { kind: "random", chance: 40, mask: MASK_SIDE },
+                { kind: "random", chance: 80, mask: MASK_VERT },
                 // Gravity — liquid gold below pulls the seed down.
+                /*
                 {
                     kind: "channel",
                     chance: 1,
                     matchKeys: ["liquidGold"],
-                    weight: .2,
+                    weight: .1,
                     mask: MASK_GRAVITY,
+
                 },
+                */
                 {
                     kind: "channel",
-                    matchKeys: ["empty"],
+                    matchKeys: ["empty", "structure"],
                     chance: 100,
-                    weight: 5,
+                    weight: -15,
+                    mask: MASK_ALL,
                 },
                 // Dispersed — own kind beside it pushes back (orthogonal only,
                 // so diagonal neighbours stay free to settle).
@@ -118,6 +129,12 @@ export const astroGoldPowder = {
                 },
                 // Cluster — any nearby copper powder pulls this gold in.
                 { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
+                // Flow memory — align with the movement vector neighbours
+                // stored last tick (flocking; keeps drifting seeds coherent).
+                // { kind: "memory", chance: 100, weight: 10 },
+                // Inertia — own last-tick flow vector drives a matching vote
+                // gradient (straight-line persistence on top of flocking).
+                { kind: "inertia", chance: 100, weight: 1, mode: "ahead" },
             ],
             grow: [],
             crystallization: [],

@@ -24,7 +24,48 @@ export type MoveSpec<ElType extends string> =
     | ({ kind: "columnForce"; when?: () => boolean } & ColumnForceSpec<ElType>)
     | { kind: "columnForceFrom"; entries: () => readonly ColumnForceEntry[]; when?: () => boolean }
     | ({ kind: "trailEat"; when?: () => boolean } & TrailEatSpec<ElType>)
+    | ({ kind: "memory"; when?: () => boolean } & MemorySpec)
+    | ({ kind: "inertia"; when?: () => boolean } & InertiaSpec)
     | { kind: "gated"; when: () => boolean; moves: MoveSpec<ElType>[] };
+
+/**
+ * Vote-memory channel — mirrors `Move.memory`. Re-votes each neighbour's
+ * stored movement vector (needs `memField` on the profile, see
+ * `ProfileSpec.memField`). Positive weight = flow alignment, negative =
+ * anti-align.
+ */
+export interface MemorySpec {
+    /** 0-100 chance gate per tick. Default 100. */
+    chance?: NumThunk;
+    /** Signed alignment strength. Negative = anti-align (disperse). */
+    weight: NumThunk;
+    /** Global multiplier on `weight`. */
+    rate?: NumThunk;
+    /** Per-offset multipliers. Omit = all 1. Centre is always ignored. */
+    mask?: MaskSpec;
+}
+
+/**
+ * Inertia channel with key indirection — mirrors `Move.inertia`. Builds a
+ * vote matrix from the seed's OWN stored movement vector (needs `memField`,
+ * see `ProfileSpec.memField`) instead of scanning neighbours: offsets along
+ * last tick's flow vote in, offsets behind vote out.
+ */
+export interface InertiaSpec {
+    /** 0-100 chance gate per tick. Default 100. */
+    chance?: NumThunk;
+    /** Signed strength along the flow. Negative = move against last flow. */
+    weight: NumThunk;
+    /** Global multiplier on `weight`. */
+    rate?: NumThunk;
+    /** Per-offset multipliers. Omit = all 1. Centre is always ignored. */
+    mask?: MaskSpec;
+    /**
+     * `"full"` (default): cells behind the flow vote negatively.
+     * `"ahead"`: only offsets in the flow hemisphere vote.
+     */
+    mode?: "full" | "ahead";
+}
 
 /** ColumnForce with key indirection — mirrors `Move.columnForce` opts. */
 export interface ColumnForceSpec<ElType extends string> {
@@ -59,12 +100,10 @@ export interface TrailEatSpec<ElType extends string> {
 export interface ChannelSpec<ElType extends string> {
     /**
      * Keys that vote with this channel. Omit = any non-excluded type
-     * (the seed itself is always excluded); empty + `matchEmpty`
-     * with no `excludeKeys` therefore = "any neighbour".
+     * (the seed itself is always excluded). To match empty space, put
+     * the special key `"empty"` in `matchKeys` instead.
      */
-    matchKeys?: ElType[];
-    /** When true, empty cells vote with this channel. */
-    matchEmpty?: boolean;
+    matchKeys?: (ElType | "empty" | "structure")[];
     /** Signed vote strength. Negative = repulsion. */
     weight: NumThunk;
     /** Global multiplier. Negative inverts the channel. */
@@ -125,6 +164,12 @@ export interface ProfileSpec<ElType extends string> {
     tickSpeed?: NumThunk;
     // Maturity
     growAge: NumThunk;
+    /**
+     * Data field where the pipeline stores this profile's vote vector
+     * (`vx` at `memField`, `vy` at `memField + 1`) after each swap.
+     * Required for `Move.memory` to see neighbours; omit = no memory.
+     */
+    memField?: number;
     // Pipeline phases
     moves: MoveSpec<ElType>[];
     grow: GrowSpec<ElType>[];

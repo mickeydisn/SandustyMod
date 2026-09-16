@@ -31,6 +31,8 @@ export type {
     ColumnForceOpts,
     CompassGroup,
     EatOpts,
+    InertiaOpts,
+    MemoryOpts,
     GrowEatOpts,
 } from "./actions/index.ts";
 

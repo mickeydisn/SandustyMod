@@ -146,5 +146,16 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
         }
     }
 
+    // Vote memory: store this tick's raw vote vector in the seed's data
+    // fields (written AFTER the swap so the memory sits on the seed's final
+    // cell whether or not the engine's swap carries data fields). Writing
+    // zeros on an idle tick acts as a natural decay. `Move.memory()` reads
+    // neighbouring cells' vectors back as alignment votes.
+    if (profile.memField != null) {
+        const { vx, vy } = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
+        Grid.writeFieldAt(ctx.x, ctx.y, profile.memField, vx);
+        Grid.writeFieldAt(ctx.x, ctx.y, profile.memField + 1, vy);
+    }
+
     return true;
 }

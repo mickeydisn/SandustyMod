@@ -15,6 +15,7 @@
 import type { Ctx, MoveFn } from "../types.ts";
 import type { DirectionName, TElementType } from "@sandmd/shared";
 import { resolveNum, roll } from "../resolve.ts";
+import { Grid } from "../grid.ts";
 import { Sense } from "../sense.ts";
 import { Vote, type VoteMask } from "../vote.ts";
 
@@ -56,6 +57,31 @@ export interface ChannelOpts {
     chance?: number | (() => number);
     /** Per-offset multipliers. Omit = all 1. Centre is always ignored. */
     mask?: VoteMask;
+}
+
+/** Vote-memory channel settings — see `Move.memory` and `Move.inertia`. */
+export interface MemoryOpts {
+    /** 0-100 chance gate per tick. Default 100. */
+    chance?: number | (() => number);
+    /** Signed alignment strength. Negative = anti-align (disperse). */
+    weight: number | (() => number);
+    /** Global multiplier on `weight` (0 = off). */
+    rate?: number | (() => number);
+    /** Per-offset multipliers over the 5x5 window. Omit = all 1. */
+    mask?: VoteMask;
+}
+
+/**
+ * Inertia channel settings — see `Move.inertia`. Same fields as
+ * `MemoryOpts`; the vote shape comes from the seed's own stored vector.
+ */
+export interface InertiaOpts extends MemoryOpts {
+    /**
+     * `"full"` (default): signed dot gradient — cells ahead of the flow get
+     * positive votes, cells behind get negative ones (momentum with pull).
+     * `"ahead"`: only offsets in the flow hemisphere vote (pure drift).
+     */
+    mode?: "full" | "ahead";
 }
 
 /** Trailing eat intent, applied by the pipeline after a successful swap. */
@@ -280,5 +306,100 @@ export const Move = {
             ...ctx,
             trailEat: [...ctx.trailEat, { chance: opts.chance, replaceType }],
         });
+    },
+
+    /**
+     * Vote-memory channel: each neighbour's stored movement vector (written
+     * by the pipeline to `profile.memField`/`memField+1` after its last swap)
+     * is re-voted at that neighbour's offset, scaled by how aligned the
+     * vector is with the offset direction:
+     *   vote += weight * mask * (vx * signX + vy * signY)
+     * so neighbours already flowing away in a direction reinforce moving that
+     * way (flocking/flow alignment); opposing vectors cancel naturally.
+     * Needs `memField` set on the owning Profile — a no-op otherwise.
+     */
+    memory(opts: MemoryOpts): MoveFn {
+        let maskSize = -1;
+        let mask: Float64Array | null = null;
+        return (ctx: Ctx) => {
+            const chance = resolveNum(opts.chance ?? 100);
+            if (chance <= 0 || !roll(chance)) return ctx;
+            const w = resolveNum(opts.weight) * resolveNum(opts.rate ?? 1);
+            if (!w) return ctx;
+            const f = ctx.profile.memField;
+            if (f == null) return ctx;
+            const s = ctx.sense;
+            if (maskSize !== s.size) {
+                maskSize = s.size;
+                mask = Vote.mask(opts.mask, s.size);
+            }
+            for (let oy = -s.half; oy <= s.half; oy++) {
+                for (let ox = -s.half; ox <= s.half; ox++) {
+                    if (ox === 0 && oy === 0) continue;
+                    const i = (oy + s.half) * s.size + (ox + s.half);
+                    const m = mask ? mask[i] : 1;
+                    if (m === 0) continue;
+                    const vx = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f);
+                    if (vx === 0) continue;
+                    const vy = Grid.readFieldRawAt(ctx.x + ox, ctx.y + oy, f + 1);
+                    if (vx === 0 && vy === 0) continue;
+                    const align = (vx > 0 ? 1 : vx < 0 ? -1 : 0) * Math.sign(ox) +
+                        (vy > 0 ? 1 : vy < 0 ? -1 : 0) * Math.sign(oy);
+                    if (align === 0) continue;
+                    ctx.votes[i] += w * m * align;
+                }
+            }
+            return ctx;
+        };
+    },
+
+    /**
+     * Inertia channel — the self variant of `Move.memory`. Instead of
+     * scanning neighbours, it reads the seed's OWN stored movement vector
+     * (2 field reads, no window scan) and builds a vote matrix that matches
+     * it: every offset votes by its normalized dot product with the vector,
+     *
+     *   vote += weight * mask * (ox * vx + oy * vy) / |v|
+     *
+     * which is a linear gradient pointing along last tick's flow — cells in
+     * front of the motion are voted in, cells behind voted out (or skipped
+     * with `mode: "ahead"`). Faster than `memory` (2 reads vs 2 x 24) and
+     * gives straight-line persistence; combine both for flocking + inertia.
+     * Needs `memField` set on the owning Profile — a no-op otherwise.
+     */
+    inertia(opts: InertiaOpts): MoveFn {
+        let maskSize = -1;
+        let mask: Float64Array | null = null;
+        return (ctx: Ctx) => {
+            const chance = resolveNum(opts.chance ?? 100);
+            if (chance <= 0 || !roll(chance)) return ctx;
+            const w = resolveNum(opts.weight) * resolveNum(opts.rate ?? 1);
+            if (!w) return ctx;
+            const f = ctx.profile.memField;
+            if (f == null) return ctx;
+            const vx = Grid.readFieldRawAt(ctx.x, ctx.y, f);
+            if (vx === 0) return ctx;
+            const vy = Grid.readFieldRawAt(ctx.x, ctx.y, f + 1);
+            const mag = Math.sqrt(vx * vx + vy * vy);
+            if (mag === 0) return ctx;
+            const aheadOnly = opts.mode === "ahead";
+            const s = ctx.sense;
+            if (maskSize !== s.size) {
+                maskSize = s.size;
+                mask = Vote.mask(opts.mask, s.size);
+            }
+            for (let oy = -s.half; oy <= s.half; oy++) {
+                for (let ox = -s.half; ox <= s.half; ox++) {
+                    if (ox === 0 && oy === 0) continue;
+                    const i = (oy + s.half) * s.size + (ox + s.half);
+                    const m = mask ? mask[i] : 1;
+                    if (m === 0) continue;
+                    const dot = (ox * vx + oy * vy) / mag;
+                    if (aheadOnly && dot <= 0) continue;
+                    ctx.votes[i] += w * m * dot;
+                }
+            }
+            return ctx;
+        };
     },
 };

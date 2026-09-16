@@ -3,6 +3,7 @@ import { AstroElementConfig } from "../../element/types.ts";
 
 import { spec } from "../util.ts";
 import { TElementKey } from "../keys.ts";
+import { ASTRO_FIELD } from "../ids.ts";
 
 // Extract density — keep seeds just under liquid copper so they sink slowly.
 const LIQUID_COPPER_DENSITY = 150;
@@ -15,6 +16,8 @@ const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
 // ---------------------
 const MASK_CROSS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
 const MASK_DIAGONAL = [[1, 0, 1], [0, 0, 0], [1, 0, 1]]; // diagonal neighbours
+const MASK_NEGATIF = [[0, -1, 0], [-1, 0, -1], [0, -1, 0]]; // orthogonal neighbours
+
 // Gravity probe: the two cells straight below the seed, near row weighted
 // heavier than the far one, so a column of liquid gold pulls the seed down.
 const MASK_GRAVITY = [
@@ -97,6 +100,8 @@ export const astroCopperPowder = {
             liquidKey: "liquidGold",
             crystalKey: "astroCopperCrystal",
             growAge: 10,
+            // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+            memField: ASTRO_FIELD.VX,
             moves: [
                 // Jitter — uniform random draw over the 8 neighbours.
                 { kind: "random", chance: 80 },
@@ -107,6 +112,13 @@ export const astroCopperPowder = {
                     matchKeys: ["liquidGold"],
                     weight: 1,
                     mask: MASK_GRAVITY,
+                },
+                {
+                    kind: "channel",
+                    matchKeys: ["empty", "structure"],
+                    chance: 100,
+                    weight: -5,
+                    mask: MASK_NEGATIF,
                 },
                 // Lattice — own kind repels orthogonally but attracts
                 // diagonally, so copper settles into diagonal chains instead
@@ -127,6 +139,12 @@ export const astroCopperPowder = {
                 },
                 // Cluster — any nearby gold powder pulls this copper in.
                 { kind: "channel", chance: 90, matchKeys: ["astroGoldPowder"], weight: 5 },
+                // Flow memory — align with the movement vector neighbours
+                // stored last tick (flocking; keeps drifting seeds coherent).
+                { kind: "memory", chance: 100, weight: 1 },
+                // Inertia — own last-tick flow vector drives a matching vote
+                // gradient (straight-line persistence on top of flocking).
+                // { kind: "inertia", chance: 100, weight: .1, mode: "ahead" },
             ],
             grow: [],
             crystallization: [],

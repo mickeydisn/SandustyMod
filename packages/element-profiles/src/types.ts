@@ -23,6 +23,13 @@ export interface Profile {
     tickSpeed: number;
     /** Per-instance data-field index that holds the seed's accumulated age. */
     ageField: number;
+    /**
+     * Data field where the pipeline stores each tick's vote vector as
+     * (vx @ memField, vy @ memField+1) — the seed's movement memory.
+     * Undefined = no memory written. `Move.memory()` reads neighbours'
+     * stored vectors back as alignment votes. Reuses two free fields.
+     */
+    memField?: number;
     growAge: () => number;
     moves: MoveFn[];
     grow: GrowFn[];

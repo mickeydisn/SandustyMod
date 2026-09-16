@@ -58,6 +58,18 @@ export const Grid = {
             return 0;
         }
     },
+    /**
+     * Raw field read that keeps negative values (the age reader clamps them
+     * because the engine uses -1 as a sentinel). The vote-memory channel
+     * stores signed vectors, so it must read through this.
+     */
+    readFieldRawAt(x: number, y: number, field: number): number {
+        try {
+            return sandkit.api.elements.getDataFieldAtCell(x, y, field) ?? 0;
+        } catch {
+            return 0;
+        }
+    },
     writeFieldAt(x: number, y: number, field: number, value: number): void {
         try {
             sandkit.api.elements.setDataFieldAtCell(x, y, field, value);

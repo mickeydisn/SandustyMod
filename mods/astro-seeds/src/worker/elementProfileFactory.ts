@@ -7,6 +7,7 @@
  */
 import type { CrystallizeFn, GrowFn, MoveFn, Profile } from "@sandmd/element-profiles";
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles";
+import { MatterType } from "@sandmd/shared";
 import { ASTRO_FIELD } from "../config/ids.ts";
 import { ElementType } from "../shared/resolve.ts";
 import type { CrystalSpec, GrowSpec, MoveSpec, ProfileSpec } from "../element/types.ts";
@@ -17,14 +18,34 @@ import type { CrystalSpec, GrowSpec, MoveSpec, ProfileSpec } from "../element/ty
  * Called from inside `getProfile()`, i.e. per tick, NOT at module scope:
  * `ElementType[key]` is only meaningful after the main thread has registered
  * the elements, so a catalogue file must never capture these numbers itself.
+ *
+ * Special keys (usable anywhere a match key is expected):
+ * - `"empty"` → 0. Never appears in the returned list — match lists use it
+ *   via `matchEmpty: true` instead (see `keysChannel`).
+ * - `"structure"` → `MatterType.Static`, the matter type every structure
+ *   element (seeds, crystals) is registered with.
  */
-function keysOf<ElType extends string>(keys?: ElType[]): number[] | undefined {
-    return keys?.map((k) => ElementType[k as string]);
+function keysOf<ElType extends string>(
+    keys?: readonly (ElType | "empty" | "structure")[],
+): number[] | undefined {
+    return keys == null ? undefined : keys
+        .filter((k) => k !== "empty")
+        .map((k) => (k === "structure" ? MatterType.Static : ElementType[k as string]));
 }
 
 /** One key → numeric type. `undefined`/`"empty"` means "clear to empty". */
 function keyOf<ElType extends string>(key?: ElType | "empty"): number | null {
     return key == null || key === "empty" ? null : (ElementType[key as string] ?? null);
+}
+
+/** Channel key list → `Move.channel` match options, honouring `"empty"`. */
+function keysChannel<ElType extends string>(
+    keys?: readonly (ElType | "empty" | "structure")[],
+): { matchTypes?: number[]; matchEmpty?: boolean } {
+    return {
+        matchTypes: keysOf(keys),
+        matchEmpty: keys?.includes("empty") ?? undefined,
+    };
 }
 
 function buildMoves<ElType extends string>(specs: MoveSpec<ElType>[]): MoveFn[] {
@@ -42,13 +63,27 @@ function buildMoves<ElType extends string>(specs: MoveSpec<ElType>[]): MoveFn[] 
         else if (spec.kind === "random") out.push(Move.random(spec.chance, spec.mask));
         else if (spec.kind === "channel") {
             out.push(Move.channel({
-                matchTypes: keysOf<ElType>(spec.matchKeys),
-                matchEmpty: spec.matchEmpty,
+                ...keysChannel<ElType>(spec.matchKeys),
                 weight: spec.weight,
                 rate: spec.rate,
                 chance: spec.chance,
                 excludeTypes: keysOf<ElType>(spec.excludeKeys),
                 mask: spec.mask,
+            }));
+        } else if (spec.kind === "memory") {
+            out.push(Move.memory({
+                chance: spec.chance,
+                weight: spec.weight,
+                rate: spec.rate,
+                mask: spec.mask,
+            }));
+        } else if (spec.kind === "inertia") {
+            out.push(Move.inertia({
+                chance: spec.chance,
+                weight: spec.weight,
+                rate: spec.rate,
+                mask: spec.mask,
+                mode: spec.mode,
             }));
         } else if (spec.kind === "trailEat") {
             out.push(Move.trailEat({ chance: spec.chance, replaceType: keyOf(spec.replaceKey) }));
@@ -121,6 +156,9 @@ export function createElementProfileFactory<ElType extends string>(
         crystalType: ElementType[spec.crystalKey as string],
         tickSpeed: 10,
         ageField: ASTRO_FIELD.AGE,
+        // Vote-memory vector storage (vx @ VX, vy @ VX+1). Opt-in per profile
+        // so profiles without `Move.memory` never write fields.
+        memField: spec.memField,
         growAge: () => (typeof spec.growAge === "function" ? spec.growAge() : spec.growAge),
         moves: spec.whenMove && !spec.whenMove() ? [] : buildMoves(spec.moves),
         grow: spec.whenGrow && !spec.whenGrow() ? [] : spec.grow.map(buildGrow),

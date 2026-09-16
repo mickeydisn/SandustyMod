@@ -51,6 +51,12 @@ var MatterType = /* @__PURE__ */ function(MatterType2) {
 // src/config/ids.ts
 var MOD_ID = "astro.seeds";
 var VERSION = "3.1.0";
+var ASTRO_FIELD = /* @__PURE__ */ function(ASTRO_FIELD2) {
+  ASTRO_FIELD2[ASTRO_FIELD2["AGE"] = 1] = "AGE";
+  ASTRO_FIELD2[ASTRO_FIELD2["VX"] = 2] = "VX";
+  ASTRO_FIELD2[ASTRO_FIELD2["VY"] = 3] = "VY";
+  return ASTRO_FIELD2;
+}({});
 
 // src/config/util.ts
 function spec(entry) {
@@ -134,6 +140,23 @@ var MASK_DIAGONAL = [
     1,
     0,
     1
+  ]
+];
+var MASK_NEGATIF = [
+  [
+    0,
+    -1,
+    0
+  ],
+  [
+    -1,
+    0,
+    -1
+  ],
+  [
+    0,
+    -1,
+    0
   ]
 ];
 var MASK_GRAVITY = [
@@ -288,6 +311,8 @@ var astroCopperPowder = {
       liquidKey: "liquidGold",
       crystalKey: "astroCopperCrystal",
       growAge: 10,
+      // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      memField: ASTRO_FIELD.VX,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
         {
@@ -303,6 +328,16 @@ var astroCopperPowder = {
           ],
           weight: 1,
           mask: MASK_GRAVITY
+        },
+        {
+          kind: "channel",
+          matchKeys: [
+            "empty",
+            "structure"
+          ],
+          chance: 100,
+          weight: -5,
+          mask: MASK_NEGATIF
         },
         // Lattice — own kind repels orthogonally but attracts
         // diagonally, so copper settles into diagonal chains instead
@@ -333,6 +368,13 @@ var astroCopperPowder = {
             "astroGoldPowder"
           ],
           weight: 5
+        },
+        // Flow memory — align with the movement vector neighbours
+        // stored last tick (flocking; keeps drifting seeds coherent).
+        {
+          kind: "memory",
+          chance: 100,
+          weight: 1
         }
       ],
       grow: [],
@@ -383,6 +425,40 @@ var astroGoldCrystal = {
 // src/config/elementConf/astroGoldPowder.ts
 var LIQUID_COPPER_DENSITY2 = 150;
 var SEED_DENSITY2 = Math.max(1, LIQUID_COPPER_DENSITY2 - 5);
+var MASK_VERT = [
+  [
+    0,
+    1,
+    0
+  ],
+  [
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    1,
+    0
+  ]
+];
+var MASK_SIDE = [
+  [
+    0,
+    0,
+    0
+  ],
+  [
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    0,
+    0
+  ]
+];
 var MASK_CROSS2 = [
   [
     0,
@@ -400,41 +476,21 @@ var MASK_CROSS2 = [
     0
   ]
 ];
-var MASK_GRAVITY2 = [
+var MASK_ALL = [
   [
-    0,
-    0,
-    0,
-    0,
-    0
+    1,
+    1,
+    1
   ],
   [
-    0,
-    0,
-    0.5,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
-    0,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
     1,
     0,
-    0
+    1
   ],
   [
-    0,
-    0,
-    0.5,
-    0,
-    0
+    1,
+    1,
+    1
   ]
 ];
 var astroGoldPowder = {
@@ -539,27 +595,42 @@ var astroGoldPowder = {
       liquidKey: "liquidGold",
       crystalKey: "astroGoldCrystal",
       growAge: 10,
+      // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+      memField: ASTRO_FIELD.VX,
       moves: [
         // Jitter — uniform random draw over the 8 neighbours.
-        {
-          kind: "trailEat",
-          chance: 1,
-          replaceKey: "sand"
-        },
+        // { kind: "trailEat", chance: 1, replaceKey: "sand" },
         // Jitter — uniform random draw over the 8 neighbours.
         {
           kind: "random",
-          chance: 80
+          chance: 40,
+          mask: MASK_SIDE
+        },
+        {
+          kind: "random",
+          chance: 80,
+          mask: MASK_VERT
         },
         // Gravity — liquid gold below pulls the seed down.
+        /*
+                        {
+                            kind: "channel",
+                            chance: 1,
+                            matchKeys: ["liquidGold"],
+                            weight: .1,
+                            mask: MASK_GRAVITY,
+        
+                        },
+                        */
         {
           kind: "channel",
-          chance: 1,
           matchKeys: [
-            "liquidGold"
+            "empty",
+            "structure"
           ],
-          weight: 0.2,
-          mask: MASK_GRAVITY2
+          chance: 100,
+          weight: -15,
+          mask: MASK_ALL
         },
         // Dispersed — own kind beside it pushes back (orthogonal only,
         // so diagonal neighbours stay free to settle).
@@ -580,6 +651,17 @@ var astroGoldPowder = {
             "astroCopperPowder"
           ],
           weight: -2
+        },
+        // Flow memory — align with the movement vector neighbours
+        // stored last tick (flocking; keeps drifting seeds coherent).
+        // { kind: "memory", chance: 100, weight: 10 },
+        // Inertia — own last-tick flow vector drives a matching vote
+        // gradient (straight-line persistence on top of flocking).
+        {
+          kind: "inertia",
+          chance: 100,
+          weight: 1,
+          mode: "ahead"
         }
       ],
       grow: [],
@@ -638,7 +720,7 @@ var astroSeed = {
     {
       id: "astroSeed-in-sand",
       seedKey: "astroSeed",
-      liquidKey: "sand",
+      liquidKey: "water",
       crystalKey: "astroGoldCrystal",
       growAge: 150,
       moves: [
@@ -938,6 +1020,16 @@ var VANILLA_ALIASES = {
   sand: [
     "sand",
     "Sand"
+  ],
+  empty: [
+    "empty",
+    "Empty",
+    "air",
+    "Air",
+    "void",
+    "Void",
+    "none",
+    "None"
   ]
 };
 function resolveVanilla() {
