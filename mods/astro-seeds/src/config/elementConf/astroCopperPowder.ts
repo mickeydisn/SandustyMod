@@ -19,6 +19,13 @@ const MASK_PLUS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
 const MASK_DIAGONAL = [[1, 0, 1], [0, 0, 0], [1, 0, 1]]; // diagonal neighbours
 // deno-lint-ignore no-unused-vars
 const MASK_ALL = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]; // orthogonal neighbours
+const MASK_FULL = [
+    [1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1],
+    [1, 1, 0, 1, 1],
+    [1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1],
+]; // orthogonal neighbours
 
 // Gravity probe: the two cells straight below the seed, near row weighted
 // heavier than the far one, so a column of liquid gold pulls the seed down.
@@ -147,10 +154,10 @@ export const astroCopperPowder = {
                 { kind: "channel", chance: 90, matchKeys: ["astroGoldPowder"], weight: 5 },
                 // Flow memory — align with the movement vector neighbours
                 // stored last tick (flocking; keeps drifting seeds coherent).
-                { kind: "memory", chance: 100, weight: 2 },
+                { kind: "memory", chance: 100, weight: 5, mask: MASK_FULL },
                 // Inertia — own last-tick flow vector drives a matching vote
                 // gradient (straight-line persistence on top of flocking).
-                // { kind: "inertia", chance: 100, weight: .1, mode: "ahead" },
+                { kind: "inertia", chance: 50, weight: .1, mode: "ahead" },
             ],
             grow: [],
             crystallization: [],

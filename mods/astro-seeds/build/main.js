@@ -159,6 +159,43 @@ var MASK_DIAGONAL = [
     1
   ]
 ];
+var MASK_FULL = [
+  [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  [
+    1,
+    1,
+    0,
+    1,
+    1
+  ],
+  [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  [
+    1,
+    1,
+    1,
+    1,
+    1
+  ]
+];
 var MASK_GRAVITY = [
   [
     0,
@@ -378,7 +415,16 @@ var astroCopperPowder = {
         {
           kind: "memory",
           chance: 100,
-          weight: 2
+          weight: 5,
+          mask: MASK_FULL
+        },
+        // Inertia — own last-tick flow vector drives a matching vote
+        // gradient (straight-line persistence on top of flocking).
+        {
+          kind: "inertia",
+          chance: 50,
+          weight: 0.1,
+          mode: "ahead"
         }
       ],
       grow: [],
