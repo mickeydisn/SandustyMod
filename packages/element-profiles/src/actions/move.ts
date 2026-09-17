@@ -15,9 +15,9 @@
 import type { Ctx, MoveFn } from "../types.ts";
 import type { DirectionName, TElementType } from "@sandmd/shared";
 import { resolveNum, roll } from "../resolve.ts";
-import { Grid } from "../grid.ts";
-import { Sense } from "../sense.ts";
-import { Vote, type VoteMask } from "../vote.ts";
+import { Grid } from "../utils/grid.ts";
+import { Sense } from "../utils/sense.ts";
+import { Vote, type VoteMask } from "../utils/vote.ts";
 
 /** Ray settings for one direction group, resolved per tick. */
 export interface ColumnForceOpts {

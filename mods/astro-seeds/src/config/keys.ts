@@ -25,7 +25,8 @@ export type TAddedElementKey =
     | "astroCopperCrystal"
     | "astroCopperPowder"
     | "astroWaterCrystal"
-    | "astroWaterPowder";
+    | "astroWaterPowder"
+    | "astroGCalloyPowder";
 
 export type TElementKey = TVanillaElementKey | TAddedElementKey;
 

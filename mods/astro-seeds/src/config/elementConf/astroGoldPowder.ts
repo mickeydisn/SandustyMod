@@ -1,42 +1,14 @@
 import { MatterType } from "@sandmd/shared";
 import { AstroElementConfig } from "../../element/types.ts";
 import { TElementKey } from "../keys.ts";
-import { ASTRO_FIELD } from "../ids.ts";
 
 import { spec } from "../util.ts";
+import { InWaterProfile } from "../elementProfile/inWater.ts";
+import { InGoldProfile } from "../elementProfile/inGold.ts";
 
 // Extract density — keep seeds just under liquid copper so they sink slowly.
 const LIQUID_COPPER_DENSITY = 150;
 const SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
-
-// ---------------------
-// Vote-matrix masks. The pipeline samples a 5x5 window around the seed and
-// sums every channel into it, so a 3x3 mask is centre-cropped into that
-// window — each entry is the multiplier of the cell at that offset.
-// ---------------------
-const MASK_VERT = [[0, 1, 0], [0, 0, 0], [0, 1, 0]]; // orthogonal neighbours
-const MASK_SIDE = [[0, 0, 0], [1, 0, 1], [0, 0, 0]]; // orthogonal neighbours
-// deno-lint-ignore no-unused-vars
-const MASK_CROSS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
-const MASK_PLUS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
-const MASK_ALL = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]; // orthogonal neighbours
-// Gravity probe: the two cells straight below the seed, near row weighted
-// heavier than the far one, so a column of liquid gold pulls the seed down.
-// deno-lint-ignore no-unused-vars -- kept for the commented-out gravity channel
-const MASK_GRAVITY = [
-    [0, 0, 0, 0, 0],
-    [0, 0, .5, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 1, 0, 0],
-    [0, 0, 0.5, 0, 0],
-];
-const MASK_OUT = [
-    [1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 1, 1, 1, 0],
-];
 
 export const astroGoldPowder = {
     spec: spec({
@@ -59,113 +31,7 @@ export const astroGoldPowder = {
         outputB: "fire",
     }],
     profiles: [
-        {
-            id: "astroGold-in-water",
-            seedKey: "astroGoldPowder",
-            liquidKey: "water",
-            crystalKey: "astroGoldCrystal",
-            growAge: 10,
-            moves: [
-                { kind: "up", chance: 8 },
-                { kind: "side", chance: 8 },
-                { kind: "down", chance: 8 },
-                {
-                    kind: "columnForce",
-                    rate: -30,
-                    rangeN: 4,
-                    maxK: 1,
-                    directions: ["top", "bottom", "sides"],
-                },
-                {
-                    kind: "columnForce",
-                    rate: -20,
-                    rangeN: 2,
-                    maxK: 1,
-                    directions: ["top", "bottom", "sides"],
-                    matchKeys: ["astroGoldPowder"],
-                },
-                {
-                    kind: "columnForce",
-                    rate: 80,
-                    rangeN: 5,
-                    maxK: 1,
-                    directions: ["top", "bottom", "sides"],
-                    matchKeys: ["astroCopperPowder"],
-                },
-            ],
-            grow: [],
-            crystallization: [],
-        },
-        {
-            id: "astroGold-in-liquid-gold",
-            seedKey: "astroGoldPowder",
-            liquidKey: "liquidGold",
-            crystalKey: "astroGoldCrystal",
-            growAge: 10,
-            // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
-            // memDecay integrates it into a real fading velocity; memBounce
-            // reflects it off walls/floor so landing seeds rebound upward.
-            memField: ASTRO_FIELD.VX,
-            memDecay: 0.1,
-            memBounce: true,
-            moves: [
-                // Jitter — uniform random draw over the 8 neighbours.
-                // { kind: "trailEat", chance: 1, replaceKey: "sand" },
-                // Jitter — uniform random draw over the 8 neighbours.
-                { kind: "random", chance: 80, mask: MASK_SIDE },
-                { kind: "random", chance: 80, mask: MASK_VERT },
-                // Gravity — liquid gold below pulls the seed down.
-                /*
-                {
-                    kind: "channel",
-                    chance: 1,
-                    matchKeys: ["liquidGold"],
-                    weight: .1,
-                    mask: MASK_GRAVITY,
-
-                },
-                */
-                {
-                    kind: "channel",
-                    matchKeys: ["empty", "structure"],
-                    chance: 100,
-                    weight: -15,
-                    mask: MASK_PLUS,
-                },
-                // Dispersed — own kind beside it pushes back (orthogonal only,
-                // so diagonal neighbours stay free to settle).
-                {
-                    kind: "channel",
-                    chance: 80,
-                    matchKeys: ["astroGoldPowder"],
-                    weight: -1,
-                    mask: MASK_ALL,
-                },
-                {
-                    kind: "channel",
-                    chance: 50,
-                    matchKeys: ["astroGoldPowder"],
-                    weight: .4,
-                    mask: MASK_OUT,
-                },
-                {
-                    kind: "channel",
-                    chance: 50,
-                    matchKeys: ["astroCopperPowder"],
-                    weight: -5,
-                    mask: MASK_ALL,
-                },
-                // Cluster — any nearby copper powder pulls this gold in.
-                // { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
-                // Flow memory — align with the movement vector neighbours
-                // stored last tick (flocking; keeps drifting seeds coherent).
-                // { kind: "memory", chance: 100, weight: .1 },
-                // Inertia — own last-tick flow vector drives a matching vote
-                // gradient (straight-line persistence on top of flocking).
-                { kind: "inertia", chance: 1, weight: .1, mode: "full" },
-            ],
-            grow: [],
-            crystallization: [],
-        },
+        // InWaterProfile.astroGoldPowder,
+        InGoldProfile.astroGoldPowder,
     ],
 } satisfies AstroElementConfig<TElementKey>;

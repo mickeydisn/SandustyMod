@@ -7,8 +7,8 @@
  */
 import type { TElementType } from "@sandmd/shared";
 import type { GrowFn, GrowResult } from "../types.ts";
-import { Grid } from "../grid.ts";
-import { Sense } from "../sense.ts";
+import { Grid } from "../utils/grid.ts";
+import { Sense } from "../utils/sense.ts";
 import { resolveNum } from "../resolve.ts";
 
 export interface GrowEatOpts {
@@ -77,10 +77,11 @@ export const Grow = {
     ageOnSurround(
         rateFn: number | (() => number),
         minCountFn: number | (() => number),
+        typeId?: number | (() => number),
     ): GrowFn {
         return (ctx) => {
             const minCount = resolveNum(minCountFn, 6);
-            const n = Sense.count(ctx.sense, ctx.profile.liquidType);
+            const n = Sense.count(ctx.sense, typeId ? resolveNum(typeId) : ctx.profile.liquidType);
             return n >= minCount ? rate(resolveNum(rateFn), "surround") : noMatch();
         };
     },

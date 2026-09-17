@@ -5,7 +5,7 @@
  * Coordinates are window offsets `ox,oy ∈ [-half..half]`; use the named
  * helpers (`at`, `is`, `count`, `random`) rather than indexing by hand.
  */
-import type { SenseMatrix } from "./types.ts";
+import type { SenseMatrix } from "../types.ts";
 import type { TElementType } from "@sandmd/shared";
 
 function idx(s: SenseMatrix, ox: number, oy: number): number {

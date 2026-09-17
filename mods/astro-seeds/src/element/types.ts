@@ -124,7 +124,7 @@ export type GrowSpec<ElType extends string> =
     | { kind: "ageOnWall"; rate: NumThunk }
     | { kind: "ageOnAir"; rate: NumThunk }
     | { kind: "ageOnCrystal"; rate: NumThunk }
-    | { kind: "ageOnSurround"; rate: NumThunk; minCount: NumThunk }
+    | { kind: "ageOnSurround"; rate: NumThunk; minCount: NumThunk; typeId?: ElType }
     | { kind: "blockOn"; blockKey: ElType }
     | ({ kind: "eat" } & GrowEatSpec<ElType>);
 

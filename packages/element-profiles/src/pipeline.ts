@@ -11,9 +11,9 @@
  * sense matrix instead of issuing their own reads.
  */
 import type { Ctx, Profile, SenseMatrix } from "./types.ts";
-import { Grid } from "./grid.ts";
+import { Grid } from "./utils/grid.ts";
 import { resolveNum, roll } from "./resolve.ts";
-import { Vote } from "./vote.ts";
+import { Vote } from "./utils/vote.ts";
 
 export const SENSE_SIZE = 5;
 const SENSE_N = SENSE_SIZE * SENSE_SIZE;

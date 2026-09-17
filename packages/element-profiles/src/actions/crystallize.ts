@@ -9,8 +9,8 @@
  */
 import "@sandmd/sandkit";
 import type { CrystallizeFn, Ctx } from "../types.ts";
-import { Grid } from "../grid.ts";
-import { Sense } from "../sense.ts";
+import { Grid } from "../utils/grid.ts";
+import { Sense } from "../utils/sense.ts";
 import { resolveNum } from "../resolve.ts";
 
 type Off = { x: number; y: number };

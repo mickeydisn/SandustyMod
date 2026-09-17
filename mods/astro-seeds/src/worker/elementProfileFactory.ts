@@ -155,7 +155,13 @@ function buildGrow<ElType extends string>(spec: GrowSpec<ElType>): GrowFn {
     if (spec.kind === "ageOnWall") return Grow.ageOnWall(spec.rate);
     if (spec.kind === "ageOnAir") return Grow.ageOnAir(spec.rate);
     if (spec.kind === "ageOnCrystal") return Grow.ageOnCrystal(spec.rate);
-    if (spec.kind === "ageOnSurround") return Grow.ageOnSurround(spec.rate, spec.minCount);
+    if (spec.kind === "ageOnSurround") {
+        return Grow.ageOnSurround(
+            spec.rate,
+            spec.minCount,
+            spec.typeId ? ElementType[spec.typeId as string] : undefined,
+        );
+    }
     if (spec.kind === "eat") {
         return Grow.eat({
             chance: spec.chance,

@@ -20,9 +20,9 @@ export type {
     Vec2,
 } from "./types.ts";
 
-export { Grid } from "./grid.ts";
-export { GridNear } from "./near.ts";
-export { Sense } from "./sense.ts";
+export { Grid } from "./utils/grid.ts";
+export { GridNear } from "./utils/near.ts";
+export { Sense } from "./utils/sense.ts";
 export { resolveNum } from "./resolve.ts";
 
 export { Crystallization, Grow, Move } from "./actions/index.ts";
@@ -31,11 +31,11 @@ export type {
     ColumnForceOpts,
     CompassGroup,
     EatOpts,
+    GrowEatOpts,
     InertiaOpts,
     MemoryOpts,
-    GrowEatOpts,
 } from "./actions/index.ts";
 
 export { reduceVotes, runProfile, SENSE_SIZE } from "./pipeline.ts";
-export { Vote } from "./vote.ts";
-export type { VoteChannel, VoteMask } from "./vote.ts";
+export { Vote } from "./utils/vote.ts";
+export type { VoteChannel, VoteMask } from "./utils/vote.ts";

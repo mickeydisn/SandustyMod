@@ -8,7 +8,7 @@
  * sums their stamped votes, which is what makes steering composable.
  */
 import type { TElementType } from "@sandmd/shared";
-import type { Ctx, SenseMatrix } from "./types.ts";
+import type { Ctx, SenseMatrix } from "../types.ts";
 import { Sense } from "./sense.ts";
 
 /** Per-offset multipliers: nested rows, flat row-major, or fn(ox, oy). */

@@ -10,12 +10,13 @@ import type { AstroElementConfig, AstroElementSpec, ReactionSpec } from "../elem
 import { astroCopperCrystal } from "./elementConf/astroCopperCrystal.ts";
 import { astroCopperPowder } from "./elementConf/astroCopperPowder.ts";
 import { astroGoldCrystal } from "./elementConf/astroGoldCrystal.ts";
-import { astroGoldPowder } from "./elementConf/astroGoldPowder.ts";
+import { astroGCalloyPowder } from "./elementConf/astroGCalloyPowder.ts";
 import { astroSeed } from "./elementConf/astroSeed.ts";
 import { astroVoidSeed } from "./elementConf/astroVoidSeed.ts";
 import { astroWaterCrystal } from "./elementConf/astroWaterCrystal.ts";
 import { astroWaterPowder } from "./elementConf/astroWaterPowder.ts";
 import type { TElementKey } from "./keys.ts";
+import { astroGoldPowder } from "./elementConf/astroGoldPowder.ts";
 
 // ---------------------
 // Single catalogue — every element this mod knows about.
@@ -25,6 +26,7 @@ export const ASTRO_ELEMENTS = [
     astroCopperPowder,
     astroGoldCrystal,
     astroGoldPowder,
+    astroGCalloyPowder,
     astroSeed,
     astroVoidSeed,
     astroWaterCrystal,
