@@ -1,8 +1,7 @@
 import { MatterType } from "@sandmd/shared";
-import { AstroElementConfig } from "../../element/types.ts";
-import { TElementKey } from "../keys.ts";
-
-import { spec } from "../util.ts";
+import type { TElementKey } from "../elementShared/keys.ts";
+import { spec } from "../elementShared/util.ts";
+import type { AstroElementMain } from "./types.ts";
 
 export const astroVoidSeed = {
     spec: spec({
@@ -24,4 +23,4 @@ export const astroVoidSeed = {
         outputA: "astroVoidSeed",
         outputB: null,
     }],
-} satisfies AstroElementConfig<TElementKey>;
+} satisfies AstroElementMain<TElementKey>;

@@ -1406,7 +1406,7 @@ function runProfile(x, y, profile) {
   return true;
 }
 
-// src/config/ids.ts
+// src/config/elementShared/ids.ts
 var MOD_ID = "astro.seeds";
 var VERSION = "3.1.0";
 var ASTRO_FIELD = /* @__PURE__ */ function(ASTRO_FIELD2) {
@@ -1416,15 +1416,22 @@ var ASTRO_FIELD = /* @__PURE__ */ function(ASTRO_FIELD2) {
   return ASTRO_FIELD2;
 }({});
 
-// src/config/util.ts
+// src/config/elementShared/util.ts
 function spec(entry) {
   return {
     ...entry,
     id: `${MOD_ID}:${entry.slug}`
   };
 }
+function safe(fn, fallback = null) {
+  try {
+    return fn();
+  } catch {
+    return fallback;
+  }
+}
 
-// src/config/elementConf/astroCopperCrystal.ts
+// src/config/elementMain/astroCopperCrystal.ts
 var astroCopperCrystal = {
   spec: spec({
     key: "astroCopperCrystal",
@@ -1463,7 +1470,480 @@ var astroCopperCrystal = {
   reactions: []
 };
 
-// src/config/elementProfile/inGold.ts
+// src/config/elementMain/astroCopperPowder.ts
+var LIQUID_COPPER_DENSITY = 150;
+var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
+var astroCopperPowder = {
+  spec: spec({
+    key: "astroCopperPowder",
+    slug: "astro-copper",
+    name: "Astro Copper",
+    description: "Powder from copper crystal + Fire.",
+    colors: [
+      [
+        240,
+        80,
+        40
+      ],
+      [
+        180,
+        60,
+        20
+      ]
+    ],
+    density: SEED_DENSITY,
+    metaColor: 11822120,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Astro Copper",
+    isSeed: true,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "astroCopperCrystal",
+      inputB: "water",
+      outputA: "astroCopperPowder",
+      outputB: "water"
+    }
+  ]
+};
+
+// src/config/elementMain/astroGCalloyPowder.ts
+var LIQUID_COPPER_DENSITY2 = 150;
+var SEED_DENSITY2 = Math.max(1, LIQUID_COPPER_DENSITY2 - 5);
+var astroGCalloyPowder = {
+  spec: spec({
+    key: "astroGCalloyPowder",
+    slug: "astro-gc-alloy",
+    name: "Astro GC Alloy Powder",
+    description: "Powder from ...",
+    colors: [
+      [
+        100,
+        155,
+        10
+      ],
+      [
+        60,
+        130,
+        0
+      ]
+    ],
+    density: SEED_DENSITY2,
+    metaColor: 9714336,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Astro GC Alloy",
+    isSeed: true,
+    isCrystal: false
+  }),
+  reactions: []
+};
+
+// src/config/elementMain/astroGoldCrystal.ts
+var astroGoldCrystal = {
+  spec: spec({
+    key: "astroGoldCrystal",
+    slug: "astro-gold-crystal",
+    name: "Astro Gold Crystal",
+    description: "From Liquid Gold. Burn \u2192 Astro Gold.",
+    colors: [
+      [
+        210,
+        160,
+        255
+      ],
+      [
+        180,
+        120,
+        240
+      ],
+      [
+        230,
+        190,
+        255
+      ],
+      [
+        160,
+        90,
+        220
+      ]
+    ],
+    density: 200,
+    metaColor: 11827440,
+    matterType: MatterType.Static,
+    toolboxLabel: "Cry. Gold",
+    isSeed: false,
+    isCrystal: true
+  }),
+  reactions: []
+};
+
+// src/config/elementMain/astroGoldPowder.ts
+var LIQUID_COPPER_DENSITY3 = 150;
+var SEED_DENSITY3 = Math.max(1, LIQUID_COPPER_DENSITY3 - 5);
+var astroGoldPowder = {
+  spec: spec({
+    key: "astroGoldPowder",
+    slug: "astro-gold",
+    name: "Astro Gold Powder",
+    description: "Powder from gold crystal + Fire.",
+    colors: [
+      [
+        180,
+        255,
+        90
+      ],
+      [
+        150,
+        230,
+        60
+      ]
+    ],
+    density: SEED_DENSITY3,
+    metaColor: 11819760,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Astro Gold",
+    isSeed: true,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "astroGoldCrystal",
+      inputB: "fire",
+      outputA: "astroGoldPowder",
+      outputB: "fire"
+    }
+  ]
+};
+
+// src/config/elementMain/astroSeed.ts
+var LIQUID_COPPER_DENSITY4 = 150;
+var SEED_DENSITY4 = Math.max(1, LIQUID_COPPER_DENSITY4 - 5);
+var astroSeed = {
+  spec: spec({
+    key: "astroSeed",
+    slug: "astro-seed",
+    name: "Astro Seed",
+    description: "Liquid Gold / Copper / Water \u2192 crystals.",
+    colors: [
+      [
+        180,
+        220,
+        255
+      ],
+      [
+        140,
+        190,
+        255
+      ],
+      [
+        100,
+        160,
+        240
+      ],
+      [
+        220,
+        240,
+        255
+      ]
+    ],
+    density: SEED_DENSITY4,
+    metaColor: 9357567,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Seed",
+    isSeed: true,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "astroVoidSeed",
+      inputB: "florinol",
+      outputA: "astroSeed",
+      outputB: null
+    }
+  ]
+};
+
+// src/config/elementMain/astroVoidSeed.ts
+var astroVoidSeed = {
+  spec: spec({
+    key: "astroVoidSeed",
+    slug: "astro-void-seed",
+    name: "Astro Void Seed",
+    description: "Mix with Florinol \u2192 Astro Seed.",
+    colors: [
+      [
+        80,
+        40,
+        140
+      ],
+      [
+        60,
+        20,
+        110
+      ],
+      [
+        100,
+        50,
+        160
+      ]
+    ],
+    density: 90,
+    metaColor: 5253260,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Void Seed",
+    isSeed: false,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "seedBase",
+      inputB: "voidPetal",
+      outputA: "astroVoidSeed",
+      outputB: null
+    }
+  ]
+};
+
+// src/config/elementMain/astroWaterCrystal.ts
+var astroWaterCrystal = {
+  spec: spec({
+    key: "astroWaterCrystal",
+    slug: "astro-water-crystal",
+    name: "Astro Water Crystal",
+    description: "From Water (panel). Burn \u2192 Astro Water.",
+    colors: [
+      [
+        60,
+        100,
+        155
+      ],
+      [
+        40,
+        90,
+        155
+      ],
+      [
+        0,
+        60,
+        155
+      ]
+    ],
+    density: 0,
+    metaColor: 9357567,
+    matterType: MatterType.Static,
+    toolboxLabel: "Cry. Water",
+    isSeed: false,
+    isCrystal: true
+  }),
+  reactions: []
+};
+
+// src/config/elementMain/astroWaterPowder.ts
+var astroWaterPowder = {
+  spec: spec({
+    key: "astroWaterPowder",
+    slug: "astro-water",
+    name: "Astro Water",
+    description: "Powder from water crystal + Fire.",
+    colors: [
+      [
+        180,
+        120,
+        155
+      ],
+      [
+        180,
+        90,
+        155
+      ],
+      [
+        220,
+        140,
+        155
+      ]
+    ],
+    density: 280,
+    metaColor: 9357567,
+    matterType: MatterType.Powder,
+    toolboxLabel: "Astro Water",
+    isSeed: true,
+    isCrystal: false
+  }),
+  reactions: [
+    {
+      inputA: "astroWaterCrystal",
+      inputB: "fire",
+      outputA: "astroWaterPowder",
+      outputB: "fire"
+    }
+  ]
+};
+
+// src/config/elementMain/catalogue.ts
+var ASTRO_ELEMENTS = [
+  astroCopperCrystal,
+  astroCopperPowder,
+  astroGoldCrystal,
+  astroGoldPowder,
+  astroGCalloyPowder,
+  astroSeed,
+  astroVoidSeed,
+  astroWaterCrystal,
+  astroWaterPowder
+];
+var ASTRO_ELEMENT_BY_KEY = Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
+  e.spec.key,
+  e.spec
+]));
+var ASTRO_REACTIONS = ASTRO_ELEMENTS.flatMap((c) => c.reactions);
+
+// src/config/elementShared/resolve.ts
+function resolveType(ids) {
+  for (const id of ids) {
+    const t = safe(() => sandkit.api.elements.getTypeFromId(id));
+    if (t != null) return t;
+  }
+  return 0;
+}
+var VANILLA_ALIASES = {
+  liquidGold: [
+    "liquidGold",
+    "liquidgold",
+    "LiquidGold",
+    "goldLiquid",
+    "liquid_gold"
+  ],
+  liquidCopper: [
+    "liquidCopper",
+    "liquidcopper",
+    "LiquidCopper",
+    "copperLiquid",
+    "liquid_copper"
+  ],
+  florinol: [
+    "florinol",
+    "Florinol",
+    "florin",
+    "Florin"
+  ],
+  voidPetal: [
+    "voidPetal",
+    "voidpetal",
+    "VoidPetal",
+    "void_petal",
+    "petalium"
+  ],
+  seedBase: [
+    "seed",
+    "Seed"
+  ],
+  fire: [
+    "fire",
+    "Fire"
+  ],
+  water: [
+    "water",
+    "Water"
+  ],
+  sand: [
+    "sand",
+    "Sand"
+  ],
+  empty: [
+    "empty",
+    "Empty",
+    "air",
+    "Air",
+    "void",
+    "Void",
+    "none",
+    "None"
+  ]
+};
+function resolveVanilla() {
+  return Object.fromEntries(Object.entries(VANILLA_ALIASES).map(([key, aliases]) => [
+    key,
+    resolveType(aliases)
+  ]));
+}
+function resolveAstro() {
+  return Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
+    e.spec.key,
+    resolveType([
+      e.spec.id
+    ])
+  ]));
+}
+var ElementType = {
+  ...resolveVanilla(),
+  ...resolveAstro()
+};
+
+// src/config/elementWorker/inCopper.ts
+var astroSeedInCopper = {
+  id: "astroSeed-in-copper",
+  seedType: ElementType.astroSeed,
+  liquidType: ElementType.liquidCopper,
+  crystalType: ElementType.astroCopperCrystal,
+  tickSpeed: 50,
+  ageField: ASTRO_FIELD.AGE,
+  growAge: () => 40,
+  moves: [
+    Move.up(0),
+    Move.side(25),
+    Move.down(35)
+  ],
+  grow: [
+    Grow.ageOnSurround(20, 4),
+    Grow.instantChance(0),
+    Grow.ageOnFloor(60),
+    Grow.ageOnWall(70),
+    Grow.ageOnCrystal(100)
+  ],
+  crystallization: [
+    Crystallization.cross(2)
+  ]
+};
+
+// src/config/elementWorker/keys.ts
+var structureTypes = null;
+function structureTypeSet() {
+  if (structureTypes !== null) return structureTypes;
+  structureTypes = /* @__PURE__ */ new Set();
+  try {
+    const getDef = sandkit.api.elements.getDefinitionByType;
+    if (getDef) {
+      for (const t of Object.values(ElementType)) {
+        if (t == null || t === 0) continue;
+        const def = getDef.call(sandkit.api.elements, t);
+        if (def && def.matterType === MatterType.Static) structureTypes.add(t);
+      }
+    }
+  } catch {
+  }
+  return structureTypes;
+}
+function typesOf(keys) {
+  const out = [];
+  for (const k of keys) {
+    if (k === "empty") continue;
+    if (k === "structure") {
+      for (const t of structureTypeSet()) out.push(t);
+    } else {
+      out.push(ElementType[k]);
+    }
+  }
+  return out;
+}
+function channelMatch(keys) {
+  return {
+    matchTypes: typesOf(keys),
+    matchEmpty: keys.includes("empty") || void 0
+  };
+}
+
+// src/config/elementWorker/inGold.ts
 var MASK_VERT = [
   [
     0,
@@ -1660,1148 +2140,363 @@ var MASK_FULL = [
     1
   ]
 ];
-var InGoldProfileList = [
-  // ==========================
-  // ASTRO SEED
-  {
-    id: "astroSeed-in-gold",
-    seedKey: "astroSeed",
-    liquidKey: "liquidGold",
-    crystalKey: "astroGoldCrystal",
-    growAge: 150,
-    moves: [
-      {
-        kind: "side",
-        chance: 15
-      },
-      {
-        kind: "down",
-        chance: 20
-      },
-      {
-        kind: "channel",
-        chance: 90,
-        matchKeys: [
-          "water"
-        ],
-        weight: -1,
-        mask: MASK_FULL
-      }
-    ],
-    grow: [
-      {
-        kind: "ageOnSurround",
-        rate: 100,
-        minCount: 4
-      }
-    ],
-    crystallization: [
-      {
-        kind: "disk",
-        radius: 1
-      }
-    ]
-  },
-  // ==========================
-  // ASTRO GOLD POWDER
-  {
-    id: "astroGold-in-liquid-gold",
-    seedKey: "astroGoldPowder",
-    liquidKey: "liquidGold",
-    crystalKey: "astroGoldCrystal",
-    growAge: 10,
-    // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
-    // memDecay integrates it into a real fading velocity; memBounce
-    // reflects it off walls/floor so landing seeds rebound upward.
-    memField: ASTRO_FIELD.VX,
-    memDecay: 0.1,
-    memBounce: true,
-    moves: [
-      // Jitter — uniform random draw over the 8 neighbours.
-      // { kind: "trailEat", chance: 1, replaceKey: "sand" },
-      // Jitter — uniform random draw over the 8 neighbours.
-      {
-        kind: "random",
-        chance: 80,
-        mask: MASK_SIDE
-      },
-      {
-        kind: "random",
-        chance: 80,
-        mask: MASK_VERT
-      },
-      // Gravity — liquid gold below pulls the seed down.
-      /*
-                          {
-                              kind: "channel",
-                              chance: 1,
-                              matchKeys: ["liquidGold"],
-                              weight: .1,
-                              mask: MASK_GRAVITY,
-      
-                          },
-                          */
-      {
-        kind: "channel",
-        matchKeys: [
-          "empty",
-          "structure"
-        ],
-        chance: 100,
-        weight: -15,
-        mask: MASK_PLUS
-      },
-      // Dispersed — own kind beside it pushes back (orthogonal only,
-      // so diagonal neighbours stay free to settle).
-      {
-        kind: "channel",
-        chance: 90,
-        matchKeys: [
-          "water"
-        ],
-        weight: -1,
-        mask: MASK_FULL
-      },
-      {
-        kind: "channel",
-        chance: 80,
-        matchKeys: [
-          "astroGoldPowder"
-        ],
-        weight: -1,
-        mask: MASK_ALL
-      },
-      {
-        kind: "channel",
-        chance: 50,
-        matchKeys: [
-          "astroGoldPowder"
-        ],
-        weight: 0.4,
-        mask: MASK_OUT
-      },
-      {
-        kind: "channel",
-        chance: 50,
-        matchKeys: [
-          "astroCopperPowder"
-        ],
-        weight: -15,
-        mask: MASK_FULL
-      },
-      // Cluster — any nearby copper powder pulls this gold in.
-      // { kind: "channel", chance: 20, matchKeys: ["astroCopperPowder"], weight: -2 },
-      // Flow memory — align with the movement vector neighbours
-      // stored last tick (flocking; keeps drifting seeds coherent).
-      // { kind: "memory", chance: 100, weight: .1 },
-      // Inertia — own last-tick flow vector drives a matching vote
-      // gradient (straight-line persistence on top of flocking).
-      {
-        kind: "inertia",
-        chance: 1,
-        weight: 0.1,
-        mode: "full"
-      }
-    ],
-    grow: [],
-    crystallization: []
-  },
-  // ==========================
-  // ASTRO COPPER POWDER
-  {
-    id: "astroCopper-in-liquid-gold",
-    seedKey: "astroCopperPowder",
-    liquidKey: "liquidGold",
-    // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
-    // memDecay integrates it into a real fading velocity; memBounce
-    // reflects it off walls/floor so landing seeds rebound upward.
-    memField: ASTRO_FIELD.VX,
-    memDecay: 0.9,
-    memBounce: true,
-    moves: [
-      // Jitter — uniform random draw over the 8 neighbours.
-      {
-        kind: "random",
-        chance: 80
-      },
-      // Gravity — liquid gold below pulls the seed down.
-      {
-        kind: "channel",
-        chance: 1,
-        matchKeys: [
-          "liquidGold"
-        ],
-        weight: -0.1,
-        mask: MASK_GRAVITY
-      },
-      {
-        kind: "channel",
-        chance: 90,
-        matchKeys: [
-          "water"
-        ],
-        weight: -1,
-        mask: MASK_FULL
-      },
-      {
-        kind: "channel",
-        matchKeys: [
-          "empty",
-          "structure"
-        ],
-        chance: 100,
-        weight: -10,
-        mask: MASK_PLUS
-      },
-      // Lattice — own kind repels orthogonally but attracts
-      // diagonally, so copper settles into diagonal chains instead
-      // of stacking into a solid blob.
-      {
-        kind: "channel",
-        chance: 90,
-        matchKeys: [
-          "astroCopperPowder"
-        ],
-        weight: -2,
-        mask: MASK_CROSS
-      },
-      {
-        kind: "channel",
-        chance: 90,
-        matchKeys: [
-          "astroCopperPowder"
-        ],
-        weight: 2,
-        mask: MASK_PLUS
-      },
-      {
-        kind: "channel",
-        chance: 90,
-        matchKeys: [
-          "astroGoldPowder"
-        ],
-        weight: 2
-      },
-      {
-        kind: "channel",
-        chance: 90,
-        matchKeys: [
-          "astroGCalloyPowder"
-        ],
-        weight: -1
-      },
-      {
-        kind: "memory",
-        chance: 20,
-        weight: 0.5,
-        mask: MASK_FULL
-      },
-      {
-        kind: "inertia",
-        chance: 20,
-        weight: 0.5,
-        mode: "full"
-      }
-    ],
-    growAge: 3,
-    grow: [
-      {
-        kind: "ageOnSurround",
-        minCount: 4,
-        rate: 2,
-        typeId: "astroGoldPowder"
-      },
-      {
-        kind: "eat",
-        chance: 1,
-        matchKeys: [
-          "astroGoldPowder"
-        ],
-        replaceKey: "empty"
-      }
-    ],
-    crystalKey: "astroGCalloyPowder",
-    crystallization: [
-      {
-        kind: "disk",
-        radius: 1
-      }
-    ]
-  }
+var astroSeedInGold = {
+  id: "astroSeed-in-gold",
+  seedType: ElementType.astroSeed,
+  liquidType: ElementType.liquidGold,
+  crystalType: ElementType.astroGoldCrystal,
+  tickSpeed: 50,
+  ageField: ASTRO_FIELD.AGE,
+  growAge: () => 150,
+  moves: [
+    Move.side(15),
+    Move.down(20),
+    Move.channel({
+      chance: 90,
+      matchTypes: [
+        ElementType.water
+      ],
+      weight: -1,
+      mask: MASK_FULL
+    })
+  ],
+  grow: [
+    Grow.ageOnSurround(100, 4)
+  ],
+  crystallization: [
+    Crystallization.disk(1)
+  ]
+};
+var astroGoldInLiquidGold = {
+  id: "astroGold-in-liquid-gold",
+  seedType: ElementType.astroGoldPowder,
+  liquidType: ElementType.liquidGold,
+  crystalType: ElementType.astroGoldCrystal,
+  tickSpeed: 50,
+  ageField: ASTRO_FIELD.AGE,
+  // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+  // memDecay integrates it into a real fading velocity; memBounce
+  // reflects it off walls/floor so landing seeds rebound upward.
+  memField: ASTRO_FIELD.VX,
+  memDecay: 0.1,
+  memBounce: true,
+  growAge: () => 10,
+  moves: [
+    // Jitter — uniform random draw over the allowed offsets.
+    Move.random(80, MASK_SIDE),
+    Move.random(80, MASK_VERT),
+    // Walls / structure / empty push the seed back in.
+    Move.channel({
+      ...channelMatch([
+        "empty",
+        "structure"
+      ]),
+      chance: 100,
+      weight: -15,
+      mask: MASK_PLUS
+    }),
+    // Water is a hard push away.
+    Move.channel({
+      chance: 90,
+      matchTypes: [
+        ElementType.water
+      ],
+      weight: -1,
+      mask: MASK_FULL
+    }),
+    // Own kind spreads (diagonal neighbours stay free to settle).
+    Move.channel({
+      chance: 80,
+      matchTypes: [
+        ElementType.astroGoldPowder
+      ],
+      weight: -1,
+      mask: MASK_ALL
+    }),
+    Move.channel({
+      chance: 50,
+      matchTypes: [
+        ElementType.astroGoldPowder
+      ],
+      weight: 0.4,
+      mask: MASK_OUT
+    }),
+    Move.channel({
+      chance: 50,
+      matchTypes: [
+        ElementType.astroCopperPowder
+      ],
+      weight: -15,
+      mask: MASK_FULL
+    }),
+    // Inertia — own last-tick flow vector drives a matching vote gradient
+    // (straight-line persistence on top of the jitter).
+    Move.inertia({
+      chance: 1,
+      weight: 0.1,
+      mode: "full"
+    })
+  ],
+  grow: [],
+  crystallization: []
+};
+var astroCopperInLiquidGold = {
+  id: "astroCopper-in-liquid-gold",
+  seedType: ElementType.astroCopperPowder,
+  liquidType: ElementType.liquidGold,
+  crystalType: ElementType.astroGCalloyPowder,
+  tickSpeed: 50,
+  ageField: ASTRO_FIELD.AGE,
+  // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
+  memField: ASTRO_FIELD.VX,
+  memDecay: 0.9,
+  memBounce: true,
+  growAge: () => 3,
+  moves: [
+    // Jitter — uniform random draw over the 8 neighbours.
+    Move.random(80),
+    // Gravity — liquid gold below pulls the seed down.
+    Move.channel({
+      chance: 1,
+      matchTypes: [
+        ElementType.liquidGold
+      ],
+      weight: -0.1,
+      mask: MASK_GRAVITY
+    }),
+    Move.channel({
+      chance: 90,
+      matchTypes: [
+        ElementType.water
+      ],
+      weight: -1,
+      mask: MASK_FULL
+    }),
+    Move.channel({
+      ...channelMatch([
+        "empty",
+        "structure"
+      ]),
+      chance: 100,
+      weight: -10,
+      mask: MASK_PLUS
+    }),
+    // Lattice — own kind repels orthogonally but attracts diagonally, so
+    // copper settles into diagonal chains instead of a solid blob.
+    Move.channel({
+      chance: 90,
+      matchTypes: [
+        ElementType.astroCopperPowder
+      ],
+      weight: -2,
+      mask: MASK_CROSS
+    }),
+    Move.channel({
+      chance: 90,
+      matchTypes: [
+        ElementType.astroCopperPowder
+      ],
+      weight: 2,
+      mask: MASK_PLUS
+    }),
+    Move.channel({
+      chance: 90,
+      matchTypes: [
+        ElementType.astroGoldPowder
+      ],
+      weight: 2
+    }),
+    Move.channel({
+      chance: 90,
+      matchTypes: [
+        ElementType.astroGCalloyPowder
+      ],
+      weight: -1
+    }),
+    Move.memory({
+      chance: 20,
+      weight: 0.5,
+      mask: MASK_FULL
+    }),
+    Move.inertia({
+      chance: 20,
+      weight: 0.5,
+      mode: "full"
+    })
+  ],
+  grow: [
+    Grow.ageOnSurround(2, 4, ElementType.astroGoldPowder),
+    Grow.eat({
+      chance: 1,
+      matchTypes: [
+        ElementType.astroGoldPowder
+      ],
+      replaceType: null
+    })
+  ],
+  crystallization: [
+    Crystallization.disk(1)
+  ]
+};
+
+// src/config/elementWorker/inWater.ts
+var astroSeedInWater = {
+  id: "astroSeed-in-water",
+  seedType: ElementType.astroSeed,
+  liquidType: ElementType.water,
+  crystalType: ElementType.astroGoldCrystal,
+  tickSpeed: 50,
+  ageField: ASTRO_FIELD.AGE,
+  growAge: () => 150,
+  moves: [
+    Move.side(15),
+    Move.down(20)
+  ],
+  grow: [
+    Grow.ageOnSurround(100, 4)
+  ],
+  crystallization: [
+    Crystallization.disk(1)
+  ]
+};
+var astroGoldInWater = {
+  id: "astroGold-in-water",
+  seedType: ElementType.astroGoldPowder,
+  liquidType: ElementType.water,
+  crystalType: ElementType.astroGoldCrystal,
+  tickSpeed: 50,
+  ageField: ASTRO_FIELD.AGE,
+  growAge: () => 10,
+  moves: [
+    Move.up(8),
+    Move.side(8),
+    Move.down(8),
+    // Broad repulsion from any ray hit.
+    Move.columnForce({
+      rateFn: -30,
+      rangeNFn: 4,
+      maxKFn: 1,
+      directions: [
+        "top",
+        "bottom",
+        "sides"
+      ]
+    }),
+    // Own kind pushes back.
+    Move.columnForce({
+      rateFn: -20,
+      rangeNFn: 2,
+      maxKFn: 1,
+      directions: [
+        "top",
+        "bottom",
+        "sides"
+      ],
+      matchTypes: [
+        ElementType.astroGoldPowder
+      ]
+    }),
+    // Copper pulls gold in.
+    Move.columnForce({
+      rateFn: 80,
+      rangeNFn: 5,
+      maxKFn: 1,
+      directions: [
+        "top",
+        "bottom",
+        "sides"
+      ],
+      matchTypes: [
+        ElementType.astroCopperPowder
+      ]
+    })
+  ],
+  grow: [],
+  crystallization: []
+};
+var astroCopperInWater = {
+  id: "astroCopper-in-water",
+  seedType: ElementType.astroCopperPowder,
+  liquidType: ElementType.water,
+  crystalType: ElementType.astroCopperCrystal,
+  tickSpeed: 50,
+  ageField: ASTRO_FIELD.AGE,
+  growAge: () => 10,
+  moves: [
+    Move.up(5),
+    Move.side(10),
+    Move.down(5),
+    Move.columnForce({
+      rateFn: -30,
+      rangeNFn: 4,
+      maxKFn: 1,
+      directions: [
+        "top",
+        "bottom",
+        "sides"
+      ]
+    }),
+    Move.columnForce({
+      rateFn: 20,
+      rangeNFn: 2,
+      maxKFn: 1,
+      directions: [
+        "top",
+        "bottom",
+        "sides",
+        "cross"
+      ],
+      matchTypes: [
+        ElementType.astroGoldPowder
+      ]
+    }),
+    Move.columnForce({
+      rateFn: -40,
+      rangeNFn: 4,
+      maxKFn: 1,
+      directions: [
+        "top",
+        "bottom",
+        "sides"
+      ],
+      matchTypes: [
+        ElementType.astroCopperPowder
+      ]
+    }),
+    Move.columnForce({
+      rateFn: 40,
+      rangeNFn: 4,
+      maxKFn: 1,
+      directions: [
+        "cross"
+      ],
+      matchTypes: [
+        ElementType.astroCopperPowder
+      ]
+    })
+  ],
+  grow: [],
+  crystallization: []
+};
+
+// src/config/elementWorker/catalogue.ts
+var ASTRO_PROFILES = [
+  // water
+  astroSeedInWater,
+  // liquid gold
+  astroSeedInGold,
+  astroGoldInLiquidGold,
+  astroCopperInLiquidGold,
+  // liquid copper
+  astroSeedInCopper
 ];
-function indexByType(list) {
-  return Object.fromEntries(list.map((x) => [
-    x.seedKey,
-    x
-  ]));
-}
-var InGoldProfile = indexByType(InGoldProfileList);
-
-// src/config/elementConf/astroCopperPowder.ts
-var LIQUID_COPPER_DENSITY = 150;
-var SEED_DENSITY = Math.max(1, LIQUID_COPPER_DENSITY - 5);
-var astroCopperPowder = {
-  spec: spec({
-    key: "astroCopperPowder",
-    slug: "astro-copper",
-    name: "Astro Copper",
-    description: "Powder from copper crystal + Fire.",
-    colors: [
-      [
-        240,
-        80,
-        40
-      ],
-      [
-        180,
-        60,
-        20
-      ]
-    ],
-    density: SEED_DENSITY,
-    metaColor: 11822120,
-    matterType: MatterType.Powder,
-    toolboxLabel: "Astro Copper",
-    isSeed: true,
-    isCrystal: false
-  }),
-  reactions: [
-    {
-      inputA: "astroCopperCrystal",
-      inputB: "water",
-      outputA: "astroCopperPowder",
-      outputB: "water"
-    }
-  ],
-  profiles: [
-    // InWaterProfile.astroCopperPowder,
-    InGoldProfile.astroCopperPowder
-  ]
-};
-
-// src/config/elementConf/astroGoldCrystal.ts
-var astroGoldCrystal = {
-  spec: spec({
-    key: "astroGoldCrystal",
-    slug: "astro-gold-crystal",
-    name: "Astro Gold Crystal",
-    description: "From Liquid Gold. Burn \u2192 Astro Gold.",
-    colors: [
-      [
-        210,
-        160,
-        255
-      ],
-      [
-        180,
-        120,
-        240
-      ],
-      [
-        230,
-        190,
-        255
-      ],
-      [
-        160,
-        90,
-        220
-      ]
-    ],
-    density: 200,
-    metaColor: 11827440,
-    matterType: MatterType.Static,
-    toolboxLabel: "Cry. Gold",
-    isSeed: false,
-    isCrystal: true
-  }),
-  reactions: []
-};
-
-// src/config/elementConf/astroGCalloyPowder.ts
-var LIQUID_COPPER_DENSITY2 = 150;
-var SEED_DENSITY2 = Math.max(1, LIQUID_COPPER_DENSITY2 - 5);
-var astroGCalloyPowder = {
-  spec: spec({
-    key: "astroGCalloyPowder",
-    slug: "astro-gc-alloy",
-    name: "Astro GC Alloy Powder",
-    description: "Powder from ...",
-    colors: [
-      [
-        100,
-        155,
-        10
-      ],
-      [
-        60,
-        130,
-        0
-      ]
-    ],
-    density: SEED_DENSITY2,
-    metaColor: 9714336,
-    matterType: MatterType.Powder,
-    toolboxLabel: "Astro GC Alloy",
-    isSeed: true,
-    isCrystal: false
-  }),
-  reactions: [],
-  profiles: []
-};
-
-// src/config/elementProfile/inWater.ts
-var InWaterProfileList = [
-  // ==========================
-  // ASTRO SEED
-  {
-    id: "astroSeed-in-sand",
-    seedKey: "astroSeed",
-    liquidKey: "water",
-    crystalKey: "astroGoldCrystal",
-    growAge: 150,
-    moves: [
-      {
-        kind: "side",
-        chance: 15
-      },
-      {
-        kind: "down",
-        chance: 20
-      }
-    ],
-    grow: [
-      {
-        kind: "ageOnSurround",
-        rate: 100,
-        minCount: 4
-      }
-    ],
-    crystallization: [
-      {
-        kind: "disk",
-        radius: 1
-      }
-    ]
-  },
-  // ==========================
-  // ASTRO GOLD POWDER
-  {
-    id: "astroGold-in-water",
-    seedKey: "astroGoldPowder",
-    liquidKey: "water",
-    crystalKey: "astroGoldCrystal",
-    growAge: 10,
-    moves: [
-      {
-        kind: "up",
-        chance: 8
-      },
-      {
-        kind: "side",
-        chance: 8
-      },
-      {
-        kind: "down",
-        chance: 8
-      },
-      {
-        kind: "columnForce",
-        rate: -30,
-        rangeN: 4,
-        maxK: 1,
-        directions: [
-          "top",
-          "bottom",
-          "sides"
-        ]
-      },
-      {
-        kind: "columnForce",
-        rate: -20,
-        rangeN: 2,
-        maxK: 1,
-        directions: [
-          "top",
-          "bottom",
-          "sides"
-        ],
-        matchKeys: [
-          "astroGoldPowder"
-        ]
-      },
-      {
-        kind: "columnForce",
-        rate: 80,
-        rangeN: 5,
-        maxK: 1,
-        directions: [
-          "top",
-          "bottom",
-          "sides"
-        ],
-        matchKeys: [
-          "astroCopperPowder"
-        ]
-      }
-    ],
-    grow: [],
-    crystallization: []
-  },
-  // ==========================
-  // ASTRO COPPER POWDER
-  {
-    id: "astroCopper-in-water",
-    seedKey: "astroCopperPowder",
-    liquidKey: "water",
-    crystalKey: "astroCopperCrystal",
-    growAge: 10,
-    moves: [
-      {
-        kind: "up",
-        chance: 5
-      },
-      {
-        kind: "side",
-        chance: 10
-      },
-      {
-        kind: "down",
-        chance: 5
-      },
-      {
-        kind: "columnForce",
-        rate: -30,
-        rangeN: 4,
-        maxK: 1,
-        directions: [
-          "top",
-          "bottom",
-          "sides"
-        ]
-      },
-      {
-        kind: "columnForce",
-        rate: 20,
-        rangeN: 2,
-        maxK: 1,
-        directions: [
-          "top",
-          "bottom",
-          "sides",
-          "cross"
-        ],
-        matchKeys: [
-          "astroGoldPowder"
-        ]
-      },
-      {
-        kind: "columnForce",
-        rate: -40,
-        rangeN: 4,
-        maxK: 1,
-        directions: [
-          "top",
-          "bottom",
-          "sides"
-        ],
-        matchKeys: [
-          "astroCopperPowder"
-        ]
-      },
-      {
-        kind: "columnForce",
-        rate: 40,
-        rangeN: 4,
-        maxK: 1,
-        directions: [
-          "cross"
-        ],
-        matchKeys: [
-          "astroCopperPowder"
-        ]
-      }
-    ],
-    grow: [],
-    crystallization: []
-  }
-];
-function indexByType2(list) {
-  return Object.fromEntries(list.map((x) => [
-    x.seedKey,
-    x
-  ]));
-}
-var InWaterProfile = indexByType2(InWaterProfileList);
-
-// src/config/elementProfile/inCopper.ts
-var InCopperProfileList = [
-  {
-    id: "astroSeed-in-copper",
-    seedKey: "astroSeed",
-    liquidKey: "liquidCopper",
-    crystalKey: "astroCopperCrystal",
-    growAge: 40,
-    moves: [
-      {
-        kind: "up",
-        chance: 0
-      },
-      {
-        kind: "side",
-        chance: 25
-      },
-      {
-        kind: "down",
-        chance: 35
-      }
-    ],
-    grow: [
-      // { kind: "blockOn", blockKey: "water" },
-      {
-        kind: "ageOnSurround",
-        rate: 20,
-        minCount: 4
-      },
-      {
-        kind: "instantChance",
-        rate: 0
-      },
-      {
-        kind: "ageOnFloor",
-        rate: 60
-      },
-      {
-        kind: "ageOnWall",
-        rate: 70
-      },
-      // { kind: "ageOnAir", rate: 30 },
-      {
-        kind: "ageOnCrystal",
-        rate: 100
-      }
-    ],
-    crystallization: [
-      {
-        kind: "cross",
-        radius: 2
-      }
-    ]
-  }
-];
-function indexByType3(list) {
-  return Object.fromEntries(list.map((x) => [
-    x.seedKey,
-    x
-  ]));
-}
-var InCopperProfile = indexByType3(InCopperProfileList);
-
-// src/config/elementConf/astroSeed.ts
-var LIQUID_COPPER_DENSITY3 = 150;
-var SEED_DENSITY3 = Math.max(1, LIQUID_COPPER_DENSITY3 - 5);
-var astroSeed = {
-  spec: spec({
-    key: "astroSeed",
-    slug: "astro-seed",
-    name: "Astro Seed",
-    description: "Liquid Gold / Copper / Water \u2192 crystals.",
-    colors: [
-      [
-        180,
-        220,
-        255
-      ],
-      [
-        140,
-        190,
-        255
-      ],
-      [
-        100,
-        160,
-        240
-      ],
-      [
-        220,
-        240,
-        255
-      ]
-    ],
-    density: SEED_DENSITY3,
-    metaColor: 9357567,
-    matterType: MatterType.Powder,
-    toolboxLabel: "Seed",
-    isSeed: true,
-    isCrystal: false
-  }),
-  reactions: [
-    {
-      inputA: "astroVoidSeed",
-      inputB: "florinol",
-      outputA: "astroSeed",
-      outputB: null
-    }
-  ],
-  profiles: [
-    InWaterProfile.astroSeed,
-    InGoldProfile.astroSeed,
-    InCopperProfile.astroSeed
-  ]
-};
-
-// src/config/elementConf/astroVoidSeed.ts
-var astroVoidSeed = {
-  spec: spec({
-    key: "astroVoidSeed",
-    slug: "astro-void-seed",
-    name: "Astro Void Seed",
-    description: "Mix with Florinol \u2192 Astro Seed.",
-    colors: [
-      [
-        80,
-        40,
-        140
-      ],
-      [
-        60,
-        20,
-        110
-      ],
-      [
-        100,
-        50,
-        160
-      ]
-    ],
-    density: 90,
-    metaColor: 5253260,
-    matterType: MatterType.Powder,
-    toolboxLabel: "Void Seed",
-    isSeed: false,
-    isCrystal: false
-  }),
-  reactions: [
-    {
-      inputA: "seedBase",
-      inputB: "voidPetal",
-      outputA: "astroVoidSeed",
-      outputB: null
-    }
-  ]
-};
-
-// src/config/elementConf/astroWaterCrystal.ts
-var astroWaterCrystal = {
-  spec: spec({
-    key: "astroWaterCrystal",
-    slug: "astro-water-crystal",
-    name: "Astro Water Crystal",
-    description: "From Water (panel). Burn \u2192 Astro Water.",
-    colors: [
-      [
-        60,
-        100,
-        155
-      ],
-      [
-        40,
-        90,
-        155
-      ],
-      [
-        0,
-        60,
-        155
-      ]
-    ],
-    density: 0,
-    metaColor: 9357567,
-    matterType: MatterType.Static,
-    toolboxLabel: "Cry. Water",
-    isSeed: false,
-    isCrystal: true
-  }),
-  reactions: []
-};
-
-// src/config/elementConf/astroWaterPowder.ts
-var astroWaterPowder = {
-  spec: spec({
-    key: "astroWaterPowder",
-    slug: "astro-water",
-    name: "Astro Water",
-    description: "Powder from water crystal + Fire.",
-    colors: [
-      [
-        180,
-        120,
-        155
-      ],
-      [
-        180,
-        90,
-        155
-      ],
-      [
-        220,
-        140,
-        155
-      ]
-    ],
-    density: 280,
-    metaColor: 9357567,
-    matterType: MatterType.Powder,
-    toolboxLabel: "Astro Water",
-    isSeed: true,
-    isCrystal: false
-  }),
-  reactions: [
-    {
-      inputA: "astroWaterCrystal",
-      inputB: "fire",
-      outputA: "astroWaterPowder",
-      outputB: "fire"
-    }
-  ]
-};
-
-// src/config/elementConf/astroGoldPowder.ts
-var LIQUID_COPPER_DENSITY4 = 150;
-var SEED_DENSITY4 = Math.max(1, LIQUID_COPPER_DENSITY4 - 5);
-var astroGoldPowder = {
-  spec: spec({
-    key: "astroGoldPowder",
-    slug: "astro-gold",
-    name: "Astro Gold Powder",
-    description: "Powder from gold crystal + Fire.",
-    colors: [
-      [
-        180,
-        255,
-        90
-      ],
-      [
-        150,
-        230,
-        60
-      ]
-    ],
-    density: SEED_DENSITY4,
-    metaColor: 11819760,
-    matterType: MatterType.Powder,
-    toolboxLabel: "Astro Gold",
-    isSeed: true,
-    isCrystal: false
-  }),
-  reactions: [
-    {
-      inputA: "astroGoldCrystal",
-      inputB: "fire",
-      outputA: "astroGoldPowder",
-      outputB: "fire"
-    }
-  ],
-  profiles: [
-    // InWaterProfile.astroGoldPowder,
-    InGoldProfile.astroGoldPowder
-  ]
-};
-
-// src/config/catalogue.ts
-var ASTRO_ELEMENTS = [
-  astroCopperCrystal,
-  astroCopperPowder,
-  astroGoldCrystal,
-  astroGoldPowder,
-  astroGCalloyPowder,
-  astroSeed,
-  astroVoidSeed,
-  astroWaterCrystal,
-  astroWaterPowder
-];
-var ASTRO_ELEMENT_BY_KEY = Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
-  e.spec.key,
-  e.spec
-]));
-var ASTRO_REACTIONS = ASTRO_ELEMENTS.flatMap((c) => c.reactions);
-
-// src/shared/utils.ts
-function safe(fn, fallback = null) {
-  try {
-    return fn();
-  } catch {
-    return fallback;
-  }
-}
-
-// src/shared/resolve.ts
-function resolveType(ids) {
-  for (const id of ids) {
-    const t = safe(() => sandkit.api.elements.getTypeFromId(id));
-    if (t != null) return t;
-  }
-  return 0;
-}
-var VANILLA_ALIASES = {
-  liquidGold: [
-    "liquidGold",
-    "liquidgold",
-    "LiquidGold",
-    "goldLiquid",
-    "liquid_gold"
-  ],
-  liquidCopper: [
-    "liquidCopper",
-    "liquidcopper",
-    "LiquidCopper",
-    "copperLiquid",
-    "liquid_copper"
-  ],
-  florinol: [
-    "florinol",
-    "Florinol",
-    "florin",
-    "Florin"
-  ],
-  voidPetal: [
-    "voidPetal",
-    "voidpetal",
-    "VoidPetal",
-    "void_petal",
-    "petalium"
-  ],
-  seedBase: [
-    "seed",
-    "Seed"
-  ],
-  fire: [
-    "fire",
-    "Fire"
-  ],
-  water: [
-    "water",
-    "Water"
-  ],
-  sand: [
-    "sand",
-    "Sand"
-  ],
-  empty: [
-    "empty",
-    "Empty",
-    "air",
-    "Air",
-    "void",
-    "Void",
-    "none",
-    "None"
-  ]
-};
-function resolveVanilla() {
-  return Object.fromEntries(Object.entries(VANILLA_ALIASES).map(([key, aliases]) => [
-    key,
-    resolveType(aliases)
-  ]));
-}
-function resolveAstro() {
-  return Object.fromEntries(ASTRO_ELEMENTS.map((e) => [
-    e.spec.key,
-    resolveType([
-      e.spec.id
-    ])
-  ]));
-}
-var ElementType = {
-  ...resolveVanilla(),
-  ...resolveAstro()
-};
-
-// src/worker/elementProfileFactory.ts
-var structureTypes = null;
-function structureTypeSet() {
-  if (structureTypes !== null) return structureTypes;
-  structureTypes = /* @__PURE__ */ new Set();
-  try {
-    const getDef = sandkit.api.elements.getDefinitionByType;
-    if (getDef) {
-      for (const t of Object.values(ElementType)) {
-        if (t == null || t === 0) continue;
-        const def = getDef.call(sandkit.api.elements, t);
-        if (def && def.matterType === MatterType.Static) structureTypes.add(t);
-      }
-    }
-  } catch {
-  }
-  return structureTypes;
-}
-function keysOf(keys) {
-  if (keys == null) return void 0;
-  const out = [];
-  for (const k of keys) {
-    if (k === "empty") continue;
-    if (k === "structure") {
-      for (const t of structureTypeSet()) out.push(t);
-    } else {
-      out.push(ElementType[k]);
-    }
-  }
-  return out;
-}
-function keyOf(key) {
-  return key == null || key === "empty" ? null : ElementType[key] ?? null;
-}
-function keysChannel(keys) {
-  return {
-    matchTypes: keysOf(keys),
-    matchEmpty: keys?.includes("empty") ?? void 0
-  };
-}
-function buildMoves(specs) {
-  const out = [];
-  for (const spec2 of specs) {
-    if (spec2.kind === "gated") {
-      if (!spec2.when()) continue;
-      out.push(...buildMoves(spec2.moves));
-      continue;
-    }
-    if (spec2.when && !spec2.when()) continue;
-    if (spec2.kind === "up") out.push(Move.up(spec2.chance));
-    else if (spec2.kind === "side") out.push(Move.side(spec2.chance));
-    else if (spec2.kind === "down") out.push(Move.down(spec2.chance));
-    else if (spec2.kind === "random") out.push(Move.random(spec2.chance, spec2.mask));
-    else if (spec2.kind === "channel") {
-      out.push(Move.channel({
-        ...keysChannel(spec2.matchKeys),
-        weight: spec2.weight,
-        rate: spec2.rate,
-        chance: spec2.chance,
-        excludeTypes: keysOf(spec2.excludeKeys),
-        mask: spec2.mask
-      }));
-    } else if (spec2.kind === "memory") {
-      out.push(Move.memory({
-        chance: spec2.chance,
-        weight: spec2.weight,
-        rate: spec2.rate,
-        mask: spec2.mask
-      }));
-    } else if (spec2.kind === "inertia") {
-      out.push(Move.inertia({
-        chance: spec2.chance,
-        weight: spec2.weight,
-        rate: spec2.rate,
-        mask: spec2.mask,
-        mode: spec2.mode
-      }));
-    } else if (spec2.kind === "trailEat") {
-      out.push(Move.trailEat({
-        chance: spec2.chance,
-        replaceType: keyOf(spec2.replaceKey)
-      }));
-    } else if (spec2.kind === "columnForce") {
-      out.push(Move.columnForce({
-        rateFn: spec2.rate,
-        matchTypes: keysOf(spec2.matchKeys) ?? [],
-        directions: spec2.directions,
-        rangeNFn: spec2.rangeN,
-        maxKFn: spec2.maxK,
-        freeTypes: keysOf(spec2.freeKeys) ?? [],
-        excludeTypes: keysOf(spec2.excludeKeys) ?? []
-      }));
-    } else {
-      for (const e of spec2.entries()) {
-        out.push(Move.columnForce({
-          rateFn: e.rateFn,
-          matchTypes: [
-            ...e.matchTypes
-          ],
-          directions: [
-            ...e.directions
-          ],
-          rangeNFn: e.rangeNFn,
-          maxKFn: e.maxKFn,
-          freeTypes: [
-            ...e.freeTypes
-          ],
-          excludeTypes: [
-            ...e.excludeTypes
-          ]
-        }));
-      }
-    }
-  }
-  return out;
-}
-function buildGrow(spec2) {
-  if (spec2.kind === "ageAlways") return Grow.ageAlways();
-  if (spec2.kind === "instantChance") return Grow.instantChance(spec2.rate);
-  if (spec2.kind === "ageOnFloor") return Grow.ageOnFloor(spec2.rate);
-  if (spec2.kind === "ageOnWall") return Grow.ageOnWall(spec2.rate);
-  if (spec2.kind === "ageOnAir") return Grow.ageOnAir(spec2.rate);
-  if (spec2.kind === "ageOnCrystal") return Grow.ageOnCrystal(spec2.rate);
-  if (spec2.kind === "ageOnSurround") {
-    return Grow.ageOnSurround(spec2.rate, spec2.minCount, spec2.typeId ? ElementType[spec2.typeId] : void 0);
-  }
-  if (spec2.kind === "eat") {
-    return Grow.eat({
-      chance: spec2.chance,
-      replaceType: keyOf(spec2.replaceKey),
-      // Omit = profile's own liquid (Grow.eat resolves it per tick).
-      matchTypes: keysOf(spec2.matchKeys)
-    });
-  }
-  return Grow.blockOn(ElementType[spec2.blockKey]);
-}
-function buildCrystal(spec2) {
-  if (spec2.kind === "disk") return Crystallization.disk(spec2.radius);
-  if (spec2.kind === "cross") return Crystallization.cross(spec2.radius);
-  if (spec2.kind === "ring") return Crystallization.ring(spec2.radius);
-  if (spec2.kind === "column") return Crystallization.column(spec2.radius);
-  if (spec2.kind === "single") return Crystallization.single();
-  return Crystallization.fromShapeIndex(spec2.shape, spec2.radius);
-}
-function createElementProfileFactory(spec2) {
-  return () => ({
-    id: spec2.id,
-    seedType: ElementType[spec2.seedKey],
-    liquidType: ElementType[spec2.liquidKey],
-    crystalType: ElementType[spec2.crystalKey],
-    tickSpeed: 50,
-    ageField: ASTRO_FIELD.AGE,
-    // Vote-memory vector storage (vx @ VX, vy @ VX+1). Opt-in per profile
-    // so profiles without `Move.memory` never write fields. `memDecay`
-    // integrates it into a decaying velocity; `memBounce` reflects it
-    // off blocked moves (walls / floor).
-    memField: spec2.memField,
-    memDecay: typeof spec2.memDecay === "function" ? spec2.memDecay() : spec2.memDecay,
-    memBounce: spec2.memBounce,
-    // `keysOf` skips "empty" (match lists use matchEmpty instead) —
-    // for passability 0 must be an explicit member, so resolve here.
-    passableTypes: spec2.passableKeys?.map((k) => k === "empty" ? 0 : k === "structure" ? [
-      ...structureTypeSet()
-    ] : ElementType[k]).flat(),
-    growAge: () => typeof spec2.growAge === "function" ? spec2.growAge() : spec2.growAge,
-    moves: spec2.whenMove && !spec2.whenMove() ? [] : buildMoves(spec2.moves),
-    grow: spec2.whenGrow && !spec2.whenGrow() ? [] : spec2.grow.map(buildGrow),
-    crystallization: spec2.whenCrystal && !spec2.whenCrystal() ? [] : spec2.crystallization.map(buildCrystal)
-  });
-}
-function createProfileFactories(specs) {
-  return Object.fromEntries(specs.map((s) => [
-    s.id,
-    createElementProfileFactory(s)
-  ]));
-}
 
 // src/worker/build.ts
 var api = sandkit.api;
-var profileFactories = createProfileFactories(ASTRO_ELEMENTS.flatMap((el) => el.profiles ?? []));
 function dispatchSeed(x, y, elementType, cancel) {
-  for (const getProfile of Object.values(profileFactories)) {
-    const profile = getProfile();
-    if (profile.seedType == null || elementType !== profile.seedType) continue;
-    if (profile.liquidType == null || !GridNear.isNear(x, y, profile.liquidType)) continue;
+  for (const profile of ASTRO_PROFILES) {
+    if (!profile.seedType || elementType !== profile.seedType) continue;
+    if (!profile.liquidType || !GridNear.isNear(x, y, profile.liquidType)) continue;
     api.elements.setPhysicsAtCell(x, y, 1);
     cancel.cancel();
     runProfile(x, y, profile);
@@ -2814,7 +2509,7 @@ function dispatchSeed(x, y, elementType, cancel) {
 }
 function buildWorker() {
   const seedTypes = [
-    ...new Set(ASTRO_ELEMENTS.flatMap((el) => (el.profiles ?? []).map((p) => ElementType[p.seedKey])))
+    ...new Set(ASTRO_PROFILES.map((p) => p.seedType))
   ];
   for (const elementType of seedTypes) {
     if (!elementType) continue;

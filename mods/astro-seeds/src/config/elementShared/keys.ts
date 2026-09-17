@@ -3,8 +3,8 @@
  *
  * `TVanillaElementKey` are built-in engine ids this mod reacts to / reads.
  * `TAddedElementKey` are the astro family this mod registers itself.
- * Kept in their own file so the element catalogue never has to import from a
- * module that reads the catalogue (avoids an import-order dependency).
+ * Kept in their own file so the element catalogues never have to import from a
+ * module that reads them (avoids an import-order dependency).
  */
 export type TVanillaElementKey =
     | "liquidGold"

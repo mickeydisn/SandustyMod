@@ -2,13 +2,17 @@
  * Astro-seeds element ids — single resolved type map.
  *
  * Vanilla (built-in) ids resolve via alias lists; astro ids derive from the
- * grouped catalogue so registration and resolution never drift apart.
+ * main catalogue so registration and resolution never drift apart.
+ *
+ * Shared by both threads:
+ * - Main: astro entries are 0 until `registerElements()` fills them in.
+ * - Worker: astro entries resolve because main registered first.
  */
 import "@sandmd/sandkit";
-import { safe } from "./utils.ts";
+import { safe } from "./util.ts";
 import type { TElementType } from "@sandmd/shared";
-import { ASTRO_ELEMENTS } from "../config/catalogue.ts";
-import type { TVanillaElementKey } from "../config/keys.ts";
+import { ASTRO_ELEMENTS } from "../elementMain/catalogue.ts";
+import type { TVanillaElementKey } from "./keys.ts";
 
 function resolveType(ids: string[]): TElementType {
     for (const id of ids) {
@@ -43,11 +47,8 @@ function resolveAstro(): Record<string, TElementType> {
     );
 }
 
-/*
+/**
  * Resolved element-type numbers shared by main and worker.
- *
- * Main thread: astro entries are 0 until `registerElement()` fills them in.
- * Worker thread: astro entries resolve because main registered first.
  */
 export const ElementType: Record<string, TElementType> = {
     ...resolveVanilla(),

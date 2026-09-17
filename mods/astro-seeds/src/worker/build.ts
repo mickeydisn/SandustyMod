@@ -1,16 +1,14 @@
 /**
- * Worker-thread builder — derives every seed profile from the ASTRO_ELEMENTS
- * catalogue, then installs the `element:update` hooks that drive the seeds.
+ * Worker-thread builder — installs the `element:update` hooks that drive the
+ * seed profiles listed in `config/elementWorker`.
  *
- * No config buffer: the profile definitions are baked in from the catalogue and
- * the lazy factories only read resolved type ids at `getProfile()` time.
+ * No config buffer and no spec→Profile factory: the profiles are plain
+ * `Profile` objects built with the real `Move`/`Grow`/`Crystallization`
+ * actions, and this file only wires them to the engine.
  */
 import { GridNear, runProfile } from "@sandmd/element-profiles";
-import { ASTRO_ELEMENTS } from "../config/catalogue.ts";
-import { MOD_ID, VERSION } from "../config/ids.ts";
-import { ElementType } from "../shared/resolve.ts";
-import type { AstroElementConfig } from "../element/types.ts";
-import { createProfileFactories } from "./elementProfileFactory.ts";
+import { ASTRO_PROFILES } from "../config/elementWorker/catalogue.ts";
+import { MOD_ID, VERSION } from "../config/elementShared/ids.ts";
 
 const api = sandkit.api;
 
@@ -19,27 +17,14 @@ interface HookCancel {
     cancel: () => void;
 }
 
-// All seed profiles across the catalogue, keyed by profile id.
-const profileFactories = createProfileFactories(
-    (ASTRO_ELEMENTS as readonly AstroElementConfig<string>[]).flatMap(
-        (el) => el.profiles ?? [],
-    ),
-);
-
 /**
  * Run the first matching profile for a seed cell, or re-enable its fall physics.
  * Returns true when a profile ran (so the hook can cancel the vanilla update).
  */
-function dispatchSeed(
-    x: number,
-    y: number,
-    elementType: number,
-    cancel: HookCancel,
-): boolean {
-    for (const getProfile of Object.values(profileFactories)) {
-        const profile = getProfile();
-        if (profile.seedType == null || elementType !== profile.seedType) continue;
-        if (profile.liquidType == null || !GridNear.isNear(x, y, profile.liquidType)) continue;
+function dispatchSeed(x: number, y: number, elementType: number, cancel: HookCancel): boolean {
+    for (const profile of ASTRO_PROFILES) {
+        if (!profile.seedType || elementType !== profile.seedType) continue;
+        if (!profile.liquidType || !GridNear.isNear(x, y, profile.liquidType)) continue;
 
         // Reset physics so the seed can move, then run its profile.
         api.elements.setPhysicsAtCell(x, y, 1);
@@ -58,13 +43,7 @@ function dispatchSeed(
 
 /** Install one `element:update` hook per distinct seed type in the catalogue. */
 export function buildWorker(): void {
-    const seedTypes = [
-        ...new Set(
-            (ASTRO_ELEMENTS as readonly AstroElementConfig<string>[]).flatMap((el) =>
-                (el.profiles ?? []).map((p) => ElementType[p.seedKey])
-            ),
-        ),
-    ];
+    const seedTypes = [...new Set(ASTRO_PROFILES.map((p) => p.seedType))];
 
     for (const elementType of seedTypes) {
         if (!elementType) continue;

@@ -1,10 +1,7 @@
 import { MatterType } from "@sandmd/shared";
-import { AstroElementConfig } from "../../element/types.ts";
-
-import { spec } from "../util.ts";
-import { TElementKey } from "../keys.ts";
-import { InWaterProfile } from "../elementProfile/inWater.ts";
-import { InGoldProfile } from "../elementProfile/inGold.ts";
+import type { TElementKey } from "../elementShared/keys.ts";
+import { spec } from "../elementShared/util.ts";
+import type { AstroElementMain } from "./types.ts";
 
 // Extract density — keep seeds just under liquid copper so they sink slowly.
 const LIQUID_COPPER_DENSITY = 150;
@@ -30,8 +27,4 @@ export const astroCopperPowder = {
         outputA: "astroCopperPowder",
         outputB: "water",
     }],
-    profiles: [
-        // InWaterProfile.astroCopperPowder,
-        InGoldProfile.astroCopperPowder,
-    ],
-} satisfies AstroElementConfig<TElementKey>;
+} satisfies AstroElementMain<TElementKey>;

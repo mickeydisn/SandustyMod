@@ -1,15 +1,16 @@
 /**
- * Main-thread builder — turns the ASTRO_ELEMENTS catalogue into live content:
+ * Main-thread builder — turns the elementMain catalogue into live content:
  * i18n, element + discovery registration, contact reactions and the tech node.
  *
- * Everything this mod registers derives from the catalogue; there is no other
- * source of truth. Resolved type ids are stashed onto `ElementType` so the
+ * Everything this mod registers derives from that catalogue; worker simulation
+ * behaviour lives separately in `config/elementWorker` (which the main bundle
+ * never imports). Resolved type ids are stashed onto `ElementType` so the
  * worker thread (which shares the module) sees the same numbers.
  */
-import { ASTRO_ELEMENTS, ASTRO_REACTIONS } from "../config/catalogue.ts";
-import { MOD_ID, VERSION } from "../config/ids.ts";
-import { ElementType } from "../shared/resolve.ts";
-import { safe } from "../shared/utils.ts";
+import { ASTRO_ELEMENTS, ASTRO_REACTIONS } from "../config/elementMain/catalogue.ts";
+import { MOD_ID, VERSION } from "../config/elementShared/ids.ts";
+import { ElementType } from "../config/elementShared/resolve.ts";
+import { safe } from "../config/elementShared/util.ts";
 
 const api = sandkit.api;
 

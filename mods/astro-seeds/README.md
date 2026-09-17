@@ -3,11 +3,18 @@
 A small Sandustry mod that adds an **astro seed family**: a seed that matures
 over a liquid into a crystal, and powders that cluster together in water.
 
-Everything is driven by a single element catalogue
-(`src/config/catalogue.ts`). The main thread registers elements, reactions and
-i18n from it; the worker thread derives its seed profiles and simulation hooks
-from it. There is **no second source of truth** and no config buffer — all
-behaviour is baked in from the catalogue at build time.
+Everything is driven by two catalogues, one per thread, under `src/config/`:
+
+- **`elementShared/`** — ids, element keys, shared types and the resolved
+  `ElementType` map (used by both bundles).
+- **`elementMain/`** — the *registration* catalogue: what the engine must be
+  told (spec, colors, physics, contact reactions). Read by `main/build.ts`.
+- **`elementWorker/`** — the *simulation* catalogue: the `Profile` list built
+  directly from the `Move` / `Grow` / `Crystallization` actions. Read by
+  `worker/build.ts`.
+
+Profiles call the real actions directly — there is no spec DSL and no generic
+factory in between, and the main bundle never imports `@sandmd/element-profiles`.
 
 ---
 
@@ -46,20 +53,20 @@ The core loop is **seed → grow → crystallise**:
 
 ### Seed profiles
 
-The worker runs one profile per seed type. A profile pairs a **seed** with a
-**liquid** and a **crystal**, then defines its **move → grow → crystallise**
-pipeline:
+`config/elementWorker/` lists one `Profile` per seed/liquid pair. A profile
+pairs a **seed** with a **liquid** and a **crystal**, then defines its
+**move → grow → crystallise** pipeline as plain action calls:
 
-- **Astro Seed in gold** — drifts (side/down), ages continuously (grow age 40),
-  grows a **disk** of **Astro Gold Crystal**.
-- **Astro Seed in copper** — drifts (side/down), grows on floor/wall/air/crystal
-  and is blocked by water (grow age 10), grows a **cross** of **Astro Copper
-  Crystal**.
-- **Astro Gold Powder in water** — drifts and uses column forces: broadly
-  repelled (−80), mildly repelled by its own kind (−10), strongly attracted to
-  copper (+90). No grow / crystallise phase.
-- **Astro Copper Powder in water** — drifts and is: broadly repelled (−80),
-  attracted to gold (+30), mildly repelled by its own kind (−20).
+| File | Profiles |
+|------|----------|
+| `elementWorker/inWater.ts` | Astro Seed, Astro Gold Powder, Astro Copper Powder in water |
+| `elementWorker/inGold.ts` | Astro Seed, Astro Gold Powder, Astro Copper Powder in liquid gold |
+| `elementWorker/inCopper.ts` | Astro Seed in liquid copper |
+
+`elementWorker/catalogue.ts` flattens those into `ASTRO_PROFILES`, which
+`worker/build.ts` consumes directly. Catalogue keys are resolved to numeric
+element types by the small helper in `elementWorker/keys.ts`, which also
+expands the special `"empty"` / `"structure"` match keys.
 
 > `Astro Water Powder` is marked as a seed but has no profile, so it isn't driven
 > by the worker loop — it exists for the crystal→powder reaction.
@@ -82,44 +89,52 @@ src/
 ├── worker.ts               # thin worker-thread entry → buildWorker()
 │
 ├── config/
-│   ├── ids.ts              # MOD_ID, VERSION, ASTRO_FIELD (age/vx/vy cell fields)
-│   ├── keys.ts             # TVanillaElementKey / TAddedElementKey / TElementKey
-│   ├── util.ts             # `spec()` — builds an engine id from a slug
-│   ├── catalogue.ts        # ★ ASTRO_ELEMENTS + ASTRO_REACTIONS (single source)
-│   └── elementConf/        # one AstroElementConfig object per element
-│
-├── element/
-│   └── types.ts            # shared config types (spec, reaction, profile, …)
+│   ├── elementShared/      # shared vocabulary (both bundles)
+│   │   ├── ids.ts          # MOD_ID, VERSION, ASTRO_FIELD (age/vx/vy fields)
+│   │   ├── keys.ts         # TVanillaElementKey / TAddedElementKey / TElementKey
+│   │   ├── types.ts        # ElementVisual / AstroElementSpec / ReactionSpec
+│   │   ├── util.ts         # `spec()` id builder + `safe()`
+│   │   └── resolve.ts      # ElementType map (vanilla aliases + astro ids)
+│   │
+│   ├── elementMain/        # registration catalogue (main bundle)
+│   │   ├── types.ts        # AstroElementMain = spec + reactions
+│   │   ├── astro*.ts       # one entry per element
+│   │   └── catalogue.ts    # ★ ASTRO_ELEMENTS + ASTRO_REACTIONS
+│   │
+│   └── elementWorker/      # simulation catalogue (worker bundle)
+│       ├── keys.ts         # key → type helpers (+ "empty"/"structure")
+│       ├── inWater.ts      # water profiles
+│       ├── inGold.ts       # liquid-gold profiles
+│       ├── inCopper.ts     # liquid-copper profiles
+│       └── catalogue.ts    # ★ ASTRO_PROFILES (the worker's profile list)
 │
 ├── main/
 │   └── build.ts            # main builder: i18n, elements, reactions, tech
 │
-├── worker/
-│   ├── build.ts            # worker builder: seed hooks + dispatch
-│   └── elementProfileFactory.ts  # declarative ProfileSpec → () => Profile
-│
-└── shared/
-    ├── resolve.ts          # ElementType map (vanilla aliases + astro ids)
-    └── utils.ts            # `safe()` helper
+└── worker/
+    └── build.ts            # worker builder: seed hooks + dispatch
 ```
 
-### The catalogue is the single source of truth
+### Two catalogues, one per thread
 
-`config/catalogue.ts` lists the eight `AstroElementConfig<TElementKey>` entries
-in `ASTRO_ELEMENTS`. Each entry carries everything about one element:
+`config/elementMain/catalogue.ts` lists the eight `AstroElementMain<TElementKey>`
+entries in `ASTRO_ELEMENTS`. Each entry carries the registration data for one
+element:
 
 ```ts
 {
     spec: { key, slug, name, description, colors, density, metaColor, matterType, … },
     reactions: ReactionSpec[],   // contact reactions by key
-    profiles?: ProfileSpec[],    // worker seed profiles (move → grow → crystallise)
 }
 ```
 
-`ASTRO_REACTIONS` and `ASTRO_ELEMENT_BY_KEY` are derived views over the same
-list. **To add an element: create one `elementConf` file and add it to
-`ASTRO_ELEMENTS`** — registration, i18n, discovery and any seed profiles follow
-automatically.
+`ASTRO_REACTIONS` and `ASTRO_ELEMENT_BY_KEY` are derived views over that list.
+**To add an element: create one `elementMain` file and add it to
+`ASTRO_ELEMENTS`** — registration, i18n and discovery follow automatically.
+
+Worker behaviour is declared separately in `config/elementWorker` as real
+`Profile` objects (see above). Keeping the two apart is what lets the main
+bundle stay free of `@sandmd/element-profiles` and its simulation actions.
 
 ### Two builders, two threads
 
@@ -129,18 +144,17 @@ Both entries are one-line calls to a builder:
   discovery unlock, all contact reactions, and the tech node. Resolved type ids
   are stashed on the shared `ElementType` map so the worker sees the same
   numbers.
-- **`worker/build.ts`** (`buildWorker`) — walks `ASTRO_ELEMENTS` for seed
-  profiles, installs one `element:update` hook per distinct seed type, and
-  dispatches each update to the matching `Profile` (via the shared
-  `elementProfileFactory`).
+- **`worker/build.ts`** (`buildWorker`) — reads `ASTRO_PROFILES`, installs one
+  `element:update` hook per distinct seed type, and dispatches each update to
+  the first matching `Profile` (seed type + nearby liquid).
 
 ### Why the keys/types live where they do
 
-`config/keys.ts` holds the element-key union types, and `element/types.ts` holds
-the shared config types (including the profile types). This keeps `catalogue.ts`
-free of self-referencing imports — each `elementConf` file only needs `keys`,
-`types` and the `spec()` helper, so there's no import-order hazard between the
-catalogue and the modules that read it.
+`config/elementShared/keys.ts` holds the element-key union types and
+`elementShared/types.ts` holds the shared element types. Each `elementMain` file
+only needs `keys`, `types`, `spec()` and `safe()`, so there is no import-order
+hazard between the catalogue and the modules that read it. `elementWorker/keys.ts`
+is the only place that turns those keys into numeric element types.
 
 ---
 

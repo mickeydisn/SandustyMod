@@ -1,7 +1,7 @@
 import { MatterType } from "@sandmd/shared";
-import { spec } from "../util.ts";
-import { AstroElementConfig } from "../../element/types.ts";
-import { TElementKey } from "../keys.ts";
+import type { TElementKey } from "../elementShared/keys.ts";
+import { spec } from "../elementShared/util.ts";
+import type { AstroElementMain } from "./types.ts";
 
 export const astroWaterCrystal = {
     spec: spec({
@@ -18,4 +18,4 @@ export const astroWaterCrystal = {
         isCrystal: true,
     }),
     reactions: [],
-} satisfies AstroElementConfig<TElementKey>;
+} satisfies AstroElementMain<TElementKey>;
