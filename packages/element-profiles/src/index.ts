@@ -1,41 +1,15 @@
 /**
  * @sandmd/element-profiles — a generic element-profile simulation core.
  *
- * Worker side: build `Profile`s from the action factories and drive them with
- * `runProfile`. Main side: import the `Profile`/`ForceConfig` types to edit the
- * same description from a panel. Reusable across mods that model "seed over a
- * liquid → grow → crystallize" behaviour.
+ * Prefer the scoped entry points so each bundle only pulls what it needs:
+ * - `@sandmd/element-profiles/shared` — engine-free types + numeric helpers
+ * - `@sandmd/element-profiles/main`   — element / reaction / tech registration
+ * - `@sandmd/element-profiles/worker` — actions, pipeline, profile dispatch
+ *
+ * This root entry re-exports all three for convenience (and backwards
+ * compatibility). Importing it pulls in the worker actions too, so a main-thread
+ * bundle should import `.../main` instead.
  */
-export type {
-    ColumnForceEntry,
-    CrystallizeFn,
-    Ctx,
-    ForceConfig,
-    GrowFn,
-    GrowResult,
-    MoveFn,
-    Profile,
-    SenseMatrix,
-    TrailEat,
-    Vec2,
-} from "./types.ts";
-
-export { Grid } from "./utils/grid.ts";
-export { GridNear } from "./utils/near.ts";
-export { Sense } from "./utils/sense.ts";
-export { resolveNum } from "./resolve.ts";
-
-export { Crystallization, Grow, Move } from "./actions/index.ts";
-export type {
-    ChannelOpts,
-    ColumnForceOpts,
-    CompassGroup,
-    EatOpts,
-    GrowEatOpts,
-    InertiaOpts,
-    MemoryOpts,
-} from "./actions/index.ts";
-
-export { reduceVotes, runProfile, SENSE_SIZE } from "./pipeline.ts";
-export { Vote } from "./utils/vote.ts";
-export type { VoteChannel, VoteMask } from "./utils/vote.ts";
+export * from "./shared/index.ts";
+export * from "./main/index.ts";
+export * from "./worker/index.ts";

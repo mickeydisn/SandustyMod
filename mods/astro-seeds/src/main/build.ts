@@ -1,81 +1,37 @@
 /**
- * Main-thread builder — turns the elementMain catalogue into live content:
- * i18n, element + discovery registration, contact reactions and the tech node.
+ * Main-thread entry — registers the astro catalogue through the shared
+ * element-profiles main builder, then adds the mod's own UI touch.
  *
- * Everything this mod registers derives from that catalogue; worker simulation
- * behaviour lives separately in `config/elementWorker` (which the main bundle
- * never imports). Resolved type ids are stashed onto `ElementType` so the
- * worker thread (which shares the module) sees the same numbers.
+ * The builder derives i18n keys (`<id>|name`, `<id>|description`), registers
+ * every element + discovery, wires the contact reactions and attaches the tech
+ * node to the first vanilla tech that exists.
  */
-import { ASTRO_ELEMENTS, ASTRO_REACTIONS } from "../config/elementMain/catalogue.ts";
+import { buildElementMain } from "@sandmd/element-profiles/main";
+import { ASTRO_ELEMENTS } from "../config/elementMain/catalogue.ts";
 import { MOD_ID, VERSION } from "../config/elementShared/ids.ts";
 import { ElementType } from "../config/elementShared/resolve.ts";
 import { safe } from "../config/elementShared/util.ts";
 
-const api = sandkit.api;
+export function buildMain(): void {
+    const api = sandkit.api;
 
-function registerI18n(): void {
-    api.i18n.register("en", {
-        [`${MOD_ID}.tech.name`]: "Astro Seeds",
-        [`${MOD_ID}.tech.description`]: "Seed–crystal profiles over liquids.",
-    });
-
-    for (const conf of ASTRO_ELEMENTS) {
-        api.i18n.register("en", {
-            [`${conf.spec.id}|name`]: conf.spec.name,
-            [`${conf.spec.id}|description`]: conf.spec.description,
-        });
-    }
-}
-
-function registerElements(): void {
-    // Elements in catalogue order, then the contact reactions described by keys.
-    for (const confEl of ASTRO_ELEMENTS) {
-        const conf = confEl.spec;
-        const elementTypeId = api.elements.register({
-            id: conf.id,
-            nameKey: `${conf.id}|name`,
-            descriptionKey: `${conf.id}|description`,
-            colors: { variants: conf.colors },
-            density: conf.density,
-            metaColor: conf.metaColor,
-            matterType: conf.matterType,
-        }).elementType;
-        ElementType[conf.key] = elementTypeId;
-        api.discoveries.addElementByType(elementTypeId);
-    }
-
-    for (const r of ASTRO_REACTIONS) {
-        api.reactions.registerContact({
-            inputA: ElementType[r.inputA],
-            inputB: ElementType[r.inputB],
-            outputA: r.outputA ? ElementType[r.outputA] : null,
-            outputB: r.outputB ? ElementType[r.outputB] : null,
-        });
-    }
-}
-
-function registerTech(): void {
-    const parent = safe(() => sandkit.enums?.Tech?.SteamTurbine) ||
-        safe(() => sandkit.enums?.Tech?.KineticPress) ||
-        null;
-    if (parent == null) return;
-
-    api.tech.registerNode(
-        `${MOD_ID}:astro-seeds`,
-        {
+    const { types } = buildElementMain({
+        elements: ASTRO_ELEMENTS,
+        // Vanilla keys the reactions reference (water, fire, florinol, …).
+        types: ElementType,
+        tech: {
+            id: `${MOD_ID}:astro-seeds`,
             nameKey: `${MOD_ID}.tech.name`,
             descriptionKey: `${MOD_ID}.tech.description`,
+            name: "Astro Seeds",
+            description: "Seed–crystal profiles over liquids.",
             cost: 4500,
+            parents: ["SteamTurbine", "KineticPress"],
         },
-        { parentId: parent as number },
-    );
-}
+    });
 
-export function buildMain(): void {
-    registerI18n();
-    registerElements();
-    registerTech();
+    // Mirror the engine-assigned ids onto the shared key → type map.
+    Object.assign(ElementType, types);
 
     // Welcome toast once the world is ready.
     safe(() =>

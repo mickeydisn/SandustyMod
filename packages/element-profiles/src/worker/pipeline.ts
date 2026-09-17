@@ -10,9 +10,9 @@
  * and applies a single adjacent swap. Grow / trail-eat fns read the same
  * sense matrix instead of issuing their own reads.
  */
-import type { Ctx, Profile, SenseMatrix } from "./types.ts";
+import type { Ctx, Profile, SenseMatrix } from "../shared/types.ts";
 import { Grid } from "./utils/grid.ts";
-import { resolveNum, roll } from "./resolve.ts";
+import { resolveNum, roll } from "../shared/num.ts";
 import { Vote } from "./utils/vote.ts";
 
 export const SENSE_SIZE = 5;

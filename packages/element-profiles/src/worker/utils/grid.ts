@@ -143,9 +143,7 @@ export const Grid = {
         ny: number,
         passable: readonly TElementType[] | TElementType | null,
     ): { x: number; y: number } | null {
-        const ok = passable == null
-            ? []
-            : typeof passable === "number" ? [passable] : passable;
+        const ok = passable == null ? [] : typeof passable === "number" ? [passable] : passable;
         const t = this.getTypeAt(nx, ny);
         if (t == null || !ok.includes(t)) return null;
         try {

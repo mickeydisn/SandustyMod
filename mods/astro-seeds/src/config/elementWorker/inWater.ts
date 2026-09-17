@@ -10,7 +10,8 @@
  * profiles below are kept as ready-to-enable variants (they were disabled in the
  * previous catalogue too) — add them to `ASTRO_PROFILES` to turn them on.
  */
-import { Crystallization, Grow, Move, type Profile } from "@sandmd/element-profiles";
+import { Crystallization, Grow, Move } from "@sandmd/element-profiles/worker";
+import type { Profile } from "@sandmd/element-profiles/shared";
 import { ASTRO_FIELD } from "../elementShared/ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
 

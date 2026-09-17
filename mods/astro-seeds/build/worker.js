@@ -1,4 +1,4 @@
-// ../../packages/element-profiles/src/utils/grid.ts
+// ../../packages/element-profiles/src/worker/utils/grid.ts
 var cachedEmpty = null;
 var MEM_BIAS = 128;
 var MEM_SCALE = 4;
@@ -231,137 +231,17 @@ var EAT_DELTAS = [
   }
 ];
 
-// ../../packages/shared/src/grid.ts
-var Direction = /* @__PURE__ */ function(Direction2) {
-  Direction2[Direction2["UP"] = 0] = "UP";
-  Direction2[Direction2["RIGHT_UP"] = 1] = "RIGHT_UP";
-  Direction2[Direction2["RIGHT"] = 2] = "RIGHT";
-  Direction2[Direction2["RIGHT_DOWN"] = 3] = "RIGHT_DOWN";
-  Direction2[Direction2["DOWN"] = 4] = "DOWN";
-  Direction2[Direction2["LEFT_DOWN"] = 5] = "LEFT_DOWN";
-  Direction2[Direction2["LEFT"] = 6] = "LEFT";
-  Direction2[Direction2["LEFT_UP"] = 7] = "LEFT_UP";
-  return Direction2;
-}({});
-var DELTAS_INDEX = [
-  {
-    x: 0,
-    y: -1
-  },
-  {
-    x: 1,
-    y: -1
-  },
-  {
-    x: 1,
-    y: 0
-  },
-  {
-    x: 1,
-    y: 1
-  },
-  {
-    x: 0,
-    y: 1
-  },
-  {
-    x: -1,
-    y: 1
-  },
-  {
-    x: -1,
-    y: 0
-  },
-  {
-    x: -1,
-    y: -1
-  }
-];
-var DIR_NAME_MAP = {
-  top: [
-    Direction.UP
-  ],
-  bottom: [
-    Direction.DOWN
-  ],
-  left: [
-    Direction.LEFT
-  ],
-  right: [
-    Direction.RIGHT
-  ],
-  sides: [
-    Direction.LEFT,
-    Direction.RIGHT
-  ],
-  cross: [
-    Direction.RIGHT_UP,
-    Direction.RIGHT_DOWN,
-    Direction.LEFT_UP,
-    Direction.LEFT_DOWN
-  ]
-};
+// ../../packages/element-profiles/src/shared/num.ts
+function resolveNum(v, fallback = 0) {
+  if (typeof v === "function") return v();
+  if (v === void 0 || v === null) return fallback;
+  return v;
+}
+function roll(chance) {
+  return chance >= 100 || chance > 0 && Math.random() * 100 < chance;
+}
 
-// ../../packages/shared/src/elements.ts
-var MatterType = /* @__PURE__ */ function(MatterType2) {
-  MatterType2[MatterType2["Solid"] = 1] = "Solid";
-  MatterType2[MatterType2["Liquid"] = 2] = "Liquid";
-  MatterType2[MatterType2["Particle"] = 3] = "Particle";
-  MatterType2[MatterType2["Gas"] = 4] = "Gas";
-  MatterType2[MatterType2["Static"] = 5] = "Static";
-  MatterType2[MatterType2["Slushy"] = 6] = "Slushy";
-  MatterType2[MatterType2["Wisp"] = 7] = "Wisp";
-  MatterType2[MatterType2["Powder"] = 8] = "Powder";
-  return MatterType2;
-}({});
-
-// ../../packages/element-profiles/src/utils/near.ts
-var GridNear = {
-  isNearEmpty(x, y, deltas = DELTAS_INDEX) {
-    for (const d of deltas) {
-      if (Grid.isEmptyAt(x + d.x, y + d.y)) return true;
-    }
-    return false;
-  },
-  getNear(x, y, deltas = DELTAS_INDEX) {
-    return deltas.map((d) => Grid.getTypeAt(x + d.x, y + d.y));
-  },
-  isNear(x, y, includeType, deltas = DELTAS_INDEX) {
-    for (const d of deltas) {
-      if (Grid.isTypeAt(x + d.x, y + d.y, includeType)) return true;
-    }
-    return false;
-  },
-  isNotNear(x, y, excludeType, deltas = DELTAS_INDEX) {
-    for (const d of deltas) {
-      if (Grid.isNotTypeAt(x + d.x, y + d.y, excludeType)) return true;
-    }
-    return false;
-  },
-  countNearEmpty(x, y, deltas = DELTAS_INDEX) {
-    let n = 0;
-    for (const d of deltas) {
-      if (Grid.isEmptyAt(x + d.x, y + d.y)) n++;
-    }
-    return n;
-  },
-  countNear(x, y, includeType, deltas = DELTAS_INDEX) {
-    let n = 0;
-    for (const d of deltas) {
-      if (Grid.isTypeAt(x + d.x, y + d.y, includeType)) n++;
-    }
-    return n;
-  },
-  countNotNear(x, y, excludeType, deltas = DELTAS_INDEX) {
-    let n = 0;
-    for (const d of deltas) {
-      if (Grid.isNotTypeAt(x + d.x, y + d.y, excludeType)) n++;
-    }
-    return n;
-  }
-};
-
-// ../../packages/element-profiles/src/utils/sense.ts
+// ../../packages/element-profiles/src/worker/utils/sense.ts
 function idx(s, ox, oy) {
   return (oy + s.half) * s.size + (ox + s.half);
 }
@@ -467,17 +347,7 @@ var Sense = {
   }
 };
 
-// ../../packages/element-profiles/src/resolve.ts
-function resolveNum(v, fallback = 0) {
-  if (typeof v === "function") return v();
-  if (v === void 0 || v === null) return fallback;
-  return v;
-}
-function roll(chance) {
-  return chance >= 100 || chance > 0 && Math.random() * 100 < chance;
-}
-
-// ../../packages/element-profiles/src/utils/vote.ts
+// ../../packages/element-profiles/src/worker/utils/vote.ts
 var Vote = {
   /** Zero the accumulator — the pipeline does this once per tick. */
   clear(votes) {
@@ -637,7 +507,308 @@ var Vote = {
   }
 };
 
-// ../../packages/element-profiles/src/actions/move.ts
+// ../../packages/element-profiles/src/worker/pipeline.ts
+var SENSE_SIZE = 5;
+var SENSE_N = SENSE_SIZE * SENSE_SIZE;
+var SENSE_HALF = Math.floor(SENSE_SIZE / 2);
+var SENSE_CENTER = SENSE_HALF * SENSE_SIZE + SENSE_HALF;
+var senseCells = new Int32Array(SENSE_N);
+var voteAcc = new Float64Array(SENSE_N);
+function sampleSense(x, y) {
+  for (let dy = -SENSE_HALF; dy <= SENSE_HALF; dy++) {
+    for (let dx = -SENSE_HALF; dx <= SENSE_HALF; dx++) {
+      const i = (dy + SENSE_HALF) * SENSE_SIZE + (dx + SENSE_HALF);
+      let t = 0;
+      try {
+        t = Grid.getTypeAt(x + dx, y + dy) ?? 0;
+      } catch {
+        t = 0;
+      }
+      senseCells[i] = t;
+    }
+  }
+  return {
+    size: SENSE_SIZE,
+    half: SENSE_HALF,
+    cells: senseCells,
+    center: SENSE_CENTER
+  };
+}
+function runProfile(x, y, profile) {
+  const sense = sampleSense(x, y);
+  if (sense.cells[SENSE_CENTER] !== profile.seedType) return false;
+  let liquidNear = false;
+  for (let i = 0; i < SENSE_N; i++) {
+    if (i !== SENSE_CENTER && sense.cells[i] === profile.liquidType) {
+      liquidNear = true;
+      break;
+    }
+  }
+  if (!liquidNear) {
+    Grid.resetFieldAt(x, y, profile.ageField);
+    return false;
+  }
+  if (!roll(resolveNum(profile.tickSpeed))) return true;
+  let ctx = {
+    x,
+    y,
+    profile,
+    sense,
+    votes: Vote.clear(voteAcc),
+    age: Grid.readFieldAt(x, y, profile.ageField),
+    blocked: false,
+    tryInstant: false,
+    stuck: false,
+    trailEat: []
+  };
+  let delta = 0;
+  for (const fn of profile.grow) {
+    const result = fn(ctx);
+    if (ctx.blocked) break;
+    if (result.matched) {
+      delta = result.delta || 0;
+      break;
+    }
+  }
+  if (delta > 0) {
+    ctx.age += delta;
+    Grid.writeFieldAt(ctx.x, ctx.y, profile.ageField, ctx.age);
+  }
+  const need = profile.growAge();
+  if (need > 0 && ctx.age >= need) {
+    let ok = false;
+    for (const fn of profile.crystallization) {
+      if (fn(ctx)) {
+        ok = true;
+        break;
+      }
+    }
+    if (!ok) {
+      Grid.resetFieldAt(ctx.x, ctx.y, profile.ageField);
+    }
+  }
+  let pvx = 0;
+  let pvy = 0;
+  if (profile.memField != null) {
+    pvx = Grid.readVecAt(ctx.x, ctx.y, profile.memField);
+    pvy = Grid.readVecAt(ctx.x, ctx.y, profile.memField + 1);
+  }
+  for (const fn of profile.moves) {
+    ctx = fn(ctx);
+  }
+  const tick = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
+  const passable = new Set(ctx.profile.passableTypes ?? []);
+  passable.add(ctx.profile.liquidType);
+  const s = ctx.sense;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      if (ox === 0 && oy === 0) continue;
+      const i = (oy + s.half) * s.size + (ox + s.half);
+      if (!passable.has(s.cells[i] ?? 0)) ctx.votes[i] = 0;
+    }
+  }
+  const { dx, dy } = Vote.reduce(ctx.votes, SENSE_SIZE, SENSE_CENTER, 0);
+  let moved = false;
+  if (dx !== 0 || dy !== 0) {
+    const ox = ctx.x;
+    const oy = ctx.y;
+    const r = Grid.swapCell(ctx.x, ctx.y, ctx.x + dx, ctx.y + dy, ctx.profile.passableTypes ? [
+      ctx.profile.liquidType,
+      ...ctx.profile.passableTypes
+    ] : ctx.profile.liquidType);
+    if (r) {
+      moved = true;
+      for (const eat of ctx.trailEat) {
+        if (roll(resolveNum(eat.chance))) Grid.eatAt(ox, oy, eat.replaceType);
+      }
+      ctx = {
+        ...ctx,
+        x: r.x,
+        y: r.y
+      };
+    }
+  }
+  if (profile.memField != null) {
+    const d = profile.memDecay ?? 0;
+    let vx = pvx * d + tick.vx;
+    let vy = pvy * d + tick.vy;
+    if (!moved && profile.memBounce && (pvx !== 0 || pvy !== 0) && Vote.any(ctx.votes)) {
+      vx = -pvx * d;
+      vy = -pvy * d;
+    }
+    Grid.writeVecAt(ctx.x, ctx.y, profile.memField, vx);
+    Grid.writeVecAt(ctx.x, ctx.y, profile.memField + 1, vy);
+  }
+  return true;
+}
+
+// ../../packages/shared/src/grid.ts
+var Direction = /* @__PURE__ */ function(Direction2) {
+  Direction2[Direction2["UP"] = 0] = "UP";
+  Direction2[Direction2["RIGHT_UP"] = 1] = "RIGHT_UP";
+  Direction2[Direction2["RIGHT"] = 2] = "RIGHT";
+  Direction2[Direction2["RIGHT_DOWN"] = 3] = "RIGHT_DOWN";
+  Direction2[Direction2["DOWN"] = 4] = "DOWN";
+  Direction2[Direction2["LEFT_DOWN"] = 5] = "LEFT_DOWN";
+  Direction2[Direction2["LEFT"] = 6] = "LEFT";
+  Direction2[Direction2["LEFT_UP"] = 7] = "LEFT_UP";
+  return Direction2;
+}({});
+var DELTAS_INDEX = [
+  {
+    x: 0,
+    y: -1
+  },
+  {
+    x: 1,
+    y: -1
+  },
+  {
+    x: 1,
+    y: 0
+  },
+  {
+    x: 1,
+    y: 1
+  },
+  {
+    x: 0,
+    y: 1
+  },
+  {
+    x: -1,
+    y: 1
+  },
+  {
+    x: -1,
+    y: 0
+  },
+  {
+    x: -1,
+    y: -1
+  }
+];
+var DIR_NAME_MAP = {
+  top: [
+    Direction.UP
+  ],
+  bottom: [
+    Direction.DOWN
+  ],
+  left: [
+    Direction.LEFT
+  ],
+  right: [
+    Direction.RIGHT
+  ],
+  sides: [
+    Direction.LEFT,
+    Direction.RIGHT
+  ],
+  cross: [
+    Direction.RIGHT_UP,
+    Direction.RIGHT_DOWN,
+    Direction.LEFT_UP,
+    Direction.LEFT_DOWN
+  ]
+};
+
+// ../../packages/shared/src/elements.ts
+var MatterType = /* @__PURE__ */ function(MatterType2) {
+  MatterType2[MatterType2["Solid"] = 1] = "Solid";
+  MatterType2[MatterType2["Liquid"] = 2] = "Liquid";
+  MatterType2[MatterType2["Particle"] = 3] = "Particle";
+  MatterType2[MatterType2["Gas"] = 4] = "Gas";
+  MatterType2[MatterType2["Static"] = 5] = "Static";
+  MatterType2[MatterType2["Slushy"] = 6] = "Slushy";
+  MatterType2[MatterType2["Wisp"] = 7] = "Wisp";
+  MatterType2[MatterType2["Powder"] = 8] = "Powder";
+  return MatterType2;
+}({});
+
+// ../../packages/element-profiles/src/worker/utils/near.ts
+var GridNear = {
+  isNearEmpty(x, y, deltas = DELTAS_INDEX) {
+    for (const d of deltas) {
+      if (Grid.isEmptyAt(x + d.x, y + d.y)) return true;
+    }
+    return false;
+  },
+  getNear(x, y, deltas = DELTAS_INDEX) {
+    return deltas.map((d) => Grid.getTypeAt(x + d.x, y + d.y));
+  },
+  isNear(x, y, includeType, deltas = DELTAS_INDEX) {
+    for (const d of deltas) {
+      if (Grid.isTypeAt(x + d.x, y + d.y, includeType)) return true;
+    }
+    return false;
+  },
+  isNotNear(x, y, excludeType, deltas = DELTAS_INDEX) {
+    for (const d of deltas) {
+      if (Grid.isNotTypeAt(x + d.x, y + d.y, excludeType)) return true;
+    }
+    return false;
+  },
+  countNearEmpty(x, y, deltas = DELTAS_INDEX) {
+    let n = 0;
+    for (const d of deltas) {
+      if (Grid.isEmptyAt(x + d.x, y + d.y)) n++;
+    }
+    return n;
+  },
+  countNear(x, y, includeType, deltas = DELTAS_INDEX) {
+    let n = 0;
+    for (const d of deltas) {
+      if (Grid.isTypeAt(x + d.x, y + d.y, includeType)) n++;
+    }
+    return n;
+  },
+  countNotNear(x, y, excludeType, deltas = DELTAS_INDEX) {
+    let n = 0;
+    for (const d of deltas) {
+      if (Grid.isNotTypeAt(x + d.x, y + d.y, excludeType)) n++;
+    }
+    return n;
+  }
+};
+
+// ../../packages/element-profiles/src/worker/build.ts
+function dispatchSeed(x, y, elementType, cancel, profiles) {
+  const api = sandkit.api;
+  for (const profile of profiles) {
+    if (!profile.seedType || elementType !== profile.seedType) continue;
+    if (!profile.liquidType || !GridNear.isNear(x, y, profile.liquidType)) continue;
+    api.elements.setPhysicsAtCell(x, y, 1);
+    cancel.cancel();
+    runProfile(x, y, profile);
+    api.grid.reportActivityAtCell(x, y);
+    api.grid.reportActivityAtCell(x, y - 1);
+    return true;
+  }
+  api.elements.setPhysicsAtCell(x, y, 0);
+  return false;
+}
+function buildElementWorker(profiles) {
+  const api = sandkit.api;
+  const seedTypes = [
+    ...new Set(profiles.map((p) => p.seedType))
+  ].filter((t) => !!t);
+  for (const elementType of seedTypes) {
+    api.hooks.intercept("element:update", (payload, cancel) => {
+      const p = payload;
+      return dispatchSeed(p.x, p.y, p.elementType || 0, cancel, profiles);
+    }, {
+      guard: {
+        elementType
+      }
+    });
+  }
+  return {
+    seedTypes
+  };
+}
+
+// ../../packages/element-profiles/src/worker/actions/move.ts
 var DX8 = [
   0,
   1,
@@ -1045,7 +1216,7 @@ var Move = {
   }
 };
 
-// ../../packages/element-profiles/src/actions/grow.ts
+// ../../packages/element-profiles/src/worker/actions/grow.ts
 var noMatch = () => ({
   matched: false,
   delta: 0,
@@ -1154,7 +1325,7 @@ var Grow = {
   }
 };
 
-// ../../packages/element-profiles/src/actions/crystallize.ts
+// ../../packages/element-profiles/src/worker/actions/crystallize.ts
 function diskOffsets(r, senseHalf) {
   const cells = [];
   const rr = Math.min(r, senseHalf);
@@ -1270,141 +1441,6 @@ var Crystallization = {
     };
   }
 };
-
-// ../../packages/element-profiles/src/pipeline.ts
-var SENSE_SIZE = 5;
-var SENSE_N = SENSE_SIZE * SENSE_SIZE;
-var SENSE_HALF = Math.floor(SENSE_SIZE / 2);
-var SENSE_CENTER = SENSE_HALF * SENSE_SIZE + SENSE_HALF;
-var senseCells = new Int32Array(SENSE_N);
-var voteAcc = new Float64Array(SENSE_N);
-function sampleSense(x, y) {
-  for (let dy = -SENSE_HALF; dy <= SENSE_HALF; dy++) {
-    for (let dx = -SENSE_HALF; dx <= SENSE_HALF; dx++) {
-      const i = (dy + SENSE_HALF) * SENSE_SIZE + (dx + SENSE_HALF);
-      let t = 0;
-      try {
-        t = Grid.getTypeAt(x + dx, y + dy) ?? 0;
-      } catch {
-        t = 0;
-      }
-      senseCells[i] = t;
-    }
-  }
-  return {
-    size: SENSE_SIZE,
-    half: SENSE_HALF,
-    cells: senseCells,
-    center: SENSE_CENTER
-  };
-}
-function runProfile(x, y, profile) {
-  const sense = sampleSense(x, y);
-  if (sense.cells[SENSE_CENTER] !== profile.seedType) return false;
-  let liquidNear = false;
-  for (let i = 0; i < SENSE_N; i++) {
-    if (i !== SENSE_CENTER && sense.cells[i] === profile.liquidType) {
-      liquidNear = true;
-      break;
-    }
-  }
-  if (!liquidNear) {
-    Grid.resetFieldAt(x, y, profile.ageField);
-    return false;
-  }
-  if (!roll(resolveNum(profile.tickSpeed))) return true;
-  let ctx = {
-    x,
-    y,
-    profile,
-    sense,
-    votes: Vote.clear(voteAcc),
-    age: Grid.readFieldAt(x, y, profile.ageField),
-    blocked: false,
-    tryInstant: false,
-    stuck: false,
-    trailEat: []
-  };
-  let delta = 0;
-  for (const fn of profile.grow) {
-    const result = fn(ctx);
-    if (ctx.blocked) break;
-    if (result.matched) {
-      delta = result.delta || 0;
-      break;
-    }
-  }
-  if (delta > 0) {
-    ctx.age += delta;
-    Grid.writeFieldAt(ctx.x, ctx.y, profile.ageField, ctx.age);
-  }
-  const need = profile.growAge();
-  if (need > 0 && ctx.age >= need) {
-    let ok = false;
-    for (const fn of profile.crystallization) {
-      if (fn(ctx)) {
-        ok = true;
-        break;
-      }
-    }
-    if (!ok) {
-      Grid.resetFieldAt(ctx.x, ctx.y, profile.ageField);
-    }
-  }
-  let pvx = 0;
-  let pvy = 0;
-  if (profile.memField != null) {
-    pvx = Grid.readVecAt(ctx.x, ctx.y, profile.memField);
-    pvy = Grid.readVecAt(ctx.x, ctx.y, profile.memField + 1);
-  }
-  for (const fn of profile.moves) {
-    ctx = fn(ctx);
-  }
-  const tick = Vote.vector(ctx.votes, SENSE_SIZE, SENSE_CENTER);
-  const passable = new Set(ctx.profile.passableTypes ?? []);
-  passable.add(ctx.profile.liquidType);
-  const s = ctx.sense;
-  for (let oy = -1; oy <= 1; oy++) {
-    for (let ox = -1; ox <= 1; ox++) {
-      if (ox === 0 && oy === 0) continue;
-      const i = (oy + s.half) * s.size + (ox + s.half);
-      if (!passable.has(s.cells[i] ?? 0)) ctx.votes[i] = 0;
-    }
-  }
-  const { dx, dy } = Vote.reduce(ctx.votes, SENSE_SIZE, SENSE_CENTER, 0);
-  let moved = false;
-  if (dx !== 0 || dy !== 0) {
-    const ox = ctx.x;
-    const oy = ctx.y;
-    const r = Grid.swapCell(ctx.x, ctx.y, ctx.x + dx, ctx.y + dy, ctx.profile.passableTypes ? [
-      ctx.profile.liquidType,
-      ...ctx.profile.passableTypes
-    ] : ctx.profile.liquidType);
-    if (r) {
-      moved = true;
-      for (const eat of ctx.trailEat) {
-        if (roll(resolveNum(eat.chance))) Grid.eatAt(ox, oy, eat.replaceType);
-      }
-      ctx = {
-        ...ctx,
-        x: r.x,
-        y: r.y
-      };
-    }
-  }
-  if (profile.memField != null) {
-    const d = profile.memDecay ?? 0;
-    let vx = pvx * d + tick.vx;
-    let vy = pvy * d + tick.vy;
-    if (!moved && profile.memBounce && (pvx !== 0 || pvy !== 0) && Vote.any(ctx.votes)) {
-      vx = -pvx * d;
-      vy = -pvy * d;
-    }
-    Grid.writeVecAt(ctx.x, ctx.y, profile.memField, vx);
-    Grid.writeVecAt(ctx.x, ctx.y, profile.memField + 1, vy);
-  }
-  return true;
-}
 
 // src/config/elementShared/ids.ts
 var MOD_ID = "astro.seeds";
@@ -2492,36 +2528,8 @@ var ASTRO_PROFILES = [
 ];
 
 // src/worker/build.ts
-var api = sandkit.api;
-function dispatchSeed(x, y, elementType, cancel) {
-  for (const profile of ASTRO_PROFILES) {
-    if (!profile.seedType || elementType !== profile.seedType) continue;
-    if (!profile.liquidType || !GridNear.isNear(x, y, profile.liquidType)) continue;
-    api.elements.setPhysicsAtCell(x, y, 1);
-    cancel.cancel();
-    runProfile(x, y, profile);
-    api.grid.reportActivityAtCell(x, y);
-    api.grid.reportActivityAtCell(x, y - 1);
-    return true;
-  }
-  api.elements.setPhysicsAtCell(x, y, 0);
-  return false;
-}
 function buildWorker() {
-  const seedTypes = [
-    ...new Set(ASTRO_PROFILES.map((p) => p.seedType))
-  ];
-  for (const elementType of seedTypes) {
-    if (!elementType) continue;
-    api.hooks.intercept("element:update", (payload, cancel) => {
-      const p = payload;
-      return dispatchSeed(p.x, p.y, p.elementType || 0, cancel);
-    }, {
-      guard: {
-        elementType
-      }
-    });
-  }
+  const { seedTypes } = buildElementWorker(ASTRO_PROFILES);
   console.log(`[${MOD_ID} v${VERSION}] worker loaded`, seedTypes);
 }
 

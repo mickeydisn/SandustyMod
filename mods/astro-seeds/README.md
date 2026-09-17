@@ -14,7 +14,9 @@ Everything is driven by two catalogues, one per thread, under `src/config/`:
   `worker/build.ts`.
 
 Profiles call the real actions directly — there is no spec DSL and no generic
-factory in between, and the main bundle never imports `@sandmd/element-profiles`.
+factory in between. The only mod-supplied data is the two catalogues; both
+builders come from the `@sandmd/element-profiles` package, and the main bundle
+imports `@sandmd/element-profiles/main` (never the worker actions).
 
 ---
 
@@ -92,7 +94,7 @@ src/
 │   ├── elementShared/      # shared vocabulary (both bundles)
 │   │   ├── ids.ts          # MOD_ID, VERSION, ASTRO_FIELD (age/vx/vy fields)
 │   │   ├── keys.ts         # TVanillaElementKey / TAddedElementKey / TElementKey
-│   │   ├── types.ts        # ElementVisual / AstroElementSpec / ReactionSpec
+│   │   ├── types.ts        # AstroElementSpec (extends package ElementSpec)
 │   │   ├── util.ts         # `spec()` id builder + `safe()`
 │   │   └── resolve.ts      # ElementType map (vanilla aliases + astro ids)
 │   │
@@ -109,11 +111,16 @@ src/
 │       └── catalogue.ts    # ★ ASTRO_PROFILES (the worker's profile list)
 │
 ├── main/
-│   └── build.ts            # main builder: i18n, elements, reactions, tech
+│   └── build.ts            # thin: buildElementMain(catalogue + tech) + toast
 │
 └── worker/
-    └── build.ts            # worker builder: seed hooks + dispatch
+    └── build.ts            # thin: buildElementWorker(ASTRO_PROFILES) + log
 ```
+
+> The generic parts (registration, reactions, tech node, hook install + dispatch)
+> live in the workspace package **`packages/element-profiles`** — see its README.
+> The mod's builders are thin wrappers that pass in the catalogues and add the
+> mod's own UI touch (welcome toast).
 
 ### Two catalogues, one per thread
 
@@ -133,28 +140,40 @@ element:
 `ASTRO_ELEMENTS`** — registration, i18n and discovery follow automatically.
 
 Worker behaviour is declared separately in `config/elementWorker` as real
-`Profile` objects (see above). Keeping the two apart is what lets the main
-bundle stay free of `@sandmd/element-profiles` and its simulation actions.
+`Profile` objects (see above). Keeping the two catalogues apart is what lets the
+main bundle stay free of the simulation actions.
 
-### Two builders, two threads
+### Builders live in the package
 
-Both entries are one-line calls to a builder:
+The generic work is in **`packages/element-profiles`**, which exposes one entry
+point per thread:
 
-- **`main/build.ts`** (`buildMain`) — registers i18n strings, every element +
-  discovery unlock, all contact reactions, and the tech node. Resolved type ids
-  are stashed on the shared `ElementType` map so the worker sees the same
-  numbers.
-- **`worker/build.ts`** (`buildWorker`) — reads `ASTRO_PROFILES`, installs one
-  `element:update` hook per distinct seed type, and dispatches each update to
-  the first matching `Profile` (seed type + nearby liquid).
+| Entry point | Used by | Contents |
+|-------------|---------|----------|
+| `@sandmd/element-profiles/shared` | both | engine-free types (`Profile`, `ElementSpec`, `ReactionSpec`, …) + `resolveNum` / `safe` |
+| `@sandmd/element-profiles/main` | `main/build.ts` | `buildElementMain` — i18n, elements + discoveries, reactions, tech node |
+| `@sandmd/element-profiles/worker` | `worker/build.ts`, `elementWorker/*` | `Move` / `Grow` / `Crystallization`, `runProfile`, `buildElementWorker` |
+
+This mod's builders are therefore thin:
+
+- **`main/build.ts`** (`buildMain`) — calls `buildElementMain` with
+  `ASTRO_ELEMENTS`, the pre-resolved `ElementType` map (for the vanilla keys the
+  reactions reference) and the tech node config, then mirrors the returned ids
+  and shows the welcome toast.
+- **`worker/build.ts`** (`buildWorker`) — calls
+  `buildElementWorker(ASTRO_PROFILES)`; the package installs one
+  `element:update` hook per distinct seed type and dispatches each update to the
+  first matching `Profile` (seed type + nearby liquid).
 
 ### Why the keys/types live where they do
 
 `config/elementShared/keys.ts` holds the element-key union types and
-`elementShared/types.ts` holds the shared element types. Each `elementMain` file
-only needs `keys`, `types`, `spec()` and `safe()`, so there is no import-order
-hazard between the catalogue and the modules that read it. `elementWorker/keys.ts`
-is the only place that turns those keys into numeric element types.
+`elementShared/types.ts` extends the package's `ElementSpec` with the astro
+catalogue extras (`slug`, `toolboxLabel`, `isSeed`, `isCrystal`). Each
+`elementMain` file only needs `keys`, `types`, `spec()` and `safe()`, so there is
+no import-order hazard between the catalogue and the modules that read it.
+`elementWorker/keys.ts` is the only place that turns those keys into numeric
+element types.
 
 ---
 

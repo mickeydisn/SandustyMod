@@ -1,6 +1,11 @@
 {
     "name": "@sandmd/element-profiles",
-    "exports": "./src/index.ts",
+    "exports": {
+        ".": "./src/index.ts",
+        "./shared": "./src/shared/index.ts",
+        "./main": "./src/main/index.ts",
+        "./worker": "./src/worker/index.ts"
+    },
     "compilerOptions": {
         "lib": ["deno.window", "dom"]
     }

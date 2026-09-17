@@ -1,3 +1,98 @@
+// ../../packages/element-profiles/src/shared/util.ts
+function safe(fn, fallback = null) {
+  try {
+    return fn();
+  } catch {
+    return fallback;
+  }
+}
+
+// ../../packages/element-profiles/src/main/build.ts
+function elementNameKey(id) {
+  return `${id}|name`;
+}
+function elementDescriptionKey(id) {
+  return `${id}|description`;
+}
+function registerI18n(elements, locale) {
+  const api = sandkit.api;
+  for (const { spec: spec2 } of elements) {
+    api.i18n.register(locale, {
+      [elementNameKey(spec2.id)]: spec2.name,
+      [elementDescriptionKey(spec2.id)]: spec2.description
+    });
+  }
+}
+function registerElements(elements, types) {
+  const api = sandkit.api;
+  for (const { spec: spec2 } of elements) {
+    const elementTypeId = api.elements.register({
+      id: spec2.id,
+      nameKey: elementNameKey(spec2.id),
+      descriptionKey: elementDescriptionKey(spec2.id),
+      colors: {
+        variants: spec2.colors
+      },
+      density: spec2.density,
+      metaColor: spec2.metaColor,
+      matterType: spec2.matterType
+    }).elementType;
+    types[spec2.key] = elementTypeId;
+    api.discoveries.addElementByType(elementTypeId);
+  }
+}
+function registerReactions(elements, types) {
+  const api = sandkit.api;
+  for (const { reactions } of elements) {
+    for (const r of reactions) {
+      api.reactions.registerContact({
+        inputA: types[r.inputA],
+        inputB: types[r.inputB],
+        outputA: r.outputA ? types[r.outputA] : null,
+        outputB: r.outputB ? types[r.outputB] : null
+      });
+    }
+  }
+}
+function registerTech(tech, locale) {
+  const api = sandkit.api;
+  api.i18n.register(tech.locale ?? locale, {
+    [tech.nameKey]: tech.name,
+    [tech.descriptionKey]: tech.description
+  });
+  let parentId = null;
+  for (const name of tech.parents ?? []) {
+    const id = safe(() => sandkit.enums?.Tech?.[name]);
+    if (id != null) {
+      parentId = id;
+      break;
+    }
+  }
+  if (parentId == null) return false;
+  api.tech.registerNode(tech.id, {
+    nameKey: tech.nameKey,
+    descriptionKey: tech.descriptionKey,
+    cost: tech.cost ?? 0
+  }, {
+    parentId
+  });
+  return true;
+}
+function buildElementMain(config) {
+  const locale = config.locale ?? "en";
+  const types = {
+    ...config.types
+  };
+  registerI18n(config.elements, locale);
+  registerElements(config.elements, types);
+  registerReactions(config.elements, types);
+  const techRegistered = config.tech ? registerTech(config.tech, locale) : false;
+  return {
+    types,
+    techRegistered
+  };
+}
+
 // ../../packages/shared/src/grid.ts
 var Direction = /* @__PURE__ */ function(Direction2) {
   Direction2[Direction2["UP"] = 0] = "UP";
@@ -59,7 +154,7 @@ function spec(entry) {
     id: `${MOD_ID}:${entry.slug}`
   };
 }
-function safe(fn, fallback = null) {
+function safe2(fn, fallback = null) {
   try {
     return fn();
   } catch {
@@ -437,7 +532,7 @@ var ASTRO_REACTIONS = ASTRO_ELEMENTS.flatMap((c) => c.reactions);
 // src/config/elementShared/resolve.ts
 function resolveType(ids) {
   for (const id of ids) {
-    const t = safe(() => sandkit.api.elements.getTypeFromId(id));
+    const t = safe2(() => sandkit.api.elements.getTypeFromId(id));
     if (t != null) return t;
   }
   return 0;
@@ -517,61 +612,27 @@ var ElementType = {
 };
 
 // src/main/build.ts
-var api = sandkit.api;
-function registerI18n() {
-  api.i18n.register("en", {
-    [`${MOD_ID}.tech.name`]: "Astro Seeds",
-    [`${MOD_ID}.tech.description`]: "Seed\u2013crystal profiles over liquids."
-  });
-  for (const conf of ASTRO_ELEMENTS) {
-    api.i18n.register("en", {
-      [`${conf.spec.id}|name`]: conf.spec.name,
-      [`${conf.spec.id}|description`]: conf.spec.description
-    });
-  }
-}
-function registerElements() {
-  for (const confEl of ASTRO_ELEMENTS) {
-    const conf = confEl.spec;
-    const elementTypeId = api.elements.register({
-      id: conf.id,
-      nameKey: `${conf.id}|name`,
-      descriptionKey: `${conf.id}|description`,
-      colors: {
-        variants: conf.colors
-      },
-      density: conf.density,
-      metaColor: conf.metaColor,
-      matterType: conf.matterType
-    }).elementType;
-    ElementType[conf.key] = elementTypeId;
-    api.discoveries.addElementByType(elementTypeId);
-  }
-  for (const r of ASTRO_REACTIONS) {
-    api.reactions.registerContact({
-      inputA: ElementType[r.inputA],
-      inputB: ElementType[r.inputB],
-      outputA: r.outputA ? ElementType[r.outputA] : null,
-      outputB: r.outputB ? ElementType[r.outputB] : null
-    });
-  }
-}
-function registerTech() {
-  const parent = safe(() => sandkit.enums?.Tech?.SteamTurbine) || safe(() => sandkit.enums?.Tech?.KineticPress) || null;
-  if (parent == null) return;
-  api.tech.registerNode(`${MOD_ID}:astro-seeds`, {
-    nameKey: `${MOD_ID}.tech.name`,
-    descriptionKey: `${MOD_ID}.tech.description`,
-    cost: 4500
-  }, {
-    parentId: parent
-  });
-}
 function buildMain() {
-  registerI18n();
-  registerElements();
-  registerTech();
-  safe(() => api.events.on("game:ready", () => {
+  const api = sandkit.api;
+  const { types } = buildElementMain({
+    elements: ASTRO_ELEMENTS,
+    // Vanilla keys the reactions reference (water, fire, florinol, …).
+    types: ElementType,
+    tech: {
+      id: `${MOD_ID}:astro-seeds`,
+      nameKey: `${MOD_ID}.tech.name`,
+      descriptionKey: `${MOD_ID}.tech.description`,
+      name: "Astro Seeds",
+      description: "Seed\u2013crystal profiles over liquids.",
+      cost: 4500,
+      parents: [
+        "SteamTurbine",
+        "KineticPress"
+      ]
+    }
+  });
+  Object.assign(ElementType, types);
+  safe2(() => api.events.on("game:ready", () => {
     api.ui.toast(`Astro Seeds v${VERSION}`, {});
   }));
   console.log(`[${MOD_ID} v${VERSION}] main loaded`);

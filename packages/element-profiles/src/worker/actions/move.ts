@@ -12,9 +12,9 @@
  * `Vote` (vote.ts) owns the matrix itself: masking, stamping and the
  * centroid reduce — this file only builds the channels.
  */
-import type { Ctx, MoveFn } from "../types.ts";
+import type { Ctx, MoveFn } from "../../shared/types.ts";
 import type { DirectionName, TElementType } from "@sandmd/shared";
-import { resolveNum, roll } from "../resolve.ts";
+import { resolveNum, roll } from "../../shared/num.ts";
 import { Grid } from "../utils/grid.ts";
 import { Sense } from "../utils/sense.ts";
 import { Vote, type VoteMask } from "../utils/vote.ts";

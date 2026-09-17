@@ -9,7 +9,7 @@
  * factory and no spec DSL to keep in sync with the `Move`/`Grow`/
  * `Crystallization` API. Removing a line disables that behaviour.
  */
-import type { Profile } from "@sandmd/element-profiles";
+import type { Profile } from "@sandmd/element-profiles/shared";
 import { astroSeedInCopper } from "./inCopper.ts";
 import { astroCopperInLiquidGold, astroGoldInLiquidGold, astroSeedInGold } from "./inGold.ts";
 import { astroSeedInWater } from "./inWater.ts";

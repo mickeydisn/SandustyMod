@@ -8,10 +8,10 @@
  * engine, using ENGINE coordinates (sense offset + seed position).
  */
 import "@sandmd/sandkit";
-import type { CrystallizeFn, Ctx } from "../types.ts";
+import type { CrystallizeFn, Ctx } from "../../shared/types.ts";
 import { Grid } from "../utils/grid.ts";
 import { Sense } from "../utils/sense.ts";
-import { resolveNum } from "../resolve.ts";
+import { resolveNum } from "../../shared/num.ts";
 
 type Off = { x: number; y: number };
 

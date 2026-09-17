@@ -6,10 +6,10 @@
  * (deferred engine writes are part of the sim contract).
  */
 import type { TElementType } from "@sandmd/shared";
-import type { GrowFn, GrowResult } from "../types.ts";
+import type { GrowFn, GrowResult } from "../../shared/types.ts";
 import { Grid } from "../utils/grid.ts";
 import { Sense } from "../utils/sense.ts";
-import { resolveNum } from "../resolve.ts";
+import { resolveNum } from "../../shared/num.ts";
 
 export interface GrowEatOpts {
     /** 0-100 chance per tick. Number or live `() => number`. */
