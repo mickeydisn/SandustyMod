@@ -9,31 +9,130 @@
  * replace the Pixi tilemap). Do not pass `state`. Do not call sandkit.engine.api.
  */
 const MOD = "hood.viewfinder";
-const CHANNELS = 4;
-const ZONE_TILES = 6;
 const TILE_PX = 16;
-const FEED_PX = ZONE_TILES * TILE_PX;
 const MAX_CAMERAS = 1;
 
 const api = sandkit.api;
+const state = sandkit.state;
 
-const CHANNEL_HEX = ["#3de0ff", "#ff3d9a", "#ffc93d", "#7dff3d"];
+// Up to 10 channel colours. Only the first CHANNELS are ever used.
+const CHANNEL_HEX = [
+  "#3de0ff",
+  "#ff3d9a",
+  "#ffc93d",
+  "#7dff3d",
+  "#ff8c3d",
+  "#a855f7",
+  "#3dd1ff",
+  "#ff6b3d",
+  "#3dff7d",
+  "#ff3dbd",
+];
 
-const CAM_IDS = [];
-const SCREEN_IDS = [];
-for (let ch = 0; ch < CHANNELS; ch++) {
-  CAM_IDS.push(`${MOD}.cam.${ch}`);
-  SCREEN_IDS.push(`${MOD}.screen.${ch}`);
+/**
+ * Live, settings-driven channel/zone configuration. Defaults match the static
+ * constants above; they get overridden by `api.settings.get(...)` on boot and
+ * whenever the player changes the mod settings.
+ */
+let CHANNELS = 4;
+let ZONE_TILES = 6;
+let FEED_PX = ZONE_TILES * TILE_PX;
+
+/**
+ * @type {Array<string>} cam ids: ${MOD}.cam.${ch} for each channel
+ */
+let CAM_IDS = [];
+/**
+ * @type {Array<string>} screen ids: ${MOD}.screen.${ch} for each channel
+ */
+let SCREEN_IDS = [];
+/**
+ * @type {Array<HTMLCanvasElement|null>} feed canvas per channel
+ */
+let feeds = [];
+/**
+ * @type {Array<boolean>} per channel: true once a real world capture succeeded
+ */
+let hadCopy = [];
+
+/** Rebuild channel id arrays, feed slots and canvas sizes from current settings. */
+function rebuildChannelArrays() {
+  const prevChannels = CAM_IDS.length;
+  const prevFeeds = feeds;
+
+  CAM_IDS = [];
+  SCREEN_IDS = [];
+  for (let ch = 0; ch < CHANNELS; ch++) {
+    CAM_IDS.push(`${MOD}.cam.${ch}`);
+    SCREEN_IDS.push(`${MOD}.screen.${ch}`);
+  }
+
+  feeds = [];
+  hadCopy = [];
+  for (let ch = 0; ch < CHANNELS; ch++) {
+    const prev = ch < prevChannels ? prevFeeds[ch] : null;
+    feeds.push(prev);
+    hadCopy.push(ch < prevChannels ? (hadCopy[ch] ?? false) : false);
+  }
+
+  FEED_PX = ZONE_TILES * TILE_PX;
+  for (let ch = 0; ch < CHANNELS; ch++) {
+    const f = feeds[ch];
+    if (!f) {
+      if (typeof document === "undefined") {
+        feeds[ch] = null;
+        continue;
+      }
+      const c = document.createElement("canvas");
+      c.width = FEED_PX;
+      c.height = FEED_PX;
+      feeds[ch] = c;
+    } else {
+      f.width = FEED_PX;
+      f.height = FEED_PX;
+    }
+    const ctx = feeds[ch] ? feeds[ch].getContext("2d", { willReadFrequently: true }) : null;
+    if (ctx) paintNoSignal(ctx, ch);
+  }
 }
 
-/** @type {Array<HTMLCanvasElement|null>} */
-const feeds = [null, null, null, null];
-/** @type {Array<boolean>} per channel: true once a real world capture succeeded */
-const hadCopy = [false, false, false, false];
-/** Last capture tick, throttles capture inside frame:render (~10 fps). */
-let lastCaptureMs = 0;
-/** Scratch canvas for the live world-map capture. */
-let mapScratch = null;
+/** Clip a numeric setting value into its allowed range. */
+function clampInt(v, lo, hi) {
+  if (typeof v !== "number" || !isFinite(v)) return lo;
+  return Math.max(lo, Math.min(hi, Math.floor(v)));
+}
+
+/** Read the current enabled . Default true if the field is missing. */
+function isEnabled() {
+  try {
+    const v = api.settings.get("isEnabled");
+    return typeof v === "boolean" ? v : true;
+  } catch {
+    return true;
+  }
+}
+
+/** Apply settings changes: rebuild channel arrays / feed size when relevant
+ * fields change, then re-register structures so the new channel count takes
+ * effect without a restart. */
+function applySettings(values) {
+  const nextChannels = clampInt(values.channels, 1, 10);
+  const nextZone = clampInt(values.zoneTiles, 2, 30);
+  let changed = false;
+  if (nextChannels !== CHANNELS) {
+    CHANNELS = nextChannels;
+    changed = true;
+  }
+  if (nextZone !== ZONE_TILES) {
+    ZONE_TILES = nextZone;
+    changed = true;
+  }
+  if (changed) {
+    rebuildChannelArrays();
+    registerStructures();
+    registerI18n();
+  }
+}
 
 function camId(ch) {
   return CAM_IDS[ch];
@@ -42,16 +141,18 @@ function screenId(ch) {
   return SCREEN_IDS[ch];
 }
 
+/** Last capture tick, throttles capture inside frame:render (~10 fps). */
+let lastCaptureMs = 0;
+/** Scratch canvas for the live world-map capture. */
+let mapScratch = null;
+
 function metrics() {
   try {
-    const m = api.rendering?.getGridMetrics?.() || {};
-    const cell = m.cellSize || 4;
-    const snap = m.snapGridCellSize || 4;
     return {
-      cell,
-      snap,
-      tilePx: snap * cell || TILE_PX,
-      zoneCells: ZONE_TILES * snap,
+      cell : 4,
+      snap : 4,
+      tilePx: 4 * 4 ,
+      zoneCells: ZONE_TILES * 4,
     };
   } catch {
     return { cell: 4, snap: 4, tilePx: TILE_PX, zoneCells: ZONE_TILES * 4 };
@@ -133,24 +234,6 @@ function overlayCanvas() {
   return canvas;
 }
 
-function worldCanvas() {
-  const skip = overlayCanvas();
-  if (typeof document === "undefined") return null;
-  const nodes = document.querySelectorAll("canvas");
-  let best = null;
-  let area = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    const c = nodes[i];
-    if (c === skip) continue;
-    const a = (c.width || 0) * (c.height || 0);
-    if (a > area) {
-      area = a;
-      best = c;
-    }
-  }
-  return best;
-}
-
 function drawPosWorld(wx, wy) {
   try {
     if (api.rendering.getDrawPositionAtWorld) {
@@ -192,37 +275,62 @@ function zoneWorldRect(originX, originY) {
 }
 
 function colorAtCell(cx, cy) {
+  let fullCell = false
+    const md = (state && state.shared) ? state.shared.mapData : null;
+    if (md != null) {
+      const si = 4 * (cy * md.width + cx );
+      const c = [md.data[si], md.data[si + 1], md.data[si + 2], md.data[si + 3]]
+      if (c[3] != 0) {
+        fullCell = 1
+        if (!(c[0] == 255 && c[1] == 0 && c[2] == 0)){
+          const color = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 1)`
+          return color;
+        }
+    }
+  }
   try {
-    const type = api.elements.getTypeAtCell?.(cx, cy);
+    // ====== for not catch element like liquid
+    const type = api.elements.getTypeAtCell(cx, cy);
+    // console.log(" TYPE==", type);
     if (type != null) {
-      // Deterministic hue per element type — the info payload has no color.
-      const h = (type * 67) % 360;
-      return `hsl(${h}, 65%, 55%)`;
+        // Deterministic hue per element type — the info payload has no color.
+        const h = (type * 67) % 360;
+        return `hsla(${h}, 35%, 25%, .5)`;
     }
   } catch {
     /* ignore */
   }
   try {
-    if (api.structures.hasBuiltAtCell?.(cx, cy)) return "#7a7278";
+    if (api.structures.hasBuiltAtCell?.(cx, cy)) {
+      const r = 4 * Math.floor(Math.random() * 6)
+      if (fullCell)  {
+        return `rgba(${128 + r}, ${128 + r}, ${128 + r}, .25)`
+      }
+      else {
+        return `rgba(${64 + r}, ${64 + r}, ${64 + r}, .25)`;
+      }
+    }
   } catch {
     /* ignore */
   }
   try {
-    if (api.terrains.isAtCell?.(cx, cy)) return "#6a5138";
+    if (api.terrains.isAtCell?.(cx, cy)) return "#49628c";
   } catch {
     /* ignore */
   }
-  return "#1c1914";
+  const r = 4 * Math.floor(Math.random() * 8)
+  return `rgba(${r}, ${r}, ${r}, .25)`;
 }
 
 function paintNoSignal(ctx, ch) {
   if (!ctx) return;
-  ctx.fillStyle = "#0b0b0e";
+  ctx.clearRect(0, 0, FEED_PX, FEED_PX);
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.fillRect(0, 0, FEED_PX, FEED_PX);
   ctx.fillStyle = CHANNEL_HEX[ch];
-  ctx.globalAlpha = 0.35;
-  for (let i = 0; i < 40; i++) {
-    ctx.fillRect((i * 17 + ch * 9) % FEED_PX, (i * 13 + ch * 5) % FEED_PX, 4, 4);
+  ctx.globalAlpha = 0.3;
+  for (let i = 0; i < 30; i++) {
+    ctx.fillRect((i * 17 + ch * 9) % FEED_PX, (i * 13 + ch * 5) % FEED_PX, 3, 3);
   }
   ctx.globalAlpha = 1;
   ctx.fillStyle = CHANNEL_HEX[ch];
@@ -233,118 +341,20 @@ function paintNoSignal(ctx, ch) {
   ctx.fillText("CH " + ch, 8, 60);
 }
 
-function paintSchematic(ctx, originX, originY) {
-  const { snap } = metrics();
-  ctx.fillStyle = "#101014";
-  ctx.fillRect(0, 0, FEED_PX, FEED_PX);
-  for (let ty = 0; ty < ZONE_TILES; ty++) {
-    for (let tx = 0; tx < ZONE_TILES; tx++) {
-      const cx = originX + tx * snap + Math.floor(snap / 2);
-      const cy = originY + ty * snap + Math.floor(snap / 2);
+function paintSchematic(ctx, originX, originY,  zoneCells) {
+  for (let ty = 0; ty < zoneCells; ty++) {
+    for (let tx = 0; tx < zoneCells; tx++) {
+      const cx = originX + tx;
+      const cy = originY + ty;
       ctx.fillStyle = colorAtCell(cx, cy);
-      ctx.fillRect(tx * TILE_PX, ty * TILE_PX, TILE_PX, TILE_PX);
+      ctx.fillRect(tx * 4 , ty * 4 , 4, 4);
     }
   }
 }
 
-function feedLooksEmpty(ctx) {
-  try {
-    const d = ctx.getImageData(0, 0, 12, 12).data;
-    let lit = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i] + d[i + 1] + d[i + 2] > 24 && d[i + 3] > 8) lit++;
-    }
-    return lit < 6;
-  } catch {
-    return true;
-  }
-}
 
-/**
- * Live engine state. The frame:render payload does NOT reliably carry live
- * state in the mod facade (docs/workshop mods use zero-arg handlers), so
- * capture reads the proven global instead (same pattern as workshop
- * mod 3787806696: `sandkit.state.shared.mapData`). This is a live
- * SharedArrayBuffer view — fresh from any context, no render timing needed.
- */
-function liveState() {
-  try {
-    return typeof sandkit !== "undefined" ? (sandkit.state ?? null) : null;
-  } catch {
-    return null;
-  }
-}
 
-/**
- * The engine keeps a live RGBA world map shared from the sim worker:
- * `state.shared.mapData` = { data: Uint8Array (RGBA, 1 px per cell), width, height }.
- * Layout verified in the engine: index = 4 * (x + y * width); empty cells are
- * stored as [0,0,0,0]. This is the same buffer the GPU uploads every frame,
- * so it is always fresh and independent of what is visible on screen.
- */
-function captureFromMap(ctx, z, zoneCells, ch, state) {
-  // Use the live state passed explicitly (from frame:render) when available;
-  // otherwise fall back to the global sandkit.state. This avoids the stale
-  // frame:render payload problem that froze the image.
-  const st = (state && state.shared) ? state : (liveState && liveState());
-  const md = (st && st.shared) ? st.shared.mapData : null;
-  if (!md || !md.data || !md.width || !md.height) {
-    if (!captureFromMap._warned) {
-      captureFromMap._warned = true;
-      console.warn("[viewfinder] map capture unavailable:", {
-        hasState: !!state,
-        hasLiveState: !!liveState && liveState() != null,
-        hasMapData: !!md,
-      });
-    }
-    return false;
-  }
-  try {
-    if (!mapScratch) mapScratch = document.createElement("canvas");
-    if (mapScratch.width !== zoneCells) {
-      mapScratch.width = zoneCells;
-      mapScratch.height = zoneCells;
-    }
-    const sctx = mapScratch.getContext("2d");
-    const img = sctx.createImageData(zoneCells, zoneCells);
-    const dst = img.data;
-    const src = md.data;
-    for (let r = 0; r < zoneCells; r++) {
-      const wy = z.y + r;
-      if (wy < 0 || wy >= md.height) continue;
-      const rowStart = wy * md.width;
-      for (let c = 0; c < zoneCells; c++) {
-        const wx = z.x + c;
-        if (wx < 0 || wx >= md.width) continue;
-        const si = (rowStart + wx) * 4;
-        const di = (r * zoneCells + c) * 4;
-        const a = src[si + 3];
-        if (a === 0) {
-          // Empty cell → dark background.
-          dst[di] = 20;
-          dst[di + 1] = 17;
-          dst[di + 2] = 14;
-          dst[di + 3] = 92;
-        } else {
-          dst[di] = src[si];
-          dst[di + 1] = src[si + 1];
-          dst[di + 2] = src[si + 2];
-          dst[di + 3] = 255;
-        }
-      }
-    }
-    sctx.putImageData(img, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, FEED_PX, FEED_PX);
-    ctx.drawImage(mapScratch, 0, 0, zoneCells, zoneCells, 0, 0, FEED_PX, FEED_PX);
-    hadCopy[ch] = true;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function captureChannel(ch, state) {
+function captureChannel(ch) {
   const frame = ensureFeed(ch);
   if (!frame) return;
   const ctx = frame.getContext("2d");
@@ -362,33 +372,8 @@ function captureChannel(ch, state) {
   // 1) Live world map (best source, always fresh, works off-screen too).
   // Uses the live state passed from frame:render when available; falls back
   // to the global sandkit.state for other callers (placement, interact).
-  if (captureFromMap(ctx, z, zoneCells, ch, state)) return;
-  const rect = zoneWorldRect(z.x, z.y);
-  const a = drawPosWorld(rect.x, rect.y);
-  const b = drawPosWorld(rect.x + rect.w, rect.y + rect.h);
-  const sx = Math.min(a.x, b.x);
-  const sy = Math.min(a.y, b.y);
-  const sw = Math.abs(b.x - a.x);
-  const sh = Math.abs(b.y - a.y);
-  const src = worldCanvas();
-  let copied = false;
-  if (src && sw > 2 && sh > 2) {
-    try {
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(src, sx, sy, sw, sh, 0, 0, FEED_PX, FEED_PX);
-      copied = !feedLooksEmpty(ctx);
-    } catch {
-      copied = false;
-    }
-  }
-  if (copied) {
-    hadCopy[ch] = true;
-    return;
-  }
-  // A blank copy is normal outside the render frame — don't overwrite the
-  // last good frame with it. Only degrade to the schematic if we never
-  // captured anything real.
-  if (!hadCopy[ch]) paintSchematic(ctx, z.x, z.y);
+  // if (captureFromMap(ctx, z, zoneCells, ch, state)) return;
+  if (!hadCopy[ch]) paintSchematic(ctx, z.x, z.y, zoneCells);
 }
 
 function normalizeDraw(a, b, c) {
@@ -431,27 +416,22 @@ function blitScreenOn(g, structure, ch) {
   const y = Math.min(a.y, b.y);
   const w = Math.max(8, Math.abs(b.x - a.x));
   const h = Math.max(8, Math.abs(b.y - a.y));
-  const inset = Math.max(3, Math.floor(Math.min(w, h) * 0.06));
   const feed = ensureFeed(ch);
 
   g.save();
-  g.shadowColor = "rgba(0,0,0,0.75)";
-  g.shadowBlur = 14;
-  g.shadowOffsetX = 3;
-  g.shadowOffsetY = 5;
-  g.fillStyle = "#14110e";
+  // 50% transparent black background — empty feed pixels (alpha < 255)
+  // composite onto this. Edge to edge, no inset.
+  g.fillStyle = "rgba(20,20,20,0.3)";
   g.fillRect(x, y, w, h);
-  g.shadowColor = "transparent";
   if (feed) {
     g.imageSmoothingEnabled = false;
-    g.drawImage(feed, x + inset, y + inset, w - inset * 2, h - inset * 2);
+    // Fill the full screen rectangle, no inset gap — image is edge to edge.
+    g.drawImage(feed, x, y, w, h);
   }
+  // Colored border per channel (kept).
   g.strokeStyle = CHANNEL_HEX[ch];
   g.lineWidth = 3;
   g.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
-  g.strokeStyle = "rgba(0,0,0,0.55)";
-  g.lineWidth = 1;
-  g.strokeRect(x + inset + 0.5, y + inset + 0.5, w - inset * 2 - 1, h - inset * 2 - 1);
   g.restore();
 }
 
@@ -536,8 +516,8 @@ function registerStructures() {
       id: camId(ch),
       nameKey: `mods|viewfinder|cam|${ch}|name`,
       descriptionKey: "mods|viewfinder|cam|desc",
-      categoryKey: "logic",
-      order: 50 + ch * 2,
+      categoryKey: "camera",
+      order: 0,
       buildModes: [{ type: "single" }],
       shape: tileShape(1),
       defaultData: { channel: ch, corner: 0, cornerName: "top-left" },
@@ -564,8 +544,8 @@ function registerStructures() {
       id: screenId(ch),
       nameKey: `mods|viewfinder|screen|${ch}|name`,
       descriptionKey: "mods|viewfinder|screen|desc",
-      categoryKey: "logic",
-      order: 51 + ch * 2,
+      categoryKey: "camera",
+      order: 0,
       buildModes: [{ type: "single" }],
       shape: tileShape(ZONE_TILES),
       defaultData: { channel: ch },
@@ -696,6 +676,21 @@ function registerCapture() {
 
 async function boot() {
   registerI18n();
+
+  // Read settings and build channel arrays / feed size from them. A
+  // settings.onChange callback re-runs the same flow when the player edits
+  // the mod config.
+  try {
+    const all = api.settings.getAll();
+    const channels = clampInt(all.channels, 1, 10);
+    const zone = clampInt(all.zoneTiles, 2, 30);
+    if (channels !== CHANNELS) CHANNELS = channels;
+    if (zone !== ZONE_TILES) ZONE_TILES = zone;
+  } catch {
+    /* settings API may not be present; keep defaults */
+  }
+  rebuildChannelArrays();
+
   // Sprites first (documented order: load before structure render.imageName
   // use) — but each load is best-effort so one failure can never abort boot
   // and prevent structure registration.
@@ -718,6 +713,20 @@ async function boot() {
   registerInteract();
   registerLifecycle();
   registerCapture();
+
+  // React to config changes at runtime.
+  try {
+    api.settings.onChange((values) => {
+      if (!isEnabled()) {
+        // Mod disabled: stop capturing and clear feeds.
+        for (let ch = 0; ch < CHANNELS; ch++) hadCopy[ch] = false;
+        return;
+      }
+      applySettings(values);
+    });
+  } catch {
+    /* settings API may not be present */
+  }
 }
 
 await boot();
