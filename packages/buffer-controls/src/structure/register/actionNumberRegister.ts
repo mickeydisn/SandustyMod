@@ -10,9 +10,11 @@
 import "@sandmd/sandkit";
 
 import type { StructureLike } from "@sandmd/shared";
-import { type ActionOp, ActionRegisterResult, applyAction } from "./actionRegister.ts";
-import { buildSectionTooltips, makeShape, sectionBuild } from "../shared.ts";
+import { ActionRegisterResult, applyAction } from "./actionRegister.ts";
+import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { registerStructureOps } from "../register.ts";
+import { ActionOp } from "../../types.ts";
+import { drawBorder } from "../render.ts";
 
 export function registerActionNumberStructures(
     ops: registerStructureOps,
@@ -43,7 +45,7 @@ export function registerActionNumberStructures(
     const draw = (
         _state: unknown,
         structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
-        _render: { ctx?: CanvasRenderingContext2D },
+        render: { ctx?: CanvasRenderingContext2D },
     ): boolean => {
         // TODO:  need to move :
         const d = ops.read(structure.data?.path as string);
@@ -52,12 +54,12 @@ export function registerActionNumberStructures(
             structure.y,
             d ? 1 : 0,
         );
+        drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
 
     const actionItems: { typeId: string; path: string }[] = [];
 
-    const spriteId = ops.spriteFor(ops.item) ?? ops.typeId;
     const op = ops.item.action ?? "inc";
     const path = ops.item.path ?? ops.item.id;
 
@@ -73,7 +75,7 @@ export function registerActionNumberStructures(
         ...sectionBuild.single(ops.typeId),
         ...buildSectionTooltips(),
         render: {
-            imageName: spriteId,
+            imageName: ops.item.spriteId,
             size: { width: 16, height: 16 },
         },
         copyData: true,

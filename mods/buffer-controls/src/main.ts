@@ -41,7 +41,6 @@ void (async () => {
             description: "Buffer Controls — opens the variable picker.",
             spriteId: "menu",
         },
-        categories: { variables: "Variables", value: "Value", action: "Action" },
         sprites: {
             kind: { bool: "bolean", number: "number", string: "string" },
             action: { inc: "actionPlus", dec: "actionMinus", toggle: "actionToggle" },

@@ -1,9 +1,11 @@
 /** */
 import "@sandmd/sandkit";
-import { buildSectionTooltips, makeShape, sectionBuild } from "../shared.ts";
+import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { StructureLike } from "@sandmd/shared";
-import { type ActionOp, ActionRegisterResult, applyAction } from "./actionRegister.ts";
+import { ActionRegisterResult, applyAction } from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
+import { ActionOp } from "../../types.ts";
+import { drawBorder } from "../render.ts";
 
 export function registerBooleanActionStructures(
     ops: registerStructureOps,
@@ -40,7 +42,7 @@ export function registerBooleanActionStructures(
     const draw = (
         _state: unknown,
         structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
-        _render: { ctx?: CanvasRenderingContext2D },
+        render: { ctx?: CanvasRenderingContext2D },
     ): boolean => {
         const d = ops.read(structure.data?.path as string);
         sandkit.api.structures.setSpritesheetIndexAtCell(
@@ -48,11 +50,11 @@ export function registerBooleanActionStructures(
             structure.y,
             d ? 1 : 0,
         );
+        drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
-    const spriteId = ops.spriteFor(ops.item) ?? ops.typeId;
-    const op = ops.item.action ?? "inc";
-    const path = ops.item.path ?? ops.item.id;
+    const op = ops.item.action ?? "toggle";
+    const path = ops.item.path;
 
     actionItems.push({ typeId: ops.typeId, path });
 
@@ -66,7 +68,7 @@ export function registerBooleanActionStructures(
         ...sectionBuild.single(ops.typeId),
         ...buildSectionTooltips(),
         render: {
-            imageName: spriteId,
+            imageName: ops.item.spriteId,
             size: { width: 16, height: 16 },
         },
         copyData: true,

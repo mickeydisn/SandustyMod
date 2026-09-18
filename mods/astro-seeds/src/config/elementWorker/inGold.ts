@@ -9,6 +9,7 @@ import type { Profile } from "@sandmd/element-profiles/shared";
 import { ASTRO_FIELD } from "../elementShared/ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
 import { channelMatch } from "./keys.ts";
+import { live } from "./live.ts";
 
 const MASK_VERT = [[0, 1, 0], [0, 0, 0], [0, 1, 0]]; // vertical neighbours
 const MASK_SIDE = [[0, 0, 0], [1, 0, 1], [0, 0, 0]]; // horizontal neighbours
@@ -39,17 +40,21 @@ const MASK_FULL = [
 
 // ==========================
 // ASTRO SEED — drifts, matures into a gold crystal disk; water pushes it away.
+const SEED_ID = "InGold-ASeed";
 export const astroSeedInGold: Profile = {
-    id: "astroSeed-in-gold",
+    id: SEED_ID,
     seedType: ElementType.astroSeed,
     liquidType: ElementType.liquidGold,
     crystalType: ElementType.astroGoldCrystal,
-    tickSpeed: 50,
+    tickSpeed: () => live(SEED_ID, "tickSpeed", 50),
+    enabled: () => live(SEED_ID, "enabled", true),
+    growEnabled: () => live(SEED_ID, "growEnabled", false),
+    crystallizationEnabled: () => live(SEED_ID, "crystalEnabled", false),
     ageField: ASTRO_FIELD.AGE,
     growAge: () => 150,
     moves: [
-        Move.side(15),
-        Move.down(20),
+        Move.side(() => live(SEED_ID, "moveSide", 15)),
+        Move.down(() => live(SEED_ID, "moveDown", 20)),
         Move.channel({
             chance: 90,
             matchTypes: [ElementType.water],
@@ -63,12 +68,16 @@ export const astroSeedInGold: Profile = {
 
 // ==========================
 // ASTRO GOLD POWDER — jitter + dispersion, then inertia keeps it moving.
+const GOLD_ID = "InGold-AGold";
 export const astroGoldInLiquidGold: Profile = {
-    id: "astroGold-in-liquid-gold",
+    id: GOLD_ID,
     seedType: ElementType.astroGoldPowder,
     liquidType: ElementType.liquidGold,
     crystalType: ElementType.astroGoldCrystal,
-    tickSpeed: 50,
+    tickSpeed: () => live(GOLD_ID, "tickSpeed", 50),
+    enabled: () => live(GOLD_ID, "enabled", true),
+    growEnabled: () => live(GOLD_ID, "growEnabled", false),
+    crystallizationEnabled: () => live(GOLD_ID, "crystalEnabled", false),
     ageField: ASTRO_FIELD.AGE,
     // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
     // memDecay integrates it into a real fading velocity; memBounce
@@ -124,12 +133,16 @@ export const astroGoldInLiquidGold: Profile = {
 
 // ==========================
 // ASTRO COPPER POWDER — jitters, forms diagonal chains, grows into GC alloy.
+const COPPER_ID = "InGold-ACopper";
 export const astroCopperInLiquidGold: Profile = {
-    id: "astroCopper-in-liquid-gold",
+    id: COPPER_ID,
     seedType: ElementType.astroCopperPowder,
     liquidType: ElementType.liquidGold,
     crystalType: ElementType.astroGCalloyPowder,
-    tickSpeed: 50,
+    tickSpeed: () => live(COPPER_ID, "tickSpeed", 50),
+    enabled: () => live(COPPER_ID, "enabled", true),
+    growEnabled: () => live(COPPER_ID, "growEnabled", false),
+    crystallizationEnabled: () => live(COPPER_ID, "crystalEnabled", false),
     ageField: ASTRO_FIELD.AGE,
     // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
     memField: ASTRO_FIELD.VX,

@@ -5,7 +5,7 @@
 
 import { CatalogueItem } from "@sandmd/catalogue";
 
-export type BuildEventName = "select" | "place" | "remove" | "category" | "mirror" | "tag";
+export type BuildEventName = "select" | "place" | "remove" | "category" | "path" | "mirror" | "tag";
 
 export interface CatalogueCategory {
     id: string;
@@ -17,7 +17,7 @@ export interface BuildListOptions {
     /** Structure id of the single build-menu entry that opens the picker. */
     menuId: string;
     menuLabel: string;
-    categories: CatalogueCategory[];
+    // categories: CatalogueCategory[];
     catalogueItems: CatalogueItem[];
     /** Default selected item id. */
     selectedId?: string;
@@ -37,6 +37,7 @@ export interface BuildEventMap {
     place: PlacedPayload;
     remove: PlacedPayload;
     category: { categoryId: string };
+    path: { path: string };
     mirror: { mirrored: boolean };
     tag: { tags: string[]; sizes: string[] };
 }

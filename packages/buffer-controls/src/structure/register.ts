@@ -14,20 +14,20 @@
  */
 import "@sandmd/sandkit";
 
-import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
+import type { BuildList } from "@sandmd/catalogue";
 import type { JsonBuffer } from "@sandmd/buffer";
 import {
-    type ActionCatalogueItem,
     type ActionRead,
     type ActionRegisterResult,
     type ActionWrite,
 } from "./register/actionRegister.ts";
-import type { PathCatalogueItem } from "./shared.ts";
+import type { PathCatalogueItem } from "../types.ts";
 import { registerMenuStructures } from "./register/menuRegister.ts";
 import { registerPathStructures } from "./register/varRegister.ts";
 import { registerValueStructures, type ValueStructureEntry } from "./register/valueRegister.ts";
 import { registerActionNumberStructures } from "./register/actionNumberRegister.ts";
 import { registerBooleanActionStructures } from "./register/actionBooleanRegister.ts";
+import { ActionCatalogueItem } from "../types.ts";
 
 /** Recompute + push every placed action structure's signal output (from ./register/actionRegister.ts). */
 export type { ActionRegisterResult } from "./register/actionRegister.ts";
@@ -36,7 +36,6 @@ export type { ActionRegisterResult } from "./register/actionRegister.ts";
 export type registerStructureOps = {
     typeId: string;
     item: ActionCatalogueItem;
-    spriteFor: (item: CatalogueItem) => string | undefined;
     read: ActionRead;
     write: ActionWrite;
 };
@@ -49,7 +48,6 @@ export interface StructureRegisterResult extends ActionRegisterResult {
 export function registerStructures<T extends object>(
     buffer: JsonBuffer<T>,
     list: BuildList,
-    spriteFor: (item: CatalogueItem) => string | undefined,
 ): StructureRegisterResult {
     const readBuffer = (path: string): unknown => buffer.getPath(path);
     const writeBuffer = (path: string, value: unknown): void => {
@@ -68,28 +66,37 @@ export function registerStructures<T extends object>(
             // which is what list.structureType / picker select / unlock all use.
             typeId: list.structureType(item.id),
             item,
-            spriteFor,
             read: readBuffer,
             write: writeBuffer,
         };
 
-        registerMenuStructures(ops);
-        registerPathStructures(ops);
+        if (item.category == "menu") {
+            registerMenuStructures(ops);
+            continue;
+        }
 
-        const value = registerValueStructures(ops);
-        if (value) valueEntries.push(...value.entries);
-
+        if (item.tags?.includes("variables")) {
+            registerPathStructures(ops);
+        }
+        if (item.tags?.includes("value")) {
+            const value = registerValueStructures(ops);
+            if (value) valueEntries.push(...value.entries);
+        }
         // Number + boolean action senders each supply a refreshSignals that
         // recomputes their own placed structures; merge them all into one.
-        const number = registerActionNumberStructures(ops);
-        if (number) refreshers.push(number.refreshSignals);
-        const boolean = registerBooleanActionStructures(ops);
-        if (boolean) refreshers.push(boolean.refreshSignals);
+        if (ops.item.tags?.includes("action") && ops.item.kind == "number") {
+            const number = registerActionNumberStructures(ops);
+            if (number) refreshers.push(number.refreshSignals);
+        }
+        if (ops.item.tags?.includes("action") && ops.item.kind == "bool") {
+            const boolean = registerBooleanActionStructures(ops);
+            if (boolean) refreshers.push(boolean.refreshSignals);
+        }
     }
 
-    console.log(
-        `[${list.modId}] registered structures (${valueEntries.length} value types, ${refreshers.length} action registers)`,
-    );
+    // console.log(
+    //     `[${list.modId}] registered structures (${valueEntries.length} value types, ${refreshers.length} action registers)`,
+    // );
 
     return {
         valueEntries,

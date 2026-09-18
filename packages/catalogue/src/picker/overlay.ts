@@ -87,7 +87,12 @@ export function createPickerOverlay(
     };
 
     const chooseCategory = (categoryId: string) => {
-        list.setCategory(categoryId);
+        if (list.getCategory() == categoryId) {
+            list.setCategory("");
+        } else {
+            list.setCategory(categoryId);
+        }
+        /*
         const tags = list.getSelectedTags();
         const sizes = list.getSelectedSizes();
         // AND across groups, OR within each group (same as the picker filter).
@@ -100,12 +105,36 @@ export function createPickerOverlay(
         };
         const item = list.itemsInCategory(categoryId).find(matches);
         if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
+        */
+        persistIfEnabled();
+        repaint?.();
+    };
+
+    const choosePath = (path: string) => {
+        if (list.getPath() == path) {
+            list.setPath("");
+        } else {
+            list.setPath(path);
+        }
+        const tags = list.getSelectedTags();
+        const sizes = list.getSelectedSizes();
+        // AND across groups, OR within each group (same as the picker filter).
+        const matches = (it: CatalogueItem): boolean => {
+            const itemTags = it.tags ?? [];
+            const itemSizes = it.sizes ?? [];
+            if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) return false;
+            if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
+            return true;
+        };
+        const item = list.itemsInPath(path).find(matches);
+        if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
         persistIfEnabled();
         repaint?.();
     };
 
     const toggleTag = (tag: string) => {
         list.toggleTag(tag);
+        /*
         // Tags constrain the available sizes — prune any size filter that no
         // longer matches an item under the new tag selection.
         const tags = list.getSelectedTags();
@@ -119,6 +148,7 @@ export function createPickerOverlay(
         if (stale.length > 0) {
             list.setSelectedSizes(list.getSelectedSizes().filter((s) => avail.has(s)));
         }
+        */
         persistIfEnabled();
         repaint?.();
     };
@@ -145,6 +175,7 @@ export function createPickerOverlay(
         selectItem,
         toggleMirror,
         chooseCategory,
+        choosePath,
         toggleTag,
         toggleSize,
         clearFilters,

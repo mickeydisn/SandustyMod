@@ -64,8 +64,9 @@ interface InjectedUi {
     inject?: (id: string, component: unknown) => (() => void) | undefined;
 }
 
-type AdminApi = { elements: ElementsAdmin; ui: InjectedUi } &
-    Omit<typeof sandkit.api, "elements" | "ui">;
+type AdminApi =
+    & { elements: ElementsAdmin; ui: InjectedUi }
+    & Omit<typeof sandkit.api, "elements" | "ui">;
 
 const api = sandkit.api as unknown as AdminApi;
 
@@ -201,40 +202,73 @@ interface StyleObj {
 }
 const styles = {
     panel: {
-        position: "fixed", right: "16px", bottom: "16px",
-        width: "430px", maxWidth: "92vw", maxHeight: "70vh",
-        display: "flex", flexDirection: "column",
-        background: COLORS.bg, border: `1px solid ${COLORS.border}`,
-        borderRadius: "10px", color: COLORS.text,
+        position: "fixed",
+        right: "16px",
+        bottom: "16px",
+        width: "430px",
+        maxWidth: "92vw",
+        maxHeight: "70vh",
+        display: "flex",
+        flexDirection: "column",
+        background: COLORS.bg,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: "10px",
+        color: COLORS.text,
         font: "12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.5)", zIndex: 9000,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+        zIndex: 9000,
     } as StyleObj,
     header: {
-        display: "flex", alignItems: "center", gap: "6px",
-        padding: "8px 10px", borderBottom: `1px solid ${COLORS["border"]}`,
-        color: COLORS.accent, letterSpacing: "0.06em", flexWrap: "wrap",
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "8px 10px",
+        borderBottom: `1px solid ${COLORS["border"]}`,
+        color: COLORS.accent,
+        letterSpacing: "0.06em",
+        flexWrap: "wrap",
     } as StyleObj,
     button: {
-        background: "#1a2130", color: COLORS.text,
-        border: `1px solid ${COLORS.border}`, borderRadius: "5px",
-        padding: "3px 8px", cursor: "pointer", font: "inherit",
+        background: "#1a2130",
+        color: COLORS.text,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: "5px",
+        padding: "3px 8px",
+        cursor: "pointer",
+        font: "inherit",
     } as StyleObj,
     danger: {
-        background: "#2a1520", color: COLORS.danger,
-        border: `1px solid ${COLORS.danger}`, borderRadius: "5px",
-        padding: "2px 7px", cursor: "pointer", font: "inherit",
+        background: "#2a1520",
+        color: COLORS.danger,
+        border: `1px solid ${COLORS.danger}`,
+        borderRadius: "5px",
+        padding: "2px 7px",
+        cursor: "pointer",
+        font: "inherit",
     } as StyleObj,
     list: { overflowY: "auto", padding: "4px 6px" } as StyleObj,
     row: {
-        display: "flex", alignItems: "center", gap: "8px",
-        padding: "4px 6px", borderBottom: `1px solid ${COLORS.border}`,
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "4px 6px",
+        borderBottom: `1px solid ${COLORS.border}`,
     } as StyleObj,
     swatch: {
-        width: "10px", height: "10px", borderRadius: "2px", flexShrink: 0,
+        width: "10px",
+        height: "10px",
+        borderRadius: "2px",
+        flexShrink: 0,
     } as StyleObj,
-    grow: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } as StyleObj,
+    grow: {
+        flex: 1,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+    } as StyleObj,
     footer: {
-        padding: "6px 10px", color: COLORS.dim,
+        padding: "6px 10px",
+        color: COLORS.dim,
         borderTop: `1px solid ${COLORS.border}`,
     } as StyleObj,
 };
@@ -290,8 +324,11 @@ function MdAdminPanel(): unknown {
         h(
             "div",
             { style: styles.header },
-            h("span", { style: { flex: 1 } },
-                `MD ADMIN · ${rows.length} element${rows.length === 1 ? "" : "s"}`),
+            h(
+                "span",
+                { style: { flex: 1 } },
+                `MD ADMIN · ${rows.length} element${rows.length === 1 ? "" : "s"}`,
+            ),
             h(
                 "button",
                 { style: styles.danger, disabled: removableCount === 0, onClick: removeAll },

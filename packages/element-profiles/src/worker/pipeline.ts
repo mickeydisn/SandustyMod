@@ -12,7 +12,7 @@
  */
 import type { Ctx, Profile, SenseMatrix } from "../shared/types.ts";
 import { Grid } from "./utils/grid.ts";
-import { resolveNum, roll } from "../shared/num.ts";
+import { resolveBoolean, resolveNum, roll } from "../shared/num.ts";
 import { Vote } from "./utils/vote.ts";
 
 export const SENSE_SIZE = 5;
@@ -95,12 +95,14 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
 
     // Grow until the seed is blocked or matched.
     let delta = 0;
-    for (const fn of profile.grow) {
-        const result = fn(ctx);
-        if (ctx.blocked) break;
-        if (result.matched) {
-            delta = result.delta || 0;
-            break;
+    if (resolveBoolean(profile.growEnabled, true)) {
+        for (const fn of profile.grow) {
+            const result = fn(ctx);
+            if (ctx.blocked) break;
+            if (result.matched) {
+                delta = result.delta || 0;
+                break;
+            }
         }
     }
     if (delta > 0) {
@@ -109,7 +111,7 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
     }
 
     // Crystallize the seed if it is mature.
-    const need = profile.growAge();
+    const need = resolveBoolean(profile.crystallizationEnabled, true) ? profile.growAge() : 0;
     if (need > 0 && ctx.age >= need) {
         let ok = false;
         for (const fn of profile.crystallization) {

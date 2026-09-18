@@ -8,9 +8,10 @@ export interface CatalogueItem {
     width: number;
     height: number;
     // Sprite
-    filePath: string;
+    filePath?: string;
     spriteId?: string;
     // Cat
+    path: string;
     category: string;
     tags?: string[];
     sizes?: string[];

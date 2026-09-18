@@ -34,8 +34,12 @@ export class JsonBuffer<T extends object> {
         key: string,
         defaultRecord?: T,
         assertShape?: (value: T) => void,
-        loadFromStorage: boolean = false,
+        percist: boolean = false,
+        percistLoad: boolean = false,
+        /** Observe-only (worker threads): never commit, never touch storage. */
+        observe: boolean = false,
     ) {
+        // console.log("JsonBuffer Construct", modId, percist, percistLoad);
         this.modId = modId;
         this.key = key;
         this.defaultRecord = defaultRecord;
@@ -50,7 +54,7 @@ export class JsonBuffer<T extends object> {
         try {
             Atomics.load(this.versionView, 0);
         } catch {
-            console.log("ATOMIC ---");
+            // console.log("ATOMIC ---");
             this.useAtomics = false;
         }
         this.dataView = ensureBuffer(`${key}:json`, {
@@ -61,13 +65,21 @@ export class JsonBuffer<T extends object> {
         if (this.remoteVersion() > 0) {
             this.cache = this.readFromBuffer();
             this.localVersion = this.remoteVersion();
+        } else if (observe) {
+            // Observe mode: wait for a main-thread commit instead of writing
+            // defaults (a worker committing first would clobber the persisted
+            // record before the main thread restores it).
+            this.cache = this.defaultRecord ? deepClone(this.defaultRecord) : ({} as T);
+            this.localVersion = this.remoteVersion();
         } else {
             // LongTerm Storage
-            const storedRecord = !loadFromStorage ? false : sandkit.api.storage.local.get(this.key);
-            sandkit.api.events.on("store:save", (_payload: unknown) => {
-                this.commit();
-                this.save();
-            });
+            const storedRecord = !percistLoad ? false : sandkit.api.storage.local.get(this.key);
+            if (percist) {
+                sandkit.api.events.on("store:save", (_payload: unknown) => {
+                    this.commit();
+                    this.save();
+                });
+            }
 
             this.cache = storedRecord
                 ? storedRecord as T

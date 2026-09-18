@@ -12,7 +12,6 @@ import type {
     BuildEventName,
     BuildListener,
     BuildListOptions,
-    CatalogueCategory,
     PlacedPayload,
 } from "./types.ts";
 
@@ -48,7 +47,7 @@ export interface BuildList {
     readonly menuId: string;
     readonly menuLabel: string;
     readonly catalogueItems: CatalogueItem[];
-    readonly categories: CatalogueCategory[];
+    // readonly categories: CatalogueCategory[];
     getSelected(): CatalogueItem | undefined;
     getSelectedType(): string;
     setSelected(id: string): void;
@@ -56,8 +55,12 @@ export interface BuildList {
     setMirrored(next: boolean): void;
     getCategory(): string;
     setCategory(id: string): void;
+    getPath(): string;
+    setPath(id: string): void;
     /** All distinct directory tags across the catalogue. */
     allTags(): string[];
+    allCategories(): string[];
+    allPaths(): string[];
     /** All distinct size tags across the catalogue (e.g. "1x1", "3x2"). */
     allSizes(): string[];
     /** Currently selected directory-tag filters (multi-select, OR within group). */
@@ -69,6 +72,8 @@ export interface BuildList {
     setSelectedSizes(sizes: string[]): void;
     toggleSize(size: string): void;
     itemsInCategory(id?: string): CatalogueItem[];
+    itemsInPath(path: string): CatalogueItem[];
+
     countIn(categoryId: string): number;
     structureType(itemId: string, mirrored?: boolean): string;
     itemFromType(type: string): CatalogueItem | undefined;
@@ -82,12 +87,16 @@ export interface BuildList {
 
 export const createBuildList = (options: BuildListOptions): BuildList => {
     const catalogueItems = options.catalogueItems.slice();
+    /*
     const categories = options.categories.filter((c) =>
         catalogueItems.some((it) => it.category === c.id)
     );
-
+    */
     let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
-    let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
+    let category = findItem(catalogueItems, selectedId)?.category ?? catalogueItems[0]?.category ??
+        "";
+    let path = findItem(catalogueItems, selectedId)?.path ?? catalogueItems[0]?.path ??
+        "";
     let mirrored = false;
     let selectedTags: string[] = [];
     let selectedSizes: string[] = [];
@@ -97,6 +106,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         place: new Set(),
         remove: new Set(),
         category: new Set(),
+        path: new Set(),
         mirror: new Set(),
         tag: new Set(),
     };
@@ -116,7 +126,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         menuId: options.menuId,
         menuLabel: options.menuLabel,
         catalogueItems: catalogueItems,
-        categories: categories,
+        // categories: categories,
 
         getSelected() {
             return findItem(catalogueItems, selectedId);
@@ -147,11 +157,31 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
             category = id;
             emit("category", { categoryId: id });
         },
+        getPath: () => path,
+
+        setPath(id) {
+            path = id;
+            emit("path", { path: id });
+        },
 
         allTags() {
             const set = new Set<string>();
             for (const it of catalogueItems) {
                 for (const t of it.tags ?? []) set.add(t);
+            }
+            return [...set].sort();
+        },
+        allCategories() {
+            const set = new Set<string>();
+            for (const it of catalogueItems) {
+                set.add(it.category);
+            }
+            return [...set].sort();
+        },
+        allPaths() {
+            const set = new Set<string>();
+            for (const it of catalogueItems) {
+                set.add(it.path);
             }
             return [...set].sort();
         },
@@ -203,6 +233,9 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         itemsInCategory(id) {
             const cat = id ?? category;
             return catalogueItems.filter((it) => it.category === cat);
+        },
+        itemsInPath(path) {
+            return catalogueItems.filter((it) => it.path === path);
         },
 
         countIn(categoryId) {

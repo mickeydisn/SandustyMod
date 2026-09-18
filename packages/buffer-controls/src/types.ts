@@ -8,6 +8,35 @@
 import type { JsonBuffer } from "@sandmd/buffer";
 import type { BuildList } from "@sandmd/catalogue";
 
+///-----------------
+
+import type { CatalogueItem } from "@sandmd/catalogue";
+import type { FieldKind } from "@sandmd/buffer";
+
+///-----------------
+
+export type { FieldKind };
+export type ActionOp = "inc" | "dec" | "incX" | "decX" | "toggle";
+
+///-----------------
+
+/** Extra fields we attach to catalogue items generated from the JsonBuffer. */
+export interface PathCatalogueItem extends CatalogueItem {
+    /** Real jsonBuffer path this action writes to (already index-resolved). */
+    path: string;
+    kind?: FieldKind;
+    color: string;
+}
+
+export interface ActionCatalogueItem extends CatalogueItem {
+    /** Real jsonBuffer path this action writes to (already index-resolved). */
+    path: string;
+    kind?: FieldKind;
+    action?: ActionOp;
+    color: string;
+}
+
+///-----------------
 /** Sprite entry id per buffer field kind. */
 export interface BufferControlsKindSprites {
     bool: string;
@@ -19,13 +48,18 @@ export interface BufferControlsKindSprites {
 export interface BufferControlsActionSprites {
     inc: string;
     dec: string;
+    incX: string;
+    decX: string;
     toggle: string;
 }
 
-export interface BufferControlsSprites {
-    kind: BufferControlsKindSprites;
-    action: BufferControlsActionSprites;
+export interface BufferControlsSpritesCondition {
+    spriteId: string;
+    itemId?: string;
+    kind?: FieldKind;
+    action?: ActionOp;
 }
+export type BufferControlsSprites = BufferControlsSpritesCondition[];
 
 /** Build-menu entry that opens the picker. */
 export interface BufferControlsMenu {
@@ -36,12 +70,12 @@ export interface BufferControlsMenu {
     spriteId: string;
 }
 
+///-----------------
 /** Category id → human label (shown as the picker tab). */
-export interface BufferControlsCategoryLabels {
-    variables: string;
-    value: string;
-    action: string;
-}
+export type BufferControlsCategoryLabels = {
+    id: string;
+    color: string;
+};
 
 export interface BufferControlsSpriteFile {
     /** Logical id referenced by `menu.spriteId` / `sprites`. */
@@ -61,12 +95,13 @@ export interface BufferControlsConfig<T extends object = Record<string, unknown>
      * restore it when the game reloads. Default `true`.
      */
     persist?: boolean;
+    persistLoad?: boolean;
     /** Menu-entry settings. */
     menu: BufferControlsMenu;
     /** Id of the menu entry structure. Defaults to `modId`. */
     menuItemId?: string;
     /** Category labels. */
-    categories: BufferControlsCategoryLabels;
+    categories: BufferControlsCategoryLabels[];
     /** Sprite entry ids for kind icons and action buttons. */
     sprites: BufferControlsSprites;
     /** Asset files to load; ids referenced by `menu.spriteId` and `sprites`. */

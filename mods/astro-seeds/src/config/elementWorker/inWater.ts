@@ -14,33 +14,37 @@ import { Crystallization, Grow, Move } from "@sandmd/element-profiles/worker";
 import type { Profile } from "@sandmd/element-profiles/shared";
 import { ASTRO_FIELD } from "../elementShared/ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
+import { live } from "./live.ts";
+import { buildElementProfie } from "./defBuilder.ts";
 
 // ==========================
 // ASTRO SEED — drifts down, matures into a gold crystal disk.
+// Every knob reads the profile-config buffer live (`profiles.<id>.*`).
+const ID = "InWater-ASeed";
 export const astroSeedInWater: Profile = {
-    id: "astroSeed-in-water",
+    ...buildElementProfie(ID),
     seedType: ElementType.astroSeed,
     liquidType: ElementType.water,
     crystalType: ElementType.astroGoldCrystal,
-    tickSpeed: 50,
     ageField: ASTRO_FIELD.AGE,
     growAge: () => 150,
-    moves: [
-        Move.side(15),
-        Move.down(20),
-    ],
     grow: [Grow.ageOnSurround(100, 4)],
     crystallization: [Crystallization.disk(1)],
 };
 
 // ==========================
 // ASTRO GOLD POWDER — jitters, then column forces spread the family out.
+const ID_AGold = "InWater-AGold";
 export const astroGoldInWater: Profile = {
-    id: "astroGold-in-water",
+    id: "InWater-AGold",
     seedType: ElementType.astroGoldPowder,
     liquidType: ElementType.water,
     crystalType: ElementType.astroGoldCrystal,
-    tickSpeed: 50,
+    tickSpeed: () => live(ID_AGold, "tickSpeed", 50),
+    enabled: () => live(ID_AGold, "enabled", true),
+    growEnabled: () => live(ID_AGold, "growEnabled", false),
+    crystallizationEnabled: () => live(ID_AGold, "crystalEnabled", false),
+
     ageField: ASTRO_FIELD.AGE,
     growAge: () => 10,
     moves: [
@@ -78,7 +82,7 @@ export const astroGoldInWater: Profile = {
 // ==========================
 // ASTRO COPPER POWDER — jitters, repels its own kind, seeks gold.
 export const astroCopperInWater: Profile = {
-    id: "astroCopper-in-water",
+    id: "InWater-ACopper",
     seedType: ElementType.astroCopperPowder,
     liquidType: ElementType.water,
     crystalType: ElementType.astroCopperCrystal,

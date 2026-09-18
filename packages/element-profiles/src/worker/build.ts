@@ -14,6 +14,7 @@
 import "@sandmd/sandkit";
 import type { TElementType } from "@sandmd/shared";
 import type { Profile } from "../shared/types.ts";
+import { resolveBoolean } from "../shared/num.ts";
 import { runProfile } from "./pipeline.ts";
 import { GridNear } from "./utils/near.ts";
 
@@ -38,6 +39,7 @@ function dispatchSeed(
     const api = sandkit.api;
     for (const profile of profiles) {
         if (!profile.seedType || elementType !== profile.seedType) continue;
+        if (!resolveBoolean(profile.enabled, true)) continue;
         if (!profile.liquidType || !GridNear.isNear(x, y, profile.liquidType)) continue;
 
         // Reset physics so the seed can move, then run its profile.

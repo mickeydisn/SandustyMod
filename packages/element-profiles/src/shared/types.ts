@@ -20,7 +20,17 @@ export interface Profile {
     seedType: TElementType;
     liquidType: TElementType;
     crystalType: TElementType;
-    tickSpeed: number;
+    /** Per-tick chance 0–100 the pipeline acts; literal or live reader. */
+    tickSpeed: number | (() => number);
+    /**
+     * Master switch — when resolved `false` the worker skips this profile
+     * entirely and the seed falls back to vanilla physics. Default `true`.
+     */
+    enabled?: boolean | (() => boolean);
+    /** Run the grow phase. Default `true`. */
+    growEnabled?: boolean | (() => boolean);
+    /** Run the crystallization phase. Default `true`. */
+    crystallizationEnabled?: boolean | (() => boolean);
     /** Per-instance data-field index that holds the seed's accumulated age. */
     ageField: number;
     /**

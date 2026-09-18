@@ -10,6 +10,19 @@ export function resolveNum(v: number | (() => number), fallback = 0): number {
 }
 
 /**
+ * Resolve a parameter that may be a plain boolean or a zero-arg accessor.
+ * Same contract as `resolveNum` for boolean gates (enabled / grow / crystal).
+ */
+export function resolveBoolean(
+    v: boolean | (() => boolean) | undefined | null,
+    fallback = false,
+): boolean {
+    if (typeof v === "function") return v();
+    if (v === undefined || v === null) return fallback;
+    return v;
+}
+
+/**
  * Roll a 0-100 chance. `>= 100` always passes, `<= 0` never does, so callers
  * can treat the result as a plain boolean gate.
  */

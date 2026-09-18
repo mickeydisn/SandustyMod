@@ -18,14 +18,8 @@ import "@sandmd/sandkit";
 import { loadSpriteMap } from "@sandmd/assets";
 import { JsonBuffer } from "@sandmd/buffer";
 import { type CatalogueItem, createPickerOverlay } from "@sandmd/catalogue";
-import type {
-    BufferControlsConfig,
-    BufferControlsHandles,
-    BufferControlsKindSprites,
-} from "./types.ts";
+import type { ActionCatalogueItem, BufferControlsConfig, BufferControlsHandles } from "./types.ts";
 import { boundFields, buildBufferControlList } from "./catalogue.ts";
-import type { ActionCatalogueItem } from "./structure/register/actionRegister.ts";
-import { type PathCatalogueItem } from "./structure/shared.ts";
 import { formatBufferValue } from "./structure/register/valueRegister.ts";
 import { registerStructures } from "./structure/register.ts";
 
@@ -34,6 +28,7 @@ export async function registerBufferControls<T extends object>(
 ): Promise<BufferControlsHandles<T>> {
     const { modId } = config;
 
+    // console.log(" registerBufferControls = ", modId, config);
     // -- 1. The jsonBuffer record we expose to the player --------------------
     // `persist` defaults to true: JsonBuffer.loadFromStorage is opt-in and must
     // be enabled here or the record is only saved, never restored on reload.
@@ -43,40 +38,48 @@ export async function registerBufferControls<T extends object>(
         config.defaultRecord,
         undefined,
         config.persist ?? true,
+        config.persistLoad ?? true,
     );
+    // console.log("[pkg-buffControl] 0", modId, config);
     const readBuffer = (path: string): unknown => buffer.getPath(path);
-    console.log("[pkg-buffControl], 1 ", buffer.get(), buffer.listPaths());
+    // console.log("[pkg-buffControl]1 ", modId, buffer.get(), buffer.listPaths());
 
     // -- 2. Sprites ----------------------------------------------------------
     // loadSpriteMap resolves each entry id ("number", "menu", "actionPlus", …)
     // to the full in-game sprite id; config.sprites/menu reference entry ids.
     const spriteIds = await loadSpriteMap(modId, config.spriteFiles);
     const menuItemId = config.menuItemId ?? modId;
+
     const spriteFor = (item: CatalogueItem): string | undefined => {
         if (item.id === menuItemId) return spriteIds[config.menu.spriteId];
 
-        const action = (item as ActionCatalogueItem).action;
-        if (action) return spriteIds[config.sprites.action[action]];
+        const aItem = item as ActionCatalogueItem;
+        const found = config.sprites.find((c) => c.itemId == item.id) ??
+            config.sprites.find((c) =>
+                aItem.action && c.action === aItem.action && c.kind === aItem.kind
+            ) ??
+            config.sprites.find((c) => !c.action && c.kind === aItem.kind);
 
-        const kind = ((item as PathCatalogueItem).kind ?? "string") as
-            | keyof BufferControlsKindSprites
-            | string;
-
-        return spriteIds[config.sprites.kind[kind as keyof BufferControlsKindSprites] ?? "string"];
+        return spriteIds[found?.spriteId ?? ""];
     };
 
     // -- 3. BuildingList: one item per scalar path in the record -------------
     const bound = boundFields(buffer.listPaths());
-    const { buildList: buildList, pathCount } = buildBufferControlList(modId, bound, config);
+    const { buildList: buildList, pathCount } = buildBufferControlList(
+        modId,
+        bound,
+        config,
+        spriteFor,
+    );
 
-    console.log("[pkg-buffControl], 3 ", buildList, pathCount);
+    // console.log("[pkg-buffControl], 3 ", buildList, pathCount);
 
     // -- 4. Structures — one loop registers every catalogue item across all
     //        categories (menu / variable / value / action) via the register/*
     //        modules, and returns the runtime handles we need to keep synced. ---
-    const { refreshSignals, valueEntries } = registerStructures(buffer, buildList, spriteFor);
+    const { refreshSignals, valueEntries } = registerStructures(buffer, buildList);
 
-    console.log("[pkg-buffControl], 4 ", valueEntries);
+    // console.log("[pkg-buffControl], 4 ", valueEntries);
 
     // -- 5. Keep every placed value structure in sync with the buffer --------
     // The value structure's draw only reads structure.data.dataValue. Whenever

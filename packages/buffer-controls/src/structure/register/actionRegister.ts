@@ -1,17 +1,6 @@
 /** */
 import "@sandmd/sandkit";
-
-import type { CatalogueItem } from "@sandmd/catalogue";
-import type { FieldKind } from "../shared.ts";
-
-export type ActionOp = "inc" | "dec" | "toggle";
-
-export interface ActionCatalogueItem extends CatalogueItem {
-    action?: ActionOp;
-    /** Real jsonBuffer path this action writes to (already index-resolved). */
-    path?: string;
-    kind?: FieldKind;
-}
+import { ActionOp } from "../../types.ts";
 
 /** Read the current buffer value for a path. */
 export type ActionRead = (path: string) => unknown;
@@ -21,7 +10,9 @@ export type ActionWrite = (path: string, value: unknown) => void;
 /** Label shown in the picker / tooltip for each op. */
 export const ACTION_LABEL: Record<ActionOp, string> = {
     inc: "+1",
+    incX: "+10",
     dec: "-1",
+    decX: "-10",
     toggle: "toggle",
 };
 
@@ -32,6 +23,10 @@ export function applyAction(op: ActionOp, current: unknown): unknown {
             return (Number(current) || 0) + 1;
         case "dec":
             return (Number(current) || 0) - 1;
+        case "incX":
+            return (Number(current) || 0) + 10;
+        case "decX":
+            return (Number(current) || 0) - 10;
         case "toggle":
             return !current;
     }

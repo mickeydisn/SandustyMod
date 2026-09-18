@@ -4,8 +4,9 @@
         "build:worker": "deno bundle -o build/worker.js src/worker.ts",
         "build:modinfo": "cp src/modinfo.json build/modinfo.json",
         "build:toGame": "cp -r build/. /Users/mickey/Library/Application\\ Support/sandustry/mods/astro-seed-mod",
+        "build:assetToGame": "cp -r assets/. /Users/mickey/Library/Application\\ Support/sandustry/mods/astro-seed-mod/assets",
 
-        "build": "deno task build:main  && deno task build:worker && deno task build:modinfo && deno task build:toGame",
+        "build": "deno task build:main  && deno task build:worker && deno task build:modinfo && deno task build:toGame && deno task build:assetToGame",
         "check": "deno check src/main.ts src/worker.ts"
     },
     "compilerOptions": {

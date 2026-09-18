@@ -12,16 +12,17 @@
  * each bound path is resolved to index 0 via resolveBindingPath — that is what
  * makes "players[0].name" read/write the first player's name.
  */
-import type { BuildList, CatalogueCategory, CatalogueItem } from "@sandmd/catalogue";
+import type { BuildList, CatalogueItem } from "@sandmd/catalogue";
 import { createBuildList } from "@sandmd/catalogue";
-import type { BufferControlsConfig } from "./types.ts";
-import {
-    EXPOSED_KINDS,
-    type FieldKind,
-    type PathCatalogueItem,
-    resolveBindingPath,
-} from "./structure/shared.ts";
-import type { ActionCatalogueItem, ActionOp } from "./structure/register/actionRegister.ts";
+import type {
+    ActionCatalogueItem,
+    ActionOp,
+    BufferControlsConfig,
+    FieldKind,
+    PathCatalogueItem,
+} from "./types.ts";
+import { EXPOSED_KINDS } from "./const.ts";
+import { resolveBindingPath } from "./structure/defBuilders.ts";
 import { ACTION_LABEL } from "./structure/register/actionRegister.ts";
 
 const CELL = 16;
@@ -48,48 +49,47 @@ export interface CatalogueResult {
 const menuItem = (
     menuItemId: string,
     menu: BufferControlsConfig["menu"],
-    filePathFor: FilePathFor,
-): CatalogueItem => ({
+): PathCatalogueItem => ({
     id: menuItemId,
     label: menu.label,
     description: menu.description,
     category: "menu",
+    path: "menu",
     tags: ["variables"],
     width: CELL,
     height: CELL,
-    filePath: filePathFor(menu.spriteId),
+    color: "#FFFFFF",
 });
 
-const variableItem = (field: BoundField, filePathFor: FilePathFor): PathCatalogueItem => ({
+const variableItem = (field: BoundField): PathCatalogueItem => ({
     id: field.path,
     path: field.path,
     kind: field.kind,
     label: field.path,
     description: `${field.kind} — linked to jsonBuffer path "${field.path}".`,
-    category: field.path,
-    tags: ["variables"],
+    category: field.path.split(".")[1],
+    tags: ["variables", ...field.path.split(".").slice(2)],
     width: CELL,
     height: ITEM_HEIGHT,
-    filePath: filePathFor(field.kind),
+    color: "#FFFFFF",
 });
 
-const valueItem = (field: BoundField, filePathFor: FilePathFor): PathCatalogueItem => ({
+const valueItem = (field: BoundField): PathCatalogueItem => ({
     id: `${VALUE_PREFIX}${field.path}`,
     path: field.path,
     kind: field.kind,
     label: field.path,
     description: `${field.kind} — live value for jsonBuffer path "${field.path}".`,
-    category: field.path,
-    tags: ["value"],
+    category: field.path.split(".")[1],
+    tags: ["value", ...field.path.split(".").slice(2)],
     width: CELL,
     height: ITEM_HEIGHT,
-    filePath: filePathFor(field.kind),
+    color: "#FFFFFF",
 });
 
 const actionItem = (
     field: BoundField,
     op: ActionOp,
-    filePathFor: FilePathFor,
 ): ActionCatalogueItem => ({
     id: `${ACTION_PREFIX}${field.path}:${op}`,
     action: op,
@@ -97,18 +97,27 @@ const actionItem = (
     kind: field.kind,
     label: `${field.path} ${ACTION_LABEL[op]}`,
     description: `${ACTION_LABEL[op]} — writes jsonBuffer path "${field.path}" then commits.`,
-    category: field.path,
-    tags: ["action"],
+    category: field.path.split(".")[1],
+    tags: ["action", ...field.path.split(".").slice(2)],
     width: CELL,
     height: CELL,
-    filePath: filePathFor(op),
+    color: "#FFFFFF",
 });
 
-const actionItemsFor = (field: BoundField, filePathFor: FilePathFor): CatalogueItem[] => {
+const actionItemsFor = (field: BoundField): ActionCatalogueItem[] => {
     if (field.kind === "number") {
-        return [actionItem(field, "inc", filePathFor), actionItem(field, "dec", filePathFor)];
+        return [
+            actionItem(field, "inc"),
+            actionItem(field, "dec"),
+            actionItem(field, "incX"),
+            actionItem(field, "decX"),
+        ];
     }
-    if (field.kind === "bool") return [actionItem(field, "toggle", filePathFor)];
+    if (field.kind === "bool") {
+        return [
+            actionItem(field, "toggle"),
+        ];
+    }
     return [];
 };
 
@@ -124,44 +133,39 @@ export function boundFields(listed: { kind?: FieldKind; path: string }[]): Bound
 /** The config fields buildBufferControlList needs (record-shape independent). */
 export type CatalogueConfig = Pick<
     BufferControlsConfig,
-    "menu" | "categories" | "spriteFiles" | "menuItemId"
+    "menu" | "spriteFiles" | "menuItemId" | "categories"
 >;
 
 export function buildBufferControlList(
     modId: string,
     bound: BoundField[],
     config: CatalogueConfig,
+    spriteFor: (item: CatalogueItem) => string | undefined,
 ): CatalogueResult {
     const filePathFor: FilePathFor = (spriteEntryId) =>
         config.spriteFiles.find((f) => f.id === spriteEntryId)?.filePath ?? "";
 
-    const categories: CatalogueCategory[] = bound.map((field) => {
-        return { id: field.path, label: field.path };
-    });
-
-    /*
-    [
-        { id: "variables", label: config.categories.variables },
-        { id: "value", label: config.categories.value },
-        { id: "action", label: config.categories.action },
-    ];
-    */
-
     const menuId = config.menuItemId ?? modId;
-    const items: CatalogueItem[] = [
-        menuItem(menuId, config.menu, filePathFor),
+    const items: PathCatalogueItem[] = [
+        menuItem(menuId, config.menu),
         ...bound.flatMap((field) => [
-            variableItem(field, filePathFor),
-            valueItem(field, filePathFor),
-            ...actionItemsFor(field, filePathFor),
+            variableItem(field),
+            valueItem(field),
+            ...actionItemsFor(field),
         ]),
     ];
+
+    items.forEach((item) => item.spriteId = spriteFor(item));
+    items.forEach((item) => item.filePath = filePathFor(item.spriteId ?? ""));
+    items.forEach((item) =>
+        item.color = config.categories.find((c) => c.id == item.category)?.color ?? "#FFFFFF"
+    );
 
     const list: BuildList = createBuildList({
         modId,
         menuId,
         menuLabel: config.menu.label,
-        categories,
+        // categories,
         catalogueItems: items,
         selectedId: bound[0]?.path,
     });

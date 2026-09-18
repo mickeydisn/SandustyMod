@@ -249,13 +249,21 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         if (!state) return null;
 
         const selected = list.getSelected();
-        const categoryId = list.getCategory() || list.categories[0]?.id || "";
+        const availableTags = list.allTags();
+        const availableCategorie = list.allCategories();
+        const availablePath = list.allPaths();
+
+        const selectedSizes = list.getSelectedSizes();
+        const selectedTags = list.getSelectedTags();
+        const selectedCategory = list.getCategory() || "";
+        const selectedPath = list.getPath() || "";
 
         function filterItems(
             items: CatalogueItem[],
             options: {
-                categoryId: string;
                 query: string;
+                path: string;
+                categoryId: string;
                 tags: string[];
                 sizes: string[];
                 itemFilter?: (item: CatalogueItem) => boolean;
@@ -263,7 +271,8 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         ): CatalogueItem[] {
             const q = options.query.trim().toLowerCase();
             return items.filter((item) => {
-                if (item.category !== options.categoryId) return false;
+                if (options.categoryId && item.category !== options.categoryId) return false;
+                if (item.path && item.path !== options.path) return false;
                 if (options.itemFilter && !options.itemFilter(item)) return false;
                 // AND across groups: tags group and sizes group are combined
                 // with AND; within a group selected entries are OR.
@@ -282,10 +291,6 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 return hay.includes(q);
             });
         }
-
-        const selectedTags = list.getSelectedTags();
-        const availableTags = list.allTags();
-        const selectedSizes = list.getSelectedSizes();
 
         // Sizes offered are constrained by the tags already selected: only the
         // sizes of items matching the active tags (and the mod's item filter)
@@ -321,22 +326,42 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             }
             return true;
         };
-
+        const categoryFilters = (item: CatalogueItem): boolean => {
+            if (!selectedCategory) return true;
+            return item.category == selectedCategory;
+        };
+        console.log("AVALIBEL CATEGORIE", availableCategorie, list);
         // Category grid shows only categories that still have matching items.
-        const visibleCategories = list.categories
+        const visibleCategories = availableCategorie
             .map((cat) => ({
-                cat,
-                count: list.itemsInCategory(cat.id).filter(matchesFilters).length,
+                id: cat,
+                count: list.itemsInCategory(cat).filter(matchesFilters).length,
             }))
             .filter((c) => c.count > 0);
+        console.log("AVALIBEL CATEGORIE: visibleCategories", visibleCategories);
+
+        console.log("AVALIBEL  PATH", availableCategorie, list);
+        // Category grid shows only categories that still have matching items.
+        const visiblePath = availablePath
+            .map((path) => {
+                return {
+                    id: path,
+                    count: list.itemsInPath(path).filter(matchesFilters).filter(categoryFilters)
+                        .length,
+                };
+            })
+            .filter((c) => c.count > 0);
+        console.log("AVALIBEL PATH: visiblePath", visiblePath);
 
         const visible = filterItems(list.catalogueItems, {
-            categoryId,
+            path: selectedPath,
+            categoryId: selectedCategory,
             query: search,
             tags: selectedTags,
             sizes: selectedSizes,
             itemFilter: options.itemFilter,
         });
+        console.log("AVALIBEL CATEGORIE", list, visible);
 
         if (state.minimized) {
             const src = selected ? spriteSrc(selected) : undefined;
@@ -486,8 +511,8 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             : null;
 
         const categorieEl = hVerticalItemsList(
-            "Element:",
-            visibleCategories.map(({ cat }) =>
+            "Categorie:",
+            visibleCategories.map((cat) =>
                 h(FocusableButton, {
                     key: cat.id,
                     id: `${api.pickerId}-cat-${cat.id}`,
@@ -498,11 +523,33 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                         api.chooseCategory(cat.id);
                     },
                     className: `text-xs px-2 py-0.5 rounded border w-[100px] ${
-                        cat.id === categoryId
+                        cat.id === selectedCategory
                             ? "text-[#ffe700] border-yellow-400"
                             : "text-slate-400 border-slate-600"
                     }`,
-                    children: `${cat.label}`,
+                    children: `${cat.id}`,
+                })
+            ),
+        );
+
+        const pathEl = hVerticalItemsList(
+            "Path:",
+            visiblePath.map((path) =>
+                h(FocusableButton, {
+                    key: path.id,
+                    id: `${api.pickerId}-path-${path.id}`,
+                    onActivate: () => {
+                        // Jump back to the top before switching category.
+                        savedScrollRef.current = 0;
+                        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+                        api.choosePath(path.id);
+                    },
+                    className: `text-xs px-2 py-0.5 rounded border w-[100px] ${
+                        path.id === selectedPath
+                            ? "text-[#ffe700] border-yellow-400"
+                            : "text-slate-400 border-slate-600"
+                    }`,
+                    children: `${path.id}`,
                 })
             ),
         );
@@ -532,6 +579,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 filterSizeEl,
                 filterTagEl,
                 categorieEl,
+                pathEl,
                 // filterClearEl,
             ),
         );

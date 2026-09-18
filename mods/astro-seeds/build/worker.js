@@ -1,3 +1,18 @@
+// ../../packages/element-profiles/src/shared/num.ts
+function resolveNum(v, fallback = 0) {
+  if (typeof v === "function") return v();
+  if (v === void 0 || v === null) return fallback;
+  return v;
+}
+function resolveBoolean(v, fallback = false) {
+  if (typeof v === "function") return v();
+  if (v === void 0 || v === null) return fallback;
+  return v;
+}
+function roll(chance) {
+  return chance >= 100 || chance > 0 && Math.random() * 100 < chance;
+}
+
 // ../../packages/element-profiles/src/worker/utils/grid.ts
 var cachedEmpty = null;
 var MEM_BIAS = 128;
@@ -230,16 +245,6 @@ var EAT_DELTAS = [
     y: -1
   }
 ];
-
-// ../../packages/element-profiles/src/shared/num.ts
-function resolveNum(v, fallback = 0) {
-  if (typeof v === "function") return v();
-  if (v === void 0 || v === null) return fallback;
-  return v;
-}
-function roll(chance) {
-  return chance >= 100 || chance > 0 && Math.random() * 100 < chance;
-}
 
 // ../../packages/element-profiles/src/worker/utils/sense.ts
 function idx(s, ox, oy) {
@@ -562,19 +567,21 @@ function runProfile(x, y, profile) {
     trailEat: []
   };
   let delta = 0;
-  for (const fn of profile.grow) {
-    const result = fn(ctx);
-    if (ctx.blocked) break;
-    if (result.matched) {
-      delta = result.delta || 0;
-      break;
+  if (resolveBoolean(profile.growEnabled, true)) {
+    for (const fn of profile.grow) {
+      const result = fn(ctx);
+      if (ctx.blocked) break;
+      if (result.matched) {
+        delta = result.delta || 0;
+        break;
+      }
     }
   }
   if (delta > 0) {
     ctx.age += delta;
     Grid.writeFieldAt(ctx.x, ctx.y, profile.ageField, ctx.age);
   }
-  const need = profile.growAge();
+  const need = resolveBoolean(profile.crystallizationEnabled, true) ? profile.growAge() : 0;
   if (need > 0 && ctx.age >= need) {
     let ok = false;
     for (const fn of profile.crystallization) {
@@ -777,6 +784,7 @@ function dispatchSeed(x, y, elementType, cancel, profiles) {
   const api = sandkit.api;
   for (const profile of profiles) {
     if (!profile.seedType || elementType !== profile.seedType) continue;
+    if (!resolveBoolean(profile.enabled, true)) continue;
     if (!profile.liquidType || !GridNear.isNear(x, y, profile.liquidType)) continue;
     api.elements.setPhysicsAtCell(x, y, 1);
     cancel.cancel();
@@ -1916,19 +1924,400 @@ var ElementType = {
   ...resolveAstro()
 };
 
+// ../../packages/buffer/src/utils/codec.ts
+function decodeJson(buffer) {
+  try {
+    const end = buffer.indexOf(0);
+    const bytes = buffer.slice(0, end === -1 ? buffer.length : end);
+    const result = new TextDecoder().decode(bytes);
+    const obj = JSON.parse(result);
+    return obj;
+  } catch (e) {
+    console.error("readJsonString failed", e);
+  }
+  return null;
+}
+function encodeJsonInBuffer(buf, value) {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  if (bytes.length > buf.length) {
+    throw new Error(`JSON payload of ${bytes.length} bytes does not fit in ${buf.length}-byte buffer`);
+  }
+  buf.fill(0);
+  buf.set(bytes);
+  return bytes;
+}
+
+// ../../packages/buffer/src/utils/paths.ts
+var TOKEN = /([^[.\]]+)|\[(\d+)\]|(\[\])/g;
+function parsePath(path) {
+  if (!path) return [];
+  const out = [];
+  const re = new RegExp(TOKEN.source, "g");
+  let m;
+  while ((m = re.exec(path)) !== null) {
+    if (m[1] !== void 0) out.push(/^\d+$/.test(m[1]) ? Number(m[1]) : m[1]);
+    else if (m[2] !== void 0) out.push(Number(m[2]));
+    else if (m[3] !== void 0) out.push("[]");
+  }
+  return out;
+}
+function getPath(root, path) {
+  let cur = root;
+  for (const part of parsePath(path)) {
+    if (part === "[]") continue;
+    if (cur == null) return void 0;
+    cur = cur[part];
+  }
+  return cur;
+}
+function ensureChild(cur, part, nextIsIndex) {
+  if (part === "[]") {
+    throw new Error(`setPath: "[]" cannot appear in the middle of a path being written to.`);
+  }
+  if (typeof part === "number") {
+    if (!Array.isArray(cur)) {
+      throw new Error(`setPath: expected an array to index into at "[${part}]"`);
+    }
+    while (cur.length <= part) cur.push(nextIsIndex ? [] : {});
+    if (cur[part] == null || typeof cur[part] !== "object") {
+      cur[part] = nextIsIndex ? [] : {};
+    }
+  } else {
+    if (cur == null || typeof cur !== "object") {
+      throw new Error(`setPath: cannot descend into "${part}" of a non-object`);
+    }
+    if (cur[part] == null || typeof cur[part] !== "object") {
+      cur[part] = nextIsIndex ? [] : {};
+    }
+  }
+  return cur[part];
+}
+function setPath(root, path, value) {
+  const parts = parsePath(path);
+  if (parts.length === 0) return;
+  const last = parts[parts.length - 1];
+  if (last === "[]") {
+    throw new Error(`setPath: "${path}" ends in "[]" (whole array), which isn't settable. Use a numeric index to write an element, or addToPath()/pushPath() to append.`);
+  }
+  let cur = root;
+  for (let i = 0; i < parts.length - 1; i++) {
+    cur = ensureChild(cur, parts[i], typeof parts[i + 1] === "number");
+  }
+  if (typeof last === "number") {
+    if (!Array.isArray(cur)) throw new Error(`setPath: expected an array at "${path}"`);
+    while (cur.length <= last) cur.push(void 0);
+    cur[last] = value;
+  } else {
+    cur[last] = value;
+  }
+}
+function pushPath(root, path, value) {
+  let arr = getPath(root, path);
+  if (!Array.isArray(arr)) {
+    arr = [];
+    setPath(root, path, arr);
+  }
+  arr.push(value);
+  return arr.length;
+}
+function addToPath(root, path, value) {
+  const existing = getPath(root, path);
+  const arrExists = Array.isArray(existing);
+  const item = value ?? (arrExists && existing.length > 0 ? defaultLike(existing[0]) : null);
+  const len = pushPath(root, path, item);
+  return len - 1;
+}
+function defaultLike(sample) {
+  if (sample === null || sample === void 0) return null;
+  if (typeof sample === "boolean") return false;
+  if (typeof sample === "number") return 0;
+  if (typeof sample === "string") return "";
+  if (Array.isArray(sample)) return [];
+  if (typeof sample === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(sample)) out[k] = defaultLike(v);
+    return out;
+  }
+  return null;
+}
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function formatPath(parts) {
+  let out = "";
+  for (const p of parts) {
+    if (typeof p === "number") out += `[${p}]`;
+    else if (p === "[]") out += "[]";
+    else out += out ? `.${p}` : p;
+  }
+  return out;
+}
+
+// ../../packages/buffer/src/utils/introspect.ts
+function listPaths(root, maxDepth = 8, includeContainers = true) {
+  const out = [];
+  const labelFor = (parts, path) => {
+    const last = parts[parts.length - 1];
+    const named = last === "[]" ? parts[parts.length - 2] : last;
+    return named !== void 0 ? String(named) : path;
+  };
+  const visit = (value, parts, depth) => {
+    if (depth > maxDepth) return;
+    const kind = kindOf(value);
+    const path = formatPath(parts);
+    const label = labelFor(parts, path);
+    if (kind === "object" && value) {
+      if (includeContainers && parts.length > 0) out.push({
+        path,
+        kind,
+        label,
+        value
+      });
+      for (const [k, v] of Object.entries(value)) {
+        visit(v, [
+          ...parts,
+          k
+        ], depth + 1);
+      }
+      return;
+    }
+    if (kind === "array") {
+      const arr = value;
+      if (includeContainers && parts.length > 0) out.push({
+        path,
+        kind,
+        label,
+        value
+      });
+      if (arr.length === 0) {
+        out.push({
+          path: formatPath([
+            ...parts,
+            "[]"
+          ]),
+          kind: "array",
+          label,
+          value: []
+        });
+        return;
+      }
+      visit(arr[0], [
+        ...parts,
+        "[]"
+      ], depth + 1);
+      return;
+    }
+    if (parts.length === 0) return;
+    out.push({
+      path,
+      kind,
+      label,
+      value
+    });
+  };
+  visit(root, [], 0);
+  return out;
+}
+function kindOf(value) {
+  if (typeof value === "boolean") return "bool";
+  if (typeof value === "number") return "number";
+  if (typeof value === "string") return "string";
+  if (Array.isArray(value)) return "array";
+  if (value && typeof value === "object") return "object";
+  return "string";
+}
+
+// ../../packages/buffer/src/sand.ts
+var ensureBuffer = (key, config) => {
+  const buffers = sandkit.api.shared?.buffers;
+  if (!buffers) return null;
+  const existing = buffers.get?.(key);
+  if (existing) return existing;
+  if (buffers.ensure) return buffers.ensure(key, config);
+  if (buffers.require) return buffers.require(key, config);
+  return null;
+};
+
+// ../../packages/buffer/src/json-buffer.ts
+var DEFAULT_MAX_BYTES = 64 * 1024;
+var JsonBuffer = class {
+  versionView;
+  dataView;
+  modId;
+  key;
+  defaultRecord;
+  assertShape;
+  cache;
+  localVersion;
+  useAtomics = true;
+  listeners = /* @__PURE__ */ new Set();
+  notify = () => {
+    for (const fn of this.listeners) fn(this.cache);
+  };
+  subscribe(fn) {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  }
+  constructor(modId, key, defaultRecord, assertShape, percist = false, percistLoad = false, observe = false) {
+    this.modId = modId;
+    this.key = key;
+    this.defaultRecord = defaultRecord;
+    this.assertShape = assertShape;
+    this.versionView = ensureBuffer(`${key}:ver`, {
+      type: "int32",
+      length: 1
+    });
+    try {
+      Atomics.load(this.versionView, 0);
+    } catch {
+      this.useAtomics = false;
+    }
+    this.dataView = ensureBuffer(`${key}:json`, {
+      type: "uint8",
+      length: DEFAULT_MAX_BYTES
+    });
+    if (this.remoteVersion() > 0) {
+      this.cache = this.readFromBuffer();
+      this.localVersion = this.remoteVersion();
+    } else if (observe) {
+      this.cache = this.defaultRecord ? deepClone(this.defaultRecord) : {};
+      this.localVersion = this.remoteVersion();
+    } else {
+      const storedRecord = !percistLoad ? false : sandkit.api.storage.local.get(this.key);
+      if (percist) {
+        sandkit.api.events.on("store:save", (_payload) => {
+          this.commit();
+          this.save();
+        });
+      }
+      this.cache = storedRecord ? storedRecord : this.defaultRecord ? deepClone(this.defaultRecord) : {};
+      this.localVersion = -1;
+      this.commit();
+    }
+  }
+  remoteVersion = () => {
+    return this.useAtomics ? Atomics.load(this.versionView, 0) : this.versionView[0];
+  };
+  version = () => {
+    return this.localVersion;
+  };
+  readFromBuffer = () => {
+    const record = decodeJson(this.dataView) ?? {};
+    return record;
+  };
+  pull() {
+    const remote = this.remoteVersion();
+    if (remote === this.localVersion) return null;
+    this.cache = this.readFromBuffer();
+    this.localVersion = remote;
+    this.notify();
+    return this.cache;
+  }
+  hasUpdate = () => this.remoteVersion() !== this.localVersion;
+  get() {
+    this.pull();
+    return this.cache;
+  }
+  getPath(path) {
+    this.pull();
+    return getPath(this.cache, path);
+  }
+  listPaths(maxDepth = 8, includeContainers = true) {
+    this.pull();
+    return listPaths(this.cache, maxDepth, includeContainers);
+  }
+  setPath(path, value) {
+    setPath(this.cache, path, value);
+  }
+  addToPath(path, value) {
+    addToPath(this.cache, path, value);
+  }
+  replace(next) {
+    this.cache = deepClone(next);
+  }
+  commit() {
+    this.assertShape?.(this.cache);
+    encodeJsonInBuffer(this.dataView, this.cache);
+    this.localVersion = this.useAtomics ? Atomics.add(this.versionView, 0, 1) + 1 : this.versionView[0] += 1;
+    this.notify();
+  }
+  save() {
+    sandkit.api.storage.local.set(this.key, this.cache);
+  }
+};
+
+// ../../packages/buffer/src/json-map-buffer.ts
+var DEFAULT_MAX_BYTES2 = 64 * 1024;
+
+// src/config/profileRuntime.ts
+var PROFILE_BUFFER_ID = "astro-seeds:profileConfig";
+var PROFILE_IDS = [
+  "InWater-ASeed",
+  "InGold-ASeed",
+  "InGold-AGold",
+  "InGold-ACopper",
+  "InCopper-ASeed"
+];
+function buildDefaultProfileRecord() {
+  const profiles = {};
+  for (const id of PROFILE_IDS) {
+    profiles[id] = {
+      enabled: true,
+      tickSpeed: 50,
+      growEnabled: false,
+      crystalEnabled: false,
+      moveSide: 15,
+      moveDown: 20,
+      moveUp: 20
+    };
+  }
+  profiles["InCopper-ASeed"].moveSide = 25;
+  profiles["InCopper-ASeed"].moveDown = 35;
+  return {
+    P: profiles
+  };
+}
+
+// src/config/elementWorker/live.ts
+var mainBuffer = null;
+var observeBuffer = null;
+function profileBuffer() {
+  if (mainBuffer) return mainBuffer;
+  if (observeBuffer) return observeBuffer;
+  try {
+    observeBuffer = new JsonBuffer(MOD_ID, PROFILE_BUFFER_ID, buildDefaultProfileRecord(), void 0, true, false);
+  } catch (e) {
+    console.warn(`[${MOD_ID}] profile config buffer unavailable:`, e);
+    return null;
+  }
+  return observeBuffer;
+}
+function live(profileId, key, fallback) {
+  const buf = profileBuffer();
+  if (!buf) return fallback;
+  const value = buf.getPath(`P.${profileId}.${key}`);
+  return value === null || value === void 0 ? fallback : value;
+}
+
 // src/config/elementWorker/inCopper.ts
+var ID = "InCopper-ASeed";
 var astroSeedInCopper = {
-  id: "astroSeed-in-copper",
+  id: ID,
   seedType: ElementType.astroSeed,
   liquidType: ElementType.liquidCopper,
   crystalType: ElementType.astroCopperCrystal,
-  tickSpeed: 50,
+  tickSpeed: () => live(ID, "tickSpeed", 50),
+  enabled: () => live(ID, "enabled", true),
+  growEnabled: () => live(ID, "growEnabled", false),
+  crystallizationEnabled: () => live(ID, "crystalEnabled", false),
   ageField: ASTRO_FIELD.AGE,
   growAge: () => 40,
   moves: [
     Move.up(0),
-    Move.side(25),
-    Move.down(35)
+    Move.side(() => live(ID, "moveSide", 25)),
+    Move.down(() => live(ID, "moveDown", 35))
   ],
   grow: [
     Grow.ageOnSurround(20, 4),
@@ -2176,17 +2565,21 @@ var MASK_FULL = [
     1
   ]
 ];
+var SEED_ID = "InGold-ASeed";
 var astroSeedInGold = {
-  id: "astroSeed-in-gold",
+  id: SEED_ID,
   seedType: ElementType.astroSeed,
   liquidType: ElementType.liquidGold,
   crystalType: ElementType.astroGoldCrystal,
-  tickSpeed: 50,
+  tickSpeed: () => live(SEED_ID, "tickSpeed", 50),
+  enabled: () => live(SEED_ID, "enabled", true),
+  growEnabled: () => live(SEED_ID, "growEnabled", false),
+  crystallizationEnabled: () => live(SEED_ID, "crystalEnabled", false),
   ageField: ASTRO_FIELD.AGE,
   growAge: () => 150,
   moves: [
-    Move.side(15),
-    Move.down(20),
+    Move.side(() => live(SEED_ID, "moveSide", 15)),
+    Move.down(() => live(SEED_ID, "moveDown", 20)),
     Move.channel({
       chance: 90,
       matchTypes: [
@@ -2203,12 +2596,16 @@ var astroSeedInGold = {
     Crystallization.disk(1)
   ]
 };
+var GOLD_ID = "InGold-AGold";
 var astroGoldInLiquidGold = {
-  id: "astroGold-in-liquid-gold",
+  id: GOLD_ID,
   seedType: ElementType.astroGoldPowder,
   liquidType: ElementType.liquidGold,
   crystalType: ElementType.astroGoldCrystal,
-  tickSpeed: 50,
+  tickSpeed: () => live(GOLD_ID, "tickSpeed", 50),
+  enabled: () => live(GOLD_ID, "enabled", true),
+  growEnabled: () => live(GOLD_ID, "growEnabled", false),
+  crystallizationEnabled: () => live(GOLD_ID, "crystalEnabled", false),
   ageField: ASTRO_FIELD.AGE,
   // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
   // memDecay integrates it into a real fading velocity; memBounce
@@ -2276,12 +2673,16 @@ var astroGoldInLiquidGold = {
   grow: [],
   crystallization: []
 };
+var COPPER_ID = "InGold-ACopper";
 var astroCopperInLiquidGold = {
-  id: "astroCopper-in-liquid-gold",
+  id: COPPER_ID,
   seedType: ElementType.astroCopperPowder,
   liquidType: ElementType.liquidGold,
   crystalType: ElementType.astroGCalloyPowder,
-  tickSpeed: 50,
+  tickSpeed: () => live(COPPER_ID, "tickSpeed", 50),
+  enabled: () => live(COPPER_ID, "enabled", true),
+  growEnabled: () => live(COPPER_ID, "growEnabled", false),
+  crystallizationEnabled: () => live(COPPER_ID, "crystalEnabled", false),
   ageField: ASTRO_FIELD.AGE,
   // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
   memField: ASTRO_FIELD.VX,
@@ -2375,19 +2776,31 @@ var astroCopperInLiquidGold = {
   ]
 };
 
-// src/config/elementWorker/inWater.ts
-var astroSeedInWater = {
-  id: "astroSeed-in-water",
-  seedType: ElementType.astroSeed,
-  liquidType: ElementType.water,
-  crystalType: ElementType.astroGoldCrystal,
-  tickSpeed: 50,
+// src/config/elementWorker/defBuilder.ts
+var buildElementProfie = (ID3) => ({
+  id: ID3,
+  tickSpeed: () => live(ID3, "tickSpeed", 50),
+  enabled: () => live(ID3, "enabled", true),
+  growEnabled: () => live(ID3, "growEnabled", false),
+  crystallizationEnabled: () => live(ID3, "crystalEnabled", false),
   ageField: ASTRO_FIELD.AGE,
   growAge: () => 150,
   moves: [
-    Move.side(15),
-    Move.down(20)
-  ],
+    Move.side(() => live(ID3, "moveSide", 15)),
+    Move.down(() => live(ID3, "moveDown", 20)),
+    Move.up(() => live(ID3, "moveUp", 20))
+  ]
+});
+
+// src/config/elementWorker/inWater.ts
+var ID2 = "InWater-ASeed";
+var astroSeedInWater = {
+  ...buildElementProfie(ID2),
+  seedType: ElementType.astroSeed,
+  liquidType: ElementType.water,
+  crystalType: ElementType.astroGoldCrystal,
+  ageField: ASTRO_FIELD.AGE,
+  growAge: () => 150,
   grow: [
     Grow.ageOnSurround(100, 4)
   ],
@@ -2395,12 +2808,16 @@ var astroSeedInWater = {
     Crystallization.disk(1)
   ]
 };
+var ID_AGold = "InWater-AGold";
 var astroGoldInWater = {
-  id: "astroGold-in-water",
+  id: "InWater-AGold",
   seedType: ElementType.astroGoldPowder,
   liquidType: ElementType.water,
   crystalType: ElementType.astroGoldCrystal,
-  tickSpeed: 50,
+  tickSpeed: () => live(ID_AGold, "tickSpeed", 50),
+  enabled: () => live(ID_AGold, "enabled", true),
+  growEnabled: () => live(ID_AGold, "growEnabled", false),
+  crystallizationEnabled: () => live(ID_AGold, "crystalEnabled", false),
   ageField: ASTRO_FIELD.AGE,
   growAge: () => 10,
   moves: [
@@ -2451,7 +2868,7 @@ var astroGoldInWater = {
   crystallization: []
 };
 var astroCopperInWater = {
-  id: "astroCopper-in-water",
+  id: "InWater-ACopper",
   seedType: ElementType.astroCopperPowder,
   liquidType: ElementType.water,
   crystalType: ElementType.astroCopperCrystal,
@@ -2529,6 +2946,7 @@ var ASTRO_PROFILES = [
 
 // src/worker/build.ts
 function buildWorker() {
+  profileBuffer();
   const { seedTypes } = buildElementWorker(ASTRO_PROFILES);
   console.log(`[${MOD_ID} v${VERSION}] worker loaded`, seedTypes);
 }

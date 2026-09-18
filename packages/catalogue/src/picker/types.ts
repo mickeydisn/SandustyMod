@@ -53,6 +53,7 @@ export interface PickerContentApi {
     toggleMirror(): void;
     /** Switch the active category and select its first item. */
     chooseCategory(categoryId: string): void;
+    choosePath(categoryId: string): void;
     /** Toggle a directory-tag filter (multi-select, OR within tags group). */
     toggleTag(tag: string): void;
     /** Toggle a size filter (multi-select, OR within sizes group). */
