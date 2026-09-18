@@ -2255,6 +2255,8 @@ var DEFAULT_MAX_BYTES2 = 64 * 1024;
 var PROFILE_BUFFER_ID = "astro-seeds:profileConfig";
 var PROFILE_IDS = [
   "InWater-ASeed",
+  "InWater-AGold",
+  "InWater-ACopper",
   "InGold-ASeed",
   "InGold-AGold",
   "InGold-ACopper",
@@ -2270,7 +2272,13 @@ function buildDefaultProfileRecord() {
       crystalEnabled: false,
       moveSide: 15,
       moveDown: 20,
-      moveUp: 20
+      moveUp: 20,
+      aSeed_Rate: 0,
+      aSeed_Weight: 0,
+      aGold_Rate: 0,
+      aGold_Weight: 0,
+      aCopper_Rate: 0,
+      aCopper_Weight: 0
     };
   }
   profiles["InCopper-ASeed"].moveSide = 25;
@@ -2368,203 +2376,212 @@ function channelMatch(keys) {
   };
 }
 
+// src/config/elementWorker/mask.ts
+var MASK = {
+  // vertical neighbours
+  VERT: [
+    [
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ],
+  // horizontal neighbours
+  SIDE: [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0
+    ]
+  ],
+  // orthogonal neighbours
+  CROSS: [
+    [
+      0,
+      1,
+      0
+    ],
+    [
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ],
+  // orthogonal neighbours
+  PLUS: [
+    [
+      0,
+      1,
+      0
+    ],
+    [
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ],
+  // all 8 neighbours
+  ALL: [
+    [
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      1
+    ]
+  ],
+  GRAVITY: [
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0.5,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0.5,
+      0,
+      0
+    ]
+  ],
+  OUT: [
+    [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      0
+    ]
+  ],
+  FULL: [
+    [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      1
+    ]
+  ]
+};
+
 // src/config/elementWorker/inGold.ts
-var MASK_VERT = [
-  [
-    0,
-    1,
-    0
-  ],
-  [
-    0,
-    0,
-    0
-  ],
-  [
-    0,
-    1,
-    0
-  ]
-];
-var MASK_SIDE = [
-  [
-    0,
-    0,
-    0
-  ],
-  [
-    1,
-    0,
-    1
-  ],
-  [
-    0,
-    0,
-    0
-  ]
-];
-var MASK_CROSS = [
-  [
-    0,
-    1,
-    0
-  ],
-  [
-    1,
-    0,
-    1
-  ],
-  [
-    0,
-    1,
-    0
-  ]
-];
-var MASK_PLUS = [
-  [
-    0,
-    1,
-    0
-  ],
-  [
-    1,
-    0,
-    1
-  ],
-  [
-    0,
-    1,
-    0
-  ]
-];
-var MASK_ALL = [
-  [
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    0,
-    1
-  ],
-  [
-    1,
-    1,
-    1
-  ]
-];
-var MASK_GRAVITY = [
-  [
-    0,
-    0,
-    0,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
-    0.5,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
-    0,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
-    1,
-    0,
-    0
-  ],
-  [
-    0,
-    0,
-    0.5,
-    0,
-    0
-  ]
-];
-var MASK_OUT = [
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    0,
-    0,
-    0,
-    1
-  ],
-  [
-    1,
-    0,
-    0,
-    0,
-    1
-  ],
-  [
-    1,
-    0,
-    0,
-    0,
-    1
-  ],
-  [
-    1,
-    1,
-    1,
-    1,
-    0
-  ]
-];
-var MASK_FULL = [
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    0,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ],
-  [
-    1,
-    1,
-    1,
-    1,
-    1
-  ]
-];
 var SEED_ID = "InGold-ASeed";
 var astroSeedInGold = {
   id: SEED_ID,
@@ -2586,7 +2603,7 @@ var astroSeedInGold = {
         ElementType.water
       ],
       weight: -1,
-      mask: MASK_FULL
+      mask: MASK.FULL
     })
   ],
   grow: [
@@ -2616,8 +2633,8 @@ var astroGoldInLiquidGold = {
   growAge: () => 10,
   moves: [
     // Jitter — uniform random draw over the allowed offsets.
-    Move.random(80, MASK_SIDE),
-    Move.random(80, MASK_VERT),
+    Move.random(80, MASK.SIDE),
+    Move.random(80, MASK.VERT),
     // Walls / structure / empty push the seed back in.
     Move.channel({
       ...channelMatch([
@@ -2626,7 +2643,7 @@ var astroGoldInLiquidGold = {
       ]),
       chance: 100,
       weight: -15,
-      mask: MASK_PLUS
+      mask: MASK.PLUS
     }),
     // Water is a hard push away.
     Move.channel({
@@ -2635,7 +2652,7 @@ var astroGoldInLiquidGold = {
         ElementType.water
       ],
       weight: -1,
-      mask: MASK_FULL
+      mask: MASK.FULL
     }),
     // Own kind spreads (diagonal neighbours stay free to settle).
     Move.channel({
@@ -2644,7 +2661,7 @@ var astroGoldInLiquidGold = {
         ElementType.astroGoldPowder
       ],
       weight: -1,
-      mask: MASK_ALL
+      mask: MASK.ALL
     }),
     Move.channel({
       chance: 50,
@@ -2652,7 +2669,7 @@ var astroGoldInLiquidGold = {
         ElementType.astroGoldPowder
       ],
       weight: 0.4,
-      mask: MASK_OUT
+      mask: MASK.OUT
     }),
     Move.channel({
       chance: 50,
@@ -2660,7 +2677,7 @@ var astroGoldInLiquidGold = {
         ElementType.astroCopperPowder
       ],
       weight: -15,
-      mask: MASK_FULL
+      mask: MASK.FULL
     }),
     // Inertia — own last-tick flow vector drives a matching vote gradient
     // (straight-line persistence on top of the jitter).
@@ -2699,7 +2716,7 @@ var astroCopperInLiquidGold = {
         ElementType.liquidGold
       ],
       weight: -0.1,
-      mask: MASK_GRAVITY
+      mask: MASK.GRAVITY
     }),
     Move.channel({
       chance: 90,
@@ -2707,7 +2724,7 @@ var astroCopperInLiquidGold = {
         ElementType.water
       ],
       weight: -1,
-      mask: MASK_FULL
+      mask: MASK.FULL
     }),
     Move.channel({
       ...channelMatch([
@@ -2716,7 +2733,7 @@ var astroCopperInLiquidGold = {
       ]),
       chance: 100,
       weight: -10,
-      mask: MASK_PLUS
+      mask: MASK.PLUS
     }),
     // Lattice — own kind repels orthogonally but attracts diagonally, so
     // copper settles into diagonal chains instead of a solid blob.
@@ -2726,7 +2743,7 @@ var astroCopperInLiquidGold = {
         ElementType.astroCopperPowder
       ],
       weight: -2,
-      mask: MASK_CROSS
+      mask: MASK.CROSS
     }),
     Move.channel({
       chance: 90,
@@ -2734,7 +2751,7 @@ var astroCopperInLiquidGold = {
         ElementType.astroCopperPowder
       ],
       weight: 2,
-      mask: MASK_PLUS
+      mask: MASK.PLUS
     }),
     Move.channel({
       chance: 90,
@@ -2753,7 +2770,7 @@ var astroCopperInLiquidGold = {
     Move.memory({
       chance: 20,
       weight: 0.5,
-      mask: MASK_FULL
+      mask: MASK.FULL
     }),
     Move.inertia({
       chance: 20,
@@ -2777,30 +2794,52 @@ var astroCopperInLiquidGold = {
 };
 
 // src/config/elementWorker/defBuilder.ts
-var buildElementProfie = (ID3) => ({
-  id: ID3,
-  tickSpeed: () => live(ID3, "tickSpeed", 50),
-  enabled: () => live(ID3, "enabled", true),
-  growEnabled: () => live(ID3, "growEnabled", false),
-  crystallizationEnabled: () => live(ID3, "crystalEnabled", false),
+var buildElementProfie = (ID2) => ({
+  id: ID2,
+  tickSpeed: () => live(ID2, "tickSpeed", 50),
+  enabled: () => live(ID2, "enabled", true),
+  growEnabled: () => live(ID2, "growEnabled", false),
+  crystallizationEnabled: () => live(ID2, "crystalEnabled", false),
   ageField: ASTRO_FIELD.AGE,
   growAge: () => 150,
   moves: [
-    Move.side(() => live(ID3, "moveSide", 15)),
-    Move.down(() => live(ID3, "moveDown", 20)),
-    Move.up(() => live(ID3, "moveUp", 20))
+    Move.side(() => live(ID2, "moveSide", 0)),
+    Move.down(() => live(ID2, "moveDown", 0)),
+    Move.up(() => live(ID2, "moveUp", 0)),
+    Move.channel({
+      chance: () => live(ID2, "aSeed_Rate", 0),
+      weight: () => live(ID2, "aSeed_Weight", 0),
+      matchTypes: [
+        ElementType.astroSeed
+      ],
+      mask: MASK.FULL
+    }),
+    Move.channel({
+      chance: () => live(ID2, "aGold_Rate", 0),
+      weight: () => live(ID2, "aGold_Weight", 0),
+      matchTypes: [
+        ElementType.astroGoldPowder
+      ],
+      mask: MASK.FULL
+    }),
+    Move.channel({
+      chance: () => live(ID2, "aGold_Rate", 0),
+      weight: () => live(ID2, "aGold_Weight", 0),
+      matchTypes: [
+        ElementType.astroCopperPowder
+      ],
+      mask: MASK.FULL
+    })
   ]
 });
 
 // src/config/elementWorker/inWater.ts
-var ID2 = "InWater-ASeed";
+var ID_ASeed = "InWater-ASeed";
 var astroSeedInWater = {
-  ...buildElementProfie(ID2),
+  ...buildElementProfie(ID_ASeed),
   seedType: ElementType.astroSeed,
   liquidType: ElementType.water,
   crystalType: ElementType.astroGoldCrystal,
-  ageField: ASTRO_FIELD.AGE,
-  growAge: () => 150,
   grow: [
     Grow.ageOnSurround(100, 4)
   ],
@@ -2810,124 +2849,19 @@ var astroSeedInWater = {
 };
 var ID_AGold = "InWater-AGold";
 var astroGoldInWater = {
-  id: "InWater-AGold",
+  ...buildElementProfie(ID_AGold),
   seedType: ElementType.astroGoldPowder,
   liquidType: ElementType.water,
   crystalType: ElementType.astroGoldCrystal,
-  tickSpeed: () => live(ID_AGold, "tickSpeed", 50),
-  enabled: () => live(ID_AGold, "enabled", true),
-  growEnabled: () => live(ID_AGold, "growEnabled", false),
-  crystallizationEnabled: () => live(ID_AGold, "crystalEnabled", false),
-  ageField: ASTRO_FIELD.AGE,
-  growAge: () => 10,
-  moves: [
-    Move.up(8),
-    Move.side(8),
-    Move.down(8),
-    // Broad repulsion from any ray hit.
-    Move.columnForce({
-      rateFn: -30,
-      rangeNFn: 4,
-      maxKFn: 1,
-      directions: [
-        "top",
-        "bottom",
-        "sides"
-      ]
-    }),
-    // Own kind pushes back.
-    Move.columnForce({
-      rateFn: -20,
-      rangeNFn: 2,
-      maxKFn: 1,
-      directions: [
-        "top",
-        "bottom",
-        "sides"
-      ],
-      matchTypes: [
-        ElementType.astroGoldPowder
-      ]
-    }),
-    // Copper pulls gold in.
-    Move.columnForce({
-      rateFn: 80,
-      rangeNFn: 5,
-      maxKFn: 1,
-      directions: [
-        "top",
-        "bottom",
-        "sides"
-      ],
-      matchTypes: [
-        ElementType.astroCopperPowder
-      ]
-    })
-  ],
   grow: [],
   crystallization: []
 };
+var ID_ACopper = "InWater-ACopper";
 var astroCopperInWater = {
-  id: "InWater-ACopper",
+  ...buildElementProfie(ID_ACopper),
   seedType: ElementType.astroCopperPowder,
   liquidType: ElementType.water,
   crystalType: ElementType.astroCopperCrystal,
-  tickSpeed: 50,
-  ageField: ASTRO_FIELD.AGE,
-  growAge: () => 10,
-  moves: [
-    Move.up(5),
-    Move.side(10),
-    Move.down(5),
-    Move.columnForce({
-      rateFn: -30,
-      rangeNFn: 4,
-      maxKFn: 1,
-      directions: [
-        "top",
-        "bottom",
-        "sides"
-      ]
-    }),
-    Move.columnForce({
-      rateFn: 20,
-      rangeNFn: 2,
-      maxKFn: 1,
-      directions: [
-        "top",
-        "bottom",
-        "sides",
-        "cross"
-      ],
-      matchTypes: [
-        ElementType.astroGoldPowder
-      ]
-    }),
-    Move.columnForce({
-      rateFn: -40,
-      rangeNFn: 4,
-      maxKFn: 1,
-      directions: [
-        "top",
-        "bottom",
-        "sides"
-      ],
-      matchTypes: [
-        ElementType.astroCopperPowder
-      ]
-    }),
-    Move.columnForce({
-      rateFn: 40,
-      rangeNFn: 4,
-      maxKFn: 1,
-      directions: [
-        "cross"
-      ],
-      matchTypes: [
-        ElementType.astroCopperPowder
-      ]
-    })
-  ],
   grow: [],
   crystallization: []
 };

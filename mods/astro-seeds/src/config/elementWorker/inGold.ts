@@ -10,33 +10,7 @@ import { ASTRO_FIELD } from "../elementShared/ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
 import { channelMatch } from "./keys.ts";
 import { live } from "./live.ts";
-
-const MASK_VERT = [[0, 1, 0], [0, 0, 0], [0, 1, 0]]; // vertical neighbours
-const MASK_SIDE = [[0, 0, 0], [1, 0, 1], [0, 0, 0]]; // horizontal neighbours
-const MASK_CROSS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
-const MASK_PLUS = [[0, 1, 0], [1, 0, 1], [0, 1, 0]]; // orthogonal neighbours
-const MASK_ALL = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]; // all 8 neighbours
-const MASK_GRAVITY = [
-    [0, 0, 0, 0, 0],
-    [0, 0, .5, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 1, 0, 0],
-    [0, 0, 0.5, 0, 0],
-];
-const MASK_OUT = [
-    [1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 1, 1, 1, 0],
-];
-const MASK_FULL = [
-    [1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1],
-    [1, 1, 0, 1, 1],
-    [1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1],
-];
+import { MASK } from "./mask.ts";
 
 // ==========================
 // ASTRO SEED — drifts, matures into a gold crystal disk; water pushes it away.
@@ -59,7 +33,7 @@ export const astroSeedInGold: Profile = {
             chance: 90,
             matchTypes: [ElementType.water],
             weight: -1,
-            mask: MASK_FULL,
+            mask: MASK.FULL,
         }),
     ],
     grow: [Grow.ageOnSurround(100, 4)],
@@ -88,40 +62,40 @@ export const astroGoldInLiquidGold: Profile = {
     growAge: () => 10,
     moves: [
         // Jitter — uniform random draw over the allowed offsets.
-        Move.random(80, MASK_SIDE),
-        Move.random(80, MASK_VERT),
+        Move.random(80, MASK.SIDE),
+        Move.random(80, MASK.VERT),
         // Walls / structure / empty push the seed back in.
         Move.channel({
             ...channelMatch(["empty", "structure"]),
             chance: 100,
             weight: -15,
-            mask: MASK_PLUS,
+            mask: MASK.PLUS,
         }),
         // Water is a hard push away.
         Move.channel({
             chance: 90,
             matchTypes: [ElementType.water],
             weight: -1,
-            mask: MASK_FULL,
+            mask: MASK.FULL,
         }),
         // Own kind spreads (diagonal neighbours stay free to settle).
         Move.channel({
             chance: 80,
             matchTypes: [ElementType.astroGoldPowder],
             weight: -1,
-            mask: MASK_ALL,
+            mask: MASK.ALL,
         }),
         Move.channel({
             chance: 50,
             matchTypes: [ElementType.astroGoldPowder],
             weight: .4,
-            mask: MASK_OUT,
+            mask: MASK.OUT,
         }),
         Move.channel({
             chance: 50,
             matchTypes: [ElementType.astroCopperPowder],
             weight: -15,
-            mask: MASK_FULL,
+            mask: MASK.FULL,
         }),
         // Inertia — own last-tick flow vector drives a matching vote gradient
         // (straight-line persistence on top of the jitter).
@@ -157,19 +131,19 @@ export const astroCopperInLiquidGold: Profile = {
             chance: 1,
             matchTypes: [ElementType.liquidGold],
             weight: -.1,
-            mask: MASK_GRAVITY,
+            mask: MASK.GRAVITY,
         }),
         Move.channel({
             chance: 90,
             matchTypes: [ElementType.water],
             weight: -1,
-            mask: MASK_FULL,
+            mask: MASK.FULL,
         }),
         Move.channel({
             ...channelMatch(["empty", "structure"]),
             chance: 100,
             weight: -10,
-            mask: MASK_PLUS,
+            mask: MASK.PLUS,
         }),
         // Lattice — own kind repels orthogonally but attracts diagonally, so
         // copper settles into diagonal chains instead of a solid blob.
@@ -177,13 +151,13 @@ export const astroCopperInLiquidGold: Profile = {
             chance: 90,
             matchTypes: [ElementType.astroCopperPowder],
             weight: -2,
-            mask: MASK_CROSS,
+            mask: MASK.CROSS,
         }),
         Move.channel({
             chance: 90,
             matchTypes: [ElementType.astroCopperPowder],
             weight: 2,
-            mask: MASK_PLUS,
+            mask: MASK.PLUS,
         }),
         Move.channel({
             chance: 90,
@@ -195,7 +169,7 @@ export const astroCopperInLiquidGold: Profile = {
             matchTypes: [ElementType.astroGCalloyPowder],
             weight: -1,
         }),
-        Move.memory({ chance: 20, weight: .5, mask: MASK_FULL }),
+        Move.memory({ chance: 20, weight: .5, mask: MASK.FULL }),
         Move.inertia({ chance: 20, weight: .5, mode: "full" }),
     ],
     grow: [

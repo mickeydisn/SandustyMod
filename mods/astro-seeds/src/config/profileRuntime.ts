@@ -34,6 +34,13 @@ export interface ProfileRuntimeConfig {
     moveDown: number;
     /** Move.down vote chance 0–100. */
     moveUp: number;
+    /** attraction Key */
+    aSeed_Rate: number;
+    aSeed_Weight: number;
+    aGold_Rate: number;
+    aGold_Weight: number;
+    aCopper_Rate: number;
+    aCopper_Weight: number;
 }
 
 /** The runtime knobs exposed in the buffer — also the allowed live/write keys. */
@@ -49,6 +56,8 @@ export interface ProfileConfigRecord {
 /** The five profiles registered in `config/elementWorker/catalogue.ts`. */
 export const PROFILE_IDS = [
     "InWater-ASeed",
+    "InWater-AGold",
+    "InWater-ACopper",
     "InGold-ASeed",
     "InGold-AGold",
     "InGold-ACopper",
@@ -59,6 +68,8 @@ export type ProfileId = (typeof PROFILE_IDS)[number];
 
 export const PROFILES_CONFIG: BufferControlsCategoryLabels[] = [
     { id: "InWater-ASeed", color: "#0000FF" },
+    { id: "InWater-AGold", color: "#22DD00" },
+    { id: "InWater-ACopper", color: "#DD22FF" },
     { id: "InGold-ASeed", color: "#AA2299" },
     { id: "InGold-AGold", color: "#FFFF00" },
     { id: "InGold-ACopper", color: "#FF9900" },
@@ -77,6 +88,12 @@ export function buildDefaultProfileRecord(): ProfileConfigRecord {
             moveSide: 15,
             moveDown: 20,
             moveUp: 20,
+            aSeed_Rate: 0,
+            aSeed_Weight: 0,
+            aGold_Rate: 0,
+            aGold_Weight: 0,
+            aCopper_Rate: 0,
+            aCopper_Weight: 0,
         };
     }
     // Per-profile overrides (copper is a faster, heavier faller).
