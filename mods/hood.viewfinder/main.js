@@ -10,7 +10,7 @@
  */
 const MOD = "hood.viewfinder";
 const CHANNELS = 4;
-const ZONE_TILES = 5;
+const ZONE_TILES = 6;
 const TILE_PX = 16;
 const FEED_PX = ZONE_TILES * TILE_PX;
 const MAX_CAMERAS = 1;
@@ -106,7 +106,7 @@ function channelFromId(id, ids) {
 
 function tileShape(tiles) {
   const n = tiles * (metrics().snap || 4);
-  const row = Array(n).fill(1);
+  const row = Array(n).fill(0);
   return Array.from({ length: n }, () => row.slice());
 }
 
