@@ -1,0 +1,10 @@
+{
+  "manifestVersion": 1,
+  "id": "hood.viewfinder",
+  "name": "Viewfinder",
+  "description": "Four camera channels. One camera each. As many screens as you want. Click a camera to swing the 5×5 capture corner. Screens draw the feed with a shadow and border.",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "hood.viewfinder",
+  "entry": "main.js"
+}
