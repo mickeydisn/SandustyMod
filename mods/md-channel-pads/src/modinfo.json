@@ -1,0 +1,13 @@
+{
+    "manifestVersion": 1,
+    "id": "md-channel-pads",
+    "name": "Channel Pads",
+    "description": "Ten player teleporter pads (channels 0-9). Two pads per channel. Step on one to fold to its twin. Cooldown between jumps.",
+    "version": "1.0.0",
+    "apiVersion": 1,
+    "author": "MickeyDisn",
+    "entry": "main.js",
+    "main": "main.ts",
+    "dependencies": [],
+    "loadOrder": 0
+}

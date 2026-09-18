@@ -1,0 +1,37 @@
+{
+    "manifestVersion": 1,
+    "id": "md-big-brother",
+    "name": "Big Brother",
+    "description": "Camera channels with screen feeds. One camera per channel, unlimited screens. Click a camera to swing its capture corner; screens draw the live feed with a per-channel border.",
+    "version": "1.0.0",
+    "apiVersion": 1,
+    "author": "MickeyDisn",
+    "entry": "main.js",
+    "main": "main.ts",
+    "dependencies": [],
+    "loadOrder": 0,
+    "configSchema": {
+        "isEnabled": {
+            "type": "boolean",
+            "default": true,
+            "labelKey": "Mod enabled",
+            "descriptionKey": "Turn the mod on or off without unsubscribing."
+        },
+        "channels": {
+            "type": "number",
+            "default": 4,
+            "minimum": 1,
+            "maximum": 10,
+            "labelKey": "Channels",
+            "descriptionKey": "Number of camera channels (1-10). Each channel gets one camera and one screen type."
+        },
+        "zoneTiles": {
+            "type": "number",
+            "default": 6,
+            "minimum": 2,
+            "maximum": 12,
+            "labelKey": "Zone size (tiles)",
+            "descriptionKey": "How many tiles the camera captures in each direction (2-12)."
+        }
+    }
+}

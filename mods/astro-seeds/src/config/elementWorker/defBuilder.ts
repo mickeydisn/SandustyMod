@@ -1,6 +1,7 @@
 import { Move } from "@sandmd/element-profiles/worker";
 import { ASTRO_FIELD } from "../elementShared/ids.ts";
 import { live } from "./live.ts";
+import { ElementType } from "../elementShared/resolve.ts";
 
 export const buildElementProfie = (ID: string) => (
     {
@@ -15,6 +16,12 @@ export const buildElementProfie = (ID: string) => (
             Move.side(() => live(ID, "moveSide", 15)),
             Move.down(() => live(ID, "moveDown", 20)),
             Move.up(() => live(ID, "moveUp", 20)),
+            Move.channel({
+                chance: 50,
+                matchTypes: [ElementType.astroCopperPowder],
+                weight: -15,
+                mask: MASK_FULL,
+            }),
         ],
     }
 );
