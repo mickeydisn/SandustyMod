@@ -324,7 +324,7 @@ function captureFromMap(ctx, z, zoneCells, ch, state) {
           dst[di] = 20;
           dst[di + 1] = 17;
           dst[di + 2] = 14;
-          dst[di + 3] = 255;
+          dst[di + 3] = 92;
         } else {
           dst[di] = src[si];
           dst[di + 1] = src[si + 1];
