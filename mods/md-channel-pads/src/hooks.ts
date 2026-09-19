@@ -46,7 +46,7 @@ export function registerLifecycle(): void {
         try {
             const e = payload as PlacedEvent;
             const structure = e?.structure;
-            if (!structure.type.startsWith(`${options.modId}:`)) return;
+            if (!structure?.type?.startsWith(`${MOD}:`)) return;
             const ch = channelFromStructure(structure) ??
                 channelFromId(e?.structureId ?? structure?.type);
             if (ch == null) return;

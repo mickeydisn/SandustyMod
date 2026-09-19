@@ -86,21 +86,34 @@ export async function registerBufferControls<T extends object>(
     // the buffer updates, look at all placed value structures (forEachOfType
     // walks the live world) and setData the current value of their path, so the
     // draw always shows the LAST buffer value.
-    const refresh = () => {
+    const valueByType = new Map<string, { typeId: string; path: string; kind: Parameters<typeof formatBufferValue>[1] }>();
+    for (const entry of valueEntries) valueByType.set(entry.typeId, entry);
+
+    const refreshOne = (typeId: string): void => {
+        const entry = valueByType.get(typeId);
+        if (!entry) return;
+        const value = readBuffer(entry.path);
+        const next = formatBufferValue(value, entry.kind);
+        sandkit.api.structures.forEachOfType(entry.typeId, (structure) => {
+            if (String(structure.data?.dataValue) === next) return;
+            sandkit.api.structures.setData(structure, { dataValue: next }, {
+                propagateToWorkers: true,
+            });
+        });
+    };
+
+    const refresh = (onlyTypeId?: string) => {
         // Push every action structure's signal output (recompute + setAll on
         // each placed action) so connected receivers re-apply it. Event-driven:
         // runs only when the buffer actually changes, never per-frame.
-        refreshSignals();
-        for (const entry of valueEntries) {
-            const value = readBuffer(entry.path);
-            const next = formatBufferValue(value, entry.kind);
-            sandkit.api.structures.forEachOfType(entry.typeId, (structure) => {
-                if (String(structure.data?.dataValue) === next) return;
-                sandkit.api.structures.setData(structure, { dataValue: next }, {
-                    propagateToWorkers: true,
-                });
-            });
+        if (onlyTypeId) {
+            // Targeted path (placement): only the placed type can need a
+            // seeded value. Full signal refresh stays on buffer commits.
+            refreshOne(onlyTypeId);
+            return;
         }
+        refreshSignals();
+        for (const entry of valueEntries) refreshOne(entry.typeId);
     };
 
     // React to local commits — every buffer write in this mod happens on the
@@ -111,9 +124,22 @@ export async function registerBufferControls<T extends object>(
     // in a listener here instead of re-adding a setInterval.
     buffer.subscribe(() => refresh());
     // Refresh once so value structures placed in an earlier session pick up
-    // the current buffer value immediately, then on new placements too.
+    // the current buffer value immediately.
     refresh();
-    sandkit.api.events?.on?.("building:placed", () => refresh());
+    // Placement path: seed ONLY the placed type. The old code called the full
+    // refresh() (every value type × full world scan + every action signal) on
+    // EVERY placement in the game — including vanilla walls. Guard on our own
+    // mod prefix first so foreign placements cost one string check.
+    sandkit.api.events?.on?.("building:placed", (payload) => {
+        try {
+            const p = payload as { structure?: { type?: string } };
+            const type = p.structure?.type;
+            if (typeof type !== "string" || !type.startsWith(`${modId}:`)) return;
+            refresh(type);
+        } catch {
+            /* best-effort seed */
+        }
+    });
 
     // -- 6. Custom picker: icon + path rows, category tabs -------------------
     createPickerOverlay({

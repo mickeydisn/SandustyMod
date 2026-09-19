@@ -15,7 +15,7 @@
             "type": "boolean",
             "default": true,
             "labelKey": "Mod enabled",
-            "descriptionKey": ""
+            "descriptionKey": "Mod enabled"
         }
     }
 }

@@ -65,14 +65,13 @@ function itemIdFromType(modId, type) {
   if (id.endsWith(MIRROR_SUFFIX)) id = id.slice(0, -MIRROR_SUFFIX.length);
   return id;
 }
-function findItem(items, id) {
-  return items.find((entry) => entry.id === id);
-}
 var createBuildList = (options) => {
   const catalogueItems = options.catalogueItems.slice();
-  const categories = options.categories.filter((c) => catalogueItems.some((it) => it.category === c.id));
+  const byId = /* @__PURE__ */ new Map();
+  for (const entry of catalogueItems) byId.set(entry.id, entry);
   let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
-  let category = findItem(catalogueItems, selectedId)?.category ?? categories[0]?.id ?? "";
+  let category = byId.get(selectedId)?.category ?? catalogueItems[0]?.category ?? "";
+  let path = byId.get(selectedId)?.path ?? catalogueItems[0]?.path ?? "";
   let mirrored = false;
   let selectedTags = [];
   let selectedSizes = [];
@@ -81,6 +80,7 @@ var createBuildList = (options) => {
     place: /* @__PURE__ */ new Set(),
     remove: /* @__PURE__ */ new Set(),
     category: /* @__PURE__ */ new Set(),
+    path: /* @__PURE__ */ new Set(),
     mirror: /* @__PURE__ */ new Set(),
     tag: /* @__PURE__ */ new Set()
   };
@@ -98,15 +98,15 @@ var createBuildList = (options) => {
     menuId: options.menuId,
     menuLabel: options.menuLabel,
     catalogueItems,
-    categories,
+    // categories: categories,
     getSelected() {
-      return findItem(catalogueItems, selectedId);
+      return byId.get(selectedId);
     },
     getSelectedType() {
       return typeOfCatalogueItem(options.modId, selectedId, mirrored);
     },
     setSelected(id) {
-      const item = findItem(catalogueItems, id);
+      const item = byId.get(id);
       if (!item) return;
       selectedId = id;
       category = item.category;
@@ -129,10 +129,35 @@ var createBuildList = (options) => {
         categoryId: id
       });
     },
+    getPath: () => path,
+    setPath(id) {
+      path = id;
+      emit("path", {
+        path: id
+      });
+    },
     allTags() {
       const set = /* @__PURE__ */ new Set();
       for (const it of catalogueItems) {
         for (const t of it.tags ?? []) set.add(t);
+      }
+      return [
+        ...set
+      ].sort();
+    },
+    allCategories() {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of catalogueItems) {
+        set.add(it.category);
+      }
+      return [
+        ...set
+      ].sort();
+    },
+    allPaths() {
+      const set = /* @__PURE__ */ new Set();
+      for (const it of catalogueItems) {
+        set.add(it.path);
       }
       return [
         ...set
@@ -181,13 +206,16 @@ var createBuildList = (options) => {
       const cat = id ?? category;
       return catalogueItems.filter((it) => it.category === cat);
     },
+    itemsInPath(path2) {
+      return catalogueItems.filter((it) => it.path === path2);
+    },
     countIn(categoryId) {
       return catalogueItems.reduce((n, it) => n + (it.category === categoryId ? 1 : 0), 0);
     },
     structureType: (itemId, mir) => typeOfCatalogueItem(options.modId, itemId, mir ?? mirrored),
     itemFromType(type) {
       const id = itemIdFromType(options.modId, type);
-      return id ? findItem(catalogueItems, id) : void 0;
+      return id ? byId.get(id) : void 0;
     },
     on(name, handler) {
       const set = listeners[name];
@@ -226,21 +254,34 @@ var createBuildList = (options) => {
     }
   };
   if (sandkit.api.events?.on) {
-    sandkit.api.events.on("building:placed", (payload) => {
-      const p = payload;
-      const structure = p.structure;
-      if (!structure?.type) return;
-      if (!structure.type.startsWith(`${options.modId}:`)) return;
-      list.notifyPlace(structure.x, structure.y, structure.type);
-    });
-    sandkit.api.events.on("building:removed", (payload) => {
-      const p = payload;
-      const type = String(p.structureId ?? p.type ?? "");
-      const x = Number(p.x);
-      const y = Number(p.y);
-      if (!type.startsWith(`${options.modId}:`)) return;
-      list.notifyRemove(x, y, type);
-    });
+    let wired = false;
+    const ensureWired = () => {
+      if (wired) return;
+      wired = true;
+      const prefix = `${options.modId}:`;
+      sandkit.api.events.on("building:placed", (payload) => {
+        if (listeners.place.size === 0) return;
+        const p = payload;
+        const structure = p.structure;
+        if (!structure?.type) return;
+        if (!structure.type.startsWith(prefix)) return;
+        list.notifyPlace(structure.x, structure.y, structure.type);
+      });
+      sandkit.api.events.on("building:removed", (payload) => {
+        if (listeners.remove.size === 0) return;
+        const p = payload;
+        const type = String(p.structureId ?? p.type ?? "");
+        const x = Number(p.x);
+        const y = Number(p.y);
+        if (!type.startsWith(prefix)) return;
+        list.notifyRemove(x, y, type);
+      });
+    };
+    const origOn = list.on.bind(list);
+    list.on = (name, handler) => {
+      if (name === "place" || name === "remove") ensureWired();
+      return origOn(name, handler);
+    };
   }
   return list;
 };
@@ -293,7 +334,6 @@ var TOOLTIP_DELAY_MS = 120;
 var SWATCH_BOX = 34;
 var MAX_SWATCH_ZOOM = 4;
 function createPickerCss() {
-  console.log("[pkg-picker] injecting CSS");
   const css = `
         .pkg-picker-main-div {
             width: 70vw;
@@ -459,11 +499,18 @@ function createPickerView(options) {
     const state = api.getState();
     if (!state) return null;
     const selected = list.getSelected();
-    const categoryId = list.getCategory() || list.categories[0]?.id || "";
+    const availableTags = list.allTags();
+    const availableCategorie = list.allCategories();
+    const availablePath = list.allPaths();
+    const selectedSizes = list.getSelectedSizes();
+    const selectedTags = list.getSelectedTags();
+    const selectedCategory = list.getCategory() || "";
+    const selectedPath = list.getPath() || "";
     function filterItems(items, options2) {
       const q = options2.query.trim().toLowerCase();
       return items.filter((item) => {
-        if (item.category !== options2.categoryId) return false;
+        if (options2.categoryId && item.category !== options2.categoryId) return false;
+        if (item.path && item.path !== options2.path) return false;
         if (options2.itemFilter && !options2.itemFilter(item)) return false;
         const itemTags = item.tags ?? [];
         if (options2.tags.length > 0 && !options2.tags.some((t) => itemTags.includes(t))) {
@@ -478,9 +525,6 @@ function createPickerView(options) {
         return hay.includes(q);
       });
     }
-    const selectedTags = list.getSelectedTags();
-    const availableTags = list.allTags();
-    const selectedSizes = list.getSelectedSizes();
     const matchesTagGroup = (item) => {
       if (options.itemFilter && !options.itemFilter(item)) return false;
       const itemTags = item.tags ?? [];
@@ -511,12 +555,23 @@ function createPickerView(options) {
       }
       return true;
     };
-    const visibleCategories = list.categories.map((cat) => ({
-      cat,
-      count: list.itemsInCategory(cat.id).filter(matchesFilters).length
+    const categoryFilters = (item) => {
+      if (!selectedCategory) return true;
+      return item.category == selectedCategory;
+    };
+    const visibleCategories = availableCategorie.map((cat) => ({
+      id: cat,
+      count: list.itemsInCategory(cat).filter(matchesFilters).length
     })).filter((c) => c.count > 0);
+    const visiblePath = availablePath.map((path) => {
+      return {
+        id: path,
+        count: list.itemsInPath(path).filter(matchesFilters).filter(categoryFilters).length
+      };
+    }).filter((c) => c.count > 0);
     const visible = filterItems(list.catalogueItems, {
-      categoryId,
+      path: selectedPath,
+      categoryId: selectedCategory,
       query: search,
       tags: selectedTags,
       sizes: selectedSizes,
@@ -617,7 +672,7 @@ function createPickerView(options) {
       className: `text-xs px-2 py-0.5 rounded border ${selectedSizes.includes(size) ? "text-[#ffe700] border-yellow-400 bg-yellow-400/10" : "text-slate-400 border-slate-600"}`,
       children: `${selectedSizes.includes(size) ? "\u2611" : "\u2610"} ${size}`
     }))) : null;
-    const categorieEl = hVerticalItemsList("Element:", visibleCategories.map(({ cat }) => h(FocusableButton, {
+    const categorieEl = hVerticalItemsList("Categorie:", visibleCategories.map((cat) => h(FocusableButton, {
       key: cat.id,
       id: `${api.pickerId}-cat-${cat.id}`,
       onActivate: () => {
@@ -625,8 +680,19 @@ function createPickerView(options) {
         if (scrollRef.current) scrollRef.current.scrollTop = 0;
         api.chooseCategory(cat.id);
       },
-      className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === categoryId ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
-      children: `${cat.label}`
+      className: `text-xs px-2 py-0.5 rounded border w-[100px] ${cat.id === selectedCategory ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
+      children: `${cat.id}`
+    })));
+    const pathEl = hVerticalItemsList("Path:", visiblePath.map((path) => h(FocusableButton, {
+      key: path.id,
+      id: `${api.pickerId}-path-${path.id}`,
+      onActivate: () => {
+        savedScrollRef.current = 0;
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+        api.choosePath(path.id);
+      },
+      className: `text-xs px-2 py-0.5 rounded border w-[100px] ${path.id === selectedPath ? "text-[#ffe700] border-yellow-400" : "text-slate-400 border-slate-600"}`,
+      children: `${path.id}`
     })));
     const filterClearEl = selectedTags.length > 0 || selectedSizes.length > 0 ? h(FocusableButton, {
       id: `${api.pickerId}-filters-clear`,
@@ -638,7 +704,7 @@ function createPickerView(options) {
       className: "flex flex-col gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto"
     }, filterClearEl, h("div", {
       className: "flex flex-row gap-1 px-1 py-1 border-b bg-black/30  overflow-y-auto"
-    }, filterSizeEl, filterTagEl, categorieEl));
+    }, filterSizeEl, filterTagEl, categorieEl, pathEl));
     const itemElemnts = h("div", {
       className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
       style: {
@@ -732,7 +798,20 @@ function createPickerOverlay(options) {
     repaint?.();
   };
   const chooseCategory = (categoryId) => {
-    list.setCategory(categoryId);
+    if (list.getCategory() == categoryId) {
+      list.setCategory("");
+    } else {
+      list.setCategory(categoryId);
+    }
+    persistIfEnabled();
+    repaint?.();
+  };
+  const choosePath = (path) => {
+    if (list.getPath() == path) {
+      list.setPath("");
+    } else {
+      list.setPath(path);
+    }
     const tags = list.getSelectedTags();
     const sizes = list.getSelectedSizes();
     const matches = (it) => {
@@ -742,24 +821,13 @@ function createPickerOverlay(options) {
       if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
       return true;
     };
-    const item = list.itemsInCategory(categoryId).find(matches);
+    const item = list.itemsInPath(path).find(matches);
     if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
     persistIfEnabled();
     repaint?.();
   };
   const toggleTag = (tag) => {
     list.toggleTag(tag);
-    const tags = list.getSelectedTags();
-    const avail = /* @__PURE__ */ new Set();
-    for (const it of list.catalogueItems) {
-      const itemTags = it.tags ?? [];
-      if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) continue;
-      for (const s of it.sizes ?? []) avail.add(s);
-    }
-    const stale = list.getSelectedSizes().filter((s) => !avail.has(s));
-    if (stale.length > 0) {
-      list.setSelectedSizes(list.getSelectedSizes().filter((s) => avail.has(s)));
-    }
     persistIfEnabled();
     repaint?.();
   };
@@ -784,6 +852,7 @@ function createPickerOverlay(options) {
     selectItem,
     toggleMirror,
     chooseCategory,
+    choosePath,
     toggleTag,
     toggleSize,
     clearFilters,

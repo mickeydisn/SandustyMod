@@ -2,8 +2,11 @@
  * BuildList — selection + catalogue, no cost logic.
  *
  * Events: select, place, remove, category, mirror.
- * Call notifyPlace / notifyRemove from the game when a structure is
- * actually built or demolished (sandkit events, or the playground grid).
+ * Call notifyPlace / notifyRemove manually when a structure is actually
+ * built or demolished (e.g. from the playground grid). The game
+ * `building:placed` / `building:removed` auto-wiring was removed: nobody
+ * subscribes to `place` / `remove`, and each list was paying a global
+ * event + linear catalogue scan on every vanilla placement.
  */
 import "@sandmd/sandkit";
 import { CatalogueItem } from "@sandmd/catalogue";
@@ -87,16 +90,20 @@ export interface BuildList {
 
 export const createBuildList = (options: BuildListOptions): BuildList => {
     const catalogueItems = options.catalogueItems.slice();
+    // O(1) id -> item lookup. findItem() was Array.find over the whole
+    // catalogue on every placement — buffer-controls builds 100+ items,
+    // and every mod registers its own building:placed listener, so placing
+    // a single vanilla wall scanned every catalogue linearly.
+    const byId = new Map<string, CatalogueItem>();
+    for (const entry of catalogueItems) byId.set(entry.id, entry);
     /*
     const categories = options.categories.filter((c) =>
         catalogueItems.some((it) => it.category === c.id)
     );
     */
     let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
-    let category = findItem(catalogueItems, selectedId)?.category ?? catalogueItems[0]?.category ??
-        "";
-    let path = findItem(catalogueItems, selectedId)?.path ?? catalogueItems[0]?.path ??
-        "";
+    let category = byId.get(selectedId)?.category ?? catalogueItems[0]?.category ?? "";
+    let path = byId.get(selectedId)?.path ?? catalogueItems[0]?.path ?? "";
     let mirrored = false;
     let selectedTags: string[] = [];
     let selectedSizes: string[] = [];
@@ -129,7 +136,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         // categories: categories,
 
         getSelected() {
-            return findItem(catalogueItems, selectedId);
+            return byId.get(selectedId);
         },
 
         getSelectedType() {
@@ -137,7 +144,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         },
 
         setSelected(id) {
-            const item = findItem(catalogueItems, id);
+            const item = byId.get(id);
             if (!item) return;
             selectedId = id;
             category = item.category;
@@ -246,7 +253,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
 
         itemFromType(type) {
             const id = itemIdFromType(options.modId, type);
-            return id ? findItem(catalogueItems, id) : undefined;
+            return id ? byId.get(id) : undefined;
         },
 
         on(name, handler) {
@@ -290,21 +297,39 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
     };
 
     if (sandkit.api.events?.on) {
-        sandkit.api.events.on("building:placed", (payload) => {
-            const p = payload as { structure?: { x: number; y: number; type?: string } };
-            const structure = p.structure;
-            if (!structure?.type) return;
-            if (!structure.type.startsWith(`${options.modId}:`)) return;
-            list.notifyPlace(structure.x, structure.y, structure.type);
-        });
-        sandkit.api.events.on("building:removed", (payload) => {
-            const p = payload as { structureId?: string; type?: string; x?: number; y?: number };
-            const type = String(p.structureId ?? p.type ?? "");
-            const x = Number(p.x);
-            const y = Number(p.y);
-            if (!type.startsWith(`${options.modId}:`)) return;
-            list.notifyRemove(x, y, type);
-        });
+        // Lazy wiring: only subscribe to the global building events when
+        // somebody actually listens for place/remove. Every list used to pay
+        // a global callback + catalogue scan on EVERY placement in the game
+        // (including vanilla walls), while having zero subscribers.
+        let wired = false;
+        const ensureWired = () => {
+            if (wired) return;
+            wired = true;
+            const prefix = `${options.modId}:`;
+            sandkit.api.events.on("building:placed", (payload) => {
+                if (listeners.place.size === 0) return;
+                const p = payload as { structure?: { x: number; y: number; type?: string } };
+                const structure = p.structure;
+                if (!structure?.type) return;
+                if (!structure.type.startsWith(prefix)) return;
+                list.notifyPlace(structure.x, structure.y, structure.type);
+            });
+            sandkit.api.events.on("building:removed", (payload) => {
+                if (listeners.remove.size === 0) return;
+                const p = payload as { structureId?: string; type?: string; x?: number; y?: number };
+                const type = String(p.structureId ?? p.type ?? "");
+                const x = Number(p.x);
+                const y = Number(p.y);
+                if (!type.startsWith(prefix)) return;
+                list.notifyRemove(x, y, type);
+            });
+        };
+
+        const origOn = list.on.bind(list);
+        list.on = ((name: BuildEventName, handler: BuildListener<BuildEventName>) => {
+            if (name === "place" || name === "remove") ensureWired();
+            return (origOn as (n: BuildEventName, h: never) => () => void)(name, handler as never);
+        }) as BuildList["on"];
     }
 
     return list;
