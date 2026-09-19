@@ -23,6 +23,7 @@ import {
 import { ensureFeed, rebuildChannelArrays } from "./feeds.ts";
 import { runtime } from "./state.ts";
 import {
+    registerAutoScreen,
     registerCapture,
     registerI18n,
     registerInteract,
@@ -108,6 +109,7 @@ async function boot(): Promise<void> {
 
     registerStructures();
     registerLimit();
+    registerAutoScreen();
     registerInteract();
     registerLifecycle();
     registerCapture();

@@ -134,6 +134,17 @@ export interface ViewfinderApi {
             register(type: string, handler: (structure: CamStructure) => void): void;
         };
     };
+    action: {
+        getSelected?: () => { id?: unknown; type?: unknown } | null | undefined;
+        getActive?: () => { id?: unknown; type?: unknown } | null | undefined;
+    };
+    building: {
+        selectStructure?: (type: string) => unknown;
+        cancelPlacement?: () => void;
+    };
+    schedule: {
+        nextTick?: (fn: () => void) => void;
+    };
     triggers: {
         register(
             triggerId: string,

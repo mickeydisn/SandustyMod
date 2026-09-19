@@ -19,6 +19,15 @@ import type {
     RemovedEvent,
 } from "./types.ts";
 
+/** `${MOD}.` — every camera/screen id this mod registers starts with this. */
+const MOD_PREFIX = `${MOD}.`;
+
+/** Cheap pre-filter: only string ids owned by this mod pass (null = unknown, check fully). */
+function isOwnId(id: unknown): boolean | null {
+    if (typeof id !== "string") return null;
+    return id.startsWith(MOD_PREFIX);
+}
+
 /** Last capture tick, throttles capture inside `frame:render`. */
 let lastCaptureMs = 0;
 
@@ -129,6 +138,9 @@ export function registerLimit(): void {
             try {
                 const p = payload as PlacePayload | null;
                 const id = p?.structureId ?? p?.structureType ?? p?.id;
+                // Fast path: the `structureTypes` filter should already scope
+                // this, but skip foreign ids without touching the registry.
+                if (isOwnId(id) === false) return;
                 const ch = channelFromId(id, runtime.camIds);
                 if (ch == null) return;
                 if (listType(runtime.camIds[ch]).length < MAX_CAMERAS) return;
@@ -140,6 +152,202 @@ export function registerLimit(): void {
         },
         { structureTypes: runtime.camIds },
     );
+}
+
+/**
+ * Auto-switch the build tool between a channel's camera and its hidden screen.
+ *
+ * Screens use `hideFromBuildMenu: true`, so the only way to hold the screen
+ * build tool is `building.selectStructure(screenId)` — unlock keeps it
+ * buildable, the flag only hides the menu entry. All three drivers live here:
+ *
+ * - `action:changed` (empty `{}` payload): re-read `api.action.getSelected()`.
+ *   A camera pick on an occupied channel retargets to that channel's screen.
+ * - `building:placed`: a camera was just placed while its camera tool is held
+ *   → switch to that channel's screen so screens follow immediately.
+ * - `building:removed`: the last camera of a channel was removed while its
+ *   screen tool is held → switch back to that channel's camera.
+ */
+export function registerAutoScreen(): void {
+    let switching = false;
+
+    type Selected = { id?: unknown; type?: unknown } | null | undefined;
+
+    const getSelected = (): Selected => {
+        try {
+            return api.action?.getSelected?.() as Selected;
+        } catch {
+            return null;
+        }
+    };
+
+    /** Building actions only; unknown shapes pass so id matching still works. */
+    const isBuildingAction = (sel: Selected): boolean => {
+        try {
+            const buildingType = (globalThis as unknown as {
+                sandkit?: { enums?: { ActionType?: { Building?: unknown } } };
+            }).sandkit?.enums?.ActionType?.Building;
+            if (buildingType == null) return true;
+            if (sel?.type == null) return true;
+            return sel.type === buildingType;
+        } catch {
+            return true;
+        }
+    };
+
+    const defer = (fn: () => void): void => {
+        try {
+            const nextTick = api.schedule?.nextTick;
+            if (typeof nextTick === "function") {
+                nextTick(fn);
+                return;
+            }
+        } catch {
+            /* fall through to sync */
+        }
+        fn();
+    };
+
+    const selectId = (id: string): void => {
+        if (switching) return;
+        switching = true;
+        try {
+            try {
+                api.player.buildings.unlockById(id);
+            } catch {
+                try {
+                    api.player.buildings.add?.(id);
+                } catch {
+                    /* unlock best-effort */
+                }
+            }
+            api.building?.selectStructure?.(id);
+        } catch (err) {
+            console.warn(`${LOG} auto-screen`, err);
+        } finally {
+            switching = false;
+        }
+    };
+
+    /** Manual pick: camera tool selected but channel occupied → hold screen. */
+    const syncFromAction = (): void => {
+        if (switching) return;
+        try {
+            const sel = getSelected();
+            const id = sel?.id;
+            if (id == null) return;
+            // Fast path: ignore every foreign structure id (`md-big-brother.`).
+            // Numeric type ids are unknown here → fall through to full check.
+            if (isOwnId(id) === false) return;
+            if (!isBuildingAction(sel)) return;
+
+            const camCh = channelFromId(id, runtime.camIds);
+            if (camCh == null) return;
+            if (camCh < 0 || camCh >= runtime.channels) return;
+
+            // Channel still free: leave the camera tool alone so the player
+            // can place the camera first.
+            if (listType(runtime.camIds[camCh]).length < MAX_CAMERAS) return;
+
+            const screenId = runtime.screenIds[camCh];
+            if (screenId == null) return;
+
+            // Already holding the screen (or re-emitted after our switch).
+            if (channelFromId(id, runtime.screenIds) === camCh) return;
+
+            selectId(screenId);
+        } catch (err) {
+            console.warn(`${LOG} auto-screen`, err);
+            switching = false;
+        }
+    };
+
+    const scheduleActionSync = (): void => defer(syncFromAction);
+
+    try {
+        api.events.on("action:changed", scheduleActionSync);
+    } catch (err) {
+        console.warn(`${LOG} auto-screen subscribe`, err);
+    }
+    // Catch the selection that was already active before boot.
+    scheduleActionSync();
+
+    // Camera just placed while its camera tool is held → switch to that
+    // channel's screen. Deferred: the engine may still be settling
+    // `player.action` when `building:placed` fires. The placement itself is
+    // the occupancy signal (a blocked second camera never reaches here —
+    // `registerLimit` cancels it in `building:place`).
+    try {
+        api.events.on("building:placed", (payload) => {
+            try {
+                const e = payload as PlacedEvent;
+                const structure = e?.structure;
+                const id = e?.structureId ?? structure?.type;
+                // Fast path: skip vanilla / other-mod placements entirely.
+                if (isOwnId(id) === false) return;
+                const dataCh = structure?.data?.channel as number | undefined;
+                const placedCh = channelFromId(id, runtime.camIds) ??
+                    (typeof dataCh === "number" ? dataCh : null);
+                if (placedCh == null || placedCh < 0 || placedCh >= runtime.channels) return;
+                defer(() => {
+                    if (switching) return;
+                    const sel = getSelected();
+                    if (sel?.id == null) return;
+                    if (!isBuildingAction(sel)) return;
+                    if (channelFromId(sel.id, runtime.camIds) !== placedCh) return;
+                    const screenId = runtime.screenIds[placedCh];
+                    if (screenId == null) return;
+                    if (channelFromId(sel.id, runtime.screenIds) === placedCh) return;
+                    selectId(screenId);
+                });
+            } catch (err) {
+                console.warn(`${LOG} auto-screen placed`, err);
+            }
+        });
+    } catch (err) {
+        console.warn(`${LOG} auto-screen placed subscribe`, err);
+    }
+
+    // Last camera of a channel removed while its screen tool is held → switch
+    // back to the camera so a replacement can be placed. Unrelated tools are
+    // left alone. `building:removed` may fire before the list updates, so the
+    // just-removed instance is excluded — and the check is deferred a tick so
+    // the list has settled.
+    try {
+        api.events.on("building:removed", (payload) => {
+            try {
+                const e = payload as RemovedEvent;
+                const structure = e?.structure;
+                const id = e?.structureId ?? structure?.type;
+                // Fast path: skip vanilla / other-mod removals entirely.
+                if (isOwnId(id) === false) return;
+                const dataCh = structure?.data?.channel as number | undefined;
+                const removedCh = channelFromId(id, runtime.camIds) ??
+                    (typeof dataCh === "number" ? dataCh : null);
+                if (removedCh == null || removedCh < 0 || removedCh >= runtime.channels) return;
+                defer(() => {
+                    if (switching) return;
+                    const remaining = listType(runtime.camIds[removedCh]).filter((cam) =>
+                        !(structure && cam.x === structure.x && cam.y === structure.y)
+                    );
+                    if (remaining.length > 0) return;
+                    const sel = getSelected();
+                    if (sel?.id != null) {
+                        if (!isBuildingAction(sel)) return;
+                        if (channelFromId(sel.id, runtime.screenIds) !== removedCh) return;
+                    }
+                    const camId = runtime.camIds[removedCh];
+                    if (camId == null) return;
+                    if (channelFromId(sel?.id, runtime.camIds) === removedCh) return;
+                    selectId(camId);
+                });
+            } catch (err) {
+                console.warn(`${LOG} auto-screen removed`, err);
+            }
+        });
+    } catch (err) {
+        console.warn(`${LOG} auto-screen removed subscribe`, err);
+    }
 }
 
 /** Click a camera to cycle the capture corner (TL → TR → BR → BL). */
@@ -172,6 +380,8 @@ export function registerLifecycle(): void {
             const e = payload as PlacedEvent;
             const structure = e?.structure;
             const id = e?.structureId ?? structure?.type;
+            // Fast path: skip vanilla / other-mod placements entirely.
+            if (isOwnId(id) === false) return;
 
             const camCh = channelFromId(id, runtime.camIds);
             if (camCh != null) {
@@ -209,6 +419,8 @@ export function registerLifecycle(): void {
             const e = payload as RemovedEvent;
             const structure = e?.structure;
             const id = e?.structureId ?? structure?.type;
+            // Fast path: skip vanilla / other-mod removals entirely.
+            if (isOwnId(id) === false) return;
             const ch = channelFromId(id, runtime.camIds) ??
                 (structure?.data?.channel as number | undefined ?? null);
             if (ch == null || ch < 0 || ch >= runtime.channels) return;
