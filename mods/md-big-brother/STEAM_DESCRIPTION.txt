@@ -1,0 +1,38 @@
+[h1]👁️ BIG BROTHER — Live CCTV Cameras & Screens[/h1]
+
+[i]He sees you. Now you see what HE sees.[/i]
+
+Tired of not knowing what's clogging on the other side of your factory?
+Slap down a [b]Camera[/b], hang a [b]Screen[/b] on your wall, and watch it [b]LIVE[/b].
+
+
+[h1]📷 ➜ 🖥️ HOW IT WORKS[/h1]
+[list]
+[*] Place a [b]Camera[/b] — it captures a live square zone around itself
+[*] Place as many [b]Screens[/b] as you want — every Screen paints that channel's live feed, every frame
+[*] [b]CLICK the Camera[/b] to swing its capture corner: [i]top-left → top-right → bottom-right → bottom-left[/i]
+[*] No camera on a channel? Screens show [b]NO SIGNAL[/b] instead of a frozen frame
+[/list]
+
+[code]Pro tip: Build a dark room full of Screens = instant security office.
+[/code]
+
+[h1]⚙️ SETTINGS[/h1]
+[list]
+[*] [b]Channels (1-10, default 4)[/b] — how many Camera/Screen pairs exist. Takes effect without restart.
+[*] [b]Zone size in tiles (2-12, default 6)[/b] — how big an area each camera sees. Bigger = better overview, smaller = juicy detail.
+[*] [b]Mod enabled toggle[/b] — turn it off without unsubscribing. Feeds drop to NO SIGNAL.
+[/list]
+
+[h1]✨ FEATURES[/h1]
+[list]
+[*] [b]Truly live[/b] — feeds re-capture ~10x per second from the real world map
+[*] [b]Schematic view[/b] — per-cell colors, crisp pixels, no smoothing blur
+[*] [b]Placement preview[/b] — see the zone outline + screen feed while you're still holding the ghost
+[/list]
+
+[h1]👤 CREDITS[/h1]
+Made by [b]MickeyDisn[/b] - built for Sandustry modding API 0.5.6
+
+[i]If you build a sick control room, post a screenshot! I wanna see your panopticon. 👁️[/i]
+
