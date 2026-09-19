@@ -1,5 +1,5 @@
 import { Move } from "@sandmd/element-profiles/worker";
-import { ASTRO_FIELD } from "../elementShared/ids.ts";
+import { ASTRO_FIELD } from "../../ids.ts";
 import { live } from "./live.ts";
 import { MASK } from "./mask.ts";
 import { ElementType } from "../elementShared/resolve.ts";
@@ -15,9 +15,29 @@ export const buildElementProfie = (ID: string) => (
         ageField: ASTRO_FIELD.AGE,
         growAge: () => 150,
         moves: [
-            Move.side(() => live(ID, "moveSide", 0)),
-            Move.down(() => live(ID, "moveDown", 0)),
-            Move.up(() => live(ID, "moveUp", 0)),
+            Move.random(
+                () => live(ID, "random_Rate", 0),
+                () => live(ID, "random_Weight", 0),
+                MASK.FULL,
+            ),
+            // Gravity — liquid gold below pulls the seed down.
+            Move.channel({
+                chance: () => live(ID, "gravity_Rate", 0),
+                weight: () => live(ID, "gravity_Weight", 0),
+                // matchTypes: [ElementType.liquidGold],
+                mask: MASK.GRAVITY,
+            }),
+
+            // Move.side(() => live(ID, "moveSide", 0)),
+            // Move.down(() => live(ID, "moveDown", 0)),
+            // Move.up(() => live(ID, "moveUp", 0)),
+            // Walls / structure / empty push the seed back in.
+            Move.channel({
+                ...channelMatch(["empty", "structure"]),
+                chance: 100,
+                weight: -50,
+                mask: MASK.PLUSS,
+            }),
             Move.channel({
                 chance: () => live(ID, "aSeed_Rate", 0),
                 weight: () => live(ID, "aSeed_Weight", 0), // () => live(ID, "weighASeed", 15),
@@ -36,14 +56,11 @@ export const buildElementProfie = (ID: string) => (
                 matchTypes: [ElementType.astroCopperPowder],
                 mask: MASK.FULL,
             }),
-            // Walls / structure / empty push the seed back in.
-            Move.channel({
-                ...channelMatch(["empty", "structure"]),
-                chance: 100,
-                weight: -15,
-                mask: MASK.PLUS,
+            Move.inertia({
+                chance: () => live(ID, "aInertia_Rate", 0),
+                weight: () => live(ID, "aInertia_Weight", 0),
+                mode: "full",
             }),
-            Move.inertia({ chance: 100, weight: 1, mode: "full" }),
         ],
     }
 );

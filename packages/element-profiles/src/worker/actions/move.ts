@@ -191,7 +191,11 @@ export const Move = {
      * as stacking `side`/`up`/`down`, but uniform across all allowed offsets.
      * The draw list is compiled once from the mask (centre always excluded).
      */
-    random(chanceFn: number | (() => number), mask?: VoteMask): MoveFn {
+    random(
+        chanceFn: number | (() => number),
+        weight: number | (() => number),
+        mask?: VoteMask,
+    ): MoveFn {
         let dirs: number[] | null = null; // flat window indices
         return (ctx) => {
             if (!roll(resolveNum(chanceFn)) || ctx.sense.half < 1) return ctx;
@@ -210,7 +214,7 @@ export const Move = {
                 }
             }
             if (dirs.length === 0) return ctx;
-            Vote.add(ctx.votes, dirs[Math.floor(Math.random() * dirs.length)], .1);
+            Vote.add(ctx.votes, dirs[Math.floor(Math.random() * dirs.length)], resolveNum(weight));
             return ctx;
         };
     },

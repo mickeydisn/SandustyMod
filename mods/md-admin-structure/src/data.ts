@@ -33,6 +33,7 @@ export function structureRows(): StructureRow[] {
     const rows = new Map<string, StructureRow>();
 
     const add = (id: string, def: StructureDefinition | null | undefined): void => {
+        console.log("def", def);
         const d = def ?? {};
         const sid = typeof d.id === "string" ? d.id : id;
         if (!sid || rows.has(sid)) return;

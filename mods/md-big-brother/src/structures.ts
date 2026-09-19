@@ -7,11 +7,17 @@
  */
 import { api, channelFromId, listType, toast } from "./api.ts";
 import { CAPTURE_MS, KEY, LOG, MAX_CAMERAS, MOD, TILE_PX } from "./constants.ts";
-import { captureAll, captureChannel } from "./feeds.ts";
+import { captureAll, captureChannel, paintNoSignal } from "./feeds.ts";
 import { corners, tileShape } from "./geometry.ts";
 import { drawCamera, drawScreen, paintOverlay } from "./render.ts";
 import { runtime } from "./state.ts";
-import type { CamStructure, HookContext, PlacedEvent, PlacePayload } from "./types.ts";
+import type {
+    CamStructure,
+    HookContext,
+    PlacedEvent,
+    PlacePayload,
+    RemovedEvent,
+} from "./types.ts";
 
 /** Last capture tick, throttles capture inside `frame:render`. */
 let lastCaptureMs = 0;
@@ -90,6 +96,7 @@ export function registerStructures(): void {
             shape: tileShape(runtime.zoneTiles),
             defaultData: { channel: ch },
             copyData: ["channel"],
+            hideFromBuildMenu: true, // this hide the strucutre from the menu, custum picker will be used
             render: {
                 imageName: `${MOD}.screen`,
                 size: { width: runtime.feedPx, height: runtime.feedPx },
@@ -158,7 +165,7 @@ export function registerInteract(): void {
     }
 }
 
-/** Stamp channel data on placement, repaint the overlay and capture on a tick. */
+/** Stamp channel data on placement, NO SIGNAL on camera removal, capture on tick. */
 export function registerLifecycle(): void {
     api.events.on("building:placed", (payload) => {
         try {
@@ -190,6 +197,37 @@ export function registerLifecycle(): void {
             if (screenCh != null) captureChannel(screenCh);
         } catch (err) {
             console.warn(`${LOG} placed`, err);
+        }
+    });
+
+    // When the last camera of a channel is removed the feed must flip back to
+    // NO SIGNAL immediately — without this the screen keeps the frozen last
+    // frame until the next throttled capture notices the camera is gone (and
+    // `hadCopy` bookkeeping could skip the repaint entirely).
+    api.events.on("building:removed", (payload) => {
+        try {
+            const e = payload as RemovedEvent;
+            const structure = e?.structure;
+            const id = e?.structureId ?? structure?.type;
+            const ch = channelFromId(id, runtime.camIds) ??
+                (structure?.data?.channel as number | undefined ?? null);
+            if (ch == null || ch < 0 || ch >= runtime.channels) return;
+            // `building:removed` may fire before the structure list updates, so
+            // exclude the just-removed instance when deciding if a camera
+            // remains. Otherwise the feed would keep the frozen last frame.
+            const remaining = listType(runtime.camIds[ch]).filter((cam) =>
+                !(structure && cam.x === structure.x && cam.y === structure.y)
+            );
+            if (remaining.length === 0) {
+                runtime.hadCopy[ch] = false;
+                const feed = runtime.feeds[ch];
+                const ctx = feed?.getContext("2d", { willReadFrequently: true }) ?? null;
+                if (ctx) paintNoSignal(ctx, ch);
+            } else {
+                captureChannel(ch);
+            }
+        } catch (err) {
+            console.warn(`${LOG} removed`, err);
         }
     });
 

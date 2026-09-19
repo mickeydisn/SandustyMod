@@ -19,7 +19,7 @@ export interface RuntimeState {
     screenIds: string[];
     /** Off-screen feed canvas per channel. */
     feeds: Array<HTMLCanvasElement | null>;
-    /** Per channel: true once a real world capture succeeded. */
+    /** Per channel: true while the feed canvas holds a live schematic. */
     hadCopy: boolean[];
 }
 

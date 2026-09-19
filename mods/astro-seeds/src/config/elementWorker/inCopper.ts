@@ -6,7 +6,7 @@
  */
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles/worker";
 import type { Profile } from "@sandmd/element-profiles/shared";
-import { ASTRO_FIELD } from "../elementShared/ids.ts";
+import { ASTRO_FIELD } from "../../ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
 import { live } from "./live.ts";
 
@@ -24,8 +24,8 @@ export const astroSeedInCopper: Profile = {
     growAge: () => 40,
     moves: [
         Move.up(0),
-        Move.side(() => live(ID, "moveSide", 25)),
-        Move.down(() => live(ID, "moveDown", 35)),
+        Move.side(25),
+        Move.down(35),
     ],
     grow: [
         Grow.ageOnSurround(20, 4),

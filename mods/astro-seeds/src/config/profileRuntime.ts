@@ -29,11 +29,11 @@ export interface ProfileRuntimeConfig {
     /** Run the crystallization phase. */
     crystalEnabled: boolean;
     /** Move.side vote chance 0–100. */
-    moveSide: number;
+    random_Rate: number;
+    random_Weight: number;
     /** Move.down vote chance 0–100. */
-    moveDown: number;
-    /** Move.down vote chance 0–100. */
-    moveUp: number;
+    gravity_Rate: number;
+    gravity_Weight: number;
     /** attraction Key */
     aSeed_Rate: number;
     aSeed_Weight: number;
@@ -41,6 +41,8 @@ export interface ProfileRuntimeConfig {
     aGold_Weight: number;
     aCopper_Rate: number;
     aCopper_Weight: number;
+    aInertia_Rate: number;
+    aInertia_Weight: number;
 }
 
 /** The runtime knobs exposed in the buffer — also the allowed live/write keys. */
@@ -58,10 +60,10 @@ export const PROFILE_IDS = [
     "InWater-ASeed",
     "InWater-AGold",
     "InWater-ACopper",
-    "InGold-ASeed",
-    "InGold-AGold",
-    "InGold-ACopper",
-    "InCopper-ASeed",
+    // "InGold-ASeed",
+    // "InGold-AGold",
+    // "InGold-ACopper",
+    // "InCopper-ASeed",
 ] as const;
 
 export type ProfileId = (typeof PROFILE_IDS)[number];
@@ -85,19 +87,19 @@ export function buildDefaultProfileRecord(): ProfileConfigRecord {
             tickSpeed: 50,
             growEnabled: false,
             crystalEnabled: false,
-            moveSide: 10,
-            moveDown: 10,
-            moveUp: 10,
-            aSeed_Rate: 0,
+            random_Rate: 20,
+            random_Weight: 10,
+            gravity_Rate: 20,
+            gravity_Weight: 10,
+            aSeed_Rate: 20,
             aSeed_Weight: 0,
-            aGold_Rate: 0,
-            aGold_Weight: 0,
-            aCopper_Rate: 0,
+            aGold_Rate: 20,
+            aGold_Weight: 20,
+            aCopper_Rate: 20,
             aCopper_Weight: 0,
+            aInertia_Rate: 100,
+            aInertia_Weight: 0,
         };
     }
-    // Per-profile overrides (copper is a faster, heavier faller).
-    profiles["InCopper-ASeed"].moveSide = 10;
-    profiles["InCopper-ASeed"].moveDown = 10;
     return { P: profiles };
 }

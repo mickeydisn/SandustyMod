@@ -15,7 +15,7 @@
             "type": "boolean",
             "default": true,
             "labelKey": "Mod enabled",
-            "descriptionKey": "Master switch. Water particle rules use the in-game panel (Alt+A)."
+            "descriptionKey": ""
         }
     }
 }

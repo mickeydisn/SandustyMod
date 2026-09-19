@@ -5,7 +5,7 @@ import "@sandmd/sandkit";
 import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/dev";
 
 import { buildMain } from "./main/build.ts";
-import { MOD_ID } from "./config/elementShared/ids.ts";
+import { MOD_ID } from "./ids.ts";
 
 try {
     findOrphanedObjects(MOD_ID);

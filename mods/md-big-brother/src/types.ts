@@ -55,6 +55,11 @@ export interface PlacedEvent {
     structure?: CamStructure;
 }
 
+export interface RemovedEvent {
+    structureId?: string;
+    structure?: CamStructure;
+}
+
 export interface PlacePayload {
     structureId?: string;
     structureType?: string;

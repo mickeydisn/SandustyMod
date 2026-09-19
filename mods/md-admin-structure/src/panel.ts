@@ -14,8 +14,8 @@ export function StructurePanel(): unknown {
     // Local aliases: imported bindings are not narrowed inside callbacks, and the
     // panel is only mounted once the guard in init() passed.
     const react = React;
-    const create = h;
-    if (!react || !create) return null;
+    const e = h;
+    if (!react || !e) return null;
 
     const [filterMod, setFilterMod] = react.useState<string>("");
     const [filterMenu, setFilterMenu] = react.useState<string>("");
@@ -50,18 +50,18 @@ export function StructurePanel(): unknown {
     if (filterMenu === "hidden") shown = shown.filter((r) => r.hidden);
     if (filterMenu === "shown") shown = shown.filter((r) => !r.hidden);
 
-    return create(
+    return e(
         "div",
         { style: styles.panel },
-        create(
+        e(
             "div",
             { style: styles.header },
-            create(
+            e(
                 "span",
                 { style: { flex: 1 } },
                 `STRUCTURES · ${shown.length}/${all.length}`,
             ),
-            create(
+            e(
                 "button",
                 {
                     style: styles.button,
@@ -73,53 +73,53 @@ export function StructurePanel(): unknown {
                 "×",
             ),
         ),
-        create(
+        e(
             "div",
             { style: styles.filters },
-            create("label", { style: { color: COLORS.dim } }, "Mod:"),
-            create(
+            e("label", { style: { color: COLORS.dim } }, "Mod:"),
+            e(
                 "select",
                 {
                     value: filterMod,
                     style: styles.select,
                     onChange: (e: Event) => setFilterMod((e.target as HTMLSelectElement).value),
                 },
-                create("option", { value: "" }, "All"),
-                ...mods.map((m) => create("option", { value: m, key: m }, m)),
+                e("option", { value: "" }, "All"),
+                ...mods.map((m) => e("option", { value: m, key: m }, m)),
             ),
-            create("label", { style: { color: COLORS.dim } }, "Menu:"),
-            create(
+            e("label", { style: { color: COLORS.dim } }, "Menu:"),
+            e(
                 "select",
                 {
                     value: filterMenu,
                     style: styles.select,
                     onChange: (e: Event) => setFilterMenu((e.target as HTMLSelectElement).value),
                 },
-                create("option", { value: "" }, "All"),
-                create("option", { value: "hidden" }, "Hidden"),
-                create("option", { value: "shown" }, "Shown"),
+                e("option", { value: "" }, "All"),
+                e("option", { value: "hidden" }, "Hidden"),
+                e("option", { value: "shown" }, "Shown"),
             ),
         ),
-        create(
+        e(
             "div",
             { style: styles.list },
             shown.map((r) =>
-                create(
+                e(
                     "div",
                     { key: r.id, style: styles.row },
-                    create(
+                    e(
                         "span",
                         { style: { color: COLORS.dim } },
                         r.hidden ? ICON_HIDDEN : ICON_SHOWN,
                     ),
-                    create("span", { style: styles.grow }, r.name),
-                    create("span", { style: { color: COLORS.dim, flexShrink: 0 } }, r.category),
-                    create(
+                    e("span", { style: styles.grow }, r.id),
+                    e("span", { style: { color: COLORS.dim, flexShrink: 0 } }, r.category),
+                    e(
                         "span",
                         { style: { color: COLORS.dim, width: "150px", flexShrink: 0 } },
                         r.mod,
                     ),
-                    create(
+                    e(
                         "button",
                         {
                             style: r.unlocked ? styles.unlocked : styles.button,
@@ -127,7 +127,7 @@ export function StructurePanel(): unknown {
                         },
                         r.unlocked ? "Unlocked" : "Unlock",
                     ),
-                    create(
+                    e(
                         "button",
                         { style: styles.lock, onClick: () => remove(r.id) },
                         "Remove",
@@ -135,6 +135,6 @@ export function StructurePanel(): unknown {
                 )
             ),
         ),
-        create("div", { style: styles.footer }, `${TOGGLE_LABEL} toggles · v${VERSION}`),
+        e("div", { style: styles.footer }, `${TOGGLE_LABEL} toggles · v${VERSION}`),
     );
 }

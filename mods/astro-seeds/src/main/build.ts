@@ -9,7 +9,7 @@
 import { buildElementMain } from "@sandmd/element-profiles/main";
 import { registerBufferControls } from "@sandmd/buffer-controls";
 import { ASTRO_ELEMENTS } from "../config/elementMain/catalogue.ts";
-import { MOD_ID, VERSION } from "../config/elementShared/ids.ts";
+import { MOD_ID, VERSION } from "../ids.ts";
 import { ElementType } from "../config/elementShared/resolve.ts";
 import { safe } from "../config/elementShared/util.ts";
 import { setProfileBuffer } from "../config/elementWorker/live.ts";

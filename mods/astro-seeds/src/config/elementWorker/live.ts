@@ -12,7 +12,7 @@
  * worker's handle is observe-mode and must never commit.
  */
 import { JsonBuffer } from "@sandmd/buffer";
-import { MOD_ID } from "../elementShared/ids.ts";
+import { MOD_ID } from "../../ids.ts";
 import {
     buildDefaultProfileRecord,
     PROFILE_BUFFER_ID,

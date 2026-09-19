@@ -26,7 +26,7 @@ export interface PickerViewOptions {
 }
 
 function createPickerCss() {
-    console.log("[pkg-picker] injecting CSS");
+    // console.log("[pkg-picker] injecting CSS");
     const css = `
         .pkg-picker-main-div {
             width: 70vw;
@@ -330,7 +330,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             if (!selectedCategory) return true;
             return item.category == selectedCategory;
         };
-        console.log("AVALIBEL CATEGORIE", availableCategorie, list);
+        // console.log("AVALIBEL CATEGORIE", availableCategorie, list);
         // Category grid shows only categories that still have matching items.
         const visibleCategories = availableCategorie
             .map((cat) => ({
@@ -338,9 +338,9 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 count: list.itemsInCategory(cat).filter(matchesFilters).length,
             }))
             .filter((c) => c.count > 0);
-        console.log("AVALIBEL CATEGORIE: visibleCategories", visibleCategories);
+        // console.log("AVALIBEL CATEGORIE: visibleCategories", visibleCategories);
 
-        console.log("AVALIBEL  PATH", availableCategorie, list);
+        // console.log("AVALIBEL  PATH", availableCategorie, list);
         // Category grid shows only categories that still have matching items.
         const visiblePath = availablePath
             .map((path) => {
@@ -351,7 +351,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 };
             })
             .filter((c) => c.count > 0);
-        console.log("AVALIBEL PATH: visiblePath", visiblePath);
+        // console.log("AVALIBEL PATH: visiblePath", visiblePath);
 
         const visible = filterItems(list.catalogueItems, {
             path: selectedPath,
@@ -361,7 +361,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             sizes: selectedSizes,
             itemFilter: options.itemFilter,
         });
-        console.log("AVALIBEL CATEGORIE", list, visible);
+        // console.log("AVALIBEL CATEGORIE", list, visible);
 
         if (state.minimized) {
             const src = selected ? spriteSrc(selected) : undefined;

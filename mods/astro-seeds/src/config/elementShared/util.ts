@@ -1,7 +1,7 @@
 /**
  * Small helpers shared by both builds.
  */
-import { MOD_ID } from "./ids.ts";
+import { MOD_ID } from "../../ids.ts";
 import type { AstroElementSpec } from "./types.ts";
 
 /** Build the engine id (`${MOD_ID}:<slug>`) for a catalogue spec. */

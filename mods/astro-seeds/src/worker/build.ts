@@ -9,7 +9,7 @@
  */
 import { buildElementWorker } from "@sandmd/element-profiles/worker";
 import { ASTRO_PROFILES } from "../config/elementWorker/catalogue.ts";
-import { MOD_ID, VERSION } from "../config/elementShared/ids.ts";
+import { MOD_ID, VERSION } from "../ids.ts";
 import { profileBuffer } from "../config/elementWorker/live.ts";
 
 export function buildWorker(): void {

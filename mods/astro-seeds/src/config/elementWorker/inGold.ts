@@ -6,7 +6,7 @@
  */
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles/worker";
 import type { Profile } from "@sandmd/element-profiles/shared";
-import { ASTRO_FIELD } from "../elementShared/ids.ts";
+import { ASTRO_FIELD } from "../../ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
 import { channelMatch } from "./keys.ts";
 import { live } from "./live.ts";
@@ -27,8 +27,8 @@ export const astroSeedInGold: Profile = {
     ageField: ASTRO_FIELD.AGE,
     growAge: () => 150,
     moves: [
-        Move.side(() => live(SEED_ID, "moveSide", 15)),
-        Move.down(() => live(SEED_ID, "moveDown", 20)),
+        Move.side(15),
+        Move.down(20),
         Move.channel({
             chance: 90,
             matchTypes: [ElementType.water],
@@ -62,8 +62,8 @@ export const astroGoldInLiquidGold: Profile = {
     growAge: () => 10,
     moves: [
         // Jitter — uniform random draw over the allowed offsets.
-        Move.random(80, MASK.SIDE),
-        Move.random(80, MASK.VERT),
+        Move.random(80, 10, MASK.SIDE),
+        Move.random(80, 10, MASK.VERT),
         // Walls / structure / empty push the seed back in.
         Move.channel({
             ...channelMatch(["empty", "structure"]),
@@ -125,7 +125,7 @@ export const astroCopperInLiquidGold: Profile = {
     growAge: () => 3,
     moves: [
         // Jitter — uniform random draw over the 8 neighbours.
-        Move.random(80),
+        Move.random(80, 10),
         // Gravity — liquid gold below pulls the seed down.
         Move.channel({
             chance: 1,
