@@ -26,6 +26,15 @@ export interface PathCatalogueItem extends CatalogueItem {
     path: string;
     kind?: FieldKind;
     color: string;
+    /**
+     * Readout width in STRUCT_H units for `drawIconAndReadout`
+     * (final pixels = readoutCells * 16). When omitted, the register falls
+     * back to its per-kind default (var: 8, value string: 8 / number: 4 /
+     * bool: 2).
+     */
+    readoutCells?: number;
+    /** Draw the 16x16 kind icon left of the readout. Defaults to true. */
+    showIcon?: boolean;
 }
 
 export interface ActionCatalogueItem extends CatalogueItem {

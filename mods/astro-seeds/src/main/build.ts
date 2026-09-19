@@ -68,10 +68,10 @@ export function buildMain(): void {
             { itemId: `${MOD_ID}:bufferProfile:menu`, spriteId: "menu" },
             { kind: "string", spriteId: "string" },
 
-            { kind: "number", action: "dec", spriteId: "actionPlus" },
-            { kind: "number", action: "decX", spriteId: "actionPlusX" },
-            { kind: "number", action: "inc", spriteId: "actionMinus" },
-            { kind: "number", action: "incX", spriteId: "actionMinusX" },
+            { kind: "number", action: "dec", spriteId: "actionMinus" },
+            { kind: "number", action: "decX", spriteId: "actionMinusX" },
+            { kind: "number", action: "inc", spriteId: "actionPlus" },
+            { kind: "number", action: "incX", spriteId: "actionPlusX" },
             { kind: "number", spriteId: "number" },
 
             { kind: "bool", action: "toggle", spriteId: "actionToggle" },

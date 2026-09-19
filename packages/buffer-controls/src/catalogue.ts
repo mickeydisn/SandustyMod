@@ -61,7 +61,9 @@ const menuItem = (
     color: "#FFFFFF",
 });
 
-const variableItem = (field: BoundField): PathCatalogueItem => ({
+const variableItem = (
+    field: BoundField,
+): PathCatalogueItem => ({
     id: field.path,
     path: field.path,
     kind: field.kind,
@@ -72,20 +74,28 @@ const variableItem = (field: BoundField): PathCatalogueItem => ({
     width: CELL,
     height: ITEM_HEIGHT,
     color: "#FFFFFF",
+    readoutCells: 8,
+    showIcon: true,
 });
 
-const valueItem = (field: BoundField): PathCatalogueItem => ({
-    id: `${VALUE_PREFIX}${field.path}`,
-    path: field.path,
-    kind: field.kind,
-    label: field.path,
-    description: `${field.kind} — live value for jsonBuffer path "${field.path}".`,
-    category: field.path.split(".")[1],
-    tags: ["value", ...field.path.split(".").slice(2)],
-    width: CELL,
-    height: ITEM_HEIGHT,
-    color: "#FFFFFF",
-});
+const valueItem = (
+    field: BoundField,
+): PathCatalogueItem => {
+    return {
+        id: `${VALUE_PREFIX}${field.path}`,
+        path: field.path,
+        kind: field.kind,
+        label: field.path,
+        description: `${field.kind} — live value for jsonBuffer path "${field.path}".`,
+        category: field.path.split(".")[1],
+        tags: ["value", ...field.path.split(".").slice(2)],
+        width: CELL,
+        height: ITEM_HEIGHT,
+        color: "#FFFFFF",
+        readoutCells: 4,
+        showIcon: false,
+    };
+};
 
 const actionItem = (
     field: BoundField,

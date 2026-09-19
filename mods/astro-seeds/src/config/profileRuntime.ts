@@ -85,9 +85,9 @@ export function buildDefaultProfileRecord(): ProfileConfigRecord {
             tickSpeed: 50,
             growEnabled: false,
             crystalEnabled: false,
-            moveSide: 15,
-            moveDown: 20,
-            moveUp: 20,
+            moveSide: 10,
+            moveDown: 10,
+            moveUp: 10,
             aSeed_Rate: 0,
             aSeed_Weight: 0,
             aGold_Rate: 0,
@@ -97,7 +97,7 @@ export function buildDefaultProfileRecord(): ProfileConfigRecord {
         };
     }
     // Per-profile overrides (copper is a faster, heavier faller).
-    profiles["InCopper-ASeed"].moveSide = 25;
-    profiles["InCopper-ASeed"].moveDown = 35;
+    profiles["InCopper-ASeed"].moveSide = 10;
+    profiles["InCopper-ASeed"].moveDown = 10;
     return { P: profiles };
 }

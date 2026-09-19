@@ -3,6 +3,7 @@ import { ASTRO_FIELD } from "../elementShared/ids.ts";
 import { live } from "./live.ts";
 import { MASK } from "./mask.ts";
 import { ElementType } from "../elementShared/resolve.ts";
+import { channelMatch } from "./keys.ts";
 
 export const buildElementProfie = (ID: string) => (
     {
@@ -30,11 +31,19 @@ export const buildElementProfie = (ID: string) => (
                 mask: MASK.FULL,
             }),
             Move.channel({
-                chance: () => live(ID, "aGold_Rate", 0),
-                weight: () => live(ID, "aGold_Weight", 0), // () => live(ID, "weighASeed", 15),
+                chance: () => live(ID, "aCopper_Rate", 0),
+                weight: () => live(ID, "aCopper_Weight", 0), // () => live(ID, "weighASeed", 15),
                 matchTypes: [ElementType.astroCopperPowder],
                 mask: MASK.FULL,
             }),
+            // Walls / structure / empty push the seed back in.
+            Move.channel({
+                ...channelMatch(["empty", "structure"]),
+                chance: 100,
+                weight: -15,
+                mask: MASK.PLUS,
+            }),
+            Move.inertia({ chance: 100, weight: 1, mode: "full" }),
         ],
     }
 );

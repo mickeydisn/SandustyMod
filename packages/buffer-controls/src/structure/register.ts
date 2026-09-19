@@ -21,13 +21,12 @@ import {
     type ActionRegisterResult,
     type ActionWrite,
 } from "./register/actionRegister.ts";
-import type { PathCatalogueItem } from "../types.ts";
+import type { ActionCatalogueItem, PathCatalogueItem } from "../types.ts";
 import { registerMenuStructures } from "./register/menuRegister.ts";
 import { registerPathStructures } from "./register/varRegister.ts";
 import { registerValueStructures, type ValueStructureEntry } from "./register/valueRegister.ts";
 import { registerActionNumberStructures } from "./register/actionNumberRegister.ts";
 import { registerBooleanActionStructures } from "./register/actionBooleanRegister.ts";
-import { ActionCatalogueItem } from "../types.ts";
 
 /** Recompute + push every placed action structure's signal output (from ./register/actionRegister.ts). */
 export type { ActionRegisterResult } from "./register/actionRegister.ts";
@@ -35,7 +34,7 @@ export type { ActionRegisterResult } from "./register/actionRegister.ts";
 /** Everything the per-category register modules need to build one structure. */
 export type registerStructureOps = {
     typeId: string;
-    item: ActionCatalogueItem;
+    item: PathCatalogueItem & ActionCatalogueItem;
     read: ActionRead;
     write: ActionWrite;
 };

@@ -12,11 +12,13 @@
 import type { Profile } from "@sandmd/element-profiles/shared";
 import { astroSeedInCopper } from "./inCopper.ts";
 import { astroCopperInLiquidGold, astroGoldInLiquidGold, astroSeedInGold } from "./inGold.ts";
-import { astroSeedInWater } from "./inWater.ts";
+import { astroCopperInWater, astroGoldInWater, astroSeedInWater } from "./inWater.ts";
 
 export const ASTRO_PROFILES: readonly Profile[] = [
     // water
     astroSeedInWater,
+    astroGoldInWater,
+    astroCopperInWater,
     // liquid gold
     astroSeedInGold,
     astroGoldInLiquidGold,

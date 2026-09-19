@@ -17,13 +17,41 @@ import { adjustHSL } from "@sandmd/shared";
 export const CELL = 16;
 /** Height of the readout rectangle. */
 export const STRUCT_H = 16;
-/** Width of the readout rectangle right of the icon (5 cells). */
-export const RECT_W = 8 * 16;
+/** Default width of the readout rectangle, in STRUCT_H units (8 * 16 = 128px). */
+export const DEFAULT_READOUT_CELLS = 8;
+/** Width of the readout rectangle right of the icon (8 cells). Kept for compat. */
+export const RECT_W = DEFAULT_READOUT_CELLS * STRUCT_H;
+
+/** Readout width for `var` (path) structures — paths are long, keep it wide. */
+export const VAR_READOUT_CELLS = 8;
+/** Readout width per kind for `value` (live buffer value) structures. */
+export const VALUE_READOUT_CELLS: Record<string, number> = {
+    string: 8,
+    number: 4,
+    bool: 2,
+};
 
 export interface ReadoutOptions {
     spriteId?: string;
     /** Text painted inside the readout rectangle. */
     text: string;
+    /**
+     * Width of the readout rectangle, in STRUCT_H units.
+     * Final pixels = readoutCells * STRUCT_H. Defaults to 8.
+     * Pass a smaller value for bools/numbers (e.g. 2 / 4) and a
+     * larger one for paths/strings (e.g. 8).
+     */
+    readoutCells?: number;
+    /** Draw the 16x16 kind icon left of the readout. Defaults to true. */
+    showIcon?: boolean;
+}
+
+/** Total footprint width in cells: icon (0 or 1) + readout cells. */
+export function readoutTileWidth(
+    opts: Pick<ReadoutOptions, "readoutCells" | "showIcon">,
+): number {
+    const cells = Math.max(1, Math.floor(opts.readoutCells ?? DEFAULT_READOUT_CELLS));
+    return (opts.showIcon ?? true ? 1 : 0) + cells;
 }
 
 /** Resolve the sprite id to a loaded canvas image, or undefined if not ready. */
@@ -33,10 +61,11 @@ function loadImage(spriteId?: string): unknown {
 }
 
 /**
- * Shared custom draw for a buffer-controls structure: the kind icon at the top
- * of the footprint plus a readout rectangle (1px #c1812e border, black fill)
- * with `text` inside. Both registers render through this, so the visual
- * language stays consistent while each register only picks the text to show.
+ * Shared custom draw for a buffer-controls structure: optionally the kind icon
+ * plus a readout rectangle (1px #c1812e border, black fill) with `text` inside.
+ * Both registers render through this, so the visual language stays consistent
+ * while each register only picks the text, width (`readoutCells`) and icon
+ * (`showIcon`) to show.
  */
 export function drawIconAndReadout(
     structure: { x: number; y: number; data: Record<string, unknown> },
@@ -45,21 +74,26 @@ export function drawIconAndReadout(
 ): boolean {
     const ctx = render?.ctx;
     if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;
-    const image = loadImage(opts.spriteId);
-    if (!image) return false;
+    const showIcon = opts.showIcon ?? true;
+    const image = showIcon ? loadImage(opts.spriteId) : undefined;
+    if (showIcon && !image) return false;
     const origin = sandkit.api.rendering.getDrawPositionAtCell(structure.x, structure.y);
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // Kind icon (16x16) at the top of the footprint.
-    ctx.drawImage(image as CanvasImageSource, origin.x, origin.y, CELL, CELL);
+    const cells = Math.max(1, Math.floor(opts.readoutCells ?? DEFAULT_READOUT_CELLS));
 
-    // Readout rectangle right of the icon:
+    if (showIcon) {
+        // Kind icon (16x16) at the top of the footprint.
+        ctx.drawImage(image as CanvasImageSource, origin.x, origin.y, CELL, CELL);
+    }
+
+    // Readout rectangle right of the icon (or at the origin when no icon):
     // 1px #c1812e outer border, 1px black inner border, black fill.
-    const rx = origin.x + CELL;
+    const rx = origin.x + (showIcon ? CELL : 0);
     const ry = origin.y;
-    const rw = RECT_W;
+    const rw = cells * STRUCT_H;
     const rh = STRUCT_H;
     ctx.fillStyle = "#da9c0a"; // outer border
     ctx.fillRect(rx, ry, rw, rh);

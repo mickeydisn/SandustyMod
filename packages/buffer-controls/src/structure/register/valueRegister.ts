@@ -2,8 +2,13 @@
 import "@sandmd/sandkit";
 import { buildSectionData, buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { registerStructureOps } from "../register.ts";
-import { FieldKind } from "../../types.ts";
-import { drawBorder, drawIconAndReadout } from "../render.ts";
+import type { FieldKind } from "../../types.ts";
+import {
+    drawBorder,
+    drawIconAndReadout,
+    readoutTileWidth,
+    VALUE_READOUT_CELLS,
+} from "../render.ts";
 
 /** One registered value structure: its type id maps back to a buffer path. */
 export interface ValueStructureEntry {
@@ -32,6 +37,11 @@ export function registerValueStructures(ops: registerStructureOps): ValueRegiste
     const kind = ops.item.kind ?? "string";
     const path = ops.item.path ?? ops.item.id;
     const value = formatBufferValue(ops.read(path), kind);
+    // Per-kind readout width (bool: 2, number: 4, string/var: 8) — overridable
+    // via `readoutCells` on the catalogue item; `showIcon` toggles the icon.
+    const readoutCells = ops.item.readoutCells ?? VALUE_READOUT_CELLS[kind] ?? 8;
+    const showIcon = ops.item.showIcon ?? true;
+    const tileWidth = readoutTileWidth({ readoutCells, showIcon });
 
     const draw = (
         _state: unknown,
@@ -43,8 +53,10 @@ export function registerValueStructures(ops: registerStructureOps): ValueRegiste
             // Value structure: the readout shows the last buffer value,
             // refreshed on every buffer update via setData({ dataValue }).
             text: String(structure.data?.dataValue ?? value),
+            readoutCells,
+            showIcon,
         });
-        drawBorder(structure, render, ops.item.color, 9);
+        drawBorder(structure, render, ops.item.color, tileWidth);
         return true;
     };
 
