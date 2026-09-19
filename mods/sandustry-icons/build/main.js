@@ -870,40 +870,61 @@ function createPickerOverlay(options) {
     itemFilter: options.itemFilter
   });
   const currentSelectedItem = () => {
-    const selected = sandkit.api.action.getSelected?.();
-    const building = sandkit.enums.ActionType.Building;
-    if (!selected || !building || selected.type !== building) {
+    try {
+      const selected = sandkit.api.action.getSelected?.();
+      if (!selected) return void 0;
+      const building = sandkit.enums?.ActionType?.Building;
+      if (building == null) return void 0;
+      if (selected.type !== building) return void 0;
+      const id = selected.id;
+      if (typeof id !== "string") return void 0;
+      if (!id.startsWith(`${list.modId}:`)) return void 0;
+      return list.itemFromType(id);
+    } catch {
       return void 0;
     }
-    const id = selected.id;
-    if (!id || !id.startsWith(`${list.modId}:`)) return void 0;
-    return list.itemFromType(id);
   };
   const sync = () => {
-    const item = currentSelectedItem();
-    if (!item) {
-      if (pickerState) close();
-      return;
-    }
-    if (item.id !== list.getSelected()?.id) {
-      list.setSelected(item.id);
-      if (pickerState) repaint?.();
-    }
-    if (!pickerState) {
-      pickerState = {
-        minimized: true
-      };
-      repaint?.();
+    try {
+      const item = currentSelectedItem();
+      if (!item) {
+        if (pickerState) close();
+        return;
+      }
+      if (item.id !== list.getSelected()?.id) {
+        list.setSelected(item.id);
+        if (pickerState) repaint?.();
+      }
+      if (!pickerState) {
+        pickerState = {
+          minimized: true
+        };
+        repaint?.();
+      }
+    } catch {
+      try {
+        if (pickerState) close();
+      } catch {
+      }
     }
   };
   const install = () => {
     if (registered) return;
     sandkit.api.ui.overlays.register(slot, pickerId, render);
     registered = true;
-    unsubscribe = sandkit.api.events.on("action:changed", () => {
-      sandkit.api.schedule.nextTick(sync);
-    });
-    sandkit.api.schedule.nextTick(sync);
+    const scheduleSync = () => {
+      try {
+        const nextTick = sandkit.api.schedule?.nextTick;
+        if (typeof nextTick === "function") {
+          nextTick(sync);
+          return;
+        }
+      } catch {
+      }
+      sync();
+    };
+    unsubscribe = sandkit.api.events.on("action:changed", scheduleSync);
+    scheduleSync();
   };
   install();
   return {

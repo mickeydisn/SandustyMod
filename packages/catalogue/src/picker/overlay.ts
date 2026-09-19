@@ -205,32 +205,60 @@ export function createPickerOverlay(
      * The selected action id is a structure *type* like
      * `<modId>:item/<itemId>[~mirrored]`; `list.itemFromType` maps it back to
      * the matching {@link CatalogueItem} (stripping the mirror suffix).
+     *
+     * NOTE: `action.getSelected()` is typed as `AssetRef` (`{ id: number,
+     * type: number }`) — vanilla tools/buildings report a NUMERIC id. A bare
+     * `selected.id.startsWith(...)` throws TypeError on those, which aborted
+     * `sync()` before `close()` and left the overlay stuck open. Always
+     * narrow to string first.
      */
     const currentSelectedItem = (): CatalogueItem | undefined => {
-        const selected = sandkit.api.action.getSelected?.();
-        const building = sandkit.enums.ActionType.Building;
-        if (!selected || !building || selected.type !== building) {
+        try {
+            const selected = sandkit.api.action.getSelected?.() as
+                | { id?: unknown; type?: unknown }
+                | null
+                | undefined;
+            if (!selected) return undefined;
+            const building = sandkit.enums?.ActionType?.Building;
+            // Enum not ready yet: can't classify — treat as "not ours" so the
+            // overlay closes rather than sticking.
+            if (building == null) return undefined;
+            if (selected.type !== building) return undefined;
+            const id = selected.id;
+            if (typeof id !== "string") return undefined;
+            if (!id.startsWith(`${list.modId}:`)) return undefined;
+            return list.itemFromType(id);
+        } catch {
+            // Never let a selection read abort sync — a throw here used to
+            // skip close() and wedge the overlay open.
             return undefined;
         }
-        const id = selected.id;
-        if (!id || !id.startsWith(`${list.modId}:`)) return undefined;
-        return list.itemFromType(id);
     };
 
     const sync = () => {
-        const item = currentSelectedItem();
-        if (!item) {
-            if (pickerState) close();
-            return;
-        }
-        if (item.id !== list.getSelected()?.id) {
-            list.setSelected(item.id);
-            if (pickerState) repaint?.();
-        }
-        if (!pickerState) {
-            // Showing this catalogue's item: open the (minimized) picker.
-            pickerState = { minimized: true };
-            repaint?.();
+        try {
+            const item = currentSelectedItem();
+            if (!item) {
+                if (pickerState) close();
+                return;
+            }
+            if (item.id !== list.getSelected()?.id) {
+                list.setSelected(item.id);
+                if (pickerState) repaint?.();
+            }
+            if (!pickerState) {
+                // Showing this catalogue's item: open the (minimized) picker.
+                pickerState = { minimized: true };
+                repaint?.();
+            }
+        } catch {
+            // Sync must never throw: worst case, close a possibly-stale
+            // overlay rather than leaving it wedged open.
+            try {
+                if (pickerState) close();
+            } catch {
+                /* ignore */
+            }
         }
     };
     const install = () => {
@@ -241,10 +269,22 @@ export function createPickerOverlay(
         // action changes (select, build-menu pick, deselect). `events.on` returns
         // an unsubscribe; we run `sync()` once after registration to catch the
         // current state (e.g. picking a structure from the build menu).
-        unsubscribe = sandkit.api.events.on("action:changed", () => {
-            sandkit.api.schedule.nextTick(sync);
-        });
-        sandkit.api.schedule.nextTick(sync);
+        // Defer via nextTick so the engine has settled `player.action` first;
+        // fall back to a direct call when the scheduler is unavailable.
+        const scheduleSync = () => {
+            try {
+                const nextTick = sandkit.api.schedule?.nextTick;
+                if (typeof nextTick === "function") {
+                    nextTick(sync);
+                    return;
+                }
+            } catch {
+                /* fall through to direct sync */
+            }
+            sync();
+        };
+        unsubscribe = sandkit.api.events.on("action:changed", scheduleSync);
+        scheduleSync();
     };
 
     install();
