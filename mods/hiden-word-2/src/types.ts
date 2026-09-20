@@ -99,82 +99,52 @@ export interface SealParams {
   surfaceKeepPercent: number;
 }
 
-export interface FluidsParams {
-  enabled: boolean;
-  water: boolean;
-  lava: boolean;
-  surfaceWater: boolean;
-  waterMinDepth: number;
-  lavaMinDepth: number;
-  surfaceWaterDepth: number;
-}
-
-/**
- * One wall-grow rule (sandgenerator WallGrow).
- * Easy to extend: add entries to DEFAULT_PARAMS.wallGrow.rules in constants.ts.
- *
- * nearMask: [up, right, down, left] — 1 = that neighbor must match inBorderOf.
- */
+/** Axis-aligned band as % of full map. */
 export interface MapBoundsPercent {
-  /** % of map height from top (0 = top edge). */
   top: number;
-  /** % of map height from top (100 = bottom edge). */
   bottom: number;
-  /** % of map width from left (0 = left edge). */
   left: number;
-  /** % of map width from left (100 = right edge). */
   right: number;
 }
 
-export interface WallRule {
+export type ModifierKind = "wall" | "form" | "liquid";
+
+export interface ModifierBase {
+  id: string;
   enabled: boolean;
   name: string;
-  /** Neighbor terrain codes that "touch" the cell (from). */
+  kind: ModifierKind;
+}
+
+export interface WallModifier extends ModifierBase {
+  kind: "wall";
   inBorderOf: number[];
-  /** Cell codes we may replace (inside). */
   typeToReplace: number[];
-  /** Code written into matching cells. */
   replaceBy: number;
-  /** [up, right, down, left] — which sides check inBorderOf. */
   nearMask: [number, number, number, number];
-  /**
-   * Axis-aligned band on the full map (% of width/height).
-   * Feature applies only inside this rectangle.
-   */
   bounds: MapBoundsPercent;
-  /** Extra grow iterations into typeToReplace (4-connected). */
   growSize: number;
 }
 
-export interface WallGrowParams {
-  enabled: boolean;
-  rules: WallRule[];
-}
-
-/**
- * One form-grow rule (sandgenerator FormeGrow).
- * Add more in DEFAULT_PARAMS.formGrow.rules.
- */
-export interface FormRule {
-  enabled: boolean;
-  name: string;
-  /** Cells that may be replaced. */
+export interface FormModifier extends ModifierBase {
+  kind: "form";
   inBorderOf: number[];
   replaceBy: number;
   bounds: MapBoundsPercent;
   growSize: number;
-  /**
-   * Scatter density 0–100.
-   * Higher = more seed points (noise threshold lower).
-   * 0 ≈ almost none, 50 ≈ medium, 100 ≈ fill band.
-   */
   scatterPercent: number;
 }
 
-export interface FormGrowParams {
-  enabled: boolean;
-  rules: FormRule[];
+export type LiquidType = "water" | "lava" | "surface";
+
+export interface LiquidModifier extends ModifierBase {
+  kind: "liquid";
+  liquidType: LiquidType;
+  minDepth: number;
+  bounds: MapBoundsPercent;
 }
+
+export type Modifier = WallModifier | FormModifier | LiquidModifier;
 
 export interface GenerationParams {
   sky: SkyParams;
@@ -182,9 +152,8 @@ export interface GenerationParams {
   tunnel: BandParams;
   cave: BandParams;
   seal: SealParams;
-  fluids: FluidsParams;
-  wallGrow: WallGrowParams;
-  formGrow: FormGrowParams;
+  /** Ordered post-seal pipeline — user can reorder. */
+  modifiers: Modifier[];
 }
 
 export interface HiddenWorldState {

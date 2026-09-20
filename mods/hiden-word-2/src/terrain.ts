@@ -19,7 +19,7 @@ import {
   TUNNEL_WAVES,
 } from "./constants.ts";
 import { SimplexNoise } from "./noise.ts";
-import type { BandParams, GenerationParams, SkyParams } from "./types.ts";
+import type { BandParams, FormModifier, GenerationParams, LiquidModifier, SkyParams, WallModifier } from "./types.ts";
 
 // ---------------------------------------------------------------------------
 // Stage 1 — noise
@@ -258,87 +258,79 @@ function stageSeal(
  *   3. Fill only the bottom portion of the run (flat pool under air)
  *   4. Surface water: sky cells with rock within N cells below
  */
-function stageFluids(
+function inMapBounds(
+  x: number, y: number, width: number, height: number,
+  b: { top: number; bottom: number; left: number; right: number },
+): boolean {
+  const y0 = Math.floor((Math.min(b.top, b.bottom) / 100) * height);
+  const y1 = Math.ceil((Math.max(b.top, b.bottom) / 100) * height);
+  const x0 = Math.floor((Math.min(b.left, b.right) / 100) * width);
+  const x1 = Math.ceil((Math.max(b.left, b.right) / 100) * width);
+  return x >= x0 && x < x1 && y >= y0 && y < y1;
+}
+
+function stageLiquid(
   width: number,
   height: number,
   data: Uint8Array,
   dist: Int16Array | null,
-  params: GenerationParams["fluids"],
+  mod: LiquidModifier,
 ): void {
-  if (!params.enabled) return;
+  if (!mod.enabled) return;
 
   const n = width * height;
   const isOpen = (c: number) => c === TERRAIN.TUNNEL || c === TERRAIN.CAVE;
   const dAt = (i: number) => (dist ? dist[i]! : 999);
+  const b = mod.bounds;
+  const minDepth = Math.max(1, mod.minDepth | 0);
 
-  // ---- Underground pools (water / lava) ----
-  if (params.water || params.lava) {
-    // Min sky-distance so pools sit away from surface openings.
-    // Keep thresholds modest: after seal, deep cells still have moderate dist.
-    const waterMinDist = Math.max(4, params.waterMinDepth);
-    const lavaMinDist = Math.max(waterMinDist + 15, params.lavaMinDepth * 2);
+  if (mod.liquidType === "water" || mod.liquidType === "lava") {
+    const code = mod.liquidType === "lava" ? TERRAIN.FOG_LAVA : TERRAIN.FOG_WATER;
+    const minDist = mod.liquidType === "lava" ? Math.max(minDepth + 10, minDepth * 2) : minDepth;
 
     for (let x = 0; x < width; x++) {
       let y = height - 1;
       while (y >= 0) {
         const i = y * width + x;
         const c = data[i]!;
-
-        // Need open cell with ROCK directly below (floor)
         const below = y + 1 < height ? data[(y + 1) * width + x]! : TERRAIN.ROCK;
-        if (!isOpen(c) || below !== TERRAIN.ROCK) {
+        if (!isOpen(c) || below !== TERRAIN.ROCK || !inMapBounds(x, y, width, height, b)) {
           y--;
           continue;
         }
 
-        // Walk up the open column from this floor
         let top = y;
         while (top > 0) {
           const above = data[(top - 1) * width + x]!;
-          if (!isOpen(above) && above !== TERRAIN.FOG_WATER && above !== TERRAIN.FOG_LAVA) {
-            break;
-          }
+          if (!isOpen(above) && above !== TERRAIN.FOG_WATER && above !== TERRAIN.FOG_LAVA) break;
           top--;
         }
-        // open run is [top .. y] inclusive, floor at y+1
         const runH = y - top + 1;
         const floorDist = dAt(i);
 
-        // Decide liquid type from depth + run height
-        let code = 0;
-        let minH = 0;
-        if (params.lava && runH >= params.lavaMinDepth && floorDist >= lavaMinDist) {
-          code = TERRAIN.FOG_LAVA;
-          minH = params.lavaMinDepth;
-        } else if (params.water && runH >= params.waterMinDepth && floorDist >= waterMinDist) {
-          code = TERRAIN.FOG_WATER;
-          minH = params.waterMinDepth;
-        }
-
-        if (code) {
-          // Flat pool: fill bottom ~half of the run (leave air under ceiling)
-          const fillH = Math.max(minH, Math.floor(runH * 0.5));
+        if (runH >= minDepth && floorDist >= minDist) {
+          const fillH = Math.max(minDepth, Math.floor(runH * 0.5));
           const fillTop = Math.max(top, y - fillH + 1);
           for (let fy = fillTop; fy <= y; fy++) {
+            if (!inMapBounds(x, fy, width, height, b)) continue;
             const fi = fy * width + x;
             if (isOpen(data[fi]!)) data[fi] = code;
           }
         }
-
-        // Continue above this run
         y = top - 1;
       }
     }
+    return;
   }
 
-  // ---- Surface water: sky sitting on rock ----
-  if (params.surfaceWater) {
-    const maxD = Math.max(1, params.surfaceWaterDepth);
+  // surface water
+  if (mod.liquidType === "surface") {
+    const maxD = minDepth;
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
+        if (!inMapBounds(x, y, width, height, b)) continue;
         const i = y * width + x;
         if (data[i] !== TERRAIN.SKY) continue;
-        // rock within maxD cells below, only sky in between
         let ok = false;
         for (let dy = 1; dy <= maxD; dy++) {
           const j = (y + dy) * width + x;
@@ -357,100 +349,74 @@ function stageFluids(
 }
 
 /**
- * Wall grow — rule list (sandgenerator WallGrow).
- *
- * For each enabled rule:
- *  1) Seed: cell in typeToReplace, sky-dist in [min, min+thickness],
- *     and a neighbor on a nearMask side matches inBorderOf.
- *  2) Grow: growSize full iterations expanding 4-way into typeToReplace
- *     (still inside the distance band). This is the missing multi-layer grow.
- *
- * Bounds = axis-aligned rect as % of full map width/height.
+ * Wall grow — single modifier (sandgenerator WallGrow).
  */
-
 function stageWallGrow(
   width: number,
   height: number,
   data: Uint8Array,
-  dist: Int16Array | null,
-  params: GenerationParams["wallGrow"],
+  _dist: Int16Array | null,
+  rule: WallModifier,
 ): void {
-  if (!params.enabled || !params.rules?.length) return;
+  if (!rule.enabled) return;
   const n = width * height;
-  for (const rule of params.rules) {
-    if (!rule.enabled) continue;
+  const grow = Math.max(0, Math.min(32, rule.growSize | 0));
+  const marks = new Uint8Array(n);
+  const inBorder = new Set(rule.inBorderOf);
+  const replaceable = new Set(rule.typeToReplace);
+  const [maskU, maskR, maskD, maskL] = rule.nearMask;
+  const b = rule.bounds;
+  const y0 = Math.floor((Math.min(b.top, b.bottom) / 100) * height);
+  const y1 = Math.ceil((Math.max(b.top, b.bottom) / 100) * height);
+  const x0 = Math.floor((Math.min(b.left, b.right) / 100) * width);
+  const x1 = Math.ceil((Math.max(b.left, b.right) / 100) * width);
+  const inBounds = (x: number, y: number) => x >= x0 && x < x1 && y >= y0 && y < y1;
 
-    const grow = Math.max(0, Math.min(32, rule.growSize | 0));
-    const marks = new Uint8Array(n); // 1 = seed/grown for this rule
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const i = y * width + x;
+      if (!replaceable.has(data[i]!)) continue;
+      if (!inBounds(x, y)) continue;
+      const up = data[i - width]!;
+      const rt = data[i + 1]!;
+      const dn = data[i + width]!;
+      const lf = data[i - 1]!;
+      let hit = false;
+      if (maskU && inBorder.has(up)) hit = true;
+      if (maskR && inBorder.has(rt)) hit = true;
+      if (maskD && inBorder.has(dn)) hit = true;
+      if (maskL && inBorder.has(lf)) hit = true;
+      if (!hit) continue;
+      marks[i] = 1;
+    }
+  }
 
-    const inBorder = new Set(rule.inBorderOf);
-    const replaceable = new Set(rule.typeToReplace);
-    const [maskU, maskR, maskD, maskL] = rule.nearMask;
-    const b = rule.bounds;
-    const y0 = Math.floor((Math.min(b.top, b.bottom) / 100) * height);
-    const y1 = Math.ceil((Math.max(b.top, b.bottom) / 100) * height);
-    const x0 = Math.floor((Math.min(b.left, b.right) / 100) * width);
-    const x1 = Math.ceil((Math.max(b.left, b.right) / 100) * width);
-    const inBounds = (x: number, y: number) =>
-      x >= x0 && x < x1 && y >= y0 && y < y1;
-
-    // --- 1) Seed ---
+  for (let g = 0; g < grow; g++) {
+    const next = new Uint8Array(marks);
+    let added = 0;
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const i = y * width + x;
+        if (marks[i]) continue;
         if (!replaceable.has(data[i]!)) continue;
         if (!inBounds(x, y)) continue;
-
-        const up = data[i - width]!;
-        const rt = data[i + 1]!;
-        const dn = data[i + width]!;
-        const lf = data[i - 1]!;
-
-        let hit = false;
-        if (maskU && inBorder.has(up)) hit = true;
-        if (maskR && inBorder.has(rt)) hit = true;
-        if (maskD && inBorder.has(dn)) hit = true;
-        if (maskL && inBorder.has(lf)) hit = true;
-        if (!hit) continue;
-
-        marks[i] = 1;
-      }
-    }
-
-    // --- 2) Grow iterations (full 4-connected into typeToReplace) ---
-    for (let g = 0; g < grow; g++) {
-      const next = new Uint8Array(marks);
-      let added = 0;
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const i = y * width + x;
-          if (marks[i]) continue;
-          if (!replaceable.has(data[i]!)) continue;
-          if (!inBounds(x, y)) continue;
-
-          if (
-            marks[i - 1] || marks[i + 1] ||
-            marks[i - width] || marks[i + width]
-          ) {
-            next[i] = 1;
-            added++;
-          }
+        if (marks[i - 1] || marks[i + 1] || marks[i - width] || marks[i + width]) {
+          next[i] = 1;
+          added++;
         }
       }
-      marks.set(next);
-      if (added === 0) break;
     }
+    marks.set(next);
+    if (added === 0) break;
+  }
 
-    // --- 3) Apply ---
-    for (let i = 0; i < n; i++) {
-      if (marks[i]) data[i] = rule.replaceBy;
-    }
+  for (let i = 0; i < n; i++) {
+    if (marks[i]) data[i] = rule.replaceBy;
   }
 }
 
 /**
- * Form grow — rule list (sandgenerator FormeGrow approx).
- * Seed by noise inside distance band on inBorderOf cells, then grow.
+ * Form grow — single modifier.
  */
 function stageFormGrow(
   width: number,
@@ -458,63 +424,53 @@ function stageFormGrow(
   data: Uint8Array,
   dist: Int16Array | null,
   simplex: SimplexNoise,
-  params: GenerationParams["formGrow"],
+  rule: FormModifier,
 ): void {
-  if (!params.enabled || !dist || !params.rules?.length) return;
+  if (!rule.enabled || !dist) return;
   const n = width * height;
+  const grow = Math.max(0, Math.min(32, rule.growSize | 0));
+  const targets = new Set(rule.inBorderOf);
+  const marks = new Uint8Array(n);
+  const b = rule.bounds;
+  const y0 = Math.floor((Math.min(b.top, b.bottom) / 100) * height);
+  const y1 = Math.ceil((Math.max(b.top, b.bottom) / 100) * height);
+  const x0 = Math.floor((Math.min(b.left, b.right) / 100) * width);
+  const x1 = Math.ceil((Math.max(b.left, b.right) / 100) * width);
+  const inBounds = (x: number, y: number) => x >= x0 && x < x1 && y >= y0 && y < y1;
+  const scatter = Math.min(100, Math.max(0, rule.scatterPercent ?? 35));
+  const threshold = 0.95 - (scatter / 100) * 1.15;
 
-  for (const rule of params.rules) {
-    if (!rule.enabled) continue;
-
-    const grow = Math.max(0, Math.min(32, rule.growSize | 0));
-    const targets = new Set(rule.inBorderOf);
-    const marks = new Uint8Array(n);
-    const b = rule.bounds;
-    const y0 = Math.floor((Math.min(b.top, b.bottom) / 100) * height);
-    const y1 = Math.ceil((Math.max(b.top, b.bottom) / 100) * height);
-    const x0 = Math.floor((Math.min(b.left, b.right) / 100) * width);
-    const x1 = Math.ceil((Math.max(b.left, b.right) / 100) * width);
-    const inBounds = (x: number, y: number) =>
-      x >= x0 && x < x1 && y >= y0 && y < y1;
-
-    for (let i = 0; i < n; i++) {
-      if (!targets.has(data[i]!)) continue;
-      const x = i % width;
-      const y = (i / width) | 0;
-      if (!inBounds(x, y)) continue;
-      // scatterPercent 0→100 maps to threshold 0.95→-0.2 (more seeds when higher)
-      const scatter = Math.min(100, Math.max(0, rule.scatterPercent ?? 35));
-      const threshold = 0.95 - (scatter / 100) * 1.15;
-      if (simplex.noise2D(x * 0.05 + rule.replaceBy, y * 0.05) > threshold) {
-        marks[i] = 1;
-      }
+  for (let i = 0; i < n; i++) {
+    if (!targets.has(data[i]!)) continue;
+    const x = i % width;
+    const y = (i / width) | 0;
+    if (!inBounds(x, y)) continue;
+    if (simplex.noise2D(x * 0.05 + rule.replaceBy, y * 0.05) > threshold) {
+      marks[i] = 1;
     }
+  }
 
-    for (let g = 0; g < grow; g++) {
-      const next = new Uint8Array(marks);
-      let added = 0;
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const i = y * width + x;
-          if (marks[i]) continue;
-          if (!targets.has(data[i]!)) continue;
-          if (!inBounds(x, y)) continue;
-          if (
-            marks[i - 1] || marks[i + 1] ||
-            marks[i - width] || marks[i + width]
-          ) {
-            next[i] = 1;
-            added++;
-          }
+  for (let g = 0; g < grow; g++) {
+    const next = new Uint8Array(marks);
+    let added = 0;
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const i = y * width + x;
+        if (marks[i]) continue;
+        if (!targets.has(data[i]!)) continue;
+        if (!inBounds(x, y)) continue;
+        if (marks[i - 1] || marks[i + 1] || marks[i - width] || marks[i + width]) {
+          next[i] = 1;
+          added++;
         }
       }
-      marks.set(next);
-      if (added === 0) break;
     }
+    marks.set(next);
+    if (added === 0) break;
+  }
 
-    for (let i = 0; i < n; i++) {
-      if (marks[i]) data[i] = rule.replaceBy;
-    }
+  for (let i = 0; i < n; i++) {
+    if (marks[i]) data[i] = rule.replaceBy;
   }
 }
 
@@ -556,28 +512,26 @@ export function generateHiddenTerrain(
   const skyDistance = stageSeal(width, height, data, params.seal);
   report(params.seal.enabled ? "Seal done" : "Distance done", 50);
 
-  if (params.fluids.enabled) {
-    report("Fluids (enclosed pools only)…", 55);
-    stageFluids(width, height, data, skyDistance, params.fluids);
-    report("Fluids done", 70);
-  } else {
-    report("Fluids skipped", 70);
-  }
-
-  if (params.wallGrow.enabled) {
-    report("Wall grow (moss / grass / redsand)…", 75);
-    stageWallGrow(width, height, data, skyDistance, params.wallGrow);
-    report("Wall grow done", 85);
-  } else {
-    report("Wall grow skipped", 85);
-  }
-
-  if (params.formGrow.enabled) {
-    report("Form grow (spore / frost / crackstone)…", 88);
-    stageFormGrow(width, height, data, skyDistance, simplex, params.formGrow);
-    report("Form grow done", 95);
-  } else {
-    report("Form grow skipped", 95);
+  const mods = params.modifiers ?? [];
+  const nMods = Math.max(1, mods.length);
+  for (let mi = 0; mi < mods.length; mi++) {
+    const mod = mods[mi]!;
+    if (!mod.enabled) {
+      report(`Skip ${mod.name}`, 50 + Math.round(((mi + 1) / nMods) * 45));
+      continue;
+    }
+    const pct = 50 + Math.round(((mi + 0.5) / nMods) * 45);
+    if (mod.kind === "liquid") {
+      report(`Liquid: ${mod.name}…`, pct);
+      stageLiquid(width, height, data, skyDistance, mod);
+    } else if (mod.kind === "wall") {
+      report(`Wall: ${mod.name}…`, pct);
+      stageWallGrow(width, height, data, skyDistance, mod);
+    } else if (mod.kind === "form") {
+      report(`Form: ${mod.name}…`, pct);
+      stageFormGrow(width, height, data, skyDistance, simplex, mod);
+    }
+    report(`${mod.name} done`, 50 + Math.round(((mi + 1) / nMods) * 45));
   }
 
   report("Building ghost cache…", 98);

@@ -3,76 +3,69 @@ import { api } from "./api.ts";
 import { runtime } from "./state.ts";
 import type {
   BandParams,
-  FluidsParams,
-  FormGrowParams,
+  FormModifier,
   GenerationParams,
+  LiquidModifier,
+  MapBoundsPercent,
+  Modifier,
   SealParams,
   SkyParams,
-  SkyWave,
-  WallGrowParams,
+  WallModifier,
 } from "./types.ts";
 
-interface SeedRecord {
-  seed: string;
-  width: number;
-  height: number;
-  params?: GenerationParams;
+function clamp(v: unknown, fb: number, min: number, max: number): number {
+  const n = typeof v === "number" && isFinite(v) ? v : fb;
+  return Math.min(max, Math.max(min, n));
+}
+function boolOr(v: unknown, fb: boolean): boolean {
+  return typeof v === "boolean" ? v : fb;
+}
+function numOr(v: unknown, fb: number): number {
+  return typeof v === "number" && isFinite(v) ? v : fb;
+}
+function uid(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function randomSeed(): string {
-  const hi = Math.floor(Math.random() * 0xffffffff).toString(16);
-  const lo = Math.floor(Math.random() * 0xffffffff).toString(16);
-  return `${hi}${lo}`;
-}
-
-export function readWorldSize(): { width: number; height: number } {
-  try {
-    const dims = api.grid?.getDimensions?.();
-    if (dims && dims.widthCells > 0 && dims.heightCells > 0) {
-      return { width: dims.widthCells, height: dims.heightCells };
-    }
-  } catch (err) {
-    console.warn(`${LOG} getDimensions failed`, err);
-  }
-  return { ...FALLBACK_CELLS };
-}
-
-function numOr(value: unknown, fallback: number): number {
-  return typeof value === "number" && isFinite(value) ? Math.round(value) : fallback;
-}
-function clamp(value: unknown, fallback: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, numOr(value, fallback)));
-}
-function boolOr(value: unknown, fallback: boolean): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
-
-function normalizeWave(saved: unknown, fallback: SkyWave): SkyWave {
-  const raw = (saved ?? {}) as Partial<SkyWave>;
+function normalizeBounds(raw: unknown, fb: MapBoundsPercent): MapBoundsPercent {
+  const b = (raw ?? {}) as Record<string, unknown>;
   return {
-    periodCells: clamp(raw.periodCells, fallback.periodCells, 2, 100000),
-    amplitudePercent: clamp(raw.amplitudePercent, fallback.amplitudePercent, 0, 100),
+    top: clamp(b.top, fb.top, 0, 100),
+    bottom: clamp(b.bottom, fb.bottom, 0, 100),
+    left: clamp(b.left, fb.left, 0, 100),
+    right: clamp(b.right, fb.right, 0, 100),
   };
 }
-function normalizeSky(saved: unknown): SkyParams {
-  const raw = (saved ?? {}) as Partial<SkyParams>;
-  return {
-    bigWave: normalizeWave(raw.bigWave, DEFAULT_PARAMS.sky.bigWave),
-    mediumWave: normalizeWave(raw.mediumWave, DEFAULT_PARAMS.sky.mediumWave),
-    lowWave: normalizeWave(raw.lowWave, DEFAULT_PARAMS.sky.lowWave),
-    roughness: normalizeWave(raw.roughness, DEFAULT_PARAMS.sky.roughness),
-  };
-}
-function normalizeBand(saved: unknown, fallback: BandParams): BandParams {
+
+function normalizeBand(saved: unknown, fb: BandParams): BandParams {
   const raw = (saved ?? {}) as Partial<BandParams>;
   return {
-    enabled: boolOr(raw.enabled, fallback.enabled),
-    thicknessPercent: clamp(raw.thicknessPercent, fallback.thicknessPercent, 0, 50),
-    definitionPercent: clamp(raw.definitionPercent, fallback.definitionPercent, 0, 95),
-    offsetX: numOr(raw.offsetX, fallback.offsetX),
-    offsetY: numOr(raw.offsetY, fallback.offsetY),
+    enabled: boolOr(raw.enabled, fb.enabled),
+    thicknessPercent: clamp(raw.thicknessPercent, fb.thicknessPercent, 0, 50),
+    definitionPercent: clamp(raw.definitionPercent, fb.definitionPercent, 0, 95),
+    offsetX: numOr(raw.offsetX, fb.offsetX),
+    offsetY: numOr(raw.offsetY, fb.offsetY),
   };
 }
+
+function normalizeSky(saved: unknown): SkyParams {
+  const raw = (saved ?? {}) as Partial<SkyParams>;
+  const fb = DEFAULT_PARAMS.sky;
+  const wave = (w: unknown, d: typeof fb.bigWave) => {
+    const r = (w ?? {}) as Record<string, unknown>;
+    return {
+      periodCells: clamp(r.periodCells, d.periodCells, 2, 1_000_000),
+      amplitudePercent: clamp(r.amplitudePercent, d.amplitudePercent, 0, 100),
+    };
+  };
+  return {
+    bigWave: wave(raw.bigWave, fb.bigWave),
+    mediumWave: wave(raw.mediumWave, fb.mediumWave),
+    lowWave: wave(raw.lowWave, fb.lowWave),
+    roughness: wave(raw.roughness, fb.roughness),
+  };
+}
+
 function normalizeSeal(saved: unknown): SealParams {
   const raw = (saved ?? {}) as Partial<SealParams>;
   const fb = DEFAULT_PARAMS.seal;
@@ -85,133 +78,191 @@ function normalizeSeal(saved: unknown): SealParams {
     surfaceKeepPercent: clamp(raw.surfaceKeepPercent, fb.surfaceKeepPercent, 0, 40),
   };
 }
-function normalizeFluids(saved: unknown): FluidsParams {
-  const raw = (saved ?? {}) as Partial<FluidsParams>;
-  const fb = DEFAULT_PARAMS.fluids;
-  return {
-    enabled: boolOr(raw.enabled, fb.enabled),
-    water: boolOr(raw.water, fb.water),
-    lava: boolOr(raw.lava, fb.lava),
-    surfaceWater: boolOr(raw.surfaceWater, fb.surfaceWater),
-    waterMinDepth: clamp(raw.waterMinDepth, fb.waterMinDepth, 1, 40),
-    lavaMinDepth: clamp(raw.lavaMinDepth, fb.lavaMinDepth, 1, 40),
-    surfaceWaterDepth: clamp(raw.surfaceWaterDepth, fb.surfaceWaterDepth, 1, 20),
-  };
+
+function normalizeModifier(raw: unknown, index: number): Modifier | null {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const kind = r.kind as string;
+  const id = typeof r.id === "string" ? r.id : uid(kind || "mod");
+  const enabled = boolOr(r.enabled, true);
+  const name = typeof r.name === "string" ? r.name : `Modifier ${index + 1}`;
+  const fbBounds = { top: 0, bottom: 100, left: 0, right: 100 };
+
+  if (kind === "wall") {
+    const m: WallModifier = {
+      id,
+      kind: "wall",
+      enabled,
+      name,
+      inBorderOf: Array.isArray(r.inBorderOf) ? r.inBorderOf as number[] : [1],
+      typeToReplace: Array.isArray(r.typeToReplace) ? r.typeToReplace as number[] : [2],
+      replaceBy: numOr(r.replaceBy, 7),
+      nearMask: (Array.isArray(r.nearMask) && (r.nearMask as number[]).length === 4
+        ? r.nearMask as [number, number, number, number]
+        : [1, 0, 0, 0]),
+      bounds: normalizeBounds(r.bounds, fbBounds),
+      growSize: clamp(r.growSize, 3, 0, 32),
+    };
+    return m;
+  }
+  if (kind === "form") {
+    const m: FormModifier = {
+      id,
+      kind: "form",
+      enabled,
+      name,
+      inBorderOf: Array.isArray(r.inBorderOf) ? r.inBorderOf as number[] : [3],
+      replaceBy: numOr(r.replaceBy, 10),
+      bounds: normalizeBounds(r.bounds, fbBounds),
+      growSize: clamp(r.growSize, 5, 0, 32),
+      scatterPercent: clamp(r.scatterPercent, 35, 0, 100),
+    };
+    return m;
+  }
+  if (kind === "liquid") {
+    const lt = r.liquidType === "lava" || r.liquidType === "surface" ? r.liquidType : "water";
+    const m: LiquidModifier = {
+      id,
+      kind: "liquid",
+      enabled,
+      name,
+      liquidType: lt,
+      minDepth: clamp(r.minDepth, 4, 1, 50),
+      bounds: normalizeBounds(r.bounds, fbBounds),
+    };
+    return m;
+  }
+  return null;
 }
-function normalizeWall(saved: unknown): WallGrowParams {
-  const raw = (saved ?? {}) as Partial<WallGrowParams>;
-  const fb = DEFAULT_PARAMS.wallGrow;
-  const rules = Array.isArray(raw.rules) && raw.rules.length > 0
-    ? raw.rules.map((r, i) => {
-      const d = fb.rules[Math.min(i, fb.rules.length - 1)]!;
-      const rr = (r ?? {}) as Record<string, unknown>;
-      const b = (rr.bounds ?? {}) as Record<string, unknown>;
-      const db = d.bounds;
-      return {
-        enabled: boolOr(rr.enabled, d.enabled),
-        name: typeof rr.name === "string" ? rr.name : d.name,
-        inBorderOf: Array.isArray(rr.inBorderOf) ? rr.inBorderOf as number[] : [...d.inBorderOf],
-        typeToReplace: Array.isArray(rr.typeToReplace) ? rr.typeToReplace as number[] : [...d.typeToReplace],
-        replaceBy: numOr(rr.replaceBy, d.replaceBy),
-        nearMask: (Array.isArray(rr.nearMask) && (rr.nearMask as number[]).length === 4
-          ? rr.nearMask as [number, number, number, number]
-          : [...d.nearMask] as [number, number, number, number]),
-        bounds: {
-          top: clamp(b.top, db.top, 0, 100),
-          bottom: clamp(b.bottom, db.bottom, 0, 100),
-          left: clamp(b.left, db.left, 0, 100),
-          right: clamp(b.right, db.right, 0, 100),
-        },
-        growSize: clamp(rr.growSize, d.growSize, 0, 32),
-      };
-    })
-    : JSON.parse(JSON.stringify(fb.rules));
-  return {
-    enabled: boolOr(raw.enabled, fb.enabled),
-    rules,
-  };
-}
-function normalizeForm(saved: unknown): FormGrowParams {
-  const raw = (saved ?? {}) as Partial<FormGrowParams>;
-  const fb = DEFAULT_PARAMS.formGrow;
-  const rules = Array.isArray(raw.rules) && raw.rules.length > 0
-    ? raw.rules.map((r, i) => {
-      const d = fb.rules[Math.min(i, fb.rules.length - 1)]!;
-      const rr = (r ?? {}) as Record<string, unknown>;
-      const b = (rr.bounds ?? {}) as Record<string, unknown>;
-      const db = d.bounds;
-      return {
-        enabled: boolOr(rr.enabled, d.enabled),
-        name: typeof rr.name === "string" ? rr.name : d.name,
-        inBorderOf: Array.isArray(rr.inBorderOf) ? rr.inBorderOf as number[] : [...d.inBorderOf],
-        replaceBy: numOr(rr.replaceBy, d.replaceBy),
-        bounds: {
-          top: clamp(b.top, db.top, 0, 100),
-          bottom: clamp(b.bottom, db.bottom, 0, 100),
-          left: clamp(b.left, db.left, 0, 100),
-          right: clamp(b.right, db.right, 0, 100),
-        },
-        growSize: clamp(rr.growSize, d.growSize, 0, 32),
-        scatterPercent: clamp(rr.scatterPercent, d.scatterPercent ?? 35, 0, 100),
-      };
-    })
-    : JSON.parse(JSON.stringify(fb.rules));
-  return {
-    enabled: boolOr(raw.enabled, fb.enabled),
-    rules,
-  };
+
+/** Migrate legacy fluids/wallGrow/formGrow into modifiers if needed. */
+function migrateLegacyModifiers(raw: Record<string, unknown>): Modifier[] {
+  const list: Modifier[] = [];
+  const fluids = raw.fluids as Record<string, unknown> | undefined;
+  if (fluids) {
+    if (fluids.water !== false) {
+      list.push({
+        id: "legacy-water",
+        kind: "liquid",
+        enabled: boolOr(fluids.enabled, true),
+        name: "Underground Water",
+        liquidType: "water",
+        minDepth: numOr(fluids.waterMinDepth, 4),
+        bounds: { top: 20, bottom: 90, left: 0, right: 100 },
+      });
+    }
+    if (fluids.lava) {
+      list.push({
+        id: "legacy-lava",
+        kind: "liquid",
+        enabled: boolOr(fluids.enabled, true),
+        name: "Deep Lava",
+        liquidType: "lava",
+        minDepth: numOr(fluids.lavaMinDepth, 6),
+        bounds: { top: 50, bottom: 100, left: 0, right: 100 },
+      });
+    }
+    if (fluids.surfaceWater) {
+      list.push({
+        id: "legacy-surface",
+        kind: "liquid",
+        enabled: boolOr(fluids.enabled, true),
+        name: "Surface Water",
+        liquidType: "surface",
+        minDepth: numOr(fluids.surfaceWaterDepth, 3),
+        bounds: { top: 0, bottom: 20, left: 0, right: 100 },
+      });
+    }
+  }
+  const wall = raw.wallGrow as { rules?: unknown[] } | undefined;
+  if (wall?.rules) {
+    for (const r of wall.rules) {
+      const m = normalizeModifier({ ...(r as object), kind: "wall" }, list.length);
+      if (m) list.push(m);
+    }
+  }
+  const form = raw.formGrow as { rules?: unknown[] } | undefined;
+  if (form?.rules) {
+    for (const r of form.rules) {
+      const m = normalizeModifier({ ...(r as object), kind: "form" }, list.length);
+      if (m) list.push(m);
+    }
+  }
+  return list;
 }
 
 export function normalizeParams(saved: unknown): GenerationParams {
-  const raw = (saved ?? {}) as Partial<GenerationParams>;
+  const raw = (saved ?? {}) as Record<string, unknown>;
+  let modifiers: Modifier[] = [];
+  if (Array.isArray(raw.modifiers) && raw.modifiers.length > 0) {
+    for (let i = 0; i < raw.modifiers.length; i++) {
+      const m = normalizeModifier(raw.modifiers[i], i);
+      if (m) modifiers.push(m);
+    }
+  } else {
+    modifiers = migrateLegacyModifiers(raw);
+    if (modifiers.length === 0) {
+      modifiers = JSON.parse(JSON.stringify(DEFAULT_PARAMS.modifiers));
+    }
+  }
   return {
     sky: normalizeSky(raw.sky),
     baseHeightPercent: clamp(raw.baseHeightPercent, DEFAULT_PARAMS.baseHeightPercent, 5, 90),
     tunnel: normalizeBand(raw.tunnel, DEFAULT_PARAMS.tunnel),
     cave: normalizeBand(raw.cave, DEFAULT_PARAMS.cave),
     seal: normalizeSeal(raw.seal),
-    fluids: normalizeFluids(raw.fluids),
-    wallGrow: normalizeWall(raw.wallGrow),
-    formGrow: normalizeForm(raw.formGrow),
+    modifiers,
   };
+}
+
+export function readWorldSize(): { width: number; height: number } {
+  try {
+    const d = api.grid.getDimensions?.();
+    if (d) {
+      const w = d.widthCells ?? d.width ?? 0;
+      const h = d.heightCells ?? d.height ?? 0;
+      if (w > 0 && h > 0) return { width: w, height: h };
+    }
+  } catch { /* */ }
+  return { ...FALLBACK_CELLS };
+}
+
+export function randomSeed(): string {
+  return Math.random().toString(36).slice(2, 10);
 }
 
 export function persistRecord(): void {
   try {
-    api.storage?.set(MOD, STORAGE_KEY_SEED, {
+    api.storage.ensure(MOD);
+    api.storage.set(MOD, STORAGE_KEY_SEED, {
       seed: runtime.seed,
       width: runtime.width,
       height: runtime.height,
       params: runtime.params,
     });
   } catch (err) {
-    console.warn(`${LOG} storage.set failed`, err);
+    console.warn(`${LOG} persist failed`, err);
   }
 }
 
 export function ensureSeedRecord(): { created: boolean } {
   try {
-    api.storage?.ensure(MOD);
-  } catch (err) {
-    console.warn(`${LOG} storage.ensure failed`, err);
-  }
+    api.storage.ensure(MOD);
+  } catch { /* */ }
   const size = readWorldSize();
   try {
-    const saved = api.storage?.get(MOD, STORAGE_KEY_SEED) as SeedRecord | null;
-    if (saved && typeof saved.seed === "string" && saved.seed.length > 0) {
+    const saved = api.storage.get(MOD, STORAGE_KEY_SEED) as Record<string, unknown> | null;
+    if (saved && typeof saved.seed === "string") {
       runtime.seed = saved.seed;
-      runtime.width = saved.width > 0 ? saved.width : size.width;
-      runtime.height = saved.height > 0 ? saved.height : size.height;
+      runtime.width = typeof saved.width === "number" && saved.width > 0 ? saved.width : size.width;
+      runtime.height = typeof saved.height === "number" && saved.height > 0 ? saved.height : size.height;
       runtime.params = normalizeParams(saved.params);
       return { created: false };
     }
-  } catch (err) {
-    console.warn(`${LOG} storage.get failed`, err);
-  }
+  } catch { /* */ }
   runtime.seed = randomSeed();
   runtime.width = size.width;
   runtime.height = size.height;
-  runtime.params = normalizeParams(undefined);
+  runtime.params = JSON.parse(JSON.stringify(DEFAULT_PARAMS));
   persistRecord();
   return { created: true };
 }
