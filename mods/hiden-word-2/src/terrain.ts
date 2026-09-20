@@ -365,9 +365,9 @@ function stageFluids(
  *  2) Grow: growSize full iterations expanding 4-way into typeToReplace
  *     (still inside the distance band). This is the missing multi-layer grow.
  *
- * Dist % → cells: minD = (minDistPercent/100)*height,
- *                  maxD = minD + (thicknessPercent/100)*height.
+ * Bounds = axis-aligned rect as % of full map width/height.
  */
+
 function stageWallGrow(
   width: number,
   height: number,
@@ -377,27 +377,29 @@ function stageWallGrow(
 ): void {
   if (!params.enabled || !params.rules?.length) return;
   const n = width * height;
-  const skyDist = (i: number): number => (dist ? dist[i]! : -1);
-
   for (const rule of params.rules) {
     if (!rule.enabled) continue;
 
-    const minD = Math.round((rule.minDistPercent / 100) * height);
-    const maxD = minD + Math.round((rule.thicknessPercent / 100) * height);
     const grow = Math.max(0, Math.min(32, rule.growSize | 0));
     const marks = new Uint8Array(n); // 1 = seed/grown for this rule
 
     const inBorder = new Set(rule.inBorderOf);
     const replaceable = new Set(rule.typeToReplace);
     const [maskU, maskR, maskD, maskL] = rule.nearMask;
+    const b = rule.bounds;
+    const y0 = Math.floor((Math.min(b.top, b.bottom) / 100) * height);
+    const y1 = Math.ceil((Math.max(b.top, b.bottom) / 100) * height);
+    const x0 = Math.floor((Math.min(b.left, b.right) / 100) * width);
+    const x1 = Math.ceil((Math.max(b.left, b.right) / 100) * width);
+    const inBounds = (x: number, y: number) =>
+      x >= x0 && x < x1 && y >= y0 && y < y1;
 
     // --- 1) Seed ---
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const i = y * width + x;
         if (!replaceable.has(data[i]!)) continue;
-        const d = skyDist(i);
-        if (d < minD || d > maxD) continue;
+        if (!inBounds(x, y)) continue;
 
         const up = data[i - width]!;
         const rt = data[i + 1]!;
@@ -424,8 +426,7 @@ function stageWallGrow(
           const i = y * width + x;
           if (marks[i]) continue;
           if (!replaceable.has(data[i]!)) continue;
-          const d = skyDist(i);
-          if (d < minD || d > maxD) continue;
+          if (!inBounds(x, y)) continue;
 
           if (
             marks[i - 1] || marks[i + 1] ||
@@ -465,19 +466,26 @@ function stageFormGrow(
   for (const rule of params.rules) {
     if (!rule.enabled) continue;
 
-    const minD = Math.round((rule.minDistPercent / 100) * height);
-    const maxD = minD + Math.round((rule.thicknessPercent / 100) * height);
     const grow = Math.max(0, Math.min(32, rule.growSize | 0));
     const targets = new Set(rule.inBorderOf);
     const marks = new Uint8Array(n);
+    const b = rule.bounds;
+    const y0 = Math.floor((Math.min(b.top, b.bottom) / 100) * height);
+    const y1 = Math.ceil((Math.max(b.top, b.bottom) / 100) * height);
+    const x0 = Math.floor((Math.min(b.left, b.right) / 100) * width);
+    const x1 = Math.ceil((Math.max(b.left, b.right) / 100) * width);
+    const inBounds = (x: number, y: number) =>
+      x >= x0 && x < x1 && y >= y0 && y < y1;
 
     for (let i = 0; i < n; i++) {
-      const d = dist[i]!;
-      if (d < minD || d > maxD) continue;
       if (!targets.has(data[i]!)) continue;
       const x = i % width;
       const y = (i / width) | 0;
-      if (simplex.noise2D(x * 0.05 + rule.replaceBy, y * 0.05) > 0.3) {
+      if (!inBounds(x, y)) continue;
+      // scatterPercent 0→100 maps to threshold 0.95→-0.2 (more seeds when higher)
+      const scatter = Math.min(100, Math.max(0, rule.scatterPercent ?? 35));
+      const threshold = 0.95 - (scatter / 100) * 1.15;
+      if (simplex.noise2D(x * 0.05 + rule.replaceBy, y * 0.05) > threshold) {
         marks[i] = 1;
       }
     }
@@ -490,8 +498,7 @@ function stageFormGrow(
           const i = y * width + x;
           if (marks[i]) continue;
           if (!targets.has(data[i]!)) continue;
-          const d = dist[i]!;
-          if (d < minD || d > maxD) continue;
+          if (!inBounds(x, y)) continue;
           if (
             marks[i - 1] || marks[i + 1] ||
             marks[i - width] || marks[i + width]

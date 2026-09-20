@@ -1092,6 +1092,7 @@ function MapViewerPanel(): unknown {
                       replaceBy: TERRAIN.SPORE_SOIL,
                       bounds: { top: 30, bottom: 70, left: 0, right: 100 },
                       growSize: 5,
+                      scatterPercent: 35,
                     };
                     setForm({
                       ...draft.formGrow,
@@ -1166,12 +1167,15 @@ function MapViewerPanel(): unknown {
                     }),
                     numberRow("Grow size", rule.growSize, (v) =>
                       updateFormRule(idx, { growSize: v })),
+                    sliderRow("Scatter %", rule.scatterPercent ?? 35, 0, 100, (v) =>
+                      updateFormRule(idx, { scatterPercent: v })),
                   ],
                 ),
               ),
             ]),
           ],
         ),
+      ),
 
       // ----- RIGHT: map -----
       h(

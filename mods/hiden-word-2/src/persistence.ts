@@ -101,22 +101,27 @@ function normalizeFluids(saved: unknown): FluidsParams {
 function normalizeWall(saved: unknown): WallGrowParams {
   const raw = (saved ?? {}) as Partial<WallGrowParams>;
   const fb = DEFAULT_PARAMS.wallGrow;
-  // If old format without rules, fall back to defaults
   const rules = Array.isArray(raw.rules) && raw.rules.length > 0
     ? raw.rules.map((r, i) => {
-      const d = fb.rules[i] ?? fb.rules[0]!;
+      const d = fb.rules[Math.min(i, fb.rules.length - 1)]!;
       const rr = (r ?? {}) as Record<string, unknown>;
+      const b = (rr.bounds ?? {}) as Record<string, unknown>;
+      const db = d.bounds;
       return {
         enabled: boolOr(rr.enabled, d.enabled),
         name: typeof rr.name === "string" ? rr.name : d.name,
-        inBorderOf: Array.isArray(rr.inBorderOf) ? rr.inBorderOf as number[] : d.inBorderOf,
-        typeToReplace: Array.isArray(rr.typeToReplace) ? rr.typeToReplace as number[] : d.typeToReplace,
+        inBorderOf: Array.isArray(rr.inBorderOf) ? rr.inBorderOf as number[] : [...d.inBorderOf],
+        typeToReplace: Array.isArray(rr.typeToReplace) ? rr.typeToReplace as number[] : [...d.typeToReplace],
         replaceBy: numOr(rr.replaceBy, d.replaceBy),
         nearMask: (Array.isArray(rr.nearMask) && (rr.nearMask as number[]).length === 4
           ? rr.nearMask as [number, number, number, number]
-          : d.nearMask),
-        minDistPercent: clamp(rr.minDistPercent, d.minDistPercent, 0, 100),
-        thicknessPercent: clamp(rr.thicknessPercent, d.thicknessPercent, 0, 100),
+          : [...d.nearMask] as [number, number, number, number]),
+        bounds: {
+          top: clamp(b.top, db.top, 0, 100),
+          bottom: clamp(b.bottom, db.bottom, 0, 100),
+          left: clamp(b.left, db.left, 0, 100),
+          right: clamp(b.right, db.right, 0, 100),
+        },
         growSize: clamp(rr.growSize, d.growSize, 0, 32),
       };
     })
@@ -131,16 +136,23 @@ function normalizeForm(saved: unknown): FormGrowParams {
   const fb = DEFAULT_PARAMS.formGrow;
   const rules = Array.isArray(raw.rules) && raw.rules.length > 0
     ? raw.rules.map((r, i) => {
-      const d = fb.rules[i] ?? fb.rules[0]!;
+      const d = fb.rules[Math.min(i, fb.rules.length - 1)]!;
       const rr = (r ?? {}) as Record<string, unknown>;
+      const b = (rr.bounds ?? {}) as Record<string, unknown>;
+      const db = d.bounds;
       return {
         enabled: boolOr(rr.enabled, d.enabled),
         name: typeof rr.name === "string" ? rr.name : d.name,
-        inBorderOf: Array.isArray(rr.inBorderOf) ? rr.inBorderOf as number[] : d.inBorderOf,
+        inBorderOf: Array.isArray(rr.inBorderOf) ? rr.inBorderOf as number[] : [...d.inBorderOf],
         replaceBy: numOr(rr.replaceBy, d.replaceBy),
-        minDistPercent: clamp(rr.minDistPercent, d.minDistPercent, 0, 100),
-        thicknessPercent: clamp(rr.thicknessPercent, d.thicknessPercent, 0, 100),
+        bounds: {
+          top: clamp(b.top, db.top, 0, 100),
+          bottom: clamp(b.bottom, db.bottom, 0, 100),
+          left: clamp(b.left, db.left, 0, 100),
+          right: clamp(b.right, db.right, 0, 100),
+        },
         growSize: clamp(rr.growSize, d.growSize, 0, 32),
+        scatterPercent: clamp(rr.scatterPercent, d.scatterPercent ?? 35, 0, 100),
       };
     })
     : JSON.parse(JSON.stringify(fb.rules));

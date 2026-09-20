@@ -172,39 +172,36 @@ export const DEFAULT_PARAMS: GenerationParams = {
   },
   wallGrow: {
     enabled: true,
-    // Add more rules here — each is one sandgenerator-style WallGrow entry
+    // Add more rules in code or via the Map Viewer UI (+ / −)
     rules: [
       {
         enabled: true,
         name: "Tunnel Moss Roof",
-        inBorderOf: [1], // ROCK
-        typeToReplace: [2], // TUNNEL
-        replaceBy: 7, // MOSS
-        nearMask: [1, 0, 0, 0], // up only
-        minDistPercent: 4,
-        thicknessPercent: 8,
+        inBorderOf: [1],
+        typeToReplace: [2],
+        replaceBy: 7,
+        nearMask: [1, 0, 0, 0],
+        bounds: { top: 5, bottom: 25, left: 0, right: 100 },
         growSize: 4,
       },
       {
         enabled: true,
         name: "Sky Grass",
-        inBorderOf: [1], // ROCK
-        typeToReplace: [0], // SKY
-        replaceBy: 8, // GRASS
-        nearMask: [0, 0, 1, 0], // down = rock under sky
-        minDistPercent: 0,
-        thicknessPercent: 5,
+        inBorderOf: [1],
+        typeToReplace: [0],
+        replaceBy: 8,
+        nearMask: [0, 0, 1, 0],
+        bounds: { top: 0, bottom: 15, left: 0, right: 100 },
         growSize: 0,
       },
       {
         enabled: true,
         name: "Cave Redsand Roof",
-        inBorderOf: [1], // ROCK
-        typeToReplace: [3], // CAVE
-        replaceBy: 9, // REDSAND
+        inBorderOf: [1],
+        typeToReplace: [3],
+        replaceBy: 9,
         nearMask: [1, 0, 0, 0],
-        minDistPercent: 20,
-        thicknessPercent: 15,
+        bounds: { top: 35, bottom: 70, left: 0, right: 100 },
         growSize: 5,
       },
     ],
@@ -215,30 +212,49 @@ export const DEFAULT_PARAMS: GenerationParams = {
       {
         enabled: true,
         name: "Spore Soil",
-        inBorderOf: [3], // CAVE
-        replaceBy: 10, // SPORE
-        minDistPercent: 30,
-        thicknessPercent: 20,
+        inBorderOf: [3],
+        replaceBy: 10,
+        bounds: { top: 40, bottom: 75, left: 0, right: 100 },
         growSize: 8,
+        scatterPercent: 35,
       },
       {
         enabled: true,
         name: "Frost Bed",
-        inBorderOf: [4, 2], // FOG_WATER, TUNNEL
-        replaceBy: 12, // FROST_BED
-        minDistPercent: 15,
-        thicknessPercent: 25,
+        inBorderOf: [4, 2],
+        replaceBy: 12,
+        bounds: { top: 20, bottom: 55, left: 0, right: 100 },
         growSize: 5,
+        scatterPercent: 40,
       },
       {
         enabled: true,
         name: "Crackstone",
-        inBorderOf: [2], // TUNNEL
-        replaceBy: 13, // CRACKSTONE
-        minDistPercent: 45,
-        thicknessPercent: 15,
+        inBorderOf: [2],
+        replaceBy: 13,
+        bounds: { top: 50, bottom: 80, left: 10, right: 90 },
         growSize: 4,
+        scatterPercent: 30,
       },
     ],
   },
 };
+
+
+/** Selectable terrain codes for wall/form UI (id + label + css color). */
+export const CODE_OPTIONS: { id: number; label: string; color: string }[] = [
+  { id: 0, label: "sky", color: "#1a1a22" },
+  { id: 1, label: "rock/stone", color: "#808080" },
+  { id: 2, label: "tunnel", color: "#993300" },
+  { id: 3, label: "cave/dirt", color: "#926426" },
+  { id: 4, label: "water", color: "#4682b4" },
+  { id: 5, label: "lava", color: "#b22222" },
+  { id: 6, label: "surface water", color: "#6600ff" },
+  { id: 7, label: "moss", color: "#1dae1d" },
+  { id: 8, label: "grass", color: "#228b22" },
+  { id: 9, label: "redsand", color: "#8b0000" },
+  { id: 10, label: "spore soil", color: "#556b2f" },
+  { id: 11, label: "ice", color: "#afeeee" },
+  { id: 12, label: "frost bed", color: "#add8e6" },
+  { id: 13, label: "crackstone", color: "#fffab3" },
+];

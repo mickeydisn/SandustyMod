@@ -115,6 +115,17 @@ export interface FluidsParams {
  *
  * nearMask: [up, right, down, left] — 1 = that neighbor must match inBorderOf.
  */
+export interface MapBoundsPercent {
+  /** % of map height from top (0 = top edge). */
+  top: number;
+  /** % of map height from top (100 = bottom edge). */
+  bottom: number;
+  /** % of map width from left (0 = left edge). */
+  left: number;
+  /** % of map width from left (100 = right edge). */
+  right: number;
+}
+
 export interface WallRule {
   enabled: boolean;
   name: string;
@@ -126,10 +137,11 @@ export interface WallRule {
   replaceBy: number;
   /** [up, right, down, left] — which sides check inBorderOf. */
   nearMask: [number, number, number, number];
-  /** Sky-distance start as % of map height. */
-  minDistPercent: number;
-  /** Layer thickness as % of map height → maxDist = min + thickness. */
-  thicknessPercent: number;
+  /**
+   * Axis-aligned band on the full map (% of width/height).
+   * Feature applies only inside this rectangle.
+   */
+  bounds: MapBoundsPercent;
   /** Extra grow iterations into typeToReplace (4-connected). */
   growSize: number;
 }
@@ -149,9 +161,14 @@ export interface FormRule {
   /** Cells that may be replaced. */
   inBorderOf: number[];
   replaceBy: number;
-  minDistPercent: number;
-  thicknessPercent: number;
+  bounds: MapBoundsPercent;
   growSize: number;
+  /**
+   * Scatter density 0–100.
+   * Higher = more seed points (noise threshold lower).
+   * 0 ≈ almost none, 50 ≈ medium, 100 ≈ fill band.
+   */
+  scatterPercent: number;
 }
 
 export interface FormGrowParams {
