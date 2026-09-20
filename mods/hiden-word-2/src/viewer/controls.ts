@@ -101,7 +101,7 @@ function labelOf(id: number): string {
   return CODE_OPTIONS.find((o) => o.id === id)?.label ?? String(id);
 }
 
-/** Single terrain: color tag + native select. */
+/** Single terrain: color tag + select (same pattern as multi). */
 export function terrainSelect(
   label: string,
   value: number,
@@ -109,21 +109,32 @@ export function terrainSelect(
 ): unknown {
   return h(
     "div",
-    { className: "hwv-tag-row" },
-    h("span", { className: "hwv-mini", style: { width: 90 } }, label),
-    h("i", {
-      className: "hwv-swatch",
-      title: labelOf(value),
-      style: { background: colorOf(value) },
-    }),
+    null,
+    h("div", { className: "hwv-mini" }, label),
     h(
-      "select",
-      {
-        value: String(value),
-        onChange: (e: { target: { value: string } }) => onChange(Number(e.target.value)),
-      },
-      ...CODE_OPTIONS.map((o) =>
-        h("option", { value: String(o.id) }, o.label),
+      "div",
+      { className: "hwv-tag-row" },
+      h(
+        "span",
+        {
+          className: "hwv-terrain-tag",
+          title: labelOf(value),
+        },
+        h("i", {
+          className: "hwv-swatch",
+          style: { background: colorOf(value) },
+        }),
+        labelOf(value),
+      ),
+      h(
+        "select",
+        {
+          value: String(value),
+          onChange: (e: { target: { value: string } }) => onChange(Number(e.target.value)),
+        },
+        ...CODE_OPTIONS.map((o) =>
+          h("option", { value: String(o.id) }, o.label),
+        ),
       ),
     ),
   );

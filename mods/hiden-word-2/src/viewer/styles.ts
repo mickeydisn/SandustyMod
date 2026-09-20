@@ -53,9 +53,13 @@ export function injectViewerStyles(): void {
       display: flex; align-items: center; gap: 6px; margin: 3px 0; flex-wrap: wrap;
     }
     .hwv-row label { flex: 0 0 100px; color: #aaa; font-size: 11px; }
+    .hwv-side input[type="text"],
+    .hwv-side input[type="number"],
+    .hwv-side select,
     .hwv-row input[type="number"], .hwv-row input[type="text"], .hwv-row select {
-      background: #111; color: #eee; border: 1px solid #445;
+      background: #111 !important; color: #eee !important; border: 1px solid #445;
       border-radius: 3px; padding: 3px 6px; font: inherit; min-width: 72px;
+      color-scheme: dark;
     }
     .hwv-row select { flex: 1; min-width: 120px; }
     .hwv-row input[type="text"] { flex: 1; }
@@ -114,6 +118,34 @@ export function injectViewerStyles(): void {
     .hwv-mod-kind-liquid { background: #246; }
     .hwv-mod-body { padding: 6px 8px; border-top: 1px solid #334; }
     .hwv-tag-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
+    .hwv-terrain-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #1a1a22; border: 1px solid #556; color: #dde;
+      border-radius: 12px; padding: 2px 8px; font-size: 11px;
+    }
+    .hwv-terrain-tag-btn {
+      cursor: pointer; font: inherit;
+    }
+    .hwv-terrain-tag-btn:hover { border-color: #8af; }
+    .hwv-mod-name {
+      flex: 1; min-width: 80px;
+      background: #111 !important; color: #eee !important;
+      border: 1px solid #445 !important; border-radius: 3px;
+      padding: 3px 6px; font: inherit;
+    }
+    .hwv-mod-del {
+      margin-top: 8px; width: 100%;
+      background: #422 !important; border-color: #644 !important; color: #fcc !important;
+    }
+    .hwv-mod-del:hover { background: #533 !important; }
+    .hwv-mod > summary {
+      cursor: pointer; list-style: none;
+      display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+      background: rgba(40,50,70,0.4); user-select: none;
+    }
+    .hwv-mod > summary::-webkit-details-marker { display: none; }
+    .hwv-mod > summary::before { content: "▸"; color: #678; width: 12px; flex-shrink: 0; }
+    .hwv-mod[open] > summary::before { content: "▾"; }
     .hwv-focus { outline: 1px solid #6af; }
   `;
   document.head.appendChild(style);

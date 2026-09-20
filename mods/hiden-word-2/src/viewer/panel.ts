@@ -134,25 +134,6 @@ function modEditor(
   remove: () => void,
   onFocus: () => void,
 ): unknown {
-  const head = h(
-    "div",
-    { className: "hwv-mod-head", onClick: onFocus },
-    h("input", {
-      type: "checkbox",
-      checked: mod.enabled,
-      onChange: (e: { target: { checked: boolean } }) => update({ enabled: !!e.target.checked }),
-      onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
-    }),
-    h("span", { className: `hwv-mod-kind hwv-mod-kind-${mod.kind}` }, mod.kind),
-    h("input", {
-      type: "text",
-      value: mod.name,
-      style: { flex: 1 },
-      onChange: (e: { target: { value: string } }) => update({ name: e.target.value }),
-    }),
-    h("button", { className: "hwv-btn", title: "Remove", onClick: remove }, "−"),
-  );
-
   let body: unknown[] = [];
   if (mod.kind === "wall") {
     const w = mod as WallModifier;
@@ -206,14 +187,52 @@ function modEditor(
     ];
   }
 
+  // Delete at bottom of expanded content
+  body.push(
+    h(
+      "button",
+      {
+        className: "hwv-btn hwv-mod-del",
+        type: "button",
+        onClick: (e: { stopPropagation?: () => void }) => {
+          e.stopPropagation?.();
+          remove();
+        },
+      },
+      "Delete modifier",
+    ),
+  );
+
   return h(
-    "div",
+    "details",
     {
       className: focusedModId === mod.id ? "hwv-mod hwv-focus" : "hwv-mod",
       draggable: true,
       "data-mod-id": mod.id,
+      onToggle: (e: { target: { open?: boolean } }) => {
+        if (e.target?.open) onFocus();
+      },
     },
-    head,
+    h(
+      "summary",
+      {
+        onClick: onFocus,
+      },
+      h("input", {
+        type: "checkbox",
+        checked: mod.enabled,
+        onChange: (e: { target: { checked: boolean } }) => update({ enabled: !!e.target.checked }),
+        onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+      }),
+      h("span", { className: `hwv-mod-kind hwv-mod-kind-${mod.kind}` }, mod.kind),
+      h("input", {
+        type: "text",
+        className: "hwv-mod-name",
+        value: mod.name,
+        onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+        onChange: (e: { target: { value: string } }) => update({ name: e.target.value }),
+      }),
+    ),
     h("div", { className: "hwv-mod-body" }, ...body),
   );
 }
