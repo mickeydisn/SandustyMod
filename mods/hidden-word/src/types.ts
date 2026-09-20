@@ -167,4 +167,42 @@ export interface GenerationParams {
     baseHeightPercent: number;
     tunnel: BandParams;
     cave: BandParams;
+    /** Fluid fill step (ported from sandgenerator-web mapGeneration.js step 4). */
+    fluid: FluidParams;
+}
+
+/**
+ * Fluid fill parameters — the flood-fill CA step that runs *after* the
+ * terrain matrix is built (sandgenerator-web `mapGeneration.js`, "Fluid
+ * Generation"). The web generator hardcodes these inside the kernel loop
+ * counts and `convKernelMakerReplaceInsideDistance` thresholds; they're
+ * exposed here as tunable integers so the panel can drive them.
+ */
+export interface FluidParams {
+    /** Fog (underground water) fill iterations — Step A (flow + pool grow). */
+    fogWaterFlowIterations: number;
+    /** Fog (underground water) fill iterations — Step B (column prune). */
+    fogWaterPruneIterations: number;
+    /** Minimum pool size (cells) to keep as water (else drained back to rock). */
+    fogWaterMinPoolSize: number;
+    /** Maximum pool size (cells) — pools larger than this are drained back. */
+    fogWaterMaxPoolSize: number;
+
+    /** Lava fill iterations — Step A (flow to the bottom). */
+    lavaFlowIterations: number;
+    /** Lava fill iterations — Step B (horizontal spread). */
+    lavaSpreadIterations: number;
+    /** Minimum pool size (cells) to keep as lava. */
+    lavaMinPoolSize: number;
+    /** Maximum pool size (cells) — pools larger than this drain back to rock. */
+    lavaMaxPoolSize: number;
+
+    /** Surface water (above-ground) fill iterations — Step A (density). */
+    surfaceWaterFillIterations: number;
+    /** Surface water fill iterations — Step B (edge pull-back). */
+    surfaceWaterEdgeIterations: number;
+    /** Minimum size (cells) for surface water to stay. */
+    surfaceWaterMinSize: number;
+    /** Maximum size (cells) — larger pools revert to sky. */
+    surfaceWaterMaxSize: number;
 }

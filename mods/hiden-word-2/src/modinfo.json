@@ -1,0 +1,22 @@
+{
+  "manifestVersion": 1,
+  "id": "hiden-word-2",
+  "name": "Hiden World 2",
+  "version": "0.2.0",
+  "apiVersion": 1,
+  "entry": "main.js",
+  "author": "MickeyDisn",
+  "description": "Cleaned Hidden World + full sandgenerator pipeline (noise, seal, fluids, wall grow, form grow). Ghost Lens 2 + sectioned generation UI.",
+  "dependencies": [],
+  "loadOrder": 0,
+  "configSchema": {
+    "ghostAlphaPercent": {
+      "type": "number",
+      "default": 45,
+      "minimum": 5,
+      "maximum": 100,
+      "labelKey": "Ghost alpha (%)",
+      "descriptionKey": "Opacity of the hidden terrain ghost view (5-100)."
+    }
+  }
+}

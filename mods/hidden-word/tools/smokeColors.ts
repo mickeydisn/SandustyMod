@@ -60,7 +60,7 @@ async function paletteWith(mode: Parameters<typeof stubEngine>[0], tag: string) 
     }[];
 }
 
-function report(name: string, mode: Parameters<typeof stubEngine>[0]) {
+async function report(name: string, mode: Parameters<typeof stubEngine>[0]) {
     const entries = await paletteWith(mode, name);
     console.log(`${name}:`);
     for (const entry of entries) {

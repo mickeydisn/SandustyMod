@@ -185,6 +185,62 @@ function bandRows(
     ];
 }
 
+/** Bounds for fluid fill iteration sliders (Step A/B, etc.). */
+function boundsFluidIter(
+    defaultValue: number,
+    minCap: number,
+    maxCap: number,
+): [number, number] {
+    return [
+        Math.max(minCap, Math.round(defaultValue * 0.85)),
+        Math.min(maxCap, Math.round(defaultValue * 1.15)),
+    ];
+}
+
+/** One fluid pool-size row: min + max side by side. */
+function fluidPoolRow(
+    label: string,
+    minValue: number,
+    maxValue: number,
+    defaultMin: number,
+    defaultMax: number,
+    onChange: (min: number, max: number) => void,
+): unknown[] {
+    const [mnMin, mnMax] = [0, defaultMax * 10];
+    const [mxMin, mxMax] = [defaultMin, defaultMax * 10];
+    return [
+        h(
+            "div",
+            { className: "hw-row" },
+            h("label", null, `${label} — min`),
+            h("input", {
+                type: "number",
+                min: mnMin,
+                max: mnMax,
+                step: 128,
+                value: minValue,
+                onChange: (e: { target: { value: string } }) =>
+                    onChange(Number(e.target.value) || 0, maxValue),
+            }),
+            h("span", { className: "hw-mini" }, `max ${maxValue}`),
+        ),
+        h(
+            "div",
+            { className: "hw-row" },
+            h("label", null, "max"),
+            h("input", {
+                type: "number",
+                min: mxMin,
+                max: mxMax,
+                step: 128,
+                value: maxValue,
+                onChange: (e: { target: { value: string } }) =>
+                    onChange(minValue, Number(e.target.value) || minValue),
+            }),
+        ),
+    ];
+}
+
 /**
  * The terrain-colour legend: a swatch + the terrain name per matrix code.
  * Codes with no terrain (sky, tunnels) show as a checkered "transparent" chip.
@@ -297,7 +353,7 @@ function ParamsPanel(): unknown {
     ];
     const [, bump] = react.useState(0) as [unknown, (fn: (n: number) => number) => void];
     /** Minimize (collapse) the panel — survives across renders. */
-    const [minimized, setMinimized] = react.useState(false);
+    const [minimized, setMinimized] = react.useState(false) as [boolean, (v: boolean) => void];
 
     react.useEffect(() => {
         // Re-render when the selected action changes → panel opens/closes.
@@ -392,6 +448,104 @@ function ParamsPanel(): unknown {
                 ),
                 ...bandRows("Tunnels", draft.tunnel, DEFAULT_PARAMS.tunnel, setTunnel),
                 ...bandRows("Caves", draft.cave, DEFAULT_PARAMS.cave, setCave),
+                h("div", { className: "hw-sec" }, "Fluid generation"),
+                sliderRow(
+                    "Fog water — flow (Step A)",
+                    draft.fluid.fogWaterFlowIterations,
+                    ...boundsFluidIter(DEFAULT_PARAMS.fluid.fogWaterFlowIterations, 0, 50),
+                    (v) =>
+                        setDraft({
+                            ...draft,
+                            fluid: { ...draft.fluid, fogWaterFlowIterations: v },
+                        }),
+                ),
+                sliderRow(
+                    "Fog water — prune (Step B)",
+                    draft.fluid.fogWaterPruneIterations,
+                    ...boundsFluidIter(DEFAULT_PARAMS.fluid.fogWaterPruneIterations, 0, 500),
+                    (v) =>
+                        setDraft({
+                            ...draft,
+                            fluid: { ...draft.fluid, fogWaterPruneIterations: v },
+                        }),
+                ),
+                ...fluidPoolRow(
+                    "Fog water — pool size",
+                    draft.fluid.fogWaterMinPoolSize,
+                    draft.fluid.fogWaterMaxPoolSize,
+                    DEFAULT_PARAMS.fluid.fogWaterMinPoolSize,
+                    DEFAULT_PARAMS.fluid.fogWaterMaxPoolSize,
+                    (mn, mx) =>
+                        setDraft({
+                            ...draft,
+                            fluid: {
+                                ...draft.fluid,
+                                fogWaterMinPoolSize: mn,
+                                fogWaterMaxPoolSize: mx,
+                            },
+                        }),
+                ),
+                sliderRow(
+                    "Lava — flow (Step A)",
+                    draft.fluid.lavaFlowIterations,
+                    ...boundsFluidIter(DEFAULT_PARAMS.fluid.lavaFlowIterations, 0, 50),
+                    (v) => setDraft({ ...draft, fluid: { ...draft.fluid, lavaFlowIterations: v } }),
+                ),
+                sliderRow(
+                    "Lava — spread (Step B)",
+                    draft.fluid.lavaSpreadIterations,
+                    ...boundsFluidIter(DEFAULT_PARAMS.fluid.lavaSpreadIterations, 0, 50),
+                    (v) =>
+                        setDraft({ ...draft, fluid: { ...draft.fluid, lavaSpreadIterations: v } }),
+                ),
+                ...fluidPoolRow(
+                    "Lava — pool size",
+                    draft.fluid.lavaMinPoolSize,
+                    draft.fluid.lavaMaxPoolSize,
+                    DEFAULT_PARAMS.fluid.lavaMinPoolSize,
+                    DEFAULT_PARAMS.fluid.lavaMaxPoolSize,
+                    (mn, mx) =>
+                        setDraft({
+                            ...draft,
+                            fluid: { ...draft.fluid, lavaMinPoolSize: mn, lavaMaxPoolSize: mx },
+                        }),
+                ),
+                sliderRow(
+                    "Surface water — fill",
+                    draft.fluid.surfaceWaterFillIterations,
+                    ...boundsFluidIter(DEFAULT_PARAMS.fluid.surfaceWaterFillIterations, 0, 200),
+                    (v) =>
+                        setDraft({
+                            ...draft,
+                            fluid: { ...draft.fluid, surfaceWaterFillIterations: v },
+                        }),
+                ),
+                sliderRow(
+                    "Surface water — edge",
+                    draft.fluid.surfaceWaterEdgeIterations,
+                    ...boundsFluidIter(DEFAULT_PARAMS.fluid.surfaceWaterEdgeIterations, 0, 200),
+                    (v) =>
+                        setDraft({
+                            ...draft,
+                            fluid: { ...draft.fluid, surfaceWaterEdgeIterations: v },
+                        }),
+                ),
+                ...fluidPoolRow(
+                    "Surface water — pool size",
+                    draft.fluid.surfaceWaterMinSize,
+                    draft.fluid.surfaceWaterMaxSize,
+                    DEFAULT_PARAMS.fluid.surfaceWaterMinSize,
+                    DEFAULT_PARAMS.fluid.surfaceWaterMaxSize,
+                    (mn, mx) =>
+                        setDraft({
+                            ...draft,
+                            fluid: {
+                                ...draft.fluid,
+                                surfaceWaterMinSize: mn,
+                                surfaceWaterMaxSize: mx,
+                            },
+                        }),
+                ),
                 h("div", { className: "hw-sec" }, "Colors (elements)"),
                 legendRows(),
                 h(

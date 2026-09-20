@@ -8,7 +8,7 @@
 
 /** Mod id — used for item/sprite ids, storage namespace and i18n keys. */
 import { MOD_ID } from "./ids.ts";
-import type { GenerationParams, Rgba } from "./types.ts";
+import type { FluidParams, GenerationParams, Rgba } from "./types.ts";
 
 export const MOD = MOD_ID;
 
@@ -56,6 +56,30 @@ export const CAVE_WAVES: readonly (readonly [number, number])[] = [
     [0.1, 0.02],
 ];
 
+/**
+ * Fluid Generation defaults — ported from the hardcoded values in
+ * `sandgenerator-web/js/mapGeneration.js` (lines 178–268). The web generator
+ * bakes these into its GPU kernels; here they're tunable so the panel can
+ * drive the fluid fill step.
+ */
+export const FLUID_DEFAULTS: FluidParams = {
+    // Fog / underground water (mapGeneration.js: 10× StepA, 200× StepB, 1024–4024)
+    fogWaterFlowIterations: 10,
+    fogWaterPruneIterations: 200,
+    fogWaterMinPoolSize: 1024,
+    fogWaterMaxPoolSize: 4024,
+    // Lava (mapGeneration.js: 10× StepA, 10× StepB, 1024–1824)
+    lavaFlowIterations: 10,
+    lavaSpreadIterations: 10,
+    lavaMinPoolSize: 1024,
+    lavaMaxPoolSize: 1824,
+    // Surface water (mapGeneration.js: 20× StepA, 80× StepB, 1024–32768)
+    surfaceWaterFillIterations: 20,
+    surfaceWaterEdgeIterations: 80,
+    surfaceWaterMinSize: 1024,
+    surfaceWaterMaxSize: 32768,
+};
+
 /** Default tunables — matching the user's chosen defaults. */
 export const DEFAULT_PARAMS: GenerationParams = {
     sky: {
@@ -67,23 +91,29 @@ export const DEFAULT_PARAMS: GenerationParams = {
     baseHeightPercent: 55,
     tunnel: { thicknessPercent: 20, definitionPercent: 85, offsetX: 20, offsetY: -50 },
     cave: { thicknessPercent: 25, definitionPercent: 70, offsetX: 0, offsetY: -40 },
+    fluid: FLUID_DEFAULTS,
 };
 
 /**
- * Terrain codes stored in the hidden matrix (same ordering idea as
- * `sandgenerator-web/js/const.js` `itemsID_FIX`).
+ * Terrain codes stored in the hidden matrix — extended with fluid codes.
+ * 0–3 mirror `sandgenerator-web/js/const.js` `itemsID_FIX`; 4–6 hold the
+ * fluid fill results (fog water, lava, surface water) from the Fluid
+ * Generation step in `mapGeneration.js`.
  */
 export const TERRAIN = {
     SKY: 0,
     ROCK: 1,
     TUNNEL: 2,
     CAVE: 3,
+    WATER: 4, // fog / underground water  (itemsId.FogWater)
+    LAVA: 5, // fog lava                   (itemsId.FogLava)
+    SURFACE_WATER: 6, // surface water          (itemsId.SurfaceWater)
 } as const;
 
 /**
  * What each matrix code paints in the ghost layer — a **terrain**, not an
- * image. Rock reads as **Stone** and caves as **Dirt**; sky and tunnels stay
- * `null`, i.e. transparent, so the carved corridors show as holes in the rock.
+ * image. Rock reads as **Stone**, cave as **Dirt**; sky, tunnels and the
+ * fluid codes map to their element terrains.
  * Colors come from
  * `doc/docs_tech/COLOR-CATALOG.md` § "Terrain metadata colors" (see below).
  */
@@ -92,6 +122,9 @@ export const CODE_TERRAIN: Record<number, string | null> = {
     [TERRAIN.ROCK]: "stone",
     [TERRAIN.TUNNEL]: null,
     [TERRAIN.CAVE]: "dirt",
+    [TERRAIN.WATER]: "fogwater",
+    [TERRAIN.LAVA]: "foglava",
+    [TERRAIN.SURFACE_WATER]: "water",
 };
 
 /** Matrix code → its short name (panel legend). */
@@ -100,23 +133,32 @@ export const CODE_LABELS: Record<number, string> = {
     [TERRAIN.ROCK]: "rock",
     [TERRAIN.TUNNEL]: "tunnel",
     [TERRAIN.CAVE]: "cave",
+    [TERRAIN.WATER]: "water",
+    [TERRAIN.LAVA]: "lava",
+    [TERRAIN.SURFACE_WATER]: "surface_water",
 };
 
 /**
  * Terrain metadata colors — `doc/docs_tech/COLOR-CATALOG.md`,
- * § "Terrain metadata colors". These are the engine's own terrain `metaColor`s
- * (Stone `8421504`, Dirt `9593894`), used for the panel legend and as the
- * fallback when the engine lookup is unavailable.
+ * § "Terrain metadata colors". These are the engine's own terrain `metaColor`s,
+ * used for the panel legend and as the fallback when the engine lookup is
+ * unavailable. Fluid terrains use their element metadata colors from the catalog.
  */
 export const TERRAIN_META_COLORS: Record<string, string> = {
-    stone: "#808080", // base stone terrain
-    dirt: "#926426", // diggable terrain; can output sand
+    stone: "#808080", // Stone
+    dirt: "#926426", // Dirt — diggable terrain; can output sand
+    fogwater: "#9966ff", // FogWater
+    foglava: "#ff6600", // FogLava
+    water: "#6600ff", // SurfaceWater
 };
 
 /** Fallback terrain display names (engine i18n is preferred when available). */
 export const TERRAIN_META_NAMES: Record<string, string> = {
     stone: "Stone",
     dirt: "Dirt",
+    fogwater: "Fog Water",
+    foglava: "Fog Lava",
+    water: "Surface Water",
 };
 
 /** i18n namespace the engine uses for terrain names (`terrains|stone|name`). */
@@ -124,13 +166,17 @@ export const TERRAIN_NAME_KEY_PREFIX = "terrains";
 
 /** Static colors per code (transparent where nothing is painted). RGBA 0–255.
  * These match `doc/docs_tech/COLOR-CATALOG.md`, § "Terrain metadata colors":
- * Rock (Stone) = #808080, Cave (Dirt) = #926426, Sky / Tunnels = transparent.
+ * Rock (Stone) = #808080, Cave (Dirt) = #926426, fluids use their element
+ * colors from the catalog, Sky / Tunnels = transparent.
  */
 export const FALLBACK_CODE_COLORS: Record<number, Rgba> = {
     [TERRAIN.SKY]: [0, 0, 0, 0],
     [TERRAIN.ROCK]: [0x80, 0x80, 0x80, 255], // Stone #808080
     [TERRAIN.TUNNEL]: [0, 0, 0, 0],
     [TERRAIN.CAVE]: [0x92, 0x64, 0x26, 255], // Dirt  #926426
+    [TERRAIN.WATER]: [0x99, 0x66, 0xff, 255], // FogWater #9966ff
+    [TERRAIN.LAVA]: [0xff, 0x66, 0x00, 255], // FogLava #ff6600
+    [TERRAIN.SURFACE_WATER]: [0x66, 0x00, 0xff, 255], // SurfaceWater #6600ff
 };
 
 /**

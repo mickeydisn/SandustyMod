@@ -6,6 +6,12 @@
  * like `noiseGeneration1D.js` / `noiseGeneration2D.js` / `mapGeneration.js`.
  * Tunables come from `GenerationParams` (percents); wave sets and bottom-edge
  * rules stay fixed like the web config. Pure functions only.
+ *
+ * The optional Fluid Generation pass (mapGeneration.js step 4) is a CPU port of
+ * the GPU flood-fill kernels: fog water, lava, and surface water fill the
+ * tunnels/caves from the bottom / edges, with distance-threshold pruning so
+ * small pools drain away. The hidden parameters (iteration counts + pool-size
+ * thresholds) are the hardcoded values from `mapGeneration.js`.
  */
 
 import {
@@ -17,7 +23,7 @@ import {
     TUNNEL_WAVES,
 } from "./constants.ts";
 import { SimplexNoise } from "./noise.ts";
-import type { BandParams, GenerationParams, SkyParams } from "./types.ts";
+import type { BandParams, FluidParams, GenerationParams, SkyParams } from "./types.ts";
 
 /** Fixed bottom-edge rule from the web config (not tunable). */
 interface BandRule {
@@ -133,5 +139,218 @@ export function generateHiddenTerrain(
         if (tunnel[i] === 1) data[i] = TERRAIN.TUNNEL;
         else if (cave[i] === 1) data[i] = TERRAIN.CAVE;
     }
+
+    // Fluid fill step (mapGeneration.js step 4) — optional, driven by params.fluid.
+    // The web generator bakes these as GPU kernels; here it's a CPU flood-fill.
+    const fp = params.fluid;
+    if (fp.fogWaterFlowIterations > 0) {
+        fogWaterFill(data, width, height, TERRAIN.TUNNEL, TERRAIN.CAVE, fp);
+    }
+    if (fp.lavaFlowIterations > 0) {
+        lavaFill(data, width, height, TERRAIN.TUNNEL, TERRAIN.CAVE, fp);
+    }
+    if (fp.surfaceWaterFillIterations > 0) {
+        surfaceWaterFill(data, width, height, fp);
+    }
+
     return data;
+}
+
+// ---------------------------------------------------------------------------
+// Fluid Generation (mapGeneration.js step 4) — CPU port of the GPU kernels.
+// Each `convPropagat*StepX` kernel is ported to a scan over the matrix; water
+// and lava fill tunnels/caves from the bottom / spread horizontally, surface
+// water pools under open sky, then pool-size pruning drains small/large pools.
+// ---------------------------------------------------------------------------
+
+const WATER_DIST = 1024;
+
+/** Underground water (Fog) fill — ports `convPropagatWaterStepA`/`StepB` + pruning. */
+function fogWaterFill(
+    data: Uint8Array,
+    width: number,
+    height: number,
+    tunnelCode: number,
+    caveCode: number,
+    p: FluidParams,
+): void {
+    const dist = new Uint16Array(data.length).fill(0);
+
+    // Step A — flow + pool grow: water enters tunnel/cave from below.
+    // The GPU kernel seeds water at the bottom of a tunnel/cave (rock below)
+    // with dist=1024, then propagates upward (and sideways) each iteration.
+    for (let iter = 0; iter < p.fogWaterFlowIterations; iter++) {
+        for (let y = height - 1; y >= 0; y--) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                const c = data[i];
+                if (c === tunnelCode || c === caveCode) {
+                    // Seed: tunnel/cave with rock below → water entry point
+                    const belowIdx = y < height - 1 ? (y + 1) * width + x : -1;
+                    const belowC = belowIdx >= 0 ? data[belowIdx] : 0;
+                    const belowDist = belowIdx >= 0 ? dist[belowIdx] : 0;
+                    if (belowC === TERRAIN.ROCK && belowDist === 0) {
+                        dist[i] = WATER_DIST; // 1024 — initial seed
+                    } else if (belowDist >= WATER_DIST) {
+                        dist[i] = belowDist + 1;
+                    }
+                    // Horizontal spread: take the lower distance from neighbors
+                    if (dist[i] >= WATER_DIST) {
+                        const lIdx = x > 0 ? i - 1 : -1;
+                        const rIdx = x < width - 1 ? i + 1 : -1;
+                        const lDist = lIdx >= 0 ? dist[lIdx] : 0;
+                        const rDist = rIdx >= 0 ? dist[rIdx] : 0;
+                        if (lDist >= WATER_DIST && lDist < dist[i]) dist[i] = lDist;
+                        if (rDist >= WATER_DIST && rDist < dist[i]) dist[i] = rDist;
+                    }
+                }
+            }
+        }
+    }
+
+    // Step B — column prune: remove water not connected to open space.
+    for (let iter = 0; iter < p.fogWaterPruneIterations; iter++) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                if (dist[i] < WATER_DIST) continue;
+                const l = x > 0 ? data[y * width + x - 1] : 0;
+                const r = x < width - 1 ? data[y * width + x + 1] : 0;
+                const d = y < height - 1 ? data[(y + 1) * width + x] : 0;
+                if (
+                    l === tunnelCode || l === caveCode || l === TERRAIN.SKY ||
+                    r === tunnelCode || r === caveCode || r === TERRAIN.SKY ||
+                    d === tunnelCode || d === caveCode || d === TERRAIN.SKY
+                ) {
+                    dist[i] = 0;
+                }
+            }
+        }
+    }
+
+    // Pool-size pruning: only keep pools within [min, max] cell count.
+    const poolSize = dist.reduce((sum, v) => sum + (v >= WATER_DIST ? 1 : 0), 0);
+    if (poolSize >= p.fogWaterMinPoolSize && poolSize <= p.fogWaterMaxPoolSize) {
+        for (let i = 0; i < data.length; i++) {
+            if (
+                (data[i] === tunnelCode || data[i] === caveCode) &&
+                dist[i] >= WATER_DIST
+            ) {
+                data[i] = TERRAIN.WATER;
+            }
+        }
+    }
+    void tunnelCode;
+    void caveCode;
+}
+
+/** Lava fill — ports `convPropagateLavaStepA`/`StepB` + pruning. */
+function lavaFill(
+    data: Uint8Array,
+    width: number,
+    height: number,
+    tunnelCode: number,
+    caveCode: number,
+    p: FluidParams,
+): void {
+    const dist = new Uint16Array(data.length).fill(0);
+
+    // Step A — lava sinks to the bottom of tunnels/caves.
+    for (let iter = 0; iter < p.lavaFlowIterations; iter++) {
+        for (let y = height - 1; y >= 0; y--) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                const c = data[i];
+                if (c === tunnelCode || c === caveCode) {
+                    if (y === height - 1) dist[i] = WATER_DIST;
+                    else {
+                        const below = dist[(y + 1) * width + x];
+                        const left = x > 0 ? dist[y * width + x - 1] : 0;
+                        const right = x < width - 1 ? dist[y * width + x + 1] : 0;
+                        if (below >= WATER_DIST || left >= WATER_DIST || right >= WATER_DIST) {
+                            dist[i] = WATER_DIST;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Step B — horizontal spread (lava climbs walls).
+    for (let iter = 0; iter < p.lavaSpreadIterations; iter++) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                if (data[i] !== tunnelCode && data[i] !== caveCode) continue;
+                if (dist[i] < WATER_DIST) {
+                    const l = x > 0 ? dist[y * width + x - 1] : 0;
+                    const r = x < width - 1 ? dist[y * width + x + 1] : 0;
+                    if (l >= WATER_DIST || r >= WATER_DIST) dist[i] = WATER_DIST;
+                }
+            }
+        }
+    }
+    const poolSize = dist.reduce((sum, v) => sum + (v >= WATER_DIST ? 1 : 0), 0);
+    if (poolSize >= p.lavaMinPoolSize && poolSize <= p.lavaMaxPoolSize) {
+        for (let i = 0; i < data.length; i++) {
+            if (
+                (data[i] === tunnelCode || data[i] === caveCode) &&
+                dist[i] >= WATER_DIST
+            ) {
+                data[i] = TERRAIN.LAVA;
+            }
+        }
+    }
+    void tunnelCode;
+    void caveCode;
+}
+
+/** Surface water fill — ports `convPropagatSurfaceWaterStepA`/`StepB` + pruning. */
+function surfaceWaterFill(
+    data: Uint8Array,
+    width: number,
+    height: number,
+    p: FluidParams,
+): void {
+    const dist = new Uint16Array(data.length).fill(0);
+
+    // Step A — water pools on sky cells sitting on rock/cave.
+    for (let iter = 0; iter < p.surfaceWaterFillIterations; iter++) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                if (data[i] !== TERRAIN.SKY) continue;
+                const below = y < height - 1 ? data[(y + 1) * width + x] : 0;
+                if (below === TERRAIN.ROCK || below === TERRAIN.CAVE) {
+                    dist[i] = WATER_DIST;
+                }
+            }
+        }
+    }
+    // Step B — pull back edges: water touching tunnel/sky drains.
+    for (let iter = 0; iter < p.surfaceWaterEdgeIterations; iter++) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                if (dist[i] < WATER_DIST) continue;
+                const l = x > 0 ? data[y * width + x - 1] : 0;
+                const r = x < width - 1 ? data[y * width + x + 1] : 0;
+                const d = y < height - 1 ? data[(y + 1) * width + x] : 0;
+                if (
+                    l === TERRAIN.TUNNEL || l === TERRAIN.SKY ||
+                    r === TERRAIN.TUNNEL || r === TERRAIN.SKY ||
+                    d === TERRAIN.TUNNEL || d === TERRAIN.SKY
+                ) {
+                    dist[i] = 0;
+                }
+            }
+        }
+    }
+    const poolSize = dist.reduce((sum, v) => sum + (v >= WATER_DIST ? 1 : 0), 0);
+    if (poolSize >= p.surfaceWaterMinSize && poolSize <= p.surfaceWaterMaxSize) {
+        for (let i = 0; i < data.length; i++) {
+            if (dist[i] >= WATER_DIST && data[i] === TERRAIN.SKY) {
+                data[i] = TERRAIN.SURFACE_WATER;
+            }
+        }
+    }
 }

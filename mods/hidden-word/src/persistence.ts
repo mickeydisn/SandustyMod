@@ -10,7 +10,7 @@
 import { DEFAULT_PARAMS, FALLBACK_CELLS, LOG, MOD, STORAGE_KEY_SEED } from "./constants.ts";
 import { api } from "./api.ts";
 import { runtime } from "./state.ts";
-import type { BandParams, GenerationParams, SkyParams, SkyWave } from "./types.ts";
+import type { BandParams, FluidParams, GenerationParams, SkyParams, SkyWave } from "./types.ts";
 import type { Size } from "@sandmd/shared";
 
 interface SeedRecord {
@@ -86,6 +86,33 @@ function normalizeSky(saved: unknown): SkyParams {
     };
 }
 
+/** Validate one saved fluid param block over the defaults. */
+function normalizeFluid(saved: unknown): FluidParams {
+    const raw = (saved ?? {}) as Partial<FluidParams>;
+    const d = DEFAULT_PARAMS.fluid;
+    const n = (key: keyof FluidParams, fallback: number) => numOr(raw[key], fallback);
+    return {
+        fogWaterFlowIterations: n("fogWaterFlowIterations", d.fogWaterFlowIterations),
+        fogWaterPruneIterations: n("fogWaterPruneIterations", d.fogWaterPruneIterations),
+        fogWaterMinPoolSize: n("fogWaterMinPoolSize", d.fogWaterMinPoolSize),
+        fogWaterMaxPoolSize: n("fogWaterMaxPoolSize", d.fogWaterMaxPoolSize),
+        lavaFlowIterations: n("lavaFlowIterations", d.lavaFlowIterations),
+        lavaSpreadIterations: n("lavaSpreadIterations", d.lavaSpreadIterations),
+        lavaMinPoolSize: n("lavaMinPoolSize", d.lavaMinPoolSize),
+        lavaMaxPoolSize: n("lavaMaxPoolSize", d.lavaMaxPoolSize),
+        surfaceWaterFillIterations: n(
+            "surfaceWaterFillIterations",
+            d.surfaceWaterFillIterations,
+        ),
+        surfaceWaterEdgeIterations: n(
+            "surfaceWaterEdgeIterations",
+            d.surfaceWaterEdgeIterations,
+        ),
+        surfaceWaterMinSize: n("surfaceWaterMinSize", d.surfaceWaterMinSize),
+        surfaceWaterMaxSize: n("surfaceWaterMaxSize", d.surfaceWaterMaxSize),
+    };
+}
+
 /** Merge a saved params object over the defaults (clamped to valid ranges). */
 export function normalizeParams(saved: unknown): GenerationParams {
     const raw = (saved ?? {}) as Partial<GenerationParams>;
@@ -99,6 +126,7 @@ export function normalizeParams(saved: unknown): GenerationParams {
         ),
         tunnel: normalizeBand(raw.tunnel, DEFAULT_PARAMS.tunnel),
         cave: normalizeBand(raw.cave, DEFAULT_PARAMS.cave),
+        fluid: normalizeFluid(raw.fluid),
     };
 }
 

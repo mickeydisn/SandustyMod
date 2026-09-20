@@ -67,6 +67,7 @@ registered mod content in the captured bundle.
 
 ## Terrain metadata colors
 
+
 Source: `resources/bundle.0.5.4.js:11370-11575` and additional terrain registrations around
 `resources/bundle.0.5.4.js:97790-118620`. The HSL column is the terrain renderer's explicit
 `colorHSL`, where present; otherwise the hex is the metadata color only.

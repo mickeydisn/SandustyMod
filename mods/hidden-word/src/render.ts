@@ -122,8 +122,16 @@ function rgbFromTerrainDef(
     return null;
 }
 
-/** Matrix codes in paint order (sky first, then the rock-carved bands). */
-const TERRAIN_CODES = [TERRAIN.SKY, TERRAIN.ROCK, TERRAIN.TUNNEL, TERRAIN.CAVE] as const;
+/** Matrix codes in paint order (sky first, then the rock-carved bands, then fluids). */
+const TERRAIN_CODES = [
+    TERRAIN.SKY,
+    TERRAIN.ROCK,
+    TERRAIN.TUNNEL,
+    TERRAIN.CAVE,
+    TERRAIN.WATER,
+    TERRAIN.LAVA,
+    TERRAIN.SURFACE_WATER,
+] as const;
 
 /** Internal terrain type for a string id (`api.terrains`, main + worker). */
 function terrainTypeFor(id: string): number | null {
