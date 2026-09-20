@@ -159,7 +159,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
     sealTunnels: true,
     sealCaves: true,
     diagonal: false,
-    surfaceKeepPercent: 5, // top 5% of height: never seal openings
+    surfaceKeepPercent: 0,
   },
   modifiers: [
     {

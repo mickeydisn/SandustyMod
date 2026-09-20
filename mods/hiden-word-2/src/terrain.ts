@@ -186,7 +186,7 @@ function stageSeal(
     if (x < width - 1) trySeed(i + 1);
     if (y > 0) trySeed(i - width);
     if (y < height - 1) trySeed(i + width);
-    if (seal.diagonal) {
+    if (false /* diagonal removed */) {
       if (x > 0 && y > 0) trySeed(i - width - 1);
       if (x < width - 1 && y > 0) trySeed(i - width + 1);
       if (x > 0 && y < height - 1) trySeed(i + width - 1);
@@ -202,7 +202,7 @@ function stageSeal(
     const x = i % width;
     const y = (i / width) | 0;
     const neigh = [i - 1, i + 1, i - width, i + width];
-    if (seal.diagonal) {
+    if (false /* diagonal removed */) {
       neigh.push(i - width - 1, i - width + 1, i + width - 1, i + width + 1);
     }
     for (const j of neigh) {
@@ -220,7 +220,7 @@ function stageSeal(
 
   if (seal.enabled) {
     // Surface band: top surfaceKeepPercent of height — don't seal voids there
-    const keepY = Math.floor((seal.surfaceKeepPercent / 100) * height);
+    const keepY = 0; // surface keep hardcoded off
     for (let i = 0; i < n; i++) {
       if (dist[i]! >= 0) continue; // reached from sky
       if (!canSeal(data[i]!)) continue;

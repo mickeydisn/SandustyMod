@@ -147,6 +147,21 @@ export function injectViewerStyles(): void {
     .hwv-mod > summary::before { content: "▸"; color: #678; width: 12px; flex-shrink: 0; }
     .hwv-mod[open] > summary::before { content: "▾"; }
     .hwv-focus { outline: 1px solid #6af; }
+    .hwv-io {
+      position: absolute; inset: 12px; z-index: 20;
+      display: flex; flex-direction: column; gap: 8px;
+      background: rgba(10, 12, 20, 0.96); border: 1px solid #456;
+      border-radius: 8px; padding: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .hwv-map { position: relative; }
+    .hwv-io-title { color: #9cf; font-weight: bold; font-size: 13px; }
+    .hwv-io-text {
+      flex: 1; min-height: 180px; width: 100%; box-sizing: border-box;
+      background: #0a0a10 !important; color: #cde !important;
+      border: 1px solid #445; border-radius: 4px; padding: 8px;
+      font: 11px/1.4 ui-monospace, monospace; resize: none;
+      color-scheme: dark;
+    }
   `;
   document.head.appendChild(style);
 }

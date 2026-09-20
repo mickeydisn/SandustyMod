@@ -241,6 +241,11 @@ export function MapViewerPanel(): unknown {
   const [draft, setDraft] = react.useState(currentDraft) as [Draft, (d: Draft) => void];
   const [, bump] = react.useState(0) as [number, (fn: (n: number) => number) => void];
   const dragId = react.useRef(null) as { current: string | null };
+  const [ioMode, setIoMode] = react.useState(null) as [
+    "save" | "load" | null,
+    (m: "save" | "load" | null) => void,
+  ];
+  const [ioText, setIoText] = react.useState("") as [string, (s: string) => void];
 
   react.useEffect(() => {
     const unsub = api.events.on("action:changed", () => {
@@ -355,6 +360,35 @@ export function MapViewerPanel(): unknown {
             },
             "Reset",
           ),
+          h(
+            "button",
+            {
+              className: "hwv-btn",
+              onClick: () => {
+                setIoMode("save");
+                setIoText(JSON.stringify({ seed: draft.seed, params: {
+                  sky: draft.sky,
+                  baseHeightPercent: draft.baseHeightPercent,
+                  tunnel: draft.tunnel,
+                  cave: draft.cave,
+                  seal: draft.seal,
+                  modifiers: draft.modifiers,
+                }}, null, 2));
+              },
+            },
+            "Save",
+          ),
+          h(
+            "button",
+            {
+              className: "hwv-btn",
+              onClick: () => {
+                setIoMode("load");
+                setIoText("");
+              },
+            },
+            "Load",
+          ),
         ),
 
         section("Seed", null, null, [
@@ -379,46 +413,44 @@ export function MapViewerPanel(): unknown {
         groupLabel("Map"),
 
         section("1 · Skyline", null, null, [
+          numberRow("Ground Lvl", draft.baseHeightPercent, (v) =>
+            setDraft({ ...draft, baseHeightPercent: v }), 0.5),
           numberRow("Big wave period", draft.sky.bigWave.periodCells, (v) =>
             setDraft({ ...draft, sky: { ...draft.sky, bigWave: { ...draft.sky.bigWave, periodCells: v } } }), 10),
           numberRow("Big wave amp %", draft.sky.bigWave.amplitudePercent, (v) =>
-            setDraft({ ...draft, sky: { ...draft.sky, bigWave: { ...draft.sky.bigWave, amplitudePercent: v } } })),
+            setDraft({ ...draft, sky: { ...draft.sky, bigWave: { ...draft.sky.bigWave, amplitudePercent: v } } }), 0.5),
           numberRow("Med wave period", draft.sky.mediumWave.periodCells, (v) =>
             setDraft({ ...draft, sky: { ...draft.sky, mediumWave: { ...draft.sky.mediumWave, periodCells: v } } }), 10),
           numberRow("Med wave amp %", draft.sky.mediumWave.amplitudePercent, (v) =>
-            setDraft({ ...draft, sky: { ...draft.sky, mediumWave: { ...draft.sky.mediumWave, amplitudePercent: v } } })),
+            setDraft({ ...draft, sky: { ...draft.sky, mediumWave: { ...draft.sky.mediumWave, amplitudePercent: v } } }), 0.5),
           numberRow("Low wave period", draft.sky.lowWave.periodCells, (v) =>
             setDraft({ ...draft, sky: { ...draft.sky, lowWave: { ...draft.sky.lowWave, periodCells: v } } }), 10),
           numberRow("Low wave amp %", draft.sky.lowWave.amplitudePercent, (v) =>
-            setDraft({ ...draft, sky: { ...draft.sky, lowWave: { ...draft.sky.lowWave, amplitudePercent: v } } })),
+            setDraft({ ...draft, sky: { ...draft.sky, lowWave: { ...draft.sky.lowWave, amplitudePercent: v } } }), 0.5),
           numberRow("Rough period", draft.sky.roughness.periodCells, (v) =>
             setDraft({ ...draft, sky: { ...draft.sky, roughness: { ...draft.sky.roughness, periodCells: v } } }), 10),
           numberRow("Rough amp %", draft.sky.roughness.amplitudePercent, (v) =>
-            setDraft({ ...draft, sky: { ...draft.sky, roughness: { ...draft.sky.roughness, amplitudePercent: v } } })),
-          numberRow("Ground %", draft.baseHeightPercent, (v) =>
-            setDraft({ ...draft, baseHeightPercent: v })),
+            setDraft({ ...draft, sky: { ...draft.sky, roughness: { ...draft.sky.roughness, amplitudePercent: v } } }), 0.5),
         ]),
 
         section("2 · Tunnels", draft.tunnel.enabled, (v) => setTunnel({ ...draft.tunnel, enabled: v }), [
-          numberRow("Thickness %", draft.tunnel.thicknessPercent, (v) => setTunnel({ ...draft.tunnel, thicknessPercent: v })),
-          numberRow("Definition %", draft.tunnel.definitionPercent, (v) => setTunnel({ ...draft.tunnel, definitionPercent: v })),
-          numberRow("Move X", draft.tunnel.offsetX, (v) => setTunnel({ ...draft.tunnel, offsetX: v }), 10),
-          numberRow("Move Y", draft.tunnel.offsetY, (v) => setTunnel({ ...draft.tunnel, offsetY: v }), 10),
+          numberRow("Definition %", draft.tunnel.definitionPercent, (v) => setTunnel({ ...draft.tunnel, definitionPercent: v }), 0.5),
+          numberRow("Thickness %", draft.tunnel.thicknessPercent, (v) => setTunnel({ ...draft.tunnel, thicknessPercent: v }), 0.5),
+          numberRow("Move X", draft.tunnel.offsetX, (v) => setTunnel({ ...draft.tunnel, offsetX: v }), 1),
+          numberRow("Move Y", draft.tunnel.offsetY, (v) => setTunnel({ ...draft.tunnel, offsetY: v }), 1),
         ]),
 
         section("3 · Caves", draft.cave.enabled, (v) => setCave({ ...draft.cave, enabled: v }), [
-          numberRow("Thickness %", draft.cave.thicknessPercent, (v) => setCave({ ...draft.cave, thicknessPercent: v })),
-          numberRow("Definition %", draft.cave.definitionPercent, (v) => setCave({ ...draft.cave, definitionPercent: v })),
-          numberRow("Move X", draft.cave.offsetX, (v) => setCave({ ...draft.cave, offsetX: v }), 10),
-          numberRow("Move Y", draft.cave.offsetY, (v) => setCave({ ...draft.cave, offsetY: v }), 10),
+          numberRow("Definition %", draft.cave.definitionPercent, (v) => setCave({ ...draft.cave, definitionPercent: v }), 0.5),
+          numberRow("Thickness %", draft.cave.thicknessPercent, (v) => setCave({ ...draft.cave, thicknessPercent: v }), 0.5),
+          numberRow("Move X", draft.cave.offsetX, (v) => setCave({ ...draft.cave, offsetX: v }), 1),
+          numberRow("Move Y", draft.cave.offsetY, (v) => setCave({ ...draft.cave, offsetY: v }), 1),
         ]),
 
         section("4 · Seal", draft.seal.enabled, (v) => setSeal({ ...draft.seal, enabled: v }), [
           checkRow("Seal tunnels", draft.seal.sealTunnels, (v) => setSeal({ ...draft.seal, sealTunnels: v })),
           checkRow("Seal caves", draft.seal.sealCaves, (v) => setSeal({ ...draft.seal, sealCaves: v })),
-          checkRow("Diagonal", draft.seal.diagonal, (v) => setSeal({ ...draft.seal, diagonal: v })),
           numberRow("Max iterations", draft.seal.maxIterations, (v) => setSeal({ ...draft.seal, maxIterations: v })),
-          numberRow("Surface keep %", draft.seal.surfaceKeepPercent, (v) => setSeal({ ...draft.seal, surfaceKeepPercent: v })),
         ]),
 
         groupLabel("Modifiers"),
@@ -465,6 +497,81 @@ export function MapViewerPanel(): unknown {
       h(
         "div",
         { className: "hwv-map" },
+        ioMode
+          ? h(
+            "div",
+            { className: "hwv-io" },
+            h("div", { className: "hwv-io-title" }, ioMode === "save" ? "Save config (JSON)" : "Load config (JSON)"),
+            h("textarea", {
+              className: "hwv-io-text",
+              value: ioText,
+              readOnly: ioMode === "save",
+              placeholder: ioMode === "load" ? "Paste JSON here…" : "",
+              onChange: (e: { target: { value: string } }) => {
+                if (ioMode === "load") setIoText(e.target.value);
+              },
+            }),
+            h(
+              "div",
+              { className: "hwv-btns" },
+              ioMode === "save"
+                ? h(
+                  "button",
+                  {
+                    className: "hwv-btn hwv-btn-primary",
+                    onClick: async () => {
+                      try {
+                        await navigator.clipboard.writeText(ioText);
+                        toast("Copied to clipboard");
+                      } catch {
+                        toast("Copy failed — select & copy manually");
+                      }
+                    },
+                  },
+                  "Copy",
+                )
+                : h(
+                  "button",
+                  {
+                    className: "hwv-btn hwv-btn-primary",
+                    onClick: () => {
+                      try {
+                        const parsed = JSON.parse(ioText);
+                        const seed = typeof parsed.seed === "string" ? parsed.seed : draft.seed;
+                        const params = parsed.params ?? parsed;
+                        const next = {
+                          ...clone(DEFAULT_PARAMS),
+                          ...params,
+                          seed,
+                        };
+                        // normalize via persist path-ish
+                        setDraft({
+                          seed,
+                          sky: params.sky ?? draft.sky,
+                          baseHeightPercent: params.baseHeightPercent ?? draft.baseHeightPercent,
+                          tunnel: params.tunnel ?? draft.tunnel,
+                          cave: params.cave ?? draft.cave,
+                          seal: params.seal ?? draft.seal,
+                          modifiers: Array.isArray(params.modifiers) ? params.modifiers : draft.modifiers,
+                        } as Draft);
+                        setIoMode(null);
+                        toast("Config loaded — hit Generate to apply");
+                      } catch (err) {
+                        toast("Invalid JSON");
+                        console.warn(err);
+                      }
+                    },
+                  },
+                  "Load",
+                ),
+              h(
+                "button",
+                { className: "hwv-btn", onClick: () => setIoMode(null) },
+                "Close",
+              ),
+            ),
+          )
+          : null,
         h(
           "div",
           { className: "hwv-map-title" },
