@@ -8,22 +8,22 @@ Periodic main-thread callbacks.
 
 ### `register(triggerId, definition): void`
 
-| Param | Type | Description |
-|---|---|---|
-| `triggerId` | `string` | Unique id e.g. `"myMod:update"` |
-| `definition.intervalMs` | `number` | Period (alias: `interval`) |
-| `definition.sequentialRunCount` | `number` optional | Alias: `sequentialRuns` |
-| `definition.callback` | `(trigger, deltaTimeMs) => void` | Invoked each interval |
-| `definition.data` | `object` optional | Stored on trigger (alias: `extra`) |
+| Param                           | Type                             | Description                        |
+| ------------------------------- | -------------------------------- | ---------------------------------- |
+| `triggerId`                     | `string`                         | Unique id e.g. `"myMod:update"`    |
+| `definition.intervalMs`         | `number`                         | Period (alias: `interval`)         |
+| `definition.sequentialRunCount` | `number` optional                | Alias: `sequentialRuns`            |
+| `definition.callback`           | `(trigger, deltaTimeMs) => void` | Invoked each interval              |
+| `definition.data`               | `object` optional                | Stored on trigger (alias: `extra`) |
 
 ```js
 api.triggers.register("myMod:update", {
-  intervalMs: 250,
-  data: { counter: 0 },
-  callback: (trigger, deltaTimeMs) => {
-    trigger.data.counter++;
-    updateExample(trigger, deltaTimeMs);
-  },
+    intervalMs: 250,
+    data: { counter: 0 },
+    callback: (trigger, deltaTimeMs) => {
+        trigger.data.counter++;
+        updateExample(trigger, deltaTimeMs);
+    },
 });
 ```
 

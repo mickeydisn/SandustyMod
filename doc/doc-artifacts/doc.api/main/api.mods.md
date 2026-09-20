@@ -8,8 +8,8 @@ Discover contributions from other mods’ manifests.
 
 ### `getProviders(kind): Provider[]`
 
-| Param | Type | Description |
-|---|---|---|
+| Param  | Type     | Description                        |
+| ------ | -------- | ---------------------------------- |
 | `kind` | `string` | Matches `manifest.provides[].kind` |
 
 **Returns:** array of provider descriptors (ids usable with `api.assets.setSelectedProvider`).
@@ -19,6 +19,6 @@ Discover contributions from other mods’ manifests.
 ```js
 const providers = api.mods.getProviders("structureTextures");
 if (providers[0]) {
-  api.assets.setSelectedProvider("structureTextures", providers[0].id);
+    api.assets.setSelectedProvider("structureTextures", providers[0].id);
 }
 ```

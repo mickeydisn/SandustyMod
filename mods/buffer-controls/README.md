@@ -1,6 +1,7 @@
 # sandustry-controls
 
-**Asset pack + legacy entry point.** New mods: use `packages/` directly (`buffer`, `catalogue`, `controls`, …).
+**Asset pack + legacy entry point.** New mods: use `packages/` directly (`buffer`, `catalogue`,
+`controls`, …).
 
 ```ts
 // Legacy (ConfigStore + factories + sprites in one import)

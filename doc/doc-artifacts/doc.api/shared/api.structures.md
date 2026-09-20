@@ -1,10 +1,12 @@
-> **Entry:** Main + Worker — methods differ (see table).  
-> Official: [sandkit.html](https://sandustry.com/sandkit.html)  
-> **Object shapes:** [definitions/api.structures.definition.md](../definitions/api.structures.definition.md)
+> **Entry:** Main + Worker — methods differ (see table).\
+> Official: [sandkit.html](https://sandustry.com/sandkit.html)\
+> **Object shapes:**
+> [definitions/api.structures.definition.md](../definitions/api.structures.definition.md)
 
 # `api.structures`
 
-Structures are multi-cell buildings placed on the grid. **Register and build on Main.** Query and update instance data on **both** entries.
+Structures are multi-cell buildings placed on the grid. **Register and build on Main.** Query and
+update instance data on **both** entries.
 
 `state` is injected by the runtime — do **not** pass it from mod code.
 
@@ -12,37 +14,37 @@ Structures are multi-cell buildings placed on the grid. **Register and build on 
 
 ## Availability matrix
 
-| Method | Main | Worker | Returns |
-|---|:---:|:---:|---|
-| `register(definition, options?)` | ✓ | — | `void` |
-| `updateDefinition(typeOrId, partial, options?)` | ✓ | — | `void` |
-| `registerVariant(base, variant, options?)` | ✓ | — | `void` |
-| `registerPlacementConfig(definition)` | ✓ | — | `void` |
-| `recipes.register(id, definition)` | ✓ | — | `void` |
-| `processing.register(id, definition)` | ✓ | — | `void` |
-| `getAtCell(cellX, cellY)` | ✓ | ✓ | `Structure \| null` |
-| `getDefinitionByType(type)` | ✓ | ✓ | `StructureConfig \| undefined` |
-| `getTypeById(id)` / `getTypeFromId(id)` | ✓ | ✓ | `number \| type` |
-| `getAvailableTypes()` | ✓ | — | `type[]` |
-| `hasBuiltAtCell(cellX, cellY)` | ✓ | ✓ | `boolean` |
-| `isType(structure, id)` | ✓ | ✓ | `boolean` |
-| `isTypeAtCell(cellX, cellY, id)` | ✓ | ✓ | `boolean` |
-| `isBlockedByPlayerAtCell(cellX, cellY)` | ✓ | — | `boolean` |
-| `isLauncherAtCell(cellX, cellY)` | ✓ | — | `boolean` |
-| `isLockedByType(type)` | ✓ | — | `boolean` |
-| `forEachOfType(typeOrId, callback)` | ✓ | ✓ | `void` |
-| `update(structure, options?)` | ✓ | ✓ | `void` |
-| `updateData(structure, partial, options?)` | ✓ | ✓ | `void` |
-| `setSpritesheetIndex(structure, index)` | ✓ | ✓ | `void` |
-| `setSpritesheetIndexAtCell(cx, cy, index)` | ✓ | ✓ | `void` |
-| `setSpritesheetIndexByValue(structure, value, thresholds)` | ✓ | ✓ | `void` |
-| `setSpritesheetIndexByValueAtCell(cx, cy, value, thresholds)` | ✓ | ✓ | `void` |
-| `mapValueToSpritesheetIndex(value, thresholds)` | ✓ | — | `number` |
-| `buildAtCell(cx, cy, typeOrId, options?)` | ✓ | — | `void` |
-| `removeAtCell(cx, cy, options?)` | ✓ | — | `void` |
-| `removeBetweenCells(...)` / `removeAtCells(positions, options?)` | ✓ | — | `void` |
-| `processing.isEnabledAtCell(cx, cy)` | ✓ | ✓ | `boolean` |
-| `processing.setEnabledAtCell(cx, cy, enabled)` | ✓ | limited | `void` |
+| Method                                                           | Main | Worker  | Returns                        |
+| ---------------------------------------------------------------- | :--: | :-----: | ------------------------------ |
+| `register(definition, options?)`                                 |  ✓   |    —    | `void`                         |
+| `updateDefinition(typeOrId, partial, options?)`                  |  ✓   |    —    | `void`                         |
+| `registerVariant(base, variant, options?)`                       |  ✓   |    —    | `void`                         |
+| `registerPlacementConfig(definition)`                            |  ✓   |    —    | `void`                         |
+| `recipes.register(id, definition)`                               |  ✓   |    —    | `void`                         |
+| `processing.register(id, definition)`                            |  ✓   |    —    | `void`                         |
+| `getAtCell(cellX, cellY)`                                        |  ✓   |    ✓    | `Structure \| null`            |
+| `getDefinitionByType(type)`                                      |  ✓   |    ✓    | `StructureConfig \| undefined` |
+| `getTypeById(id)` / `getTypeFromId(id)`                          |  ✓   |    ✓    | `number \| type`               |
+| `getAvailableTypes()`                                            |  ✓   |    —    | `type[]`                       |
+| `hasBuiltAtCell(cellX, cellY)`                                   |  ✓   |    ✓    | `boolean`                      |
+| `isType(structure, id)`                                          |  ✓   |    ✓    | `boolean`                      |
+| `isTypeAtCell(cellX, cellY, id)`                                 |  ✓   |    ✓    | `boolean`                      |
+| `isBlockedByPlayerAtCell(cellX, cellY)`                          |  ✓   |    —    | `boolean`                      |
+| `isLauncherAtCell(cellX, cellY)`                                 |  ✓   |    —    | `boolean`                      |
+| `isLockedByType(type)`                                           |  ✓   |    —    | `boolean`                      |
+| `forEachOfType(typeOrId, callback)`                              |  ✓   |    ✓    | `void`                         |
+| `update(structure, options?)`                                    |  ✓   |    ✓    | `void`                         |
+| `updateData(structure, partial, options?)`                       |  ✓   |    ✓    | `void`                         |
+| `setSpritesheetIndex(structure, index)`                          |  ✓   |    ✓    | `void`                         |
+| `setSpritesheetIndexAtCell(cx, cy, index)`                       |  ✓   |    ✓    | `void`                         |
+| `setSpritesheetIndexByValue(structure, value, thresholds)`       |  ✓   |    ✓    | `void`                         |
+| `setSpritesheetIndexByValueAtCell(cx, cy, value, thresholds)`    |  ✓   |    ✓    | `void`                         |
+| `mapValueToSpritesheetIndex(value, thresholds)`                  |  ✓   |    —    | `number`                       |
+| `buildAtCell(cx, cy, typeOrId, options?)`                        |  ✓   |    —    | `void`                         |
+| `removeAtCell(cx, cy, options?)`                                 |  ✓   |    —    | `void`                         |
+| `removeBetweenCells(...)` / `removeAtCells(positions, options?)` |  ✓   |    —    | `void`                         |
+| `processing.isEnabledAtCell(cx, cy)`                             |  ✓   |    ✓    | `boolean`                      |
+| `processing.setEnabledAtCell(cx, cy, enabled)`                   |  ✓   | limited | `void`                         |
 
 ---
 
@@ -52,23 +54,25 @@ Structures are multi-cell buildings placed on the grid. **Register and build on 
 
 **Why:** Declares a new placeable structure type for the game (build menu, blueprints, sim).
 
-**When:** Call during mod init on **Main** (`manifest.entry`), after sprites are loaded if you use custom art.
+**When:** Call during mod init on **Main** (`manifest.entry`), after sprites are loaded if you use
+custom art.
 
 ```ts
-function register(definition: StructureDefinition, options?: RegisterOptions): void
+function register(definition: StructureDefinition, options?: RegisterOptions): void;
 ```
 
-See full `StructureDefinition` in [definitions/api.structures.definition.md](../definitions/api.structures.definition.md).
+See full `StructureDefinition` in
+[definitions/api.structures.definition.md](../definitions/api.structures.definition.md).
 
 ```js
 api.structures.register({
-  id: "myMod.junction",
-  nameKey: "mods|myMod|structures|junction|name",
-  categoryKey: "logistics",
-  buildModes: [{ type: "line", directions: ["horizontal", "vertical"], spanTiles: 4 }],
-  shape: [[1]],
-  defaultData: { channel: 1 },
-  render: { imageName: "myMod.junction", size: { width: 16, height: 16 } },
+    id: "myMod.junction",
+    nameKey: "mods|myMod|structures|junction|name",
+    categoryKey: "logistics",
+    buildModes: [{ type: "line", directions: ["horizontal", "vertical"], spanTiles: 4 }],
+    shape: [[1]],
+    defaultData: { channel: 1 },
+    render: { imageName: "myMod.junction", size: { width: 16, height: 16 } },
 });
 ```
 
@@ -80,7 +84,8 @@ api.player.buildings.unlockById("myMod.junction");
 
 ### `updateDefinition(structureTypeOrId, partial, options?)`
 
-Patches an existing type (vanilla or mod). Use to change `buildModes`, tooltips, etc. without full re-register.
+Patches an existing type (vanilla or mod). Use to change `buildModes`, tooltips, etc. without full
+re-register.
 
 ### `registerVariant(baseStructureTypeOrId, variant, options?)`
 
@@ -99,9 +104,11 @@ const s = api.structures.getAtCell(cx, cy);
 if (s) console.log(s.type, s.x, s.y, s.data);
 ```
 
-**Structure instance (typical fields):** `type`, `x`, `y`, `data`, optionally `queued`, `id`, size-related fields.
+**Structure instance (typical fields):** `type`, `x`, `y`, `data`, optionally `queued`, `id`,
+size-related fields.
 
-### `isType(structure, structureId): boolean`  
+### `isType(structure, structureId): boolean`
+
 ### `isTypeAtCell(cellX, cellY, structureId): boolean`
 
 Type checks. Prefer these over comparing raw type numbers.
@@ -112,7 +119,7 @@ Iterates all placed instances of a type. Useful for global updates (sensors, pro
 
 ```js
 api.structures.forEachOfType("myMod.sensor", (structure) => {
-  api.signals.setOutputAtCell(structure.x, structure.y, structure.data.active);
+    api.signals.setOutputAtCell(structure.x, structure.y, structure.data.active);
 });
 ```
 
@@ -134,11 +141,12 @@ options?: { propagateToWorkers?: boolean }
 
 ```js
 api.structures.updateData(structure, { mode: "allow", channel: 3 }, {
-  propagateToWorkers: true,
+    propagateToWorkers: true,
 });
 ```
 
-**Why `propagateToWorkers`:** Instance data lives on main; set true when workers must see the change immediately for sim logic.
+**Why `propagateToWorkers`:** Instance data lives on main; set true when workers must see the change
+immediately for sim logic.
 
 ### `update(structure, options?): void`
 
@@ -179,16 +187,17 @@ Register on **Main**:
 
 ```js
 api.structures.processing.register("myMod.machine:tick", {
-  structureType: "myMod.machine",
-  intervalMs: 250,
-  process: (structure, context) => {
-    if (!context.isCellEmptyAtCell(structure.x, structure.y - 1)) return;
-    // … produce element, etc.
-  },
+    structureType: "myMod.machine",
+    intervalMs: 250,
+    process: (structure, context) => {
+        if (!context.isCellEmptyAtCell(structure.x, structure.y - 1)) return;
+        // … produce element, etc.
+    },
 });
 ```
 
-`context` helpers: `isCellEmptyAtCell`, `getResolvedTypeAtCell`, `commit`, `isEnabledAtCell`, `setEnabledAtCell` (set is main-oriented).
+`context` helpers: `isCellEmptyAtCell`, `getResolvedTypeAtCell`, `commit`, `isEnabledAtCell`,
+`setEnabledAtCell` (set is main-oriented).
 
 Worker can **read** `processing.isEnabledAtCell(cx, cy)`.
 
@@ -198,9 +207,9 @@ Worker can **read** `processing.isEnabledAtCell(cx, cy)`.
 
 ```js
 api.structures.recipes.register("kineticPress", {
-  input: "sand",
-  outputs: [{ elementType: "compressedSand", chance: 1 }],
-  minimumDownwardVelocityCellsPerSecond: 20,
+    input: "sand",
+    outputs: [{ elementType: "compressedSand", chance: 1 }],
+    minimumDownwardVelocityCellsPerSecond: 20,
 });
 ```
 
@@ -208,7 +217,8 @@ api.structures.recipes.register("kineticPress", {
 
 ## Execution notes
 
-1. **Register order:** `sprites.load` → `structures.register` → `player.buildings.unlockById` → optional `processing.register` / signals.  
-2. **Worker** cannot register types; it only sees types already registered on main.  
-3. Clicks: use `api.signals.interactables.register` (Main), not mouse polling.  
+1. **Register order:** `sprites.load` → `structures.register` → `player.buildings.unlockById` →
+   optional `processing.register` / signals.
+2. **Worker** cannot register types; it only sees types already registered on main.
+3. Clicks: use `api.signals.interactables.register` (Main), not mouse polling.
 4. Always prefer official names: `updateData`, `*AtCell`, `unlockById`.

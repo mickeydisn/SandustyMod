@@ -8,20 +8,23 @@ World pickups (artifacts, drop items). Official surface under **`api.world.picku
 
 ### `spawnAtWorld(type, worldX, worldY, data?, light?): Pickup`
 
-| Param | Type | Description |
-|---|---|---|
-| `type` | `PickupType` / string | `sandkit.enums.PickupType` |
-| `worldX`, `worldY` | `number` | World pixels |
-| `data` | `object` optional | Instance data |
-| `light` | optional | Light attachment |
+| Param              | Type                  | Description                |
+| ------------------ | --------------------- | -------------------------- |
+| `type`             | `PickupType` / string | `sandkit.enums.PickupType` |
+| `worldX`, `worldY` | `number`              | World pixels               |
+| `data`             | `object` optional     | Instance data              |
+| `light`            | optional              | Light attachment           |
 
 ### `remove(pickup): void` (alias `destroy`)
+
 ### `pickUp(pickup): void`
+
 Player collects pickup.
 
 ### `getAll(): Pickup[]`
+
 ### `getById(pickupId): Pickup | null`
 
 ```js
-api.world.pickups.spawnAtWorld(type, wx, wy, { /* data */ });
+api.world.pickups.spawnAtWorld(type, wx, wy, {/* data */});
 ```

@@ -316,7 +316,12 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
             });
             sandkit.api.events.on("building:removed", (payload) => {
                 if (listeners.remove.size === 0) return;
-                const p = payload as { structureId?: string; type?: string; x?: number; y?: number };
+                const p = payload as {
+                    structureId?: string;
+                    type?: string;
+                    x?: number;
+                    y?: number;
+                };
                 const type = String(p.structureId ?? p.type ?? "");
                 const x = Number(p.x);
                 const y = Number(p.y);

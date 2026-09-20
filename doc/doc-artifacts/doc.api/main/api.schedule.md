@@ -4,13 +4,13 @@
 
 ### `nextTick(callback): void`
 
-| Param | Type | Description |
-|---|---|---|
+| Param      | Type         | Description                |
+| ---------- | ------------ | -------------------------- |
 | `callback` | `() => void` | Runs on the next main tick |
 
 ```js
 api.schedule.nextTick(() => {
-  runDeferredWork();
+    runDeferredWork();
 });
 ```
 

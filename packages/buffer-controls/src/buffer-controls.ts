@@ -86,7 +86,10 @@ export async function registerBufferControls<T extends object>(
     // the buffer updates, look at all placed value structures (forEachOfType
     // walks the live world) and setData the current value of their path, so the
     // draw always shows the LAST buffer value.
-    const valueByType = new Map<string, { typeId: string; path: string; kind: Parameters<typeof formatBufferValue>[1] }>();
+    const valueByType = new Map<
+        string,
+        { typeId: string; path: string; kind: Parameters<typeof formatBufferValue>[1] }
+    >();
     for (const entry of valueEntries) valueByType.set(entry.typeId, entry);
 
     const refreshOne = (typeId: string): void => {

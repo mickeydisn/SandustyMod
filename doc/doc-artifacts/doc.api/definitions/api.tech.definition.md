@@ -17,10 +17,10 @@ Parent: [../main/api.tech.md](../main/api.tech.md)
 
 ```js
 api.tech.registerDefinition("exampleTech", {
-  name: "Example research",
-  nameKey: "mods|example|techName",
-  descriptionKey: "mods|example|techDescription",
-  cost: 100,
+    name: "Example research",
+    nameKey: "mods|example|techName",
+    descriptionKey: "mods|example|techDescription",
+    cost: 100,
 });
 ```
 
@@ -44,6 +44,6 @@ unlocks: {
 
 ```js
 api.tech.conservatory.appendUnlock(sandkit.enums.Tech.SignalDevices, {
-  structures: ["exampleSensor"],
+    structures: ["exampleSensor"],
 });
 ```

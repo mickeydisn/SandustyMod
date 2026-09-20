@@ -1,15 +1,14 @@
 # Sandustry color catalog
 
-This is a working catalog of colors found in the available Sandustry v1
-bundle, DOM captures, surface-map data, and repository code that mirrors game
-behavior. It focuses on colors with an identifiable game meaning. Generic
-Tailwind/CSS framework output, image pixels, and every incidental renderer
-constant are not treated as palette entries.
+This is a working catalog of colors found in the available Sandustry v1 bundle, DOM captures,
+surface-map data, and repository code that mirrors game behavior. It focuses on colors with an
+identifiable game meaning. Generic Tailwind/CSS framework output, image pixels, and every incidental
+renderer constant are not treated as palette entries.
 
-Color values are shown as six-digit hex where the source stores an integer.
-For an element or terrain, `metaColor` is the game's catalog/label/swatch
-color; it is not necessarily the exact color of every rendered pixel. Terrain
-`colorHSL` values are included when the renderer defines them separately.
+Color values are shown as six-digit hex where the source stores an integer. For an element or
+terrain, `metaColor` is the game's catalog/label/swatch color; it is not necessarily the exact color
+of every rendered pixel. Terrain `colorHSL` values are included when the renderer defines them
+separately.
 
 ## Core elements
 
@@ -39,8 +38,8 @@ Source: `resources/bundle.0.5.4.js:59600-59775`.
 
 ## Additional element and mod-content colors
 
-Source: `resources/bundle.0.5.4.js:93650-118620`. These entries are spread
-across the base game and registered mod content in the captured bundle.
+Source: `resources/bundle.0.5.4.js:93650-118620`. These entries are spread across the base game and
+registered mod content in the captured bundle.
 
 | Color     | Game content           | Notes                                       |
 | --------- | ---------------------- | ------------------------------------------- |
@@ -68,10 +67,9 @@ across the base game and registered mod content in the captured bundle.
 
 ## Terrain metadata colors
 
-Source: `resources/bundle.0.5.4.js:11370-11575` and additional terrain
-registrations around `resources/bundle.0.5.4.js:97790-118620`. The HSL column is
-the terrain renderer's explicit `colorHSL`, where present; otherwise the hex is
-the metadata color only.
+Source: `resources/bundle.0.5.4.js:11370-11575` and additional terrain registrations around
+`resources/bundle.0.5.4.js:97790-118620`. The HSL column is the terrain renderer's explicit
+`colorHSL`, where present; otherwise the hex is the metadata color only.
 
 | Color     | Terrain            | Renderer HSL   | Purpose                             |
 | --------- | ------------------ | -------------- | ----------------------------------- |
@@ -105,17 +103,15 @@ the metadata color only.
 | `#4a40b0` | Auralite Crystal   | `250, 60, 50`  | Auralite-bearing terrain            |
 | `#b6bcc1` | Shatterstone       | `207, 8, 73`   | Breakable pale stone                |
 
-The mod picker also carries a small readable fallback map for terrain swatches
-in `mods/filtered-lenses/src/entry.tsx:129-151`; those values agree with the
-metadata colors above for the named terrain entries. `#9aa7b5` is the picker
-fallback for an unknown terrain, and `#6b8e23` is the synthetic Earth filter
-entry rather than a terrain definition.
+The mod picker also carries a small readable fallback map for terrain swatches in
+`mods/filtered-lenses/src/entry.tsx:129-151`; those values agree with the metadata colors above for
+the named terrain entries. `#9aa7b5` is the picker fallback for an unknown terrain, and `#6b8e23` is
+the synthetic Earth filter entry rather than a terrain definition.
 
 ## Named UI and status palette
 
-Source: `resources/bundle.0.5.4.js:51619-51710`. These are explicit semantic
-colors from the game's debug/color showcase and are useful candidates for
-shared UI tokens.
+Source: `resources/bundle.0.5.4.js:51619-51710`. These are explicit semantic colors from the game's
+debug/color showcase and are useful candidates for shared UI tokens.
 
 | Color     | Name in game code | Likely use                    |
 | --------- | ----------------- | ----------------------------- |
@@ -143,8 +139,7 @@ shared UI tokens.
 
 ## Confirmed UI states and tutorial colors
 
-These are hard-coded semantic uses in the production UI rather than entries in
-the named palette.
+These are hard-coded semantic uses in the production UI rather than entries in the named palette.
 
 | Color               | Use                                                                        | Source                                                           |
 | ------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -179,8 +174,7 @@ These values color transient particles or lights, not catalog swatches.
 
 ## Renderer and capture-only colors
 
-These are useful when reproducing the game's look, but they are not game
-content colors.
+These are useful when reproducing the game's look, but they are not game content colors.
 
 | Color                   | Use                                                          | Source                                                     |
 | ----------------------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
@@ -195,14 +189,11 @@ content colors.
 
 ## Notes and gaps
 
-- The bundle contains many additional numeric `metaColor` values in optional
-  mod registrations. They should be added here with their `id` and
-  `matterType` after a current F8 export or a clean mod catalog capture makes
-  the registration boundaries unambiguous.
-- `metaColor` is the best stable color token exposed by the game for element
-  and terrain identity. Rendered sprites, lighting, translucency, and terrain
-  shaders can differ from it.
-- The game also stores RGBA variant arrays for some elements (for example
-  Caulk and Auralite). Those are material variants rather than one catalog
-  color and should become a separate variant table if exact sprite rendering
-  is needed.
+- The bundle contains many additional numeric `metaColor` values in optional mod registrations. They
+  should be added here with their `id` and `matterType` after a current F8 export or a clean mod
+  catalog capture makes the registration boundaries unambiguous.
+- `metaColor` is the best stable color token exposed by the game for element and terrain identity.
+  Rendered sprites, lighting, translucency, and terrain shaders can differ from it.
+- The game also stores RGBA variant arrays for some elements (for example Caulk and Auralite). Those
+  are material variants rather than one catalog color and should become a separate variant table if
+  exact sprite rendering is needed.

@@ -232,7 +232,26 @@ function injectStyles(): void {
             border-radius: 6px; color: #ddd; font-size: 12px;
             pointer-events: auto; font-family: inherit;
         }
-        .hw-panel h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: 0.05em; color: #9cf; }
+                .hw-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+        .hw-header h3 { margin: 0; flex: 1; }
+        .hw-body { padding-top: 4px; }
+        .hw-min-btn {
+            background: transparent;
+            border: 1px solid #558;
+            color: #9cf;
+            border-radius: 3px;
+            padding: 0 6px;
+            cursor: pointer;
+            font-size: 13px;
+            line-height: 1;
+        }
+        .hw-min-btn:hover { background: rgba(140, 200, 255, 0.12); }
         .hw-sec { margin: 8px 0 2px; padding-bottom: 2px; color: #89f;
             font-weight: bold; border-bottom: 1px solid #334; }
         .hw-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
@@ -277,6 +296,8 @@ function ParamsPanel(): unknown {
         (value: DraftParams) => void,
     ];
     const [, bump] = react.useState(0) as [unknown, (fn: (n: number) => number) => void];
+    /** Minimize (collapse) the panel — survives across renders. */
+    const [minimized, setMinimized] = react.useState(false);
 
     react.useEffect(() => {
         // Re-render when the selected action changes → panel opens/closes.
@@ -298,69 +319,96 @@ function ParamsPanel(): unknown {
     return h(
         "div",
         { className: "hw-panel" },
-        h("h3", null, `HIDDEN WORLD — ${runtime.width}×${runtime.height} cells`),
         h(
             "div",
-            { className: "hw-row" },
-            h("label", null, "Seed"),
-            h("input", {
-                type: "text",
-                value: draft.seed,
-                onChange: (e: { target: { value: string } }) =>
-                    setDraft({ ...draft, seed: e.target.value }),
-            }),
+            { className: "hw-header", onClick: () => setMinimized(!minimized) },
+            h("h3", null, `HIDDEN WORLD — ${runtime.width}×${runtime.height} cells`),
             h(
                 "button",
-                { className: "hw-btn", onClick: () => setDraft({ ...draft, seed: randomSeed() }) },
-                "🎲",
+                {
+                    className: "hw-btn hw-min-btn",
+                    onClick: (e: { stopPropagation: () => void }) => {
+                        e.stopPropagation();
+                        setMinimized(!minimized);
+                    },
+                },
+                minimized ? "▸" : "▾",
             ),
         ),
-        h("div", { className: "hw-sec" }, "Skyline"),
-        skyWaveRow(
-            "Big wave",
-            draft.sky.bigWave,
-            DEFAULT_PARAMS.sky.bigWave,
-            (wave) => setDraft({ ...draft, sky: { ...draft.sky, bigWave: wave } }),
-        ),
-        skyWaveRow(
-            "Medium wave",
-            draft.sky.mediumWave,
-            DEFAULT_PARAMS.sky.mediumWave,
-            (wave) => setDraft({ ...draft, sky: { ...draft.sky, mediumWave: wave } }),
-        ),
-        skyWaveRow(
-            "Low wave",
-            draft.sky.lowWave,
-            DEFAULT_PARAMS.sky.lowWave,
-            (wave) => setDraft({ ...draft, sky: { ...draft.sky, lowWave: wave } }),
-        ),
-        skyWaveRow(
-            "Roughness",
-            draft.sky.roughness,
-            DEFAULT_PARAMS.sky.roughness,
-            (wave) => setDraft({ ...draft, sky: { ...draft.sky, roughness: wave } }),
-        ),
-        h("div", { className: "hw-sec" }, "Terrain"),
-        sliderRow(
-            "Ground level %",
-            draft.baseHeightPercent,
-            ...bounds15(DEFAULT_PARAMS.baseHeightPercent, 5, 90),
-            (v) => setDraft({ ...draft, baseHeightPercent: v }),
-        ),
-        ...bandRows("Tunnels", draft.tunnel, DEFAULT_PARAMS.tunnel, setTunnel),
-        ...bandRows("Caves", draft.cave, DEFAULT_PARAMS.cave, setCave),
-        h("div", { className: "hw-sec" }, "Colors (elements)"),
-        legendRows(),
-        h(
-            "div",
-            { className: "hw-btns" },
-            h("button", { className: "hw-btn", onClick: () => setDraft(defaultDraft()) }, "Reset"),
+        !minimized &&
             h(
-                "button",
-                { className: "hw-btn", onClick: () => applyDraft(draft, setDraft) },
-                "↻ Refresh hidden world",
+                "div",
+                { className: "hw-body" },
+                h(
+                    "div",
+                    { className: "hw-row" },
+                    h("label", null, "Seed"),
+                    h("input", {
+                        type: "text",
+                        value: draft.seed,
+                        onChange: (e: { target: { value: string } }) =>
+                            setDraft({ ...draft, seed: e.target.value }),
+                    }),
+                    h(
+                        "button",
+                        {
+                            className: "hw-btn",
+                            onClick: () => setDraft({ ...draft, seed: randomSeed() }),
+                        },
+                        "🎲",
+                    ),
+                ),
+                h("div", { className: "hw-sec" }, "Skyline"),
+                skyWaveRow(
+                    "Big wave",
+                    draft.sky.bigWave,
+                    DEFAULT_PARAMS.sky.bigWave,
+                    (wave) => setDraft({ ...draft, sky: { ...draft.sky, bigWave: wave } }),
+                ),
+                skyWaveRow(
+                    "Medium wave",
+                    draft.sky.mediumWave,
+                    DEFAULT_PARAMS.sky.mediumWave,
+                    (wave) => setDraft({ ...draft, sky: { ...draft.sky, mediumWave: wave } }),
+                ),
+                skyWaveRow(
+                    "Low wave",
+                    draft.sky.lowWave,
+                    DEFAULT_PARAMS.sky.lowWave,
+                    (wave) => setDraft({ ...draft, sky: { ...draft.sky, lowWave: wave } }),
+                ),
+                skyWaveRow(
+                    "Roughness",
+                    draft.sky.roughness,
+                    DEFAULT_PARAMS.sky.roughness,
+                    (wave) => setDraft({ ...draft, sky: { ...draft.sky, roughness: wave } }),
+                ),
+                h("div", { className: "hw-sec" }, "Terrain"),
+                sliderRow(
+                    "Ground level %",
+                    draft.baseHeightPercent,
+                    ...bounds15(DEFAULT_PARAMS.baseHeightPercent, 5, 90),
+                    (v) => setDraft({ ...draft, baseHeightPercent: v }),
+                ),
+                ...bandRows("Tunnels", draft.tunnel, DEFAULT_PARAMS.tunnel, setTunnel),
+                ...bandRows("Caves", draft.cave, DEFAULT_PARAMS.cave, setCave),
+                h("div", { className: "hw-sec" }, "Colors (elements)"),
+                legendRows(),
+                h(
+                    "div",
+                    { className: "hw-btns" },
+                    h(
+                        "button",
+                        { className: "hw-btn", onClick: () => setDraft(defaultDraft()) },
+                        "Reset",
+                    ),
+                    h(
+                        "button",
+                        { className: "hw-btn", onClick: () => applyDraft(draft, setDraft) },
+                        "↻ Refresh hidden world",
+                    ),
+                ),
             ),
-        ),
     );
 }
 

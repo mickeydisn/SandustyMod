@@ -1,31 +1,31 @@
 {
-  "workspace": [
-    "./packages/*",
-    "./mods/*"
-  ],
-  
-  "exclude": [
-    "__archive",
-    "__bundel",
-    "__scraped-mods",
-    "__pakages",
-    "sandgenerator-web",
-    "__*",
-    "build*"
-  ],
- "fmt": {
-    "useTabs": false,
-    "lineWidth": 100,
-    "indentWidth": 4
-  },
-  "lint": {
-    "rules": {
-      "tags": ["recommended"]
+    "workspace": [
+        "./packages/*",
+        "./mods/*"
+    ],
+
+    "exclude": [
+        "__archive",
+        "__bundel",
+        "__scraped-mods",
+        "__pakages",
+        "sandgenerator-web",
+        "__*",
+        "build*"
+    ],
+    "fmt": {
+        "useTabs": false,
+        "lineWidth": 100,
+        "indentWidth": 4
+    },
+    "lint": {
+        "rules": {
+            "tags": ["recommended"]
+        }
+    },
+    "tasks": {
+        "fmt": "deno fmt",
+        "lint": "deno lint",
+        "check": "deno check ."
     }
-  },
-  "tasks": {
-    "fmt": "deno fmt",
-    "lint": "deno lint",
-    "check": "deno check ."
-  }
 }

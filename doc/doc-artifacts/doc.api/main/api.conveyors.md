@@ -1,7 +1,7 @@
 # Sandustry API — `api.conveyors`
 
-> **Entry:** Main only (`manifest.entry`). Official: [sandkit.html](https://sandustry.com/sandkit.html).
-
+> **Entry:** Main only (`manifest.entry`). Official:
+> [sandkit.html](https://sandustry.com/sandkit.html).
 
 Register structure types as conveyors so the transport sim moves elements on them.
 
@@ -24,8 +24,10 @@ options?: any                    // forwarded to workers via RegisterConveyorTyp
 
 ### Behaviour
 
-1. On **main** (non-worker): marks the structure type index as a conveyor in the block-grid tables (`markConveyorTypeIndex`).
-2. If multithreading simulation is active: `postAll` → `RegisterConveyorType` with `(structureType, options)` so all sim workers know the type.
+1. On **main** (non-worker): marks the structure type index as a conveyor in the block-grid tables
+   (`markConveyorTypeIndex`).
+2. If multithreading simulation is active: `postAll` → `RegisterConveyorType` with
+   `(structureType, options)` so all sim workers know the type.
 
 Call **after** `api.structures.register(...)`.
 
@@ -35,14 +37,14 @@ Call **after** `api.structures.register(...)`.
 
 ```js
 api.structures.register({
-  id: "myMod.belt",
-  shape: [[1, 1, 1]],
-  buildModes: [{ type: "line", directions: ["horizontal"] }],
-  categoryKey: "logistics"
+    id: "myMod.belt",
+    shape: [[1, 1, 1]],
+    buildModes: [{ type: "line", directions: ["horizontal"] }],
+    categoryKey: "logistics",
 });
 
 api.conveyors.registerType("myMod.belt", {
-  // engine-specific transport options if any
+    // engine-specific transport options if any
 });
 ```
 
@@ -50,6 +52,7 @@ api.conveyors.registerType("myMod.belt", {
 
 ## Notes
 
-- Direction / speed behaviour is largely driven by structure type + shape / variants (like vanilla left/right conveyors).
+- Direction / speed behaviour is largely driven by structure type + shape / variants (like vanilla
+  left/right conveyors).
 - Pair with structure variants for left/right/up orientations.
 - Related: `api.launchers` for launcher belts, `api.structures.isLauncherAt`.

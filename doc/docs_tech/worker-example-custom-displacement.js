@@ -36,7 +36,7 @@ function getTypes(e) {
     if (TYPES) return TYPES;
     const E = sandkit.api.elements;
     TYPES = {
-        mote:  E.getTypeFromId(e, "mote"),   // our custom element
+        mote: E.getTypeFromId(e, "mote"), // our custom element
         water: E.getTypeFromId(e, "water"),
         steam: E.getTypeFromId(e, "steam"),
         froth: E.getTypeFromId(e, "froth"),
@@ -51,21 +51,23 @@ sandkit.api.hooks.intercept(
     "element:update",
     (e, payload, cancel) => {
         const T = getTypes(e);
-        if (payload.elementType !== T.mote) return;   // only our type
+        if (payload.elementType !== T.mote) return; // only our type
 
         // ── 1) Normal air movement ────────────────────────────────
         // For a sinking solid the cell it's about to enter is BELOW (y+1).
         // If nothing meaningful is there (air), do NOT cancel → the engine's
         // default gravity + move runs as normal.
         const below = sandkit.api.elements.getResolvedTypeAtCell(
-            e, payload.x, payload.y + 1
+            e,
+            payload.x,
+            payload.y + 1,
         );
         if (below !== T.water) return;
 
         // ── 2) Contact with water ── now decide, ignoring density ──
         // The engine would sink us (density swap) because (say) mote=150 > water=100.
         // Override the default entirely:
-        cancel.cancel();   // skips the resolver → no gravity, no sink this tick
+        cancel.cancel(); // skips the resolver → no gravity, no sink this tick
 
         const api = sandkit.api;
         const hot = api.elements.getDataFieldAtCell(e, payload.x, payload.y, 1) === 1;
@@ -81,9 +83,8 @@ sandkit.api.hooks.intercept(
             api.elements.setDataFieldAtCell(e, payload.x, payload.y, 2, 1);
         }
     },
-    { guard: { elementType: -1 } }
+    { guard: { elementType: -1 } },
 );
-
 
 /* ── Variant: a FLOATING (buoyant) particle ────────────────────────────────
  * Check the cell ABOVE (y-1) instead of below; a gas puff that meets a denser
@@ -98,7 +99,6 @@ sandkit.api.hooks.intercept(
  *       sandkit.api.elements.replaceAtCell(e, p.x, p.y, T.steam, { duration: 0.8 });
  *   }, { guard: { elementType: -1 } });
  * */
-
 
 /* ── Variant: manual custom "displacement window" ──────────────────────────
  * Instead of reacting, you can perform your OWN swap — sink only when YOUR
@@ -120,7 +120,6 @@ sandkit.api.hooks.intercept(
  *   }, { guard: { elementType: -1 } });
  * */
 
-
 /* ── Managing the bilateral (symmetric) density rule ───────────────────────
  * (This is not part of the update() hook above — read it carefully first.)
  *
@@ -139,7 +138,6 @@ sandkit.api.hooks.intercept(
  * So pick exactly what you want to override in each direction:
  */
 
-
 /* A) Branch on density to KEEP the engine's normal outcome in some cases.
  *    Only override when mote is the DENSER mover (it would sink). If mote is
  *    lighter, the engine already floats it — leave that alone. */
@@ -151,19 +149,18 @@ function exampleBranchOnDensity() {
             if (payload.elementType !== T.mote) return;
 
             const below = sandkit.api.elements.getResolvedTypeAtCell(e, payload.x, payload.y + 1);
-            if (below !== T.water) return;                          // air → normal fall
+            if (below !== T.water) return; // air → normal fall
 
             const moteDens = sandkit.api.elements.getDefinitionByType(e, T.mote).density;
-            const occDens  = sandkit.api.elements.getDefinitionByType(e, below).density;
-            if (!(moteDens > occDens)) return;                      // lighter → floats, nothing to override
+            const occDens = sandkit.api.elements.getDefinitionByType(e, below).density;
+            if (!(moteDens > occDens)) return; // lighter → floats, nothing to override
 
-            cancel.cancel();                                        // denser → would sink; decide NOW
+            cancel.cancel(); // denser → would sink; decide NOW
             // ...your state reaction (transform / freeze / manual swap / ...).
         },
-        { guard: { elementType: -1 } }
+        { guard: { elementType: -1 } },
     );
 }
-
 
 /* B) Protect mote from being displaced by a DENSER mover.
  *    Hook that mover too (here "gold", density 300). When gold sinks into
@@ -176,13 +173,12 @@ function exampleProtectFromDenserMover() {
             const T = getTypes(e);
             if (payload.elementType !== T.gold) return;
             const below = sandkit.api.elements.getResolvedTypeAtCell(e, payload.x, payload.y + 1);
-            if (below !== T.mote) return;                           // gold not over mote → normal
-            cancel.cancel();                                        // stop gold displacing mote
+            if (below !== T.mote) return; // gold not over mote → normal
+            cancel.cancel(); // stop gold displacing mote
         },
-        { guard: { elementType: -1 } }
+        { guard: { elementType: -1 } },
     );
 }
-
 
 /* C) The "density charge" shortcut for an undislodgable element.
  *    Register mote with a density >= every element it can ever meet. Then

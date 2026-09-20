@@ -16,10 +16,10 @@ Parent: [../main/api.reactions.md](../main/api.reactions.md)
 
 ```js
 api.reactions.registerContact({
-  inputA: "water",
-  inputB: "examplePowder",
-  outputA: "steam",
-  outputB: null,
-  orientation: "any",
+    inputA: "water",
+    inputB: "examplePowder",
+    outputA: "steam",
+    outputB: null,
+    orientation: "any",
 });
 ```

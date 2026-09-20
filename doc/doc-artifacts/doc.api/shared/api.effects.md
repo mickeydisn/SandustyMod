@@ -2,13 +2,13 @@
 
 # `api.effects`
 
-| Method | Main | Worker | Returns |
-|---|:---:|:---:|---|
-| `createAtWorld` / `createEffectAtWorld` | ✓ | ✓ | `void` |
-| `createParticlesAtWorld(wx, wy, options?)` | ✓ | ✓ | `void` |
-| `createDistortionWaveAtWorld` | ✓ | — | `void` |
-| `createLaserAtWorld` | ✓ | — | `void` |
-| `createLightAtWorld` (alias path) | ✓ | ✓ | `{ lightId, index }` |
+| Method                                     | Main | Worker | Returns              |
+| ------------------------------------------ | :--: | :----: | -------------------- |
+| `createAtWorld` / `createEffectAtWorld`    |  ✓   |   ✓    | `void`               |
+| `createParticlesAtWorld(wx, wy, options?)` |  ✓   |   ✓    | `void`               |
+| `createDistortionWaveAtWorld`              |  ✓   |   —    | `void`               |
+| `createLaserAtWorld`                       |  ✓   |   —    | `void`               |
+| `createLightAtWorld` (alias path)          |  ✓   |   ✓    | `{ lightId, index }` |
 
 Prefer **`api.lights.temporary.createAtWorld`** for lights (official).
 

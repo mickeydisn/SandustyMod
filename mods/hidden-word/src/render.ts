@@ -63,7 +63,7 @@ function normalizeRgb(rgb: number[]): Rgba {
 /** HSL `[h(°), s(%), l(%)]` → opaque RGBA (the catalog's `colorHSL` column). */
 function hslToRgba(hsl: number[]): Rgba | null {
     if (hsl.length < 3) return null;
-    const h = (((hsl[0]! % 360) + 360) % 360);
+    const h = ((hsl[0]! % 360) + 360) % 360;
     const s = Math.min(100, Math.max(0, hsl[1]!)) / 100;
     const l = Math.min(100, Math.max(0, hsl[2]!)) / 100;
     const c = (1 - Math.abs(2 * l - 1)) * s;
@@ -116,7 +116,9 @@ function rgbFromTerrainDef(
     if (typeof color === "number" && Number.isFinite(color)) {
         return { rgba: packedToRgba(color), source: "engine color" };
     }
-    if (Array.isArray(color)) return { rgba: normalizeRgb(color as number[]), source: "engine color" };
+    if (Array.isArray(color)) {
+        return { rgba: normalizeRgb(color as number[]), source: "engine color" };
+    }
     return null;
 }
 
@@ -257,9 +259,7 @@ export function buildCache(): HTMLCanvasElement | null {
                     .map(
                         (entry) =>
                             `${entry.codeLabel}=${
-                                entry.alpha === 0
-                                    ? "transparent"
-                                    : `${entry.hex} (${entry.source})`
+                                entry.alpha === 0 ? "transparent" : `${entry.hex} (${entry.source})`
                             }`,
                     )
                     .join(" "),

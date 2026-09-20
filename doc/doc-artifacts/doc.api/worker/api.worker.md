@@ -5,9 +5,11 @@
 ## Methods
 
 ### `getIndex(): number`
+
 Index of this simulation worker in the pool (`0 .. count-1`).
 
 ### `getCount(): number`
+
 Number of simulation workers.
 
 ```js

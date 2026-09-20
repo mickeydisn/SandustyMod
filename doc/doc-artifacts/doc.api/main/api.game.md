@@ -10,9 +10,9 @@ Session lifecycle.
 
 Starts / enters the game session.
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `options` | `object` | `{}` | Optional flags |
+| Param               | Type      | Default | Description                   |
+| ------------------- | --------- | ------- | ----------------------------- |
+| `options`           | `object`  | `{}`    | Optional flags                |
 | `options.skipIntro` | `boolean` | `false` | Skip intro sequence when true |
 
 ```js

@@ -1,6 +1,6 @@
 # Structure definition objects
 
-Used by **Main entry** `api.structures.register` / `updateDefinition` / related helpers.  
+Used by **Main entry** `api.structures.register` / `updateDefinition` / related helpers.\
 Official examples: [sandkit.html](https://sandustry.com/sandkit.html) → Main → `api.structures`.
 
 Parent API: [../shared/api.structures.md](../shared/api.structures.md)
@@ -61,10 +61,10 @@ Parent API: [../shared/api.structures.md](../shared/api.structures.md)
 
 ```js
 buildModes: [{
-  type: "line",
-  directions: ["horizontal", "vertical"],
-  spanTiles: 4,
-}]
+    type: "line",
+    directions: ["horizontal", "vertical"],
+    spanTiles: 4,
+}];
 ```
 
 ### `StructureVariant`
@@ -79,14 +79,14 @@ buildModes: [{
 
 ```js
 api.structures.registerVariant("exampleStructure", {
-  id: "exampleStructureVertical",
-  angles: [-90, 90],
+    id: "exampleStructureVertical",
+    angles: [-90, 90],
 }, {
-  addBuildMode: {
-    type: "line",
-    directions: ["vertical"],
-    spanTiles: 4,
-  },
+    addBuildMode: {
+        type: "line",
+        directions: ["vertical"],
+        spanTiles: 4,
+    },
 });
 ```
 
@@ -132,30 +132,30 @@ Pre-build UI fields written into `structure.data` on place.
 
 ```ts
 {
-  structureId: string;
-  fields: Array<
-    | {
-        type: "integer";
-        id: string;
-        label?: string;
-        labelKey?: string;
-        default: number;
-        min?: number;
-        max?: number;
-      }
-    | {
-        type: "choice";
-        id: string;
-        label?: string;
-        labelKey?: string;
-        default: string;
-        options: Array<{
-          value: string;
-          label?: string;
-          labelKey?: string;
-        }>;
-      }
-  >;
+    structureId: string;
+    fields: Array<
+        | {
+            type: "integer";
+            id: string;
+            label?: string;
+            labelKey?: string;
+            default: number;
+            min?: number;
+            max?: number;
+        }
+        | {
+            type: "choice";
+            id: string;
+            label?: string;
+            labelKey?: string;
+            default: string;
+            options: Array<{
+                value: string;
+                label?: string;
+                labelKey?: string;
+            }>;
+        }
+    >;
 }
 ```
 
@@ -174,11 +174,11 @@ Pre-build UI fields written into `structure.data` on place.
 ### `context` (inside process)
 
 ```ts
-context.getResolvedTypeAtCell(cx, cy)  // alias getElementTypeAtCell
-context.isCellEmptyAtCell(cx, cy)      // alias isCellEmpty
-context.commit(mutations)
-context.isEnabledAtCell(cx, cy)
-context.setEnabledAtCell(cx, cy, enabled)  // Main for set
+context.getResolvedTypeAtCell(cx, cy); // alias getElementTypeAtCell
+context.isCellEmptyAtCell(cx, cy); // alias isCellEmpty
+context.commit(mutations);
+context.isEnabledAtCell(cx, cy);
+context.setEnabledAtCell(cx, cy, enabled); // Main for set
 ```
 
 ---
@@ -198,9 +198,9 @@ context.setEnabledAtCell(cx, cy, enabled)  // Main for set
 
 ```js
 api.structures.recipes.register("kineticPress", {
-  input: "sand",
-  outputs: [{ elementType: "compressedSand", chance: 1 }],
-  minimumDownwardVelocityCellsPerSecond: 20,
+    input: "sand",
+    outputs: [{ elementType: "compressedSand", chance: 1 }],
+    minimumDownwardVelocityCellsPerSecond: 20,
 });
 ```
 

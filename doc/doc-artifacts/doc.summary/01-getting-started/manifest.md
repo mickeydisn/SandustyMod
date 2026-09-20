@@ -17,12 +17,12 @@ my-mod/
 
 ```json
 {
-  "manifestVersion": 1,
-  "id": "author.example-mod",
-  "name": "Example Mod",
-  "version": "1.0.0",
-  "apiVersion": 1,
-  "entry": "main.js"
+    "manifestVersion": 1,
+    "id": "author.example-mod",
+    "name": "Example Mod",
+    "version": "1.0.0",
+    "apiVersion": 1,
+    "entry": "main.js"
 }
 ```
 
@@ -30,13 +30,14 @@ Add `"workerEntry": "worker.js"` for simulation-side logic.
 
 ## Main vs Worker (why both?)
 
-| Concern | Prefer |
-|---|---|
-| Register types, UI, input, signals click | **Main** |
-| Per-tick element/structure sim | **Worker** |
+| Concern                                  | Prefer            |
+| ---------------------------------------- | ----------------- |
+| Register types, UI, input, signals click | **Main**          |
+| Per-tick element/structure sim           | **Worker**        |
 | Grid write that depends on a read (Main) | `api.grid.mutate` |
 
-Official overview: [sandkit.html](https://sandustry.com/sandkit.html) — Mod file structure / Manifest.
+Official overview: [sandkit.html](https://sandustry.com/sandkit.html) — Mod file structure /
+Manifest.
 
 ## API references
 

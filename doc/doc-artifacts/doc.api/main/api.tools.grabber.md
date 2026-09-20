@@ -8,13 +8,16 @@ Grabber tool matrix.
 
 ### `setSize(size): void`
 
-| Param | Type | Description |
-|---|---|---|
+| Param  | Type     | Description      |
+| ------ | -------- | ---------------- |
 | `size` | `number` | Grab matrix size |
 
 ### `getSize(): number`
+
 ### `isActive(): boolean`
+
 Whether grabber tool mode is active.
 
 ### `isLoaded(): boolean`
+
 Whether grabber holds a selection — blocks `api.building.selectStructure`.

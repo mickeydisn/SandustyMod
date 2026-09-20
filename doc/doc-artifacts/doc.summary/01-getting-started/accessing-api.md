@@ -3,7 +3,7 @@
 `sandkit` is injected into both `entry` and `workerEntry`.
 
 ```js
-const api = sandkit.api;              // stable API
+const api = sandkit.api; // stable API
 const engineApi = sandkit.engine.api; // unstable escape hatch
 const engineState = sandkit.engine.state;
 
@@ -20,8 +20,8 @@ const engineState = sandkit.engine.state;
 
 ## API references
 
-| Topic | Doc |
-|---|---|
-| Full API tree | [doc.api README](../../doc.api/README.md) |
-| Coverage | [COVERAGE](../../doc.api/COVERAGE.md) |
+| Topic                | Doc                                                                                           |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| Full API tree        | [doc.api README](../../doc.api/README.md)                                                     |
+| Coverage             | [COVERAGE](../../doc.api/COVERAGE.md)                                                         |
 | Shared vs main split | [shared README](../../doc.api/shared/README.md) · [main README](../../doc.api/main/README.md) |

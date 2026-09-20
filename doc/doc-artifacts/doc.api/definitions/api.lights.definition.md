@@ -17,9 +17,9 @@ Parent: [../shared/api.lights.md](../shared/api.lights.md)
 
 ```js
 api.lights.temporary.createAtWorld(wx, wy, {
-  durationMs: 250,
-  brightness: 1.5,
-  size: 80,
+    durationMs: 250,
+    brightness: 1.5,
+    size: 80,
 });
 ```
 

@@ -1,14 +1,14 @@
 # CODE_STYLE — SandustyMod Reference
 
-This document distills the conventions currently in use across the
-`@sandmd/*` packages so future development follows the same patterns.
+This document distills the conventions currently in use across the `@sandmd/*` packages so future
+development follows the same patterns.
 
 ---
 
 ## 0. Ground rules (from `deno.json`)
 
-The repo is a **Deno workspace** (no `package.json`). `deno fmt` / `deno lint`
-are the source of truth for mechanical formatting.
+The repo is a **Deno workspace** (no `package.json`). `deno fmt` / `deno lint` are the source of
+truth for mechanical formatting.
 
 ```jsonc
 // deno.json (root)
@@ -21,16 +21,16 @@ are the source of truth for mechanical formatting.
 - Line width target **100 columns**.
 - Run `deno fmt` and `deno lint` before finishing a change.
 
-> ⚠️ Known drift: `packages/buffer/src/**` is currently formatted with
-> **2-space** indent. This predates the repo-wide 4-space setting. New code
-> must use 4 spaces per `deno.json`; normalizing `buffer` is a follow-up.
+> ⚠️ Known drift: `packages/buffer/src/**` is currently formatted with **2-space** indent. This
+> predates the repo-wide 4-space setting. New code must use 4 spaces per `deno.json`; normalizing
+> `buffer` is a follow-up.
 
 ---
 
 ## 1. Package layout
 
-Each package is a self-contained Deno package with an explicit name and a
-top-level `index.ts` acting as the **public barrel / re-export surface**.
+Each package is a self-contained Deno package with an explicit name and a top-level `index.ts`
+acting as the **public barrel / re-export surface**.
 
 ```text
 packages/<name>/
@@ -47,18 +47,18 @@ packages/<name>/
 
 ```jsonc
 {
-  "name": "@sandmd/catalogue",
-  "exports": "./index.ts",
-  "compilerOptions": { "lib": ["deno.window", "dom"] }
+    "name": "@sandmd/catalogue",
+    "exports": "./index.ts",
+    "compilerOptions": { "lib": ["deno.window", "dom"] }
 }
 ```
 
-**Import naming** — packages are consumed by their `@sandmd/<name>` name;
-internal relative imports always carry the explicit `.ts` extension:
+**Import naming** — packages are consumed by their `@sandmd/<name>` name; internal relative imports
+always carry the explicit `.ts` extension:
 
 ```ts
-import { CatalogueItem } from "@sandmd/catalogue";   // cross-package, no extension
-import { CatalogueItem } from "./types.ts";          // relative, WITH .ts
+import { CatalogueItem } from "@sandmd/catalogue"; // cross-package, no extension
+import { CatalogueItem } from "./types.ts"; // relative, WITH .ts
 ```
 
 ---
@@ -71,15 +71,14 @@ import { CatalogueItem } from "./types.ts";          // relative, WITH .ts
   import type { BuildEventMap, BuildEventName } from "./types.ts";
   ```
 
-  (When a symbol is used as both a value and a type, prefer a plain import
-  and let the compiler sort it out, as seen in `strucutre`.)
+  (When a symbol is used as both a value and a type, prefer a plain import and let the compiler sort
+  it out, as seen in `strucutre`.)
 
-- Interaction with the engine goes through the **global `sandkit` API**
-  (`sandkit.api.*`) with **no import**; side-effect import only the types
-  package once so the global is visible to tooling:
+- Interaction with the engine goes through the **global `sandkit` API** (`sandkit.api.*`) with **no
+  import**; side-effect import only the types package once so the global is visible to tooling:
 
   ```ts
-  import "@sandmd/sandkit";   // pull in global `sandkit` type declarations
+  import "@sandmd/sandkit"; // pull in global `sandkit` type declarations
   ```
 
 - Always guard engine access defensively (the API may be absent):
@@ -88,6 +87,7 @@ import { CatalogueItem } from "./types.ts";          // relative, WITH .ts
   if (!sandkit.api.rendering?.getDrawPositionAtCell) return false;
   if (!sandkit.api.storage) return;
   ---
+  ```
 
 ## 3. Types
 
@@ -137,20 +137,21 @@ export interface CatalogueItem {
 
 ### 3.3 Event maps + generic listeners
 
-Model event payloads as a map type, then derive the listener signature
-from it via a generic constraint:
+Model event payloads as a map type, then derive the listener signature from it via a generic
+constraint:
 
 ```ts
 export interface BuildEventMap {
-    select:   { item: CatalogueItem; mirrored: boolean };
-    place:    PlacedPayload;
-    remove:   PlacedPayload;
+    select: { item: CatalogueItem; mirrored: boolean };
+    place: PlacedPayload;
+    remove: PlacedPayload;
     category: { categoryId: string };
-    mirror:   { mirrored: boolean };
+    mirror: { mirrored: boolean };
 }
 
-export type BuildListener<K extends BuildEventName = BuildEventName> =
-    (event: BuildEventMap[K]) => void;
+export type BuildListener<K extends BuildEventName = BuildEventName> = (
+    event: BuildEventMap[K],
+) => void;
 ```
 
 ---
@@ -177,8 +178,8 @@ export function itemIdFromType(modId: string, type: string): string | null {
 
 ### 4.2 Factories returning closures or objects
 
-Public APIs are built as **factory functions** that return a closure /
-object, so callers get an instance with a tiny method surface:
+Public APIs are built as **factory functions** that return a closure / object, so callers get an
+instance with a tiny method surface:
 
 ```ts
 export const buildCustumDraw = (item: CatalogueItem) => {
@@ -195,18 +196,20 @@ export const buildCustumDraw = (item: CatalogueItem) => {
 
 ```ts
 export const createBuildList = (options: BuildListOptions): BuildList => {
-    const catalogueItems = options.catalogueItems.slice();   // defensive copy
+    const catalogueItems = options.catalogueItems.slice(); // defensive copy
     // …
-    const list: BuildList = { /* method-shorthand implementations */ };
+    const list: BuildList = {/* method-shorthand implementations */};
     return list;
 };
 ```
 
 Notes:
-- **Method shorthand** in object literals (`getSelected() { … }`) for the
-  returned API; use `getSelected: () => x` only for one-liner getters.
-- Mutate captured **closure state** (`let selectedId`, `let mirrored`), and
-  re-parse/filter inputs into copies rather than aliasing caller arrays.
+
+- **Method shorthand** in object literals (`getSelected() { … }`) for the returned API; use
+  `getSelected: () => x` only for one-liner getters.
+- Mutate captured **closure state** (`let selectedId`, `let mirrored`), and re-parse/filter inputs
+  into copies rather than aliasing caller arrays.
+
 ---
 
 ## 5. Events / listeners
@@ -215,19 +218,24 @@ Notes:
 
   ```ts
   const listeners: { [K in BuildEventName]: Set<BuildListener<K>> } = {
-      select: new Set(), place: new Set(), /* … */ mirror: new Set(),
+      select: new Set(),
+      place: new Set(),
+      /* … */ mirror: new Set(),
   };
 
   const emit = <K extends BuildEventName>(name: K, event: BuildEventMap[K]) => {
       for (const h of listeners[name]) {
-          try { (h as BuildListener<K>)(event); }
-          catch (err) { console.error("[panel-build-list]", name, err); }
+          try {
+              (h as BuildListener<K>)(event);
+          } catch (err) {
+              console.error("[panel-build-list]", name, err);
+          }
       }
   };
   ```
 
-- **Subscribe returns an unsubscribe closure** — let the caller tear down so
-  no `dispose()` bookkeeping is required:
+- **Subscribe returns an unsubscribe closure** — let the caller tear down so no `dispose()`
+  bookkeeping is required:
 
   ```ts
   on(name, handler) {
@@ -272,25 +280,24 @@ Notes:
   public listPaths(maxDepth: number = 8, includeContainers: boolean = true) { … }
   ```
 
-- Keep sync/public methods light; delegate real work to private helpers
-  (`readFromBuffer`, `commit`, `save`).
+- Keep sync/public methods light; delegate real work to private helpers (`readFromBuffer`, `commit`,
+  `save`).
 
 ---
 
 ## 7. Constants & naming
 
-| Kind | Convention | Example |
-|------|------------|---------|
-| Files / folders | `camelCase` | `createBuildList.ts`, `json-buffer.ts`, `utils/` |
-| Module-level constants | `UPPER_SNAKE_CASE` | `MIRROR_SUFFIX`, `DEFAULT_SPRITE_PX_PER_TILE`, `DEFAULT_MAX_BYTES` |
-| Function / vars | `camelCase` | `buildCustumDraw`, `selectedId`, `itemIdFromType` |
-| Interface / type alias | `PascalCase` | `CatalogueItem`, `AlignMode`, `BuildListOptions` |
-| Storage keys | dotted `"scope.name"` | `"picker.selected"`, `"picker.mirror"` |
+| Kind                   | Convention            | Example                                                            |
+| ---------------------- | --------------------- | ------------------------------------------------------------------ |
+| Files / folders        | `camelCase`           | `createBuildList.ts`, `json-buffer.ts`, `utils/`                   |
+| Module-level constants | `UPPER_SNAKE_CASE`    | `MIRROR_SUFFIX`, `DEFAULT_SPRITE_PX_PER_TILE`, `DEFAULT_MAX_BYTES` |
+| Function / vars        | `camelCase`           | `buildCustumDraw`, `selectedId`, `itemIdFromType`                  |
+| Interface / type alias | `PascalCase`          | `CatalogueItem`, `AlignMode`, `BuildListOptions`                   |
+| Storage keys           | dotted `"scope.name"` | `"picker.selected"`, `"picker.mirror"`                             |
 
-Group related constants at the top of a file, with a blank line between
-declarations and use:
+Group related constants at the top of a file, with a blank line between declarations and use:
 
-```ts
+````ts
 ---
 
 ## 8. Comments & docs
@@ -305,10 +312,9 @@ declarations and use:
    * element with every primitive reset to its zero value …
    */
   export function addToPath(root: any, path: string, value?: unknown): number { … }
-  ```
+````
 
-- **`//` single-line comments** for short in-code notes, guards and "why"
-  explanations.
+- **`//` single-line comments** for short in-code notes, guards and "why" explanations.
 - **File-header comment** for a file's purpose / usage contract:
 
   ```ts
@@ -321,16 +327,17 @@ declarations and use:
    */
   ```
 
-- Use `// section` dividers (`// --`, `// core`, `// assert`) sparingly to mark
-  phases inside a long function.
+- Use `// section` dividers (`// --`, `// core`, `// assert`) sparingly to mark phases inside a long
+  function.
 
 ---
 
 ## 9. Idioms & do's / don'ts
 
 **Prefer / use:**
-- Optional chaining `?.` and nullish coalescing `??`:
-  `def.categoryKey ?? "misc"`, `opts.renderSize ?? { width: 16, height: 16 }`.
+
+- Optional chaining `?.` and nullish coalescing `??`: `def.categoryKey ?? "misc"`,
+  `opts.renderSize ?? { width: 16, height: 16 }`.
 - Spread for shallow merge/defaulting of option bags:
   ```ts
   defaultData: { ...(opts.defaultData ?? {}) },
@@ -346,6 +353,7 @@ declarations and use:
 - `deepClone` via `JSON.parse(JSON.stringify(v))` for plain-data cloning.
 
 **Avoid / do not:**
+
 - `var`, inferred `any` on public APIs, unused imports (keep `deno lint` clean).
 - Mutating caller-owned arrays/objects — copy defensively (`.slice()`).
 - Returning `undefined` where the caller expects a value — use `null`.
@@ -369,8 +377,8 @@ export { createBuildList } from "./createBuildList.ts";
 export { persistSelection, restorePickerState } from "./persistence.ts";
 ```
 
-Type-only re-exports use `export type { … }`; value exports use `export { … }`.
-Comment out (rather than explode) internal types that are not yet public.
+Type-only re-exports use `export type { … }`; value exports use `export { … }`. Comment out (rather
+than explode) internal types that are not yet public.
 
 ---
 
@@ -387,8 +395,7 @@ Comment out (rather than explode) internal types that are not yet public.
 
 ## 12. Known pitfalls
 
-- The `strucutre/` folder name is **misspelled** (should be `structure/`).
-  Do not *introduce* new misspellings; renaming the folder is a separate
-  refactor so imports stay untouched here.
-- `buffer`'s 2-space indentation and the `utils/codec copy.ts` duplicate are
-  known debt — new files must not copy them.
+- The `strucutre/` folder name is **misspelled** (should be `structure/`). Do not _introduce_ new
+  misspellings; renaming the folder is a separate refactor so imports stay untouched here.
+- `buffer`'s 2-space indentation and the `utils/codec copy.ts` duplicate are known debt — new files
+  must not copy them.

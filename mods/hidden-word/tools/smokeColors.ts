@@ -66,7 +66,9 @@ function report(name: string, mode: Parameters<typeof stubEngine>[0]) {
     for (const entry of entries) {
         const painted = entry.alpha === 0 ? "transparent" : `${entry.hex} (${entry.source})`;
         console.log(
-            `  ${entry.codeLabel.padEnd(7)} → terrain=${entry.terrain ?? "—"} ${painted}  ${entry.label}`,
+            `  ${entry.codeLabel.padEnd(7)} → terrain=${
+                entry.terrain ?? "—"
+            } ${painted}  ${entry.label}`,
         );
     }
     return entries;
@@ -77,11 +79,17 @@ const meta = await report("metaColor", "metaColor");
 console.log("  mapping sky/tunnel transparent:", meta[0]!.alpha === 0 && meta[2]!.alpha === 0);
 console.log("  rock=stone #808080:", meta[1]!.hex === "#808080" && meta[1]!.terrain === "stone");
 console.log("  cave=dirt  #926426:", meta[3]!.hex === "#926426" && meta[3]!.terrain === "dirt");
-console.log("  names from i18n:", meta[1]!.label === "Stone (stone)" && meta[3]!.label === "Dirt (dirt)");
+console.log(
+    "  names from i18n:",
+    meta[1]!.label === "Stone (stone)" && meta[3]!.label === "Dirt (dirt)",
+);
 
 // 2) No metaColor → the renderer's colorHSL is used instead.
 const hsl = await report("colorHSL", "colorHSL");
-console.log("  stone falls back to colorHSL:", hsl[1]!.hex === "#a8a8a8" && hsl[1]!.source === "engine colorHSL");
+console.log(
+    "  stone falls back to colorHSL:",
+    hsl[1]!.hex === "#a8a8a8" && hsl[1]!.source === "engine colorHSL",
+);
 
 // 3) No definition colour → the catalog fallback keeps the map readable.
 const fallback = await report("fallback", "i18nOnly");

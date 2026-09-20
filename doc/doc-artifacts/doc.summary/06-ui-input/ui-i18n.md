@@ -9,5 +9,5 @@ api.ui.toast({ key: "mods|myMod|title" });
 
 ## API reference
 
-- [api.ui](../../doc.api/main/api.ui.md)  
-- [api.i18n](../../doc.api/main/api.i18n.md)  
+- [api.ui](../../doc.api/main/api.ui.md)
+- [api.i18n](../../doc.api/main/api.i18n.md)

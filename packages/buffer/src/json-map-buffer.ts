@@ -9,18 +9,18 @@ const i32 = { min: -2147483648, max: 2147483647 };
 
 /** Per-counter tuning for a mapped numeric leaf. */
 export interface JsonMapCounterOptions {
-  initial?: number;
-  min?: number;
-  max?: number;
-  step?: number;
+    initial?: number;
+    min?: number;
+    max?: number;
+    step?: number;
 }
 
 /** Shape passed to the JsonMapBuffer constructor. */
 export interface JsonMapBufferConfig<T extends object = Record<string, unknown>> {
-  /** Extra/override numeric counters (incl. specific array elements). */
-  counters?: Record<string, JsonMapCounterOptions>;
-  /** Optional validation guard, run on the materialized record on commit(). */
-  assertShape?: (value: T) => void;
+    /** Extra/override numeric counters (incl. specific array elements). */
+    counters?: Record<string, JsonMapCounterOptions>;
+    /** Optional validation guard, run on the materialized record on commit(). */
+    assertShape?: (value: T) => void;
 }
 
 /**

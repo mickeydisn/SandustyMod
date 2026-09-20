@@ -1,7 +1,7 @@
 # Sandustry API — Structure recipes (`api.structures.recipes`)
 
-> **Entry:** Main + Worker. Official: [sandkit.html](https://sandustry.com/sandkit.html). Grid writes: deferred on main, immediate on worker.
-
+> **Entry:** Main + Worker. Official: [sandkit.html](https://sandustry.com/sandkit.html). Grid
+> writes: deferred on main, immediate on worker.
 
 Recipes bind **input elements** to **structure behaviors** (shaker, smelter, grower, …).
 
@@ -19,21 +19,22 @@ api.structures.recipes.selectWeightedOutput(outputs) → elementType | null
 
 ## Supported `recipeId` values
 
-Only these ids are accepted by `register` (others throw  
+Only these ids are accepted by `register` (others throw\
 `Structure recipe ID "…" is not supported.`):
 
-| recipeId | Machine | Definition shape |
-|---|---|---|
-| `"planterBox"` / grower path | Grower | `{ input, output, chance? }` |
-| `"shaker"` | Shaker | `{ input, outputsAbove, outputsBelow }` |
-| `"kineticPress"` | Velocity soaker / press | `{ input, minimumDownwardVelocity, outputs }` |
-| `"condenser"` | Condenser | `{ input, outputs }` |
-| `"steamDryer"` | Thermodryer | `{ input, outputs }` |
-| `"synthesizer"` | Synthesizer | `{ input, outputs }` (+ cross-recipe constraints) |
-| `"snowmaker"` | Snowmaker | `{ input, outputs }` |
-| `"smelter"` | Smelter | `{ input, outputs }` |
+| recipeId                     | Machine                 | Definition shape                                  |
+| ---------------------------- | ----------------------- | ------------------------------------------------- |
+| `"planterBox"` / grower path | Grower                  | `{ input, output, chance? }`                      |
+| `"shaker"`                   | Shaker                  | `{ input, outputsAbove, outputsBelow }`           |
+| `"kineticPress"`             | Velocity soaker / press | `{ input, minimumDownwardVelocity, outputs }`     |
+| `"condenser"`                | Condenser               | `{ input, outputs }`                              |
+| `"steamDryer"`               | Thermodryer             | `{ input, outputs }`                              |
+| `"synthesizer"`              | Synthesizer             | `{ input, outputs }` (+ cross-recipe constraints) |
+| `"snowmaker"`                | Snowmaker               | `{ input, outputs }`                              |
+| `"smelter"`                  | Smelter                 | `{ input, outputs }`                              |
 
-Internal constants: `planterBox`, `shaker`, `kineticPress`, `condenser`, `steamDryer`, `synthesizer`, `snowmaker`, `smelter`.
+Internal constants: `planterBox`, `shaker`, `kineticPress`, `condenser`, `steamDryer`,
+`synthesizer`, `snowmaker`, `smelter`.
 
 ---
 
@@ -42,16 +43,16 @@ Internal constants: `planterBox`, `shaker`, `kineticPress`, `condenser`, `steamD
 ### Element ref
 
 ```ts
-input: number | string    // elementType (validated as element)
-output: number | string   // single output elementType
+input: number | string; // elementType (validated as element)
+output: number | string; // single output elementType
 ```
 
 ### Weighted output entry
 
 ```ts
 {
-  elementType: number | string;   // required, valid element
-  chance: number;                 // required, finite, 0..1 inclusive
+    elementType: number | string; // required, valid element
+    chance: number; // required, finite, 0..1 inclusive
 }
 ```
 
@@ -115,12 +116,12 @@ output: number | string   // single output elementType
 
 ### `getWeightedRecipe(recipeId, inputElementType)`
 
-Looks up the registered recipe for that machine + input element.  
+Looks up the registered recipe for that machine + input element.\
 Returns `null` if none.
 
 ### `selectWeightedOutput(outputs)`
 
-Picks one `elementType` from a `WeightedOutput[]` by chance.  
+Picks one `elementType` from a `WeightedOutput[]` by chance.\
 Returns `null` if nothing selected.
 
 ---
@@ -130,25 +131,25 @@ Returns `null` if nothing selected.
 ```js
 // Smelt custom ore into custom ingot (80%) or slag (20%)
 api.structures.recipes.register("smelter", {
-  input: "myMod.ore",
-  outputs: [
-    { elementType: "myMod.ingot", chance: 0.8 },
-    { elementType: "myMod.slag", chance: 0.2 }
-  ]
+    input: "myMod.ore",
+    outputs: [
+        { elementType: "myMod.ingot", chance: 0.8 },
+        { elementType: "myMod.slag", chance: 0.2 },
+    ],
 });
 
 // Shaker: wet sand → sand above, water below
 api.structures.recipes.register("shaker", {
-  input: enums.ElementType.WetSand,
-  outputsAbove: [{ elementType: enums.ElementType.Sand, chance: 1 }],
-  outputsBelow: [{ elementType: enums.ElementType.Water, chance: 1 }]
+    input: enums.ElementType.WetSand,
+    outputsAbove: [{ elementType: enums.ElementType.Sand, chance: 1 }],
+    outputsBelow: [{ elementType: enums.ElementType.Water, chance: 1 }],
 });
 
 // Grower
 api.structures.recipes.register("planterBox", {
-  input: "myMod.seed",
-  output: "myMod.plant",
-  chance: 1
+    input: "myMod.seed",
+    output: "myMod.plant",
+    chance: 1,
 });
 ```
 
@@ -156,7 +157,11 @@ api.structures.recipes.register("planterBox", {
 
 ## Notes
 
-- `register` is **per input**: registering the same `recipeId` + same `input` replaces the previous entry for that input.
-- Recipe ids are **machine kinds**, not free-form mod names — you extend the built-in machines rather than inventing a new recipe id string.
-- For fully custom machines, prefer `api.structures.addProcessor` / `processing.register` instead of recipes.
-- Registering some recipes also installs worker intercepts on `element:blocked` / `element:move` for the input element type.
+- `register` is **per input**: registering the same `recipeId` + same `input` replaces the previous
+  entry for that input.
+- Recipe ids are **machine kinds**, not free-form mod names — you extend the built-in machines
+  rather than inventing a new recipe id string.
+- For fully custom machines, prefer `api.structures.addProcessor` / `processing.register` instead of
+  recipes.
+- Registering some recipes also installs worker intercepts on `element:blocked` / `element:move` for
+  the input element type.

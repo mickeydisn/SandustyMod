@@ -9,5 +9,5 @@ api.world.pickups.spawnAtWorld(type, wx, wy, data);
 
 ## API reference
 
-- [api.entities](../../doc.api/main/api.entities.md)  
-- [api.pickups](../../doc.api/main/api.pickups.md) (`api.world.pickups`)  
+- [api.entities](../../doc.api/main/api.entities.md)
+- [api.pickups](../../doc.api/main/api.pickups.md) (`api.world.pickups`)

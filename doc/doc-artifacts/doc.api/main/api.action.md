@@ -7,15 +7,17 @@ Current player action mode (build, demolish, signal linker, …).
 ## Methods
 
 ### `getActive(): Action | null`
+
 Currently active action object (`id` may be `"signalLinker"`, structure build, etc.).
 
 ### `getSelected(): unknown`
+
 Currently selected build/tool selection when applicable.
 
 ### `setCustomData(data): void`
 
-| Param | Type | Description |
-|---|---|---|
+| Param  | Type     | Description                     |
+| ------ | -------- | ------------------------------- |
 | `data` | `object` | Arbitrary action custom payload |
 
 ```js

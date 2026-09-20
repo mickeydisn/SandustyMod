@@ -8,8 +8,8 @@ Engine RNG helpers (prefer over `Math.random()` for gameplay rolls).
 
 ### `int(min, max): number`
 
-| Param | Type | Description |
-|---|---|---|
+| Param | Type     | Description           |
+| ----- | -------- | --------------------- |
 | `min` | `number` | Inclusive lower bound |
 | `max` | `number` | Inclusive upper bound |
 
@@ -17,8 +17,8 @@ Engine RNG helpers (prefer over `Math.random()` for gameplay rolls).
 
 ### `float(min, max): number`
 
-| Param | Type | Description |
-|---|---|---|
+| Param | Type     | Description |
+| ----- | -------- | ----------- |
 | `min` | `number` | Lower bound |
 | `max` | `number` | Upper bound |
 

@@ -1,4 +1,4 @@
 {
-  "name": "@sandmd/sandkit",
-  "exports": "./index.ts"
+    "name": "@sandmd/sandkit",
+    "exports": "./index.ts"
 }

@@ -1,4 +1,4 @@
-> **Entry:** Main only.  
+> **Entry:** Main only.\
 > **Object shapes:** [definitions/api.energy.definition.md](../definitions/api.energy.definition.md)
 
 # `api.energy`
@@ -9,14 +9,14 @@ Power networks between structures tagged as conductors or storage.
 
 ## Methods
 
-| Method | Parameters | Returns |
-|---|---|---|
-| `registerType` | `(structureId, type, options?)` | `void` |
-| `addAtCell` | `(cellX, cellY, amount, options?)` | `void` |
-| `consume` | `(amount, options?)` | result / boolean |
-| `consumeExcludingNetworkAtCell` | `(cellX, cellY, amount)` | result |
-| `getNetworkAtCell` | `(cellX, cellY)` | `NetworkEntry[]` |
-| `getNetworkFreeCapacityAtCell` | `(cellX, cellY)` | `number` |
+| Method                          | Parameters                         | Returns          |
+| ------------------------------- | ---------------------------------- | ---------------- |
+| `registerType`                  | `(structureId, type, options?)`    | `void`           |
+| `addAtCell`                     | `(cellX, cellY, amount, options?)` | `void`           |
+| `consume`                       | `(amount, options?)`               | result / boolean |
+| `consumeExcludingNetworkAtCell` | `(cellX, cellY, amount)`           | result           |
+| `getNetworkAtCell`              | `(cellX, cellY)`                   | `NetworkEntry[]` |
+| `getNetworkFreeCapacityAtCell`  | `(cellX, cellY)`                   | `number`         |
 
 ### `registerType(structureId, type, options?)`
 
@@ -35,12 +35,14 @@ api.energy.registerType("myMod.cable", "conductor");
 ### `getNetworkAtCell(cellX, cellY)`
 
 ```ts
-entry: { cellX, cellY, type }  // type conductor|storage
+entry: {
+    cellX, cellY, type;
+} // type conductor|storage
 ```
 
 ```js
 for (const entry of api.energy.getNetworkAtCell(cx, cy)) {
-  // entry.cellX, entry.cellY, entry.type
+    // entry.cellX, entry.cellY, entry.type
 }
 ```
 

@@ -1,4 +1,4 @@
 {
-  "name": "@sandmd/buffer",
-  "exports": "./src/index.ts"
+    "name": "@sandmd/buffer",
+    "exports": "./src/index.ts"
 }

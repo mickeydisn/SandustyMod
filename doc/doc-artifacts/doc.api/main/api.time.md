@@ -7,9 +7,11 @@ Simulation clocks.
 ## Methods
 
 ### `getElapsedMs(): number`
+
 Alias: `getTimeMs`. Milliseconds since session start (or engine clock).
 
 ### `getTick(): number`
+
 Current simulation tick index.
 
 ```js
