@@ -154,6 +154,8 @@ export interface GenerationParams {
   seal: SealParams;
   /** Ordered post-seal pipeline — user can reorder. */
   modifiers: Modifier[];
+  /** When true: fog-of-war exploration layer is active. */
+  explorationEnabled: boolean;
 }
 
 export interface HiddenWorldState {
@@ -166,4 +168,6 @@ export interface HiddenWorldState {
   alpha: number;
   buildFailed: boolean;
   cache: HTMLCanvasElement | null;
+  /** 0 = unexplored, 1 = explored (same size as data when exploration on). */
+  explored: Uint8Array | null;
 }

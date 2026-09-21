@@ -410,6 +410,15 @@ export function MapViewerPanel(): unknown {
           ),
         ]),
 
+        checkRow("Exploration mode", !!draft.explorationEnabled, (v) =>
+          setDraft({ ...draft, explorationEnabled: v }),
+        ),
+        h(
+          "div",
+          { className: "hwv-mini", style: { marginBottom: 8 } },
+          "Fog of war: sky starts explored; Explorer reveals fog; Manifest needs explored contact.",
+        ),
+
         groupLabel("Map"),
 
         section("1 · Skyline", null, null, [

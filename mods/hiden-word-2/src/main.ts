@@ -17,8 +17,10 @@ import { VERSION } from "./ids.ts";
 import { registerLens } from "./lens.ts";
 import { registerMapViewer } from "./mapViewer.ts";
 import { registerMaterializer } from "./materializer.ts";
+import { registerExplorer } from "./explorer.ts";
 import { registerParamsOverlay } from "./overlay.ts";
-import { ensureSeedRecord } from "./persistence.ts";
+import { ensureSeedRecord, persistRecord } from "./persistence.ts";
+import { resetExplorationFromMap } from "./exploration.ts";
 import { paintGhostView } from "./render.ts";
 import { runtime } from "./state.ts";
 
@@ -33,6 +35,19 @@ function applyAlphaPercent(value: unknown): void {
   runtime.alpha = clamped / 100;
 }
 
+function applyExplorationSetting(value: unknown): void {
+  const enabled = value === true || value === "true" || value === 1;
+  const prev = !!runtime.params.explorationEnabled;
+  runtime.params.explorationEnabled = enabled;
+  if (enabled && !prev) {
+    resetExplorationFromMap();
+  } else if (!enabled) {
+    runtime.explored = null;
+  }
+  runtime.cache = null; // rebuild ghost with/without mask
+  try { persistRecord(); } catch { /* */ }
+}
+
 try {
   const { created } = ensureSeedRecord();
   console.log(
@@ -43,20 +58,29 @@ try {
   await registerLens();
   await registerMapViewer();
   await registerMaterializer();
+  await registerExplorer();
   registerParamsOverlay();
 
   try {
     applyAlphaPercent(api.settings.get("ghostAlphaPercent"));
-    api.settings.onChange((values) => applyAlphaPercent(values?.ghostAlphaPercent));
+    applyExplorationSetting(api.settings.get("explorationEnabled"));
+    api.settings.onChange((values) => {
+      if (values && "ghostAlphaPercent" in values) {
+        applyAlphaPercent(values.ghostAlphaPercent);
+      }
+      if (values && "explorationEnabled" in values) {
+        applyExplorationSetting(values.explorationEnabled);
+      }
+    });
   } catch (err) {
-    console.warn(`${LOG} settings unavailable, default alpha`, err);
+    console.warn(`${LOG} settings unavailable, defaults`, err);
   }
 
   api.events.on("frame:render", () => paintGhostView());
   api.events.on("game:ready", () => {
     try {
       api.ui.toast(
-        `HIDEN WORLD 2 v${VERSION} — Lens · Viewer · Manifest`,
+        `HIDEN WORLD 2 v${VERSION} — Lens · Viewer · Manifest · Explorer`,
         {},
       );
     } catch { /* */ }

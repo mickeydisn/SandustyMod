@@ -27,6 +27,16 @@ export const MATERIALIZER_RADIUS_MIN = 2;
 export const MATERIALIZER_RADIUS_MAX = 24;
 export const MATERIALIZER_RADIUS_DEFAULT = 6;
 export const MATERIALIZER_ENERGY = 8;
+export const EXPLORER_ITEM_ID = `${MOD}.explorer`;
+export const EXPLORER_ICON_SPRITE_ID = `${MOD}.explorerIcon`;
+export const EXPLORER_ICON_PATH = "assets/lens.png";
+export const EXPLORER_OVERLAY_ID = `${MOD}.explorer`;
+export const EXPLORER_RADIUS_MIN = 1;
+export const EXPLORER_RADIUS_MAX = 16;
+export const EXPLORER_RADIUS_DEFAULT = 4;
+export const EXPLORER_ENERGY = 4;
+/** Extra cells around fog / materialize border that become explored. */
+export const EXPLORE_BORDER_PX = 2;
 export const FALLBACK_CELLS = { width: 640, height: 360 };
 export const LOG = "[hiden-word-2]";
 
@@ -138,6 +148,8 @@ export const KEY = {
   viewerDesc: `${NS}|viewer|desc`,
   materializerName: `${NS}|materializer|name`,
   materializerDesc: `${NS}|materializer|desc`,
+  explorerName: `${NS}|explorer|name`,
+  explorerDesc: `${NS}|explorer|desc`,
 } as const;
 
 /** Full default params including stage toggles + tunables. */
@@ -172,6 +184,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
     diagonal: false,
     surfaceKeepPercent: 0,
   },
+  explorationEnabled: false,
   modifiers: [
     {
       id: "liq-water",

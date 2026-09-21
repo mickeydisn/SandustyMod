@@ -25,6 +25,11 @@ import {
 } from "./constants.ts";
 import { api } from "./api.ts";
 import { runtime } from "./state.ts";
+import {
+  exploreMaterializeBorder,
+  isExplorationEnabled,
+  materializeTouchesExplored,
+} from "./exploration.ts";
 
 declare const sandkit: { react: any; api: any };
 const react = sandkit.react;
@@ -339,16 +344,22 @@ export function fire(payload?: Record<string, unknown>): void {
     return;
   }
 
+  if (isExplorationEnabled() && !materializeTouchesExplored(cx as number, cy as number, materializerRadius)) {
+    toast("Unexplored — explore fog first or touch an explored cell");
+    return;
+  }
+
   const { painted, emptied, failed } = materializeAt(
     cx as number,
     cy as number,
     materializerRadius,
   );
 
-  if (painted > 0) {
-    toast(`Manifested ${painted} cells (r=${materializerRadius})`);
-  } else if (emptied > 0 && failed === 0) {
-    toast(`Cleared ${emptied} fog/empty cells — no solids in brush`);
+  if (painted > 0 || emptied > 0) {
+    const gained = exploreMaterializeBorder(cx as number, cy as number, materializerRadius);
+    runtime.cache = null; // force ghost rebuild with new explored
+    if (painted > 0) toast(`Manifested ${painted} cells (+${gained} explored)`);
+    else toast(`Cleared ${emptied} fog cells (+${gained} explored)`);
   } else {
     toast(
       `Nothing placed (fail=${failed}). Check console / Generate map first.`,
@@ -455,7 +466,7 @@ export async function registerMaterializer(): Promise<void> {
 
   // --- Activation (item:used often never fires for custom tools) ---
   let lastFireAt = 0;
-  const FIRE_COOLDOWN_MS = 200;
+  const FIRE_COOLDOWN_MS = 70;
 
   const tryFire = (source: string, payload?: Record<string, unknown>) => {
     const now = performance.now?.() ?? Date.now();
@@ -500,6 +511,26 @@ export async function registerMaterializer(): Promise<void> {
   }
 
   // 3) Pointer click on the game (while tool selected)
+  const HOLD_MS = 80;
+  let holdTimer: ReturnType<typeof setInterval> | null = null;
+  const stopHold = () => {
+    if (holdTimer != null) {
+      clearInterval(holdTimer);
+      holdTimer = null;
+    }
+  };
+  const startHold = (source: string) => {
+    tryFire(source);
+    stopHold();
+    holdTimer = setInterval(() => {
+      if (!isMaterializerSelected()) {
+        stopHold();
+        return;
+      }
+      tryFire("hold");
+    }, HOLD_MS);
+  };
+
   try {
     const onPointer = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
@@ -508,15 +539,18 @@ export async function registerMaterializer(): Promise<void> {
       if (t?.closest?.(".hwv-root, .hw-mat-bar, .hwv-frame, button, input, textarea, select")) {
         return;
       }
-      tryFire("pointerdown");
+      startHold("pointerdown");
     };
     globalThis.addEventListener("pointerdown", onPointer, true);
-    console.log(`${LOG} bound pointerdown`);
+    globalThis.addEventListener("pointerup", stopHold, true);
+    globalThis.addEventListener("pointercancel", stopHold, true);
+    globalThis.addEventListener("blur", stopHold);
+    console.log(`${LOG} bound pointerdown hold`);
   } catch (err) {
     console.warn(`${LOG} pointerdown failed`, err);
   }
 
-  // 4) KeyF while selected
+  // 4) KeyF while selected (hold repeats)
   try {
     a.input?.registerBinding?.(`${MOD}.manifestFire`, ["KeyF"], {
       nameKey: KEY.materializerName,
@@ -528,15 +562,22 @@ export async function registerMaterializer(): Promise<void> {
       "keydown",
       (ev: KeyboardEvent) => {
         if (ev.code !== "KeyF" && ev.key !== "f" && ev.key !== "F") return;
+        if (ev.repeat) return;
         if (!isMaterializerSelected()) return;
-        // ignore when typing in inputs
         const t = ev.target as HTMLElement | null;
         if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-        tryFire("keydown-F");
+        startHold("keydown-F");
       },
       true,
     );
-    console.log(`${LOG} bound KeyF`);
+    globalThis.addEventListener(
+      "keyup",
+      (ev: KeyboardEvent) => {
+        if (ev.code === "KeyF" || ev.key === "f" || ev.key === "F") stopHold();
+      },
+      true,
+    );
+    console.log(`${LOG} bound KeyF hold`);
   } catch (err) {
     console.warn(`${LOG} keydown failed`, err);
   }

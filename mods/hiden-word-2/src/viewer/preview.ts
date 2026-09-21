@@ -2,6 +2,7 @@ import { CODE_OPTIONS } from "../constants.ts";
 import { ghostPalette } from "../render.ts";
 import { runtime } from "../state.ts";
 import type { MapBoundsPercent } from "../types.ts";
+import { applyExplorationToImageData, isExplorationEnabled } from "../exploration.ts";
 
 export const view = {
   zoom: 1,
@@ -127,6 +128,9 @@ export function paintPreviewCanvas(canvas: HTMLCanvasElement): void {
         img.data[i + 3] = 255;
       }
     }
+  }
+  if (isExplorationEnabled()) {
+    applyExplorationToImageData(img, pw, ph, w, h, div);
   }
   ctx.putImageData(img, 0, 0);
   drawFocusedBounds(ctx, pw, ph);

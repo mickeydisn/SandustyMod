@@ -17,6 +17,12 @@
       "maximum": 100,
       "labelKey": "Ghost alpha (%)",
       "descriptionKey": "Opacity of the hidden terrain ghost view (5-100)."
+    },
+    "explorationEnabled": {
+      "type": "boolean",
+      "default": false,
+      "labelKey": "Exploration mode",
+      "descriptionKey": "Fog of war: only explored cells show. Use Fog Explorer on fog; Manifest needs explored contact."
     }
   }
 }

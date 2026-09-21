@@ -211,6 +211,7 @@ export function normalizeParams(saved: unknown): GenerationParams {
     cave: normalizeBand(raw.cave, DEFAULT_PARAMS.cave),
     seal: normalizeSeal(raw.seal),
     modifiers,
+    explorationEnabled: boolOr(raw.explorationEnabled, DEFAULT_PARAMS.explorationEnabled),
   };
 }
 

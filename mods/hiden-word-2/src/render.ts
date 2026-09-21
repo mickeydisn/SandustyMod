@@ -14,6 +14,7 @@ import {
 import { api } from "./api.ts";
 import { isLensSelected } from "./lens.ts";
 import { isMaterializerSelected, paintManifestBrush } from "./materializer.ts";
+import { isExplorerSelected, paintExplorerBrush } from "./explorer.ts";
 import {
   notifyGenerationEnd,
   notifyGenerationProgress,
@@ -21,6 +22,7 @@ import {
 } from "./progress.ts";
 import { runtime } from "./state.ts";
 import { generateHiddenTerrain } from "./terrain.ts";
+import { applyExplorationToImageData, isExplorationEnabled, resetExplorationFromMap } from "./exploration.ts";
 import { readWorldSize } from "./persistence.ts";
 import type { Rgba, TerrainDefinitionLike } from "./types.ts";
 
@@ -182,6 +184,16 @@ export function buildCache(): HTMLCanvasElement | null {
       image.data[i * 4 + 2] = b;
       image.data[i * 4 + 3] = a;
     }
+    if (isExplorationEnabled() && runtime.explored) {
+      applyExplorationToImageData(
+        image,
+        runtime.width,
+        runtime.height,
+        runtime.width,
+        runtime.height,
+        1,
+      );
+    }
     ctx.putImageData(image, 0, 0);
     return canvas;
   } catch (err) {
@@ -219,6 +231,7 @@ export function ensureCache(showAlerts: boolean): void {
       );
       runtime.data = result.data;
       runtime.skyDistance = result.skyDistance;
+      resetExplorationFromMap();
     }
     if (showAlerts) notifyGenerationProgress("Painting ghost cache…", 99);
     runtime.cache = buildCache();
@@ -241,14 +254,26 @@ export function refreshHiddenWorld(): boolean {
   runtime.data = null;
   runtime.skyDistance = null;
   runtime.cache = null;
+  runtime.explored = null;
   runtime.buildFailed = false;
   paletteCache = null;
   ensureCache(true);
   return !runtime.buildFailed;
 }
 
+/** Rebuild ghost pixels without regenerating the matrix (after explore). */
+export function rebuildGhostCache(): void {
+  if (!runtime.data) return;
+  runtime.cache = buildCache();
+}
+
+/** Drop pixel cache so next paint rebuilds (e.g. after explore). */
+export function invalidateGhostCache(): void {
+  runtime.cache = null;
+}
+
 export function paintGhostView(): void {
-  const showGhost = isLensSelected() || isMaterializerSelected();
+  const showGhost = isLensSelected() || isMaterializerSelected() || isExplorerSelected();
   if (!showGhost) return;
   // First open: generate with alerts (can be slow).
   ensureCache(true);
@@ -288,4 +313,5 @@ export function paintGhostView(): void {
   }
 
   try { paintManifestBrush(); } catch { /* */ }
+  try { paintExplorerBrush(); } catch { /* */ }
 }

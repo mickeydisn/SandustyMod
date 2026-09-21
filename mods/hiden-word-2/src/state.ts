@@ -11,4 +11,5 @@ export const runtime: HiddenWorldState = {
   alpha: DEFAULT_GHOST_ALPHA_PERCENT / 100,
   buildFailed: false,
   cache: null,
+  explored: null,
 };
