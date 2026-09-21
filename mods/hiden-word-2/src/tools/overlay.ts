@@ -1,12 +1,7 @@
-/**
- * Ghost Lens overlay — minimal banner only.
- * Full configuration lives in the Map Viewer tool (mapViewer.ts).
- */
-
-import { LOG, OVERLAY_ID } from "./constants.ts";
-import { api } from "./api.ts";
+import { LOG, OVERLAY_ID } from "../world/constants.ts";
+import { api } from "../api/api.ts";
 import { isLensSelected } from "./lens.ts";
-import { runtime } from "./state.ts";
+import { runtime } from "../world/state.ts";
 
 declare const sandkit: { react: any };
 const react = sandkit.react;

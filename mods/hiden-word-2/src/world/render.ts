@@ -11,17 +11,17 @@ import {
   TERRAIN_META_NAMES,
   TERRAIN_NAME_KEY_PREFIX,
 } from "./constants.ts";
-import { api } from "./api.ts";
-import { isLensSelected } from "./lens.ts";
-import { isMaterializerSelected, paintManifestBrush } from "./materializer.ts";
-import { isExplorerSelected, paintExplorerBrush } from "./explorer.ts";
+import { api } from "../api/api.ts";
+import { isLensSelected } from "../tools/lens.ts";
+import { isMaterializerSelected, paintManifestBrush } from "../tools/materializer.ts";
+import { isExplorerSelected, paintExplorerBrush } from "../tools/explorer.ts";
 import {
   notifyGenerationEnd,
   notifyGenerationProgress,
   notifyGenerationStart,
-} from "./progress.ts";
+} from "../gen/progress.ts";
 import { runtime } from "./state.ts";
-import { generateHiddenTerrain } from "./terrain.ts";
+import { generateHiddenTerrain } from "../gen/terrain.ts";
 import { isExplorationEnabled, resetExplorationFromMap } from "./exploration.ts";
 import { clearPersistedWorldData, persistWorldData } from "./persistence.ts";
 import { readWorldSize } from "./persistence.ts";

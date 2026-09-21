@@ -1,7 +1,3 @@
-/**
- * Explorer tool — reveal fog + 2px near fog (only when explorationEnabled).
- */
-
 import {
   EXPLORER_ENERGY,
   EXPLORER_ICON_PATH,
@@ -14,15 +10,15 @@ import {
   KEY,
   LOG,
   MOD,
-} from "./constants.ts";
-import { api } from "./api.ts";
+} from "../world/constants.ts";
+import { api } from "../api/api.ts";
 import {
   exploreNearFog,
   isExplorationEnabled,
   patchGhostRegion,
-} from "./exploration.ts";
-import { runtime } from "./state.ts";
-import { persistExploredOnly } from "./persistence.ts";
+} from "../world/exploration.ts";
+import { runtime } from "../world/state.ts";
+import { persistExploredOnly } from "../world/persistence.ts";
 
 declare const sandkit: { react: any; api: any };
 const react = sandkit.react;

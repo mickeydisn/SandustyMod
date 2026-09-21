@@ -1,8 +1,8 @@
-import { CODE_OPTIONS } from "../constants.ts";
-import { ghostPalette } from "../render.ts";
-import { runtime } from "../state.ts";
-import type { MapBoundsPercent } from "../types.ts";
-import { applyExplorationToImageData, isExplorationEnabled } from "../exploration.ts";
+import { CODE_OPTIONS } from "../world/constants.ts";
+import { ghostPalette } from "../world/render.ts";
+import { runtime } from "../world/state.ts";
+import type { MapBoundsPercent } from "../world/types.ts";
+import { applyExplorationToImageData, isExplorationEnabled } from "../world/exploration.ts";
 
 export const view = {
   zoom: 1,

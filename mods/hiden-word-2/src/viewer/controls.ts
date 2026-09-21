@@ -1,7 +1,7 @@
 /**
  * Shared form widgets — number inputs only (no range).
  */
-import { CODE_OPTIONS } from "../constants.ts";
+import { CODE_OPTIONS } from "../world/constants.ts";
 
 declare const sandkit: { react: any };
 const react = sandkit.react;

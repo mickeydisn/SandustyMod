@@ -3,8 +3,8 @@
  * Map generation can take hundreds of ms on large maps — warn the player.
  */
 
-import { LOG } from "./constants.ts";
-import { api } from "./api.ts";
+import { LOG } from "../world/constants.ts";
+import { api } from "../api/api.ts";
 
 const BANNER_ID = "hw2-gen-banner";
 const STYLE_ID = "hw2-gen-banner-style";

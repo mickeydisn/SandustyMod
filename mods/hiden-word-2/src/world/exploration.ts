@@ -1,10 +1,3 @@
-/**
- * Fog-of-war exploration layer (optional via params.explorationEnabled).
- *
- * explored[i] = 1 → visible / can materialize from
- * Initial: sky (empty, not fog-tunnel) is explored; everything else is not.
- */
-
 import {
   EXPLORE_BORDER_PX,
   FALLBACK_CODE_COLORS,

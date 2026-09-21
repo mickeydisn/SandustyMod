@@ -5,8 +5,8 @@ import {
   VIEWER_ICON_SPRITE_ID,
   VIEWER_ITEM_ID,
   VIEWER_OVERLAY_ID,
-} from "../constants.ts";
-import { api } from "../api.ts";
+} from "../world/constants.ts";
+import { api } from "../api/api.ts";
 import { MapViewerPanel, isViewerSelected } from "./panel.ts";
 import { paintIfVisible } from "./preview.ts";
 import { injectViewerStyles } from "./styles.ts";

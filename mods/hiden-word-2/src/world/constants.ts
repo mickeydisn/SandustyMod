@@ -4,7 +4,7 @@
  * (sky-distance seal, fluids, wall grow, form grow) as CPU approximations.
  */
 
-import { MOD_ID } from "./ids.ts";
+import { MOD_ID } from "../api/ids.ts";
 import type { GenerationParams, Rgba } from "./types.ts";
 
 export const MOD = MOD_ID;

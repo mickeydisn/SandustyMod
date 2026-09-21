@@ -1,11 +1,11 @@
 /**
  * Map Viewer panel — Map stages + ordered Modifiers (drag to reorder).
  */
-import { DEFAULT_PARAMS, TERRAIN, VIEWER_ITEM_ID } from "../constants.ts";
-import { api } from "../api.ts";
-import { persistRecord, randomSeed } from "../persistence.ts";
-import { ghostPalette, refreshHiddenWorld } from "../render.ts";
-import { runtime } from "../state.ts";
+import { DEFAULT_PARAMS, TERRAIN, VIEWER_ITEM_ID } from "../world/constants.ts";
+import { api } from "../api/api.ts";
+import { persistRecord, randomSeed } from "../world/persistence.ts";
+import { ghostPalette, refreshHiddenWorld } from "../world/render.ts";
+import { runtime } from "../world/state.ts";
 import type {
   BandParams,
   FormModifier,
@@ -14,7 +14,7 @@ import type {
   Modifier,
   SealParams,
   WallModifier,
-} from "../types.ts";
+} from "../world/types.ts";
 import {
   boundsEditor,
   checkRow,

@@ -1,15 +1,3 @@
-/**
- * Multi-stage hidden terrain generator — rewritten to match sandgenerator-web intent.
- *
- * Coordinate system: y = 0 is TOP (sky), y increases downward (same as web / canvas).
- *
- * Stage 1 — Noise: skyline + tunnel + cave (cave uses Inverse band, like CaveGenerator2D)
- * Stage 2 — Sky-distance + seal: only close tunnel/cave NEVER reached from sky
- * Stage 3 — Fluids: floor-anchored columns, spill removal → clean enclosed pools only
- * Stage 4 — Wall grow: moss/grass/redsand by sky-distance (not raw Y)
- * Stage 5 — Form grow: patches in sky-distance bands
- */
-
 import {
   CAVE_WAVES,
   NOISE_ZOOM_1D,
@@ -17,9 +5,9 @@ import {
   SKYLINE_FIXED,
   TERRAIN,
   TUNNEL_WAVES,
-} from "./constants.ts";
+} from "../world/constants.ts";
 import { SimplexNoise } from "./noise.ts";
-import type { BandParams, FormModifier, GenerationParams, LiquidModifier, SkyParams, WallModifier } from "./types.ts";
+import type { BandParams, FormModifier, GenerationParams, LiquidModifier, SkyParams, WallModifier } from "../world/types.ts";
 
 // ---------------------------------------------------------------------------
 // Stage 1 — noise

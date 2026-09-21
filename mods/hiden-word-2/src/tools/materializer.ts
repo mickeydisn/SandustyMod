@@ -1,13 +1,3 @@
-/**
- * World Manifest — paint hidden matrix → real terrain in a circle.
- *
- * Placement strategy (Sandustry / Sandkit):
- *   - Prefer api.grid.mutate + writer.terrains.{replace,create}AtCell
- *   - Accept string terrain ids OR numeric types (terrainTypeOrId)
- *   - item:used provides { itemId, cellX, cellY }
- *   - KeyF binding as backup while tool is selected
- */
-
 import {
   KEY,
   LOG,
@@ -22,16 +12,16 @@ import {
   MATERIALIZER_RADIUS_MIN,
   MOD,
   TERRAIN,
-} from "./constants.ts";
-import { api } from "./api.ts";
-import { runtime } from "./state.ts";
+} from "../world/constants.ts";
+import { api } from "../api/api.ts";
+import { runtime } from "../world/state.ts";
 import {
   exploreMaterializeBorder,
   isExplorationEnabled,
   materializeTouchesExplored,
   patchGhostRegion,
-} from "./exploration.ts";
-import { persistExploredOnly } from "./persistence.ts";
+} from "../world/exploration.ts";
+import { persistExploredOnly } from "../world/persistence.ts";
 
 declare const sandkit: { react: any; api: any };
 const react = sandkit.react;

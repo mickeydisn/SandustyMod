@@ -1,71 +1,35 @@
-# Hiden World 2 (`hiden-word-2`)
+# Hiden World 2
 
-Clean rewrite of **hidden-word** plus the generation stages that were missing
-vs **sandgenerator-web**.
-
-## What changed vs hidden-word
-
-| Area | hidden-word | hiden-word-2 |
-|------|-------------|--------------|
-| Noise (skyline / tunnel / cave) | ✅ | ✅ cleaned |
-| Sky-distance seal | ❌ | ✅ BFS seal of inaccessible voids |
-| Fluids (water / lava / surface) | ❌ | ✅ pool + surface fill |
-| Wall grow (moss / grass / redsand) | ❌ | ✅ neighbor + depth bands |
-| Form grow (spore / frost / crackstone) | ❌ | ✅ noise patches by sky-distance |
-| UI sections for all stages | partial | ✅ full sectioned panel |
-
-GPU convolutions from the web tool are **CPU approximations** (BFS distance,
-column pools, neighbor grow) — same design intent, playable performance.
-
-## Pipeline (in order)
-
-| # | Stage | sandgenerator-web | In mod? |
-|---|-------|-------------------|---------|
-| 1 | Skyline noise | yes | yes |
-| 2 | Tunnel / cave noise merge | yes | yes |
-| 3 | Sky-distance + seal inaccessible | GPU conv | yes (CPU BFS) |
-| 4 | Fluids (water / lava / surface) | GPU conv | yes (pools) |
-| 5 | Wall grow (moss / grass / redsand) | GPU grow | yes (neighbors) |
-| 6 | Form grow (spore / frost / crackstone) | GPU form | yes (patches) |
-| — | SVG icon masks / border smooth | yes | **not ported** |
-
-Generation shows a **banner + toasts** (start → per-stage % → done) because large maps can take noticeable time.
-
-## UI (while Ghost Lens 2 is selected)
-
-Sections in the floating panel:
-
-- Seed  
-- 1 · Skyline (waves + ground %)  
-- 2 · Tunnels / 3 · Caves  
-- 4 · Seal  
-- 5 · Fluids  
-- 6 · Wall grow  
-- 7 · Form grow  
-- Colors legend  
-- **↻ Refresh** / **Reset**
-
-## Build
-
-```bash
-cd hiden-word-2
-deno task build
-```
-
-Copy `build/` → game mods folder as `hiden-word-2`.
+Hidden-world terrain generator + ghost overlay, map viewer, materializer, and optional exploration (fog of war).
 
 ## Layout
 
 ```
 src/
-  main.ts          entry
-  terrain.ts       multi-stage generator
-  overlay.ts       sectioned UI
-  render.ts        ghost cache + blit
-  lens.ts          Ghost Lens 2 item
-  persistence.ts   seed + full params
-  constants.ts     codes, defaults
-  types.ts         GenerationParams (all stages)
-  noise.ts         simplex
-  state.ts / api.ts / ids.ts
+  main.ts           boot
+  api/              sandkit api surface + ids
+  gen/              map generation (noise, terrain pipeline, progress)
+  world/            runtime state, persistence, exploration, ghost render
+  tools/            items: lens, materializer, explorer, lens banner
+  viewer/           Map Viewer UI (panel, preview, controls)
 ```
+
+## Build
+
+```bash
+deno task build
+```
+
+## Tools
+
+| Tool | Role |
+|------|------|
+| Ghost Lens | translucent hidden map overlay |
+| Map Viewer | full-map preview + generation params |
+| World Manifest | paint hidden → live terrain (circle) |
+| Fog Explorer | reveal exploration (when enabled in mod settings) |
+
+## Settings
+
+- **Ghost alpha (%)** — overlay opacity
+- **Exploration mode** — fog of war

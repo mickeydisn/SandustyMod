@@ -1,5 +1,5 @@
 import { DEFAULT_PARAMS, FALLBACK_CELLS, LOG, MOD, STORAGE_KEY_EXPLORED, STORAGE_KEY_MAP, STORAGE_KEY_SEED } from "./constants.ts";
-import { api } from "./api.ts";
+import { api } from "../api/api.ts";
 import { runtime } from "./state.ts";
 import type {
   BandParams,

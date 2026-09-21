@@ -1,4 +1,4 @@
-import type { ApiSurface } from "./types.ts";
+import type { ApiSurface } from "../world/types.ts";
 
 declare const sandkit: { api: unknown };
 

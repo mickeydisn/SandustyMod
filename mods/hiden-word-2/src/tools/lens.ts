@@ -1,5 +1,5 @@
-import { ICON_PATH, ICON_SPRITE_ID, ITEM_ID, KEY, LOG } from "./constants.ts";
-import { api } from "./api.ts";
+import { ICON_PATH, ICON_SPRITE_ID, ITEM_ID, KEY, LOG } from "../world/constants.ts";
+import { api } from "../api/api.ts";
 
 export function isLensSelected(): boolean {
   try {
