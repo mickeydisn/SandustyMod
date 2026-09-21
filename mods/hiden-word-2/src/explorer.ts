@@ -19,8 +19,10 @@ import { api } from "./api.ts";
 import {
   exploreNearFog,
   isExplorationEnabled,
+  patchGhostRegion,
 } from "./exploration.ts";
 import { runtime } from "./state.ts";
+import { persistExploredOnly } from "./persistence.ts";
 
 declare const sandkit: { react: any; api: any };
 const react = sandkit.react;
@@ -133,7 +135,17 @@ function tryEnergy(): boolean {
   return true;
 }
 
-export function fireExplorer(payload?: Record<string, unknown>): void {
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function schedulePersist(): void {
+  if (persistTimer != null) clearTimeout(persistTimer);
+  // Debounced light save — full map encode was causing lag spikes
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try { persistExploredOnly(); } catch { /* */ }
+  }, 1500);
+}
+
+export function fireExplorer(payload?: Record<string, unknown>, opts?: { quiet?: boolean }): void {
   if (!isExplorationEnabled()) {
     toast("Enable Exploration in Map Viewer config first");
     return;
@@ -159,11 +171,17 @@ export function fireExplorer(payload?: Record<string, unknown>): void {
   }
 
   const n = exploreNearFog(cx as number, cy as number, explorerRadius);
-  runtime.cache = null;
-  console.log(`${LOG} explore @(${cx},${cy}) +${n}`);
-  if (n < 0) toast("Must touch an explored zone");
-  else if (n > 0) toast(`Explored ${n} cells`);
-  else toast("Nothing new (fog/sky edge only)");
+  if (n > 0) {
+    // Patch only the brush rect on the single ghost layer
+    const r = explorerRadius + 2;
+    patchGhostRegion(cx - r, cy - r, cx + r, cy + r);
+    schedulePersist();
+  }
+  // Toasts only when not continuous hold (quietHold flag)
+  if (!opts?.quiet) {
+    if (n < 0) toast("Must touch an explored zone");
+    else if (n > 0) toast(`Explored ${n} cells`);
+  }
 }
 
 export function paintExplorerBrush(): void {
@@ -247,10 +265,10 @@ export async function registerExplorer(): Promise<void> {
   let lastFireAt = 0;
   const tryFire = (source: string, payload?: Record<string, unknown>) => {
     const now = performance.now?.() ?? Date.now();
-    if (now - lastFireAt < 70) return;
+    if (now - lastFireAt < 100) return;
     lastFireAt = now;
-    console.log(`${LOG} explore via ${source}`);
-    fireExplorer(payload);
+    const quiet = source === "hold";
+    fireExplorer(payload, { quiet });
   };
 
   try {
@@ -273,7 +291,7 @@ export async function registerExplorer(): Promise<void> {
   } catch { /* */ }
 
   // Hold-to-fire: pointer down → repeat every HOLD_MS until up
-  const HOLD_MS = 80;
+  const HOLD_MS = 120;
   let holdTimer: ReturnType<typeof setInterval> | null = null;
   const stopHold = () => {
     if (holdTimer != null) {

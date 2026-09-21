@@ -22,7 +22,8 @@ import {
 } from "./progress.ts";
 import { runtime } from "./state.ts";
 import { generateHiddenTerrain } from "./terrain.ts";
-import { applyExplorationToImageData, isExplorationEnabled, resetExplorationFromMap } from "./exploration.ts";
+import { isExplorationEnabled, resetExplorationFromMap } from "./exploration.ts";
+import { clearPersistedWorldData, persistWorldData } from "./persistence.ts";
 import { readWorldSize } from "./persistence.ts";
 import type { Rgba, TerrainDefinitionLike } from "./types.ts";
 
@@ -177,22 +178,23 @@ export function buildCache(): HTMLCanvasElement | null {
     const table = new Map<number, Rgba>();
     for (const entry of entries) table.set(entry.code, entry.rgba);
     const image = ctx.createImageData(runtime.width, runtime.height);
+    // Single layer: terrain color if explored (or exploration off), else opaque black.
+    // Alpha is applied once at draw time on the whole layer.
+    const mask = isExplorationEnabled() ? runtime.explored : null;
     for (let i = 0; i < runtime.data.length; i++) {
-      const [r, g, b, a] = table.get(runtime.data[i]!) ?? [0, 0, 0, 0];
-      image.data[i * 4] = r;
-      image.data[i * 4 + 1] = g;
-      image.data[i * 4 + 2] = b;
-      image.data[i * 4 + 3] = a;
-    }
-    if (isExplorationEnabled() && runtime.explored) {
-      applyExplorationToImageData(
-        image,
-        runtime.width,
-        runtime.height,
-        runtime.width,
-        runtime.height,
-        1,
-      );
+      const o = i * 4;
+      if (mask && mask[i] === 0) {
+        image.data[o] = 0;
+        image.data[o + 1] = 0;
+        image.data[o + 2] = 0;
+        image.data[o + 3] = 255;
+        continue;
+      }
+      const [rr, gg, bb, aa] = table.get(runtime.data[i]!) ?? [0, 0, 0, 0];
+      image.data[o] = rr;
+      image.data[o + 1] = gg;
+      image.data[o + 2] = bb;
+      image.data[o + 3] = aa;
     }
     ctx.putImageData(image, 0, 0);
     return canvas;
@@ -209,12 +211,12 @@ export function buildCache(): HTMLCanvasElement | null {
 export function ensureCache(showAlerts: boolean): void {
   if (runtime.cache || runtime.buildFailed) return;
   const t0 = performance.now?.() ?? Date.now();
-  let started = false;
+  let didGenerate = false;
   try {
     if (!runtime.data) {
+      didGenerate = true;
       if (showAlerts) {
         notifyGenerationStart(runtime.width, runtime.height);
-        started = true;
       }
       // Always generate at the live map size (ground % is relative to height)
       const live = readWorldSize();
@@ -232,17 +234,18 @@ export function ensureCache(showAlerts: boolean): void {
       runtime.data = result.data;
       runtime.skyDistance = result.skyDistance;
       resetExplorationFromMap();
+      persistWorldData();
     }
-    if (showAlerts) notifyGenerationProgress("Painting ghost cache…", 99);
+    // Rebuild pixels only (no regen) — never toast for cache-only updates
     runtime.cache = buildCache();
-    if (showAlerts) {
+    if (didGenerate && showAlerts) {
       const elapsed = (performance.now?.() ?? Date.now()) - t0;
       notifyGenerationEnd(!!runtime.cache, elapsed);
     }
   } catch (err) {
     console.warn(`${LOG} terrain build failed`, err);
     runtime.buildFailed = true;
-    if (started || showAlerts) {
+    if (didGenerate && showAlerts) {
       const elapsed = (performance.now?.() ?? Date.now()) - t0;
       notifyGenerationEnd(false, elapsed);
     }
@@ -257,7 +260,12 @@ export function refreshHiddenWorld(): boolean {
   runtime.explored = null;
   runtime.buildFailed = false;
   paletteCache = null;
+  clearPersistedWorldData();
   ensureCache(true);
+  // After regenerate: new exploration mask + persist both maps
+  resetExplorationFromMap();
+  runtime.cache = buildCache();
+  persistWorldData();
   return !runtime.buildFailed;
 }
 
@@ -267,6 +275,7 @@ export function rebuildGhostCache(): void {
   runtime.cache = buildCache();
 }
 
+
 /** Drop pixel cache so next paint rebuilds (e.g. after explore). */
 export function invalidateGhostCache(): void {
   runtime.cache = null;
@@ -275,8 +284,8 @@ export function invalidateGhostCache(): void {
 export function paintGhostView(): void {
   const showGhost = isLensSelected() || isMaterializerSelected() || isExplorerSelected();
   if (!showGhost) return;
-  // First open: generate with alerts (can be slow).
-  ensureCache(true);
+  // Generate only if no matrix yet (alerts). Cache-only rebuild is silent.
+  ensureCache(!runtime.data);
   if (!runtime.cache) return;
   try {
     api.rendering.withOverlayContext((ctx) => {
@@ -296,8 +305,9 @@ export function paintGhostView(): void {
       const sh = Math.min(runtime.height - sy, Math.ceil(viewport.height / scale.y) + 1);
       if (sw <= 0 || sh <= 0) return;
       ctx.save();
-      ctx.globalAlpha = runtime.alpha;
       ctx.imageSmoothingEnabled = false;
+      // One layer (terrain + FoW already composited in cache) → one alpha
+      ctx.globalAlpha = runtime.alpha;
       ctx.drawImage(
         runtime.cache,
         sx, sy, sw, sh,

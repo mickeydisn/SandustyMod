@@ -29,7 +29,9 @@ import {
   exploreMaterializeBorder,
   isExplorationEnabled,
   materializeTouchesExplored,
+  patchGhostRegion,
 } from "./exploration.ts";
+import { persistExploredOnly } from "./persistence.ts";
 
 declare const sandkit: { react: any; api: any };
 const react = sandkit.react;
@@ -176,6 +178,17 @@ function tryEnergy(): boolean {
   return true;
 }
 
+function isLiveEmpty(x: number, y: number): boolean {
+  const a = rawApi();
+  try {
+    if (typeof a.grid?.isCellEmptyAtCell === "function") {
+      return a.grid.isCellEmptyAtCell(x, y) === true;
+    }
+  } catch { /* */ }
+  // If API missing, allow write
+  return true;
+}
+
 function placeCell(
   terrains: any,
   report: ((x: number, y: number) => void) | undefined,
@@ -183,29 +196,31 @@ function placeCell(
   y: number,
   ref: string | number | null,
   apiTerrains?: any,
-): "ok" | "empty" | "fail" {
+): "ok" | "empty" | "fail" | "skip" {
   const check = apiTerrains ?? terrains;
   try {
+    // Fog/sky → do not place solid (leave empty). No forced clear of existing terrain.
     if (ref === null) {
-      try { terrains?.removeAtCell?.(x, y); } catch { /* */ }
-      try { apiTerrains?.removeAtCell?.(x, y); } catch { /* */ }
-      try { report?.(x, y); } catch { /* */ }
       return "empty";
     }
 
-    // Write both via writer and direct API — some builds only honor one path
+    // Only materialize into empty live cells
+    if (!isLiveEmpty(x, y)) {
+      return "skip";
+    }
+
     let wrote = false;
     for (const t of [terrains, apiTerrains]) {
       if (!t) continue;
       try {
-        if (typeof t.replaceAtCell === "function") {
-          t.replaceAtCell(x, y, ref);
+        if (typeof t.createAtCell === "function") {
+          t.createAtCell(x, y, ref);
           wrote = true;
         }
       } catch { /* */ }
       try {
-        if (typeof t.createAtCell === "function") {
-          t.createAtCell(x, y, ref);
+        if (typeof t.replaceAtCell === "function") {
+          t.replaceAtCell(x, y, ref);
           wrote = true;
         }
       } catch { /* */ }
@@ -213,7 +228,6 @@ function placeCell(
 
     try { report?.(x, y); } catch { /* */ }
 
-    // Verify if possible
     try {
       const after = check?.getTypeAtCell?.(x, y);
       if (after != null && after !== false) return "ok";
@@ -270,7 +284,7 @@ function materializeAt(cx: number, cy: number, radius: number): {
     for (const c of cells) {
       const r = placeCell(terrains, report, c.x, c.y, c.ref, a.terrains);
       if (r === "ok") painted++;
-      else if (r === "empty") emptied++;
+      else if (r === "empty" || r === "skip") emptied++;
       else failed++;
     }
   };
@@ -305,10 +319,11 @@ function materializeAt(cx: number, cy: number, radius: number): {
     a.grid?.redrawAroundCell?.(cx, cy, radius + 2);
   } catch { /* */ }
 
-  console.log(
-    `${LOG} manifest @(${cx},${cy}) r=${radius} cells=${cells.length} ` +
-      `painted=${painted} empty=${emptied} fail=${failed} mutate=${didMutate}`,
-  );
+  if (failed > 0 && painted === 0) {
+    console.warn(
+      `${LOG} manifest @(${cx},${cy}) fail=${failed} cells=${cells.length}`,
+    );
+  }
   return { painted, emptied, failed };
 }
 
@@ -321,8 +336,7 @@ function readMouseCell(): { x: number; y: number } | null {
   return null;
 }
 
-export function fire(payload?: Record<string, unknown>): void {
-  console.log(`${LOG} manifest fire`, payload);
+export function fire(payload?: Record<string, unknown>, opts?: { quiet?: boolean }): void {
 
   let cx = payload?.cellX ?? payload?.x;
   let cy = payload?.cellY ?? payload?.y;
@@ -357,13 +371,19 @@ export function fire(payload?: Record<string, unknown>): void {
 
   if (painted > 0 || emptied > 0) {
     const gained = exploreMaterializeBorder(cx as number, cy as number, materializerRadius);
-    runtime.cache = null; // force ghost rebuild with new explored
-    if (painted > 0) toast(`Manifested ${painted} cells (+${gained} explored)`);
-    else toast(`Cleared ${emptied} fog cells (+${gained} explored)`);
-  } else {
-    toast(
-      `Nothing placed (fail=${failed}). Check console / Generate map first.`,
-    );
+    const rr = materializerRadius + 4;
+    patchGhostRegion(cx - rr, cy - rr, cx + rr, cy + rr);
+    scheduleManifestPersist();
+    if (!opts?.quiet) {
+      if (painted > 0) toast(`Manifested ${painted} cells (+${gained} explored)`);
+      else toast(`Cleared ${emptied} fog cells (+${gained} explored)`);
+    }
+  } else if (!opts?.quiet) {
+    if (isExplorationEnabled() && failed === 0 && painted === 0) {
+      /* already toasted unexplored */
+    } else {
+      toast(`Nothing placed (fail=${failed}). Generate map first?`);
+    }
   }
 }
 
@@ -466,17 +486,13 @@ export async function registerMaterializer(): Promise<void> {
 
   // --- Activation (item:used often never fires for custom tools) ---
   let lastFireAt = 0;
-  const FIRE_COOLDOWN_MS = 70;
+  const FIRE_COOLDOWN_MS = 100;
 
   const tryFire = (source: string, payload?: Record<string, unknown>) => {
     const now = performance.now?.() ?? Date.now();
     if (now - lastFireAt < FIRE_COOLDOWN_MS) return;
-    if (!isMaterializerSelected() && source !== "item:used" && source !== "item:use") {
-      // pointer/key only when selected; item events already filtered by id
-    }
     lastFireAt = now;
-    console.log(`${LOG} fire via ${source}`, payload ?? "");
-    fire(payload);
+    fire(payload, { quiet: source === "hold" });
   };
 
   // 1) Event after use
@@ -511,7 +527,7 @@ export async function registerMaterializer(): Promise<void> {
   }
 
   // 3) Pointer click on the game (while tool selected)
-  const HOLD_MS = 80;
+  const HOLD_MS = 120;
   let holdTimer: ReturnType<typeof setInterval> | null = null;
   const stopHold = () => {
     if (holdTimer != null) {

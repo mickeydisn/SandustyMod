@@ -16,6 +16,8 @@ export const VIEWER_ITEM_ID = `${MOD}.mapViewer`;
 export const VIEWER_ICON_SPRITE_ID = `${MOD}.mapViewerIcon`;
 export const VIEWER_ICON_PATH = "assets/lens.png"; // reuse until dedicated icon
 export const STORAGE_KEY_SEED = "hiddenSeed";
+export const STORAGE_KEY_MAP = "hiddenMap";
+export const STORAGE_KEY_EXPLORED = "exploredMap";
 export const OVERLAY_ID = `${MOD}.params`;
 export const VIEWER_OVERLAY_ID = `${MOD}.mapViewer`;
 /** Manifest tool — paints real terrain from the hidden matrix in a circle. */

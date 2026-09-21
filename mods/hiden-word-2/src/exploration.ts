@@ -7,10 +7,43 @@
 
 import {
   EXPLORE_BORDER_PX,
+  FALLBACK_CODE_COLORS,
   LOG,
   TERRAIN,
 } from "./constants.ts";
 import { runtime } from "./state.ts";
+
+declare const sandkit: { api: any };
+
+function liveApi(): any {
+  try {
+    return (sandkit as any).api;
+  } catch {
+    return null;
+  }
+}
+
+/** Live grid: cell has solid terrain. */
+export function isLiveTerrainAt(x: number, y: number): boolean {
+  const a = liveApi();
+  try {
+    if (typeof a?.grid?.isTerrainAtCell === "function") {
+      return a.grid.isTerrainAtCell(x, y) === true;
+    }
+  } catch { /* */ }
+  return false;
+}
+
+/** Live grid: cell is empty (no terrain / element blocking). */
+export function isLiveEmptyAt(x: number, y: number): boolean {
+  const a = liveApi();
+  try {
+    if (typeof a?.grid?.isCellEmptyAtCell === "function") {
+      return a.grid.isCellEmptyAtCell(x, y) === true;
+    }
+  } catch { /* */ }
+  return true;
+}
 
 export function isExplorationEnabled(): boolean {
   return !!runtime.params?.explorationEnabled;
@@ -92,49 +125,60 @@ export function exploreNearFog(cx: number, cy: number, radius: number): number {
   const m = runtime.explored;
   if (!data || !m) return 0;
 
-  // Must touch existing exploration
   if (!materializeTouchesExplored(cx, cy, radius)) return -1;
 
   const w = runtime.width;
   const h = runtime.height;
   const border = EXPLORE_BORDER_PX;
-  const r2 = radius * radius;
+  const r = Math.max(0, radius | 0);
+  const r2 = r * r;
   let n = 0;
 
-  const codeAt = (x: number, y: number) => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return -1;
-    return data[y * w + x]!;
-  };
+  // Fast eligibility: cell is sky/fog OR within `border` of sky/fog (chebyshev).
+  // Scan a slightly larger box once — no per-cell 5×5 loops.
+  const x0 = Math.max(0, cx - r);
+  const x1 = Math.min(w - 1, cx + r);
+  const y0 = Math.max(0, cy - r);
+  const y1 = Math.min(h - 1, cy + r);
 
-  const isFog = (x: number, y: number) => codeAt(x, y) === TERRAIN.TUNNEL;
-  const isSky = (x: number, y: number) => codeAt(x, y) === TERRAIN.SKY;
+  for (let y = y0; y <= y1; y++) {
+    const dy = y - cy;
+    const dy2 = dy * dy;
+    const row = y * w;
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - cx;
+      if (dx * dx + dy2 > r2) continue;
+      const i = row + x;
+      if (m[i] === 1) continue; // already explored
 
-  const nearType = (x: number, y: number, pred: (x: number, y: number) => boolean) => {
-    if (pred(x, y)) return true;
-    for (let dy = -border; dy <= border; dy++) {
-      for (let dx = -border; dx <= border; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        if (pred(x + dx, y + dy)) return true;
+      // Hidden: sky / fog or within border of either
+      let ok = false;
+      const c = data[i]!;
+      if (c === TERRAIN.SKY || c === TERRAIN.TUNNEL) {
+        ok = true;
+      } else {
+        const bx0 = Math.max(0, x - border);
+        const bx1 = Math.min(w - 1, x + border);
+        const by0 = Math.max(0, y - border);
+        const by1 = Math.min(h - 1, y + border);
+        outer: for (let by = by0; by <= by1; by++) {
+          const brow = by * w;
+          for (let bx = bx0; bx <= bx1; bx++) {
+            const bc = data[brow + bx]!;
+            if (bc === TERRAIN.SKY || bc === TERRAIN.TUNNEL) {
+              ok = true;
+              break outer;
+            }
+          }
+        }
       }
-    }
-    return false;
-  };
+      if (!ok) continue;
 
-  const eligible = (x: number, y: number) =>
-    nearType(x, y, isFog) || nearType(x, y, isSky);
+      // Live: only non-terrain cells (reversed isTerrainAtCell)
+      if (isLiveTerrainAt(x, y)) continue;
 
-  for (let dy = -radius; dy <= radius; dy++) {
-    for (let dx = -radius; dx <= radius; dx++) {
-      if (dx * dx + dy * dy > r2) continue;
-      const x = cx + dx;
-      const y = cy + dy;
-      if (x < 0 || y < 0 || x >= w || y >= h) continue;
-      if (!eligible(x, y)) continue;
-      const i = y * w + x;
-      if (m[i] === 0) {
-        m[i] = 1;
-        n++;
-      }
+      m[i] = 1;
+      n++;
     }
   }
   return n;
@@ -202,4 +246,54 @@ export function applyExplorationToImageData(
       img.data[i + 3] = 255;
     }
   }
+}
+
+
+/** Incremental update of the single ghost canvas (terrain + FoW). */
+export function patchGhostRegion(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): void {
+  const canvas = runtime.cache;
+  const data = runtime.data;
+  if (!canvas || !data) return;
+  const w = runtime.width;
+  const h = runtime.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const left = Math.max(0, Math.min(x0, x1) | 0);
+  const top = Math.max(0, Math.min(y0, y1) | 0);
+  const right = Math.min(w - 1, Math.max(x0, x1) | 0);
+  const bottom = Math.min(h - 1, Math.max(y0, y1) | 0);
+  if (left > right || top > bottom) return;
+
+  const pw = right - left + 1;
+  const ph = bottom - top + 1;
+  const mask = isExplorationEnabled() ? runtime.explored : null;
+  const img = ctx.createImageData(pw, ph);
+
+  for (let y = top; y <= bottom; y++) {
+    const row = y * w;
+    const py = y - top;
+    for (let x = left; x <= right; x++) {
+      const i = row + x;
+      const o = (py * pw + (x - left)) * 4;
+      if (mask && mask[i] === 0) {
+        img.data[o] = 0;
+        img.data[o + 1] = 0;
+        img.data[o + 2] = 0;
+        img.data[o + 3] = 255;
+      } else {
+        const rgba = FALLBACK_CODE_COLORS[data[i]!] ?? [0, 0, 0, 0];
+        img.data[o] = rgba[0];
+        img.data[o + 1] = rgba[1];
+        img.data[o + 2] = rgba[2];
+        img.data[o + 3] = rgba[3];
+      }
+    }
+  }
+  ctx.putImageData(img, left, top);
 }

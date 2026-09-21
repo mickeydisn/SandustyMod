@@ -1,4 +1,4 @@
-import { DEFAULT_PARAMS, FALLBACK_CELLS, LOG, MOD, STORAGE_KEY_SEED } from "./constants.ts";
+import { DEFAULT_PARAMS, FALLBACK_CELLS, LOG, MOD, STORAGE_KEY_EXPLORED, STORAGE_KEY_MAP, STORAGE_KEY_SEED } from "./constants.ts";
 import { api } from "./api.ts";
 import { runtime } from "./state.ts";
 import type {
@@ -231,7 +231,48 @@ export function randomSeed(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export function persistRecord(): void {
+
+function u8ToB64(u8: Uint8Array): string {
+  const CHUNK = 0x8000;
+  let s = "";
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    const end = Math.min(i + CHUNK, u8.length);
+    // avoid spread stack overflow on large chunks
+    let part = "";
+    for (let j = i; j < end; j++) part += String.fromCharCode(u8[j]!);
+    s += part;
+  }
+  return btoa(s);
+}
+
+function b64ToU8(b64: string): Uint8Array | null {
+  try {
+    const s = atob(b64);
+    const u8 = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+    return u8;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist hidden matrix + exploration mask (debounced callers OK). */
+/** Light save: exploration mask only (called while exploring — avoids lag spikes). */
+export function persistExploredOnly(): void {
+  try {
+    if (!runtime.explored || runtime.explored.length !== runtime.width * runtime.height) return;
+    api.storage.ensure(MOD);
+    api.storage.set(MOD, STORAGE_KEY_EXPLORED, {
+      w: runtime.width,
+      h: runtime.height,
+      data: u8ToB64(runtime.explored),
+    });
+  } catch (err) {
+    console.warn(`${LOG} persistExploredOnly failed`, err);
+  }
+}
+
+export function persistWorldData(): void {
   try {
     api.storage.ensure(MOD);
     api.storage.set(MOD, STORAGE_KEY_SEED, {
@@ -240,9 +281,80 @@ export function persistRecord(): void {
       height: runtime.height,
       params: runtime.params,
     });
+    if (runtime.data && runtime.data.length === runtime.width * runtime.height) {
+      api.storage.set(MOD, STORAGE_KEY_MAP, {
+        w: runtime.width,
+        h: runtime.height,
+        seed: runtime.seed,
+        data: u8ToB64(runtime.data),
+      });
+    }
+    if (runtime.explored && runtime.explored.length === runtime.width * runtime.height) {
+      api.storage.set(MOD, STORAGE_KEY_EXPLORED, {
+        w: runtime.width,
+        h: runtime.height,
+        data: u8ToB64(runtime.explored),
+      });
+    } else if (!runtime.params.explorationEnabled) {
+      try { api.storage.set(MOD, STORAGE_KEY_EXPLORED, null); } catch { /* */ }
+    }
   } catch (err) {
-    console.warn(`${LOG} persist failed`, err);
+    console.warn(`${LOG} persistWorldData failed`, err);
   }
+}
+
+export function loadWorldData(): boolean {
+  try {
+    api.storage.ensure(MOD);
+    const map = api.storage.get(MOD, STORAGE_KEY_MAP) as Record<string, unknown> | null;
+    if (!map || typeof map.data !== "string") return false;
+    const w = Number(map.w) || 0;
+    const h = Number(map.h) || 0;
+    if (w <= 0 || h <= 0) return false;
+    // Prefer live world size if available
+    const live = readWorldSize();
+    if (live.width > 0 && live.height > 0 && (live.width !== w || live.height !== h)) {
+      // size mismatch — discard saved map
+      return false;
+    }
+    const data = b64ToU8(map.data);
+    if (!data || data.length !== w * h) return false;
+    runtime.width = w;
+    runtime.height = h;
+    if (typeof map.seed === "string") runtime.seed = map.seed;
+    runtime.data = data;
+    runtime.cache = null;
+
+    const exp = api.storage.get(MOD, STORAGE_KEY_EXPLORED) as Record<string, unknown> | null;
+    if (exp && typeof exp.data === "string" && Number(exp.w) === w && Number(exp.h) === h) {
+      const mask = b64ToU8(exp.data);
+      if (mask && mask.length === w * h) {
+        runtime.explored = mask;
+      } else {
+        runtime.explored = null;
+      }
+    } else {
+      runtime.explored = null;
+    }
+    console.log(`${LOG} loaded persisted map ${w}×${h}`);
+    return true;
+  } catch (err) {
+    console.warn(`${LOG} loadWorldData failed`, err);
+    return false;
+  }
+}
+
+/** Clear stored map (after explicit regenerate). */
+export function clearPersistedWorldData(): void {
+  try {
+    api.storage.ensure(MOD);
+    api.storage.set(MOD, STORAGE_KEY_MAP, null);
+    api.storage.set(MOD, STORAGE_KEY_EXPLORED, null);
+  } catch { /* */ }
+}
+
+export function persistRecord(): void {
+  persistWorldData();
 }
 
 export function ensureSeedRecord(): { created: boolean } {
@@ -257,6 +369,7 @@ export function ensureSeedRecord(): { created: boolean } {
       runtime.width = typeof saved.width === "number" && saved.width > 0 ? saved.width : size.width;
       runtime.height = typeof saved.height === "number" && saved.height > 0 ? saved.height : size.height;
       runtime.params = normalizeParams(saved.params);
+      loadWorldData();
       return { created: false };
     }
   } catch { /* */ }
