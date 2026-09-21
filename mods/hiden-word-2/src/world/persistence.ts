@@ -256,17 +256,18 @@ function b64ToU8(b64: string): Uint8Array | null {
   }
 }
 
-/** Persist hidden matrix + exploration mask (debounced callers OK). */
-/** Light save: exploration mask only (called while exploring — avoids lag spikes). */
+/** Light save: tag layer only. */
 export function persistExploredOnly(): void {
   try {
-    if (!runtime.explored || runtime.explored.length !== runtime.width * runtime.height) return;
+    if (!runtime.tags || runtime.tags.length !== runtime.width * runtime.height) return;
     api.storage.ensure(MOD);
     api.storage.set(MOD, STORAGE_KEY_EXPLORED, {
       w: runtime.width,
       h: runtime.height,
-      data: u8ToB64(runtime.explored),
+      seed: runtime.seed,
+      data: u8ToB64(runtime.tags),
     });
+    runtime.explored = runtime.tags;
   } catch (err) {
     console.warn(`${LOG} persistExploredOnly failed`, err);
   }
@@ -289,12 +290,14 @@ export function persistWorldData(): void {
         data: u8ToB64(runtime.data),
       });
     }
-    if (runtime.explored && runtime.explored.length === runtime.width * runtime.height) {
+    if (runtime.tags && runtime.tags.length === runtime.width * runtime.height) {
       api.storage.set(MOD, STORAGE_KEY_EXPLORED, {
         w: runtime.width,
         h: runtime.height,
-        data: u8ToB64(runtime.explored),
+        seed: runtime.seed,
+        data: u8ToB64(runtime.tags),
       });
+      runtime.explored = runtime.tags;
     } else if (!runtime.params.explorationEnabled) {
       try { api.storage.set(MOD, STORAGE_KEY_EXPLORED, null); } catch { /* */ }
     }
@@ -303,18 +306,38 @@ export function persistWorldData(): void {
   }
 }
 
+function loadTagsForSize(w: number, h: number): boolean {
+  try {
+    const exp = api.storage.get(MOD, STORAGE_KEY_EXPLORED) as Record<string, unknown> | null;
+    if (!exp || typeof exp.data !== "string") return false;
+    const ew = Number(exp.w) || 0;
+    const eh = Number(exp.h) || 0;
+    if (ew !== w || eh !== h) return false;
+    const mask = b64ToU8(exp.data);
+    if (!mask || mask.length !== w * h) return false;
+    runtime.tags = mask;
+    runtime.explored = mask;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function loadWorldData(): boolean {
   try {
     api.storage.ensure(MOD);
     const map = api.storage.get(MOD, STORAGE_KEY_MAP) as Record<string, unknown> | null;
-    if (!map || typeof map.data !== "string") return false;
+    if (!map || typeof map.data !== "string") {
+      // map missing — still try tags if size known
+      if (runtime.width > 0 && runtime.height > 0) loadTagsForSize(runtime.width, runtime.height);
+      return false;
+    }
     const w = Number(map.w) || 0;
     const h = Number(map.h) || 0;
     if (w <= 0 || h <= 0) return false;
-    // Prefer live world size if available
     const live = readWorldSize();
     if (live.width > 0 && live.height > 0 && (live.width !== w || live.height !== h)) {
-      // size mismatch — discard saved map
+      console.warn(`${LOG} saved map size ${w}x${h} != live ${live.width}x${live.height}`);
       return false;
     }
     const data = b64ToU8(map.data);
@@ -325,23 +348,52 @@ export function loadWorldData(): boolean {
     runtime.data = data;
     runtime.cache = null;
 
-    const exp = api.storage.get(MOD, STORAGE_KEY_EXPLORED) as Record<string, unknown> | null;
-    if (exp && typeof exp.data === "string" && Number(exp.w) === w && Number(exp.h) === h) {
-      const mask = b64ToU8(exp.data);
-      if (mask && mask.length === w * h) {
-        runtime.explored = mask;
-      } else {
-        runtime.explored = null;
-      }
-    } else {
+    if (!loadTagsForSize(w, h)) {
+      runtime.tags = null;
       runtime.explored = null;
     }
-    console.log(`${LOG} loaded persisted map ${w}×${h}`);
+    console.log(
+      `${LOG} loaded map ${w}x${h}` +
+        (runtime.tags ? ` + tags` : ` (no tags)`),
+    );
     return true;
   } catch (err) {
     console.warn(`${LOG} loadWorldData failed`, err);
     return false;
   }
+}
+
+/** Re-load tags after world size is known (game:ready). */
+export function reloadPersistedTags(): void {
+  if (runtime.width <= 0 || runtime.height <= 0) return;
+  if (loadTagsForSize(runtime.width, runtime.height)) {
+    runtime.cache = null;
+    console.log(`${LOG} tags reloaded ${runtime.width}x${runtime.height}`);
+  }
+}
+
+/** Flush all persisted world state (call on game save / unload). */
+export function flushPersist(): void {
+  try {
+    persistWorldData();
+  } catch { /* */ }
+}
+
+export function bindPersistHooks(): void {
+  try {
+    api.events?.on?.("game:save", () => flushPersist());
+  } catch { /* */ }
+  try {
+    api.events?.on?.("game:saved", () => flushPersist());
+  } catch { /* */ }
+  try {
+    globalThis.addEventListener("beforeunload", () => flushPersist());
+  } catch { /* */ }
+  try {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushPersist();
+    });
+  } catch { /* */ }
 }
 
 /** Clear stored map (after explicit regenerate). */

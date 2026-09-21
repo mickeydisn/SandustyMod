@@ -12,4 +12,5 @@ export const runtime: HiddenWorldState = {
   buildFailed: false,
   cache: null,
   explored: null,
+  tags: null,
 };

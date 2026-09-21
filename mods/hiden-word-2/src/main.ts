@@ -11,8 +11,8 @@ import { registerMapViewer } from "./viewer/register.ts";
 import { registerMaterializer } from "./tools/materializer.ts";
 import { registerExplorer } from "./tools/explorer.ts";
 import { registerParamsOverlay } from "./tools/overlay.ts";
-import { ensureSeedRecord, persistRecord } from "./world/persistence.ts";
-import { resetExplorationFromMap } from "./world/exploration.ts";
+import { bindPersistHooks, ensureSeedRecord, persistRecord, reloadPersistedTags } from "./world/persistence.ts";
+import { resetTagsFromMap } from "./world/tags.ts";
 import { paintGhostView } from "./world/render.ts";
 import { runtime } from "./world/state.ts";
 
@@ -30,8 +30,9 @@ function applyExplorationSetting(value: unknown): void {
   const enabled = value === true || value === "true" || value === 1;
   const prev = !!runtime.params.explorationEnabled;
   runtime.params.explorationEnabled = enabled;
-  if (enabled && !prev) resetExplorationFromMap();
-  else if (!enabled) runtime.explored = null;
+  if (enabled && !prev) resetTagsFromMap();
+  else if (!enabled) { runtime.explored = null; runtime.tags = null; }
+  runtime.tags = null;
   runtime.cache = null;
   try { persistRecord(); } catch { /* */ }
 }
@@ -48,6 +49,7 @@ try {
   await registerMaterializer();
   await registerExplorer();
   registerParamsOverlay();
+  bindPersistHooks();
 
   try {
     applyAlphaPercent(api.settings.get("ghostAlphaPercent"));
@@ -66,6 +68,18 @@ try {
 
   api.events.on("frame:render", () => paintGhostView());
   api.events.on("game:ready", () => {
+    try {
+      const live = (api as any).grid?.getDimensions?.();
+      if (live) {
+        const w = live.widthCells ?? live.width ?? 0;
+        const h = live.heightCells ?? live.height ?? 0;
+        if (w > 0 && h > 0) {
+          runtime.width = w;
+          runtime.height = h;
+        }
+      }
+    } catch { /* */ }
+    reloadPersistedTags();
     try {
       api.ui.toast(`HIDEN WORLD 2 v${VERSION}`, {});
     } catch { /* */ }

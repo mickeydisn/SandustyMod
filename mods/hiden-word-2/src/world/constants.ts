@@ -37,6 +37,16 @@ export const EXPLORER_RADIUS_MIN = 1;
 export const EXPLORER_RADIUS_MAX = 16;
 export const EXPLORER_RADIUS_DEFAULT = 4;
 export const EXPLORER_ENERGY = 4;
+export const DEEP_EXPLORER_ITEM_ID = `${MOD}.deepExplorer`;
+export const DEEP_EXPLORER_ICON_SPRITE_ID = `${MOD}.deepExplorerIcon`;
+export const DEEP_EXPLORER_ICON_PATH = "assets/lens.png";
+export const DEEP_EXPLORER_OVERLAY_ID = `${MOD}.deepExplorer`;
+export const DEEP_EXPLORER_ENERGY = 4;
+export const INFINITE_MATERIALIZER_ITEM_ID = `${MOD}.infiniteMaterializer`;
+export const INFINITE_MATERIALIZER_ICON_SPRITE_ID = `${MOD}.infiniteMaterializerIcon`;
+export const INFINITE_MATERIALIZER_ICON_PATH = "assets/lens.png";
+export const INFINITE_MATERIALIZER_OVERLAY_ID = `${MOD}.infiniteMaterializer`;
+export const INFINITE_MATERIALIZER_ENERGY = 8;
 /** Extra cells around fog / materialize border that become explored. */
 export const EXPLORE_BORDER_PX = 2;
 export const FALLBACK_CELLS = { width: 640, height: 360 };
@@ -115,7 +125,7 @@ export const CODE_TERRAIN: Record<number, string | null> = {
 export const FALLBACK_CODE_COLORS: Record<number, Rgba> = {
   [TERRAIN.SKY]: [0, 0, 0, 0],
   [TERRAIN.ROCK]: [0x80, 0x80, 0x80, 255],
-  [TERRAIN.TUNNEL]: [0, 0, 0, 0], // fog void — black transparent
+  [TERRAIN.TUNNEL]: [0, 0, 0, 102], // fog — black 40%
   [TERRAIN.CAVE]: [0x92, 0x64, 0x26, 255],
   [TERRAIN.FOG_WATER]: [0x99, 0x66, 0xff, 200],
   [TERRAIN.FOG_LAVA]: [0xff, 0x66, 0x00, 220],
@@ -152,6 +162,10 @@ export const KEY = {
   materializerDesc: `${NS}|materializer|desc`,
   explorerName: `${NS}|explorer|name`,
   explorerDesc: `${NS}|explorer|desc`,
+  deepExplorerName: `${NS}|deepExplorer|name`,
+  deepExplorerDesc: `${NS}|deepExplorer|desc`,
+  infiniteMaterializerName: `${NS}|infiniteMaterializer|name`,
+  infiniteMaterializerDesc: `${NS}|infiniteMaterializer|desc`,
 } as const;
 
 /** Full default params including stage toggles + tunables. */

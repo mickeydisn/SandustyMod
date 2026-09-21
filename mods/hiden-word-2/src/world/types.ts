@@ -168,6 +168,8 @@ export interface HiddenWorldState {
   alpha: number;
   buildFailed: boolean;
   cache: HTMLCanvasElement | null;
-  /** 0 = unexplored, 1 = explored (same size as data when exploration on). */
+  /** Legacy alias — same buffer as tags when exploration on. */
   explored: Uint8Array | null;
+  /** 0 Hidden, 1 Explored, 2 Materialised (same size as data when on). */
+  tags: Uint8Array | null;
 }

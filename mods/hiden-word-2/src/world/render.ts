@@ -22,7 +22,7 @@ import {
 } from "../gen/progress.ts";
 import { runtime } from "./state.ts";
 import { generateHiddenTerrain } from "../gen/terrain.ts";
-import { isExplorationEnabled, resetExplorationFromMap } from "./exploration.ts";
+import { compositeTagPixel, isTagsEnabled, resetTagsFromMap, TAG } from "./tags.ts";
 import { clearPersistedWorldData, persistWorldData } from "./persistence.ts";
 import { readWorldSize } from "./persistence.ts";
 import type { Rgba, TerrainDefinitionLike } from "./types.ts";
@@ -178,19 +178,15 @@ export function buildCache(): HTMLCanvasElement | null {
     const table = new Map<number, Rgba>();
     for (const entry of entries) table.set(entry.code, entry.rgba);
     const image = ctx.createImageData(runtime.width, runtime.height);
-    // Single layer: terrain color if explored (or exploration off), else opaque black.
-    // Alpha is applied once at draw time on the whole layer.
-    const mask = isExplorationEnabled() ? runtime.explored : null;
+    // Terrain + tag overlays (Hidden black / Explored red50 / Materialised blue50 / fog 15%)
+    const tagsOn = isTagsEnabled();
+    const mask = tagsOn ? runtime.tags : null;
     for (let i = 0; i < runtime.data.length; i++) {
       const o = i * 4;
-      if (mask && mask[i] === 0) {
-        image.data[o] = 0;
-        image.data[o + 1] = 0;
-        image.data[o + 2] = 0;
-        image.data[o + 3] = 255;
-        continue;
-      }
-      const [rr, gg, bb, aa] = table.get(runtime.data[i]!) ?? [0, 0, 0, 0];
+      const code = runtime.data[i]!;
+      const base = (table.get(code) ?? [0, 0, 0, 0]) as [number, number, number, number];
+      const tag = mask ? mask[i]! : TAG.MATERIALISED;
+      const [rr, gg, bb, aa] = compositeTagPixel(code, tag, base, tagsOn);
       image.data[o] = rr;
       image.data[o + 1] = gg;
       image.data[o + 2] = bb;
@@ -247,7 +243,7 @@ async function runGeneration(showAlerts: boolean): Promise<void> {
     );
     runtime.data = result.data;
     runtime.skyDistance = result.skyDistance;
-    resetExplorationFromMap();
+    resetTagsFromMap();
     runtime.cache = buildCache();
     persistWorldData();
     if (showAlerts) {
@@ -268,7 +264,7 @@ export async function refreshHiddenWorld(): Promise<boolean> {
   runtime.data = null;
   runtime.skyDistance = null;
   runtime.cache = null;
-  runtime.explored = null;
+  runtime.tags = null;
   runtime.buildFailed = false;
   paletteCache = null;
   clearPersistedWorldData();

@@ -2,7 +2,7 @@ import { CODE_OPTIONS } from "../world/constants.ts";
 import { ghostPalette } from "../world/render.ts";
 import { runtime } from "../world/state.ts";
 import type { MapBoundsPercent } from "../world/types.ts";
-import { applyExplorationToImageData, isExplorationEnabled } from "../world/exploration.ts";
+import { compositeTagPixel, isTagsEnabled, TAG } from "../world/tags.ts";
 
 export const view = {
   zoom: 1,
@@ -109,28 +109,22 @@ export function paintPreviewCanvas(canvas: HTMLCanvasElement): void {
   for (const e of entries) table.set(e.code, e.rgba);
 
   const img = ctx.createImageData(pw, ph);
+  const tagsOn = isTagsEnabled();
+  const mask = tagsOn ? runtime.tags : null;
   for (let py = 0; py < ph; py++) {
     const sy = Math.min(h - 1, py * div);
     for (let px = 0; px < pw; px++) {
       const sx = Math.min(w - 1, px * div);
       const code = data[sy * w + sx]!;
-      const [r, g, b, a] = table.get(code) ?? [0, 0, 0, 255];
+      const base = (table.get(code) ?? [0, 0, 0, 0]) as [number, number, number, number];
+      const tag = mask ? mask[sy * w + sx]! : TAG.MATERIALISED;
+      const [r, g, b, a] = compositeTagPixel(code, tag, base, tagsOn);
       const i = (py * pw + px) * 4;
-      if (a < 16) {
-        img.data[i] = 0x1a;
-        img.data[i + 1] = 0x1a;
-        img.data[i + 2] = 0x22;
-        img.data[i + 3] = 255;
-      } else {
-        img.data[i] = r;
-        img.data[i + 1] = g;
-        img.data[i + 2] = b;
-        img.data[i + 3] = 255;
-      }
+      img.data[i] = r;
+      img.data[i + 1] = g;
+      img.data[i + 2] = b;
+      img.data[i + 3] = a;
     }
-  }
-  if (isExplorationEnabled()) {
-    applyExplorationToImageData(img, pw, ph, w, h, div);
   }
   ctx.putImageData(img, 0, 0);
   drawFocusedBounds(ctx, pw, ph);
