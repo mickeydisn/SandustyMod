@@ -208,52 +208,63 @@ export function buildCache(): HTMLCanvasElement | null {
  * Build matrix + cache. Shows start/progress/end alerts so the player knows
  * generation is running (large maps can take a noticeable time).
  */
+let generating: Promise<void> | null = null;
+
+export function isWorldGenerating(): boolean {
+  return generating != null;
+}
+
+/** Ensure matrix + ghost cache exist. Generation is async (does not freeze UI). */
 export function ensureCache(showAlerts: boolean): void {
   if (runtime.cache || runtime.buildFailed) return;
-  const t0 = performance.now?.() ?? Date.now();
-  let didGenerate = false;
-  try {
-    if (!runtime.data) {
-      didGenerate = true;
-      if (showAlerts) {
-        notifyGenerationStart(runtime.width, runtime.height);
-      }
-      // Always generate at the live map size (ground % is relative to height)
-      const live = readWorldSize();
-      if (live.width > 0 && live.height > 0) {
-        runtime.width = live.width;
-        runtime.height = live.height;
-      }
-      const result = generateHiddenTerrain(
-        runtime.seed,
-        runtime.width,
-        runtime.height,
-        runtime.params,
-        showAlerts ? notifyGenerationProgress : undefined,
-      );
-      runtime.data = result.data;
-      runtime.skyDistance = result.skyDistance;
-      resetExplorationFromMap();
-      persistWorldData();
-    }
-    // Rebuild pixels only (no regen) — never toast for cache-only updates
+  if (runtime.data) {
     runtime.cache = buildCache();
-    if (didGenerate && showAlerts) {
-      const elapsed = (performance.now?.() ?? Date.now()) - t0;
-      notifyGenerationEnd(!!runtime.cache, elapsed);
+    return;
+  }
+  if (generating) return;
+  generating = runGeneration(showAlerts).finally(() => {
+    generating = null;
+  });
+}
+
+async function runGeneration(showAlerts: boolean): Promise<void> {
+  const t0 = performance.now?.() ?? Date.now();
+  try {
+    const live = readWorldSize();
+    if (live.width > 0 && live.height > 0) {
+      runtime.width = live.width;
+      runtime.height = live.height;
+    }
+    if (showAlerts) {
+      notifyGenerationStart(runtime.width, runtime.height);
+    }
+    const result = await generateHiddenTerrain(
+      runtime.seed,
+      runtime.width,
+      runtime.height,
+      runtime.params,
+      showAlerts ? notifyGenerationProgress : undefined,
+    );
+    runtime.data = result.data;
+    runtime.skyDistance = result.skyDistance;
+    resetExplorationFromMap();
+    runtime.cache = buildCache();
+    persistWorldData();
+    if (showAlerts) {
+      notifyGenerationEnd(!!runtime.cache, (performance.now?.() ?? Date.now()) - t0);
     }
   } catch (err) {
     console.warn(`${LOG} terrain build failed`, err);
     runtime.buildFailed = true;
-    if (didGenerate && showAlerts) {
-      const elapsed = (performance.now?.() ?? Date.now()) - t0;
-      notifyGenerationEnd(false, elapsed);
+    if (showAlerts) {
+      notifyGenerationEnd(false, (performance.now?.() ?? Date.now()) - t0);
     }
   }
 }
 
-/** Force full rebuild (Refresh button). Always alerts the user. */
-export function refreshHiddenWorld(): boolean {
+/** Force full rebuild (Map Viewer Generate). Returns when done. */
+export async function refreshHiddenWorld(): Promise<boolean> {
+  if (generating) await generating;
   runtime.data = null;
   runtime.skyDistance = null;
   runtime.cache = null;
@@ -261,11 +272,10 @@ export function refreshHiddenWorld(): boolean {
   runtime.buildFailed = false;
   paletteCache = null;
   clearPersistedWorldData();
-  ensureCache(true);
-  // After regenerate: new exploration mask + persist both maps
-  resetExplorationFromMap();
-  runtime.cache = buildCache();
-  persistWorldData();
+  generating = runGeneration(true).finally(() => {
+    generating = null;
+  });
+  await generating;
   return !runtime.buildFailed;
 }
 

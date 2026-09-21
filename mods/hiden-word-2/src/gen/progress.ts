@@ -62,7 +62,11 @@ function showBanner(stage: string, percent: number): void {
   const stageEl = el.querySelector(".hw2-stage");
   const bar = el.querySelector(".hw2-bar > i") as HTMLElement | null;
   if (stageEl) stageEl.textContent = stage;
-  if (bar) bar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  if (bar) {
+    bar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    // force style flush so the bar paints before the next CPU stage
+    void bar.offsetWidth;
+  }
 }
 
 function hideBanner(): void {

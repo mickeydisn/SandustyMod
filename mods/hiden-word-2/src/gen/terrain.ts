@@ -7,7 +7,8 @@ import {
   TUNNEL_WAVES,
 } from "../world/constants.ts";
 import { SimplexNoise } from "./noise.ts";
-import type { BandParams, FormModifier, GenerationParams, LiquidModifier, SkyParams, WallModifier } from "../world/types.ts";
+import type { BandParams, FormModifier, GenerationParams, LiquidModifier, Modifier, SkyParams, WallModifier } from "../world/types.ts";
+import { padToSize, scale2x } from "./upscale.ts";
 
 // ---------------------------------------------------------------------------
 // Stage 1 — noise
@@ -473,55 +474,121 @@ export interface GenerateResult {
 
 export type GenerateProgress = (stage: string, percent: number) => void;
 
-export function generateHiddenTerrain(
+/** Let the browser paint progress UI (generation is CPU-heavy). */
+function yieldUI(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      setTimeout(resolve, 0);
+    });
+  });
+}
+
+/** Halve cell-based config so half-res noise matches full-world look. */
+function paramsForHalfRes(params: GenerationParams): GenerationParams {
+  const wave = (w: { periodCells: number; amplitudePercent: number }) => ({
+    periodCells: Math.max(2, Math.round(w.periodCells / 2)),
+    amplitudePercent: w.amplitudePercent,
+  });
+  const band = (b: BandParams): BandParams => ({
+    ...b,
+    offsetX: Math.round(b.offsetX / 2),
+    offsetY: Math.round(b.offsetY / 2),
+  });
+  const halfGrow = (n: number) => Math.max(0, Math.round(n / 2));
+  const mods: Modifier[] = (params.modifiers ?? []).map((m) => {
+    if (m.kind === "wall") {
+      return { ...m, growSize: halfGrow(m.growSize) };
+    }
+    if (m.kind === "form") {
+      return { ...m, growSize: halfGrow(m.growSize) };
+    }
+    if (m.kind === "liquid") {
+      return { ...m, minDepth: Math.max(1, Math.round(m.minDepth / 2)) };
+    }
+    return m;
+  });
+  return {
+    ...params,
+    sky: {
+      bigWave: wave(params.sky.bigWave),
+      mediumWave: wave(params.sky.mediumWave),
+      lowWave: wave(params.sky.lowWave),
+      roughness: wave(params.sky.roughness),
+    },
+    tunnel: band(params.tunnel),
+    cave: band(params.cave),
+    seal: {
+      ...params.seal,
+      maxIterations: Math.max(50, Math.round(params.seal.maxIterations / 2)),
+    },
+    modifiers: mods,
+  };
+}
+
+/**
+ * Generate at half resolution (~4× less work), Scale2x up to full size.
+ * Async + yield between stages so progress UI can update.
+ */
+export async function generateHiddenTerrain(
   seed: string,
   width: number,
   height: number,
   params: GenerationParams,
   onProgress?: GenerateProgress,
-): GenerateResult {
+): Promise<GenerateResult> {
   const report = (stage: string, percent: number) => {
     try { onProgress?.(stage, percent); } catch { /* */ }
   };
 
+  const genW = Math.max(8, Math.floor(width / 2));
+  const genH = Math.max(8, Math.floor(height / 2));
+  const halfParams = paramsForHalfRes(params);
   const simplex = new SimplexNoise(seed);
-  const data = new Uint8Array(width * height);
+  const data = new Uint8Array(genW * genH);
 
-  report("Skyline + tunnels + caves…", 5);
-  stageNoise(width, height, simplex, params, data);
-  report("Noise merge done", 25);
+  report(`Noise @ ${genW}×${genH}…`, 5);
+  await yieldUI();
+  stageNoise(genW, genH, simplex, halfParams, data);
+  report("Noise done", 25);
+  await yieldUI();
 
   report(
-    params.seal.enabled
-      ? "Sky-distance + seal unreachable voids…"
-      : "Sky-distance only (seal off)…",
+    halfParams.seal.enabled ? "Seal…" : "Sky distance…",
     30,
   );
-  const skyDistance = stageSeal(width, height, data, params.seal);
-  report(params.seal.enabled ? "Seal done" : "Distance done", 50);
+  await yieldUI();
+  const skyDistanceHalf = stageSeal(genW, genH, data, halfParams.seal);
+  report(halfParams.seal.enabled ? "Seal done" : "Distance done", 50);
+  await yieldUI();
 
-  const mods = params.modifiers ?? [];
+  const mods = halfParams.modifiers ?? [];
   const nMods = Math.max(1, mods.length);
   for (let mi = 0; mi < mods.length; mi++) {
     const mod = mods[mi]!;
     if (!mod.enabled) {
-      report(`Skip ${mod.name}`, 50 + Math.round(((mi + 1) / nMods) * 45));
+      report(`Skip ${mod.name}`, 50 + Math.round(((mi + 1) / nMods) * 40));
       continue;
     }
-    const pct = 50 + Math.round(((mi + 0.5) / nMods) * 45);
+    const pct = 50 + Math.round(((mi + 0.5) / nMods) * 40);
+    report(`${mod.kind}: ${mod.name}…`, pct);
+    await yieldUI();
     if (mod.kind === "liquid") {
-      report(`Liquid: ${mod.name}…`, pct);
-      stageLiquid(width, height, data, skyDistance, mod);
+      stageLiquid(genW, genH, data, skyDistanceHalf, mod);
     } else if (mod.kind === "wall") {
-      report(`Wall: ${mod.name}…`, pct);
-      stageWallGrow(width, height, data, skyDistance, mod);
+      stageWallGrow(genW, genH, data, skyDistanceHalf, mod);
     } else if (mod.kind === "form") {
-      report(`Form: ${mod.name}…`, pct);
-      stageFormGrow(width, height, data, skyDistance, simplex, mod);
+      stageFormGrow(genW, genH, data, skyDistanceHalf, simplex, mod);
     }
-    report(`${mod.name} done`, 50 + Math.round(((mi + 1) / nMods) * 45));
+    report(`${mod.name} done`, 50 + Math.round(((mi + 1) / nMods) * 40));
   }
 
-  report("Building ghost cache…", 98);
-  return { data, skyDistance };
+  report("Scale2x upscale…", 92);
+  await yieldUI();
+  let { data: up, width: uw, height: uh } = scale2x(data, genW, genH);
+  if (uw !== width || uh !== height) {
+    up = padToSize(up, uw, uh, width, height);
+  }
+
+  report("Done", 98);
+  return { data: up, skyDistance: null };
 }

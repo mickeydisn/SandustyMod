@@ -281,14 +281,14 @@ export function MapViewerPanel(): unknown {
     setMods(draft.modifiers.map((m) => (m.id === id ? { ...m, ...patch } as Modifier : m)));
   };
 
-  const apply = () => {
+  const apply = async () => {
     toast("Generating map — please wait…");
     runtime.seed = draft.seed.trim() || runtime.seed;
     runtime.params = clone(draft);
     // Drop seed from params object if present
     const { seed: _s, ...paramsOnly } = draft as Draft & { seed?: string };
     runtime.params = clone(paramsOnly) as GenerationParams;
-    const ok = refreshHiddenWorld();
+    const ok = await refreshHiddenWorld();
     persistRecord();
     setDraft(currentDraft());
     bump((n) => n + 1);
