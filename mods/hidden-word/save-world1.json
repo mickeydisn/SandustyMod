@@ -1,0 +1,195 @@
+{
+  "seed": "a5b5e5d2d19c4e49",
+  "params": {
+    "sky": {
+      "bigWave": {
+        "periodCells": 1200,
+        "amplitudePercent": 15
+      },
+      "mediumWave": {
+        "periodCells": 800,
+        "amplitudePercent": 25
+      },
+      "lowWave": {
+        "periodCells": 400,
+        "amplitudePercent": 5
+      },
+      "roughness": {
+        "periodCells": 200,
+        "amplitudePercent": 3
+      }
+    },
+    "baseHeightPercent": 55,
+    "tunnel": {
+      "enabled": true,
+      "thicknessPercent": 20,
+      "definitionPercent": 86,
+      "offsetX": 0,
+      "offsetY": 0
+    },
+    "cave": {
+      "enabled": true,
+      "thicknessPercent": 15,
+      "definitionPercent": 80,
+      "offsetX": 0,
+      "offsetY": 0
+    },
+    "seal": {
+      "enabled": false,
+      "maxIterations": 400,
+      "sealTunnels": true,
+      "sealCaves": true,
+      "diagonal": false,
+      "surfaceKeepPercent": 0
+    },
+    "modifiers": [
+      {
+        "id": "wall-grass",
+        "kind": "wall",
+        "enabled": false,
+        "name": "Sky Grass",
+        "inBorderOf": [
+          1
+        ],
+        "typeToReplace": [
+          0
+        ],
+        "replaceBy": 8,
+        "nearMask": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "bounds": {
+          "top": 0,
+          "bottom": 15,
+          "left": 0,
+          "right": 100
+        },
+        "growSize": 0
+      },
+      {
+        "id": "wall-moss",
+        "kind": "wall",
+        "enabled": false,
+        "name": "Tunnel Moss Roof",
+        "inBorderOf": [
+          1
+        ],
+        "typeToReplace": [
+          2
+        ],
+        "replaceBy": 7,
+        "nearMask": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "bounds": {
+          "top": 5,
+          "bottom": 25,
+          "left": 0,
+          "right": 100
+        },
+        "growSize": 4
+      },
+      {
+        "id": "wall-redsand",
+        "kind": "wall",
+        "enabled": false,
+        "name": "Cave Redsand Roof",
+        "inBorderOf": [
+          1
+        ],
+        "typeToReplace": [
+          3
+        ],
+        "replaceBy": 9,
+        "nearMask": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "bounds": {
+          "top": 35,
+          "bottom": 70,
+          "left": 0,
+          "right": 100
+        },
+        "growSize": 5
+      },
+      {
+        "id": "form-crack",
+        "kind": "form",
+        "enabled": false,
+        "name": "Crackstone",
+        "inBorderOf": [
+          2
+        ],
+        "replaceBy": 13,
+        "bounds": {
+          "top": 50,
+          "bottom": 80,
+          "left": 10,
+          "right": 90
+        },
+        "growSize": 4,
+        "scatterPercent": 30
+      },
+      {
+        "id": "form-frost",
+        "kind": "form",
+        "enabled": false,
+        "name": "Frost Bed",
+        "inBorderOf": [
+          4,
+          2
+        ],
+        "replaceBy": 12,
+        "bounds": {
+          "top": 20,
+          "bottom": 55,
+          "left": 0,
+          "right": 100
+        },
+        "growSize": 5,
+        "scatterPercent": 40
+      },
+      {
+        "id": "form-spore",
+        "kind": "form",
+        "enabled": false,
+        "name": "Spore Soil",
+        "inBorderOf": [
+          3
+        ],
+        "replaceBy": 10,
+        "bounds": {
+          "top": 40,
+          "bottom": 75,
+          "left": 0,
+          "right": 100
+        },
+        "growSize": 8,
+        "scatterPercent": 35
+      },
+      {
+        "id": "liq-surface",
+        "kind": "liquid",
+        "enabled": false,
+        "name": "Surface Water",
+        "liquidType": "surface",
+        "minDepth": 3,
+        "bounds": {
+          "top": 0,
+          "bottom": 20,
+          "left": 0,
+          "right": 100
+        }
+      }
+    ]
+  }
+}

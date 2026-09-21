@@ -16,6 +16,7 @@ import { api } from "./api.ts";
 import { VERSION } from "./ids.ts";
 import { registerLens } from "./lens.ts";
 import { registerMapViewer } from "./mapViewer.ts";
+import { registerMaterializer } from "./materializer.ts";
 import { registerParamsOverlay } from "./overlay.ts";
 import { ensureSeedRecord } from "./persistence.ts";
 import { paintGhostView } from "./render.ts";
@@ -41,6 +42,7 @@ try {
 
   await registerLens();
   await registerMapViewer();
+  await registerMaterializer();
   registerParamsOverlay();
 
   try {
@@ -54,7 +56,7 @@ try {
   api.events.on("game:ready", () => {
     try {
       api.ui.toast(
-        `HIDEN WORLD 2 v${VERSION} — Ghost Lens + Map Viewer`,
+        `HIDEN WORLD 2 v${VERSION} — Lens · Viewer · Manifest`,
         {},
       );
     } catch { /* */ }

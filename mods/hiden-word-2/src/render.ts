@@ -13,6 +13,7 @@ import {
 } from "./constants.ts";
 import { api } from "./api.ts";
 import { isLensSelected } from "./lens.ts";
+import { isMaterializerSelected, paintManifestBrush } from "./materializer.ts";
 import {
   notifyGenerationEnd,
   notifyGenerationProgress,
@@ -193,7 +194,7 @@ export function buildCache(): HTMLCanvasElement | null {
  * Build matrix + cache. Shows start/progress/end alerts so the player knows
  * generation is running (large maps can take a noticeable time).
  */
-function ensureCache(showAlerts: boolean): void {
+export function ensureCache(showAlerts: boolean): void {
   if (runtime.cache || runtime.buildFailed) return;
   const t0 = performance.now?.() ?? Date.now();
   let started = false;
@@ -247,8 +248,9 @@ export function refreshHiddenWorld(): boolean {
 }
 
 export function paintGhostView(): void {
-  if (!isLensSelected()) return;
-  // First open of the lens: generate with alerts (can be slow).
+  const showGhost = isLensSelected() || isMaterializerSelected();
+  if (!showGhost) return;
+  // First open: generate with alerts (can be slow).
   ensureCache(true);
   if (!runtime.cache) return;
   try {
@@ -284,4 +286,6 @@ export function paintGhostView(): void {
   } catch (err) {
     console.warn(`${LOG} paint failed`, err);
   }
+
+  try { paintManifestBrush(); } catch { /* */ }
 }

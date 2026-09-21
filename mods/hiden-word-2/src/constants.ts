@@ -18,6 +18,15 @@ export const VIEWER_ICON_PATH = "assets/lens.png"; // reuse until dedicated icon
 export const STORAGE_KEY_SEED = "hiddenSeed";
 export const OVERLAY_ID = `${MOD}.params`;
 export const VIEWER_OVERLAY_ID = `${MOD}.mapViewer`;
+/** Manifest tool — paints real terrain from the hidden matrix in a circle. */
+export const MATERIALIZER_ITEM_ID = `${MOD}.materializer`;
+export const MATERIALIZER_ICON_SPRITE_ID = `${MOD}.materializerIcon`;
+export const MATERIALIZER_ICON_PATH = "assets/lens.png";
+export const MATERIALIZER_OVERLAY_ID = `${MOD}.materializer`;
+export const MATERIALIZER_RADIUS_MIN = 2;
+export const MATERIALIZER_RADIUS_MAX = 24;
+export const MATERIALIZER_RADIUS_DEFAULT = 6;
+export const MATERIALIZER_ENERGY = 8;
 export const FALLBACK_CELLS = { width: 640, height: 360 };
 export const LOG = "[hiden-word-2]";
 
@@ -59,7 +68,7 @@ export const TERRAIN = {
 export const CODE_LABELS: Record<number, string> = {
   [TERRAIN.SKY]: "sky",
   [TERRAIN.ROCK]: "rock",
-  [TERRAIN.TUNNEL]: "tunnel",
+  [TERRAIN.TUNNEL]: "fog (tunnel)",
   [TERRAIN.CAVE]: "cave",
   [TERRAIN.FOG_WATER]: "water",
   [TERRAIN.FOG_LAVA]: "lava",
@@ -94,7 +103,7 @@ export const CODE_TERRAIN: Record<number, string | null> = {
 export const FALLBACK_CODE_COLORS: Record<number, Rgba> = {
   [TERRAIN.SKY]: [0, 0, 0, 0],
   [TERRAIN.ROCK]: [0x80, 0x80, 0x80, 255],
-  [TERRAIN.TUNNEL]: [0, 0, 0, 0],
+  [TERRAIN.TUNNEL]: [0, 0, 0, 0], // fog void — black transparent
   [TERRAIN.CAVE]: [0x92, 0x64, 0x26, 255],
   [TERRAIN.FOG_WATER]: [0x99, 0x66, 0xff, 200],
   [TERRAIN.FOG_LAVA]: [0xff, 0x66, 0x00, 220],
@@ -127,6 +136,8 @@ export const KEY = {
   itemDesc: `${NS}|lens|desc`,
   viewerName: `${NS}|viewer|name`,
   viewerDesc: `${NS}|viewer|desc`,
+  materializerName: `${NS}|materializer|name`,
+  materializerDesc: `${NS}|materializer|desc`,
 } as const;
 
 /** Full default params including stage toggles + tunables. */
@@ -266,7 +277,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
 export const CODE_OPTIONS: { id: number; label: string; color: string }[] = [
   { id: 0, label: "sky", color: "#1a1a22" },
   { id: 1, label: "rock/stone", color: "#808080" },
-  { id: 2, label: "tunnel", color: "#993300" },
+  { id: 2, label: "fog/tunnel", color: "#000000" },
   { id: 3, label: "cave/dirt", color: "#926426" },
   { id: 4, label: "water", color: "#4682b4" },
   { id: 5, label: "lava", color: "#b22222" },
@@ -279,3 +290,25 @@ export const CODE_OPTIONS: { id: number; label: string; color: string }[] = [
   { id: 12, label: "frost bed", color: "#add8e6" },
   { id: 13, label: "crackstone", color: "#fffab3" },
 ];
+
+
+/**
+ * Hidden matrix code → real Sandustry terrain id.
+ * null = empty (fog/tunnel/sky → no solid terrain on the live map).
+ */
+export const MATERIALIZE_MAP: Record<number, string | null> = {
+  [TERRAIN.SKY]: null,
+  [TERRAIN.ROCK]: "stone",
+  [TERRAIN.TUNNEL]: null, // fog void → empty when made real
+  [TERRAIN.CAVE]: "dirt",
+  [TERRAIN.FOG_WATER]: "water", // best-effort; may be fog-water type
+  [TERRAIN.FOG_LAVA]: "lava",
+  [TERRAIN.SURFACE_WATER]: "water",
+  [TERRAIN.MOSS]: "moss",
+  [TERRAIN.GRASS]: "grass",
+  [TERRAIN.REDSAND_SOIL]: "redsoil",
+  [TERRAIN.SPORE_SOIL]: "sporesoil",
+  [TERRAIN.ICE]: "ice",
+  [TERRAIN.FROST_BED]: "ice",
+  [TERRAIN.CRACKSTONE]: "stone",
+};
