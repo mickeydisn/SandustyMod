@@ -1,5 +1,5 @@
 /**
- * Register the Word Statistic tool item and the global overlay.
+ * Register the World Statistic tool item and the global overlay.
  * Overlay is visible only while this tool is the active hotbar item.
  */
 import { api, h, React, safe, toast } from "./api.ts";
@@ -36,6 +36,7 @@ export async function registerTool(): Promise<void> {
             nameKey: NAME_KEY,
             descriptionKey: DESC_KEY,
             name: TOOL_NAME,
+            description: TOOL_DESC,
             sprite: { id: SPRITE_ID },
             itemType: "tool",
             energyCost: 0,

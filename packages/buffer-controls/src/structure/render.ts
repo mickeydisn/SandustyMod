@@ -27,7 +27,7 @@ export const VAR_READOUT_CELLS = 8;
 /** Readout width per kind for `value` (live buffer value) structures. */
 export const VALUE_READOUT_CELLS: Record<string, number> = {
     string: 8,
-    number: 4,
+    number: 5,
     bool: 2,
 };
 
@@ -104,9 +104,11 @@ export function drawIconAndReadout(
     // Text: center-left inside the rectangle, color #edab11.
     ctx.font = "9px monospace";
     ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(opts.text, rx + 6, ry + rh / 2 + 1, rw - 12);
+    // ctx.textAlign = "left";
+    // ctx.fillText(opts.text, rx + 6, ry + rh / 2 + 1, rw - 12);
+    ctx.textAlign = "center";
+    ctx.fillText(opts.text, rx + rw / 2, ry + rh / 2, rw - 12);
     ctx.restore();
     return true;
 }
@@ -135,7 +137,7 @@ export function drawBorder(
     const ry = origin.y;
     const rw = tileWidth * CELL;
     const rh = CELL;
-    ctx.strokeStyle = adjustHSL(color, { l: -40 });
+    ctx.strokeStyle = adjustHSL(color, { l: -80 });
     ctx.strokeRect(rx, ry, rw, rh);
     ctx.strokeStyle = color; // outer border
     ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);

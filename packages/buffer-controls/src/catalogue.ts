@@ -123,7 +123,7 @@ const valueItem = (
         width: CELL,
         height: ITEM_HEIGHT,
         color: "#FFFFFF",
-        readoutCells: 4,
+        readoutCells: 3,
         showIcon: false,
     };
 };

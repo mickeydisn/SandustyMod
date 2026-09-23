@@ -2,7 +2,7 @@
 export const MOD_ID = "md-word-statistic";
 
 /** Shown in the panel footer. */
-export const VERSION = "0.3.0";
+export const VERSION = "0.7.4";
 
 /** Console prefix. */
 export const LOG = "[md-word-statistic]";
@@ -23,8 +23,12 @@ export const SPRITE_PATH = "assets/statistic-icon.png";
 export const NAME_KEY = `mods|${MOD_ID}|tool|name`;
 export const DESC_KEY = `mods|${MOD_ID}|tool|desc`;
 
-export const TOOL_NAME = "Word Statistic";
-export const TOOL_DESC = "Open the world statistic overlay — counts of elements, structures and terrains on the grid.";
+export const TOOL_NAME = "World Statistic";
+export const TOOL_DESC =
+    "<b>World Statistic</b> — live census of your dig site.<br/>" +
+    "Count <i>elements</i>, <i>terrains</i> and <i>structures</i> on authorized cells only.<br/>" +
+    "Home <b>resource cards</b>, history graphs, dig&nbsp;% vs baseline, auto-refresh.<br/>" +
+    "<span style=\"opacity:0.85\">Select the tool to open the overlay · lock it to keep it open.</span>";
 
 /** Label for built-in (non-mod) ids. */
 export const BUILT_IN = "(built-in)";

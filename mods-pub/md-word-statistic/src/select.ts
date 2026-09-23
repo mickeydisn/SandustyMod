@@ -1,7 +1,7 @@
 import { api } from "./api.ts";
 import { ITEM_ID } from "./constants.ts";
 
-/** True when the Word Statistic tool is the active hotbar item. */
+/** True when the World Statistic tool is the active hotbar item. */
 export function isToolSelected(): boolean {
     try {
         if (typeof api.items?.isActiveById === "function") {

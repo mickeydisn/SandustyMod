@@ -15,6 +15,23 @@ export function pruneStaleBuildings(PRUNE_MOD_ID: string) {
     }
     return stale;
 }
+export function pruneStaleItems(PRUNE_MOD_ID: string) {
+    // const PRUNE_MOD_ID = "solaryum";
+    const keep = new Set();
+    const inventory = sandkit.state?.store?.player?.inventory;
+    if (!Array.isArray(inventory)) return [];
+    const stale = inventory.filter(
+        (entry) =>
+            typeof entry?.id === "string" && entry.id.startsWith(PRUNE_MOD_ID) &&
+            !keep.has(entry.id),
+    );
+    if (stale.length === 0) return [];
+    for (const item of stale) {
+        const index = inventory.indexOf(item);
+        if (index >= 0) inventory.splice(index, 1);
+    }
+    return stale;
+}
 export function findOrphanedObjects(PRUNE_MOD_ID: string) {
     const keep = new Set();
     const counts = /* @__PURE__ */ new Map();

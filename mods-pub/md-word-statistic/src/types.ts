@@ -13,7 +13,7 @@ export interface PanelReact {
     useCallback: <T extends (...args: unknown[]) => unknown>(fn: T, deps?: unknown[]) => T;
 }
 
-export type TabId = "home" | "structures" | "elements" | "terrains";
+export type TabId = "home" | "structures" | "elements" | "terrains" | "config";
 
 /** List filter: everything, built-in only, or mod-added only. */
 export type OriginFilter = "all" | "builtin" | "mod";
@@ -44,6 +44,10 @@ export interface CardItemStat {
     count: number;
     /** True when this is the first configured item. */
     primary: boolean;
+    /** current − reference (null if no reference yet). */
+    delta: number | null;
+    /** Last ≤10 history counts for sparkline (oldest → newest). */
+    series: number[];
 }
 
 export interface CardStat {
@@ -53,6 +57,8 @@ export interface CardStat {
     color: string;
     /** Sum of all item counts. */
     total: number;
+    /** total − reference total for items (null if no ref). */
+    delta: number | null;
     items: CardItemStat[];
 }
 
@@ -101,7 +107,15 @@ export interface ScanSnapshot {
     emptyCells: number;
     emptyPercent: number;
     cards: CardStat[];
+    /** Permanent first-scan baseline (null until first refresh). */
+    statsReference: RawStatsSnapshot | null;
+    /** Last ≤20 refreshes (oldest → newest). */
+    statsHistory: RawStatsSnapshot[];
 }
+
+/** Selected series for list-tab graphs. */
+export type GraphKind = "elements" | "structures" | "terrains";
+
 
 export interface ElementDefinition {
     id?: string;
@@ -132,4 +146,13 @@ export interface PickerOption {
     id: string;
     label: string;
     color: string;
+}
+
+
+/** One persisted refresh: raw id → count maps only. */
+export interface RawStatsSnapshot {
+    at: number;
+    elements: Record<string, number>;
+    terrains: Record<string, number>;
+    structures: Record<string, number>;
 }

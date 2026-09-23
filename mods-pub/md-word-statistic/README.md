@@ -1,6 +1,6 @@
-# Word Statistic (`md-word-statistic`)
+# World Statistic (`md-word-statistic`)
 
-Dev / inspection tool for Sandustry. Adds a **Word Statistic** hotbar tool.
+Dev / inspection tool for Sandustry. Adds a **World Statistic** hotbar tool.
 While the tool is selected, a centered overlay opens with four tabs:
 
 | Tab          | Content                                                                 |
@@ -48,7 +48,7 @@ mods/md-word-statistic/
 
 ## Usage in-game
 
-1. Open the inventory / toolbox and equip **Word Statistic**.
+1. Open the inventory / toolbox and equip **World Statistic**.
 2. The overlay appears while the tool is active.
 3. Hit **↻ Refresh** to count.
 4. Switch tabs or filter as needed. Deselect the tool to hide the overlay.

@@ -1,0 +1,35 @@
+{
+    "manifestVersion": 1,
+    "id": "md-word-statistic",
+    "name": "World Statistic",
+    "version": "0.7.4",
+    "apiVersion": 1,
+    "entry": "main.js",
+    "author": "MickeyDisn",
+    "description": "World Statistic \u2014 a live dig-site census tool. Count elements, terrains and structures on authorized cells, track history with graphs, home resource cards, dig % vs baseline, and optional auto-refresh. Select the tool to open the overlay; lock it to keep it open.",
+    "dependencies": [],
+    "loadOrder": 0,
+    "configSchema": {
+        "enabled": {
+            "type": "boolean",
+            "default": true,
+            "label": "Enabled",
+            "description": "Master switch. When off, the tool and overlay are not registered; orphan cleanup still runs."
+        },
+        "autoRefresh": {
+            "type": "boolean",
+            "default": false,
+            "label": "Auto refresh",
+            "description": "After the world is ready, run a scan once and then on the interval below. Can also be toggled in the panel."
+        },
+        "autoRefreshMinutes": {
+            "type": "number",
+            "default": 10,
+            "min": 1,
+            "max": 20,
+            "step": 1,
+            "label": "Auto refresh interval (minutes)",
+            "description": "Minutes between automatic scans when Auto refresh is on (1\u201320)."
+        }
+    }
+}
