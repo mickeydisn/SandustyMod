@@ -7,12 +7,10 @@
  */
 export { registerBufferControls } from "./src/buffer-controls.ts";
 export type {
-    BufferControlsActionSprites,
     BufferControlsCategoryLabels,
     BufferControlsConfig,
     BufferControlsHandles,
-    BufferControlsKindSprites,
     BufferControlsMenu,
-    BufferControlsSpriteFile,
+    BufferControlsSprite,
     BufferControlsSprites,
 } from "./src/types.ts";

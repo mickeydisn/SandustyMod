@@ -26,6 +26,7 @@ import { registerMenuStructures } from "./register/menuRegister.ts";
 import { registerPathStructures } from "./register/varRegister.ts";
 import { registerValueStructures, type ValueStructureEntry } from "./register/valueRegister.ts";
 import { registerActionNumberStructures } from "./register/actionNumberRegister.ts";
+import { registerActionToggleNumberStructures } from "./register/actionToggleNumberRegister.ts";
 import { registerBooleanActionStructures } from "./register/actionBooleanRegister.ts";
 
 /** Recompute + push every placed action structure's signal output (from ./register/actionRegister.ts). */
@@ -81,10 +82,13 @@ export function registerStructures<T extends object>(
             const value = registerValueStructures(ops);
             if (value) valueEntries.push(...value.entries);
         }
-        // Number + boolean action senders each supply a refreshSignals that
-        // recomputes their own placed structures; merge them all into one.
+        // Number, sign-toggle and boolean action senders each supply a
+        // refreshSignals that recomputes their own placed structures; merge
+        // them all into one.
         if (ops.item.tags?.includes("action") && ops.item.kind == "number") {
-            const number = registerActionNumberStructures(ops);
+            const number = ops.item.action === "toggleNum"
+                ? registerActionToggleNumberStructures(ops)
+                : registerActionNumberStructures(ops);
             if (number) refreshers.push(number.refreshSignals);
         }
         if (ops.item.tags?.includes("action") && ops.item.kind == "bool") {

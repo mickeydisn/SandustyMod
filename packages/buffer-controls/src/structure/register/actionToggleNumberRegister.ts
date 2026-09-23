@@ -1,30 +1,40 @@
 /**
- * Number action structures — the +1 / -1 buttons for each number path.
+ * Sign-toggle number actions — the "±" button for each number path.
  *
- * Only handles catalogue items tagged `action` of kind `number`; the boolean
- * toggle buttons live in `actionBooleanRegister.ts`. Like the boolean module it
- * registers a signal sender (the "how"), wires click-to-activate, and returns a
- * `refreshSignals` so the aggregator can push every placed number-action cell's
- * output on each buffer commit (the "when").
+ * Same wiring as the boolean toggle (`actionBooleanRegister.ts`), but the art
+ * is a 3-frame spritesheet selected from the current value:
+ *   frame 0 = `0`, frame 1 = `> 0`, frame 2 = `< 0` (default
+ * `assets/types/tognum.png`; mods may override it per path with their own
+ * `tag`-matched entry, e.g. `assets/buffers/tognum-*.png`).
+ *
+ * Clicking writes `0` when the value is `0` (nothing to flip) and `-value`
+ * otherwise — the mutation itself lives in `applyAction("toggleNum", …)`.
  */
 import "@sandmd/sandkit";
-
+import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { StructureLike } from "@sandmd/shared";
 import { ActionRegisterResult, applyAction } from "./actionRegister.ts";
-import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { registerStructureOps } from "../register.ts";
-import { ActionOp } from "../../types.ts";
 import { drawBorder } from "../render.ts";
 
-export function registerActionNumberStructures(
+/** Spritesheet frame for a number value: 0 neutral, `> 0` green, `< 0` red. */
+export function toggleNumberFrame(value: unknown): number {
+    const n = Number(value) || 0;
+    return n === 0 ? 0 : n > 0 ? 1 : 2;
+}
+
+export function registerActionToggleNumberStructures(
     ops: registerStructureOps,
 ): ActionRegisterResult | void {
-    // Only number-paths carry +1 / -1 actions.
+    // Only the sign-toggle op of number paths is owned here; the +1 / -1
+    // buttons belong to actionNumberRegister.ts.
     if (!ops.item.tags?.includes("action") || ops.item.kind !== "number") return;
-    // The sign toggle is a separate structure (actionToggleNumberRegister.ts).
-    if (ops.item.action === "toggleNum") return;
+    if (ops.item.action !== "toggleNum") return;
 
-    // How the sender cell's output is derived from the buffer (the "how").
+    const actionItems: { typeId: string; path: string }[] = [];
+
+    // How the signal output is derived from the buffer (the "how") — non-zero
+    // values drive the sender output high, exactly like the other actions.
     const computeSignal = (structure: StructureLike): boolean => {
         const p = structure.data?.path;
         if (typeof p !== "string" || p.length === 0) return false;
@@ -32,15 +42,15 @@ export function registerActionNumberStructures(
     };
 
     // Push a change: drive the sender cell output so outgoing links update and
-    // receivers re-apply it next frame (setAll, bundle 63921-63936).
+    // receivers re-apply it next frame.
     const pushSignal = (structure: StructureLike): void => {
         sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
     };
 
-    const act = (structure: StructureLike, op: ActionOp): void => {
+    const act = (structure: StructureLike): void => {
         const p = structure.data?.path;
         if (typeof p !== "string" || p.length === 0) return;
-        ops.write(p, applyAction(op, ops.read(p)));
+        ops.write(p, applyAction("toggleNum", ops.read(p)));
         pushSignal(structure);
     };
 
@@ -49,21 +59,19 @@ export function registerActionNumberStructures(
         structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
         render: { ctx?: CanvasRenderingContext2D },
     ): boolean => {
-        // TODO:  need to move :
+        // Live sign → spritesheet frame (0 / >0 / <0).
         const d = ops.read(structure.data?.path as string);
         sandkit.api.structures.setSpritesheetIndexAtCell(
             structure.x,
             structure.y,
-            d ? 1 : 0,
+            toggleNumberFrame(d),
         );
         drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
 
-    const actionItems: { typeId: string; path: string }[] = [];
-
-    const op = ops.item.action ?? "inc";
-    const path = ops.item.path ?? ops.item.id;
+    const op = "toggleNum" as const;
+    const path = ops.item.path;
 
     actionItems.push({ typeId: ops.typeId, path });
 
@@ -81,22 +89,21 @@ export function registerActionNumberStructures(
             size: { width: 16, height: 16 },
         },
         copyData: true,
-        defaultData: { path, kind: ops.item.kind ?? "string", op },
+        defaultData: { path, kind: ops.item.kind ?? "number", op },
         draw,
     });
     // Unlock the buildings
     sandkit.api.player.buildings.unlockByType(ops.typeId);
 
-    // Click-to-activate:
+    // Click-to-activate: flips the sign of the bound buffer path.
     sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
-        act(structure, op);
+        act(structure);
     });
 
-    // Register how the signal is computed (the "how"); the engine seeds a freshly
-    // linked wire with this value.
+    // Register how the signal is computed (the "how").
     sandkit.api.signals?.registerSenderType(ops.typeId, (s: StructureLike) => computeSignal(s));
 
-    // Event-driven "when": recompute + push every placed number-action structure.
+    // Event-driven "when": recompute + push every placed sign-toggle structure.
     return {
         refreshSignals: (): void => {
             for (const a of actionItems) {

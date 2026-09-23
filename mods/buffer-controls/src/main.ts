@@ -41,20 +41,55 @@ void (async () => {
             description: "Buffer Controls — opens the variable picker.",
             spriteId: "menu",
         },
-        sprites: {
-            kind: { bool: "bolean", number: "number", string: "string" },
-            action: { inc: "actionPlus", dec: "actionMinus", toggle: "actionToggle" },
-        },
-        spriteFiles: [
-            { id: "number", filePath: "assets/types/number.png" },
-            { id: "bolean", filePath: "assets/types/bolean.png" },
-            { id: "string", filePath: "assets/types/string.png" },
-            { id: "menu", filePath: "assets/types/display.png" },
-            { id: "actionPlus", filePath: "assets/types/plus.png" },
-            { id: "actionMinus", filePath: "assets/types/minus.png" },
-            { id: "actionToggle", filePath: "assets/types/toggle.png" },
+        sprites: [
+            // Each entry carries its own asset file — no separate file table.
+            { spriteId: "menu", filePath: "assets/types/display.png" },
+            { kind: "number", spriteId: "number", filePath: "assets/types/number.png" },
+            { kind: "bool", spriteId: "bolean", filePath: "assets/types/bolean.png" },
+            { kind: "string", spriteId: "string", filePath: "assets/types/string.png" },
+
+            {
+                kind: "number",
+                action: "inc",
+                spriteId: "actionPlus",
+                filePath: "assets/types/plus.png",
+            },
+            {
+                kind: "number",
+                action: "dec",
+                spriteId: "actionMinus",
+                filePath: "assets/types/minus.png",
+            },
+            {
+                kind: "number",
+                action: "incX",
+                spriteId: "actionPlusX",
+                filePath: "assets/types/plusX.png",
+            },
+            {
+                kind: "number",
+                action: "decX",
+                spriteId: "actionMinusX",
+                filePath: "assets/types/minusX.png",
+            },
+            // Default sign toggle — 3 frames: 0 / >0 / <0.
+            {
+                kind: "number",
+                action: "toggleNum",
+                spriteId: "tognum",
+                filePath: "assets/types/tognum.png",
+            },
+
+            {
+                kind: "bool",
+                action: "toggle",
+                spriteId: "actionToggle",
+                filePath: "assets/types/toggle.png",
+            },
         ],
         pickerTitle: "Buffer controls",
+        // Flat record: paths have no section segment, so no category colors.
+        categories: [],
     });
 })();
 

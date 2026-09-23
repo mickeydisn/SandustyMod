@@ -5,7 +5,7 @@
  * in the three category tabs:
  *   - variables — one item per path,
  *   - value     — one item per path (live readout),
- *   - action    — +1 / -1 for numbers, toggle for booleans.
+ *   - action    — +1 / ±10 / sign-toggle for numbers, toggle for booleans.
  * Plus a single unlocked menu entry that opens the picker.
  *
  * `listPaths` reports array leaves as "[]" templates (e.g. "players[].name"), so
@@ -18,6 +18,7 @@ import type {
     ActionCatalogueItem,
     ActionOp,
     BufferControlsConfig,
+    BufferControlsSprites,
     FieldKind,
     PathCatalogueItem,
 } from "./types.ts";
@@ -37,8 +38,38 @@ export interface BoundField {
     kind: FieldKind;
 }
 
-/** Resolve a config sprite entry id to the asset file path. */
-export type FilePathFor = (spriteEntryId: string) => string;
+/** Loaded sprite ids, keyed by `sprites[].spriteId` (from `loadSpriteMap`). */
+export type SpriteIdMap = Record<string, string>;
+
+/**
+ * Resolve the sprite entry id (a `sprites[].spriteId`) for one catalogue item.
+ * The first condition that fits wins:
+ *   1. `itemId` — exact catalogue item id,
+ *   2. `tag` — item tags include the entry's `tag` (a buffer key),
+ *   3. `action` + `kind` — e.g. every number `inc` button,
+ *   4. `kind` alone — the generic per-kind icon.
+ * The menu entry always resolves through `menu.spriteId`.
+ */
+export function resolveSpriteEntry(
+    sprites: BufferControlsSprites,
+    item: CatalogueItem,
+    menuItemId: string,
+    menuSpriteId: string,
+): string | undefined {
+    if (item.id === menuItemId) return menuSpriteId;
+
+    const aItem = item as ActionCatalogueItem;
+    const found = sprites.find((c) => c.itemId != null && c.itemId === item.id) ??
+        sprites.find((c) =>
+            c.tag != null && item.tags?.includes(c.tag) &&
+            (c.kind == null || c.kind === aItem.kind) &&
+            (c.action == null || c.action === aItem.action)
+        ) ??
+        sprites.find((c) => aItem.action && c.action === aItem.action && c.kind === aItem.kind) ??
+        sprites.find((c) => !c.action && c.kind === aItem.kind);
+
+    return found?.spriteId;
+}
 
 export interface CatalogueResult {
     buildList: BuildList;
@@ -121,6 +152,8 @@ const actionItemsFor = (field: BoundField): ActionCatalogueItem[] => {
             actionItem(field, "dec"),
             actionItem(field, "incX"),
             actionItem(field, "decX"),
+            // Sign toggle: `0` stays `0`, every other value flips sign.
+            actionItem(field, "toggleNum"),
         ];
     }
     if (field.kind === "bool") {
@@ -143,18 +176,16 @@ export function boundFields(listed: { kind?: FieldKind; path: string }[]): Bound
 /** The config fields buildBufferControlList needs (record-shape independent). */
 export type CatalogueConfig = Pick<
     BufferControlsConfig,
-    "menu" | "spriteFiles" | "menuItemId" | "categories"
+    "menu" | "sprites" | "menuItemId" | "categories"
 >;
 
 export function buildBufferControlList(
     modId: string,
     bound: BoundField[],
     config: CatalogueConfig,
-    spriteFor: (item: CatalogueItem) => string | undefined,
+    /** Loaded sprite ids keyed by sprite entry id (`spriteId`). */
+    spriteIds: SpriteIdMap,
 ): CatalogueResult {
-    const filePathFor: FilePathFor = (spriteEntryId) =>
-        config.spriteFiles.find((f) => f.id === spriteEntryId)?.filePath ?? "";
-
     const menuId = config.menuItemId ?? modId;
     const items: PathCatalogueItem[] = [
         menuItem(menuId, config.menu),
@@ -165,8 +196,13 @@ export function buildBufferControlList(
         ]),
     ];
 
-    items.forEach((item) => item.spriteId = spriteFor(item));
-    items.forEach((item) => item.filePath = filePathFor(item.spriteId ?? ""));
+    // One entry resolution drives both the loaded sprite id and the source
+    // file (the picker falls back to `filePath` when no `spriteIdFor` is given).
+    items.forEach((item) => {
+        const entryId = resolveSpriteEntry(config.sprites, item, menuId, config.menu.spriteId);
+        item.spriteId = spriteIds[entryId ?? ""];
+        item.filePath = config.sprites.find((s) => s.spriteId === entryId)?.filePath ?? "";
+    });
     items.forEach((item) =>
         item.color = config.categories.find((c) => c.id == item.category)?.color ?? "#FFFFFF"
     );

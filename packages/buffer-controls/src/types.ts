@@ -2,8 +2,9 @@
  * Public types for @sandmd/buffer-controls.
  *
  * Configuration is declarative: the mod only supplies its JsonBuffer record,
- * its sprite ids, and labels. All catalogue / structure / refresh wiring is
- * owned by registerBufferControls() (see ./buffer-controls.ts).
+ * its sprites (`{ spriteId, filePath, … }`) and labels. All catalogue /
+ * structure / refresh wiring is owned by registerBufferControls()
+ * (see ./buffer-controls.ts).
  */
 import type { JsonBuffer } from "@sandmd/buffer";
 import type { BuildList } from "@sandmd/catalogue";
@@ -16,7 +17,7 @@ import type { FieldKind } from "@sandmd/buffer";
 ///-----------------
 
 export type { FieldKind };
-export type ActionOp = "inc" | "dec" | "incX" | "decX" | "toggle";
+export type ActionOp = "inc" | "dec" | "incX" | "decX" | "toggle" | "toggleNum";
 
 ///-----------------
 
@@ -46,36 +47,38 @@ export interface ActionCatalogueItem extends CatalogueItem {
 }
 
 ///-----------------
-/** Sprite entry id per buffer field kind. */
-export interface BufferControlsKindSprites {
-    bool: string;
-    number: string;
-    string: string;
-}
-
-/** Sprite entry ids for the clickable action buttons. */
-export interface BufferControlsActionSprites {
-    inc: string;
-    dec: string;
-    incX: string;
-    decX: string;
-    toggle: string;
-}
-
-export interface BufferControlsSpritesCondition {
+/**
+ * One sprite: the logical `spriteId` (the loaded asset id, also referenced by
+ * `menu.spriteId`) and the `filePath` it is loaded from. There is no separate
+ * file table — the package extracts the load list from this array.
+ *
+ * An entry is matched against a catalogue item by the first condition that
+ * fits, in this order:
+ *   1. `itemId` — exact catalogue item id,
+ *   2. `tag` — item tags include `tag` (the buffer path's last segment),
+ *   3. `action` (+ `kind`) — e.g. every number `inc` button,
+ *   4. `kind` alone — the generic per-kind icon.
+ */
+export interface BufferControlsSprite {
+    /** Logical sprite id — loaded from `filePath`, referenced by `menu.spriteId`. */
     spriteId: string;
+    /** Asset file, relative to the mod (e.g. `assets/types/number.png`). */
+    filePath: string;
+    /** Exact catalogue item id this sprite applies to. */
     itemId?: string;
+    /** Applies to every item whose tags include this value (a buffer key). */
+    tag?: string;
     kind?: FieldKind;
     action?: ActionOp;
 }
-export type BufferControlsSprites = BufferControlsSpritesCondition[];
+export type BufferControlsSprites = BufferControlsSprite[];
 
 /** Build-menu entry that opens the picker. */
 export interface BufferControlsMenu {
     label: string;
     /** Build-menu tooltip. */
     description: string;
-    /** Sprite entry id (from `spriteFiles`). */
+    /** Sprite entry id (from `sprites`). */
     spriteId: string;
 }
 
@@ -85,13 +88,6 @@ export type BufferControlsCategoryLabels = {
     id: string;
     color: string;
 };
-
-export interface BufferControlsSpriteFile {
-    /** Logical id referenced by `menu.spriteId` / `sprites`. */
-    id: string;
-    /** Relative file under the mod. */
-    filePath: string;
-}
 
 export interface BufferControlsConfig<T extends object = Record<string, unknown>> {
     modId: string;
@@ -111,10 +107,11 @@ export interface BufferControlsConfig<T extends object = Record<string, unknown>
     menuItemId?: string;
     /** Category labels. */
     categories: BufferControlsCategoryLabels[];
-    /** Sprite entry ids for kind icons and action buttons. */
+    /**
+     * Kind icons + action buttons. Each entry carries its own `filePath`, so
+     * the sprite list is the single source of truth (no separate file table).
+     */
     sprites: BufferControlsSprites;
-    /** Asset files to load; ids referenced by `menu.spriteId` and `sprites`. */
-    spriteFiles: BufferControlsSpriteFile[];
     /** Picker header title. */
     pickerTitle?: string;
 }

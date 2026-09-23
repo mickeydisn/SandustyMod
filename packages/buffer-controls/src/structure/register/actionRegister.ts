@@ -14,6 +14,7 @@ export const ACTION_LABEL: Record<ActionOp, string> = {
     dec: "-1",
     decX: "-10",
     toggle: "toggle",
+    toggleNum: "±",
 };
 
 /** Compute the buffer mutation for an op given the current value. */
@@ -29,6 +30,12 @@ export function applyAction(op: ActionOp, current: unknown): unknown {
             return (Number(current) || 0) - 10;
         case "toggle":
             return !current;
+        case "toggleNum": {
+            // Sign toggle: `0` stays `0` (nothing to flip), every other value
+            // becomes its opposite.
+            const n = Number(current) || 0;
+            return n === 0 ? 0 : -n;
+        }
     }
 }
 

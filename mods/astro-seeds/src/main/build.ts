@@ -16,6 +16,7 @@ import { setProfileBuffer } from "../config/elementWorker/live.ts";
 import {
     buildDefaultProfileRecord,
     PROFILE_BUFFER_ID,
+    PROFILE_SPRITES,
     type ProfileConfigRecord,
     PROFILES_CONFIG,
 } from "../config/profileRuntime.ts";
@@ -64,29 +65,58 @@ export function buildMain(): void {
             spriteId: "menu",
         },
         categories: PROFILES_CONFIG,
+        // Sprite list — each entry owns its asset file (there is no separate
+        // file table any more). Matching order per catalogue item:
+        // itemId → tag → action + kind → kind alone, so the generic art below
+        // is overridden per knob by PROFILE_SPRITES' `tag` entries.
         sprites: [
-            { itemId: `${MOD_ID}:bufferProfile:menu`, spriteId: "menu" },
-            { kind: "string", spriteId: "string" },
+            // Menu entry: resolved through `menu.spriteId`, not by matching.
+            { spriteId: "menu", filePath: "assets/types/display.png" },
+            { kind: "string", spriteId: "string", filePath: "assets/types/string.png" },
 
-            { kind: "number", action: "dec", spriteId: "actionMinus" },
-            { kind: "number", action: "decX", spriteId: "actionMinusX" },
-            { kind: "number", action: "inc", spriteId: "actionPlus" },
-            { kind: "number", action: "incX", spriteId: "actionPlusX" },
-            { kind: "number", spriteId: "number" },
+            {
+                kind: "number",
+                action: "dec",
+                spriteId: "actionMinus",
+                filePath: "assets/types/minus.png",
+            },
+            {
+                kind: "number",
+                action: "decX",
+                spriteId: "actionMinusX",
+                filePath: "assets/types/minusX.png",
+            },
+            {
+                kind: "number",
+                action: "inc",
+                spriteId: "actionPlus",
+                filePath: "assets/types/plus.png",
+            },
+            {
+                kind: "number",
+                action: "incX",
+                spriteId: "actionPlusX",
+                filePath: "assets/types/plusX.png",
+            },
+            { kind: "number", spriteId: "number", filePath: "assets/types/number.png" },
 
-            { kind: "bool", action: "toggle", spriteId: "actionToggle" },
-            { kind: "bool", spriteId: "bolean" },
-        ],
-        spriteFiles: [
-            { id: "number", filePath: "assets/types/number.png" },
-            { id: "bolean", filePath: "assets/types/bolean.png" },
-            { id: "string", filePath: "assets/types/string.png" },
-            { id: "menu", filePath: "assets/types/display.png" },
-            { id: "actionPlus", filePath: "assets/types/plus.png" },
-            { id: "actionMinus", filePath: "assets/types/minus.png" },
-            { id: "actionPlusX", filePath: "assets/types/plusX.png" },
-            { id: "actionMinusX", filePath: "assets/types/minusX.png" },
-            { id: "actionToggle", filePath: "assets/types/toggle.png" },
+            {
+                kind: "bool",
+                action: "toggle",
+                spriteId: "actionToggle",
+                filePath: "assets/types/toggle.png",
+            },
+            { kind: "bool", spriteId: "bolean", filePath: "assets/types/bolean.png" },
+
+            // Default sign toggle (3 frames: 0 / >0 / <0) for number paths…
+            {
+                kind: "number",
+                action: "toggleNum",
+                spriteId: "tognum",
+                filePath: "assets/types/tognum.png",
+            },
+            // …overridden knob-by-knob with the mod's own art.
+            ...PROFILE_SPRITES,
         ],
         pickerTitle: "Astro profile config",
         persist: true,

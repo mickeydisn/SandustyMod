@@ -18,8 +18,8 @@ import "@sandmd/sandkit";
 import { loadSpriteMap } from "@sandmd/assets";
 import { JsonBuffer } from "@sandmd/buffer";
 import { type CatalogueItem, createPickerOverlay } from "@sandmd/catalogue";
-import type { ActionCatalogueItem, BufferControlsConfig, BufferControlsHandles } from "./types.ts";
-import { boundFields, buildBufferControlList } from "./catalogue.ts";
+import type { BufferControlsConfig, BufferControlsHandles } from "./types.ts";
+import { boundFields, buildBufferControlList, resolveSpriteEntry } from "./catalogue.ts";
 import { formatBufferValue } from "./structure/register/valueRegister.ts";
 import { registerStructures } from "./structure/register.ts";
 
@@ -44,32 +44,37 @@ export async function registerBufferControls<T extends object>(
     // console.log("[pkg-buffControl]1 ", modId, buffer.get(), buffer.listPaths());
 
     // -- 2. Sprites ----------------------------------------------------------
-    // loadSpriteMap resolves each entry id ("number", "menu", "actionPlus", …)
-    // to the full in-game sprite id; config.sprites/menu reference entry ids.
-    const spriteIds = await loadSpriteMap(modId, config.spriteFiles);
+    // The package extracts the load list straight from `config.sprites`: each
+    // entry carries its own filePath, so there is no second file table to keep
+    // in sync. Entries sharing a spriteId (same art for several conditions)
+    // are loaded once.
+    const spriteEntries = [
+        ...new Map(
+            config.sprites.map((s) => [
+                s.spriteId,
+                { id: s.spriteId, filePath: s.filePath },
+            ]),
+        ).values(),
+    ];
+    const spriteIds = await loadSpriteMap(modId, spriteEntries);
     const menuItemId = config.menuItemId ?? modId;
 
-    const spriteFor = (item: CatalogueItem): string | undefined => {
-        if (item.id === menuItemId) return spriteIds[config.menu.spriteId];
-
-        const aItem = item as ActionCatalogueItem;
-        const found = config.sprites.find((c) => c.itemId == item.id) ??
-            config.sprites.find((c) =>
-                aItem.action && c.action === aItem.action && c.kind === aItem.kind
-            ) ??
-            config.sprites.find((c) => !c.action && c.kind === aItem.kind);
-
-        return spriteIds[found?.spriteId ?? ""];
-    };
-
     // -- 3. BuildingList: one item per scalar path in the record -------------
+    // The catalogue resolves each item's sprite entry itself (itemId / tag /
+    // kind+action / kind) and takes the loaded id from `spriteIds`.
     const bound = boundFields(buffer.listPaths());
     const { buildList: buildList, pathCount } = buildBufferControlList(
         modId,
         bound,
         config,
-        spriteFor,
+        spriteIds,
     );
+
+    // The picker swatch resolver: entry id → loaded sprite id.
+    const spriteFor = (item: CatalogueItem): string | undefined =>
+        spriteIds[
+            resolveSpriteEntry(config.sprites, item, menuItemId, config.menu.spriteId) ?? ""
+        ];
 
     // console.log("[pkg-buffControl], 3 ", buildList, pathCount);
 
