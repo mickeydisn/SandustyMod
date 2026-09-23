@@ -6,7 +6,15 @@
     "apiVersion": 1,
     "entry": "main.js",
     "author": "MickeyDisn",
-    "description": "",
+    "description": "Clean mod template \u2014 a config-driven enable switch, a main() entry point and full prune / orphan / storage cleanup when disabled.",
     "dependencies": [],
-    "loadOrder": 0
+    "loadOrder": 0,
+    "configSchema": {
+        "enabled": {
+            "type": "boolean",
+            "default": true,
+            "label": "Enabled",
+            "description": "Master switch. When off, the mod prunes stale buildings/items, removes its orphaned placed objects and wipes its own storage."
+        }
+    }
 }

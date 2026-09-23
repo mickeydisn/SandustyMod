@@ -60,6 +60,27 @@ export interface SandkitStructure {
         setEnabledAt?: (x: number, y: number, enabled: boolean) => void;
     };
     forEachOfType: (type: string, cb: (s: StructureLike) => void) => void;
+
+    /** Remove the structure at a cell (optional on older host builds). */
+    removeAtCell?: (cellX: number, cellY: number, options?: Record<string, unknown>) => void;
+    /** Remove every structure between two cells (inclusive). */
+    removeBetweenCells?: (
+        startCellX: number,
+        startCellY: number,
+        endCellX: number,
+        endCellY: number,
+        options?: Record<string, unknown>,
+    ) => void;
+    /** Remove the structures at the given cells. */
+    removeAtCells?: (
+        positions: Array<{ x: number; y: number }>,
+        options?: Record<string, unknown>,
+    ) => void;
+    /** Bulk removal deferred until the grid is idle — safest for cleanup. */
+    removeAtCellsWhenIdle?: (
+        positions: Array<{ x: number; y: number }>,
+        options?: Record<string, unknown>,
+    ) => void;
     setSpritesheetIndex?: (structure: StructureLike, index: number) => void;
     setSpritesheetIndexAtCell: (x: number, y: number, index: number) => void;
     setSpritesheetIndexByValue?: (

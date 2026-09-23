@@ -7,7 +7,7 @@
  * in the picker tabs / build menu — then a single registerBufferControls().
  */
 import "@sandmd/sandkit";
-import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/dev";
+import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/modkit";
 import { registerBufferControls } from "@sandmd/buffer-controls";
 import { buildDefaultConfigRecord, ConfigFieldRecord } from "./configSchema.ts";
 

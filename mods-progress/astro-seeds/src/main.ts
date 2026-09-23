@@ -2,7 +2,7 @@
  * Main-thread entry — everything is assembled by the main builder.
  */
 import "@sandmd/sandkit";
-import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/dev";
+import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/modkit";
 
 import { buildMain } from "./main/build.ts";
 import { MOD_ID } from "./ids.ts";

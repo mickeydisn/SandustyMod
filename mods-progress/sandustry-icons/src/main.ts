@@ -2,7 +2,7 @@
  * Sandustry Icons — decorative catalogue (deco-style picker, no cost).
  */
 import "@sandmd/sandkit";
-import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/dev";
+import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/modkit";
 import { loadSpriteMap } from "@sandmd/assets";
 
 import { CatalogueItem, createBuildList } from "@sandmd/catalogue";

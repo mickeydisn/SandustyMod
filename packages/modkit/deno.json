@@ -1,4 +1,4 @@
 {
-    "name": "@sandmd/dev",
+    "name": "@sandmd/modkit",
     "exports": "./index.ts"
 }

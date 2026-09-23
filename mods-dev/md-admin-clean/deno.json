@@ -11,5 +11,5 @@
         "lib": ["deno.window", "dom"],
         "strict": true
     },
-    "exclude": ["main.js", "worker.js"]
+    "exclude": ["main.js", "worker.js", "build"]
 }

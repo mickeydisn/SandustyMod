@@ -1,7 +1,9 @@
 {
     "workspace": [
         "./packages/*",
-        "./mods/*"
+        "./mods-pub/*",
+        "./mods-progress/*",
+        "./mods-dev/*"
     ],
 
     "exclude": [

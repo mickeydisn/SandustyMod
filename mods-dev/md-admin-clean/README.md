@@ -1,51 +1,99 @@
-# MdAdmin
+# MdAdmin Clean Tool (`md-admin-clean`)
 
-A tiny dev helper. Just a main thread, nothing else.
+A **clean, copy-pasteable mod template** for Sandustry. Three source files, no
+boilerplate:
 
-On load it:
+| File               | Responsibility                                                        |
+| ------------------ | --------------------------------------------------------------------- |
+| `src/modinfo.json` | Manifest + `configSchema.enabled` (the player-facing enable switch).  |
+| `src/constants.ts` | `MOD_ID`, `VERSION`, `LOG`, owned `STORAGE_KEYS`, settings schema.    |
+| `src/main.ts`      | `main()` (enabled) / `teardown()` (disabled) + the boot wiring.        |
 
-1. **Opens the DevTools console** — `window.electron.openDevTools()` (the game is an Electron app,
-   so DevTools is "the console").
-2. **Injects a panel** (toggle: **Alt+L**, `api.ui.inject`) that lists every registered element with
-   a best-effort link to the owning mod — the part of the element id before the `:`.
+Everything reusable lives in the workspace package **`@sandmd/modkit`**
+(`packages/modkit`) — the mod itself has no `api.ts` / `config.ts` / `cleanup.ts`.
 
-Element ids are like `astro.seeds:astro-seed`, so the reported mod is `astro.seeds`. Built-in
-elements have no namespace and are shown as `(built-in)`.
+To start a new mod: copy the folder, rename `MOD_ID` in `constants.ts` +
+`modinfo.json`, then fill in `main()` / `teardown()`.
 
-## Removing elements
+## The enable switch
 
-Mod-added elements — the ids present in the live registry (`sandkit.mods.elements` /
-`sandkit.state.sandkit.mods.elements`) — carry a **Remove** button. Removing deletes the element
-from that registry.
+`src/modinfo.json` declares the setting the settings UI renders:
 
-> Only ids still present in the registry get a button. A "ghost" element left in a save by a mod
-> that is no longer installed is listed (its type is still registered) but has **no** per-row
-> button, because there is nothing left to delete. Use **`Remove N`** for everything the registry
-> does report.
+```json
+"configSchema": {
+    "enabled": {
+        "type": "boolean",
+        "default": true,
+        "label": "Enabled",
+        "description": "Master switch. When off, the mod prunes stale buildings/items, removes its orphaned placed objects and wipes its own storage."
+    }
+}
+```
 
-Removal is **persistent**: the element ids are remembered in mod storage (`api.storage`, key
-`removedElements`) and the scrub is re-applied on every load — at init, on `game:ready`, and every 2
-s — so removed elements do **not** come back when you reload the game.
+`src/constants.ts` mirrors it as a typed schema (keep the two in sync):
 
-- **`Remove N`** — remove every currently mod-registered element.
-- **`Reset`** — forget all remembered removals (restore them).
+```ts
+export const SETTINGS = {
+    enabled: { type: "boolean", default: true },
+} as const satisfies SettingsSchema;
+```
 
-## Layout
+Read it and react to changes with `@sandmd/modkit`:
 
-| File               | Responsibility                                              |
-| ------------------ | ----------------------------------------------------------- |
-| `src/main.ts`      | Entry point: DevTools, the Alt+L toggle, boot wiring.       |
-| `src/constants.ts` | Mod id, version, storage key, panel id, toggle, log prefix. |
-| `src/types.ts`     | Local typing for the admin API surface + React subset.      |
-| `src/api.ts`       | Typed `sandkit` handle, React handle, `safe()` / `toast()`. |
-| `src/registry.ts`  | Element registry, the removal blacklist and row building.   |
-| `src/styles.ts`    | `COLORS` + panel styles.                                    |
-| `src/state.ts`     | Panel open flag + the external repaint handle.              |
-| `src/panel.ts`     | The injected React panel.                                   |
+```ts
+import "@sandmd/sandkit";
+import { onSettingsChange, readSettings, runDisableCleanup, safe } from "@sandmd/modkit";
+
+applyEnabled(readSettings(MOD_ID, SETTINGS).enabled, "boot-disabled");
+onSettingsChange(MOD_ID, SETTINGS, (cfg) => applyEnabled(cfg.enabled, "config-change"));
+```
+
+`readSettings` returns a fully typed object (`{ enabled: boolean }`), tolerating
+string/number serialisations and the `<modId>.enabled` fallback. Numbers are
+clamped to their `min`/`max`.
+
+## Boot behaviour
+
+| State                      | What happens                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
+| **Enabled**                | `main()` registers the mod content. Nothing is pruned.                                     |
+| **Disabled** (at boot)     | `teardown()` + `runDisableCleanup(MOD_ID, "boot-disabled", STORAGE_KEYS)`.                  |
+| **Toggled off at runtime** | `teardown()` + `runDisableCleanup(MOD_ID, "config-change", STORAGE_KEYS)`.                  |
+| **Toggled on at runtime**  | `main()` (guarded by `started`, so content is never registered twice).                      |
+| **Init error**             | `runDisableCleanup(MOD_ID, "init-error", STORAGE_KEYS)`.                                    |
+
+## What "disabled" removes (`@sandmd/modkit`)
+
+Everything this mod creates is prefixed with `MOD_ID`, so a prefix scan over the
+live save finds every leftover:
+
+| Target                     | Function                                        |
+| -------------------------- | ----------------------------------------------- |
+| `player.buildings` unlocks | `pruneStaleBuildings()`                         |
+| `player.inventory` items   | `pruneStaleItems()`                             |
+| Placed structures          | `removeOrphanedObjects()` (`removeAtCellsWhenIdle`, per-cell fallback) |
+| `api.storage` keys         | `wipeModStorage()` (declared keys + host per-mod bag) |
+
+`runCleanup(modId, reason)` is the light pass (buildings + items).
+`runDisableCleanup(modId, reason, keys)` is the full pass above.
+
+> Add every `api.storage.set(MOD_ID, key, …)` key to `STORAGE_KEYS` in
+> `src/constants.ts`. `wipeModStorage` also enumerates the host's per-mod bag, so
+> this list is mainly a safety net for lazily-written keys.
 
 ## Build
 
-```
+```sh
 deno task check      # type-check src/main.ts
 deno task build      # bundle main.js + copy modinfo into build/ and the game folder
 ```
+
+Or just the bundle, without deploying to the game folder:
+
+```sh
+deno task build:main
+deno task build:modinfo
+```
+
+The mod resolves `@sandmd/*` through the repo workspace (root `deno.json` lists
+`./mods-dev/*`), so the imports work with plain `deno check` / `deno bundle`.
