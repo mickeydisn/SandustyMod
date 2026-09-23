@@ -1,7 +1,7 @@
 /**
  * Map Viewer panel — Map stages + ordered Modifiers (drag to reorder).
  */
-import { DEFAULT_PARAMS, TERRAIN, VIEWER_ITEM_ID } from "../world/constants.ts";
+import { DEFAULT_PARAMS, EDITOR_ITEM_ID, TERRAIN, VIEWER_ITEM_ID } from "../world/constants.ts";
 import { api } from "../api/api.ts";
 import { persistRecord, randomSeed } from "../world/persistence.ts";
 import { ghostPalette, refreshHiddenWorld } from "../world/render.ts";
@@ -53,6 +53,19 @@ function defaultDraft(): Draft {
   return { ...clone(DEFAULT_PARAMS), seed: runtime.seed };
 }
 
+export function isEditorSelected(): boolean {
+  try {
+    if (typeof api.items.isActiveById === "function") {
+      return api.items.isActiveById(EDITOR_ITEM_ID) === true;
+    }
+  } catch { /* */ }
+  try {
+    return api.items.getActive?.()?.id === EDITOR_ITEM_ID;
+  } catch {
+    return false;
+  }
+}
+
 export function isViewerSelected(): boolean {
   try {
     if (typeof api.items.isActiveById === "function") {
@@ -64,6 +77,10 @@ export function isViewerSelected(): boolean {
   } catch {
     return false;
   }
+}
+
+function isPanelToolSelected(): boolean {
+  return isEditorSelected() || isViewerSelected();
 }
 
 let panelDismissed = false;
@@ -249,11 +266,11 @@ export function MapViewerPanel(): unknown {
 
   react.useEffect(() => {
     const unsub = api.events.on("action:changed", () => {
-      if (!isViewerSelected()) panelDismissed = false;
+      if (!isPanelToolSelected()) panelDismissed = false;
       bump((n) => n + 1);
     });
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isViewerSelected() && !panelDismissed) {
+      if (e.key === "Escape" && isPanelToolSelected() && !panelDismissed) {
         closePanel();
         bump((n) => n + 1);
       }
@@ -266,11 +283,11 @@ export function MapViewerPanel(): unknown {
   }, []);
 
   react.useEffect(() => {
-    if (!isViewerSelected() || panelDismissed) return;
+    if (!isPanelToolSelected() || panelDismissed) return;
     requestAnimationFrame(() => paintIfVisible());
   });
 
-  if (!isViewerSelected()) {
+  if (!isPanelToolSelected()) {
     panelDismissed = false;
     return null;
   }
@@ -288,6 +305,7 @@ export function MapViewerPanel(): unknown {
     // Drop seed from params object if present
     const { seed: _s, ...paramsOnly } = draft as Draft & { seed?: string };
     runtime.params = clone(paramsOnly) as GenerationParams;
+    runtime.params.explorationEnabled = true;
     const ok = await refreshHiddenWorld();
     persistRecord();
     setDraft(currentDraft());
@@ -318,6 +336,7 @@ export function MapViewerPanel(): unknown {
     setMods(list);
   };
 
+  const editMode = isEditorSelected();
   const entries = ghostPalette();
 
   const setTunnel = (band: BandParams) => setDraft({ ...draft, tunnel: band });
@@ -327,7 +346,7 @@ export function MapViewerPanel(): unknown {
   return h(
     "div",
     {
-      className: "hwv-root",
+      className: editMode ? "hwv-root" : "hwv-root hwv-viewonly",
       onClick: (e: { target: EventTarget; currentTarget: EventTarget }) => {
         if (e.target === e.currentTarget) doClose();
       },
@@ -409,15 +428,6 @@ export function MapViewerPanel(): unknown {
             ),
           ),
         ]),
-
-        checkRow("Exploration mode", !!draft.explorationEnabled, (v) =>
-          setDraft({ ...draft, explorationEnabled: v }),
-        ),
-        h(
-          "div",
-          { className: "hwv-mini", style: { marginBottom: 8 } },
-          "Fog of war: sky starts explored; Explorer reveals fog; Manifest needs explored contact.",
-        ),
 
         groupLabel("Map"),
 
@@ -586,6 +596,22 @@ export function MapViewerPanel(): unknown {
           { className: "hwv-map-title" },
           h("span", null, `${runtime.width}×${runtime.height} · base 1/${getPreviewDivisor()}`),
           h("span", { className: "hwv-zoom-label" }, `zoom ${view.zoom.toFixed(2)}×`),
+          h(
+            "label",
+            { className: "hwv-mini", style: { display: "flex", alignItems: "center", gap: 6 } },
+            h("input", {
+              type: "checkbox",
+              checked: runtime.showTagsOverlay !== false,
+              onChange: (e: { target: { checked: boolean } }) => {
+                runtime.showTagsOverlay = e.target.checked;
+                // visual only — do not reset tags or map
+                runtime.cache = null;
+                requestAnimationFrame(() => paintIfVisible());
+                bump((n) => n + 1);
+              },
+            }),
+            "Exploration overlay",
+          ),
           h(
             "button",
             {

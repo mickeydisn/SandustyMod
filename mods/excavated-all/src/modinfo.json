@@ -1,0 +1,12 @@
+{
+    "manifestVersion": 1,
+    "id": "excavated-all",
+    "name": "Excavated All",
+    "version": "0.1.0",
+    "apiVersion": 1,
+    "entry": "main.js",
+    "author": "MickeyDisn",
+    "description": "A total-clear excavation tool: wipes terrain (including bedrock/fixed terrain), elements, and structures in a radius, and can ignore build/tool authorization zones. Includes a hotbar overlay with a radius control and per-category filters.",
+    "dependencies": [],
+    "loadOrder": 0
+}

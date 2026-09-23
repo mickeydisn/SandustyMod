@@ -172,4 +172,7 @@ export interface HiddenWorldState {
   explored: Uint8Array | null;
   /** 0 Hidden, 1 Explored, 2 Materialised (same size as data when on). */
   tags: Uint8Array | null;
+  showTagsOverlay: boolean;
+  /** Internal: last cache built with tag colors */
+  cacheTags: boolean;
 }

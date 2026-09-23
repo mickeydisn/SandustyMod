@@ -22,10 +22,10 @@ export const astroSeedInGold: Profile = {
     crystalType: ElementType.astroGoldCrystal,
     tickSpeed: () => live(SEED_ID, "tickSpeed", 50),
     enabled: () => live(SEED_ID, "enabled", true),
-    growEnabled: () => live(SEED_ID, "growEnabled", false),
-    crystallizationEnabled: () => live(SEED_ID, "crystalEnabled", false),
+    growEnabled: () => true, // live(SEED_ID, "growEnabled", true),
+    crystallizationEnabled: true, // () => live(SEED_ID, "crystalEnabled", true),
     ageField: ASTRO_FIELD.AGE,
-    growAge: () => 150,
+    growAge: () => 100,
     moves: [
         Move.side(15),
         Move.down(20),

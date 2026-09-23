@@ -3,6 +3,8 @@ export function injectViewerStyles(): void {
   const style = document.createElement("style");
   style.id = "hwv-style";
   style.textContent = `
+    .hwv-viewonly .hwv-side { display: none !important; }
+    .hwv-viewonly .hwv-main { max-width: 100%; }
     .hwv-root {
       position: fixed; inset: 0; z-index: 9000;
       display: flex; align-items: center; justify-content: center;

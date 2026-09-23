@@ -12,7 +12,7 @@ import {
   TERRAIN_NAME_KEY_PREFIX,
 } from "./constants.ts";
 import { api } from "../api/api.ts";
-import { isLensSelected } from "../tools/lens.ts";
+import { isInfiniteLensSelected, isLensSelected } from "../tools/lens.ts";
 import { isMaterializerSelected, paintManifestBrush } from "../tools/materializer.ts";
 import { isExplorerSelected, paintExplorerBrush } from "../tools/explorer.ts";
 import {
@@ -179,7 +179,7 @@ export function buildCache(): HTMLCanvasElement | null {
     for (const entry of entries) table.set(entry.code, entry.rgba);
     const image = ctx.createImageData(runtime.width, runtime.height);
     // Terrain + tag overlays (Hidden black / Explored red50 / Materialised blue50 / fog 15%)
-    const tagsOn = isTagsEnabled();
+    const tagsOn = isTagsEnabled() && runtime.cacheTags !== false && runtime.showTagsOverlay !== false;
     const mask = tagsOn ? runtime.tags : null;
     for (let i = 0; i < runtime.data.length; i++) {
       const o = i * 4;
@@ -290,9 +290,22 @@ export function invalidateGhostCache(): void {
 export function paintGhostView(): void {
   const showGhost = isLensSelected() || isMaterializerSelected() || isExplorerSelected();
   if (!showGhost) return;
-  // Generate only if no matrix yet (alerts). Cache-only rebuild is silent.
   ensureCache(!runtime.data);
   if (!runtime.cache) return;
+
+  // Infinite lens / overlay toggle: show raw hidden map without tag colors
+  const hideTags = isInfiniteLensSelected() || runtime.showTagsOverlay === false;
+  if (hideTags && runtime.cacheTags !== false) {
+    runtime.cache = null;
+    runtime.cacheTags = false;
+    ensureCache(false);
+  } else if (!hideTags && runtime.cacheTags === false) {
+    runtime.cache = null;
+    runtime.cacheTags = true;
+    ensureCache(false);
+  }
+  if (!runtime.cache) return;
+
   try {
     api.rendering.withOverlayContext((ctx) => {
       if (!ctx || !runtime.cache) return;
@@ -312,7 +325,6 @@ export function paintGhostView(): void {
       if (sw <= 0 || sh <= 0) return;
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      // One layer (terrain + FoW already composited in cache) → one alpha
       ctx.globalAlpha = runtime.alpha;
       ctx.drawImage(
         runtime.cache,

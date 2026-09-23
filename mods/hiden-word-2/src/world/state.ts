@@ -13,4 +13,7 @@ export const runtime: HiddenWorldState = {
   cache: null,
   explored: null,
   tags: null,
+  /** Preview / ghost visual: show exploration tag colors */
+  showTagsOverlay: true,
+  cacheTags: true,
 };

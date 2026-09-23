@@ -7,10 +7,9 @@ import {
 import { api } from "./api/api.ts";
 import { VERSION } from "./api/ids.ts";
 import { registerLens } from "./tools/lens.ts";
-import { registerMapViewer } from "./viewer/register.ts";
+import { registerMapTools } from "./viewer/register.ts";
 import { registerMaterializer } from "./tools/materializer.ts";
 import { registerExplorer } from "./tools/explorer.ts";
-import { registerParamsOverlay } from "./tools/overlay.ts";
 import { bindPersistHooks, ensureSeedRecord, persistRecord, reloadPersistedTags } from "./world/persistence.ts";
 import { resetTagsFromMap } from "./world/tags.ts";
 import { paintGhostView } from "./world/render.ts";
@@ -45,21 +44,20 @@ try {
   );
 
   await registerLens();
-  await registerMapViewer();
+  await registerMapTools();
   await registerMaterializer();
   await registerExplorer();
-  registerParamsOverlay();
   bindPersistHooks();
+
+  // Exploration tags always on
+  runtime.params.explorationEnabled = true;
+  try { resetTagsFromMap(); } catch { /* */ }
 
   try {
     applyAlphaPercent(api.settings.get("ghostAlphaPercent"));
-    applyExplorationSetting(api.settings.get("explorationEnabled"));
     api.settings.onChange((values) => {
       if (values && "ghostAlphaPercent" in values) {
         applyAlphaPercent(values.ghostAlphaPercent);
-      }
-      if (values && "explorationEnabled" in values) {
-        applyExplorationSetting(values.explorationEnabled);
       }
     });
   } catch (err) {

@@ -8,45 +8,63 @@ import { MOD_ID } from "../api/ids.ts";
 import type { GenerationParams, Rgba } from "./types.ts";
 
 export const MOD = MOD_ID;
+
+/** Ghost Lens — hidden map + exploration overlay */
 export const ITEM_ID = `${MOD}.lens`;
 export const ICON_SPRITE_ID = `${MOD}.lensIcon`;
 export const ICON_PATH = "assets/lens.png";
-/** Map Viewer tool — opens full-map preview + config overlay. */
+
+/** Infinite Ghost Lens — hidden map only (no exploration overlay) */
+export const INFINITE_LENS_ITEM_ID = `${MOD}.infiniteLens`;
+export const INFINITE_LENS_ICON_SPRITE_ID = `${MOD}.infiniteLensIcon`;
+export const INFINITE_LENS_ICON_PATH = "assets/lens-inf.png";
+
+/** Map Editor — full config + preview */
+export const EDITOR_ITEM_ID = `${MOD}.mapEditor`;
+export const EDITOR_ICON_SPRITE_ID = `${MOD}.mapEditorIcon`;
+export const EDITOR_ICON_PATH = "assets/map-editor.png";
+export const EDITOR_OVERLAY_ID = `${MOD}.mapEditor`;
+
+/** Map Viewer — preview only */
 export const VIEWER_ITEM_ID = `${MOD}.mapViewer`;
 export const VIEWER_ICON_SPRITE_ID = `${MOD}.mapViewerIcon`;
-export const VIEWER_ICON_PATH = "assets/lens.png"; // reuse until dedicated icon
+export const VIEWER_ICON_PATH = "assets/map-viewer.png";
+export const VIEWER_OVERLAY_ID = `${MOD}.mapViewer`;
+
 export const STORAGE_KEY_SEED = "hiddenSeed";
 export const STORAGE_KEY_MAP = "hiddenMap";
 export const STORAGE_KEY_EXPLORED = "exploredMap";
 export const OVERLAY_ID = `${MOD}.params`;
-export const VIEWER_OVERLAY_ID = `${MOD}.mapViewer`;
-/** Manifest tool — paints real terrain from the hidden matrix in a circle. */
+
 export const MATERIALIZER_ITEM_ID = `${MOD}.materializer`;
 export const MATERIALIZER_ICON_SPRITE_ID = `${MOD}.materializerIcon`;
-export const MATERIALIZER_ICON_PATH = "assets/lens.png";
+export const MATERIALIZER_ICON_PATH = "assets/manifest.png";
 export const MATERIALIZER_OVERLAY_ID = `${MOD}.materializer`;
 export const MATERIALIZER_RADIUS_MIN = 2;
 export const MATERIALIZER_RADIUS_MAX = 24;
 export const MATERIALIZER_RADIUS_DEFAULT = 6;
 export const MATERIALIZER_ENERGY = 8;
+
+export const INFINITE_MATERIALIZER_ITEM_ID = `${MOD}.infiniteMaterializer`;
+export const INFINITE_MATERIALIZER_ICON_SPRITE_ID = `${MOD}.infiniteMaterializerIcon`;
+export const INFINITE_MATERIALIZER_ICON_PATH = "assets/manifest-inf.png";
+export const INFINITE_MATERIALIZER_OVERLAY_ID = `${MOD}.infiniteMaterializer`;
+export const INFINITE_MATERIALIZER_ENERGY = 8;
+
 export const EXPLORER_ITEM_ID = `${MOD}.explorer`;
 export const EXPLORER_ICON_SPRITE_ID = `${MOD}.explorerIcon`;
-export const EXPLORER_ICON_PATH = "assets/lens.png";
+export const EXPLORER_ICON_PATH = "assets/explorer.png";
 export const EXPLORER_OVERLAY_ID = `${MOD}.explorer`;
 export const EXPLORER_RADIUS_MIN = 1;
 export const EXPLORER_RADIUS_MAX = 16;
 export const EXPLORER_RADIUS_DEFAULT = 4;
 export const EXPLORER_ENERGY = 4;
+
 export const DEEP_EXPLORER_ITEM_ID = `${MOD}.deepExplorer`;
 export const DEEP_EXPLORER_ICON_SPRITE_ID = `${MOD}.deepExplorerIcon`;
-export const DEEP_EXPLORER_ICON_PATH = "assets/lens.png";
+export const DEEP_EXPLORER_ICON_PATH = "assets/explorer-deep.png";
 export const DEEP_EXPLORER_OVERLAY_ID = `${MOD}.deepExplorer`;
 export const DEEP_EXPLORER_ENERGY = 4;
-export const INFINITE_MATERIALIZER_ITEM_ID = `${MOD}.infiniteMaterializer`;
-export const INFINITE_MATERIALIZER_ICON_SPRITE_ID = `${MOD}.infiniteMaterializerIcon`;
-export const INFINITE_MATERIALIZER_ICON_PATH = "assets/lens.png";
-export const INFINITE_MATERIALIZER_OVERLAY_ID = `${MOD}.infiniteMaterializer`;
-export const INFINITE_MATERIALIZER_ENERGY = 8;
 /** Extra cells around fog / materialize border that become explored. */
 export const EXPLORE_BORDER_PX = 2;
 export const FALLBACK_CELLS = { width: 640, height: 360 };
@@ -156,6 +174,10 @@ const NS = "mods|hidenword2";
 export const KEY = {
   itemName: `${NS}|lens|name`,
   itemDesc: `${NS}|lens|desc`,
+  infiniteLensName: `${NS}|infiniteLens|name`,
+  infiniteLensDesc: `${NS}|infiniteLens|desc`,
+  editorName: `${NS}|editor|name`,
+  editorDesc: `${NS}|editor|desc`,
   viewerName: `${NS}|viewer|name`,
   viewerDesc: `${NS}|viewer|desc`,
   materializerName: `${NS}|materializer|name`,
@@ -200,7 +222,7 @@ export const DEFAULT_PARAMS: GenerationParams = {
     diagonal: false,
     surfaceKeepPercent: 0,
   },
-  explorationEnabled: false,
+  explorationEnabled: true,
   modifiers: [
     {
       id: "liq-water",

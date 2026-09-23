@@ -28,7 +28,6 @@ export async function registerBufferControls<T extends object>(
 ): Promise<BufferControlsHandles<T>> {
     const { modId } = config;
 
-    // console.log(" registerBufferControls = ", modId, config);
     // -- 1. The jsonBuffer record we expose to the player --------------------
     // `persist` defaults to true: JsonBuffer.loadFromStorage is opt-in and must
     // be enabled here or the record is only saved, never restored on reload.

@@ -109,7 +109,7 @@ export function paintPreviewCanvas(canvas: HTMLCanvasElement): void {
   for (const e of entries) table.set(e.code, e.rgba);
 
   const img = ctx.createImageData(pw, ph);
-  const tagsOn = isTagsEnabled();
+  const tagsOn = isTagsEnabled() && runtime.showTagsOverlay !== false;
   const mask = tagsOn ? runtime.tags : null;
   for (let py = 0; py < ph; py++) {
     const sy = Math.min(h - 1, py * div);

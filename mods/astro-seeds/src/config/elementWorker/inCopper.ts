@@ -18,8 +18,8 @@ export const astroSeedInCopper: Profile = {
     crystalType: ElementType.astroCopperCrystal,
     tickSpeed: () => live(ID, "tickSpeed", 50),
     enabled: () => live(ID, "enabled", true),
-    growEnabled: () => live(ID, "growEnabled", false),
-    crystallizationEnabled: () => live(ID, "crystalEnabled", false),
+    growEnabled: () => true, // live(ID, "growEnabled", true),
+    crystallizationEnabled: true, // () => live(ID, "crystalEnabled", true),
     ageField: ASTRO_FIELD.AGE,
     growAge: () => 40,
     moves: [

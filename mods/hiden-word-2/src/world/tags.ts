@@ -119,7 +119,8 @@ export function compositeTagPixel(
 }
 
 export function isTagsEnabled(): boolean {
-  return !!runtime.params?.explorationEnabled;
+  // Exploration tags always active (no longer a user toggle)
+  return true;
 }
 
 export function ensureTags(force = false): void {
