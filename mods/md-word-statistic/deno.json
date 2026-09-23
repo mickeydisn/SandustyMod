@@ -2,9 +2,9 @@
     "tasks": {
         "build:main": "deno bundle -o build/main.js src/main.ts",
         "build:modinfo": "cp src/modinfo.json build/modinfo.json",
-        "build:assets": "cp -r assets build/assets",
+        "build:assets": "mkdir -p build/assets && cp -r assets/. build/assets/ 2>/dev/null || true",
 
-        "build:toGame": "cp -r build/. /Users/mickey/Library/Application\\ Support/sandustry/mods/excavated-all",
+        "build:toGame": "cp -r build/. /Users/mickey/Library/Application\\ Support/sandustry/mods/md-word-statistic",
         "build": "deno task build:main && deno task build:modinfo && deno task build:assets && deno task build:toGame",
 
         "check": "deno check src/main.ts"
@@ -13,5 +13,5 @@
         "lib": ["deno.window", "dom"],
         "strict": true
     },
-    "exclude": ["main.js", "worker.js"]
+    "exclude": ["main.js", "worker.js", "build"]
 }

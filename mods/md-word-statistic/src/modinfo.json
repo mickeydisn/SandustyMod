@@ -1,0 +1,12 @@
+{
+    "manifestVersion": 1,
+    "id": "md-word-statistic",
+    "name": "Word Statistic",
+    "version": "0.3.0",
+    "apiVersion": 1,
+    "entry": "main.js",
+    "author": "MickeyDisn",
+    "description": "Tool that lists elements, structures and terrains on the map with live grid counts. Select the Word Statistic tool to open the overlay.",
+    "dependencies": [],
+    "loadOrder": 0
+}
