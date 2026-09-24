@@ -9,7 +9,7 @@
  * event + linear catalogue scan on every vanilla placement.
  */
 import "@sandmd/sandkit";
-import { CatalogueItem } from "@sandmd/catalogue";
+import type { CatalogueItem } from "../strucutre/types.ts";
 import type {
     BuildEventMap,
     BuildEventName,
