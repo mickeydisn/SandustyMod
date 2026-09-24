@@ -22,13 +22,14 @@ import { isExcavatorSelected } from "./tool.ts";
 import { setRadius, setRepaint, toggleFilter, toolState } from "./state.ts";
 import { COLORS, styles } from "./styles.ts";
 import type { FilterKey } from "./ids.ts";
+import type { Setter } from "./types.ts";
 
 export function ExcavatorPanel(): unknown {
     const react = React;
     const e = h;
     if (!react || !e) return null;
 
-    const [, bump] = react.useState(0) as [number, (fn: (n: number) => number) => void];
+    const [, bump] = react.useState(0) as [number, Setter<number>];
 
     react.useEffect(() => {
         setRepaint(bump);

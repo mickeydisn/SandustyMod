@@ -121,6 +121,10 @@ const items = parsedFiles
             id,
             label: labelFor(id),
             category: categoryFor(p.baseId),
+            // Required by `CatalogueItem.path` (`packages/catalogue`): group by
+            // asset directory (e.g. "assets/icons") so `allPaths`/`itemsInPath`
+            // stay meaningful for deco items (no jsonBuffer path here).
+            path: p.relDir,
             width: p.cellsW * PX,
             height: p.cellsH * PX,
             filePath: p.path.slice(2),
@@ -146,6 +150,7 @@ const menu = {
     id: "icons",
     label: "Icons",
     category: "glyphs",
+    path: menuSource ? menuSource.relDir : ASSET_DIRS[0],
     width: 16,
     height: 16,
     filePath: menuSource ? menuSource.path : `${ASSET_DIRS[0]}/char-A-1x1.png`,
@@ -163,10 +168,11 @@ export const ICON_CATEGORIES: CatalogueCategory[] = ${JSON.stringify(categories,
 
 export const ICON_ITEMS: CatalogueItem[] = ${
     JSON.stringify(
-        items.map(({ id, label, category, width, height, filePath, align, tags, sizes }) => ({
+        items.map(({ id, label, category, path, width, height, filePath, align, tags, sizes }) => ({
             id,
             label,
             category,
+            path,
             width,
             height,
             filePath,

@@ -8,7 +8,7 @@ import { loadSpriteMap } from "@sandmd/assets";
 import { CatalogueItem, createBuildList } from "@sandmd/catalogue";
 import { createPickerOverlay } from "@sandmd/catalogue";
 
-import { ICON_CATEGORIES, ICON_FILES, ICON_ITEMS } from "./catalogue.generated.ts";
+import { ICON_FILES, ICON_ITEMS } from "./catalogue.generated.ts";
 import { registerIconStructures } from "./register.ts";
 
 const MOD_ID = "sandustry.icons";
@@ -25,7 +25,6 @@ async function main() {
         modId: MOD_ID,
         menuId: MENU_ID,
         menuLabel: "Icons",
-        categories: ICON_CATEGORIES,
         catalogueItems: ICON_ITEMS,
         selectedId: ICON_ITEMS.find((i) => i.id !== MENU_ID)?.id,
     });
