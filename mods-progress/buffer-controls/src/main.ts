@@ -72,13 +72,9 @@ void (async () => {
                 spriteId: "actionMinusX",
                 filePath: "assets/types/minusX.png",
             },
-            // Default sign toggle — 3 frames: 0 / >0 / <0.
-            {
-                kind: "number",
-                action: "toggleNum",
-                spriteId: "tognum",
-                filePath: "assets/types/tognum.png",
-            },
+            // No generic `toggleNum` / `toggleRate` entries here: a number only
+            // gets a toggle behaviour where the record's sprite config
+            // declares one for that path.
 
             {
                 kind: "bool",

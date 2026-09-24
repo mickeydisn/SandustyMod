@@ -86,7 +86,7 @@ export function registerStructures<T extends object>(
         // refreshSignals that recomputes their own placed structures; merge
         // them all into one.
         if (ops.item.tags?.includes("action") && ops.item.kind == "number") {
-            const number = ops.item.action === "toggleNum"
+            const number = ops.item.action === "toggleNum" || ops.item.action === "toggleRate"
                 ? registerActionToggleNumberStructures(ops)
                 : registerActionNumberStructures(ops);
             if (number) refreshers.push(number.refreshSignals);

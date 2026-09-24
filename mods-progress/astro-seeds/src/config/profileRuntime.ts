@@ -79,9 +79,21 @@ export const PROFILES_CONFIG: BufferControlsCategoryLabels[] = [
 
 /**
  * Custom buffer-controls art for the runtime keys — one entry per knob that
- * has its own drawing under `assets/buffers/`:
+ * has its own drawing under `assets/buffers-02/` (falling back to
+ * `assets/buffers/` where the new art hasn't landed yet):
  *   - bool knobs use a 2-frame `toggle-*.png` (frame 0 = off, frame 1 = on),
- *   - number knobs use a 3-frame `tognum-*.png` (0 / `>0` / `<0`).
+ *   - `*_Weight` knobs declare `toggleNum` with a 3-frame
+ *     `tognum-*-weigth.png` (frames 0 / `>0` / `<0`, click flips the sign),
+ *   - `*_Rate` knobs declare `toggleRate` with an N-frame
+ *     `tognum-*-rate.png` (frame 0 is `<= 0`, the last frame is `>= 100`,
+ *     the `N - 2` middle frames split `(0, 100)` evenly — 6 frames means
+ *     steps of 25, 7 frames steps of 20 — click cycles the stops and wraps
+ *     to 0). The sheet's frame count goes in `frames` (defaults to 6).
+ *
+ * Declaring the toggle in the sprite config is what creates the toggle
+ * action at all — a number has no `toggleNum` / `toggleRate` button unless
+ * an entry below declares it (so `*-rate.png` knobs get only `toggleRate`
+ * and `*-weigth.png` knobs only `toggleNum`).
  *
  * `tag` is the catalogue tag of the bound path's last segment, so a single
  * entry covers that knob on every profile (`P.<profileId>.<key>`). Any knob
@@ -103,58 +115,124 @@ export const PROFILE_SPRITES: readonly ProfileSprite[] = [
         kind: "bool",
         action: "toggle",
         spriteId: "toggleMove",
-        filePath: "assets/buffers/toggle-moveEnabled.png",
+        filePath: "assets/buffers-02/toggle-moveEnabled.png",
     },
     {
         tag: "growEnabled",
         kind: "bool",
         action: "toggle",
         spriteId: "toggleGrow",
-        filePath: "assets/buffers/toggle-growEnabled.png",
+        filePath: "assets/buffers-02/toggle-growEnabled.png",
     },
     {
         tag: "crystalEnabled",
         kind: "bool",
         action: "toggle",
         spriteId: "toggleCrystal",
-        filePath: "assets/buffers/toggle-crystalEnabled.png",
+        filePath: "assets/buffers-02/toggle-crystalEnabled.png",
     },
 
-    // number — 3 frames: 0 / >0 / <0.
+    // rates — N frames: 0 is <=0, last is >=100, the rest split (0, 100).
     {
         tag: "random_Rate",
         kind: "number",
-        action: "toggleNum",
-        spriteId: "tognumRandom",
-        filePath: "assets/buffers/tognum-random-rate.png",
+        action: "toggleRate",
+        spriteId: "tognumRandomRate",
+        filePath: "assets/buffers-02/tognum-random-rate.png",
+        frames: 7,
     },
     {
         tag: "gravity_Rate",
         kind: "number",
-        action: "toggleNum",
-        spriteId: "tognumGravity",
-        filePath: "assets/buffers/tognum-gravity-rate.png",
+        action: "toggleRate",
+        spriteId: "tognumGravityRate",
+        filePath: "assets/buffers-02/tognum-gravity-rate.png",
+        frames: 7,
     },
     {
         tag: "aSeed_Rate",
         kind: "number",
-        action: "toggleNum",
-        spriteId: "tognumASeed",
-        filePath: "assets/buffers/tognum-astro-seed-rate.png",
+        action: "toggleRate",
+        spriteId: "tognumASeedRate",
+        filePath: "assets/buffers-02/tognum-element-rate.png",
+        frames: 7,
     },
     {
         tag: "aGold_Rate",
         kind: "number",
-        action: "toggleNum",
-        spriteId: "tognumAGold",
-        filePath: "assets/buffers/tognum-astro-gold-rate.png",
+        action: "toggleRate",
+        spriteId: "tognumAGoldRate",
+        filePath: "assets/buffers-02/tognum-element-rate.png",
+        frames: 7,
     },
     {
         tag: "aCopper_Rate",
         kind: "number",
+        action: "toggleRate",
+        spriteId: "tognumACopperRate",
+        filePath: "assets/buffers-02/tognum-element-rate.png",
+        frames: 7,
+    },
+    {
+        tag: "aInertia_Rate",
+        kind: "number",
+        action: "toggleRate",
+        spriteId: "tognumAInertiaRate",
+        filePath: "assets/buffers-02/tognum-rand-rate.png",
+        frames: 7,
+    },
+    {
+        tag: "tickSpeed",
+        kind: "number",
+        action: "toggleRate",
+        spriteId: "tognumTickSpeedRate",
+        filePath: "assets/buffers-02/tognum_speed-rate.png",
+        frames: 7,
+    },
+
+    // weights — 3 frames: 0 / >0 / <0 (`toggleNum` flips the sign).
+    // Note: `buffers-02` spells these `*-weigth.png`.
+    {
+        tag: "random_Weight",
+        kind: "number",
         action: "toggleNum",
-        spriteId: "tognumACopper",
-        filePath: "assets/buffers/tognum-astro-copper-rate.png",
+        spriteId: "tognumRandomWeight",
+        filePath: "assets/buffers-02/tognum-random-weigth.png",
+    },
+    {
+        tag: "gravity_Weight",
+        kind: "number",
+        action: "toggleNum",
+        spriteId: "tognumGravityWeight",
+        filePath: "assets/buffers-02/tognum-gravity-weigth.png",
+    },
+    {
+        tag: "aSeed_Weight",
+        kind: "number",
+        action: "toggleNum",
+        spriteId: "tognumASeedWeight",
+        filePath: "assets/buffers-02/tognum-element-astro-seed-weigth.png",
+    },
+    {
+        tag: "aGold_Weight",
+        kind: "number",
+        action: "toggleNum",
+        spriteId: "tognumAGoldWeight",
+        filePath: "assets/buffers-02/tognum-element-astro-gold-weigth.png",
+    },
+    {
+        tag: "aCopper_Weight",
+        kind: "number",
+        action: "toggleNum",
+        spriteId: "tognumACopperWeight",
+        filePath: "assets/buffers-02/tognum-element-astro-copper-weigth.png",
+    },
+    {
+        tag: "aInertia_Weight",
+        kind: "number",
+        action: "toggleNum",
+        spriteId: "tognumAInertiaWeight",
+        filePath: "assets/buffers-02/tognum-rand-weigth.png",
     },
 ];
 

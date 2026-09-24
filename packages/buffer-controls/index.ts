@@ -7,6 +7,7 @@
  */
 export { registerBufferControls } from "./src/buffer-controls.ts";
 export type {
+    ActionOp,
     BufferControlsCategoryLabels,
     BufferControlsConfig,
     BufferControlsHandles,

@@ -108,13 +108,10 @@ export function buildMain(): void {
             },
             { kind: "bool", spriteId: "bolean", filePath: "assets/types/bolean.png" },
 
-            // Default sign toggle (3 frames: 0 / >0 / <0) for number paths…
-            {
-                kind: "number",
-                action: "toggleNum",
-                spriteId: "tognum",
-                filePath: "assets/types/tognum.png",
-            },
+            // No generic `toggleNum` / `toggleRate` entries here: a number only
+            // gets a toggle behaviour where PROFILE_SPRITES declares one for
+            // that knob (`*-weigth.png` → `toggleNum`, `*-rate.png` →
+            // `toggleRate` with its `frames` count).
             // …overridden knob-by-knob with the mod's own art.
             ...PROFILE_SPRITES,
         ],

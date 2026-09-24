@@ -5,7 +5,9 @@
  * in the three category tabs:
  *   - variables — one item per path,
  *   - value     — one item per path (live readout),
- *   - action    — +1 / ±10 / sign-toggle for numbers, toggle for booleans.
+ *   - action    — +1 / ±10 for numbers, toggle for booleans, plus the
+ *     opt-in toggles a number declares through its sprite entries
+ *     (`toggleNum` for `*-weigth.png`, `toggleRate` for `*-rate.png`).
  * Plus a single unlocked menu entry that opens the picker.
  *
  * `listPaths` reports array leaves as "[]" templates (e.g. "players[].name"), so
@@ -18,6 +20,7 @@ import type {
     ActionCatalogueItem,
     ActionOp,
     BufferControlsConfig,
+    BufferControlsSprite,
     BufferControlsSprites,
     FieldKind,
     PathCatalogueItem,
@@ -131,6 +134,7 @@ const valueItem = (
 const actionItem = (
     field: BoundField,
     op: ActionOp,
+    frames?: number,
 ): ActionCatalogueItem => ({
     id: `${ACTION_PREFIX}${field.path}:${op}`,
     action: op,
@@ -143,18 +147,49 @@ const actionItem = (
     width: CELL,
     height: CELL,
     color: "#FFFFFF",
+    ...(frames !== undefined ? { frames } : {}),
 });
 
-const actionItemsFor = (field: BoundField): ActionCatalogueItem[] => {
+/**
+ * Does a sprite entry declare a toggle behaviour for this field?
+ * Matching reuses the same priority as `resolveSpriteEntry` (exact `itemId`
+ * first, then `tag` scoped to the path's last segment). A bare `kind`-only
+ * entry never opts a field into a toggle behaviour.
+ */
+const toggleEntryFor = (
+    sprites: BufferControlsSprites,
+    field: BoundField,
+    op: "toggleNum" | "toggleRate",
+): BufferControlsSprite | undefined => {
+    const last = field.path.split(".").at(-1);
+    const toggleId = `${ACTION_PREFIX}${field.path}:${op}`;
+    return sprites.find((s) => s.action === op && s.itemId === toggleId) ??
+        sprites.find((s) =>
+            s.action === op && s.tag != null && s.tag === last &&
+            (s.kind == null || s.kind === field.kind)
+        );
+};
+
+const actionItemsFor = (
+    field: BoundField,
+    sprites: BufferControlsSprites,
+): ActionCatalogueItem[] => {
     if (field.kind === "number") {
-        return [
+        const items = [
             actionItem(field, "inc"),
             actionItem(field, "dec"),
             actionItem(field, "incX"),
             actionItem(field, "decX"),
-            // Sign toggle: `0` stays `0`, every other value flips sign.
-            actionItem(field, "toggleNum"),
         ];
+        // A number has no toggle behaviour by default — each toggle exists
+        // only where the sprite config declares it (e.g. `*-weigth.png`
+        // entries declare `toggleNum`, `*-rate.png` entries declare
+        // `toggleRate`).
+        const tognum = toggleEntryFor(sprites, field, "toggleNum");
+        if (tognum) items.push(actionItem(field, "toggleNum"));
+        const rate = toggleEntryFor(sprites, field, "toggleRate");
+        if (rate) items.push(actionItem(field, "toggleRate", rate.frames));
+        return items;
     }
     if (field.kind === "bool") {
         return [
@@ -192,7 +227,7 @@ export function buildBufferControlList(
         ...bound.flatMap((field) => [
             variableItem(field),
             valueItem(field),
-            ...actionItemsFor(field),
+            ...actionItemsFor(field, config.sprites),
         ]),
     ];
 

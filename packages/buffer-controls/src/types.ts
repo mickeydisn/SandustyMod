@@ -17,7 +17,7 @@ import type { FieldKind } from "@sandmd/buffer";
 ///-----------------
 
 export type { FieldKind };
-export type ActionOp = "inc" | "dec" | "incX" | "decX" | "toggle" | "toggleNum";
+export type ActionOp = "inc" | "dec" | "incX" | "decX" | "toggle" | "toggleNum" | "toggleRate";
 
 ///-----------------
 
@@ -44,6 +44,12 @@ export interface ActionCatalogueItem extends CatalogueItem {
     kind?: FieldKind;
     action?: ActionOp;
     color: string;
+    /**
+     * Spritesheet frame count for value-mapped toggle art (`toggleRate`).
+     * Copied from the matched `BufferControlsSprite.frames` entry; defaults
+     * to 6 when the entry omits it.
+     */
+    frames?: number;
 }
 
 ///-----------------
@@ -70,6 +76,15 @@ export interface BufferControlsSprite {
     tag?: string;
     kind?: FieldKind;
     action?: ActionOp;
+    /**
+     * Spritesheet frame count for value-mapped toggle art.
+     * `toggleNum` is always 3 frames (0 / `>0` / `<0`) and ignores this.
+     * `toggleRate` follows the N-frame rule — frame 0 is `<= 0`, the last
+     * frame is `>= 100`, and the `N - 2` middle frames split `(0, 100)`
+     * evenly (6 frames → steps of 25, 7 frames → steps of 20, …).
+     * Defaults to 6 when omitted.
+     */
+    frames?: number;
 }
 export type BufferControlsSprites = BufferControlsSprite[];
 

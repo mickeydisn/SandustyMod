@@ -21,8 +21,8 @@ export function registerActionNumberStructures(
 ): ActionRegisterResult | void {
     // Only number-paths carry +1 / -1 actions.
     if (!ops.item.tags?.includes("action") || ops.item.kind !== "number") return;
-    // The sign toggle is a separate structure (actionToggleNumberRegister.ts).
-    if (ops.item.action === "toggleNum") return;
+    // The toggle ops are a separate structure (actionToggleNumberRegister.ts).
+    if (ops.item.action === "toggleNum" || ops.item.action === "toggleRate") return;
 
     // How the sender cell's output is derived from the buffer (the "how").
     const computeSignal = (structure: StructureLike): boolean => {

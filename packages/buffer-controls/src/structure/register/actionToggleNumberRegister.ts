@@ -1,19 +1,29 @@
 /**
- * Sign-toggle number actions — the "±" button for each number path.
+ * Toggle number actions — the sign toggle (`toggleNum`) and the rate stepper
+ * (`toggleRate`) for each number path.
  *
  * Same wiring as the boolean toggle (`actionBooleanRegister.ts`), but the art
- * is a 3-frame spritesheet selected from the current value:
- *   frame 0 = `0`, frame 1 = `> 0`, frame 2 = `< 0` (default
- * `assets/types/tognum.png`; mods may override it per path with their own
- * `tag`-matched entry, e.g. `assets/buffers/tognum-*.png`).
+ * is a value-selected spritesheet:
+ *   - `toggleNum`: always 3 frames — 0 = `0`, 1 = `> 0`, 2 = `< 0`
+ *     (default `assets/types/tognum.png`; mods may override it per path with
+ *     their own `tag`-matched entry, e.g. `assets/buffers/tognum-*.png`).
+ *     Clicking writes `0` when the value is `0` and `-value` otherwise.
+ *   - `toggleRate`: any N-frame `tognum-*-rate.png` following the N-frame
+ *     rule — frame 0 is `<= 0`, the last frame is `>= 100`, and the `N - 2`
+ *     middle frames split `(0, 100)` evenly (6 frames: `<=0` / `>0` /
+ *     `>=25` / `>=50` / `>=75` / `>=100`; 7 frames: `<=0` / `>0` / `>=20` /
+ *     `>=40` / `>=60` / `>=80` / `>=100`). The frame count comes from the
+ *     matched sprite entry's `frames` (defaults to 6) and clicking cycles the
+ *     sheet's stops, wrapping back to 0 past 100.
  *
- * Clicking writes `0` when the value is `0` (nothing to flip) and `-value`
- * otherwise — the mutation itself lives in `applyAction("toggleNum", …)`.
+ * Each toggle exists only where the mod's sprite config declares it — a
+ * number has no toggle behaviour by default. Both mutations live in
+ * `applyAction(…)` (`./actionRegister.ts`).
  */
 import "@sandmd/sandkit";
 import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { StructureLike } from "@sandmd/shared";
-import { ActionRegisterResult, applyAction } from "./actionRegister.ts";
+import { ActionRegisterResult, applyAction, toggleRateFrame } from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
 import { drawBorder } from "../render.ts";
 
@@ -26,10 +36,10 @@ export function toggleNumberFrame(value: unknown): number {
 export function registerActionToggleNumberStructures(
     ops: registerStructureOps,
 ): ActionRegisterResult | void {
-    // Only the sign-toggle op of number paths is owned here; the +1 / -1
+    // Only the toggle ops of number paths are owned here; the +1 / -1 / ±10
     // buttons belong to actionNumberRegister.ts.
     if (!ops.item.tags?.includes("action") || ops.item.kind !== "number") return;
-    if (ops.item.action !== "toggleNum") return;
+    if (ops.item.action !== "toggleNum" && ops.item.action !== "toggleRate") return;
 
     const actionItems: { typeId: string; path: string }[] = [];
 
@@ -47,10 +57,14 @@ export function registerActionToggleNumberStructures(
         sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
     };
 
+    const op = ops.item.action ?? "toggleNum";
+    const path = ops.item.path;
+    const frames = ops.item.action === "toggleRate" ? (ops.item.frames ?? 6) : 6;
+
     const act = (structure: StructureLike): void => {
         const p = structure.data?.path;
         if (typeof p !== "string" || p.length === 0) return;
-        ops.write(p, applyAction("toggleNum", ops.read(p)));
+        ops.write(p, applyAction(op, ops.read(p), frames));
         pushSignal(structure);
     };
 
@@ -59,19 +73,17 @@ export function registerActionToggleNumberStructures(
         structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
         render: { ctx?: CanvasRenderingContext2D },
     ): boolean => {
-        // Live sign → spritesheet frame (0 / >0 / <0).
+        // Live value → spritesheet frame (sign frames for `toggleNum`,
+        // N-frame buckets for `toggleRate`).
         const d = ops.read(structure.data?.path as string);
         sandkit.api.structures.setSpritesheetIndexAtCell(
             structure.x,
             structure.y,
-            toggleNumberFrame(d),
+            ops.item.action === "toggleRate" ? toggleRateFrame(d, frames) : toggleNumberFrame(d),
         );
         drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
-
-    const op = "toggleNum" as const;
-    const path = ops.item.path;
 
     actionItems.push({ typeId: ops.typeId, path });
 
@@ -89,13 +101,13 @@ export function registerActionToggleNumberStructures(
             size: { width: 16, height: 16 },
         },
         copyData: true,
-        defaultData: { path, kind: ops.item.kind ?? "number", op },
+        defaultData: { path, kind: ops.item.kind ?? "number", op, frames },
         draw,
     });
     // Unlock the buildings
     sandkit.api.player.buildings.unlockByType(ops.typeId);
 
-    // Click-to-activate: flips the sign of the bound buffer path.
+    // Click-to-activate: applies the toggle op to the bound buffer path.
     sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
         act(structure);
     });
