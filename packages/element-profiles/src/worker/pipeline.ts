@@ -66,6 +66,7 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
     // (Seed + liquid guards stay engine reads: they gate whether we run at all.)
     const sense = sampleSense(x, y);
     if (sense.cells[SENSE_CENTER] !== profile.seedType) return false;
+    if (Grid.hasStructureAt(x, y)) return false;
     let liquidNear = false;
     for (let i = 0; i < SENSE_N; i++) {
         if (i !== SENSE_CENTER && sense.cells[i] === profile.liquidType) {
@@ -167,11 +168,13 @@ export function runProfile(x: number, y: number, profile: Profile): boolean {
     if (dx !== 0 || dy !== 0) {
         const ox = ctx.x;
         const oy = ctx.y;
-        const r = Grid.swapCell(
+        const nx = ctx.x + dx;
+        const ny = ctx.y + dy;
+        const r = Grid.hasStructureAt(nx, ny) ? null : Grid.swapCell(
             ctx.x,
             ctx.y,
-            ctx.x + dx,
-            ctx.y + dy,
+            nx,
+            ny,
             ctx.profile.passableTypes
                 ? [ctx.profile.liquidType, ...ctx.profile.passableTypes]
                 : ctx.profile.liquidType,

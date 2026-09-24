@@ -48,6 +48,7 @@ export interface SandkitStructure {
     ) => void;
 
     getAtCell: (cellX: number, cellY: number) => StructureLike;
+    hasBuiltAtCell?: (cellX: number, cellY: number) => boolean;
     processing: {
         register: (
             structureType: string,

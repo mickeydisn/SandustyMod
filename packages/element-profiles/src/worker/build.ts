@@ -16,6 +16,7 @@ import type { TElementType } from "@sandmd/shared";
 import type { Profile } from "../shared/types.ts";
 import { resolveBoolean } from "../shared/num.ts";
 import { runProfile } from "./pipeline.ts";
+import { Grid } from "./utils/grid.ts";
 import { GridNear } from "./utils/near.ts";
 
 /** The shared cancel token the engine passes to intercept handlers. */
@@ -41,6 +42,7 @@ function dispatchSeed(
         if (!profile.seedType || elementType !== profile.seedType) continue;
         if (!resolveBoolean(profile.enabled, true)) continue;
         if (!profile.liquidType || !GridNear.isNear(x, y, profile.liquidType)) continue;
+        if (Grid.hasStructureAt(x, y)) continue;
 
         // Reset physics so the seed can move, then run its profile.
         api.elements.setPhysicsAtCell(x, y, 1);

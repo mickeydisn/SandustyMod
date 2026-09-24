@@ -57,6 +57,30 @@ export const Grid = {
         return !exclude.includes(t);
     },
 
+    // STRUCTURE
+    hasStructureAt(x: number, y: number): boolean {
+        try {
+            const api = (sandkit as unknown as {
+                api?: {
+                    structures?: {
+                        hasBuiltAtCell?: (x: number, y: number) => boolean;
+                        getAtCell?: (x: number, y: number) => unknown;
+                    };
+                };
+            }).api;
+            const structures = api?.structures;
+            if (typeof structures?.hasBuiltAtCell === "function") {
+                return structures.hasBuiltAtCell(x, y) === true;
+            }
+            if (typeof structures?.getAtCell === "function") {
+                return structures.getAtCell(x, y) != null;
+            }
+        } catch {
+            /* ignore */
+        }
+        return false;
+    },
+
     // DATA
     readFieldAt(x: number, y: number, field: number): number {
         try {

@@ -64,9 +64,12 @@ function columnOffsets(r: number, senseHalf: number): Off[] {
 function commit(ctx: Ctx, offsets: Off[]): boolean {
     const { seedType, crystalType, ageField, liquidType } = ctx.profile;
     if (seedType == null || Sense.at(ctx.sense, 0, 0) !== seedType) return false;
+    if (Grid.hasStructureAt(ctx.x, ctx.y)) return false;
     const targets: Off[] = [];
     for (const o of offsets) {
-        if (Sense.is(ctx.sense, o.x, o.y, liquidType)) targets.push(o);
+        if (!Sense.is(ctx.sense, o.x, o.y, liquidType)) continue;
+        if (Grid.hasStructureAt(ctx.x + o.x, ctx.y + o.y)) continue;
+        targets.push(o);
     }
     if (targets.length < 1) return false;
     for (const t of targets) {
@@ -99,6 +102,7 @@ export const Crystallization = {
                 return false;
             }
             if (ctx.profile.crystalType == null) return false;
+            if (Grid.hasStructureAt(ctx.x, ctx.y)) return false;
             sandkit.api.elements.replaceAtCell(ctx.x, ctx.y, ctx.profile.crystalType);
             Grid.resetFieldAt(ctx.x, ctx.y, ctx.profile.ageField);
             return true;
