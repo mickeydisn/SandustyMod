@@ -14,22 +14,50 @@
  * `damageAtCell` is, which is what lets this tool take out terrain the
  * player's normal tools cannot touch.
  *
+ * Some `CellType` values (SlidingBlock, ConveyorLeft/Right, ShakerLeft/Right,
+ * …) are a structure's own moving mechanism rendered at the terrain layer
+ * rather than ordinary diggable ground. Those are only cleared when the
+ * Structure filter is on — see `isStructureTerrain` — so turning Structure
+ * off leaves a machine's terrain-embedded part intact along with the machine
+ * itself, instead of stripping half of it.
+ *
  * `api.authorization` is query-only (no setter to actually lift a zone's
  * restriction), so this engine always respects it, the same as any other
  * tool: cells the zone blocks are skipped rather than force-cleared.
  */
 import { api, safe } from "./api.ts";
-import { FIXED_TERRAIN_HINTS, LOG, STRUCTURE_FOOTPRINT_SEARCH_RADIUS } from "./ids.ts";
+import {
+    FIXED_TERRAIN_HINTS,
+    LOG,
+    STRUCTURE_FOOTPRINT_SEARCH_RADIUS,
+    STRUCTURE_TERRAIN_HINTS,
+    STRUCTURE_TERRAIN_TYPES,
+} from "./ids.ts";
 import type { Cell, ExcavateStats, FilterState, GridWriter, StructureInstance } from "./types.ts";
 
 /** Best-effort: does this terrain type look like a fixed/indestructible one? */
 function isFixedTerrain(type: number | string | null): boolean {
     if (type == null) return false;
+    if (typeof type === "number" && STRUCTURE_TERRAIN_TYPES.includes(type)) return false;
     const id = safe(() => api.terrains.getIdByType?.(type)) ??
         safe(() => api.terrains.getDefinitionByType?.(type)?.id) ??
         String(type);
     const lower = String(id).toLowerCase();
     return FIXED_TERRAIN_HINTS.some((hint) => lower.includes(hint));
+}
+
+/**
+ * Best-effort: is this terrain type actually a structure's own mechanism
+ * (conveyor belt, shaker, sliding block) rather than diggable ground?
+ */
+function isStructureTerrain(type: number | string | null): boolean {
+    if (type == null) return false;
+    if (typeof type === "number" && STRUCTURE_TERRAIN_TYPES.includes(type)) return true;
+    const id = safe(() => api.terrains.getIdByType?.(type)) ??
+        safe(() => api.terrains.getDefinitionByType?.(type)?.id) ??
+        String(type);
+    const lower = String(id).toLowerCase();
+    return STRUCTURE_TERRAIN_HINTS.some((hint) => lower.includes(hint));
 }
 
 /** Every cell within `radius` cells of the centre, closest-first. */
@@ -93,8 +121,16 @@ function findStructureFootprint(hx: number, hy: number, instance: StructureInsta
     return cells;
 }
 
-/** Remove the whole structure a hit cell belongs to, not just that cell. */
-function forceClearStructureFootprint(hx: number, hy: number): number {
+/**
+ * Remove the whole structure a hit cell belongs to, not just that cell —
+ * and sweep the same footprint for embedded mechanism terrain (conveyors,
+ * shakers, sliding blocks), since those can extend past the brush radius on
+ * a partial-overlap hit and would otherwise survive the structure itself.
+ * `alreadyCleared` is shared with the main terrain pass so a mechanism cell
+ * inside both the brush and this footprint is only counted once.
+ * Returns the number of *newly* cleared mechanism-terrain cells.
+ */
+function forceClearStructureFootprint(hx: number, hy: number, alreadyCleared: Set<string>): number {
     const s = safe(() => api.structures.getAtCell(hx, hy));
     if (!s) return 0;
 
@@ -118,7 +154,21 @@ function forceClearStructureFootprint(hx: number, hy: number): number {
         for (const c of footprint) safe(() => api.structures.removeAtCell?.(c.x, c.y));
     }
 
-    return footprint.length;
+    // The structure instance is gone; also clear any mechanism terrain across
+    // its full footprint so nothing survives outside the original brush.
+    let mechanismCleared = 0;
+    for (const c of footprint) {
+        const key = `${c.x},${c.y}`;
+        if (alreadyCleared.has(key)) continue;
+        const tType = safe(() => api.terrains.getTypeAtCell(c.x, c.y));
+        if (tType != null && isStructureTerrain(tType)) {
+            forceClearTerrain(null, c.x, c.y);
+            alreadyCleared.add(key);
+            mechanismCleared++;
+        }
+    }
+
+    return mechanismCleared;
 }
 
 /**
@@ -126,7 +176,15 @@ function forceClearStructureFootprint(hx: number, hy: number): number {
  * the toast / panel footer.
  */
 export function excavateAt(cx: number, cy: number, radius: number, filters: FilterState): ExcavateStats {
-    const stats: ExcavateStats = { terrain: 0, element: 0, structure: 0, skippedFixed: 0, skippedAuth: 0 };
+    const stats: ExcavateStats = {
+        terrain: 0,
+        element: 0,
+        structure: 0,
+        skippedFixed: 0,
+        skippedAuth: 0,
+        structureNoTerrain: 0,
+        skippedStructureTerrain: 0,
+    };
     const all = circleCells(cx, cy, radius);
 
     // Authorization is query-only in this API — always respected, like any
@@ -141,17 +199,41 @@ export function excavateAt(cx: number, cy: number, radius: number, filters: Filt
         targets.push(c);
     }
 
+    const clearedMechanismCells = new Set<string>();
+
     const runTerrainAndElements = (writer: GridWriter | null): void => {
         for (const c of targets) {
             if (filters.terrain) {
                 const tType = safe(() => api.terrains.getTypeAtCell(c.x, c.y));
                 if (tType != null) {
-                    if (isFixedTerrain(tType) && !filters.unremovable) {
+                    if (isStructureTerrain(tType)) {
+                        // A machine's own mechanism, not diggable ground —
+                        // tie its removal to the Structure filter instead of
+                        // Terrain, so it only goes when the machine does.
+                        if (filters.structure) {
+                            const key = `${c.x},${c.y}`;
+                            if (!clearedMechanismCells.has(key)) {
+                                clearedMechanismCells.add(key);
+                                forceClearTerrain(writer, c.x, c.y);
+                                stats.terrain++;
+                            }
+                        } else {
+                            stats.skippedStructureTerrain++;
+                        }
+                    } else if (isFixedTerrain(tType) && !filters.unremovable) {
                         stats.skippedFixed++;
                     } else {
                         forceClearTerrain(writer, c.x, c.y);
                         stats.terrain++;
                     }
+                } else if (!filters.structure) {
+                    // No terrain object here — if it's because a structure
+                    // sits on this cell, that's expected (structures are
+                    // only placed on already-cleared ground), not a failed
+                    // removal. Only check when Structure is off, since with
+                    // it on the building (and this non-issue) gets cleared.
+                    const hasStructure = safe(() => api.structures.getAtCell(c.x, c.y));
+                    if (hasStructure) stats.structureNoTerrain++;
                 }
             }
             if (filters.element) {
@@ -180,11 +262,17 @@ export function excavateAt(cx: number, cy: number, radius: number, filters: Filt
     if (!batched) {
         stats.terrain = 0;
         stats.element = 0;
+        stats.structureNoTerrain = 0;
+        stats.skippedStructureTerrain = 0;
+        clearedMechanismCells.clear();
         runTerrainAndElements(null);
     }
 
-    // Structures: whole-footprint removal, deduplicated per instance so a
-    // brush touching several cells of one building only counts/clears it once.
+    // Structures: whole-footprint removal (+ embedded mechanism terrain),
+    // deduplicated per instance so a brush touching several cells of one
+    // building only counts/clears it once. Runs after the batch above, as
+    // its own direct calls (the mutate writer above is scoped to that batch
+    // and isn't valid to reuse here).
     if (filters.structure) {
         const clearedAnchors = new Set<string>();
         for (const c of targets) {
@@ -195,8 +283,9 @@ export function excavateAt(cx: number, cy: number, radius: number, filters: Filt
                 : `${String(s.type)}:${c.x},${c.y}`;
             if (clearedAnchors.has(anchorKey)) continue;
             clearedAnchors.add(anchorKey);
-            forceClearStructureFootprint(c.x, c.y);
+            const mechanismCleared = forceClearStructureFootprint(c.x, c.y, clearedMechanismCells);
             stats.structure++;
+            stats.terrain += mechanismCleared;
         }
     }
 

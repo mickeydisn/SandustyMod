@@ -13,7 +13,7 @@ export const astroSeed = {
         slug: "astro-seed",
         name: "Astro Seed",
         description: "Liquid Gold / Copper / Water → crystals.",
-        colors: [[180, 220, 255], [140, 190, 255], [100, 160, 240], [220, 240, 255]],
+        colors: [[80, 120, 155], [40, 90, 155], [0, 60, 140]],
         density: SEED_DENSITY,
         metaColor: 0x8ec8ff,
         matterType: MatterType.Powder,

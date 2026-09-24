@@ -73,6 +73,27 @@ export const FIXED_TERRAIN_HINTS: readonly string[] = [
     "map-edge",
 ];
 
+/**
+ * `CellType` values that are a structure's own mechanism rendered at the
+ * terrain layer — conveyor belts, shakers, sliding blocks — rather than
+ * ordinary diggable ground. See `docs_tech/TerrainID.md`:
+ *
+ *   SlidingBlock = 16, SlidingBlockLeft = 17, SlidingBlockRight = 18,
+ *   ConveyorLeft = 19, ConveyorRight = 20, ShakerLeft = 21, ShakerRight = 22
+ *
+ * These are only touched when the "Structure" filter is on — clearing them
+ * while leaving "Structure" off would strip a machine's moving part while
+ * leaving the machine itself behind. See `engine.ts#isStructureTerrain`.
+ */
+export const STRUCTURE_TERRAIN_TYPES: readonly number[] = [16, 17, 18, 19, 20, 21, 22];
+
+/** String-id fallback for engines that return names instead of the raw numeric CellType. */
+export const STRUCTURE_TERRAIN_HINTS: readonly string[] = [
+    "slidingblock",
+    "conveyor",
+    "shaker",
+];
+
 /** Filter categories exposed on the hotbar panel, in display order. */
 export const FILTER_KEYS = [
     "terrain",
@@ -92,7 +113,8 @@ export const FILTER_LABELS: Record<FilterKey, string> = {
 
 export const FILTER_TITLES: Record<FilterKey, string> = {
     terrain: "Clear diggable terrain (stone, dirt, ice, …)",
-    structure: "Remove buildings/structures occupying the cell (whole footprint)",
+    structure: "Remove buildings (whole footprint) and their embedded terrain " +
+        "(conveyors, shakers, sliding blocks)",
     element: "Remove simulated matter (sand, water, gas, …)",
     unremovable: "Also force-clear bedrock-class / normally indestructible terrain",
 };

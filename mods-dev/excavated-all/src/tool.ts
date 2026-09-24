@@ -90,9 +90,26 @@ export function fire(payload?: Record<string, unknown>, opts?: { quiet?: boolean
         if (stats.structure) parts.push(`${stats.structure} structure`);
         if (parts.length === 0) {
             const skipped = stats.skippedAuth + stats.skippedFixed;
-            toast(skipped > 0 ? `Nothing removed (${skipped} protected)` : "Nothing to remove here");
+            if (stats.structureNoTerrain > 0) {
+                toast(
+                    `Nothing removed — ${stats.structureNoTerrain} cell(s) have a structure but no terrain ` +
+                        `(enable Structure to clear those buildings)`,
+                );
+            } else if (stats.skippedStructureTerrain > 0) {
+                toast(
+                    `Nothing removed — ${stats.skippedStructureTerrain} cell(s) are a machine's own terrain ` +
+                        `(conveyor/shaker/sliding block — enable Structure to clear those)`,
+                );
+            } else {
+                toast(skipped > 0 ? `Nothing removed (${skipped} protected)` : "Nothing to remove here");
+            }
         } else {
-            toast(`Erased ${parts.join(", ")}`);
+            let msg = `Erased ${parts.join(", ")}`;
+            const extra: string[] = [];
+            if (stats.structureNoTerrain > 0) extra.push(`${stats.structureNoTerrain} under structures`);
+            if (stats.skippedStructureTerrain > 0) extra.push(`${stats.skippedStructureTerrain} machine terrain`);
+            if (extra.length > 0) msg += ` (${extra.join(", ")} — enable Structure to clear those)`;
+            toast(msg);
         }
     }
 }

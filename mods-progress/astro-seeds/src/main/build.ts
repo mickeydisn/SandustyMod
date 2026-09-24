@@ -117,7 +117,7 @@ export function buildMain(): void {
         ],
         pickerTitle: "Astro profile config",
         persist: true,
-        persistLoad: false,
+        persistLoad: true,
     })
         .then(({ buffer }) => setProfileBuffer(buffer))
         .catch((e) => console.warn(`[${MOD_ID}] buffer controls failed:`, e));

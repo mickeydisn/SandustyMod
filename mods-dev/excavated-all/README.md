@@ -48,6 +48,35 @@ cell, scans a bounded area around it for every cell reporting that same instance
 anchor), and removes the whole bounding box in one `removeBetweenCells` call — so clipping the
 corner of a 4x4 structure clears all 16 cells, not just the ones inside the brush.
 
+## Structure-embedded terrain (conveyors, shakers, sliding blocks)
+
+A few `CellType` values are a machine's own moving part rendered at the terrain layer instead of
+diggable ground — `SlidingBlock`, `SlidingBlockLeft/Right`, `ConveyorLeft/Right`, and
+`ShakerLeft/Right`. Clearing those while leaving `Structure` off would strip half a machine and
+leave the rest behind, so they're tied to the **Structure** filter instead of **Terrain**:
+
+- `Structure` off → left alone, whether `Terrain` is on or not (counted as *"N machine terrain"*
+  in the toast/panel so it's clear why nothing happened there).
+- `Structure` on → cleared along with the machine, across its **whole footprint** — including any
+  mechanism cells that fall outside the brush on a partial-overlap hit, the same full-footprint
+  sweep described above for the structure instance itself.
+
+## Why terrain can't be cleared under a structure (with Structure off)
+
+If you turn the `Structure` filter off and brush over a building, you'll notice `Terrain` does
+nothing on the cells the building occupies, while `Element` still clears loose matter there just
+fine. That's not a bug — it's how the game itself works: `api.grid.isCellEmptyAtCell` is the
+unified "is this cell free" check, and structure placement is gated on cell occupancy the same
+way terrain creation is gated on `world.isCellEmpty`. In practice that means **a structure can
+only be placed on ground that's already been cleared**, so there's no terrain object left under
+a placed building for `getTypeAtCell` to find — the tool isn't failing to remove it, there's
+genuinely nothing there. Elements are a separate simulation layer that isn't blocked by structure
+occupancy the same way, which is why they still clear normally.
+
+The panel and toast now surface this explicitly (e.g. *"…(3 more under structures — enable
+Structure to clear those)"*) instead of silently doing nothing, so it's clear turning `Structure`
+on is what reveals (empty) ground under a building, not a second terrain layer to dig through.
+
 ## About authorization zones
 
 `api.authorization` only exposes **queries** — `canBuildAtCell`, `canUseToolAtCell`,

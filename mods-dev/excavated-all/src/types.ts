@@ -200,6 +200,20 @@ export interface ExcavateStats {
     structure: number;
     skippedFixed: number;
     skippedAuth: number;
+    /**
+     * Cells where Terrain was on but there was no terrain to remove because a
+     * structure occupies the cell — structures can only be placed on ground
+     * that's already cleared, so this isn't a failed removal, just a cell
+     * with nothing there terrain-wise. Turn the Structure filter on to clear
+     * the building itself.
+     */
+    structureNoTerrain: number;
+    /**
+     * Cells whose terrain *is* a structure's own mechanism (conveyor,
+     * shaker, sliding block) that were deliberately left alone because the
+     * Structure filter is off — see `ids.ts#STRUCTURE_TERRAIN_TYPES`.
+     */
+    skippedStructureTerrain: number;
 }
 
 /** Inline CSS object accepted by the host React. */

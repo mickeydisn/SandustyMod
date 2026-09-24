@@ -22,14 +22,13 @@ import { isExcavatorSelected } from "./tool.ts";
 import { setRadius, setRepaint, toggleFilter, toolState } from "./state.ts";
 import { COLORS, styles } from "./styles.ts";
 import type { FilterKey } from "./ids.ts";
-import type { Setter } from "./types.ts";
 
 export function ExcavatorPanel(): unknown {
     const react = React;
     const e = h;
     if (!react || !e) return null;
 
-    const [, bump] = react.useState(0) as [number, Setter<number>];
+    const [, bump] = react.useState(0) as [number, (fn: (n: number) => number) => void];
 
     react.useEffect(() => {
         setRepaint(bump);
@@ -50,7 +49,9 @@ export function ExcavatorPanel(): unknown {
     const stats = toolState.lastStats;
     const statLine = stats
         ? `last: ${stats.terrain}t / ${stats.element}e / ${stats.structure}s` +
-            (stats.skippedFixed || stats.skippedAuth ? ` · skipped ${stats.skippedFixed + stats.skippedAuth}` : "")
+            (stats.skippedFixed || stats.skippedAuth ? ` · skipped ${stats.skippedFixed + stats.skippedAuth}` : "") +
+            (stats.structureNoTerrain > 0 ? ` · ${stats.structureNoTerrain} under structures` : "") +
+            (stats.skippedStructureTerrain > 0 ? ` · ${stats.skippedStructureTerrain} machine terrain` : "")
         : "click or hold, or press " + FIRE_KEY_LABEL;
 
     const toggle = (key: FilterKey) =>

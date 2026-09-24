@@ -1,0 +1,38 @@
+{
+  "manifestVersion": 1,
+  "id": "md-take-video",
+  "name": "Take Video",
+  "version": "3.5.0",
+  "apiVersion": 1,
+  "entry": "main.js",
+  "author": "MickeyDisn",
+  "description": "GIF-mod capture + WebCodecs/WebM muxer with WebCodecs timestamps · play speed · 1st-frame palette 64–1024 · stream encode. Scale 1/½/¼. F7 · Start/Stop.",
+  "dependencies": [],
+  "loadOrder": 0,
+  "configSchema": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "label": "Enabled",
+      "description": "Master switch for Take Video."
+    },
+    "countdownSeconds": {
+      "type": "number",
+      "default": 2,
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "label": "Countdown",
+      "description": "Seconds before recording starts. 0 = immediate."
+    },
+    "videoBitrateMbps": {
+      "type": "number",
+      "default": 2,
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "label": "Bitrate (Mbps)",
+      "description": "Target bitrate. 1–3 is typical for Discord."
+    }
+  }
+}
