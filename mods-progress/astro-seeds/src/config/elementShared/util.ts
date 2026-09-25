@@ -9,11 +9,11 @@ export function spec(entry: Omit<AstroElementSpec, "id"> & { slug: string }): As
     return { ...entry, id: `${MOD_ID}:${entry.slug}` };
 }
 
-/** Run `fn`, swallowing errors into `fallback` (engine api may be absent). */
-export function safe<T>(fn: () => T, fallback: T | null): T | null {
+/** Run a read and return `null` when the host API is unavailable or throws. */
+export function safe<T>(fn: () => T): T | null {
     try {
         return fn();
     } catch {
-        return fallback;
+        return null;
     }
 }

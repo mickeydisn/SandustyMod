@@ -6,9 +6,8 @@
  */
 import { Crystallization, Grow, Move } from "@sandmd/element-profiles/worker";
 import type { Profile } from "@sandmd/element-profiles/shared";
-import { ASTRO_FIELD } from "../../ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
-import { live } from "./live.ts";
+import { buildRuntimeProfile } from "./defBuilder.ts";
 
 const ID = "InCopper-ASeed";
 export const astroSeedInCopper: Profile = {
@@ -16,11 +15,7 @@ export const astroSeedInCopper: Profile = {
     seedType: ElementType.astroSeed,
     liquidType: ElementType.liquidCopper,
     crystalType: ElementType.astroCopperCrystal,
-    tickSpeed: () => live(ID, "tickSpeed"),
-    enabled: () => live(ID, "enabled"),
-    growEnabled: () => live(ID, "growEnabled"),
-    crystallizationEnabled: () => live(ID, "crystalEnabled"),
-    ageField: ASTRO_FIELD.AGE,
+    ...buildRuntimeProfile(ID),
     growAge: () => 40,
     moves: [
         Move.up(0),

@@ -16,7 +16,7 @@ import type { TVanillaElementKey } from "./keys.ts";
 
 function resolveType(ids: string[]): TElementType {
     for (const id of ids) {
-        const t = safe(() => sandkit.api.elements.getTypeFromId(id), null);
+        const t = safe(() => sandkit.api.elements.getTypeFromId(id));
         if (t != null) return t;
     }
     return 0;

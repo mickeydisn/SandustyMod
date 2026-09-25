@@ -32,7 +32,6 @@ function main() {
     // `players[].score` is an array-template and stays in JSON; map a specific
     // array element explicitly when it needs atomic updates.
     const state = new JsonMapBuffer<GameState>({
-        modId: MOD_ID,
         key: KEY,
         defaultRecord: {
             score: 0,
@@ -71,7 +70,6 @@ function main() {
 
     // A second instance sees the SAME shared counters instantly (no re-encode).
     const observer = new JsonMapBuffer<GameState>({
-        modId: MOD_ID,
         key: KEY,
         defaultRecord: { score: 0, kills: 0, label: "", players: [] },
         maxBytes: 64 * 1024,

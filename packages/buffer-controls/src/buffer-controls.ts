@@ -19,7 +19,7 @@ import { loadSpriteMap } from "@sandmd/assets";
 import { JsonBuffer } from "@sandmd/buffer";
 import { type CatalogueItem, createPickerOverlay } from "@sandmd/catalogue";
 import type { BufferControlsConfig, BufferControlsHandles } from "./types.ts";
-import { boundFields, buildBufferControlList, resolveSpriteEntry } from "./catalogue.ts";
+import { boundFields, buildBufferControlList } from "./catalogue.ts";
 import { formatBufferValue } from "./structure/register/valueRegister.ts";
 import { registerStructures } from "./structure/register.ts";
 
@@ -29,7 +29,6 @@ export async function registerBufferControls<T extends object>(
     const { modId } = config;
 
     const buffer = new JsonBuffer<T>({
-        modId,
         key: config.bufferId,
         defaultRecord: config.defaultRecord,
         assertShape: config.assertShape,
@@ -39,9 +38,6 @@ export async function registerBufferControls<T extends object>(
         observe: false,
     });
     // console.log("[pkg-buffControl] 0", modId, config);
-    const readBuffer = (path: string): unknown => buffer.getPath(path);
-    // console.log("[pkg-buffControl]1 ", modId, buffer.get(), buffer.listPaths());
-
     // -- 2. Sprites ----------------------------------------------------------
     // The package extracts the load list straight from `config.sprites`: each
     // entry carries its own filePath, so there is no second file table to keep
@@ -56,7 +52,6 @@ export async function registerBufferControls<T extends object>(
         ).values(),
     ];
     const spriteIds = await loadSpriteMap(modId, spriteEntries);
-    const menuItemId = config.menuItemId;
 
     // -- 3. BuildingList: one item per scalar path in the record -------------
     // The catalogue resolves each item's sprite entry itself (itemId / tag /
@@ -71,12 +66,9 @@ export async function registerBufferControls<T extends object>(
 
     // The picker swatch resolver: entry id → loaded sprite id.
     const spriteFor = (item: CatalogueItem): string => {
-        const entryId = resolveSpriteEntry(config.sprites, item, menuItemId, config.menu.spriteId);
-        const spriteId = spriteIds[entryId];
+        const spriteId = item.spriteId;
         if (typeof spriteId !== "string") {
-            throw new Error(
-                `Sprite "${entryId}" was not loaded for buffer-controls item "${item.id}".`,
-            );
+            throw new Error(`Buffer-controls item "${item.id}" has no resolved sprite.`);
         }
         return spriteId;
     };
@@ -104,7 +96,7 @@ export async function registerBufferControls<T extends object>(
     const refreshOne = (typeId: string): void => {
         const entry = valueByType.get(typeId);
         if (!entry) return;
-        const value = readBuffer(entry.path);
+        const value = buffer.getPath(entry.path);
         const next = formatBufferValue(value, entry.kind);
         sandkit.api.structures.forEachOfType(entry.typeId, (structure) => {
             if (String(structure.data?.dataValue) === next) return;

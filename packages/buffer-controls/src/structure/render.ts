@@ -12,11 +12,7 @@
  */
 import "@sandmd/sandkit";
 import { adjustHSL } from "@sandmd/shared";
-
-/** Pixels per world cell. */
-export const CELL = 16;
-/** Height of the readout rectangle. */
-export const STRUCT_H = 16;
+import { CELL, STRUCT_H } from "../const.ts";
 
 export interface ReadoutOptions {
     spriteId?: string;

@@ -23,7 +23,6 @@ interface GameConfig {
 }
 
 const cfg = new JsonBuffer<GameConfig>({
-    modId: "my-mod",
     key: "gameConfig",
     defaultRecord: { volume: 1, muted: false },
     maxBytes: 64 * 1024,
@@ -47,7 +46,6 @@ console.log(cfg.getPath("volume")); // 0.5
 
 | field             | meaning                                                                 |
 | ----------------- | ----------------------------------------------------------------------- |
-| `modId`           | your mod id, used only for logging                                      |
 | `key`             | unique key for the shared buffers + long-term storage                   |
 | `defaultRecord`   | complete seed value used when no stored/shared record exists            |
 | `maxBytes`        | payload capacity in bytes; passed directly to the shared buffer         |

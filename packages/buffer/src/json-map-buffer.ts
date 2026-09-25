@@ -11,7 +11,6 @@ export interface JsonMapCounterOptions {
 
 /** Complete configuration passed to JsonMapBuffer. */
 export interface JsonMapBufferConfig<T extends object = Record<string, unknown>> {
-    modId: string;
     key: string;
     defaultRecord: T;
     maxBytes: number;
@@ -44,7 +43,6 @@ const INT32_MAX = 2147483647;
 export class JsonMapBuffer<T extends object> {
     private versionView!: Int32Array;
     private dataView!: Uint8Array;
-    public modId!: string;
     public key!: string;
     private defaultRecord: T;
     private assertShape?: (value: T) => void;
@@ -70,7 +68,6 @@ export class JsonMapBuffer<T extends object> {
     }
 
     constructor(config: JsonMapBufferConfig<T>) {
-        this.modId = config.modId;
         this.key = config.key;
         this.defaultRecord = deepClone(config.defaultRecord);
         this.assertShape = config.assertShape;

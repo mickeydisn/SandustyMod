@@ -5,8 +5,6 @@ import { addToPath, deepClone, getPath, setPath } from "./utils/paths.ts";
 import { ensureBuffer } from "./sand.ts";
 
 export interface JsonBufferConfig<T extends object> {
-    /** Mod that owns the record. */
-    modId: string;
     /** Unique key used for shared memory and local storage. */
     key: string;
     /** Complete seed record used when shared memory/storage has no record. */
@@ -26,7 +24,6 @@ export interface JsonBufferConfig<T extends object> {
 export class JsonBuffer<T extends object> {
     private versionView!: Int32Array;
     private dataView!: Uint8Array;
-    public modId!: string;
     public key!: string;
     private defaultRecord: T;
     private assertShape?: (value: T) => void;
@@ -47,7 +44,6 @@ export class JsonBuffer<T extends object> {
     }
 
     constructor(config: JsonBufferConfig<T>) {
-        this.modId = config.modId;
         this.key = config.key;
         this.defaultRecord = deepClone(config.defaultRecord);
         this.assertShape = config.assertShape;

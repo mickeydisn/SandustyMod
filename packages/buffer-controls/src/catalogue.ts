@@ -25,11 +25,10 @@ import type {
     FieldKind,
     PathCatalogueItem,
 } from "./types.ts";
-import { EXPOSED_KINDS } from "./const.ts";
+import { CELL, EXPOSED_KINDS } from "./const.ts";
 import { resolveBindingPath } from "./structure/defBuilders.ts";
 import { ACTION_LABEL } from "./structure/register/actionRegister.ts";
 
-const CELL = 16;
 /** Variable/value structures are 1 cell wide × 6 cells tall. */
 const ITEM_HEIGHT = 6 * 15;
 const VALUE_PREFIX = "value:";

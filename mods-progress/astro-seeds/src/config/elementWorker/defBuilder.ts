@@ -4,20 +4,24 @@ import type { ProfileId } from "../profileRuntime.ts";
 import { live } from "./live.ts";
 import { MASK } from "./mask.ts";
 import { ElementType } from "../elementShared/resolve.ts";
-import { channelMatch } from "./keys.ts";
+import { wallRepulsion } from "./keys.ts";
 
 const WATER_PROFILE_GROW_AGE = 150;
-const WALL_REPULSION_CHANCE = 100;
-const WALL_REPULSION_WEIGHT = -50;
+
+export function buildRuntimeProfile(id: ProfileId) {
+    return {
+        tickSpeed: () => live(id, "tickSpeed"),
+        enabled: () => live(id, "enabled"),
+        growEnabled: () => live(id, "growEnabled"),
+        crystallizationEnabled: () => live(id, "crystalEnabled"),
+        ageField: ASTRO_FIELD.AGE,
+    };
+}
 
 export const buildElementProfile = (ID: ProfileId) => (
     {
         id: ID,
-        tickSpeed: () => live(ID, "tickSpeed"),
-        enabled: () => live(ID, "enabled"),
-        growEnabled: () => live(ID, "growEnabled"),
-        crystallizationEnabled: () => live(ID, "crystalEnabled"),
-        ageField: ASTRO_FIELD.AGE,
+        ...buildRuntimeProfile(ID),
         growAge: () => WATER_PROFILE_GROW_AGE,
         moves: [
             Move.random(
@@ -36,9 +40,7 @@ export const buildElementProfile = (ID: ProfileId) => (
             // Optional profile-specific side/down/up moves can be added here.
             // Walls / structure / empty push the seed back in.
             Move.channel({
-                ...channelMatch(["empty", "structure"]),
-                chance: WALL_REPULSION_CHANCE,
-                weight: WALL_REPULSION_WEIGHT,
+                ...wallRepulsion(-50),
                 mask: MASK.PLUSS,
             }),
             Move.channel({

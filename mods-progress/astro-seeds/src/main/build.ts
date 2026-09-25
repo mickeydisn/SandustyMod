@@ -48,7 +48,8 @@ export function buildMain(): void {
     safe(() =>
         api.events.on("game:ready", () => {
             api.ui.toast(`Astro Seeds v${VERSION}`, {});
-        }), null);
+        })
+    );
 
     // Live profile configuration — one placeable structure per buffer path
     // (profiles.<id>.tickSpeed / .enabled / .growEnabled / .crystalEnabled).

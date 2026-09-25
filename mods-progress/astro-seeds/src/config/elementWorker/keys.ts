@@ -78,3 +78,12 @@ export function channelMatch(
         matchEmpty: keys.includes("empty") || undefined,
     };
 }
+
+/** Shared wall/structure repulsion channel used by the Astro profiles. */
+export function wallRepulsion(weight: number) {
+    return {
+        ...channelMatch(["empty", "structure"]),
+        chance: 100,
+        weight,
+    };
+}

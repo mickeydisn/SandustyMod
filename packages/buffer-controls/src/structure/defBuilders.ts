@@ -11,7 +11,11 @@
  * footprint, layout, tooltip, or render behaviour updates both at once.
  */
 import "@sandmd/sandkit";
+import { makeShape as makeGridShape } from "@sandmd/catalogue";
 import { PathCatalogueItem } from "../types.ts";
+
+/** Build the engine's 4×4-subcell shape for a width×height cell structure. */
+export const makeShape = (x: number, y: number): number[][] => makeGridShape(x * 4, y * 4);
 
 /**
  * Convert a `listPaths` array-template path ("players[].name") into a real,
@@ -25,10 +29,6 @@ import { PathCatalogueItem } from "../types.ts";
 export function resolveBindingPath(path: string): string {
     return path.replace(/\[\]/g, "[0]");
 }
-
-/** Build the empty footprint shape for a width×height cell structure. */
-export const makeShape = (x: number, y: number): number[][] =>
-    Array.from({ length: x * 4 }, () => Array(y * 4).fill(0));
 
 /**
  * Shared data payload carried by every buffer-controls structure instance.

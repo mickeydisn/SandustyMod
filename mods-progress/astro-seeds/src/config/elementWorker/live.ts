@@ -45,7 +45,6 @@ export function profileBuffer(): JsonBuffer<ProfileConfigRecord> | null {
     if (observeBuffer) return observeBuffer;
     try {
         observeBuffer = new JsonBuffer<ProfileConfigRecord>({
-            modId: MOD_ID,
             key: PROFILE_BUFFER_ID,
             defaultRecord: buildDefaultProfileRecord(),
             maxBytes: PROFILE_BUFFER_MAX_BYTES,

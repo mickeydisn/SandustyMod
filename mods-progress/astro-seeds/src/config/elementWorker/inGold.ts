@@ -8,8 +8,8 @@ import { Crystallization, Grow, Move } from "@sandmd/element-profiles/worker";
 import type { Profile } from "@sandmd/element-profiles/shared";
 import { ASTRO_FIELD } from "../../ids.ts";
 import { ElementType } from "../elementShared/resolve.ts";
-import { channelMatch } from "./keys.ts";
-import { live } from "./live.ts";
+import { wallRepulsion } from "./keys.ts";
+import { buildRuntimeProfile } from "./defBuilder.ts";
 import { MASK } from "./mask.ts";
 
 // ==========================
@@ -20,11 +20,7 @@ export const astroSeedInGold: Profile = {
     seedType: ElementType.astroSeed,
     liquidType: ElementType.liquidGold,
     crystalType: ElementType.astroGoldCrystal,
-    tickSpeed: () => live(SEED_ID, "tickSpeed"),
-    enabled: () => live(SEED_ID, "enabled"),
-    growEnabled: () => live(SEED_ID, "growEnabled"),
-    crystallizationEnabled: () => live(SEED_ID, "crystalEnabled"),
-    ageField: ASTRO_FIELD.AGE,
+    ...buildRuntimeProfile(SEED_ID),
     growAge: () => 100,
     moves: [
         Move.side(15),
@@ -48,11 +44,7 @@ export const astroGoldInLiquidGold: Profile = {
     seedType: ElementType.astroGoldPowder,
     liquidType: ElementType.liquidGold,
     crystalType: ElementType.astroGoldCrystal,
-    tickSpeed: () => live(GOLD_ID, "tickSpeed"),
-    enabled: () => live(GOLD_ID, "enabled"),
-    growEnabled: () => live(GOLD_ID, "growEnabled"),
-    crystallizationEnabled: () => live(GOLD_ID, "crystalEnabled"),
-    ageField: ASTRO_FIELD.AGE,
+    ...buildRuntimeProfile(GOLD_ID),
     // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
     // memDecay integrates it into a real fading velocity; memBounce
     // reflects it off walls/floor so landing seeds rebound upward.
@@ -66,9 +58,7 @@ export const astroGoldInLiquidGold: Profile = {
         Move.random(80, 10, MASK.VERT),
         // Walls / structure / empty push the seed back in.
         Move.channel({
-            ...channelMatch(["empty", "structure"]),
-            chance: 100,
-            weight: -15,
+            ...wallRepulsion(-15),
             mask: MASK.PLUS,
         }),
         // Water is a hard push away.
@@ -113,11 +103,7 @@ export const astroCopperInLiquidGold: Profile = {
     seedType: ElementType.astroCopperPowder,
     liquidType: ElementType.liquidGold,
     crystalType: ElementType.astroGCalloyPowder,
-    tickSpeed: () => live(COPPER_ID, "tickSpeed"),
-    enabled: () => live(COPPER_ID, "enabled"),
-    growEnabled: () => live(COPPER_ID, "growEnabled"),
-    crystallizationEnabled: () => live(COPPER_ID, "crystalEnabled"),
-    ageField: ASTRO_FIELD.AGE,
+    ...buildRuntimeProfile(COPPER_ID),
     // Vote memory: vx @ VX, vy @ VY (pipeline writes it every tick).
     memField: ASTRO_FIELD.VX,
     memDecay: 0.9,
@@ -140,9 +126,7 @@ export const astroCopperInLiquidGold: Profile = {
             mask: MASK.FULL,
         }),
         Move.channel({
-            ...channelMatch(["empty", "structure"]),
-            chance: 100,
-            weight: -10,
+            ...wallRepulsion(-10),
             mask: MASK.PLUS,
         }),
         // Lattice — own kind repels orthogonally but attracts diagonally, so
