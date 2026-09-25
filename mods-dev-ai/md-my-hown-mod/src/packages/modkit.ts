@@ -37,7 +37,9 @@ function parseValue(def: SettingDef, raw: unknown): unknown {
         case "string":
             return typeof raw === "string" ? raw : String(raw ?? def.default);
         default:
-            return def.default;
+            // Unreachable for the current SettingDef union, but keeps the
+            // signature total if another variant is added later.
+            return (def as { default?: unknown }).default;
     }
 }
 

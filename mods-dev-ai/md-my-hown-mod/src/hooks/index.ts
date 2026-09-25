@@ -16,7 +16,28 @@ export {
 } from "./apply.ts";
 
 export { ANY_HANDLERS, resolveAnyHandler, type AnyHandler } from "./handlers.ts";
+export {
+    PROCESS_HANDLERS,
+    type ProcessHandler,
+} from "./handlers.ts";
+import {
+    listHandlerKeys,
+    listAnyHandlerKeys,
+    listProcessorKeys,
+    CODE_HANDLERS,
+    ANY_HANDLERS,
+    PROCESS_HANDLERS,
+} from "./handlers.ts";
+
+export { listAnyHandlerKeys, listProcessorKeys };
 
 try {
-    (globalThis as any).__mdHandlers = { listHandlerKeys, CODE_HANDLERS, ANY_HANDLERS };
+    (globalThis as any).__mdHandlers = {
+        listHandlerKeys,
+        listAnyHandlerKeys,
+        listProcessorKeys,
+        CODE_HANDLERS,
+        ANY_HANDLERS,
+        PROCESS_HANDLERS,
+    };
 } catch { /* */ }

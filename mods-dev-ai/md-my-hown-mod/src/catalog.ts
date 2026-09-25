@@ -167,27 +167,170 @@ export function listTerrains(): Opt[] {
 }
 
 export function listMatterTypes(): Opt[] {
-    const opts = enumOpts("MatterType");
-    if (opts.length) return opts;
+    // Static lowercase names: resolveMatterType() maps them to MatterType numbers.
+    // (Numeric enum strings do NOT resolve reliably — keep values lowercase.)
     return [
-        { value: "powder", label: "powder" },
-        { value: "liquid", label: "liquid" },
-        { value: "gas", label: "gas" },
-        { value: "solid", label: "solid" },
-        { value: "static", label: "static" },
-        { value: "particle", label: "particle" },
-        { value: "slushy", label: "slushy" },
-        { value: "wisp", label: "wisp" },
+        { value: "solid", label: "Solid (1)" },
+        { value: "liquid", label: "Liquid (2)" },
+        { value: "particle", label: "Particle (3)" },
+        { value: "gas", label: "Gas (4)" },
+        { value: "static", label: "Static (5)" },
+        { value: "slushy", label: "Slushy (6)" },
+        { value: "wisp", label: "Wisp (7)" },
+        { value: "powder", label: "Powder (8)" },
     ];
 }
 
+/**
+ * Engine build-mode types (structures.register → buildModes[].type).
+ * Verified in doc/doc-artifacts/doc.api/definitions/api.structures.definition.md
+ */
+export const BUILD_MODE_TYPES = [
+    "single",
+    "singleDirectional",
+    "line",
+    "rectangle",
+    "rectangleDirectional",
+    "launcherRectUp",
+    "launcherRectSide",
+] as const;
+
+export function listBuildModeTypes(): Opt[] {
+    return BUILD_MODE_TYPES.map((v) => ({ value: v, label: v }));
+}
+
+/** Legacy alias (kept so old imports keep working). */
 export function listBuildModes(): Opt[] {
-    const opts = enumOpts("BuildMode");
-    if (opts.length) return opts;
+    return listBuildModeTypes();
+}
+
+/**
+ * Built-in build-menu categories (engine list `LR`, doc-tech/13).
+ * Free-form strings are allowed by the engine, but these 20 get localized labels.
+ */
+export const STRUCTURE_CATEGORIES = [
+    "misc", "logic", "blocks", "testBlocks", "construction", "debug", "drones",
+    "energy", "excavation", "logistics", "production", "tools", "transportation",
+    "utility", "weapons", "economy", "fluids", "thermal", "lighting", "special",
+] as const;
+
+export function listStructureCategories(): Opt[] {
+    return [...STRUCTURE_CATEGORIES].map((v) => ({ value: v, label: v }));
+}
+
+/**
+ * The ONLY ids accepted by api.structures.recipes.register — anything else throws
+ * "Structure recipe ID \"…\" is not supported." (doc/api/shared/api.recipes.md)
+ */
+export const RECIPE_MACHINES = [
+    "planterBox", "shaker", "kineticPress", "condenser",
+    "steamDryer", "synthesizer", "snowmaker", "smelter",
+] as const;
+
+export function listRecipeMachines(): Opt[] {
     return [
-        { value: "Linear", label: "Linear" },
-        { value: "Rectangular", label: "Rectangular" },
+        { value: "planterBox", label: "Planter box / grower" },
+        { value: "shaker", label: "Shaker (above / below)" },
+        { value: "kineticPress", label: "Kinetic press (velocity)" },
+        { value: "condenser", label: "Condenser" },
+        { value: "steamDryer", label: "Steam dryer" },
+        { value: "synthesizer", label: "Synthesizer" },
+        { value: "snowmaker", label: "Snowmaker" },
+        { value: "smelter", label: "Smelter" },
     ];
+}
+
+/** Contact-reaction orientation (reactions.registerContact). */
+export function listContactOrientation(): Opt[] {
+    return [
+        { value: "any", label: "any — touch in any arrangement" },
+        { value: "stacked", label: "stacked — vertical only" },
+    ];
+}
+
+/**
+ * Documented interceptable hooks (doc-tech/03-hooks-reference.md) + "custom".
+ * Restrictive by default: users pick a real hook instead of typing anything.
+ */
+export const HOOK_IDS = [
+    "element:move",
+    "element:blocked",
+    "element:move:blocked",
+    "element:update",
+    "element:duration",
+    "element:duration:expire",
+    "cell:process",
+    "fire:element:burn",
+    "fire:element:ignite",
+    "building:place",
+    "projectile:hit",
+    "teleport:effect",
+] as const;
+
+export function listHookIds(): Opt[] {
+    return [
+        ...HOOK_IDS.map((v) => ({ value: v, label: v })),
+        { value: "__custom__", label: "custom hook id (type below)" },
+    ];
+}
+
+/** Sprites known to the game + this mod's config. */
+export function listSpriteIds(): Opt[] {
+    const map = new Map<string, Opt>();
+    const tryList = [
+        () => api.sprites?.getLoaded?.(),
+        () => api.sprites?.getAll?.(),
+        () => api.sprites?.list?.(),
+        () => api.sprites?.getRegistered?.(),
+    ];
+    for (const fn of tryList) {
+        const raw = safe(fn as any);
+        if (!raw) continue;
+        const arr = Array.isArray(raw) ? raw : typeof raw === "object" ? Object.keys(raw) : [];
+        for (const entry of arr) {
+            if (typeof entry === "string") map.set(entry, { value: entry, label: entry });
+            else if (entry && typeof entry === "object") {
+                const id = String((entry as any).id ?? "");
+                if (id) map.set(id, { value: id, label: id });
+            }
+        }
+    }
+    for (const sp of loadConfig().sprites ?? []) {
+        if (sp?.id) map.set(sp.id, { value: sp.id, label: `${sp.id} (config)` });
+    }
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** Structure ids for processing / signals / energy targets (live + config). */
+export function listStructureIds(): Opt[] {
+    return listStructures();
+}
+
+/** Element ids + a "∅ consume (null)" sentinel — used by contact outputs. */
+export function listOutputTargets(): Opt[] {
+    return [{ value: "__null__", label: "∅ consume (null)" }, ...listElements()];
+}
+
+/** Code handlers usable as generic callbacks (signals, triggers, projectiles…). */
+export function listAnyHandlerKeys(): Opt[] {
+    try {
+        const m = (globalThis as any).__mdHandlers;
+        if (m?.listAnyHandlerKeys) {
+            return m.listAnyHandlerKeys().map((k: string) => ({ value: k, label: k }));
+        }
+    } catch { /* */ }
+    return listHandlerKeys();
+}
+
+/** Code handlers wired as structures.processing `process(structure, context)`. */
+export function listProcessorKeys(): Opt[] {
+    try {
+        const m = (globalThis as any).__mdHandlers;
+        if (m?.listProcessorKeys) {
+            return m.listProcessorKeys().map((k: string) => ({ value: k, label: k }));
+        }
+    } catch { /* */ }
+    return [{ value: "processorLog", label: "processorLog" }, { value: "processorNoop", label: "processorNoop" }];
 }
 
 export function listRecipeKinds(): Opt[] {

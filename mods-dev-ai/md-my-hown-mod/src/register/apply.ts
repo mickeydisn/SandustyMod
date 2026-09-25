@@ -23,7 +23,8 @@ import {
 import { loadConfig } from "../config/store.ts";
 import { applyAllModifiers, detachAllModifiers, resolveAnyHandler } from "../hooks/index.ts";
 
-const registered = {
+const registered: Record<string, Set<string>> = {
+    sprites: new Set<string>(),
     elements: new Set<string>(),
     structures: new Set<string>(),
     items: new Set<string>(),
@@ -81,6 +82,14 @@ export function applyConfig(cfg?: ModConfig): void {
     }
     for (const p of config.processing) {
         if (!p?.id || registered.processing.has(p.id)) continue;
+        // process() cannot live in JSON — resolve the code preset first.
+        const entry = p as Record<string, unknown>;
+        const key = typeof entry.handlerKey === "string" ? entry.handlerKey : undefined;
+        if (typeof entry.process !== "function" && key) {
+            const fn = resolveAnyHandler(key);
+            if (typeof fn === "function") entry.process = fn;
+            else console.warn(`${LOG} processing ${p.id}: unknown handlerKey "${key}"`);
+        }
         registerProcessing(p);
         registered.processing.add(p.id);
         nPr++;

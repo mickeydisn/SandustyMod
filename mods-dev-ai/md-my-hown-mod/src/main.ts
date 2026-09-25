@@ -4,7 +4,7 @@
  * When enabled: register tool item + global overlay.
  * Panel is visible only while the tool is the active hotbar item.
  */
-import { onSettingsChange, readSettings, runDisableCleanup, safe } from "./packages/modkit.ts";
+import { onSettingsChange, readSettings, runDisableCleanup } from "./packages/modkit.ts";
 import { LOG, MOD_ID, SETTINGS, STORAGE_KEYS, VERSION } from "./constants.ts";
 import { registerTool, unregisterTool } from "./tool.ts";
 import "./hooks/index.ts"; // register handler keys for pickers

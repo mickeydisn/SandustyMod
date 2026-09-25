@@ -77,6 +77,7 @@ export function resolveAnyHandler(key: string | undefined): AnyHandler | undefin
     // Also allow CODE_HANDLERS intercept/modify fns for reuse
     const ch = CODE_HANDLERS[key];
     if (ch) return ch.fn as AnyHandler;
+    if (key in PROCESS_HANDLERS) return PROCESS_HANDLERS[key];
     return undefined;
 }
 
@@ -89,3 +90,50 @@ export function resolveHandler(key: string | undefined): CodeHandler | undefined
 export function listHandlerKeys(): string[] {
     return Object.keys(CODE_HANDLERS);
 }
+
+export function listAnyHandlerKeys(): string[] {
+    return Object.keys(ANY_HANDLERS);
+}
+
+export function listProcessorKeys(): string[] {
+    return Object.keys(PROCESS_HANDLERS);
+}
+
+// ── structures.processing presets ───────────────────────────────────────────
+//
+// `process(structure, context)` cannot live in JSON storage, so processing
+// entries reference one of these keys instead (schema: processing → handler).
+// context: getResolvedTypeAtCell / isCellEmptyAtCell / commit / isEnabledAtCell.
+
+export type ProcessHandler = (structure: unknown, context: unknown) => void;
+
+export const PROCESS_HANDLERS: Record<string, ProcessHandler> = {
+    /** Logs the tick — safest way to confirm a processor is wired. */
+    processorLog: (structure, context) => {
+        console.log("[md-my-hown-mod:process]", structure, context);
+    },
+    /** Does nothing (keeps the interval alive without side effects). */
+    processorNoop: () => {},
+    /** Logs only cells that currently hold an element around the structure. */
+    processorScan: (structure, context) => {
+        try {
+            const st = structure as { x?: number; y?: number; data?: unknown } | null;
+            const ctx = context as
+                | { getResolvedTypeAtCell?: (x: number, y: number) => unknown }
+                | null;
+            if (!st || !ctx?.getResolvedTypeAtCell) return;
+            const cx = st.x ?? 0;
+            const cy = st.y ?? 0;
+            const found: unknown[] = [];
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    const t = ctx.getResolvedTypeAtCell(cx + dx, cy + dy);
+                    if (t !== undefined && t !== null) found.push(t);
+                }
+            }
+            if (found.length) console.log("[md-my-hown-mod:process] scan", found);
+        } catch (e) {
+            console.warn("[md-my-hown-mod:process] scan failed", e);
+        }
+    },
+};

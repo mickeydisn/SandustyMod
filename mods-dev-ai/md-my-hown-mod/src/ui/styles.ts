@@ -186,3 +186,168 @@ export const select: React.CSSProperties = {
     ...input,
     cursor: "pointer",
 };
+
+// ── Grouped navigation & form chrome (v0.2 UI) ──────────────────────────────
+
+export const groupNav: React.CSSProperties = {
+    display: "flex",
+    gap: 4,
+    padding: "6px 8px 0 8px",
+    flexWrap: "wrap",
+};
+
+export const chip: React.CSSProperties = {
+    background: "rgba(32, 38, 56, 0.9)",
+    border: "1px solid rgba(90, 105, 140, 0.45)",
+    color: "#c8d2e6",
+    borderRadius: 10,
+    padding: "3px 10px",
+    cursor: "pointer",
+    fontSize: 12,
+    lineHeight: "16px",
+};
+
+export const chipActive: React.CSSProperties = {
+    ...chip,
+    background: "rgba(64, 96, 160, 0.95)",
+    borderColor: "rgba(150, 185, 240, 0.75)",
+    color: "#eef4ff",
+    fontWeight: 600,
+};
+
+export const chipCount: React.CSSProperties = {
+    marginLeft: 6,
+    fontSize: 10,
+    opacity: 0.75,
+    fontVariantNumeric: "tabular-nums",
+};
+
+export const subNav: React.CSSProperties = {
+    display: "flex",
+    gap: 4,
+    padding: "6px 8px",
+    flexWrap: "wrap",
+    borderBottom: "1px solid rgba(90, 105, 140, 0.3)",
+};
+
+export const screenHead: React.CSSProperties = {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 8,
+    padding: "8px 10px 0 10px",
+};
+
+export const screenTitle: React.CSSProperties = {
+    fontWeight: 700,
+    fontSize: 13,
+    letterSpacing: 0.2,
+};
+
+export const screenBlurb: React.CSSProperties = {
+    fontSize: 11,
+    color: "#8a93aa",
+    flex: 1,
+};
+
+export const sectionBox: React.CSSProperties = {
+    marginTop: 10,
+    borderTop: "1px solid rgba(90, 105, 140, 0.3)",
+    paddingTop: 8,
+};
+
+export const sectionTitle: React.CSSProperties = {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+    color: "#7f8ca8",
+    marginBottom: 6,
+};
+
+export const fieldGrid: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "8px 10px",
+};
+
+export const fieldCell: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+    fontSize: 12,
+    color: "#b8c0d0",
+    minWidth: 0,
+};
+
+export const fieldCellWide: React.CSSProperties = {
+    ...fieldCell,
+    gridColumn: "1 / -1",
+};
+
+export const inputError: React.CSSProperties = {
+    ...input,
+    borderColor: "rgba(230, 110, 110, 0.85)",
+};
+
+export const errorText: React.CSSProperties = {
+    fontSize: 10,
+    color: "#ff9b9b",
+};
+
+export const hintBelow: React.CSSProperties = {
+    fontSize: 10,
+    color: "#79829a",
+};
+
+export const footerBar: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 8,
+    borderTop: "1px solid rgba(90, 105, 140, 0.3)",
+};
+
+export const footerStatus: React.CSSProperties = {
+    flex: 1,
+    fontSize: 11,
+};
+
+export const emptyState: React.CSSProperties = {
+    padding: "14px 10px",
+    fontSize: 12,
+    color: "#8a93aa",
+    background: "rgba(26, 30, 44, 0.7)",
+    border: "1px dashed rgba(90, 105, 140, 0.5)",
+    borderRadius: 6,
+    textAlign: "center",
+};
+
+export const listScroll: React.CSSProperties = {
+    maxHeight: 150,
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    paddingRight: 2,
+};
+
+export const outputsRow: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "1fr 84px 26px",
+    gap: 6,
+    marginBottom: 6,
+};
+
+export const requiredMark: React.CSSProperties = {
+    color: "#ffb0b0",
+    marginLeft: 2,
+};
+
+export const warnBox: React.CSSProperties = {
+    ...hint,
+    background: "rgba(90, 70, 20, 0.35)",
+    border: "1px solid rgba(200, 160, 60, 0.4)",
+    borderRadius: 4,
+    padding: "5px 8px",
+    color: "#e8d49a",
+};

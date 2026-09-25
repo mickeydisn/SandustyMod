@@ -352,49 +352,94 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
     return out;
 }
 
-function resolveRecipeBody(r: RecipeConfig): Record<string, unknown> {
+/** The 8 machine ids accepted by api.structures.recipes.register. */
+const RECIPE_MACHINES = new Set([
+    "planterBox", "shaker", "kineticPress", "condenser",
+    "steamDryer", "synthesizer", "snowmaker", "smelter",
+]);
+
+/**
+ * Shape the recipe body exactly like the machine expects
+ * (doc/doc-artifacts/doc.api/shared/api.recipes.md):
+ *   planterBox   → { input, output, chance? }
+ *   shaker       → { input, outputsAbove[], outputsBelow[] }
+ *   kineticPress → { input, minimumDownwardVelocity, outputs[] }
+ *   others       → { input, outputs[] }
+ */
+function resolveRecipeBody(r: RecipeConfig, machine: string): Record<string, unknown> {
     const body: Record<string, unknown> = { ...r };
     delete body.id;
     delete body.kind;
     delete body.structureType;
-    body.input = resolveElementRef(body.input as any);
-    body.output = resolveElementRef(body.output as any);
+    delete body.structureId;
+    delete body.chance;
+
     const mapOut = (arr: unknown) => {
-        if (!Array.isArray(arr)) return arr;
-        return arr.map((o: any) => ({ ...o, elementType: resolveElementRef(o.elementType) }));
+        if (!Array.isArray(arr)) return [];
+        return arr
+            .filter((o) => o && typeof o === "object")
+            .map((o: any) => ({
+                elementType: resolveElementRef(o.elementType),
+                chance: typeof o.chance === "number" ? o.chance : 1,
+            }));
     };
-    if (body.outputs) body.outputs = mapOut(body.outputs);
-    if (body.outputsAbove) body.outputsAbove = mapOut(body.outputsAbove);
-    if (body.outputsBelow) body.outputsBelow = mapOut(body.outputsBelow);
+
+    body.input = resolveElementRef(body.input as any);
+
+    if (machine === "planterBox") {
+        body.output = resolveElementRef(body.output as any);
+        const ch = Number((r as any).chance);
+        if (Number.isFinite(ch)) body.chance = ch;
+        delete body.outputs;
+        delete body.outputsAbove;
+        delete body.outputsBelow;
+        delete body.minimumDownwardVelocity;
+        return body;
+    }
+    if (machine === "shaker") {
+        delete body.output;
+        delete body.outputs;
+        delete body.minimumDownwardVelocity;
+        body.outputsAbove = mapOut((body as any).outputsAbove);
+        body.outputsBelow = mapOut((body as any).outputsBelow);
+        return body;
+    }
+
+    delete body.output;
+    delete body.outputsAbove;
+    delete body.outputsBelow;
+    body.outputs = mapOut((body as any).outputs);
+    if (machine === "kineticPress") {
+        const mv = Number((body as any).minimumDownwardVelocity);
+        body.minimumDownwardVelocity = Number.isFinite(mv) && mv >= 0 ? mv : 0;
+    } else {
+        delete body.minimumDownwardVelocity;
+    }
     return body;
 }
 
 export function registerRecipe(r: RecipeConfig): void {
-    const kind = String(r.kind || "structure").toLowerCase().replace(/[_-]/g, "");
-    const body = resolveRecipeBody(r);
-    if (kind === "grower" || kind === "planterbox") {
-        api.processing.registerGrower(body);
+    let machine = String(r.kind || "structure");
+    if (machine === "grower" || machine === "planter") machine = "planterBox";
+    if (!RECIPE_MACHINES.has(machine)) {
+        machine = String(r.structureType ?? r.structureId ?? machine);
+    }
+    if (!RECIPE_MACHINES.has(machine)) {
+        console.warn(
+            `${LOG} recipe ${r.id}: "${r.kind}" is not a supported machine id ` +
+                `(use one of: ${[...RECIPE_MACHINES].join(", ")})`,
+        );
         return;
     }
-    if (kind === "shaker") {
-        api.processing.registerShaker(body);
-        return;
-    }
-    if (kind === "kineticpress") {
-        api.processing.registerKineticPress(body);
-        return;
-    }
-    const st = r.structureType ?? r.kind;
-    if (st) {
-        api.structures.recipes.register(st as string | number, body);
-    } else {
-        console.warn(`${LOG} recipe ${r.id}: no structureType/kind target`);
-    }
+    const body = resolveRecipeBody(r, machine);
+    api.structures.recipes.register(machine, body);
 }
 
 export function registerProcessing(p: ProcessingConfig): void {
     const mode = p.mode ?? (p.structureType ? "type" : "instance");
-    const { id: _id, structureType, structureId, mode: _m, ...rest } = p;
+    // handlerKey is a UI/code concern — never forward it to the engine.
+    const { id: _id, structureType, structureId, mode: _m, handlerKey: _hk, ...rest } = p as
+        Record<string, unknown> & ProcessingConfig;
     if (mode === "type") {
         const target = structureType ?? structureId;
         if (target === undefined) {
