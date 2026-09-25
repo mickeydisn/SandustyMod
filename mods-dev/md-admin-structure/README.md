@@ -1,5 +1,7 @@
 # MdAdmin Structure
 
+`md-admin-structure` · v0.1.0 · **dev**
+
 A tiny dev panel (toggle: **Alt+O**) that lists structures.
 
 It enumerates every **mod-registered structure** (`sandkit.mods.structures`) plus the player's
@@ -13,50 +15,47 @@ then shows:
 - whether it is **`hideFromBuildMenu`**
 - whether it is already **unlocked**
 
-## Filters
+## Features
 
-- **Mod** — All, or one specific owning mod.
-- **Menu** — All / Hidden (`hideFromBuildMenu: true`) / Shown.
-
-## Unlock / Remove columns
-
-Each row has an **Unlock** button that calls `api.player.buildings.unlockById(structureId)` — the
-same API a mod uses to grant a building. Already-unlocked rows are shown with a green **Unlocked**
-button (clicking it re-runs the unlock, harmless).
+- **Filters** — **Mod** (All, or one specific owning mod) and **Menu** (All / Hidden / Shown).
+- **Unlock** column — `api.player.buildings.unlockById(structureId)`; already-unlocked rows show a
+  green **Unlocked** button (clicking re-runs the unlock, harmless).
+- **Remove** column — `api.player.buildings.removeById(structureId)` to revoke the unlock.
 
 ## Sources
 
-Rows are merged from three places and de-duplicated by id, so a structure registered by a mod keeps
-its registry definition (which is the one that carries `hideFromBuildMenu`):
+Rows are merged and de-duplicated by id, so a structure registered by a mod keeps its registry
+definition (the one that carries `hideFromBuildMenu`):
 
 1. `sandkit.mods.structures` — every mod-registered structure.
 2. `api.structures.getAvailableTypes()` — all available types, when the API is present.
-3. `sandkit.state.store.player.buildings` — the player's unlocked ids; used as the fallback list
-   when `getAvailableTypes` is unavailable.
+3. `sandkit.state.store.player.buildings` — the player's unlocked ids; the fallback list when
+   `getAvailableTypes` is unavailable.
 
 > The unlocked column is derived from the `state.store.player.buildings` snapshot, so a row turns
 > green once that snapshot lists the id. `api.structures.isLockedByType(ref)` is an alternative
 > authoritative check.
 
-Each row also has a **Remove** button that calls `api.player.buildings.removeById(structureId)` to
-revoke it from the player.
+## Package dependencies
 
-## Layout
+| Package           | Used for                                                                   |
+| ----------------- | -------------------------------------------------------------------------- |
+| `@sandmd/sandkit` | Global `sandkit` declaration (`api`, `mods`, `react`, `state`). Type-only. |
 
-| File               | Responsibility                                              |
-| ------------------ | ----------------------------------------------------------- |
-| `src/main.ts`      | Entry point: the Alt+O toggle and boot wiring.              |
-| `src/constants.ts` | Mod id, version, panel id, toggle, glyphs, log prefix.      |
-| `src/types.ts`     | Local typing for the admin API surface + React subset.      |
-| `src/api.ts`       | Typed `sandkit` handle, React handle, `safe()` / `toast()`. |
-| `src/data.ts`      | The three structure sources and row building.               |
-| `src/styles.ts`    | `COLORS` + panel styles.                                    |
-| `src/state.ts`     | Panel open flag + the external repaint handle.              |
-| `src/panel.ts`     | The injected React panel.                                   |
+No `@sandmd/modkit` — the panel reads the live registries directly.
 
-## Build
+## Sandkit API used
 
-```
-deno task check      # type-check src/main.ts
-deno task build      # bundle main.js + copy modinfo into build/ and the game folder
-```
+| Area       | Calls                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| Structures | `structures.getAvailableTypes`, `structures.getDefinitionByType`                                    |
+| Player     | `player.buildings.unlockById`, `player.buildings.removeById`                                        |
+| UI         | `ui.inject` (panel), `ui.toast`, `i18n.getName`                                                     |
+| Registries | `sandkit.mods.structures` / `sandkit.state.sandkit.mods.structures`, `state.store.player.buildings` |
+| Host       | `sandkit.react` (panel rendering)                                                                   |
+
+---
+
+Layout and build details for every mod live in
+[`doc/doc_ia/MOD_LAYOUT.md`](../../doc/doc_ia/MOD_LAYOUT.md) and
+[`doc/doc_ia/MOD_BUILD.md`](../../doc/doc_ia/MOD_BUILD.md).

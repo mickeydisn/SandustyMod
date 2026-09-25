@@ -1,54 +1,54 @@
 # Take Video (`md-take-video`)
 
-Record a **locked C-selection** (or live marquee) as a **compressed WebM/MP4** video you can drop straight into Discord.
+`md-take-video` · v3.5.0 · **dev**
 
-Built from the **md-admin-clean** template pattern and the selection/crop model of **irishbruse.selection-capture**, with the heavy GIF path replaced by **MediaRecorder** streaming encode.
+Record a **locked C-selection** (or live marquee) as a **compressed WebM/MP4** video you can drop
+straight into Discord.
 
-## Why MediaRecorder (not GIF / not ffmpeg-in-browser)
+> The shipped entry is the **self-contained `main.js`** at the mod root — it has no Deno/modkit
+> dependency, so the folder can be dropped into the game's `mods/` directory as-is. `src/` holds the
+> constants used by the game build and documents the lifecycle expected by the `md-admin-clean`
+> template.
 
-| Approach | Size | CPU | Discord | Notes |
-| --- | --- | --- | --- | --- |
-| GIF (modern-gif) | Very large | High (palette + all frames in RAM) | OK but heavy | What the reference mod does |
-| Frame dump + wasm ffmpeg | Medium | Very high | Excellent | Complex, slow to start |
-| **MediaRecorder → WebM VP9** | **Small** | **Low (hardware when available)** | **Native** | **Chosen** — encodes on the fly |
+## Features
 
-Preferred MIME order:
+- **F7** opens the capture panel; **C** drags a marquee (same selection model as the Screenshot/GIF
+  mod).
+- Lock the region (recommended) so camera movement doesn't change the crop.
+- Live encode with **MediaRecorder** — set FPS (5–60), scale (1/½/¼ … 4 nearest-neighbour), bitrate.
+- Countdown before REC, then **Start / Stop** from the panel (start/stop is unbound by default and
+  rebindable in Controls).
+- **Review** step: trim start/end (ms), then _Save video_ (trimmed) or _Save full_.
+- Output: `sandustry-YYYYMMDD-HHMMSS.webm` via an `<a download>` link.
 
-1. `video/webm;codecs=vp9` (best compression)
-2. `video/webm;codecs=vp8`
-3. `video/webm`
-4. `video/mp4` (if the runtime exposes it)
+### Why MediaRecorder (not GIF / not ffmpeg-in-browser)
 
-Bitrate defaults to **4 Mbps** (configurable 1–20). Discord’s practical limit is ~25 MB for free users / 50–500 MB with Nitro — at 4 Mbps a 30 s clip is ~15 MB.
+| Approach                     | Size       | CPU                                | Discord    | Notes                           |
+| ---------------------------- | ---------- | ---------------------------------- | ---------- | ------------------------------- |
+| GIF (modern-gif)             | Very large | High (palette + all frames in RAM) | OK/heavy   | What the reference mod does     |
+| Frame dump + wasm ffmpeg     | Medium     | Very high                          | Excellent  | Complex, slow to start          |
+| **MediaRecorder → WebM VP9** | **Small**  | **Low (hardware when available)**  | **Native** | **Chosen** — encodes on the fly |
 
-## Usage
+Preferred MIME order: `video/webm;codecs=vp9` → `video/webm;codecs=vp8` → `video/webm` →
+`video/mp4`. Default bitrate 2 Mbps (configurable 1–12); Discord's practical limit is ~25 MB for
+free users, so a 30 s clip at 2 Mbps is ~7.5 MB.
 
-1. Enable the mod (Settings → Mods).
-2. Press **F7** to open the panel.
-3. Press **C**, drag a marquee (same as the Screenshot/GIF mod).
-4. **Lock** the area (optional but recommended so camera moves don’t change the crop).
-5. Set **FPS** (5–60), **Scale** (1–4 nearest-neighbour), **Bitrate**.
-6. **Start record** → optional countdown → **Stop**.
-7. In **Review**: adjust trim start/end (ms), **Save video** (trimmed) or **Save full**.
+## Package dependencies
 
-Bindings (rebindable in Controls):
+**None.** The entry is a single self-contained `main.js`; it talks to the game through the global
+`sandkit` object only. There are no `@sandmd/*` runtime imports (the `src/` stubs exist for a future
+workspace build).
 
-- **Toggle Take Video panel** — default `F7`
-- **Start/Stop video record** — unbound by default (use the panel)
+## Sandkit API used
 
-## Files
-
-```
-md-take-video/
-├── modinfo.json      # Workshop / game manifest
-├── main.js           # Entry (self-contained)
-├── README.md
-└── src/
-    ├── modinfo.json
-    └── constants.ts  # MOD_ID, SETTINGS mirror (for future deno/modkit build)
-```
-
-No build step required — drop the folder into the game’s `mods/` directory (or upload via Workshop after adding `preview.png`).
+| Area              | Calls                                                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Input             | `input.registerBinding` (F7 toggle; start/stop unbound)                                                                    |
+| Overlay rendering | `events.on("frame:render")`, `rendering.getGridMetrics`, `rendering.getDrawPositionAtCell`, `rendering.withOverlayContext` |
+| UI                | `ui.inject`, `ui.overlays.update`, `ui.toast`                                                                              |
+| Settings          | `settings.get` (reads `md-take-video.*` with a bare-name fallback)                                                         |
+| Scheduling        | `schedule.nextTick`                                                                                                        |
+| Host handles      | `sandkit.react`, `sandkit.state`                                                                                           |
 
 ## Capture pipeline (on the fly)
 
@@ -63,27 +63,34 @@ Trim → subset of chunks by timestamp (best-effort; keyframe-aligned)
 Save → <a download> sandustry-YYYYMMDD-HHMMSS.webm
 ```
 
-Camera drift while recording letterboxes into the locked canvas size instead of resizing the encoder mid-stream (avoids broken WebM).
+Camera drift while recording letterboxes into the locked canvas size instead of resizing the encoder
+mid-stream (avoids broken WebM).
 
-## Config schema (`Options → Mods`)
+## Settings
 
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `enabled` | true | Master switch |
-| `countdownSeconds` | 2 | Delay before REC |
-| `defaultFps` | 30 | Initial FPS in the panel |
-| `videoBitrateMbps` | 4 | Target bitrate |
+Uses the shared settings pattern (see `mods-dev` / `mods-progress`): `configSchema` in
+`modinfo.json` → typed `SETTINGS` → `readSettings` / `onSettingsChange` from `@sandmd/modkit`
+(pub mods read `api.settings` directly). Disabling a mod runs a prune/orphan/storage cleanup
+over everything prefixed with its id.
 
-Panel values (FPS, scale, lock, bitrate) also persist in `localStorage` under `md-take-video.capture-settings`.
+Per-key values for this mod:
+[`doc/doc_ia/MOD_SETTINGS.md`](../../doc/doc_ia/MOD_SETTINGS.md#ia-md-take-video).
 
 ## Limitations
 
-- **Trim** is chunk-based (≈250 ms granularity). For frame-perfect cuts, re-encode externally (e.g. ffmpeg).
-- Requires a runtime with **MediaRecorder** + canvas capture (Electron/Chromium builds of Sandustry).
-- Selection must be on-screen; if the locked region leaves the viewport, frames may go black until it returns.
+- **Trim** is chunk-based (≈250 ms granularity) — re-encode externally (ffmpeg) for frame-perfect
+  cuts.
+- Requires a runtime with **MediaRecorder** + canvas capture (Electron/Chromium Sandustry builds).
+- Selection must be on-screen; if the locked region leaves the viewport, frames may go black.
 
 ## Credits
 
 - Selection / marquee geometry: adapted from **irishbruse.selection-capture**
 - Mod structure: **md-admin-clean** (`mickeydisn/SandustyMod`)
 - API: [sandustry.com/sandkit.html](https://sandustry.com/sandkit.html)
+
+---
+
+Layout and build details for every mod live in
+[`doc/doc_ia/MOD_LAYOUT.md`](../../doc/doc_ia/MOD_LAYOUT.md) and
+[`doc/doc_ia/MOD_BUILD.md`](../../doc/doc_ia/MOD_BUILD.md).

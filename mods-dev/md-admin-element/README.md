@@ -1,4 +1,6 @@
-# MdAdmin
+# MdAdmin — Elements (`mdadmin`)
+
+`mdadmin` · v0.1.0 · **dev**
 
 A tiny dev helper. Just a main thread, nothing else.
 
@@ -12,40 +14,50 @@ On load it:
 Element ids are like `astro.seeds:astro-seed`, so the reported mod is `astro.seeds`. Built-in
 elements have no namespace and are shown as `(built-in)`.
 
-## Removing elements
+## Features
 
-Mod-added elements — the ids present in the live registry (`sandkit.mods.elements` /
-`sandkit.state.sandkit.mods.elements`) — carry a **Remove** button. Removing deletes the element
-from that registry.
+- **Element listing** — every type from `api.elements.getRegisteredTypes()`, with
+  `getDefinitionByType` and `getNameByType`.
+- **Owner attribution** — id prefix before `:`, else `(built-in)`.
+- **Removal** — mod-added elements get a **Remove** button that deletes the entry from the live
+  registry (`sandkit.mods.elements` / `sandkit.state.sandkit.mods.elements`).
+- **Persistent blacklist** — removed ids are stored in `api.storage` under `removedElements` and
+  re-scrubbed at init, on `game:ready` and every 2 s, so removed elements don't come back on reload.
+- Bulk actions: **`Remove N`** (remove everything the registry reports) and **`Reset`** (forget all
+  remembered removals).
 
-> Only ids still present in the registry get a button. A "ghost" element left in a save by a mod
-> that is no longer installed is listed (its type is still registered) but has **no** per-row
-> button, because there is nothing left to delete. Use **`Remove N`** for everything the registry
-> does report.
+## Package dependencies
 
-Removal is **persistent**: the element ids are remembered in mod storage (`api.storage`, key
-`removedElements`) and the scrub is re-applied on every load — at init, on `game:ready`, and every 2
-s — so removed elements do **not** come back when you reload the game.
+| Package           | Used for                                                                   |
+| ----------------- | -------------------------------------------------------------------------- |
+| `@sandmd/sandkit` | Global `sandkit` declaration (`api`, `mods`, `react`, `state`). Type-only. |
 
-- **`Remove N`** — remove every currently mod-registered element.
-- **`Reset`** — forget all remembered removals (restore them).
+No `@sandmd/modkit` — this dev tool needs direct access to the live registries.
 
-## Layout
+## Sandkit API used
 
-| File               | Responsibility                                              |
-| ------------------ | ----------------------------------------------------------- |
-| `src/main.ts`      | Entry point: DevTools, the Alt+L toggle, boot wiring.       |
-| `src/constants.ts` | Mod id, version, storage key, panel id, toggle, log prefix. |
-| `src/types.ts`     | Local typing for the admin API surface + React subset.      |
-| `src/api.ts`       | Typed `sandkit` handle, React handle, `safe()` / `toast()`. |
-| `src/registry.ts`  | Element registry, the removal blacklist and row building.   |
-| `src/styles.ts`    | `COLORS` + panel styles.                                    |
-| `src/state.ts`     | Panel open flag + the external repaint handle.              |
-| `src/panel.ts`     | The injected React panel.                                   |
+| Area       | Calls                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------- |
+| Elements   | `elements.getRegisteredTypes`, `elements.getDefinitionByType`, `elements.getNameByType` |
+| UI         | `ui.inject` (panel), `ui.toast`                                                         |
+| Storage    | `storage.get`, `storage.set` (`removedElements`)                                        |
+| Lifecycle  | `events.on("game:ready")`                                                               |
+| Registries | `sandkit.mods.elements` / `sandkit.state.sandkit.mods.elements`, `sandkit.mods.matters` |
+| Host       | `sandkit.react` (panel rendering), `window.electron.openDevTools()`                     |
 
-## Build
+## How removal works
 
-```
-deno task check      # type-check src/main.ts
-deno task build      # bundle main.js + copy modinfo into build/ and the game folder
-```
+`registry.ts` reads the live mod registry from `sandkit.mods` **or** `sandkit.state.sandkit.mods`
+(accepting both shapes) and deletes `elements[id]` (+ its `matters[id]`) for every remembered id.
+`reapplyRemovals()` is the scrub; `loadRemoved()` / `saveRemoved()` persist the blacklist.
+
+> Only ids still present in the registry get a per-row button. A "ghost" element left in a save by a
+> mod that is no longer installed is listed (its type is still registered) but has **no** button,
+> because there is nothing left to delete. Use **`Remove N`** for everything the registry does
+> report.
+
+---
+
+Layout and build details for every mod live in
+[`doc/doc_ia/MOD_LAYOUT.md`](../../doc/doc_ia/MOD_LAYOUT.md) and
+[`doc/doc_ia/MOD_BUILD.md`](../../doc/doc_ia/MOD_BUILD.md).

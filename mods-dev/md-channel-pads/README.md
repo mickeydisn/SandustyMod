@@ -1,11 +1,13 @@
 # Channel Pads
 
+`md-channel-pads` · v1.0.0 · **dev**
+
 TypeScript port of `hood.channel-pads`. **Ten pads. Ten channels. Two of each.**
 
 Walk onto a linked pad and you fold to its twin. A third pad on the same channel is refused with a
 toast.
 
-## Rules
+## Features
 
 | Rule     | Behaviour                                                                      |
 | -------- | ------------------------------------------------------------------------------ |
@@ -16,6 +18,24 @@ toast.
 | Travel   | Player colliding with a pad cell → `api.player.setPositionAtWorld` at the twin |
 | Cooldown | `1600 ms`, plus “skip until you walk off the landing pad”                      |
 | Unpair   | Demolish one pad → remaining pad goes idle                                     |
+
+### Structures
+
+One 1×1 structure per channel: id `${MOD}.pad.${ch}` (`md-channel-pads.pad.0` … `.pad.9`), category
+`logistics`, unlocked via `player.buildings.unlockById`. `pad-{n}.png` is two 16×16 frames — index
+`0` idle (dim ring), index `1` linked (bright ring) — applied through
+`setSpritesheetIndex(pad, linked ? 1 : 0)`.
+
+### Tunables (`src/constants.ts`)
+
+| Constant           | Default | Meaning                 |
+| ------------------ | ------- | ----------------------- |
+| `CHANNELS`         | `10`    | Channels `0..9`         |
+| `MAX_PER_CHANNEL`  | `2`     | Hard cap                |
+| `COOLDOWN_MS`      | `1600`  | Jump lockout            |
+| `STEP_INTERVAL_MS` | `50`    | Collision poll interval |
+
+`CHANNEL_COLORS` holds the per-channel teleport-flash RGBA palette (10 entries + `FALLBACK_COLOR`).
 
 ## How teleport works
 
@@ -41,43 +61,29 @@ api.player.isCollidingWithCell(pad.x, pad.y);
 api.player.isWithinRadiusOfCell(pad.x, pad.y, 1); // radius in cells
 ```
 
-## Sprites
+## Package dependencies
 
-Each `pad-{n}.png` is two 16×16 frames:
+| Package           | Used for                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| `@sandmd/sandkit` | Global `sandkit` declaration and typed `api`.                                              |
+| `@sandmd/shared`  | `StructureLike` type for the pad instances passed to `setSpritesheetIndex` / `updateData`. |
 
-- index `0` — idle, dim ring
-- index `1` — linked, bright ring
+No `@sandmd/modkit`: the mod predates it and keeps its own `api.ts` helper (`toast`, `listChannel`,
+`channelFromId`, …).
 
-`setSpritesheetIndex(structure, linked ? 1 : 0)` on every relink.
+## Sandkit API used
 
-## Tune
+| Area       | Calls                                                                                                                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Structures | `structures.register`, `structures.forEachOfType`, `structures.getTypeById`, `structures.isType`, `structures.updateData`, `structures.setSpritesheetIndex`, `structures.setSpritesheetIndexAtCell` |
+| Player     | `player.buildings` (unlock), `player.isCollidingWithCell`, `player.isWithinRadiusOfCell`, `player.isPositionClearAtWorld`, `player.setPositionAtWorld`, `player.setPosition`, `player.setVelocity`  |
+| Hooks      | `hooks.intercept("building:place")`                                                                                                                                                                 |
+| Events     | `events.on("building:placed")`, `events.on("building:removed")`                                                                                                                                     |
+| Triggers   | `triggers.register` (50 ms step poll)                                                                                                                                                               |
+| Assets/UI  | `sprites.loadFromMod`, `ui.toast`, `i18n.register`                                                                                                                                                  |
 
-| Constant           | Default | Meaning                 |
-| ------------------ | ------- | ----------------------- |
-| `CHANNELS`         | `10`    | Channels `0..9`         |
-| `MAX_PER_CHANNEL`  | `2`     | Hard cap                |
-| `COOLDOWN_MS`      | `1600`  | Jump lockout            |
-| `STEP_INTERVAL_MS` | `50`    | Collision poll interval |
+---
 
-## Layout
-
-| File               | Responsibility                                                 |
-| ------------------ | -------------------------------------------------------------- |
-| `src/main.ts`      | Entry point: i18n, sprite loads, register calls.               |
-| `src/constants.ts` | Mod id, channels, cap, cooldown, palette, i18n keys, pad ids.  |
-| `src/types.ts`     | Local typing for the sandkit API surface this mod uses.        |
-| `src/api.ts`       | Typed API handle + shared helpers (`toast`, `listChannel`, …). |
-| `src/state.ts`     | Runtime state (last jump per channel, skip-until-leave).       |
-| `src/world.ts`     | Cell/world math, landing search and the teleport itself.       |
-| `src/pads.ts`      | Paint/relink a channel, i18n and pad registration.             |
-| `src/hooks.ts`     | Place limit, placed/removed lifecycle, step trigger.           |
-
-## Build
-
-```
-deno task check      # type-check src/main.ts
-deno task build      # bundle main.js, copy modinfo + assets + i18n into build/ and the game folder
-```
-
-`i18n/en.json` mirrors the strings registered at runtime and is shipped for reference; runtime
-registration in `pads.ts` is authoritative.
+Layout and build details for every mod live in
+[`doc/doc_ia/MOD_LAYOUT.md`](../../doc/doc_ia/MOD_LAYOUT.md) and
+[`doc/doc_ia/MOD_BUILD.md`](../../doc/doc_ia/MOD_BUILD.md).

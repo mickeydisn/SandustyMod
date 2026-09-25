@@ -1,25 +1,9 @@
 # Astro Seeds
 
+`astro.seeds` · v3.1.0 · **progress**
+
 A small Sandustry mod that adds an **astro seed family**: a seed that matures over a liquid into a
-crystal, and powders that cluster together in water.
-
-Everything is driven by two catalogues, one per thread, under `src/config/`:
-
-- **`elementShared/`** — ids, element keys, shared types and the resolved `ElementType` map (used by
-  both bundles).
-- **`elementMain/`** — the _registration_ catalogue: what the engine must be told (spec, colors,
-  physics, contact reactions). Read by `main/build.ts`.
-- **`elementWorker/`** — the _simulation_ catalogue: the `Profile` list built directly from the
-  `Move` / `Grow` / `Crystallization` actions. Read by `worker/build.ts`.
-
-Profiles call the real actions directly — there is no spec DSL and no generic factory in between.
-The only mod-supplied data is the two catalogues; both builders come from the
-`@sandmd/element-profiles` package, and the main bundle imports `@sandmd/element-profiles/main`
-(never the worker actions).
-
----
-
-## 1. What it does
+crystal, and powders that cluster together in water via column forces.
 
 The core loop is **seed → grow → crystallise**:
 
@@ -29,34 +13,47 @@ The core loop is **seed → grow → crystallise**:
 4. The powders (**Astro Gold / Astro Copper**) drift and interact in water via column forces
    (attraction/repulsion between the two families).
 
-### The elements
+Everything is driven by two catalogues, one per thread, under `src/config/`: `elementMain/`
+(registration) and `elementWorker/` (simulation), with `elementShared/` holding the ids, keys, types
+and resolved `ElementType` map both bundles use.
 
-| Element              | Density | Matter | Role    | How to get it                            |
-| -------------------- | ------: | ------ | ------- | ---------------------------------------- |
-| Astro Void Seed      |      90 | Powder | Reagent | Craft: **seed** + **void petal**         |
-| Astro Seed           |     145 | Static | Seed    | Craft: **void seed** + **florinol**      |
-| Astro Gold Crystal   |     200 | Static | Crystal | Astro Seed maturing in **liquid gold**   |
-| Astro Copper Crystal |       0 | Static | Crystal | Astro Seed maturing in **liquid copper** |
-| Astro Water Crystal  |       0 | Static | Crystal | _(creative only)_                        |
-| Astro Gold Powder    |     145 | Powder | Seed    | Burn **gold crystal** with fire          |
-| Astro Copper Powder  |     145 | Powder | Seed    | Burn **copper crystal** with fire        |
-| Astro Water Powder   |     280 | Powder | Reagent | Burn **water crystal** with fire         |
+## Elements (registered)
+
+| Element                   | Density | Matter | Role    | How to get it                                |
+| ------------------------- | ------: | ------ | ------- | -------------------------------------------- |
+| **Astro Void Seed**       |      90 | Powder | Reagent | Reaction: `seed` + `void petal`              |
+| **Astro Seed**            |     145 | Static | Seed    | Reaction: `astro void seed` + `florinol`     |
+| **Astro Gold Crystal**    |     200 | Static | Crystal | Astro Seed maturing in **liquid gold**       |
+| **Astro Copper Crystal**  |       0 | Static | Crystal | Astro Seed maturing in **liquid copper**     |
+| **Astro Water Crystal**   |       0 | Static | Crystal | Panel/creative placement (no worker profile) |
+| **Astro Gold Powder**     |     145 | Powder | Seed    | Burn **gold crystal** with fire              |
+| **Astro Copper Powder**   |     145 | Powder | Seed    | Burn **copper crystal** with fire            |
+| **Astro Water Powder**    |     280 | Powder | Reagent | Burn **water crystal** with fire             |
+| **Astro GC Alloy Powder** |     145 | Powder | Seed    | Registered powder (no reaction yet)          |
+
+Element ids are `${MOD_ID}:<slug>`, e.g. `astro.seeds:astro-seed`. The catalogue lives in
+`src/config/elementMain/catalogue.ts` (`ASTRO_ELEMENTS`); each entry is
+`{ spec: AstroElementSpec, reactions: ReactionSpec[] }`. `ASTRO_REACTIONS` and
+`ASTRO_ELEMENT_BY_KEY` are derived views over that list.
 
 ### Contact reactions
 
 | Input A              | Input B    | Output A            | Output B |
 | -------------------- | ---------- | ------------------- | -------- |
-| seed                 | void petal | Astro Void Seed     | —        |
+| `seed` (vanilla)     | void petal | Astro Void Seed     | —        |
 | Astro Void Seed      | florinol   | Astro Seed          | —        |
 | Astro Gold Crystal   | fire       | Astro Gold Powder   | fire     |
-| Astro Copper Crystal | fire       | Astro Copper Powder | fire     |
+| Astro Copper Crystal | water      | Astro Copper Powder | water    |
 | Astro Water Crystal  | fire       | Astro Water Powder  | fire     |
 
-### Seed profiles
+Vanilla keys the catalogue references (`liquidGold`, `liquidCopper`, `florinol`, `voidPetal`,
+`seedBase`, `fire`, `water`, `sand`, `empty`) are resolved through alias lists in
+`elementShared/resolve.ts`.
 
-`config/elementWorker/` lists one `Profile` per seed/liquid pair. A profile pairs a **seed** with a
-**liquid** and a **crystal**, then defines its **move → grow → crystallise** pipeline as plain
-action calls:
+## Simulation profiles (worker)
+
+`config/elementWorker/` lists one `Profile` per seed/liquid pair as plain `Move` / `Grow` /
+`Crystallization` action calls — no spec DSL and no generic factory:
 
 | File                        | Profiles                                                          |
 | --------------------------- | ----------------------------------------------------------------- |
@@ -64,155 +61,63 @@ action calls:
 | `elementWorker/inGold.ts`   | Astro Seed, Astro Gold Powder, Astro Copper Powder in liquid gold |
 | `elementWorker/inCopper.ts` | Astro Seed in liquid copper                                       |
 
-`elementWorker/catalogue.ts` flattens those into `ASTRO_PROFILES`, which `worker/build.ts` consumes
-directly. Catalogue keys are resolved to numeric element types by the small helper in
-`elementWorker/keys.ts`, which also expands the special `"empty"` / `"structure"` match keys.
+`catalogue.ts` flattens those into `ASTRO_PROFILES` (7 active profiles), which `worker/build.ts`
+hands to `buildElementWorker`. `elementWorker/keys.ts` turns catalogue keys into numeric element
+types and expands the special `"empty"` / `"structure"` match keys (`"structure"` = every registered
+`MatterType.Static` element).
 
-> `Astro Water Powder` is a static reaction output and is not driven by the worker loop.
-
----
-
-## 2. Tech
+## Tech node
 
 A research node **Astro Seeds** (cost `4500`) is registered as a child of `SteamTurbine` (falling
-back to `KineticPress` if that enum is absent).
+back to `KineticPress`), through `buildElementMain`'s `tech` config.
+
+## Live profile config (buffer-controls)
+
+Every profile knob is exposed in-game: `buildMain()` registers a `JsonBuffer` record through
+`@sandmd/buffer-controls`, one placeable structure per `P.<profileId>.<knob>`, with its own art, tag
+and picker category. The worker observes the same buffer and reads it live through `live.ts`, so
+changes apply in real time. `profileRuntime.ts` is the single source of truth:
+`PROFILE_KNOBS × PROFILES → PROFILE_FIELDS` (record, sprites, tabs and validation are all derived).
+
+## Package dependencies
+
+| Package                           | Used for                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `@sandmd/sandkit`                 | Global `sandkit` declaration (`api`, `enums`, `react`, `state`).                                      |
+| `@sandmd/modkit`                  | `findOrphanedObjects`, `pruneStaleBuildings` — boot-time leftovers pass.                              |
+| `@sandmd/element-profiles/main`   | `buildElementMain` — i18n, element + discovery registration, reactions, optional tech node.           |
+| `@sandmd/element-profiles/worker` | `buildElementWorker`, `Move`, `Grow`, `Crystallization` — worker actions + `element:update` dispatch. |
+| `@sandmd/element-profiles/shared` | `Profile`, `ElementSpec`, `ReactionSpec`, `Ctx`, … (engine-free vocabulary).                          |
+| `@sandmd/buffer-controls`         | `registerBufferControls` — turns `PROFILE_FIELDS` into placeable config structures + picker.          |
+| `@sandmd/buffer`                  | `JsonBuffer` handle handed to the live config reader.                                                 |
+| `@sandmd/shared`                  | `MatterType`, `TElementType`, `DirectionName`.                                                        |
+
+The main bundle imports **`element-profiles/main`** (never the worker actions); the worker bundle
+imports **`element-profiles/worker`**. `element-profiles/shared` is safe on both threads.
+
+## Sandkit API used
+
+| Area           | Calls                                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Elements       | `elements.register`, `elements.getTypeFromId`, `elements.getDefinitionByType` (worker), `discoveries.addElementByType` |
+| Events         | `events.on("element:update")` (installed by the package), `events.on("game:ready")`                                    |
+| UI             | `ui.toast`                                                                                                             |
+| Tech           | `tech.registerNode` (via `buildElementMain`)                                                                           |
+| i18n           | `i18n.register` (`<id>                                                                                                 |
+| Storage/Buffer | `JsonBuffer` shared buffer (`astro-seeds:profileConfig`) read by the worker                                            |
+
+## Settings
+
+Uses the shared settings pattern (see `mods-dev` / `mods-progress`): `configSchema` in
+`modinfo.json` → typed `SETTINGS` → `readSettings` / `onSettingsChange` from `@sandmd/modkit`
+(pub mods read `api.settings` directly). Disabling a mod runs a prune/orphan/storage cleanup
+over everything prefixed with its id.
+
+Per-key values for this mod:
+[`doc/doc_ia/MOD_SETTINGS.md`](../../doc/doc_ia/MOD_SETTINGS.md#astro-seeds).
 
 ---
 
-## 3. Project layout
-
-```
-src/
-├── modinfo.json            # manifest (id, entries, version)
-├── main.ts                 # thin main-thread entry → buildMain()
-├── worker.ts               # thin worker-thread entry → buildWorker()
-│
-├── config/
-│   ├── elementShared/      # shared vocabulary (both bundles)
-│   │   ├── ids.ts          # MOD_ID, VERSION, ASTRO_FIELD (age/vx/vy fields)
-│   │   ├── keys.ts         # TVanillaElementKey / TAddedElementKey / TElementKey
-│   │   ├── types.ts        # AstroElementSpec (extends package ElementSpec)
-│   │   ├── util.ts         # `spec()` id builder + `safe()`
-│   │   └── resolve.ts      # ElementType map (vanilla aliases + astro ids)
-│   │
-│   ├── elementMain/        # registration catalogue (main bundle)
-│   │   ├── types.ts        # AstroElementMain = spec + reactions
-│   │   ├── astro*.ts       # one entry per element
-│   │   └── catalogue.ts    # ★ ASTRO_ELEMENTS + ASTRO_REACTIONS
-│   │
-│   ├── elementWorker/      # simulation catalogue (worker bundle)
-│   │   ├── keys.ts         # key → type helpers (+ "empty"/"structure")
-│   │   ├── inWater.ts      # water profiles
-│   │   ├── inGold.ts       # liquid-gold profiles
-│   │   ├── inCopper.ts     # liquid-copper profiles
-│   │   ├── defBuilder.ts   # shared profile action wiring
-│   │   ├── live.ts         # typed buffer reads/writes
-│   │   └── catalogue.ts    # ★ ASTRO_PROFILES (the worker's profile list)
-│   └── profileRuntime.ts   # PROFILE_KNOBS × PROFILES → PROFILE_FIELDS (record/art/tabs)
-│
-├── main/
-│   └── build.ts            # thin: buildElementMain(catalogue + tech) + toast
-│
-└── worker/
-    └── build.ts            # thin: buildElementWorker(ASTRO_PROFILES) + log
-```
-
-> The generic parts (registration, reactions, tech node, hook install + dispatch) live in the
-> workspace package **`packages/element-profiles`** — see its README. The mod's builders are thin
-> wrappers that pass in the catalogues and add the mod's own UI touch (welcome toast).
-
-### Two catalogues, one per thread
-
-`config/elementMain/catalogue.ts` lists the eight `AstroElementMain<TElementKey>` entries in
-`ASTRO_ELEMENTS`. Each entry carries the registration data for one element:
-
-```ts
-{
-    spec: { key, slug, name, description, colors, density, metaColor, matterType, … },
-    reactions: ReactionSpec[],   // contact reactions by key
-}
-```
-
-`ASTRO_REACTIONS` and `ASTRO_ELEMENT_BY_KEY` are derived views over that list. **To add an element:
-create one `elementMain` file and add it to `ASTRO_ELEMENTS`** — registration, i18n and discovery
-follow automatically.
-
-Worker behaviour is declared separately in `config/elementWorker` as real `Profile` objects (see
-above). Keeping the two catalogues apart is what lets the main bundle stay free of the simulation
-actions.
-
-### Builders live in the package
-
-The generic work is in **`packages/element-profiles`**, which exposes one entry point per thread:
-
-| Entry point                       | Used by                              | Contents                                                                                |
-| --------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `@sandmd/element-profiles/shared` | both                                 | engine-free types (`Profile`, `ElementSpec`, `ReactionSpec`, …) + `resolveNum` / `safe` |
-| `@sandmd/element-profiles/main`   | `main/build.ts`                      | `buildElementMain` — i18n, elements + discoveries, reactions, tech node                 |
-| `@sandmd/element-profiles/worker` | `worker/build.ts`, `elementWorker/*` | `Move` / `Grow` / `Crystallization`, `runProfile`, `buildElementWorker`                 |
-
-This mod's builders are therefore thin:
-
-- **`main/build.ts`** (`buildMain`) — calls `buildElementMain` with `ASTRO_ELEMENTS`, the
-  pre-resolved `ElementType` map (for the vanilla keys the reactions reference) and the tech node
-  config, then mirrors the returned ids and shows the welcome toast.
-- **`worker/build.ts`** (`buildWorker`) — calls `buildElementWorker(ASTRO_PROFILES)`; the package
-  installs one `element:update` hook per distinct seed type and dispatches each update to the first
-  matching `Profile` (seed type + nearby liquid).
-
-### Why the keys/types live where they do
-
-`config/elementShared/keys.ts` holds the element-key union types and `elementShared/types.ts`
-extends the package's `ElementSpec` with the astro catalogue extras (`slug`, `toolboxLabel`,
-`isSeed`, `isCrystal`). Each `elementMain` file only needs `keys`, `types`, `spec()` and `safe()`,
-so there is no import-order hazard between the catalogue and the modules that read it.
-`elementWorker/keys.ts` is the only place that turns those keys into numeric element types.
-
----
-
-## 4. Build & install
-
-Deno workspace: `mods/astro-seeds` is a workspace member. Tasks (in `deno.json`):
-
-| Task                      | What it does                               |
-| ------------------------- | ------------------------------------------ |
-| `deno task build:main`    | Bundle `src/main.ts` → `build/main.js`     |
-| `deno task build:worker`  | Bundle `src/worker.ts` → `build/worker.js` |
-| `deno task build:modinfo` | Copy `src/modinfo.json` → `build/`         |
-| `deno task build:toGame`  | Copy `build/` into the game's mods folder  |
-| `deno task build`         | All of the above, in order                 |
-| `deno task check`         | Type-check `src/main.ts` + `src/worker.ts` |
-| `deno lint src`           | Lint the source                            |
-
----
-
-## 5. Configuration
-
-`config/profileRuntime.ts` is the single source of truth for the live profile record. It declares
-each thing **once**:
-
-- `PROFILE_KNOBS` — one entry per runtime knob: its `key` (the record field, the sprite tag and the
-  picker filter tag), its `kind` (the value type, which is also the live validation), its `default`
-  and its own `sprite` art;
-- `PROFILES` — one entry per profile: its picker category id and tab colour;
-- `PROFILE_DEFAULT_OVERRIDES` — only the knobs where a profile differs from `PROFILE_KNOBS`.
-
-Everything else is **derived**, so there is nothing to keep in sync:
-
-| Derived | From |
-| --- | --- |
-| `ProfileRuntimeConfig` (the record shape) | `PROFILE_KNOBS` |
-| `PROFILE_DEFAULTS` / `buildDefaultProfileRecord()` | knobs + overrides |
-| `PROFILE_FIELDS` (one field per profile × knob: `path`, `kind`, `default`, `sprite`, `tag`, `category`) | knobs × profiles |
-| `PROFILE_CATEGORIES` (picker tabs) | `PROFILES` |
-| `PROFILE_KNOB_KIND` (worker validation) | `PROFILE_KNOBS` |
-
-`buildMain()` passes that field list to `@sandmd/buffer-controls`, which derives the JsonBuffer
-record, the sprite list (field art + the generic kind art) and every catalogue item's tag/category
-from it — there is no `defaultRecord`, `sprites` or `categoryForPath` to hand-write, and no path
-segment is interpreted by position. A restored record is re-shaped onto the field list at startup
-(new knobs filled, removed ones dropped).
-
-The worker opens the same key in observe mode; `live()` reads the buffered value and never carries a
-second inline fallback. The only manifest setting is the standard `enabled` boolean in
-`modinfo.json` (`default: true`).
+Layout and build details for every mod live in
+[`doc/doc_ia/MOD_LAYOUT.md`](../../doc/doc_ia/MOD_LAYOUT.md) and
+[`doc/doc_ia/MOD_BUILD.md`](../../doc/doc_ia/MOD_BUILD.md).
