@@ -11,6 +11,7 @@ import {
     PROFILE_BUFFER_ID,
     PROFILE_BUFFER_MAX_BYTES,
     PROFILE_DEFAULTS,
+    PROFILE_KNOB_KIND,
     type ProfileConfigRecord,
     type ProfileId,
     type ProfileRuntimeConfig,
@@ -56,9 +57,9 @@ export function profileBuffer(): JsonBuffer<ProfileConfigRecord> | null {
  * (`crystalEnabled`, not `crystallizationEnabled`).
  */
 function isValidProfileValue(key: ProfileRuntimeKey, value: unknown): boolean {
-    if (key === "enabled" || key === "growEnabled" || key === "crystalEnabled") {
-        return typeof value === "boolean";
-    }
+    // The kind comes from the knob declaration, so a new knob needs no change
+    // here — this used to hardcode the three boolean keys.
+    if (PROFILE_KNOB_KIND[key] === "bool") return typeof value === "boolean";
     return typeof value === "number" && Number.isFinite(value);
 }
 

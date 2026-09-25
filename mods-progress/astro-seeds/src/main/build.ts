@@ -14,13 +14,12 @@ import { ElementType } from "../config/elementShared/resolve.ts";
 import { safe } from "../config/elementShared/util.ts";
 import { setProfileBuffer } from "../config/elementWorker/live.ts";
 import {
-    buildDefaultProfileRecord,
     PROFILE_BUFFER_ID,
     PROFILE_BUFFER_MAX_BYTES,
+    PROFILE_CATEGORIES,
+    PROFILE_FIELDS,
     PROFILE_INITIAL_ITEM_ID,
-    PROFILE_SPRITES,
     type ProfileConfigRecord,
-    PROFILES_CONFIG,
 } from "../config/profileRuntime.ts";
 
 export function buildMain(): void {
@@ -51,15 +50,18 @@ export function buildMain(): void {
         })
     );
 
-    // Live profile configuration — one placeable structure per buffer path
-    // (profiles.<id>.tickSpeed / .enabled / .growEnabled / .crystalEnabled).
-    // The worker observes the same JsonBuffer and applies it in real time.
+    // Live profile configuration — one placeable structure per declared field
+    // (`P.<profileId>.<knob>`). Each field carries its own default, art, tag and
+    // category, so the record seed, the sprite list and the picker tabs are all
+    // derived by the package — nothing is declared twice and no path segment is
+    // interpreted by position. The worker observes the same JsonBuffer and
+    // applies it in real time.
     // The returned buffer is handed to the live config module so `live()` reads
     // the same handle that buffer-controls writes.
     registerBufferControls<ProfileConfigRecord>({
         modId: MOD_ID,
         bufferId: PROFILE_BUFFER_ID,
-        defaultRecord: buildDefaultProfileRecord(),
+        fields: [...PROFILE_FIELDS],
         maxBytes: PROFILE_BUFFER_MAX_BYTES,
         storage: { persist: true, load: true },
         pathScan: { maxDepth: 8, includeContainers: true },
@@ -70,20 +72,12 @@ export function buildMain(): void {
             description: "Astro Profiles — opens the per-profile config picker.",
             spriteId: "menu",
         },
-        categories: PROFILES_CONFIG,
-        categoryForPath: (path) => {
-            const parts = path.split(".");
-            if (parts[0] !== "P" || parts.length < 2 || parts[1] === "") {
-                throw new Error(`Unexpected Astro profile path: ${path}`);
-            }
-            return parts[1];
-        },
-        // Sprite list — each entry owns its asset file (there is no separate
-        // file table any more). Matching order per catalogue item:
-        // itemId → tag → action + kind → kind alone, so the generic art below
-        // is overridden per knob by PROFILE_SPRITES' `tag` entries.
-        sprites: [
-            // Menu entry: resolved through `menu.spriteId`, not by matching.
+        // One tab per profile (id + colour).
+        categories: PROFILE_CATEGORIES,
+        // Generic art for the views a field does not override: the kind icon,
+        // the inc/dec buttons and the boolean toggle. The menu entry resolves
+        // through `menu.spriteId`, not by matching.
+        kindSprites: [
             { spriteId: "menu", filePath: "assets/types/display.png" },
             { kind: "string", spriteId: "string", filePath: "assets/types/string.png" },
 
@@ -121,12 +115,9 @@ export function buildMain(): void {
             },
             { kind: "bool", spriteId: "bolean", filePath: "assets/types/bolean.png" },
 
-            // No generic `toggleNum` / `toggleRate` entries here: a number only
-            // gets a toggle behaviour where PROFILE_SPRITES declares one for
-            // that knob (`*-weigth.png` → `toggleNum`, `*-rate.png` →
-            // `toggleRate` with its `frames` count).
-            // …overridden knob-by-knob with the mod's own art.
-            ...PROFILE_SPRITES,
+            // No generic `toggleNum` / `toggleRate` entries: a number only gets
+            // a toggle button where its field declares one (`*-weigth.png` →
+            // `toggleNum`, `*-rate.png` → `toggleRate` with its frame count).
         ],
         unmappedCategoryColor: "#FFFFFF",
         picker: {

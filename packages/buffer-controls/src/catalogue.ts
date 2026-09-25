@@ -1,14 +1,18 @@
 /**
  * Build the buffer-controls BuildList from a jsonBuffer record.
  *
- * Every scalar path (bool / number / string) becomes a catalogue item, grouped
- * in the three category tabs:
- *   - variables — one item per path,
- *   - value     — one item per path (live readout),
+ * Every declared field (one per scalar path: bool / number / string) becomes a
+ * catalogue item, grouped in the three category tabs:
+ *   - variables — one item per field,
+ *   - value     — one item per field (live readout),
  *   - action    — +1 / ±10 for numbers, toggle for booleans, plus the
- *     opt-in toggles a number declares through its sprite entries
+ *     opt-in toggles a number declares through its field `sprite`
  *     (`toggleNum` for `*-weigth.png`, `toggleRate` for `*-rate.png`).
  * Plus a single unlocked menu entry that opens the picker.
+ *
+ * An item's `category`, sprite `tag` and filter tags come straight from its
+ * `BufferControlsField` — never from a path segment's position, so moving a
+ * field in the record cannot silently re-tag or re-group it.
  *
  * `listPaths` reports array leaves as "[]" templates (e.g. "players[].name"), so
  * each bound path is resolved to index 0 via resolveBindingPath — that is what
@@ -20,12 +24,14 @@ import type {
     ActionCatalogueItem,
     ActionOp,
     BufferControlsConfig,
+    BufferControlsField,
     BufferControlsSprite,
     BufferControlsSprites,
     FieldKind,
     PathCatalogueItem,
 } from "./types.ts";
 import { CELL, EXPOSED_KINDS } from "./const.ts";
+import { fieldCategory, fieldTag } from "./fields.ts";
 import { resolveBindingPath } from "./structure/defBuilders.ts";
 import { ACTION_LABEL } from "./structure/register/actionRegister.ts";
 
@@ -34,11 +40,30 @@ const ITEM_HEIGHT = 6 * 15;
 const VALUE_PREFIX = "value:";
 const ACTION_PREFIX = "action:";
 
-/** One bound field: an index-resolved, readable/writable jsonBuffer path. */
+/**
+ * One bound field: a declared field resolved to a real, readable/writable
+ * jsonBuffer path (array templates become index 0).
+ */
 export interface BoundField {
     path: string;
     kind: FieldKind;
+    /** Sprite-matching tag (declared on the field, else its last path segment). */
+    tag: string;
+    /** Picker category id (declared on the field, else its parent container). */
+    category: string;
+    /** Extra picker filter tags declared on the field. */
+    tags: string[];
 }
+
+/**
+ * Filter tags shared by one field's items: the bucket (`variables` / `value` /
+ * `action`), the field's sprite tag, then any extra tags the field declares.
+ */
+const itemTags = (bucket: string, field: BoundField): string[] => [
+    bucket,
+    field.tag,
+    ...field.tags,
+];
 
 /** Loaded sprite ids, keyed by `sprites[].spriteId` (from `loadSpriteMap`). */
 export type SpriteIdMap = Record<string, string>;
@@ -118,7 +143,6 @@ const menuItem = (
 
 const variableItem = (
     field: BoundField,
-    category: string,
     color: string,
 ): PathCatalogueItem => ({
     id: field.path,
@@ -127,8 +151,8 @@ const variableItem = (
     align: "floor",
     label: field.path,
     description: `${field.kind} — linked to jsonBuffer path "${field.path}".`,
-    category,
-    tags: ["variables", ...field.path.split(".").slice(2)],
+    category: field.category,
+    tags: itemTags("variables", field),
     sizes: [],
     width: CELL,
     height: ITEM_HEIGHT,
@@ -140,7 +164,6 @@ const variableItem = (
 
 const valueItem = (
     field: BoundField,
-    category: string,
     color: string,
 ): PathCatalogueItem => {
     return {
@@ -150,8 +173,8 @@ const valueItem = (
         align: "floor",
         label: field.path,
         description: `${field.kind} — live value for jsonBuffer path "${field.path}".`,
-        category,
-        tags: ["value", ...field.path.split(".").slice(2)],
+        category: field.category,
+        tags: itemTags("value", field),
         sizes: [],
         width: CELL,
         height: ITEM_HEIGHT,
@@ -164,7 +187,6 @@ const valueItem = (
 
 const actionItem = (
     field: BoundField,
-    category: string,
     op: ActionOp,
     color: string,
     frames?: number,
@@ -176,8 +198,8 @@ const actionItem = (
         align: "floor" as const,
         label: `${field.path} ${ACTION_LABEL[op]}`,
         description: `${ACTION_LABEL[op]} — writes jsonBuffer path "${field.path}" then commits.`,
-        category,
-        tags: ["action", ...field.path.split(".").slice(2)],
+        category: field.category,
+        tags: itemTags("action", field),
         sizes: [],
         width: CELL,
         height: CELL,
@@ -198,75 +220,94 @@ const actionItem = (
 /**
  * Does a sprite entry declare a toggle behaviour for this field?
  * Matching reuses the same priority as `resolveSpriteEntry` (exact `itemId`
- * first, then `tag` scoped to the path's last segment). A bare `kind`-only
- * entry never opts a field into a toggle behaviour.
+ * first, then the field's declared `tag`). A bare `kind`-only entry never opts
+ * a field into a toggle behaviour.
  */
 const toggleEntryFor = (
     sprites: BufferControlsSprites,
     field: BoundField,
     op: "toggleNum" | "toggleRate",
 ): BufferControlsSprite | undefined => {
-    const last = field.path.split(".").at(-1);
     const toggleId = `${ACTION_PREFIX}${field.path}:${op}`;
     const exact = sprites.find((sprite) => sprite.action === op && sprite.itemId === toggleId);
     if (exact) return exact;
     return sprites.find((sprite) =>
         sprite.action === op &&
-        sprite.tag !== undefined &&
-        sprite.tag === last &&
+        sprite.tag === field.tag &&
         (sprite.kind === undefined || sprite.kind === field.kind)
     );
 };
 
 const actionItemsFor = (
     field: BoundField,
-    category: string,
     sprites: BufferControlsSprites,
     color: string,
 ): ActionCatalogueItem[] => {
     if (field.kind === "number") {
         const items = [
-            actionItem(field, category, "inc", color),
-            actionItem(field, category, "dec", color),
-            actionItem(field, category, "incX", color),
-            actionItem(field, category, "decX", color),
+            actionItem(field, "inc", color),
+            actionItem(field, "dec", color),
+            actionItem(field, "incX", color),
+            actionItem(field, "decX", color),
         ];
         // A number has no toggle behaviour by default — each toggle exists
-        // only where the sprite config declares it (e.g. `*-weigth.png`
-        // entries declare `toggleNum`, `*-rate.png` entries declare
+        // only where the field's art declares it (e.g. `*-weigth.png`
+        // fields declare `toggleNum`, `*-rate.png` fields declare
         // `toggleRate`).
         const tognum = toggleEntryFor(sprites, field, "toggleNum");
-        if (tognum) items.push(actionItem(field, category, "toggleNum", color));
+        if (tognum) items.push(actionItem(field, "toggleNum", color));
         const rate = toggleEntryFor(sprites, field, "toggleRate");
-        if (rate) items.push(actionItem(field, category, "toggleRate", color, rate.frames));
+        if (rate) items.push(actionItem(field, "toggleRate", color, rate.frames));
         return items;
     }
     if (field.kind === "bool") {
         return [
-            actionItem(field, category, "toggle", color),
+            actionItem(field, "toggle", color),
         ];
     }
     return [];
 };
 
-/** Derive bound (exposed, index-resolved) paths from the buffer's listed fields. */
-export function boundFields(listed: { kind?: FieldKind; path: string }[]): BoundField[] {
-    return listed
-        .filter((f): f is { kind: FieldKind; path: string } =>
-            f.kind !== undefined && EXPOSED_KINDS.includes(f.kind)
-        )
-        .map((f) => ({ kind: f.kind, path: resolveBindingPath(f.path) }));
+/**
+ * Resolve the buffer's listed scalar paths against the declared field list.
+ * Every exposed path must be declared — an undeclared path is a config bug and
+ * throws, rather than silently getting a guessed tag or category.
+ */
+export function boundFields(
+    listed: readonly { kind?: FieldKind; path: string }[],
+    fields: readonly BufferControlsField[],
+): BoundField[] {
+    const byPath = new Map(fields.map((field) => [field.path, field]));
+    const out: BoundField[] = [];
+    for (const entry of listed) {
+        if (entry.kind === undefined || !EXPOSED_KINDS.includes(entry.kind)) continue;
+        const def = byPath.get(entry.path);
+        if (!def) {
+            throw new Error(`No buffer-controls field declares buffer path "${entry.path}".`);
+        }
+        if (def.kind !== entry.kind) {
+            throw new Error(
+                `Buffer-controls field "${def.path}" declares kind "${def.kind}" but the record holds "${entry.kind}".`,
+            );
+        }
+        out.push({
+            path: resolveBindingPath(entry.path),
+            kind: def.kind,
+            tag: fieldTag(def),
+            category: fieldCategory(def),
+            tags: def.tags ?? [],
+        });
+    }
+    return out;
 }
 
 /** The config fields buildBufferControlList needs (record-shape independent). */
 export type CatalogueConfig = Pick<
     BufferControlsConfig,
     | "menu"
-    | "sprites"
     | "menuItemId"
     | "initialItemId"
     | "categories"
-    | "categoryForPath"
     | "unmappedCategoryColor"
 >;
 
@@ -274,6 +315,8 @@ export function buildBufferControlList(
     modId: string,
     bound: BoundField[],
     config: CatalogueConfig,
+    /** Kind art + every declared field art, already merged by the caller. */
+    sprites: BufferControlsSprites,
     /** Loaded sprite ids keyed by sprite entry id (`spriteId`). */
     spriteIds: SpriteIdMap,
 ): CatalogueResult {
@@ -281,29 +324,30 @@ export function buildBufferControlList(
     const items: PathCatalogueItem[] = [
         menuItem(menuId, config.menu, config.unmappedCategoryColor),
         ...bound.flatMap((field) => {
-            const category = config.categoryForPath(field.path);
-            if (category.length === 0) {
-                throw new Error(`categoryForPath returned an empty category for "${field.path}".`);
+            if (field.category.length === 0) {
+                throw new Error(
+                    `Field "${field.path}" has no category (declare one or nest the path under a container).`,
+                );
             }
             const color = config.unmappedCategoryColor;
             return [
-                variableItem(field, category, color),
-                valueItem(field, category, color),
-                ...actionItemsFor(field, category, config.sprites, color),
+                variableItem(field, color),
+                valueItem(field, color),
+                ...actionItemsFor(field, sprites, color),
             ];
         }),
     ];
 
     // Resolve every generated item's sprite and category colour in one pass.
     for (const item of items) {
-        const entryId = resolveSpriteEntry(config.sprites, item, menuId, config.menu.spriteId);
+        const entryId = resolveSpriteEntry(sprites, item, menuId, config.menu.spriteId);
         const loadedSpriteId = spriteIds[entryId];
         if (typeof loadedSpriteId !== "string") {
             throw new Error(
                 `Sprite "${entryId}" was not loaded for buffer-controls item "${item.id}".`,
             );
         }
-        const entry = config.sprites.find((sprite) => sprite.spriteId === entryId);
+        const entry = sprites.find((sprite) => sprite.spriteId === entryId);
         if (!entry) {
             throw new Error(
                 `Sprite entry "${entryId}" is missing from the buffer-controls config.`,

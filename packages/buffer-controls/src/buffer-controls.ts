@@ -2,10 +2,11 @@
  * registerBufferControls — wire a JsonBuffer record to placeable structures.
  *
  * This is the single entry point of @sandmd/buffer-controls. Given a declarative
- * config (record, sprite ids, labels) it:
- *   1. builds the JsonBuffer,
- *   2. loads the sprites,
- *   3. builds the catalogue (variables / value / action categories),
+ * config (one `field` per exposed path + the generic kind art + labels) it:
+ *   1. builds the JsonBuffer seed record from the field list,
+ *   2. loads each field's own art plus the generic kind art,
+ *   3. re-shapes a restored record onto the field list (fills new knobs, drops
+ *      removed ones) and builds the catalogue (variables / value / action),
  *   4. registers the path, value and action structures,
  *   5. subscribes to the buffer so every placed value structure shows the last
  *      value (setData on each placed structure via api.structures.forEachOfType),
@@ -18,8 +19,13 @@ import "@sandmd/sandkit";
 import { loadSpriteMap } from "@sandmd/assets";
 import { JsonBuffer } from "@sandmd/buffer";
 import { type CatalogueItem, createPickerOverlay } from "@sandmd/catalogue";
-import type { BufferControlsConfig, BufferControlsHandles } from "./types.ts";
+import type {
+    BufferControlsConfig,
+    BufferControlsHandles,
+    BufferControlsSprites,
+} from "./types.ts";
 import { boundFields, buildBufferControlList } from "./catalogue.ts";
+import { buildFieldsRecord, fieldsToSprites, normalizeFieldsRecord } from "./fields.ts";
 import { formatBufferValue } from "./structure/register/valueRegister.ts";
 import { registerStructures } from "./structure/register.ts";
 
@@ -30,7 +36,9 @@ export async function registerBufferControls<T extends object>(
 
     const buffer = new JsonBuffer<T>({
         key: config.bufferId,
-        defaultRecord: config.defaultRecord,
+        // Derived from the field list — the caller never hand-writes a seed
+        // record that could drift from the declared paths/defaults.
+        defaultRecord: buildFieldsRecord<T>(config.fields),
         assertShape: config.assertShape,
         maxBytes: config.maxBytes,
         persist: config.storage.persist,
@@ -38,13 +46,16 @@ export async function registerBufferControls<T extends object>(
         observe: false,
     });
     // -- 2. Sprites ----------------------------------------------------------
-    // The package extracts the load list straight from `config.sprites`: each
-    // entry carries its own filePath, so there is no second file table to keep
-    // in sync. Entries sharing a spriteId (same art for several conditions)
-    // are loaded once.
+    // Each field's own art, followed by the generic kind/action art it falls
+    // back to. Every entry carries its own filePath, so there is no second file
+    // table; entries sharing a spriteId (same art for several fields) load once.
+    const sprites: BufferControlsSprites = [
+        ...config.kindSprites,
+        ...fieldsToSprites(config.fields),
+    ];
     const spriteEntries = [
         ...new Map(
-            config.sprites.map((s) => [
+            sprites.map((s) => [
                 s.spriteId,
                 { id: s.spriteId, filePath: s.filePath },
             ]),
@@ -52,14 +63,28 @@ export async function registerBufferControls<T extends object>(
     ];
     const spriteIds = await loadSpriteMap(modId, spriteEntries);
 
-    // -- 3. BuildingList: one item per scalar path in the record -------------
-    // The catalogue resolves each item's sprite entry itself (itemId / tag /
-    // kind+action / kind) and takes the loaded id from `spriteIds`.
-    const bound = boundFields(buffer.listPaths(config.pathScan));
+    // -- 3. BuildingList: one item per declared field ------------------------
+    // The field list owns the record shape: a restored record is re-shaped onto
+    // it first (declared values kept, missing defaults filled, removed knobs
+    // dropped), so an older save can never break the strict path ↔ field match.
+    const normalized = normalizeFieldsRecord<T>(
+        buffer.listPaths(config.pathScan),
+        config.fields,
+        (path) => buffer.getPath(path),
+    );
+    if (normalized.changed) {
+        buffer.replace(normalized.record);
+        buffer.commit();
+    }
+
+    // Each listed path is matched to its declared field, so the item's tag and
+    // category come from the config — never from a path segment's position.
+    const bound = boundFields(buffer.listPaths(config.pathScan), config.fields);
     const { buildList: buildList, pathCount } = buildBufferControlList(
         modId,
         bound,
         config,
+        sprites,
         spriteIds,
     );
 

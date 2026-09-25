@@ -108,7 +108,7 @@ src/
 │   │   ├── defBuilder.ts   # shared profile action wiring
 │   │   ├── live.ts         # typed buffer reads/writes
 │   │   └── catalogue.ts    # ★ ASTRO_PROFILES (the worker's profile list)
-│   └── profileRuntime.ts   # profile record, explicit defaults, sprites/categories
+│   └── profileRuntime.ts   # PROFILE_KNOBS × PROFILES → PROFILE_FIELDS (record/art/tabs)
 │
 ├── main/
 │   └── build.ts            # thin: buildElementMain(catalogue + tech) + toast
@@ -188,15 +188,31 @@ Deno workspace: `mods/astro-seeds` is a workspace member. Tasks (in `deno.json`)
 
 ## 5. Configuration
 
-`config/profileRuntime.ts` is the single source of truth for the live profile record. It defines:
+`config/profileRuntime.ts` is the single source of truth for the live profile record. It declares
+each thing **once**:
 
-- every profile id in `PROFILE_IDS` and its picker category;
-- the complete `ProfileRuntimeConfig` shape;
-- the per-profile `PROFILE_DEFAULTS` used to create a new record and to read fields missing from an
-  older saved record;
-- the sprite declarations used by buffer-controls.
+- `PROFILE_KNOBS` — one entry per runtime knob: its `key` (the record field, the sprite tag and the
+  picker filter tag), its `kind` (the value type, which is also the live validation), its `default`
+  and its own `sprite` art;
+- `PROFILES` — one entry per profile: its picker category id and tab colour;
+- `PROFILE_DEFAULT_OVERRIDES` — only the knobs where a profile differs from `PROFILE_KNOBS`.
 
-`buildMain()` registers that record through `@sandmd/buffer-controls` with explicit storage, scan,
-colour, and picker settings. The worker opens the same key in observe mode; `live()` reads the
-buffered value and never carries a second inline fallback. The only manifest setting is the standard
-`enabled` boolean in `modinfo.json` (`default: true`).
+Everything else is **derived**, so there is nothing to keep in sync:
+
+| Derived | From |
+| --- | --- |
+| `ProfileRuntimeConfig` (the record shape) | `PROFILE_KNOBS` |
+| `PROFILE_DEFAULTS` / `buildDefaultProfileRecord()` | knobs + overrides |
+| `PROFILE_FIELDS` (one field per profile × knob: `path`, `kind`, `default`, `sprite`, `tag`, `category`) | knobs × profiles |
+| `PROFILE_CATEGORIES` (picker tabs) | `PROFILES` |
+| `PROFILE_KNOB_KIND` (worker validation) | `PROFILE_KNOBS` |
+
+`buildMain()` passes that field list to `@sandmd/buffer-controls`, which derives the JsonBuffer
+record, the sprite list (field art + the generic kind art) and every catalogue item's tag/category
+from it — there is no `defaultRecord`, `sprites` or `categoryForPath` to hand-write, and no path
+segment is interpreted by position. A restored record is re-shaped onto the field list at startup
+(new knobs filled, removed ones dropped).
+
+The worker opens the same key in observe mode; `live()` reads the buffered value and never carries a
+second inline fallback. The only manifest setting is the standard `enabled` boolean in
+`modinfo.json` (`default: true`).

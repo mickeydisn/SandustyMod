@@ -8,10 +8,22 @@
  */
 import "@sandmd/sandkit";
 import { findOrphanedObjects, pruneStaleBuildings } from "@sandmd/modkit";
-import { registerBufferControls } from "@sandmd/buffer-controls";
-import { buildDefaultConfigRecord, ConfigFieldRecord } from "./configSchema.ts";
+import { type BufferControlsField, registerBufferControls } from "@sandmd/buffer-controls";
+import { CONFIG_FIELDS, type ConfigFieldRecord } from "./configSchema.ts";
 
 const MOD_ID = "buffer-controls";
+
+/**
+ * One declared field per schema entry — the JsonBuffer record, the sprite list
+ * and every catalogue item's tag / category are derived from this list.
+ */
+const FIELDS: BufferControlsField[] = CONFIG_FIELDS.map((field) => ({
+    path: field.key,
+    kind: field.kind,
+    default: field.default,
+    tag: field.key,
+    category: "settings",
+}));
 
 /** The record exposed to the player (every scalar path becomes a structure). * /
 interface GameConfig {
@@ -29,25 +41,23 @@ const defaultValue = {
 };
 */
 
-const defaultValue: ConfigFieldRecord = buildDefaultConfigRecord();
-
 void (async () => {
     await registerBufferControls<ConfigFieldRecord>({
         modId: MOD_ID,
         bufferId: `${MOD_ID}:gameConfig`,
-        defaultRecord: defaultValue,
+        fields: FIELDS,
         maxBytes: 64 * 1024,
         storage: { persist: true, load: true },
         pathScan: { maxDepth: 8, includeContainers: true },
         menuItemId: `${MOD_ID}:menu`,
-        initialItemId: "volume",
+        initialItemId: FIELDS[0].path,
         menu: {
             label: "Buffer Controls",
             description: "Buffer Controls — opens the variable picker.",
             spriteId: "menu",
         },
-        sprites: [
-            // Each entry carries its own asset file — no separate file table.
+        // Generic art: each entry carries its own asset file — no file table.
+        kindSprites: [
             { spriteId: "menu", filePath: "assets/types/display.png" },
             { kind: "number", spriteId: "number", filePath: "assets/types/number.png" },
             { kind: "bool", spriteId: "bolean", filePath: "assets/types/bolean.png" },
@@ -78,8 +88,7 @@ void (async () => {
                 filePath: "assets/types/minusX.png",
             },
             // No generic `toggleNum` / `toggleRate` entries here: a number only
-            // gets a toggle behaviour where the record's sprite config
-            // declares one for that path.
+            // gets a toggle button where its field declares one.
 
             {
                 kind: "bool",
@@ -90,7 +99,6 @@ void (async () => {
         ],
         // Flat record: every path belongs to the explicit settings category.
         categories: [],
-        categoryForPath: () => "settings",
         unmappedCategoryColor: "#FFFFFF",
         picker: {
             id: `${MOD_ID}:picker`,
