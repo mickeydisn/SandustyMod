@@ -7,8 +7,8 @@ The active package exposes list, picker, and explicit structure helpers.
 - **`list`** — `createBuildList`, a UI-agnostic selection + catalogue controller (select, mirror,
   category, place/remove events) and helpers to map between logical item ids and world structure
   types.
-- **`picker`** — `createPickerOverlay`, a React overlay that renders the catalogue with search,
-  swatches, mirroring, and persisted selection.
+- **`picker`** — `createPickerOverlay`, a React overlay that renders the catalogue with category,
+  path, tag and size filters, swatches, mirroring, and persisted selection.
 - **`structure`** — explicit helpers for structure definitions, shapes, and aligned drawing.
 
 Catalogue items must declare `tags`, `sizes`, and `align`. `createBuildList` also requires a
@@ -18,7 +18,7 @@ Catalogue items must declare `tags`, `sizes`, and `align`. `createBuildList` als
 
 ```ts
 import {
-    buildCustumDraw,
+    buildCustomDraw,
     buildStructureDefinition,
     createBuildList,
     createPickerOverlay,
@@ -87,12 +87,12 @@ construction time.
 - `makeShape(width, height)` creates an empty structure shape.
 - `buildStructureDefinition(options)` requires category, visibility, render, shape, variants, build
   modes, and default data explicitly.
-- `buildCustumDraw(item, spriteId)` draws a resolved catalogue item with its declared alignment and
-  mirror flag.
+- `buildCustomDraw(item, spriteId)` draws a resolved catalogue item with its declared alignment and
+  mirror flag. The misspelled public name `buildCustumDraw` remains as a compatibility alias.
 - `typeOfCatalogueItem(modId, itemId, mirrored)` maps a logical item to its world structure type.
 
 ## Configuration rule
 
-Do not rely on omitted catalogue metadata or picker layout values. Declare them in the catalogue item
-or in the caller configuration. This keeps rendering, selection, and structure registration decisions
-visible at the call site.
+Do not rely on omitted catalogue metadata or picker layout values. Declare them in the catalogue
+item or in the caller configuration. This keeps rendering, selection, and structure registration
+decisions visible at the call site.

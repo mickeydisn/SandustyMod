@@ -37,7 +37,6 @@ export async function registerBufferControls<T extends object>(
         loadFromStorage: config.storage.load,
         observe: false,
     });
-    // console.log("[pkg-buffControl] 0", modId, config);
     // -- 2. Sprites ----------------------------------------------------------
     // The package extracts the load list straight from `config.sprites`: each
     // entry carries its own filePath, so there is no second file table to keep
@@ -73,14 +72,10 @@ export async function registerBufferControls<T extends object>(
         return spriteId;
     };
 
-    // console.log("[pkg-buffControl], 3 ", buildList, pathCount);
-
     // -- 4. Structures — one loop registers every catalogue item across all
     //        categories (menu / variable / value / action) via the register/*
     //        modules, and returns the runtime handles we need to keep synced. ---
     const { refreshSignals, valueEntries } = registerStructures(buffer, buildList);
-
-    // console.log("[pkg-buffControl], 4 ", valueEntries);
 
     // -- 5. Keep every placed value structure in sync with the buffer --------
     // The value structure's draw only reads structure.data.dataValue. Whenever

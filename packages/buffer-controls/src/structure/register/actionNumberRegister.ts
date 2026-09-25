@@ -10,63 +10,41 @@
 import "@sandmd/sandkit";
 
 import type { StructureLike } from "@sandmd/shared";
-import { ActionRegisterResult, applyAction } from "./actionRegister.ts";
-import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
+import {
+    type ActionRegisterResult,
+    applyAndPush,
+    pathOf,
+    refreshActionSignals,
+    signalFor,
+} from "./actionRegister.ts";
+import { buildSectionData, buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { registerStructureOps } from "../register.ts";
-import { ActionOp } from "../../types.ts";
 import { drawBorder } from "../render.ts";
 
 export function registerActionNumberStructures(
     ops: registerStructureOps,
-): ActionRegisterResult | void {
+): ActionRegisterResult {
     // Only number-paths carry +1 / -1 actions.
-    if (!ops.item.tags.includes("action") || ops.item.kind !== "number") return;
-    if (ops.item.action === undefined) return;
-    // The toggle ops are a separate structure (actionToggleNumberRegister.ts).
-    if (ops.item.action === "toggleNum" || ops.item.action === "toggleRate") return;
-
-    // How the sender cell's output is derived from the buffer (the "how").
-    const computeSignal = (structure: StructureLike): boolean => {
-        const p = structure.data?.path;
-        if (typeof p !== "string" || p.length === 0) return false;
-        return ops.read(p) ? true : false;
-    };
-
-    // Push a change: drive the sender cell output so outgoing links update and
-    // receivers re-apply it next frame (setAll, bundle 63921-63936).
-    const pushSignal = (structure: StructureLike): void => {
-        sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
-    };
-
-    const act = (structure: StructureLike, op: Exclude<ActionOp, "toggleRate">): void => {
-        const p = structure.data?.path;
-        if (typeof p !== "string" || p.length === 0) return;
-        ops.write(p, applyAction(op, ops.read(p)));
-        pushSignal(structure);
-    };
+    const op = ops.item.action;
+    if (op === undefined || op === "toggleNum" || op === "toggleRate") return;
+    const path = ops.item.path;
 
     const draw = (
         _state: unknown,
         structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
         render: { ctx?: CanvasRenderingContext2D },
     ): boolean => {
-        // TODO:  need to move :
-        const d = ops.read(structure.data?.path as string);
+        const structurePath = pathOf(structure);
+        if (structurePath === undefined) return false;
+        const value = ops.read(structurePath);
         sandkit.api.structures.setSpritesheetIndexAtCell(
             structure.x,
             structure.y,
-            d ? 1 : 0,
+            value ? 1 : 0,
         );
         drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
-
-    const actionItems: { typeId: string; path: string }[] = [];
-
-    const op = ops.item.action;
-    const path = ops.item.path;
-
-    actionItems.push({ typeId: ops.typeId, path });
 
     sandkit.api.structures.register({
         id: ops.typeId,
@@ -81,8 +59,7 @@ export function registerActionNumberStructures(
             imageName: ops.item.spriteId,
             size: { width: 16, height: 16 },
         },
-        copyData: true,
-        defaultData: { path, kind: ops.item.kind, op },
+        ...buildSectionData(path),
         draw,
     });
     // Unlock the buildings
@@ -90,21 +67,16 @@ export function registerActionNumberStructures(
 
     // Click-to-activate:
     sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
-        act(structure, op);
+        applyAndPush(ops.read, ops.write, structure, op);
     });
 
     // Register how the signal is computed (the "how"); the engine seeds a freshly
     // linked wire with this value.
-    sandkit.api.signals?.registerSenderType(ops.typeId, (s: StructureLike) => computeSignal(s));
+    sandkit.api.signals?.registerSenderType(
+        ops.typeId,
+        (structure: StructureLike) => signalFor(ops.read, structure),
+    );
 
     // Event-driven "when": recompute + push every placed number-action structure.
-    return {
-        refreshSignals: (): void => {
-            for (const a of actionItems) {
-                sandkit.api.structures.forEachOfType(a.typeId, (structure: StructureLike) => {
-                    pushSignal(structure);
-                });
-            }
-        },
-    };
+    return () => refreshActionSignals(ops.read, ops.typeId);
 }

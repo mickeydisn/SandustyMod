@@ -2,16 +2,15 @@
  * Register decorative icon structures with aligned draw + copyData.
  */
 
-import { buildCustumDraw, buildStructureDefinition, makeShape } from "@sandmd/catalogue";
+import {
+    buildCustomDraw,
+    buildStructureDefinition,
+    makeShape,
+    typeOfCatalogueItem,
+} from "@sandmd/catalogue";
 import type { BuildList } from "@sandmd/catalogue";
 
 const MENU_OBJECT_ID = "icons";
-
-const MIRROR_SUFFIX = "~mirrored";
-
-function structureTypeFor(modId: string, itemId: string, mirrored = false): string {
-    return `${modId}:item/${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
-}
 
 export function registerIconStructures(
     buildList: BuildList,
@@ -21,7 +20,7 @@ export function registerIconStructures(
 
     for (const item of buildList.catalogueItems) {
         for (const mirrored of [false, true]) {
-            const typeId = structureTypeFor(modId, item.id, mirrored);
+            const typeId = typeOfCatalogueItem(modId, item.id, mirrored);
             const isMenu = !mirrored && item.id == MENU_OBJECT_ID;
             const spriteId = spriteIds[item.id];
             if (typeof spriteId !== "string") {
@@ -59,13 +58,13 @@ export function registerIconStructures(
                 },
             });
 
-            const custumDraw = buildCustumDraw(item, spriteId);
+            const customDraw = buildCustomDraw(item, spriteId);
 
             sandkit.api.structures.register({
                 // alwaysUnlocked: true,
                 // rejectWhenBlocked: false,
                 ...def,
-                draw: custumDraw,
+                draw: customDraw,
             });
             if (isMenu) {
                 sandkit.api.player.buildings.unlockByType(typeId);

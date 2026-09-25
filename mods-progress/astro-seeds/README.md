@@ -192,7 +192,8 @@ Deno workspace: `mods/astro-seeds` is a workspace member. Tasks (in `deno.json`)
 
 - every profile id in `PROFILE_IDS` and its picker category;
 - the complete `ProfileRuntimeConfig` shape;
-- the per-profile `PROFILE_DEFAULTS` used to create a new record and to read fields missing from an older saved record;
+- the per-profile `PROFILE_DEFAULTS` used to create a new record and to read fields missing from an
+  older saved record;
 - the sprite declarations used by buffer-controls.
 
 `buildMain()` registers that record through `@sandmd/buffer-controls` with explicit storage, scan,

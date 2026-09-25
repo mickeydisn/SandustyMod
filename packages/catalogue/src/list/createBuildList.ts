@@ -1,7 +1,7 @@
 /**
  * BuildList — selection + catalogue, no cost logic.
  *
- * Events: select, place, remove, category, mirror.
+ * Events: select, place, remove, category, path, mirror, and tag.
  * Call notifyPlace / notifyRemove manually when a structure is actually
  * built or demolished (e.g. from the playground grid). The game
  * `building:placed` / `building:removed` auto-wiring was removed: nobody
@@ -9,7 +9,7 @@
  * event + linear catalogue scan on every vanilla placement.
  */
 import "@sandmd/sandkit";
-import type { CatalogueItem, ResolvedCatalogueItem } from "../strucutre/types.ts";
+import type { ResolvedCatalogueItem } from "../structure/types.ts";
 import type {
     BuildEventMap,
     BuildEventName,
@@ -18,7 +18,7 @@ import type {
     PlacedPayload,
 } from "./types.ts";
 
-export const MIRROR_SUFFIX = "~mirrored";
+const MIRROR_SUFFIX = "~mirrored";
 
 /** Natural sort for size tags: "2x10" after "2x2" (W then H, numerically). */
 export function compareSizes(a: string, b: string): number {
@@ -33,7 +33,7 @@ export function typeOfCatalogueItem(modId: string, itemId: string, mirrored: boo
     return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
 }
 
-export function itemIdFromType(modId: string, type: string): string | null {
+function itemIdFromType(modId: string, type: string): string | null {
     const prefix = itemTypePrefix(modId);
     if (!type.startsWith(prefix)) return null;
     let id = type.slice(prefix.length);
@@ -41,16 +41,11 @@ export function itemIdFromType(modId: string, type: string): string | null {
     return id;
 }
 
-export function findItem(items: CatalogueItem[], id: string): CatalogueItem | undefined {
-    return items.find((entry) => entry.id === id);
-}
-
 export interface BuildList {
     readonly modId: string;
     readonly menuId: string;
     readonly menuLabel: string;
     readonly catalogueItems: ResolvedCatalogueItem[];
-    // readonly categories: CatalogueCategory[];
     getSelected(): ResolvedCatalogueItem | undefined;
     getSelectedType(): string;
     setSelected(id: string): void;
@@ -97,10 +92,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
     if (catalogueItems.length === 0) {
         throw new Error("createBuildList: catalogueItems must contain at least one item.");
     }
-    // O(1) id -> item lookup. findItem() was Array.find over the whole
-    // catalogue on every placement — buffer-controls builds 100+ items,
-    // and every mod registers its own building:placed listener, so placing
-    // a single vanilla wall scanned every catalogue linearly.
+    // O(1) id → item lookup for selection and placement events.
     const byId = new Map<string, ResolvedCatalogueItem>();
     for (const entry of catalogueItems) byId.set(entry.id, entry);
     const initial = byId.get(options.selectedId);

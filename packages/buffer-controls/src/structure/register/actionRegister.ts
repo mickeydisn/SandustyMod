@@ -1,11 +1,68 @@
 /** */
 import "@sandmd/sandkit";
-import { ActionOp } from "../../types.ts";
+import type { StructureLike } from "@sandmd/shared";
+import type { ActionOp } from "../../types.ts";
 
 /** Read the current buffer value for a path. */
 export type ActionRead = (path: string) => unknown;
 /** Write a new value to the buffer and publish/commit it. */
 export type ActionWrite = (path: string, value: unknown) => void;
+
+/** Read the path carried by a placed action structure. */
+export function pathOf(structure: StructureLike): string | undefined {
+    const path = structure.data?.path;
+    return typeof path === "string" && path.length > 0 ? path : undefined;
+}
+
+/** Compute the boolean signal emitted by an action structure. */
+export function signalFor(read: ActionRead, structure: StructureLike): boolean {
+    const path = pathOf(structure);
+    return path === undefined ? false : Boolean(read(path));
+}
+
+/** Push an action structure's current signal to the engine. */
+export function pushSignal(read: ActionRead, structure: StructureLike): void {
+    sandkit.api.signals?.setOutputAtCell?.(
+        structure.x,
+        structure.y,
+        signalFor(read, structure),
+    );
+}
+
+/** Refresh every placed instance of one action structure type. */
+export function refreshActionSignals(read: ActionRead, typeId: string): void {
+    sandkit.api.structures.forEachOfType(typeId, (structure) => {
+        pushSignal(read, structure);
+    });
+}
+
+/** Apply a non-rate action and immediately publish its new signal. */
+export function applyAndPush(
+    read: ActionRead,
+    write: ActionWrite,
+    structure: StructureLike,
+    op: Exclude<ActionOp, "toggleRate">,
+): void {
+    const path = pathOf(structure);
+    if (path === undefined) return;
+    write(path, applyAction(op, read(path)));
+    pushSignal(read, structure);
+}
+
+/** Apply a toggle action and immediately publish its new signal. */
+export function applyToggleAndPush(
+    read: ActionRead,
+    write: ActionWrite,
+    structure: StructureLike,
+    op: "toggleNum" | "toggleRate",
+    frames: number,
+): void {
+    const path = pathOf(structure);
+    if (path === undefined) return;
+    const current = read(path);
+    write(path, op === "toggleRate" ? applyRateAction(current, frames) : applyAction(op, current));
+    pushSignal(read, structure);
+}
 
 /** Label shown in the picker / tooltip for each op. */
 export const ACTION_LABEL: Record<ActionOp, string> = {
@@ -92,12 +149,5 @@ export function applyRateAction(current: unknown, frames: number): number {
     return nextRateStop(current, frames);
 }
 
-export interface ActionRegisterResult {
-    /**
-     * Recompute every placed action structure's signal output from the current
-     * buffer value and push it via `signals.setAll`, so receivers re-apply it on
-     * the next frame. Call this on every buffer change (including writes coming
-     * from elsewhere, not just this structure's own click).
-     */
-    refreshSignals: () => void;
-}
+/** A module that owns an action structure returns its signal refresher. */
+export type ActionRegisterResult = (() => void) | undefined;

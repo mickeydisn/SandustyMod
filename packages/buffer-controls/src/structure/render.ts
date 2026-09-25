@@ -12,14 +12,14 @@
  */
 import "@sandmd/sandkit";
 import { adjustHSL } from "@sandmd/shared";
-import { CELL, STRUCT_H } from "../const.ts";
+import { CELL } from "../const.ts";
 
 export interface ReadoutOptions {
-    spriteId?: string;
+    spriteId: string;
     /** Text painted inside the readout rectangle. */
     text: string;
     /**
-     * Width of the readout rectangle, in STRUCT_H units.
+     * Width of the readout rectangle, in cells.
      * Pass the width explicitly for the structure being rendered.
      */
     readoutCells: number;
@@ -36,8 +36,7 @@ export function readoutTileWidth(
 }
 
 /** Resolve the sprite id to a loaded canvas image, or undefined if not ready. */
-function loadImage(spriteId?: string): unknown {
-    if (!spriteId) return;
+function loadImage(spriteId: string): unknown {
     return sandkit.api.sprites?.getById(spriteId)?.imageAsset?.image;
 }
 
@@ -49,7 +48,7 @@ function loadImage(spriteId?: string): unknown {
  * (`showIcon`) to show.
  */
 export function drawIconAndReadout(
-    structure: { x: number; y: number; data: Record<string, unknown> },
+    structure: { x: number; y: number },
     render: { ctx?: CanvasRenderingContext2D },
     opts: ReadoutOptions,
 ): boolean {
@@ -74,8 +73,8 @@ export function drawIconAndReadout(
     // 1px #c1812e outer border, 1px black inner border, black fill.
     const rx = origin.x + (showIcon ? CELL : 0);
     const ry = origin.y;
-    const rw = cells * STRUCT_H;
-    const rh = STRUCT_H;
+    const rw = cells * CELL;
+    const rh = CELL;
     ctx.fillStyle = "#da9c0a"; // outer border
     ctx.fillRect(rx, ry, rw, rh);
     ctx.fillStyle = "#edab11"; // inner border
@@ -86,8 +85,6 @@ export function drawIconAndReadout(
     ctx.font = "9px monospace";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#FFFFFF";
-    // ctx.textAlign = "left";
-    // ctx.fillText(opts.text, rx + 6, ry + rh / 2 + 1, rw - 12);
     ctx.textAlign = "center";
     ctx.fillText(opts.text, rx + rw / 2, ry + rh / 2, rw - 12);
     ctx.restore();
@@ -101,7 +98,7 @@ export function drawIconAndReadout(
  * language stays consistent while each register only picks the text to show.
  */
 export function drawBorder(
-    structure: { x: number; y: number; data: Record<string, unknown> },
+    structure: { x: number; y: number },
     render: { ctx?: CanvasRenderingContext2D },
     color: string,
     tileWidth: number,
@@ -122,11 +119,6 @@ export function drawBorder(
     ctx.strokeRect(rx, ry, rw, rh);
     ctx.strokeStyle = color; // outer border
     ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
-    /*
-    ctx.fillStyle = "#edab11"; // inner border
-    ctx.fillStyle = "#000000"; // background
-    ctx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
-    */
     ctx.restore();
     return true;
 }

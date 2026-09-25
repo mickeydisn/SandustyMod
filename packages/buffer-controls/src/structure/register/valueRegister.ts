@@ -1,6 +1,11 @@
 /** */
 import "@sandmd/sandkit";
-import { buildSectionData, buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
+import {
+    buildSectionTooltips,
+    buildValueSectionData,
+    makeShape,
+    sectionBuild,
+} from "../defBuilders.ts";
 import type { registerStructureOps } from "../register.ts";
 import type { FieldKind } from "../../types.ts";
 import { drawBorder, drawIconAndReadout, readoutTileWidth } from "../render.ts";
@@ -10,11 +15,6 @@ export interface ValueStructureEntry {
     typeId: string;
     path: string;
     kind: FieldKind;
-}
-
-/** Everything the value register produces for the aggregator. */
-export interface ValueRegisterResult {
-    entries: ValueStructureEntry[];
 }
 
 /** Format the raw buffer value for the readout rectangle. */
@@ -40,11 +40,7 @@ export function formatBufferValue(value: unknown, kind: FieldKind): string {
     throw new Error(`Unsupported buffer field kind: ${kind}.`);
 }
 
-export function registerValueStructures(ops: registerStructureOps): ValueRegisterResult | void {
-    if (!ops.item.tags?.includes("value")) return;
-
-    const entries: ValueStructureEntry[] = [];
-
+export function registerValueStructures(ops: registerStructureOps): ValueStructureEntry {
     const kind = ops.item.kind;
     const path = ops.item.path;
     const value = formatBufferValue(ops.read(path), kind);
@@ -79,13 +75,11 @@ export function registerValueStructures(ops: registerStructureOps): ValueRegiste
         shape: makeShape(1, 1),
         ...sectionBuild.single(ops.typeId),
         ...buildSectionTooltips(),
-        ...buildSectionData(ops.item, ops.item.spriteId, { dataValue: value }),
+        ...buildValueSectionData(path, value),
         draw,
     });
     // Unlock the buildings
     sandkit.api.player.buildings.unlockByType(ops.typeId);
 
-    entries.push({ typeId: ops.typeId, path, kind });
-
-    return { entries };
+    return { typeId: ops.typeId, path, kind };
 }

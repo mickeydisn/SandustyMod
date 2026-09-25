@@ -1,8 +1,8 @@
-import { type AlignMode, ResolvedCatalogueItem } from "./types.ts";
+import type { AlignMode, ResolvedCatalogueItem } from "./types.ts";
 
 export const DEFAULT_SPRITE_PX_PER_TILE = 16;
 
-export const buildCustumDraw = (
+export const buildCustomDraw = (
     item: ResolvedCatalogueItem,
     spriteId: string,
 ) => {
@@ -16,11 +16,10 @@ export const buildCustumDraw = (
         },
         render: { ctx?: CanvasRenderingContext2D },
     ) => {
-        // assert
         const ctx = render?.ctx;
         if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;
-        if (!item.spriteId) return false;
-        // core
+        // `spriteId` is resolved by the caller; generated catalogue items do not
+        // need to duplicate it in `item`.
         const image = sandkit.api.sprites?.getById(spriteId)?.imageAsset?.image;
         if (!image) return false;
 
@@ -33,7 +32,8 @@ export const buildCustumDraw = (
     };
 };
 
-// --
+/** @deprecated Misspelled historical name; use `buildCustomDraw`. */
+export const buildCustumDraw = buildCustomDraw;
 
 /**
  * Compute top-left draw position for a structure at cell (x,y).

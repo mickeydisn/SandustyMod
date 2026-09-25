@@ -16,13 +16,12 @@
  *   numeric id, so the set is resolved via `getDefinitionByType`.
  */
 import "@sandmd/sandkit";
-import type { TElementType } from "@sandmd/shared";
 import { MatterType } from "@sandmd/shared";
 import type { TElementKey } from "../elementShared/keys.ts";
 import { ElementType } from "../elementShared/resolve.ts";
 
 /** A match key: a catalogue key plus the two virtual keys. */
-export type TMatchKey = TElementKey | "empty" | "structure";
+type TMatchKey = TElementKey | "empty" | "structure";
 
 let structureTypes: Set<number> | null = null;
 
@@ -30,7 +29,7 @@ let structureTypes: Set<number> | null = null;
  * Every registered `MatterType.Static` element type. Computed once, lazily, on
  * first use in the worker (all elements are registered by then).
  */
-export function structureTypeSet(): Set<number> {
+function structureTypeSet(): Set<number> {
     if (structureTypes !== null) return structureTypes;
     structureTypes = new Set<number>();
     try {
@@ -48,15 +47,8 @@ export function structureTypeSet(): Set<number> {
     return structureTypes;
 }
 
-/** One key → numeric type. `"empty"` → 0; `"structure"` is not a single type. */
-export function typeOf(key: TMatchKey): TElementType {
-    if (key === "empty") return 0;
-    if (key === "structure") return 0;
-    return ElementType[key] === undefined ? 0 : ElementType[key];
-}
-
 /** A key list → numeric types. `"empty"` is skipped (use `channelMatch`). */
-export function typesOf(keys: readonly TMatchKey[]): number[] {
+function typesOf(keys: readonly TMatchKey[]): number[] {
     const out: number[] = [];
     for (const k of keys) {
         if (k === "empty") continue;
@@ -70,7 +62,7 @@ export function typesOf(keys: readonly TMatchKey[]): number[] {
 }
 
 /** Key list → `Move.channel` match options, honouring `"empty"`. */
-export function channelMatch(
+function channelMatch(
     keys: readonly TMatchKey[],
 ): { matchTypes: number[]; matchEmpty?: boolean } {
     return {

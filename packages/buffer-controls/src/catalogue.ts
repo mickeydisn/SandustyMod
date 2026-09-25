@@ -63,14 +63,9 @@ export function resolveSpriteEntry(
     const aItem = item as ActionCatalogueItem;
     const find = (
         predicate: (entry: BufferControlsSprite) => boolean,
-    ): BufferControlsSprite | undefined => {
-        for (const entry of sprites) {
-            if (predicate(entry)) return entry;
-        }
-        return undefined;
-    };
+    ): BufferControlsSprite | undefined => sprites.find(predicate);
 
-    let found = find((entry) => entry.itemId !== undefined && entry.itemId === item.id);
+    let found = find((entry) => entry.itemId === item.id);
     if (!found) {
         found = find((entry) =>
             entry.tag !== undefined && item.tags.includes(entry.tag) &&
@@ -102,6 +97,7 @@ export interface CatalogueResult {
 const menuItem = (
     menuItemId: string,
     menu: BufferControlsConfig["menu"],
+    color: string,
 ): PathCatalogueItem => ({
     id: menuItemId,
     label: menu.label,
@@ -110,11 +106,11 @@ const menuItem = (
     path: "menu",
     kind: "string",
     align: "floor",
-    tags: ["variables"],
+    tags: [],
     sizes: [],
     width: CELL,
     height: CELL,
-    color: "#FFFFFF",
+    color,
     spriteId: "",
     readoutCells: 8,
     showIcon: true,
@@ -123,6 +119,7 @@ const menuItem = (
 const variableItem = (
     field: BoundField,
     category: string,
+    color: string,
 ): PathCatalogueItem => ({
     id: field.path,
     path: field.path,
@@ -135,7 +132,7 @@ const variableItem = (
     sizes: [],
     width: CELL,
     height: ITEM_HEIGHT,
-    color: "#FFFFFF",
+    color,
     spriteId: "",
     readoutCells: 8,
     showIcon: true,
@@ -144,6 +141,7 @@ const variableItem = (
 const valueItem = (
     field: BoundField,
     category: string,
+    color: string,
 ): PathCatalogueItem => {
     return {
         id: `${VALUE_PREFIX}${field.path}`,
@@ -157,7 +155,7 @@ const valueItem = (
         sizes: [],
         width: CELL,
         height: ITEM_HEIGHT,
-        color: "#FFFFFF",
+        color,
         spriteId: "",
         readoutCells: 3,
         showIcon: false,
@@ -168,6 +166,7 @@ const actionItem = (
     field: BoundField,
     category: string,
     op: ActionOp,
+    color: string,
     frames?: number,
 ): ActionCatalogueItem => {
     const base = {
@@ -182,7 +181,7 @@ const actionItem = (
         sizes: [],
         width: CELL,
         height: CELL,
-        color: "#FFFFFF",
+        color,
         spriteId: "",
         readoutCells: 1,
         showIcon: true,
@@ -209,47 +208,42 @@ const toggleEntryFor = (
 ): BufferControlsSprite | undefined => {
     const last = field.path.split(".").at(-1);
     const toggleId = `${ACTION_PREFIX}${field.path}:${op}`;
-    for (const sprite of sprites) {
-        if (sprite.action === op && sprite.itemId === toggleId) return sprite;
-    }
-    for (const sprite of sprites) {
-        if (
-            sprite.action === op &&
-            sprite.tag !== undefined &&
-            sprite.tag === last &&
-            (sprite.kind === undefined || sprite.kind === field.kind)
-        ) {
-            return sprite;
-        }
-    }
-    return undefined;
+    const exact = sprites.find((sprite) => sprite.action === op && sprite.itemId === toggleId);
+    if (exact) return exact;
+    return sprites.find((sprite) =>
+        sprite.action === op &&
+        sprite.tag !== undefined &&
+        sprite.tag === last &&
+        (sprite.kind === undefined || sprite.kind === field.kind)
+    );
 };
 
 const actionItemsFor = (
     field: BoundField,
     category: string,
     sprites: BufferControlsSprites,
+    color: string,
 ): ActionCatalogueItem[] => {
     if (field.kind === "number") {
         const items = [
-            actionItem(field, category, "inc"),
-            actionItem(field, category, "dec"),
-            actionItem(field, category, "incX"),
-            actionItem(field, category, "decX"),
+            actionItem(field, category, "inc", color),
+            actionItem(field, category, "dec", color),
+            actionItem(field, category, "incX", color),
+            actionItem(field, category, "decX", color),
         ];
         // A number has no toggle behaviour by default — each toggle exists
         // only where the sprite config declares it (e.g. `*-weigth.png`
         // entries declare `toggleNum`, `*-rate.png` entries declare
         // `toggleRate`).
         const tognum = toggleEntryFor(sprites, field, "toggleNum");
-        if (tognum) items.push(actionItem(field, category, "toggleNum"));
+        if (tognum) items.push(actionItem(field, category, "toggleNum", color));
         const rate = toggleEntryFor(sprites, field, "toggleRate");
-        if (rate) items.push(actionItem(field, category, "toggleRate", rate.frames));
+        if (rate) items.push(actionItem(field, category, "toggleRate", color, rate.frames));
         return items;
     }
     if (field.kind === "bool") {
         return [
-            actionItem(field, category, "toggle"),
+            actionItem(field, category, "toggle", color),
         ];
     }
     return [];
@@ -285,22 +279,22 @@ export function buildBufferControlList(
 ): CatalogueResult {
     const menuId = config.menuItemId;
     const items: PathCatalogueItem[] = [
-        menuItem(menuId, config.menu),
+        menuItem(menuId, config.menu, config.unmappedCategoryColor),
         ...bound.flatMap((field) => {
             const category = config.categoryForPath(field.path);
             if (category.length === 0) {
                 throw new Error(`categoryForPath returned an empty category for "${field.path}".`);
             }
+            const color = config.unmappedCategoryColor;
             return [
-                variableItem(field, category),
-                valueItem(field, category),
-                ...actionItemsFor(field, category, config.sprites),
+                variableItem(field, category, color),
+                valueItem(field, category, color),
+                ...actionItemsFor(field, category, config.sprites, color),
             ];
         }),
     ];
 
-    // One entry resolution drives both the loaded sprite id and the source
-    // file. A missing match is a configuration error, not an empty sprite.
+    // Resolve every generated item's sprite and category colour in one pass.
     for (const item of items) {
         const entryId = resolveSpriteEntry(config.sprites, item, menuId, config.menu.spriteId);
         const loadedSpriteId = spriteIds[entryId];
@@ -317,9 +311,7 @@ export function buildBufferControlList(
         }
         item.spriteId = loadedSpriteId;
         item.filePath = entry.filePath;
-    }
-    for (const item of items) {
-        const category = config.categories.find((entry) => entry.id === item.category);
+        const category = config.categories.find((candidate) => candidate.id === item.category);
         item.color = category === undefined ? config.unmappedCategoryColor : category.color;
     }
 

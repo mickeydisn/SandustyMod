@@ -1,12 +1,8 @@
 /**
  * registerStructures — the single registration pass for every catalogue item.
  *
- * One loop walks the whole build list once and dispatches each item to the
- * per-category register modules in `./register/`. Each module decides, from the
- * item's category/tags/kind, whether it owns that item and, if it does, calls
- * `sandkit.api.structures.register` (and wires signals) for it. The modules
- * hand back the runtime handles they need to stay alive and this aggregator
- * merges them into one result:
+ * One loop walks the whole build list once and routes each item to the
+ * register module that owns its declared category/tags/kind.
  *   - `refreshSignals` — recompute + push every placed action structure's
  *     signal output (event-driven, called on each buffer commit).
  *   - `valueEntries`   — every typeId / path / kind of placed value structure,
@@ -16,11 +12,7 @@ import "@sandmd/sandkit";
 
 import type { BuildList } from "@sandmd/catalogue";
 import type { JsonBuffer } from "@sandmd/buffer";
-import {
-    type ActionRead,
-    type ActionRegisterResult,
-    type ActionWrite,
-} from "./register/actionRegister.ts";
+import type { ActionRead, ActionWrite } from "./register/actionRegister.ts";
 import type { ActionOp, PathCatalogueItem } from "../types.ts";
 import { registerMenuStructures } from "./register/menuRegister.ts";
 import { registerPathStructures } from "./register/varRegister.ts";
@@ -29,19 +21,21 @@ import { registerActionNumberStructures } from "./register/actionNumberRegister.
 import { registerActionToggleNumberStructures } from "./register/actionToggleNumberRegister.ts";
 import { registerBooleanActionStructures } from "./register/actionBooleanRegister.ts";
 
-/** Recompute + push every placed action structure's signal output (from ./register/actionRegister.ts). */
-export type { ActionRegisterResult } from "./register/actionRegister.ts";
-
 /** Everything the per-category register modules need to build one structure. */
+type StructureCatalogueItem = PathCatalogueItem & {
+    action?: ActionOp;
+    frames?: number;
+};
+
 export type registerStructureOps = {
     typeId: string;
-    item: PathCatalogueItem & { action?: ActionOp; frames?: number };
+    item: StructureCatalogueItem;
     read: ActionRead;
     write: ActionWrite;
 };
 
-/** Extended result: also exposes the live value structures for readout sync. */
-export interface StructureRegisterResult extends ActionRegisterResult {
+export interface StructureRegisterResult {
+    refreshSignals: () => void;
     valueEntries: ValueStructureEntry[];
 }
 
@@ -60,7 +54,7 @@ export function registerStructures<T extends object>(
 
     // The one loop — every structure in the mod is registered from here by
     // delegating each catalogue item to the module that owns its category.
-    for (const item of list.catalogueItems as PathCatalogueItem[]) {
+    for (const item of list.catalogueItems as StructureCatalogueItem[]) {
         const ops: registerStructureOps = {
             // Structure type id is the catalogue-prefixed type (`modId:item/<id>`),
             // which is what list.structureType / picker select / unlock all use.
@@ -70,7 +64,7 @@ export function registerStructures<T extends object>(
             write: writeBuffer,
         };
 
-        if (item.category == "menu") {
+        if (item.category === "menu") {
             registerMenuStructures(ops);
             continue;
         }
@@ -79,27 +73,22 @@ export function registerStructures<T extends object>(
             registerPathStructures(ops);
         }
         if (item.tags.includes("value")) {
-            const value = registerValueStructures(ops);
-            if (value) valueEntries.push(...value.entries);
+            valueEntries.push(registerValueStructures(ops));
         }
         // Number, sign-toggle and boolean action senders each supply a
         // refreshSignals that recomputes their own placed structures; merge
         // them all into one.
-        if (ops.item.tags.includes("action") && ops.item.kind == "number") {
-            const number = ops.item.action === "toggleNum" || ops.item.action === "toggleRate"
+        if (item.tags.includes("action") && item.kind === "number") {
+            const refresher = item.action === "toggleNum" || item.action === "toggleRate"
                 ? registerActionToggleNumberStructures(ops)
                 : registerActionNumberStructures(ops);
-            if (number) refreshers.push(number.refreshSignals);
+            if (refresher) refreshers.push(refresher);
         }
-        if (ops.item.tags.includes("action") && ops.item.kind == "bool") {
-            const boolean = registerBooleanActionStructures(ops);
-            if (boolean) refreshers.push(boolean.refreshSignals);
+        if (item.tags.includes("action") && item.kind === "bool") {
+            const refresher = registerBooleanActionStructures(ops);
+            if (refresher) refreshers.push(refresher);
         }
     }
-
-    // console.log(
-    //     `[${list.modId}] registered structures (${valueEntries.length} value types, ${refreshers.length} action registers)`,
-    // );
 
     return {
         valueEntries,

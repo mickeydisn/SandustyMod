@@ -63,7 +63,6 @@ export class JsonBuffer<T extends object> {
         try {
             Atomics.load(this.versionView, 0);
         } catch {
-            // console.log("ATOMIC ---");
             this.useAtomics = false;
         }
         this.dataView = ensureBuffer(`${config.key}:json`, {

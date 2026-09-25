@@ -10,7 +10,7 @@
  * The controller has no knowledge of DOM/React; it just reacts to state changes
  * and user intent reported by the view.
  */
-import { ResolvedCatalogueItem } from "../strucutre/types.ts";
+import type { ResolvedCatalogueItem } from "../structure/types.ts";
 import { persistSelection, restorePickerState } from "../list/persistence.ts";
 import { createPickerView } from "./content.ts";
 import type { PickerContentApi, PickerOverlay, PickerOverlayOptions } from "./types.ts";
@@ -27,7 +27,6 @@ export function createPickerOverlay(
     let repaint: (() => void) | null = null;
     let clearTooltip: (() => void) | null = null;
     let unsubscribe: (() => void) | null = null;
-    let registered = false;
 
     if (options.persistSelection) restorePickerState(list);
 
@@ -85,20 +84,6 @@ export function createPickerOverlay(
         } else {
             list.setCategory(categoryId);
         }
-        /*
-        const tags = list.getSelectedTags();
-        const sizes = list.getSelectedSizes();
-        // AND across groups, OR within each group (same as the picker filter).
-        const matches = (it: ResolvedCatalogueItem): boolean => {
-            const itemTags = it.tags;
-            const itemSizes = it.sizes;
-            if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) return false;
-            if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
-            return true;
-        };
-        const item = list.itemsInCategory(categoryId).find(matches);
-        if (item) selectStructure(list.structureType(item.id, !list.isMirrored()));
-        */
         persistIfEnabled();
         repaint?.();
     };
@@ -127,21 +112,6 @@ export function createPickerOverlay(
 
     const toggleTag = (tag: string) => {
         list.toggleTag(tag);
-        /*
-        // Tags constrain the available sizes — prune any size filter that no
-        // longer matches an item under the new tag selection.
-        const tags = list.getSelectedTags();
-        const avail = new Set<string>();
-        for (const it of list.catalogueItems) {
-            const itemTags = it.tags;
-            if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) continue;
-            for (const s of it.sizes) avail.add(s);
-        }
-        const stale = list.getSelectedSizes().filter((s) => !avail.has(s));
-        if (stale.length > 0) {
-            list.setSelectedSizes(list.getSelectedSizes().filter((s) => avail.has(s)));
-        }
-        */
         persistIfEnabled();
         repaint?.();
     };
@@ -185,8 +155,6 @@ export function createPickerOverlay(
         api: contentApi,
         spriteIdFor: options.spriteIdFor,
         itemFilter: options.itemFilter,
-        // renderItemBadge: options.renderItemBadge,
-        // renderHeaderExtra: options.renderHeaderExtra,
     });
 
     /**
@@ -255,9 +223,7 @@ export function createPickerOverlay(
         }
     };
     const install = () => {
-        if (registered) return;
         sandkit.api.ui.overlays.register(slot, pickerId, render);
-        registered = true;
         // Event-driven: the engine emits `action:changed` every time the selected
         // action changes (select, build-menu pick, deselect). `events.on` returns
         // an unsubscribe; we run `sync()` once after registration to catch the

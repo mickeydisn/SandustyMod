@@ -3,7 +3,7 @@ export type { BuildList, CatalogueCategory } from "./src/list/index.ts";
 
 export { createPickerOverlay } from "./src/picker/index.ts";
 
-export type { StructureOptions } from "./src/strucutre/buildDefinitiont.ts";
-export { buildStructureDefinition, makeShape } from "./src/strucutre/buildDefinitiont.ts";
-export type { CatalogueItem, ResolvedCatalogueItem } from "./src/strucutre/types.ts";
-export { buildCustumDraw } from "./src/strucutre/buildCustumDraw.ts";
+export type { StructureOptions } from "./src/structure/buildDefinition.ts";
+export { buildStructureDefinition, makeShape } from "./src/structure/buildDefinition.ts";
+export type { CatalogueItem, ResolvedCatalogueItem } from "./src/structure/types.ts";
+export { buildCustomDraw, buildCustumDraw } from "./src/structure/buildCustomDraw.ts";

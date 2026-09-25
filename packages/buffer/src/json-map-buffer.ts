@@ -122,13 +122,9 @@ export class JsonMapBuffer<T extends object> {
     // -- counter registry ---------------------------------------------------
 
     private resolveCounters(config: JsonMapBufferConfig<T>) {
-        const known = new Map<string, JsonMapCounterOptions>(Object.entries(config.counters));
-        this.order = [...known.keys()];
+        this.order = Object.keys(config.counters);
         for (const path of this.order) {
-            const options = known.get(path);
-            if (!options) {
-                throw new Error(`JsonMapBuffer: counter "${path}" has no configuration.`);
-            }
+            const options = config.counters[path];
             if (
                 !Number.isInteger(options.min) ||
                 !Number.isInteger(options.max) ||

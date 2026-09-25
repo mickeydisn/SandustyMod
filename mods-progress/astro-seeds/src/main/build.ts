@@ -54,8 +54,8 @@ export function buildMain(): void {
     // Live profile configuration — one placeable structure per buffer path
     // (profiles.<id>.tickSpeed / .enabled / .growEnabled / .crystalEnabled).
     // The worker observes the same JsonBuffer and applies it in real time.
-    // The returned buffer is handed to the live config module so mod code can
-    // also write profile values programmatically (`write(...)` in live.ts).
+    // The returned buffer is handed to the live config module so `live()` reads
+    // the same handle that buffer-controls writes.
     registerBufferControls<ProfileConfigRecord>({
         modId: MOD_ID,
         bufferId: PROFILE_BUFFER_ID,

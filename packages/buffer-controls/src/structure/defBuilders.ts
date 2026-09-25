@@ -12,7 +12,7 @@
  */
 import "@sandmd/sandkit";
 import { makeShape as makeGridShape } from "@sandmd/catalogue";
-import { PathCatalogueItem } from "../types.ts";
+import type { PathCatalogueItem } from "../types.ts";
 
 /** Build the engine's 4×4-subcell shape for a width×height cell structure. */
 export const makeShape = (x: number, y: number): number[][] => makeGridShape(x * 4, y * 4);
@@ -30,25 +30,19 @@ export function resolveBindingPath(path: string): string {
     return path.replace(/\[\]/g, "[0]");
 }
 
-/**
- * Shared data payload carried by every buffer-controls structure instance.
- * `path` travels in defaultData so copier duplicates keep the binding. Optional
- * `extra` lets a register bake more fields (e.g. the value register's
- * `dataValue`).
- */
-export function buildSectionData(
-    item: PathCatalogueItem,
-    spriteId: string,
-    extra: Record<string, unknown>,
-) {
+/** Shared data payload carried by every buffer-controls structure instance. */
+export function buildSectionData(path: string) {
     return {
         copyData: true,
-        defaultData: {
-            path: item.path,
-            kind: item.kind,
-            spriteId,
-            ...extra,
-        },
+        defaultData: { path },
+    };
+}
+
+/** Value structure data includes the last formatted buffer value. */
+export function buildValueSectionData(path: string, dataValue: string) {
+    return {
+        copyData: true,
+        defaultData: { path, dataValue },
     };
 }
 
@@ -70,17 +64,14 @@ export function buildSectionTooltips(): Record<string, unknown> {
 }
 
 /** Menu entry render block (only applied to the unlocked menu structure). */
-export function buildMenuRender(
-    item: PathCatalogueItem,
-    spriteId: string,
-): Record<string, unknown> {
+export function buildMenuRender(item: PathCatalogueItem): Record<string, unknown> {
     return {
         render: {
-            imageName: spriteId,
+            imageName: item.spriteId,
             size: { width: item.width, height: item.height },
             outline: true,
             ui: {
-                imageName: spriteId,
+                imageName: item.spriteId,
                 width: item.width,
                 height: item.height,
                 outline: true,

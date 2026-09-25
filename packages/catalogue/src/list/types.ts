@@ -3,7 +3,7 @@
  * state; a React overlay or sandkit overlay just renders it.
  */
 
-import type { CatalogueItem, ResolvedCatalogueItem } from "../strucutre/types.ts";
+import type { CatalogueItem, ResolvedCatalogueItem } from "../structure/types.ts";
 
 export type BuildEventName = "select" | "place" | "remove" | "category" | "path" | "mirror" | "tag";
 

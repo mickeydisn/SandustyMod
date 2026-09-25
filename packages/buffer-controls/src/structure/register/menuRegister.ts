@@ -8,15 +8,10 @@ import {
     sectionBuild,
 } from "../defBuilders.ts";
 import { drawBorder, drawIconAndReadout, readoutTileWidth } from "../render.ts";
-import { ActionRegisterResult } from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
 
-export function registerMenuStructures(ops: registerStructureOps): ActionRegisterResult | void {
-    // The catalogue marks the picker entry with category "menu" (its tags are
-    // "variables", so don't dispatch it to the variables register).
-    if (ops.item.category !== "menu") return;
-
-    // Menu entry keeps the legacy 8-cell readout + icon.
+export function registerMenuStructures(ops: registerStructureOps): void {
+    // The menu entry owns its own readout layout.
     const readoutCells = ops.item.readoutCells;
     const showIcon = ops.item.showIcon;
     const tileWidth = readoutTileWidth({ readoutCells, showIcon });
@@ -45,9 +40,9 @@ export function registerMenuStructures(ops: registerStructureOps): ActionRegiste
         hideFromBuildMenu: false,
         shape: makeShape(1, 1),
         ...sectionBuild.single(ops.typeId),
-        ...buildMenuRender(ops.item, ops.item.spriteId),
+        ...buildMenuRender(ops.item),
         ...buildSectionTooltips(),
-        ...buildSectionData(ops.item, ops.item.spriteId, {}),
+        ...buildSectionData(ops.item.path),
         draw,
     });
 

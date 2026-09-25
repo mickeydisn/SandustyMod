@@ -1,15 +1,10 @@
 /** */
 import "@sandmd/sandkit";
 import { buildSectionData, buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
-import { ActionRegisterResult } from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
 import { drawBorder, drawIconAndReadout, readoutTileWidth } from "../render.ts";
 
-export function registerPathStructures(ops: registerStructureOps): ActionRegisterResult | void {
-    // Real bound paths are tagged "variables"; the picker menu also carries that
-    // tag, so skip it here (the menu module owns category "menu").
-    if (!ops.item.tags.includes("variables") || ops.item.category === "menu") return;
-
+export function registerPathStructures(ops: registerStructureOps): void {
     // Path readouts stay wide (paths are long) — overridable via `readoutCells`
     // on the catalogue item; `showIcon` toggles the kind icon.
     const readoutCells = ops.item.readoutCells;
@@ -41,7 +36,7 @@ export function registerPathStructures(ops: registerStructureOps): ActionRegiste
         shape: makeShape(1, 1),
         ...sectionBuild.single(ops.typeId),
         ...buildSectionTooltips(),
-        ...buildSectionData(ops.item, ops.item.spriteId, {}),
+        ...buildSectionData(ops.item.path),
         draw,
     });
     // Unlock the buildings

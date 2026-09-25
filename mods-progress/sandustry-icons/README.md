@@ -21,7 +21,7 @@ node tools/generate-catalogue.mjs
 ## Behaviour
 
 - One build-menu entry: **Icons**
-- Picker overlay: categories, search, mirror toggle
+- Picker overlay: categories, tag/size filters, and mirror toggle
 - Structures use `copyData: true` for paste-friendly metadata
 - No wallet, vouchers, or placement intercept
 

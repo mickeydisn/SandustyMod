@@ -44,20 +44,20 @@ console.log(cfg.getPath("volume")); // 0.5
 
 `new JsonBuffer<T>(config)`
 
-| field             | meaning                                                                 |
-| ----------------- | ----------------------------------------------------------------------- |
-| `key`             | unique key for the shared buffers + long-term storage                   |
-| `defaultRecord`   | complete seed value used when no stored/shared record exists            |
-| `maxBytes`        | payload capacity in bytes; passed directly to the shared buffer         |
-| `persist`         | save to `sandkit.api.storage.local` on `store:save`                      |
-| `loadFromStorage` | restore the stored record during construction                           |
-| `observe`         | observe-only mode: never commit and never touch storage                  |
-| `assertShape?`    | `(value: T) => void` guard run on every `commit()`                      |
+| field             | meaning                                                         |
+| ----------------- | --------------------------------------------------------------- |
+| `key`             | unique key for the shared buffers + long-term storage           |
+| `defaultRecord`   | complete seed value used when no stored/shared record exists    |
+| `maxBytes`        | payload capacity in bytes; passed directly to the shared buffer |
+| `persist`         | save to `sandkit.api.storage.local` on `store:save`             |
+| `loadFromStorage` | restore the stored record during construction                   |
+| `observe`         | observe-only mode: never commit and never touch storage         |
+| `assertShape?`    | `(value: T) => void` guard run on every `commit()`              |
 
 ### Mapped counters
 
-`JsonMapBuffer` uses a named configuration with an explicit `counters` map. Every mapped path
-must exist as an integer in `defaultRecord` and declare int32 bounds. `increment(path, delta)` and
+`JsonMapBuffer` uses a named configuration with an explicit `counters` map. Every mapped path must
+exist as an integer in `defaultRecord` and declare int32 bounds. `increment(path, delta)` and
 `decrement(path, delta)` always require their delta; storage behavior is controlled by `persist` and
 `loadFromStorage`.
 
@@ -65,9 +65,9 @@ must exist as an integer in `defaultRecord` and declare int32 bounds. `increment
 
 - `get()` — pull latest remote changes, then return the cached record
 - `getPath(path)` — read one dot/bracket path, e.g. `"players[0].score"`
-- `listPaths({ maxDepth, includeContainers })` — walk every field with its path, inferred
-  kind (`bool`/`number`/`string`/`array`/`object`), label and current value. Arrays are summarized
-  as a stable `"players[]"` template; both scan limits are supplied by the caller.
+- `listPaths({ maxDepth, includeContainers })` — walk every field with its path, inferred kind
+  (`bool`/`number`/`string`/`array`/`object`), label and current value. Arrays are summarized as a
+  stable `"players[]"` template; both scan limits are supplied by the caller.
 - `remoteVersion()` / `version()` — remote vs. locally-seen buffer versions
 - `hasUpdate()` — whether a newer version exists remotely
 
@@ -95,9 +95,9 @@ from _"what data is there"_ into two buffers.
 Every `JsonBuffer` allocates two fixed-size shared buffers on first use (`ensureBuffer`, in
 `sand.ts`):
 
-| buffer key    | typed array              | purpose                         |
-| ------------- | ------------------------ | ------------------------------- |
-| `${key}:ver`  | `Int32Array` of length 1 | a monotonic **version counter** |
+| buffer key    | typed array                | purpose                         |
+| ------------- | -------------------------- | ------------------------------- |
+| `${key}:ver`  | `Int32Array` of length 1   | a monotonic **version counter** |
 | `${key}:json` | `Uint8Array` of `maxBytes` | the **payload**, JSON-encoded   |
 
 Both are registered with `sandkit.api.shared.buffers`, so **any `JsonBuffer` created with the same
@@ -174,8 +174,8 @@ without you having to remember to sync manually — and it short-circuits when n
 [ utf-8 JSON bytes ... ][ 0 0 0 ... (empty tail) ]
 ```
 
-- `encodeJsonInBuffer` fills the buffer with zeros, writes `JSON.stringify` output, and throws if the
-  record exceeds the configured `maxBytes`; size the buffer explicitly for the record.
+- `encodeJsonInBuffer` fills the buffer with zeros, writes `JSON.stringify` output, and throws if
+  the record exceeds the configured `maxBytes`; size the buffer explicitly for the record.
 - `decodeJson` slices at the first zero byte (a sentinel for "rest is empty") and `JSON.parse`s it.
 
 ### Persistence
@@ -209,8 +209,8 @@ Worked entry points live under [`exemple/`](./exemple), one subdirectory per typ
   (`JsonBuffer`): two instances sharing one key, the version gate, path access, introspection and
   subscriptions.
 - [`exemple/jsonMapBuffer/main.ts`](./exemple/jsonMapBuffer/main.ts) — the atomic-counter variant
-  (`JsonMapBuffer`): explicitly mapped numeric leaves, the race-free `increment()` CAS loop, per-path
-  logs, and cross-thread visibility.
+  (`JsonMapBuffer`): explicitly mapped numeric leaves, the race-free `increment()` CAS loop,
+  per-path logs, and cross-thread visibility.
 
 Each file documents its own run command from the repo root.
 

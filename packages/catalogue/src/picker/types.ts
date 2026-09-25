@@ -1,5 +1,5 @@
 import type { BuildList } from "../list/index.ts";
-import { CatalogueItem } from "../strucutre/types.ts";
+import type { CatalogueItem } from "../structure/types.ts";
 
 export interface PickerOverlayOptions {
     list: BuildList;
@@ -14,8 +14,6 @@ export interface PickerOverlayOptions {
     unlockTypes: (types: string[]) => void;
     /** Resolves the sprite id actually loaded for an item. */
     spriteIdFor: (item: CatalogueItem) => string;
-    //renderHeaderExtra?: (ctx: PickerContext) => unknown;
-    // renderItemBadge?: (item: CatalogueItem) => unknown;
 }
 
 export interface PickerOverlay {
@@ -59,6 +57,6 @@ export interface PickerContentApi {
     setRepaint(fn: (() => void) | null): void;
     /** Register a callback to clear transient UI state (e.g. tooltip); pass null to clear. */
     setClearTooltip(fn: (() => void) | null): void;
-    /** Request a re-render of the view (used for header extras). */
+    /** Request a re-render of the view. */
     repaint(): void;
 }

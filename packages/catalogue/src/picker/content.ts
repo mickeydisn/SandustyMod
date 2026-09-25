@@ -7,7 +7,7 @@
  * that lives in overlay.ts (the controller). The view reports user intent
  * through the {@link PickerContentApi} it is given.
  */
-import { CatalogueItem, ResolvedCatalogueItem } from "../strucutre/types.ts";
+import type { CatalogueItem, ResolvedCatalogueItem } from "../structure/types.ts";
 import { compareSizes } from "../list/createBuildList.ts";
 import { h, HTMLElement } from "./react.ts";
 import type { PickerContentApi } from "./types.ts";
@@ -21,12 +21,9 @@ export interface PickerViewOptions {
     api: PickerContentApi;
     spriteIdFor: (item: CatalogueItem) => string;
     itemFilter?: (item: CatalogueItem) => boolean;
-    // renderItemBadge?: (item: CatalogueItem) => unknown;
-    // renderHeaderExtra?: (ctx: PickerContext) => unknown;
 }
 
 function createPickerCss() {
-    // console.log("[pkg-picker] injecting CSS");
     const css = `
         .pkg-picker-main-div {
             width: 70vw;
@@ -89,7 +86,6 @@ function createPickerCss() {
 export function createPickerView(options: PickerViewOptions): () => unknown {
     const { api } = options;
     const list = api.list;
-    const search = "";
 
     let tooltip: { label: string; x: number; y: number } | null = null;
     let tooltipTimer: ReturnType<typeof setTimeout> | null = null;
@@ -199,15 +195,6 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                             { key: "fallback", className: "text-xs" },
                             props.item.label.charAt(0),
                         ),
-                    /*
-                    options.renderItemBadge
-                        ? h(
-                            "span",
-                            { key: "badge" },
-                            options.renderItemBadge(props.item),
-                        )
-                        : null,
-                    */
                 ],
             },
         );
@@ -249,118 +236,57 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
 
         const selected = list.getSelected();
         const availableTags = list.allTags();
-        const availableCategorie = list.allCategories();
+        const availableCategories = list.allCategories();
         const availablePath = list.allPaths();
 
         const selectedSizes = list.getSelectedSizes();
         const selectedTags = list.getSelectedTags();
-        const selectedCategory = list.getCategory() || "";
+        const selectedCategory = list.getCategory();
         const selectedPath = list.getPath() || "";
 
-        function filterItems(
-            items: ResolvedCatalogueItem[],
-            options: {
-                query: string;
-                path: string;
-                categoryId: string;
-                tags: string[];
-                sizes: string[];
-                itemFilter?: (item: CatalogueItem) => boolean;
-            },
-        ): ResolvedCatalogueItem[] {
-            const q = options.query.trim().toLowerCase();
-            return items.filter((item) => {
-                if (options.categoryId && item.category !== options.categoryId) return false;
-                if (item.path && item.path !== options.path) return false;
-                if (options.itemFilter && !options.itemFilter(item)) return false;
-                // AND across groups: tags group and sizes group are combined
-                // with AND; within a group selected entries are OR.
-                const itemTags = item.tags;
-                if (options.tags.length > 0 && !options.tags.some((t) => itemTags.includes(t))) {
-                    return false;
-                }
-                const itemSizes = item.sizes;
-                if (options.sizes.length > 0 && !options.sizes.some((s) => itemSizes.includes(s))) {
-                    return false;
-                }
-                if (!q) return true;
-                const hay = `${item.label} ${item.id} ${item.description} ${itemTags.join(" ")} ${
-                    itemSizes.join(" ")
-                }`.toLowerCase();
-                return hay.includes(q);
-            });
-        }
-
-        // Sizes offered are constrained by the tags already selected: only the
-        // sizes of items matching the active tags (and the mod's item filter)
-        // are listed. OR within the tags group, AND between the groups.
-        const matchesTagGroup = (item: ResolvedCatalogueItem): boolean => {
-            if (options.itemFilter && !options.itemFilter(item)) return false;
-            const itemTags = item.tags;
-            if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
-                return false;
-            }
-            return true;
+        const matchesMod = (item: CatalogueItem): boolean =>
+            options.itemFilter === undefined || options.itemFilter(item);
+        const matchesTags = (item: ResolvedCatalogueItem, tags: string[]): boolean =>
+            tags.length === 0 || tags.some((tag) => item.tags.includes(tag));
+        const matchesTagGroup = (item: ResolvedCatalogueItem): boolean =>
+            matchesMod(item) && matchesTags(item, selectedTags);
+        const matchesFilters = (item: ResolvedCatalogueItem): boolean => {
+            if (!matchesTagGroup(item)) return false;
+            return selectedSizes.length === 0 ||
+                selectedSizes.some((size) => item.sizes.includes(size));
         };
+        const matchesCategory = (item: ResolvedCatalogueItem): boolean =>
+            selectedCategory === "" || item.category === selectedCategory;
+
+        // Sizes offered are constrained by the active tags and mod filter.
         const availableSizes = (() => {
             const set = new Set<string>();
-            for (const it of list.catalogueItems) {
-                if (!matchesTagGroup(it)) continue;
-                for (const s of it.sizes) set.add(s);
+            for (const item of list.catalogueItems) {
+                if (!matchesTagGroup(item)) continue;
+                for (const size of item.sizes) set.add(size);
             }
             return [...set].sort(compareSizes);
         })();
 
-        // An item is kept when it passes the optional mod filter and matches
-        // both filter groups: OR within each group, AND between the groups.
-        const matchesFilters = (item: ResolvedCatalogueItem): boolean => {
-            if (options.itemFilter && !options.itemFilter(item)) return false;
-            const itemTags = item.tags;
-            if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
-                return false;
-            }
-            const itemSizes = item.sizes;
-            if (selectedSizes.length > 0 && !selectedSizes.some((s) => itemSizes.includes(s))) {
-                return false;
-            }
-            return true;
-        };
-        const categoryFilters = (item: ResolvedCatalogueItem): boolean => {
-            if (!selectedCategory) return true;
-            return item.category == selectedCategory;
-        };
-        // console.log("AVALIBEL CATEGORIE", availableCategorie, list);
-        // Category grid shows only categories that still have matching items.
-        const visibleCategories = availableCategorie
-            .map((cat) => ({
-                id: cat,
-                count: list.itemsInCategory(cat).filter(matchesFilters).length,
+        // Category and path counts use the same filter predicate as the list.
+        const visibleCategories = availableCategories
+            .map((category) => ({
+                id: category,
+                count: list.itemsInCategory(category).filter(matchesFilters).length,
             }))
-            .filter((c) => c.count > 0);
-        // console.log("AVALIBEL CATEGORIE: visibleCategories", visibleCategories);
+            .filter(({ count }) => count > 0);
+        const visiblePaths = availablePath
+            .map((path) => ({
+                id: path,
+                count: list.itemsInPath(path).filter(matchesFilters).filter(matchesCategory).length,
+            }))
+            .filter(({ count }) => count > 0);
 
-        // console.log("AVALIBEL  PATH", availableCategorie, list);
-        // Category grid shows only categories that still have matching items.
-        const visiblePath = availablePath
-            .map((path) => {
-                return {
-                    id: path,
-                    count: list.itemsInPath(path).filter(matchesFilters).filter(categoryFilters)
-                        .length,
-                };
-            })
-            .filter((c) => c.count > 0);
-        // console.log("AVALIBEL PATH: visiblePath", visiblePath);
-
-        const visible = filterItems(list.catalogueItems, {
-            path: selectedPath,
-            categoryId: selectedCategory,
-            query: search,
-            tags: selectedTags,
-            sizes: selectedSizes,
-            itemFilter: options.itemFilter,
+        const visible = list.catalogueItems.filter((item) => {
+            if (!matchesCategory(item)) return false;
+            if (item.path && item.path !== selectedPath) return false;
+            return matchesFilters(item);
         });
-        // console.log("AVALIBEL CATEGORIE", list, visible);
 
         if (state.minimized) {
             const src = selected ? spriteSrc(selected) : undefined;
@@ -427,18 +353,6 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             h(
                 "div",
                 { className: "flex items-center gap-2" },
-                /*
-                h(FocusableButton, {
-                    id: `${api.pickerId}-mirror`,
-                    onActivate: api.toggleMirror,
-                    className: `text-xs px-2 py-0.5 border rounded ${
-                        list.isMirrored()
-                            ? "text-[#ffe700] border-yellow-400"
-                            : "text-slate-300 border-slate-600"
-                    }`,
-                    children: `${list.isMirrored() ? "☑" : "☐"} Mirrored`,
-                }),
-                */
                 h(FocusableButton, {
                     id: `${api.pickerId}-minimize`,
                     onActivate: api.minimize,
@@ -537,7 +451,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
 
         const pathEl = hVerticalItemsList(
             "Path:",
-            visiblePath.map((path) =>
+            visiblePaths.map((path) =>
                 h(FocusableButton, {
                     key: path.id,
                     id: `${api.pickerId}-path-${path.id}`,
@@ -583,11 +497,10 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 filterTagEl,
                 categorieEl,
                 pathEl,
-                // filterClearEl,
             ),
         );
 
-        const itemElemnts = h(
+        const itemElements = h(
             "div",
             {
                 className: "min-h-0 flex-1 px-4 py-2  overflow-y-auto",
@@ -618,13 +531,12 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             "div",
             { className: "pkg-picker-main-div" },
             headEl,
-            // options.renderHeaderExtra ? options.renderHeaderExtra(ctx()) : null,
             tooltipEl,
             h(
                 "div",
                 { className: "flex-1 flex flex-row overflow-hidden" },
                 filterEl,
-                itemElemnts,
+                itemElements,
             ),
         );
     };

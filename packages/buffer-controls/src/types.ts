@@ -28,7 +28,7 @@ export interface PathCatalogueItem extends CatalogueItem {
     kind: FieldKind;
     color: string;
     spriteId: string;
-    /** Readout width in STRUCT_H units. */
+    /** Readout width in cells. */
     readoutCells: number;
     /** Draw the kind icon left of the readout. */
     showIcon: boolean;

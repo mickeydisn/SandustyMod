@@ -21,12 +21,14 @@
  * `applyAction(…)` (`./actionRegister.ts`).
  */
 import "@sandmd/sandkit";
-import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
+import { buildSectionData, buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { StructureLike } from "@sandmd/shared";
 import {
-    ActionRegisterResult,
-    applyAction,
-    applyRateAction,
+    type ActionRegisterResult,
+    applyToggleAndPush,
+    pathOf,
+    refreshActionSignals,
+    signalFor,
     toggleRateFrame,
 } from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
@@ -40,29 +42,11 @@ export function toggleNumberFrame(value: unknown): number {
 
 export function registerActionToggleNumberStructures(
     ops: registerStructureOps,
-): ActionRegisterResult | void {
+): ActionRegisterResult {
     // Only the toggle ops of number paths are owned here; the +1 / -1 / ±10
     // buttons belong to actionNumberRegister.ts.
-    if (!ops.item.tags.includes("action") || ops.item.kind !== "number") return;
-    if (ops.item.action !== "toggleNum" && ops.item.action !== "toggleRate") return;
-
-    const actionItems: { typeId: string; path: string }[] = [];
-
-    // How the signal output is derived from the buffer (the "how") — non-zero
-    // values drive the sender output high, exactly like the other actions.
-    const computeSignal = (structure: StructureLike): boolean => {
-        const p = structure.data?.path;
-        if (typeof p !== "string" || p.length === 0) return false;
-        return ops.read(p) ? true : false;
-    };
-
-    // Push a change: drive the sender cell output so outgoing links update and
-    // receivers re-apply it next frame.
-    const pushSignal = (structure: StructureLike): void => {
-        sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
-    };
-
     const op = ops.item.action;
+    if (op !== "toggleNum" && op !== "toggleRate") return;
     const path = ops.item.path;
     let frames: number;
     if (ops.item.action === "toggleRate") {
@@ -74,36 +58,22 @@ export function registerActionToggleNumberStructures(
         frames = 3;
     }
 
-    const act = (structure: StructureLike): void => {
-        const p = structure.data?.path;
-        if (typeof p !== "string" || p.length === 0) return;
-        ops.write(
-            p,
-            op === "toggleRate"
-                ? applyRateAction(ops.read(p), frames)
-                : applyAction(op, ops.read(p)),
-        );
-        pushSignal(structure);
-    };
-
     const draw = (
         _state: unknown,
         structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
         render: { ctx?: CanvasRenderingContext2D },
     ): boolean => {
-        // Live value → spritesheet frame (sign frames for `toggleNum`,
-        // N-frame buckets for `toggleRate`).
-        const d = ops.read(structure.data?.path as string);
+        const structurePath = pathOf(structure);
+        if (structurePath === undefined) return false;
+        const value = ops.read(structurePath);
         sandkit.api.structures.setSpritesheetIndexAtCell(
             structure.x,
             structure.y,
-            ops.item.action === "toggleRate" ? toggleRateFrame(d, frames) : toggleNumberFrame(d),
+            op === "toggleRate" ? toggleRateFrame(value, frames) : toggleNumberFrame(value),
         );
         drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
-
-    actionItems.push({ typeId: ops.typeId, path });
 
     sandkit.api.structures.register({
         id: ops.typeId,
@@ -118,8 +88,7 @@ export function registerActionToggleNumberStructures(
             imageName: ops.item.spriteId,
             size: { width: 16, height: 16 },
         },
-        copyData: true,
-        defaultData: { path, kind: ops.item.kind, op, frames },
+        ...buildSectionData(path),
         draw,
     });
     // Unlock the buildings
@@ -127,20 +96,15 @@ export function registerActionToggleNumberStructures(
 
     // Click-to-activate: applies the toggle op to the bound buffer path.
     sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
-        act(structure);
+        applyToggleAndPush(ops.read, ops.write, structure, op, frames);
     });
 
     // Register how the signal is computed (the "how").
-    sandkit.api.signals?.registerSenderType(ops.typeId, (s: StructureLike) => computeSignal(s));
+    sandkit.api.signals?.registerSenderType(
+        ops.typeId,
+        (structure: StructureLike) => signalFor(ops.read, structure),
+    );
 
     // Event-driven "when": recompute + push every placed sign-toggle structure.
-    return {
-        refreshSignals: (): void => {
-            for (const a of actionItems) {
-                sandkit.api.structures.forEachOfType(a.typeId, (structure: StructureLike) => {
-                    pushSignal(structure);
-                });
-            }
-        },
-    };
+    return () => refreshActionSignals(ops.read, ops.typeId);
 }

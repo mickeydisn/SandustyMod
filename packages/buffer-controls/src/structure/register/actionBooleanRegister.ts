@@ -1,64 +1,40 @@
 /** */
 import "@sandmd/sandkit";
-import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
+import { buildSectionData, buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { StructureLike } from "@sandmd/shared";
-import { ActionRegisterResult, applyAction } from "./actionRegister.ts";
+import {
+    type ActionRegisterResult,
+    applyAndPush,
+    pathOf,
+    refreshActionSignals,
+    signalFor,
+} from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
-import { ActionOp } from "../../types.ts";
 import { drawBorder } from "../render.ts";
 
 export function registerBooleanActionStructures(
     ops: registerStructureOps,
-): ActionRegisterResult | void {
-    // Only boolean-paths carry a toggle action.
-    if (!ops.item.tags.includes("action") || ops.item.kind !== "bool") return;
-    if (ops.item.action === undefined) return;
-
-    const actionItems: { typeId: string; path: string }[] = [];
-
-    // How the signal output is derived from the buffer (the "how"). Registered
-    // via registerSenderType so the engine can seed a freshly linked wire with
-    // the right `.on` (bundle 63873), and reused by push() below. Independent of
-    // the per-item op/sprite, so it is defined once for all action types.
-    const computeSignal = (structure: StructureLike): boolean => {
-        const p = structure.data?.path;
-        if (typeof p !== "string" || p.length === 0) return false;
-        return ops.read(p) ? true : false;
-    };
-
-    // Push-a-change helper: drive a sender cell's output to `on`, updating every
-    // outgoing link and marking receivers dirty (setAll, bundle 63921-63936).
-    // This is what makes receivers recompute their combined value next frame.
-    const pushSignal = (structure: StructureLike): void => {
-        sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
-    };
-
-    const act = (structure: StructureLike, op: Exclude<ActionOp, "toggleRate">): void => {
-        const p = structure.data?.path;
-        if (typeof p !== "string" || p.length === 0) return;
-        ops.write(p, applyAction(op, ops.read(p)));
-        pushSignal(structure);
-    };
+): ActionRegisterResult {
+    const op = ops.item.action;
+    if (op === undefined || op === "toggleRate") return;
+    const path = ops.item.path;
 
     const draw = (
         _state: unknown,
         structure: { x: number; y: number; type?: string; data: Record<string, unknown> },
         render: { ctx?: CanvasRenderingContext2D },
     ): boolean => {
-        const d = ops.read(structure.data?.path as string);
+        const structurePath = pathOf(structure);
+        if (structurePath === undefined) return false;
+        const value = ops.read(structurePath);
         sandkit.api.structures.setSpritesheetIndexAtCell(
             structure.x,
             structure.y,
-            d ? 1 : 0,
+            value ? 1 : 0,
         );
         drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
-    const op = ops.item.action;
-    if (op === "toggleRate") return;
-    const path = ops.item.path;
-
-    actionItems.push({ typeId: ops.typeId, path });
 
     sandkit.api.structures.register({
         id: ops.typeId,
@@ -73,33 +49,18 @@ export function registerBooleanActionStructures(
             imageName: ops.item.spriteId,
             size: { width: 16, height: 16 },
         },
-        copyData: true,
-        defaultData: { path, kind: ops.item.kind, op },
+        ...buildSectionData(path),
         draw,
     });
-    // Unlock the buildings
     sandkit.api.player.buildings.unlockByType(ops.typeId);
 
-    // Click-to-activate: engine draws hover highlight + cancels the default
-    // action (docs_tech/14 Q7). `structure` has live data for this instance.
-    // After writing to the buffer we immediately push the new output so the
-    // click alone updates the signal (the vanilla switch does the same).
     sandkit.api.signals?.interactables?.register?.(ops.typeId, (structure) => {
-        act(structure, op);
+        applyAndPush(ops.read, ops.write, structure, op);
     });
+    sandkit.api.signals?.registerSenderType(
+        ops.typeId,
+        (structure: StructureLike) => signalFor(ops.read, structure),
+    );
 
-    // Register how the signal is computed (the "how"). The engine invokes
-    // this when a wire is linked to that cell.
-    sandkit.api.signals?.registerSenderType(ops.typeId, (s: StructureLike) => computeSignal(s));
-
-    // Event-driven "when": recompute + push for every placed action structure.
-    // Not per-frame polling — callers invoke this on each buffer commit.
-    const refreshSignals = (): void => {
-        for (const a of actionItems) {
-            sandkit.api.structures.forEachOfType(a.typeId, (structure) => {
-                pushSignal(structure);
-            });
-        }
-    };
-    return { refreshSignals };
+    return () => refreshActionSignals(ops.read, ops.typeId);
 }
