@@ -13,9 +13,9 @@ import { MOD_ID, VERSION } from "../ids.ts";
 import { profileBuffer } from "../config/elementWorker/live.ts";
 
 export function buildWorker(): void {
-    // Touch the buffer handle once — logs a warning if the shared memory
-    // cannot be reached, but the live getters also fail soft to their
-    // fallbacks, so the worker keeps running with the hard-coded values.
+    // Touch the buffer handle once so shared-memory setup problems are visible.
+    // Profile readers use the typed PROFILE_DEFAULTS record if the handle is
+    // temporarily unavailable.
     profileBuffer();
 
     const { seedTypes } = buildElementWorker(ASTRO_PROFILES);

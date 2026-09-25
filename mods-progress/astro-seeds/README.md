@@ -68,8 +68,7 @@ action calls:
 directly. Catalogue keys are resolved to numeric element types by the small helper in
 `elementWorker/keys.ts`, which also expands the special `"empty"` / `"structure"` match keys.
 
-> `Astro Water Powder` is marked as a seed but has no profile, so it isn't driven by the worker loop
-> — it exists for the crystal→powder reaction.
+> `Astro Water Powder` is a static reaction output and is not driven by the worker loop.
 
 ---
 
@@ -101,12 +100,15 @@ src/
 │   │   ├── astro*.ts       # one entry per element
 │   │   └── catalogue.ts    # ★ ASTRO_ELEMENTS + ASTRO_REACTIONS
 │   │
-│   └── elementWorker/      # simulation catalogue (worker bundle)
-│       ├── keys.ts         # key → type helpers (+ "empty"/"structure")
-│       ├── inWater.ts      # water profiles
-│       ├── inGold.ts       # liquid-gold profiles
-│       ├── inCopper.ts     # liquid-copper profiles
-│       └── catalogue.ts    # ★ ASTRO_PROFILES (the worker's profile list)
+│   ├── elementWorker/      # simulation catalogue (worker bundle)
+│   │   ├── keys.ts         # key → type helpers (+ "empty"/"structure")
+│   │   ├── inWater.ts      # water profiles
+│   │   ├── inGold.ts       # liquid-gold profiles
+│   │   ├── inCopper.ts     # liquid-copper profiles
+│   │   ├── defBuilder.ts   # shared profile action wiring
+│   │   ├── live.ts         # typed buffer reads/writes
+│   │   └── catalogue.ts    # ★ ASTRO_PROFILES (the worker's profile list)
+│   └── profileRuntime.ts   # profile record, explicit defaults, sprites/categories
 │
 ├── main/
 │   └── build.ts            # thin: buildElementMain(catalogue + tech) + toast
@@ -186,6 +188,14 @@ Deno workspace: `mods/astro-seeds` is a workspace member. Tasks (in `deno.json`)
 
 ## 5. Configuration
 
-There is no in-game panel and no runtime config buffer. The only setting is the standard `enabled`
-boolean in `modinfo.json` (`default: true`). All element and profile behaviour is fixed by
-`ASTRO_ELEMENTS`; edit the catalogue and rebuild to change it.
+`config/profileRuntime.ts` is the single source of truth for the live profile record. It defines:
+
+- every profile id in `PROFILE_IDS` and its picker category;
+- the complete `ProfileRuntimeConfig` shape;
+- the per-profile `PROFILE_DEFAULTS` used to create a new record and to read fields missing from an older saved record;
+- the sprite declarations used by buffer-controls.
+
+`buildMain()` registers that record through `@sandmd/buffer-controls` with explicit storage, scan,
+colour, and picker settings. The worker opens the same key in observe mode; `live()` reads the
+buffered value and never carries a second inline fallback. The only manifest setting is the standard
+`enabled` boolean in `modinfo.json` (`default: true`).

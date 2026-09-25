@@ -1,12 +1,12 @@
 /**
  * Public types for @sandmd/buffer-controls.
  *
- * Configuration is declarative: the mod only supplies its JsonBuffer record,
- * its sprites (`{ spriteId, filePath, … }`) and labels. All catalogue /
- * structure / refresh wiring is owned by registerBufferControls()
+ * Configuration is declarative and explicit: the mod supplies its complete
+ * JsonBuffer record plus storage, scan, catalogue, sprite, and picker policy.
+ * All catalogue / structure / refresh wiring is owned by registerBufferControls()
  * (see ./buffer-controls.ts).
  */
-import type { JsonBuffer } from "@sandmd/buffer";
+import type { JsonBuffer, ListPathsOptions } from "@sandmd/buffer";
 import type { BuildList } from "@sandmd/catalogue";
 
 ///-----------------
@@ -21,36 +21,25 @@ export type ActionOp = "inc" | "dec" | "incX" | "decX" | "toggle" | "toggleNum" 
 
 ///-----------------
 
-/** Extra fields we attach to catalogue items generated from the JsonBuffer. */
+/** Extra fields attached to catalogue items generated from the JsonBuffer. */
 export interface PathCatalogueItem extends CatalogueItem {
-    /** Real jsonBuffer path this action writes to (already index-resolved). */
+    /** Real jsonBuffer path this item represents. */
     path: string;
-    kind?: FieldKind;
+    kind: FieldKind;
     color: string;
-    /**
-     * Readout width in STRUCT_H units for `drawIconAndReadout`
-     * (final pixels = readoutCells * 16). When omitted, the register falls
-     * back to its per-kind default (var: 8, value string: 8 / number: 4 /
-     * bool: 2).
-     */
-    readoutCells?: number;
-    /** Draw the 16x16 kind icon left of the readout. Defaults to true. */
-    showIcon?: boolean;
+    spriteId: string;
+    /** Readout width in STRUCT_H units. */
+    readoutCells: number;
+    /** Draw the kind icon left of the readout. */
+    showIcon: boolean;
 }
 
-export interface ActionCatalogueItem extends CatalogueItem {
-    /** Real jsonBuffer path this action writes to (already index-resolved). */
-    path: string;
-    kind?: FieldKind;
-    action?: ActionOp;
-    color: string;
-    /**
-     * Spritesheet frame count for value-mapped toggle art (`toggleRate`).
-     * Copied from the matched `BufferControlsSprite.frames` entry; defaults
-     * to 6 when the entry omits it.
-     */
-    frames?: number;
-}
+export type ActionCatalogueItem =
+    & PathCatalogueItem
+    & (
+        | { action: "toggleRate"; frames: number }
+        | { action: Exclude<ActionOp, "toggleRate">; frames?: never }
+    );
 
 ///-----------------
 /**
@@ -65,7 +54,7 @@ export interface ActionCatalogueItem extends CatalogueItem {
  *   3. `action` (+ `kind`) — e.g. every number `inc` button,
  *   4. `kind` alone — the generic per-kind icon.
  */
-export interface BufferControlsSprite {
+type BufferControlsSpriteBase = {
     /** Logical sprite id — loaded from `filePath`, referenced by `menu.spriteId`. */
     spriteId: string;
     /** Asset file, relative to the mod (e.g. `assets/types/number.png`). */
@@ -75,17 +64,21 @@ export interface BufferControlsSprite {
     /** Applies to every item whose tags include this value (a buffer key). */
     tag?: string;
     kind?: FieldKind;
-    action?: ActionOp;
-    /**
-     * Spritesheet frame count for value-mapped toggle art.
-     * `toggleNum` is always 3 frames (0 / `>0` / `<0`) and ignores this.
-     * `toggleRate` follows the N-frame rule — frame 0 is `<= 0`, the last
-     * frame is `>= 100`, and the `N - 2` middle frames split `(0, 100)`
-     * evenly (6 frames → steps of 25, 7 frames → steps of 20, …).
-     * Defaults to 6 when omitted.
-     */
-    frames?: number;
-}
+};
+
+export type BufferControlsSprite =
+    & BufferControlsSpriteBase
+    & (
+        | {
+            action: "toggleRate";
+            /** N-frame rate sheet; required for rate actions. */
+            frames: number;
+        }
+        | {
+            action?: Exclude<ActionOp, "toggleRate">;
+            frames?: never;
+        }
+    );
 export type BufferControlsSprites = BufferControlsSprite[];
 
 /** Build-menu entry that opens the picker. */
@@ -104,31 +97,57 @@ export type BufferControlsCategoryLabels = {
     color: string;
 };
 
+export interface BufferControlsStorageConfig {
+    /** Save the record to local storage on `store:save`. */
+    persist: boolean;
+    /** Restore the saved record during construction. */
+    load: boolean;
+}
+
+export interface BufferControlsPickerConfig {
+    /** Overlay registration id. */
+    id: string;
+    /** Overlay slot supplied by the host. */
+    slot: string;
+    /** Picker header title. */
+    title: string;
+    /** Persist selection/filter state in host storage. */
+    persistSelection: boolean;
+}
+
 export interface BufferControlsConfig<T extends object = Record<string, unknown>> {
     modId: string;
     /** jsonBuffer storage id (e.g. `<modId>:gameConfig`). */
     bufferId: string;
     /** Initial record written to the buffer. */
     defaultRecord: T;
-    /**
-     * Persist the record to `sandkit.api.storage.local` on `store:save` and
-     * restore it when the game reloads. Default `true`.
-     */
-    persist?: boolean;
-    persistLoad?: boolean;
+    /** Optional validation guard passed to the underlying JsonBuffer. */
+    assertShape?: (value: T) => void;
+    /** Maximum JSON payload size in bytes. */
+    maxBytes: number;
+    /** Explicit storage policy. */
+    storage: BufferControlsStorageConfig;
+    /** Explicit field-discovery policy. */
+    pathScan: ListPathsOptions;
     /** Menu-entry settings. */
     menu: BufferControlsMenu;
-    /** Id of the menu entry structure. Defaults to `modId`. */
-    menuItemId?: string;
+    /** Id of the menu entry structure. */
+    menuItemId: string;
+    /** Catalogue item selected when the picker opens; must exist in the generated list. */
+    initialItemId: string;
     /** Category labels. */
     categories: BufferControlsCategoryLabels[];
+    /** Derive the picker category for a buffer path; the caller owns this mapping. */
+    categoryForPath: (path: string) => string;
     /**
      * Kind icons + action buttons. Each entry carries its own `filePath`, so
      * the sprite list is the single source of truth (no separate file table).
      */
     sprites: BufferControlsSprites;
-    /** Picker header title. */
-    pickerTitle?: string;
+    /** Colour used when a generated item has no category entry. */
+    unmappedCategoryColor: string;
+    /** Picker layout and persistence policy. */
+    picker: BufferControlsPickerConfig;
 }
 
 export interface BufferControlsHandles<T extends object = Record<string, unknown>> {

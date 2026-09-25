@@ -12,6 +12,8 @@ export type {
     BufferControlsConfig,
     BufferControlsHandles,
     BufferControlsMenu,
+    BufferControlsPickerConfig,
     BufferControlsSprite,
     BufferControlsSprites,
+    BufferControlsStorageConfig,
 } from "./src/types.ts";

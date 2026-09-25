@@ -3,17 +3,17 @@ import "@sandmd/sandkit";
 import { buildSectionData, buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import { ActionRegisterResult } from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
-import { drawBorder, drawIconAndReadout, readoutTileWidth, VAR_READOUT_CELLS } from "../render.ts";
+import { drawBorder, drawIconAndReadout, readoutTileWidth } from "../render.ts";
 
 export function registerPathStructures(ops: registerStructureOps): ActionRegisterResult | void {
     // Real bound paths are tagged "variables"; the picker menu also carries that
     // tag, so skip it here (the menu module owns category "menu").
-    if (!ops.item.tags?.includes("variables") || ops.item.category === "menu") return;
+    if (!ops.item.tags.includes("variables") || ops.item.category === "menu") return;
 
     // Path readouts stay wide (paths are long) — overridable via `readoutCells`
     // on the catalogue item; `showIcon` toggles the kind icon.
-    const readoutCells = ops.item.readoutCells ?? VAR_READOUT_CELLS;
-    const showIcon = ops.item.showIcon ?? true;
+    const readoutCells = ops.item.readoutCells;
+    const showIcon = ops.item.showIcon;
     const tileWidth = readoutTileWidth({ readoutCells, showIcon });
 
     const draw = (
@@ -24,7 +24,7 @@ export function registerPathStructures(ops: registerStructureOps): ActionRegiste
         drawIconAndReadout(structure, render, {
             spriteId: ops.item.spriteId,
             // Path structure: the readout shows the bound jsonBuffer path.
-            text: String(structure.data?.path ?? ops.item.label ?? ops.item.id),
+            text: ops.item.path,
             readoutCells,
             showIcon,
         });
@@ -36,14 +36,12 @@ export function registerPathStructures(ops: registerStructureOps): ActionRegiste
         id: ops.typeId,
         categoryKey: "blocks",
         name: ops.item.label,
-        description: `${ops.item.kind ?? "string"} — linked to jsonBuffer path "${
-            ops.item.path ?? ops.item.id
-        }".`,
+        description: `${ops.item.kind} — linked to jsonBuffer path "${ops.item.path}".`,
         hideFromBuildMenu: true,
         shape: makeShape(1, 1),
         ...sectionBuild.single(ops.typeId),
         ...buildSectionTooltips(),
-        ...buildSectionData(ops.item, ops.item.spriteId),
+        ...buildSectionData(ops.item, ops.item.spriteId, {}),
         draw,
     });
     // Unlock the buildings

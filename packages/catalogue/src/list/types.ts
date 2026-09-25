@@ -3,7 +3,7 @@
  * state; a React overlay or sandkit overlay just renders it.
  */
 
-import type { CatalogueItem } from "../strucutre/types.ts";
+import type { CatalogueItem, ResolvedCatalogueItem } from "../strucutre/types.ts";
 
 export type BuildEventName = "select" | "place" | "remove" | "category" | "path" | "mirror" | "tag";
 
@@ -18,14 +18,13 @@ export interface BuildListOptions {
     menuId: string;
     menuLabel: string;
     // categories: CatalogueCategory[];
-    catalogueItems: CatalogueItem[];
-    /** Default selected item id. */
-    selectedId?: string;
-    alwaysUnlocked?: boolean;
+    catalogueItems: readonly CatalogueItem[];
+    /** Required initial selection; it must exist in catalogueItems. */
+    selectedId: string;
 }
 
 export interface PlacedPayload {
-    item: CatalogueItem;
+    item: ResolvedCatalogueItem;
     type: string;
     x: number;
     y: number;
@@ -33,7 +32,7 @@ export interface PlacedPayload {
 }
 
 export interface BuildEventMap {
-    select: { item: CatalogueItem; mirrored: boolean };
+    select: { item: ResolvedCatalogueItem; mirrored: boolean };
     place: PlacedPayload;
     remove: PlacedPayload;
     category: { categoryId: string };

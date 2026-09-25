@@ -22,17 +22,25 @@ interface GameConfig {
 
 function main() {
     // First instance seeds the buffer with the default record on first commit.
-    const buffer = new JsonBuffer<GameConfig>(
-        MOD_ID,
-        BUFFER_ID,
-        { volume: 1, muted: false, players: [{ name: "Bob", score: 0 }] } as GameConfig,
-    );
+    const buffer = new JsonBuffer<GameConfig>({
+        modId: MOD_ID,
+        key: BUFFER_ID,
+        defaultRecord: { volume: 1, muted: false, players: [{ name: "Bob", score: 0 }] },
+        maxBytes: 64 * 1024,
+        persist: false,
+        loadFromStorage: false,
+        observe: false,
+    });
     // Second instance, same key: another view over the same shared memory.
-    const buffer2 = new JsonBuffer<GameConfig>(
-        MOD_ID,
-        BUFFER_ID,
-        { volume: 1, muted: false, players: [{ name: "Bob", score: 0 }] } as GameConfig,
-    );
+    const buffer2 = new JsonBuffer<GameConfig>({
+        modId: MOD_ID,
+        key: BUFFER_ID,
+        defaultRecord: { volume: 1, muted: false, players: [{ name: "Bob", score: 0 }] },
+        maxBytes: 64 * 1024,
+        persist: false,
+        loadFromStorage: false,
+        observe: false,
+    });
 
     buffer.subscribe((s: GameConfig) => console.log("RECORD EVENT", s));
     buffer2.subscribe((s: GameConfig) => console.log("RECORD EVENT 2 : ", s));

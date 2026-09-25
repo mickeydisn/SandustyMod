@@ -7,7 +7,7 @@
  * that lives in overlay.ts (the controller). The view reports user intent
  * through the {@link PickerContentApi} it is given.
  */
-import { CatalogueItem } from "../strucutre/types.ts";
+import { CatalogueItem, ResolvedCatalogueItem } from "../strucutre/types.ts";
 import { compareSizes } from "../list/createBuildList.ts";
 import { h, HTMLElement } from "./react.ts";
 import type { PickerContentApi } from "./types.ts";
@@ -19,7 +19,7 @@ const MAX_SWATCH_ZOOM = 4;
 /** Presentational options the view needs beyond the controller contract. */
 export interface PickerViewOptions {
     api: PickerContentApi;
-    spriteIdFor?: (item: CatalogueItem) => string | undefined;
+    spriteIdFor: (item: CatalogueItem) => string;
     itemFilter?: (item: CatalogueItem) => boolean;
     // renderItemBadge?: (item: CatalogueItem) => unknown;
     // renderHeaderExtra?: (ctx: PickerContext) => unknown;
@@ -114,9 +114,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
     };
 
     const spriteSrc = (item: CatalogueItem): string | unknown => {
-        const id = options.spriteIdFor?.(item) ??
-            item.spriteId ??
-            list.structureType(item.id, false);
+        const id = options.spriteIdFor(item);
         const r = sandkit.api.sprites.getById(id)?.imageAsset?.image?.src;
         return typeof r == "string" ? r as string : r;
     };
@@ -136,7 +134,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             onActivate: props.onActivate,
             scrollIntoView: true,
         });
-        const focusClass = navigation?.controllerFocusClass?.(!!focusable?.focused) ?? "";
+        const focusClass = navigation?.controllerFocusClass?.(!!focusable?.focused) || "";
         return h(
             "button",
             {
@@ -150,7 +148,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                     }
                     : undefined,
                 onMouseLeave: props.onHoverEnd,
-                className: `${props.className ?? ""} ${focusClass}`.trim(),
+                className: `${props.className || ""} ${focusClass}`.trim(),
             },
             props.children,
         );
@@ -236,9 +234,10 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         // minimized. Runs after every render (no deps) so the DOM has committed
         // before we assign `scrollTop`.
         // @ts-ignore React Type
-        const useLayoutEffect = sandkit.react.useLayoutEffect ?? sandkit.react.useEffect;
+        const useLayoutEffect = sandkit.react.useLayoutEffect || sandkit.react.useEffect;
         useLayoutEffect(() => {
-            const minimized = api.getState()?.minimized ?? true;
+            const state = api.getState();
+            const minimized = state === null ? true : state.minimized;
             if (!minimized && wasMinimizedRef.current && scrollRef.current) {
                 scrollRef.current.scrollTop = savedScrollRef.current;
             }
@@ -259,7 +258,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         const selectedPath = list.getPath() || "";
 
         function filterItems(
-            items: CatalogueItem[],
+            items: ResolvedCatalogueItem[],
             options: {
                 query: string;
                 path: string;
@@ -268,7 +267,7 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 sizes: string[];
                 itemFilter?: (item: CatalogueItem) => boolean;
             },
-        ): CatalogueItem[] {
+        ): ResolvedCatalogueItem[] {
             const q = options.query.trim().toLowerCase();
             return items.filter((item) => {
                 if (options.categoryId && item.category !== options.categoryId) return false;
@@ -276,18 +275,18 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                 if (options.itemFilter && !options.itemFilter(item)) return false;
                 // AND across groups: tags group and sizes group are combined
                 // with AND; within a group selected entries are OR.
-                const itemTags = item.tags ?? [];
+                const itemTags = item.tags;
                 if (options.tags.length > 0 && !options.tags.some((t) => itemTags.includes(t))) {
                     return false;
                 }
-                const itemSizes = item.sizes ?? [];
+                const itemSizes = item.sizes;
                 if (options.sizes.length > 0 && !options.sizes.some((s) => itemSizes.includes(s))) {
                     return false;
                 }
                 if (!q) return true;
-                const hay = `${item.label} ${item.id} ${item.description ?? ""} ${
-                    itemTags.join(" ")
-                } ${itemSizes.join(" ")}`.toLowerCase();
+                const hay = `${item.label} ${item.id} ${item.description} ${itemTags.join(" ")} ${
+                    itemSizes.join(" ")
+                }`.toLowerCase();
                 return hay.includes(q);
             });
         }
@@ -295,9 +294,9 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
         // Sizes offered are constrained by the tags already selected: only the
         // sizes of items matching the active tags (and the mod's item filter)
         // are listed. OR within the tags group, AND between the groups.
-        const matchesTagGroup = (item: CatalogueItem): boolean => {
+        const matchesTagGroup = (item: ResolvedCatalogueItem): boolean => {
             if (options.itemFilter && !options.itemFilter(item)) return false;
-            const itemTags = item.tags ?? [];
+            const itemTags = item.tags;
             if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
                 return false;
             }
@@ -307,26 +306,26 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
             const set = new Set<string>();
             for (const it of list.catalogueItems) {
                 if (!matchesTagGroup(it)) continue;
-                for (const s of it.sizes ?? []) set.add(s);
+                for (const s of it.sizes) set.add(s);
             }
             return [...set].sort(compareSizes);
         })();
 
         // An item is kept when it passes the optional mod filter and matches
         // both filter groups: OR within each group, AND between the groups.
-        const matchesFilters = (item: CatalogueItem): boolean => {
+        const matchesFilters = (item: ResolvedCatalogueItem): boolean => {
             if (options.itemFilter && !options.itemFilter(item)) return false;
-            const itemTags = item.tags ?? [];
+            const itemTags = item.tags;
             if (selectedTags.length > 0 && !selectedTags.some((t) => itemTags.includes(t))) {
                 return false;
             }
-            const itemSizes = item.sizes ?? [];
+            const itemSizes = item.sizes;
             if (selectedSizes.length > 0 && !selectedSizes.some((s) => itemSizes.includes(s))) {
                 return false;
             }
             return true;
         };
-        const categoryFilters = (item: CatalogueItem): boolean => {
+        const categoryFilters = (item: ResolvedCatalogueItem): boolean => {
             if (!selectedCategory) return true;
             return item.category == selectedCategory;
         };
@@ -402,7 +401,11 @@ export function createPickerView(options: PickerViewOptions): () => unknown {
                                     })
                                     : null,
                             ),
-                            h("span", { key: "label" }, selected?.label ?? "—"),
+                            h(
+                                "span",
+                                { key: "label" },
+                                selected === undefined ? "—" : selected.label,
+                            ),
                         ],
                     },
                 ),

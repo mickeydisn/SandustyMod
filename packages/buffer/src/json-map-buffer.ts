@@ -1,25 +1,25 @@
 import "@sandmd/sandkit";
 import { decodeJson, encodeJsonInBuffer } from "./utils/codec.ts";
-import { listPaths } from "./utils/introspect.ts";
+import { listPaths, type ListPathsOptions } from "./utils/introspect.ts";
 import { addToPath, deepClone, getPath, setPath } from "./utils/paths.ts";
 import { ensureBuffer } from "./sand.ts";
 
-const DEFAULT_MAX_BYTES = 64 * 1024;
-const i32 = { min: -2147483648, max: 2147483647 };
-
-/** Per-counter tuning for a mapped numeric leaf. */
 export interface JsonMapCounterOptions {
-    initial?: number;
-    min?: number;
-    max?: number;
-    step?: number;
+    min: number;
+    max: number;
 }
 
-/** Shape passed to the JsonMapBuffer constructor. */
+/** Complete configuration passed to JsonMapBuffer. */
 export interface JsonMapBufferConfig<T extends object = Record<string, unknown>> {
-    /** Extra/override numeric counters (incl. specific array elements). */
-    counters?: Record<string, JsonMapCounterOptions>;
-    /** Optional validation guard, run on the materialized record on commit(). */
+    modId: string;
+    key: string;
+    defaultRecord: T;
+    maxBytes: number;
+    /** Every mapped path and its explicit bounds. */
+    counters: Record<string, JsonMapCounterOptions>;
+    /** Save the record to local storage on `store:save`. */
+    persist: boolean;
+    loadFromStorage: boolean;
     assertShape?: (value: T) => void;
 }
 
@@ -32,19 +32,21 @@ export interface JsonMapBufferConfig<T extends object = Record<string, unknown>>
  *   [0] = per-path LOG (monotonic, bumped each time that counter changes)
  *   [1] = the VALUE    (atomically read/written / CAS-incremented)
  *
- * Auto-discovered numeric leaves come from `defaultRecord` (via `listPaths`).
- * Array templates (paths containing `[]`) stay in the JSON payload; map a
- * specific element explicitly (e.g. `{ "scores[0]": {} }`) for counters in an
- * array. Non-counter leaves behave exactly like `JsonBuffer`. Counter reads
- * always come from the atomic buffer, never the JSON, and get()/commit()/save()
- * merge the live counter values back into the record.
+ * Every mapped path is declared in `config.counters` with explicit bounds; there is no implicit
+ * numeric-path discovery. Array templates (paths containing `[]`) stay in the JSON payload; map a
+ * specific element explicitly (e.g. `{ "scores[0]": { min: 0, max: 10 } }`). Non-counter leaves
+ * behave like `JsonBuffer`. Counter reads always come from the atomic buffer, never the JSON, and
+ * get()/commit()/save() merge the live counter values back into the record.
  */
+const INT32_MIN = -2147483648;
+const INT32_MAX = 2147483647;
+
 export class JsonMapBuffer<T extends object> {
     private versionView!: Int32Array;
     private dataView!: Uint8Array;
     public modId!: string;
     public key!: string;
-    private defaultRecord?: T;
+    private defaultRecord: T;
     private assertShape?: (value: T) => void;
 
     private cache: T;
@@ -53,8 +55,7 @@ export class JsonMapBuffer<T extends object> {
 
     /** path -> (shared Int32Array of length 2: [log, value]). */
     private map = new Map<string, Int32Array>();
-    /** path -> tuning. `initial` stays undefined unless the caller set it. */
-    private meta = new Map<string, { initial?: number; min: number; max: number; step: number }>();
+    private meta = new Map<string, { min: number; max: number }>();
     private order: string[] = [];
 
     private listeners = new Set<(state: T) => void>();
@@ -68,19 +69,19 @@ export class JsonMapBuffer<T extends object> {
         };
     }
 
-    constructor(
-        modId: string,
-        key: string,
-        defaultRecord?: T,
-        config?: JsonMapBufferConfig<T>,
-        loadFromStorage: boolean = false,
-    ) {
-        this.modId = modId;
-        this.key = key;
-        this.defaultRecord = defaultRecord;
-        this.assertShape = config?.assertShape;
+    constructor(config: JsonMapBufferConfig<T>) {
+        this.modId = config.modId;
+        this.key = config.key;
+        this.defaultRecord = deepClone(config.defaultRecord);
+        this.assertShape = config.assertShape;
+        this.assertShape?.(this.defaultRecord);
+        if (!Number.isInteger(config.maxBytes) || config.maxBytes <= 0) {
+            throw new Error(
+                `JsonMapBuffer: maxBytes must be a positive integer (${config.maxBytes}).`,
+            );
+        }
 
-        this.versionView = ensureBuffer(`${key}:ver`, {
+        this.versionView = ensureBuffer(`${config.key}:ver`, {
             type: "int32",
             length: 1,
         }) as Int32Array;
@@ -89,60 +90,64 @@ export class JsonMapBuffer<T extends object> {
         } catch {
             this.useAtomics = false;
         }
-        this.dataView = ensureBuffer(`${key}:json`, {
+        this.dataView = ensureBuffer(`${config.key}:json`, {
             type: "uint8",
-            length: DEFAULT_MAX_BYTES,
+            length: config.maxBytes,
         }) as Uint8Array;
 
-        this.resolveCounters(defaultRecord, config);
+        this.resolveCounters(config);
         this.attachMapBuffers();
 
         if (this.remoteVersion() > 0) {
             this.cache = this.readFromBuffer();
             this.localVersion = this.remoteVersion();
         } else {
-            const storedRecord = !loadFromStorage ? false : sandkit.api.storage.local.get(this.key);
-            sandkit.api.events.on("store:save", (_payload: unknown) => {
-                this.commit();
-                this.save();
-            });
-            this.cache = storedRecord
-                ? storedRecord as T
-                : this.defaultRecord
-                ? deepClone(this.defaultRecord)
-                : ({} as T);
+            const storedRecord = config.loadFromStorage
+                ? sandkit.api.storage.local.get(config.key)
+                : undefined;
+            if (config.persist) {
+                sandkit.api.events.on("store:save", (_payload: unknown) => {
+                    this.commit();
+                    this.save();
+                });
+            }
+            this.cache = storedRecord !== null && storedRecord !== undefined
+                ? deepClone(storedRecord as T)
+                : deepClone(this.defaultRecord);
             // First creator: seed every shared counter from its current value.
             this.seedCounters();
             this.localVersion = -1;
             this.commit();
         }
+        this.assertShape?.(this.cache);
     }
 
     // -- counter registry ---------------------------------------------------
 
-    private resolveCounters(defaultRecord: T | undefined, config?: JsonMapBufferConfig<T>) {
-        const explicit = config?.counters ?? {};
-        const known = new Map<string, JsonMapCounterOptions>();
-        for (const p of Object.keys(explicit)) known.set(p, explicit[p]);
-
-        // Auto-discover numeric leaves (drop array templates, which stay in JSON).
-        if (defaultRecord) {
-            for (const field of listPaths(defaultRecord)) {
-                if (field.kind !== "number") continue;
-                if (field.path.includes("[]")) continue;
-                if (!known.has(field.path)) known.set(field.path, {});
-            }
-        }
-
+    private resolveCounters(config: JsonMapBufferConfig<T>) {
+        const known = new Map<string, JsonMapCounterOptions>(Object.entries(config.counters));
         this.order = [...known.keys()];
-        for (const p of this.order) {
-            const o = known.get(p) ?? {};
-            this.meta.set(p, {
-                initial: o.initial, // undefined unless the caller set it
-                min: o.min ?? i32.min,
-                max: o.max ?? i32.max,
-                step: o.step ?? 1,
-            });
+        for (const path of this.order) {
+            const options = known.get(path);
+            if (!options) {
+                throw new Error(`JsonMapBuffer: counter "${path}" has no configuration.`);
+            }
+            if (
+                !Number.isInteger(options.min) ||
+                !Number.isInteger(options.max) ||
+                options.min < INT32_MIN ||
+                options.max > INT32_MAX ||
+                options.min > options.max
+            ) {
+                throw new Error(`JsonMapBuffer: counter "${path}" has invalid int32 bounds.`);
+            }
+            const initial = getPath<number>(config.defaultRecord, path);
+            if (typeof initial !== "number" || !Number.isInteger(initial)) {
+                throw new Error(
+                    `JsonMapBuffer: counter path "${path}" must be an integer in defaultRecord.`,
+                );
+            }
+            this.meta.set(path, { min: options.min, max: options.max });
         }
     }
 
@@ -158,16 +163,21 @@ export class JsonMapBuffer<T extends object> {
 
     /** Only seeds when we are the first creator (fresh / untouched buffer). */
     private seedCounters() {
-        for (const p of this.order) {
-            const buf = this.map.get(p)!;
-            const meta = this.meta.get(p)!;
-            const current = getPath<number>(this.cache, p);
-            const value = meta.initial !== undefined
-                ? meta.initial
-                : typeof current === "number"
-                ? current
-                : 0;
-            this.writeValue(buf, value);
+        for (const path of this.order) {
+            const buf = this.map.get(path)!;
+            const meta = this.meta.get(path)!;
+            const current = getPath<number>(this.cache, path);
+            if (typeof current !== "number" || !Number.isInteger(current)) {
+                throw new Error(
+                    `JsonMapBuffer: counter path "${path}" is not an integer in the seed record.`,
+                );
+            }
+            if (current < meta.min || current > meta.max) {
+                throw new Error(
+                    `JsonMapBuffer: counter path "${path}" starts outside its configured bounds.`,
+                );
+            }
+            this.writeValue(buf, current);
             this.writeLog(buf, 0);
         }
     }
@@ -210,7 +220,8 @@ export class JsonMapBuffer<T extends object> {
     /** Read the per-path change log for a mapped counter (0 if never bumped). */
     public log = (path: string): number => {
         const buf = this.map.get(path);
-        return buf ? this.readLog(buf) : 0;
+        if (!buf) throw new Error(`JsonMapBuffer: "${path}" is not a mapped counter.`);
+        return this.readLog(buf);
     };
     public logs = (): Record<string, number> => {
         const out: Record<string, number> = {};
@@ -218,7 +229,13 @@ export class JsonMapBuffer<T extends object> {
         return out;
     };
 
-    private readFromBuffer = (): T => decodeJson<T>(this.dataView) ?? ({} as T);
+    private readFromBuffer = (): T => {
+        const record = decodeJson<T>(this.dataView);
+        if (record === null) {
+            throw new Error(`JsonMapBuffer: shared payload for "${this.key}" is empty or corrupt.`);
+        }
+        return record;
+    };
 
     /** Copy every live counter value back into `cache` (source of truth). */
     private materialize(): T {
@@ -250,9 +267,9 @@ export class JsonMapBuffer<T extends object> {
         return getPath(this.cache, path);
     }
 
-    public listPaths(maxDepth = 8, includeContainers = true) {
+    public listPaths(options: ListPathsOptions) {
         this.pull();
-        return listPaths(this.materialize(), maxDepth, includeContainers);
+        return listPaths(this.materialize(), options);
     }
 
     /** Set a value. For a mapped counter this writes the atomic buffer + bumps
@@ -260,8 +277,12 @@ export class JsonMapBuffer<T extends object> {
     public setPath(path: string, value: unknown): void {
         const buf = this.map.get(path);
         if (buf) {
+            const numeric = Number(value);
+            if (!Number.isInteger(numeric)) {
+                throw new Error(`JsonMapBuffer: value for "${path}" must be an integer.`);
+            }
             const meta = this.meta.get(path)!;
-            const clamped = clamp(Number(value), meta.min, meta.max);
+            const clamped = clamp(numeric, meta.min, meta.max);
             this.writeValue(buf, clamped);
             this.bumpLog(buf);
             this.changed();
@@ -276,7 +297,7 @@ export class JsonMapBuffer<T extends object> {
      * Falls back to a plain bump when Atomics is unavailable.
      * @returns the new value (post-clamp).
      */
-    public increment(path: string, delta?: number): number {
+    public increment(path: string, delta: number): number {
         const buf = this.map.get(path);
         if (!buf) {
             throw new Error(
@@ -285,7 +306,10 @@ export class JsonMapBuffer<T extends object> {
             );
         }
         const meta = this.meta.get(path)!;
-        const dn = Number(delta ?? meta.step);
+        if (!Number.isInteger(delta)) {
+            throw new Error(`JsonMapBuffer: increment delta for "${path}" must be an integer.`);
+        }
+        const dn = delta;
 
         if (!this.useAtomics) {
             const next = clamp(buf[1] + dn, meta.min, meta.max);
@@ -308,10 +332,9 @@ export class JsonMapBuffer<T extends object> {
             expected = Atomics.load(buf, 1); // someone else won; retry
         }
     }
-    public decrement = (path: string, delta?: number): number =>
-        this.increment(path, -(Number(delta ?? this.meta.get(path)?.step ?? 1)));
+    public decrement = (path: string, delta: number): number => this.increment(path, -delta);
 
-    public addToPath(path: string, value?: unknown): number {
+    public addToPath(path: string, value: unknown): number {
         return addToPath(this.cache, path, value);
     }
 

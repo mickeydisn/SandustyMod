@@ -2,6 +2,13 @@ import { formatPath, type PathSegment } from "./paths.ts";
 
 export type FieldKind = "bool" | "number" | "string" | "array" | "object";
 
+export interface ListPathsOptions {
+    /** How deep to recurse into nested objects/arrays. */
+    maxDepth: number;
+    /** Also list object/array container paths themselves. */
+    includeContainers: boolean;
+}
+
 export interface FieldInfo {
     /** Full dot/bracket path, directly usable with getPath/setPath, e.g. "players[0].score" or "players[].name". */
     path: string;
@@ -33,12 +40,10 @@ export interface FieldInfo {
  */
 export function listPaths(
     root: unknown,
-    /** How deep to recurse into nested objects/arrays. Default 8. */
-    maxDepth: number = 8,
-    /** Also list object/array container paths themselves (e.g. "players" as kind "array"), not just their leaves/templates. Default false. */
-    includeContainers: boolean = true,
+    options: ListPathsOptions,
 ): FieldInfo[] {
     const out: FieldInfo[] = [];
+    const { maxDepth, includeContainers } = options;
 
     const labelFor = (parts: PathSegment[], path: string): string => {
         const last = parts[parts.length - 1];

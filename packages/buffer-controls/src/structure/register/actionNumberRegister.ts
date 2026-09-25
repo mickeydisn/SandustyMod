@@ -20,7 +20,8 @@ export function registerActionNumberStructures(
     ops: registerStructureOps,
 ): ActionRegisterResult | void {
     // Only number-paths carry +1 / -1 actions.
-    if (!ops.item.tags?.includes("action") || ops.item.kind !== "number") return;
+    if (!ops.item.tags.includes("action") || ops.item.kind !== "number") return;
+    if (ops.item.action === undefined) return;
     // The toggle ops are a separate structure (actionToggleNumberRegister.ts).
     if (ops.item.action === "toggleNum" || ops.item.action === "toggleRate") return;
 
@@ -37,7 +38,7 @@ export function registerActionNumberStructures(
         sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
     };
 
-    const act = (structure: StructureLike, op: ActionOp): void => {
+    const act = (structure: StructureLike, op: Exclude<ActionOp, "toggleRate">): void => {
         const p = structure.data?.path;
         if (typeof p !== "string" || p.length === 0) return;
         ops.write(p, applyAction(op, ops.read(p)));
@@ -62,8 +63,8 @@ export function registerActionNumberStructures(
 
     const actionItems: { typeId: string; path: string }[] = [];
 
-    const op = ops.item.action ?? "inc";
-    const path = ops.item.path ?? ops.item.id;
+    const op = ops.item.action;
+    const path = ops.item.path;
 
     actionItems.push({ typeId: ops.typeId, path });
 
@@ -81,7 +82,7 @@ export function registerActionNumberStructures(
             size: { width: 16, height: 16 },
         },
         copyData: true,
-        defaultData: { path, kind: ops.item.kind ?? "string", op },
+        defaultData: { path, kind: ops.item.kind, op },
         draw,
     });
     // Unlock the buildings

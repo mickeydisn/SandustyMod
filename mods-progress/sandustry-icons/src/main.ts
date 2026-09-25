@@ -21,12 +21,16 @@ async function main() {
         MOD_ID,
         ICON_FILES,
     );
+    const initialIcon = ICON_ITEMS.find((item) => item.id !== MENU_ID);
+    if (!initialIcon) {
+        throw new Error("Sandustry Icons: no selectable icon was generated.");
+    }
     const buildList = createBuildList({
         modId: MOD_ID,
         menuId: MENU_ID,
         menuLabel: "Icons",
         catalogueItems: ICON_ITEMS,
-        selectedId: ICON_ITEMS.find((i) => i.id !== MENU_ID)?.id,
+        selectedId: initialIcon.id,
     });
 
     registerIconStructures(buildList, spriteIds);
@@ -39,10 +43,21 @@ async function main() {
         list: buildList,
         title: "Pick icon",
         pickerId: `${MOD_ID}/picker`,
+        slot: "hotbar",
+        persistSelection: true,
+        unlockTypes: (types) => {
+            for (const type of types) api.player.buildings.unlockByType(type);
+        },
         // Sprites are loaded under `sandustry.icons:<id>` (see loadSpriteMap), not
         // the structure-type id `sandustry.icons:item/<id>`. Resolve them here so
         // the picker swatches show the correct art.
-        spriteIdFor: (item: CatalogueItem) => spriteIds[item.id],
+        spriteIdFor: (item: CatalogueItem): string => {
+            const spriteId = spriteIds[item.id];
+            if (typeof spriteId !== "string") {
+                throw new Error(`Icon sprite "${item.id}" was not loaded.`);
+            }
+            return spriteId;
+        },
     });
     api.ui?.toast?.(`Sandustry Icons — ${ICON_ITEMS.length} objects loaded`, {});
     console.log(`[${MOD_ID}] loaded ${ICON_ITEMS.length} catalogue entries`);

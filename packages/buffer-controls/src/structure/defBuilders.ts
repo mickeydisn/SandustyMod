@@ -38,14 +38,14 @@ export const makeShape = (x: number, y: number): number[][] =>
  */
 export function buildSectionData(
     item: PathCatalogueItem,
-    spriteId?: string,
-    extra: Record<string, unknown> = {},
+    spriteId: string,
+    extra: Record<string, unknown>,
 ) {
     return {
         copyData: true,
         defaultData: {
-            path: item.path ?? item.id,
-            kind: item.kind ?? "string",
+            path: item.path,
+            kind: item.kind,
             spriteId,
             ...extra,
         },
@@ -62,7 +62,7 @@ export function buildSectionTooltips(): Record<string, unknown> {
                 // jsonBuffer path and its kind while hovering the structure.
                 messageKey: "{path}",
                 fields: [
-                    { param: "path", field: "path", fallback: "Unbound" },
+                    { param: "path", field: "path" },
                 ],
             },
         },
@@ -72,7 +72,7 @@ export function buildSectionTooltips(): Record<string, unknown> {
 /** Menu entry render block (only applied to the unlocked menu structure). */
 export function buildMenuRender(
     item: PathCatalogueItem,
-    spriteId?: string,
+    spriteId: string,
 ): Record<string, unknown> {
     return {
         render: {

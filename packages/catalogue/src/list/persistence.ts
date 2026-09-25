@@ -32,7 +32,12 @@ export function restorePickerState(list: BuildList) {
 export function persistSelection(list: BuildList) {
     if (!sandkit.api.storage) return;
     try {
-        sandkit.api.storage.set(list.modId, KEY_SELECTED, list.getSelected()?.id ?? "");
+        const selected = list.getSelected();
+        sandkit.api.storage.set(
+            list.modId,
+            KEY_SELECTED,
+            selected === undefined ? "" : selected.id,
+        );
         sandkit.api.storage.set(list.modId, KEY_MIRROR, list.isMirrored());
         sandkit.api.storage.set(list.modId, KEY_CATEGORY, list.getCategory());
         sandkit.api.storage.set(list.modId, KEY_TAGS, list.getSelectedTags());

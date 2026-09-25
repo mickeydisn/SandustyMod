@@ -18,6 +18,8 @@ import type { BufferControlsCategoryLabels, BufferControlsSprite } from "@sandmd
 
 /** Shared jsonBuffer id (main writes, worker observes). */
 export const PROFILE_BUFFER_ID = "astro-seeds:profileConfig";
+/** Shared JSON capacity for the profile record. */
+export const PROFILE_BUFFER_MAX_BYTES = 64 * 1024;
 
 /** Runtime knobs exposed in the buffer for one profile. */
 export interface ProfileRuntimeConfig {
@@ -51,31 +53,75 @@ export type ProfileRuntimeKey = keyof ProfileRuntimeConfig;
 
 /** Shape of the jsonBuffer record. */
 export interface ProfileConfigRecord {
-    P: Record<string, ProfileRuntimeConfig>;
+    P: Record<ProfileId, ProfileRuntimeConfig>;
 }
 
-/** The five profiles registered in `config/elementWorker/catalogue.ts`. */
+/** Every profile registered in `config/elementWorker/catalogue.ts`. */
 export const PROFILE_IDS = [
     "InWater-ASeed",
     "InWater-AGold",
     "InWater-ACopper",
-    // "InGold-ASeed",
-    // "InGold-AGold",
-    // "InGold-ACopper",
-    // "InCopper-ASeed",
+    "InGold-ASeed",
+    "InGold-AGold",
+    "InGold-ACopper",
+    "InCopper-ASeed",
 ] as const;
 
 export type ProfileId = (typeof PROFILE_IDS)[number];
 
-export const PROFILES_CONFIG: BufferControlsCategoryLabels[] = [
-    { id: "InWater-ASeed", color: "#0000FF" },
-    { id: "InWater-AGold", color: "#22DD00" },
-    { id: "InWater-ACopper", color: "#DD22FF" },
-    { id: "InGold-ASeed", color: "#AA2299" },
-    { id: "InGold-AGold", color: "#FFFF00" },
-    { id: "InGold-ACopper", color: "#FF9900" },
-    { id: "InCopper-ASeed", color: "#FF0055" },
-] as const;
+/** Initial picker item: the first profile's enabled switch. */
+export const PROFILE_INITIAL_ITEM_ID = `P.${PROFILE_IDS[0]}.enabled`;
+
+/**
+ * The values used to create a new profile record and to repair an older
+ * persisted record that does not contain a newly-added field.
+ *
+ * This is the only source of runtime defaults. Profile literals read these
+ * values through `live()`; they must not carry their own fallback numbers.
+ */
+const COMMON_PROFILE_DEFAULTS: ProfileRuntimeConfig = {
+    enabled: true,
+    tickSpeed: 50,
+    growEnabled: false,
+    crystalEnabled: false,
+    random_Rate: 20,
+    random_Weight: 10,
+    gravity_Rate: 20,
+    gravity_Weight: 10,
+    aSeed_Rate: 20,
+    aSeed_Weight: 0,
+    aGold_Rate: 20,
+    aGold_Weight: 20,
+    aCopper_Rate: 20,
+    aCopper_Weight: 0,
+    aInertia_Rate: 100,
+    aInertia_Weight: 0,
+};
+
+export const PROFILE_DEFAULTS: Readonly<Record<ProfileId, ProfileRuntimeConfig>> = {
+    "InWater-ASeed": { ...COMMON_PROFILE_DEFAULTS },
+    "InWater-AGold": { ...COMMON_PROFILE_DEFAULTS },
+    "InWater-ACopper": { ...COMMON_PROFILE_DEFAULTS },
+    "InGold-ASeed": { ...COMMON_PROFILE_DEFAULTS, growEnabled: true, crystalEnabled: true },
+    "InGold-AGold": { ...COMMON_PROFILE_DEFAULTS },
+    "InGold-ACopper": { ...COMMON_PROFILE_DEFAULTS },
+    "InCopper-ASeed": { ...COMMON_PROFILE_DEFAULTS, growEnabled: true, crystalEnabled: true },
+};
+
+const PROFILE_CATEGORY_COLORS: Readonly<Record<ProfileId, string>> = {
+    "InWater-ASeed": "#0000FF",
+    "InWater-AGold": "#22DD00",
+    "InWater-ACopper": "#DD22FF",
+    "InGold-ASeed": "#AA2299",
+    "InGold-AGold": "#FFFF00",
+    "InGold-ACopper": "#FF9900",
+    "InCopper-ASeed": "#FF0055",
+};
+
+export const PROFILES_CONFIG: BufferControlsCategoryLabels[] = PROFILE_IDS.map((id) => ({
+    id,
+    color: PROFILE_CATEGORY_COLORS[id],
+}));
 
 /**
  * Custom buffer-controls art for the runtime keys — one entry per knob that
@@ -88,7 +134,7 @@ export const PROFILES_CONFIG: BufferControlsCategoryLabels[] = [
  *     `tognum-*-rate.png` (frame 0 is `<= 0`, the last frame is `>= 100`,
  *     the `N - 2` middle frames split `(0, 100)` evenly — 6 frames means
  *     steps of 25, 7 frames steps of 20 — click cycles the stops and wraps
- *     to 0). The sheet's frame count goes in `frames` (defaults to 6).
+ *     to 0). The sheet's frame count is declared explicitly in `frames`.
  *
  * Declaring the toggle in the sprite config is what creates the toggle
  * action at all — a number has no `toggleNum` / `toggleRate` button unless
@@ -236,28 +282,11 @@ export const PROFILE_SPRITES: readonly ProfileSprite[] = [
     },
 ];
 
-/** Buffer defaults — mirror the values hard-coded in the profiles. */
+/** Build a fresh, fully-populated record for every registered profile. */
 export function buildDefaultProfileRecord(): ProfileConfigRecord {
-    const profiles: Record<string, ProfileRuntimeConfig> = {};
+    const profiles = {} as Record<ProfileId, ProfileRuntimeConfig>;
     for (const id of PROFILE_IDS) {
-        profiles[id] = {
-            enabled: true,
-            tickSpeed: 50,
-            growEnabled: false,
-            crystalEnabled: false,
-            random_Rate: 20,
-            random_Weight: 10,
-            gravity_Rate: 20,
-            gravity_Weight: 10,
-            aSeed_Rate: 20,
-            aSeed_Weight: 0,
-            aGold_Rate: 20,
-            aGold_Weight: 20,
-            aCopper_Rate: 20,
-            aCopper_Weight: 0,
-            aInertia_Rate: 100,
-            aInertia_Weight: 0,
-        };
+        profiles[id] = { ...PROFILE_DEFAULTS[id] };
     }
     return { P: profiles };
 }

@@ -21,7 +21,7 @@ import {
     type ActionRegisterResult,
     type ActionWrite,
 } from "./register/actionRegister.ts";
-import type { ActionCatalogueItem, PathCatalogueItem } from "../types.ts";
+import type { ActionOp, PathCatalogueItem } from "../types.ts";
 import { registerMenuStructures } from "./register/menuRegister.ts";
 import { registerPathStructures } from "./register/varRegister.ts";
 import { registerValueStructures, type ValueStructureEntry } from "./register/valueRegister.ts";
@@ -35,7 +35,7 @@ export type { ActionRegisterResult } from "./register/actionRegister.ts";
 /** Everything the per-category register modules need to build one structure. */
 export type registerStructureOps = {
     typeId: string;
-    item: PathCatalogueItem & ActionCatalogueItem;
+    item: PathCatalogueItem & { action?: ActionOp; frames?: number };
     read: ActionRead;
     write: ActionWrite;
 };
@@ -75,23 +75,23 @@ export function registerStructures<T extends object>(
             continue;
         }
 
-        if (item.tags?.includes("variables")) {
+        if (item.tags.includes("variables")) {
             registerPathStructures(ops);
         }
-        if (item.tags?.includes("value")) {
+        if (item.tags.includes("value")) {
             const value = registerValueStructures(ops);
             if (value) valueEntries.push(...value.entries);
         }
         // Number, sign-toggle and boolean action senders each supply a
         // refreshSignals that recomputes their own placed structures; merge
         // them all into one.
-        if (ops.item.tags?.includes("action") && ops.item.kind == "number") {
+        if (ops.item.tags.includes("action") && ops.item.kind == "number") {
             const number = ops.item.action === "toggleNum" || ops.item.action === "toggleRate"
                 ? registerActionToggleNumberStructures(ops)
                 : registerActionNumberStructures(ops);
             if (number) refreshers.push(number.refreshSignals);
         }
-        if (ops.item.tags?.includes("action") && ops.item.kind == "bool") {
+        if (ops.item.tags.includes("action") && ops.item.kind == "bool") {
             const boolean = registerBooleanActionStructures(ops);
             if (boolean) refreshers.push(boolean.refreshSignals);
         }

@@ -1,9 +1,10 @@
-import { AlignMode, CatalogueItem } from "./types.ts";
+import { type AlignMode, ResolvedCatalogueItem } from "./types.ts";
 
 export const DEFAULT_SPRITE_PX_PER_TILE = 16;
 
 export const buildCustumDraw = (
-    item: CatalogueItem,
+    item: ResolvedCatalogueItem,
+    spriteId: string,
 ) => {
     return (
         _state: unknown,
@@ -20,7 +21,7 @@ export const buildCustumDraw = (
         if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;
         if (!item.spriteId) return false;
         // core
-        const image = sandkit.api.sprites?.getById(item.spriteId)?.imageAsset?.image;
+        const image = sandkit.api.sprites?.getById(spriteId)?.imageAsset?.image;
         if (!image) return false;
 
         const origin = sandkit.api.rendering.getDrawPositionAtCell(
@@ -42,7 +43,7 @@ export const buildCustumDraw = (
 function alignFromOrigin(
     cellOrigin: { x: number; y: number },
     size: { width: number; height: number },
-    align: AlignMode = "floor",
+    align: AlignMode,
 ): { x: number; y: number } {
     if (align === "wall" || align === "center") {
         return {
@@ -63,11 +64,12 @@ function drawImageAligned(
     ctx: CanvasRenderingContext2D,
     image: CanvasImageSource,
     origin: { x: number; y: number },
-    item: CatalogueItem,
+    item: ResolvedCatalogueItem,
 ): void {
     const imagePos = alignFromOrigin(
         origin,
-        item,
+        { width: item.width, height: item.height },
+        item.align,
     );
 
     ctx.save();

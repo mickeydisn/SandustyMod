@@ -155,6 +155,8 @@ const menu = {
     height: 16,
     filePath: menuSource ? menuSource.path : `${ASSET_DIRS[0]}/char-A-1x1.png`,
     align: "wall",
+    tags: [],
+    sizes: [],
 };
 
 if (!items.some((i) => i.id === menu.id)) {

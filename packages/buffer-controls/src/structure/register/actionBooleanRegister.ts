@@ -11,7 +11,8 @@ export function registerBooleanActionStructures(
     ops: registerStructureOps,
 ): ActionRegisterResult | void {
     // Only boolean-paths carry a toggle action.
-    if (!ops.item.tags?.includes("action") || ops.item.kind !== "bool") return;
+    if (!ops.item.tags.includes("action") || ops.item.kind !== "bool") return;
+    if (ops.item.action === undefined) return;
 
     const actionItems: { typeId: string; path: string }[] = [];
 
@@ -32,7 +33,7 @@ export function registerBooleanActionStructures(
         sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
     };
 
-    const act = (structure: StructureLike, op: ActionOp): void => {
+    const act = (structure: StructureLike, op: Exclude<ActionOp, "toggleRate">): void => {
         const p = structure.data?.path;
         if (typeof p !== "string" || p.length === 0) return;
         ops.write(p, applyAction(op, ops.read(p)));
@@ -53,7 +54,8 @@ export function registerBooleanActionStructures(
         drawBorder(structure, render, ops.item.color, 1);
         return false;
     };
-    const op = ops.item.action ?? "toggle";
+    const op = ops.item.action;
+    if (op === "toggleRate") return;
     const path = ops.item.path;
 
     actionItems.push({ typeId: ops.typeId, path });
@@ -72,7 +74,7 @@ export function registerBooleanActionStructures(
             size: { width: 16, height: 16 },
         },
         copyData: true,
-        defaultData: { path, kind: ops.item.kind ?? "string", op },
+        defaultData: { path, kind: ops.item.kind, op },
         draw,
     });
     // Unlock the buildings

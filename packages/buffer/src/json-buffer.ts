@@ -1,17 +1,34 @@
 import "@sandmd/sandkit";
 import { decodeJson, encodeJsonInBuffer } from "./utils/codec.ts";
-import { listPaths } from "./utils/introspect.ts";
+import { listPaths, type ListPathsOptions } from "./utils/introspect.ts";
 import { addToPath, deepClone, getPath, setPath } from "./utils/paths.ts";
 import { ensureBuffer } from "./sand.ts";
 
-const DEFAULT_MAX_BYTES = 64 * 1024;
+export interface JsonBufferConfig<T extends object> {
+    /** Mod that owns the record. */
+    modId: string;
+    /** Unique key used for shared memory and local storage. */
+    key: string;
+    /** Complete seed record used when shared memory/storage has no record. */
+    defaultRecord: T;
+    /** Maximum JSON payload size in bytes. */
+    maxBytes: number;
+    /** Save the record to local storage on `store:save`. */
+    persist: boolean;
+    /** Restore a persisted record during construction. */
+    loadFromStorage: boolean;
+    /** Observe-only mode: never commit and never touch storage. */
+    observe: boolean;
+    /** Optional validation guard run before every commit. */
+    assertShape?: (value: T) => void;
+}
 
 export class JsonBuffer<T extends object> {
     private versionView!: Int32Array;
     private dataView!: Uint8Array;
     public modId!: string;
     public key!: string;
-    private defaultRecord?: T;
+    private defaultRecord: T;
     private assertShape?: (value: T) => void;
 
     private cache: T;
@@ -29,23 +46,19 @@ export class JsonBuffer<T extends object> {
         };
     }
 
-    constructor(
-        modId: string,
-        key: string,
-        defaultRecord?: T,
-        assertShape?: (value: T) => void,
-        percist: boolean = false,
-        percistLoad: boolean = false,
-        /** Observe-only (worker threads): never commit, never touch storage. */
-        observe: boolean = false,
-    ) {
-        // console.log("JsonBuffer Construct", modId, percist, percistLoad);
-        this.modId = modId;
-        this.key = key;
-        this.defaultRecord = defaultRecord;
-        this.assertShape = assertShape;
+    constructor(config: JsonBufferConfig<T>) {
+        this.modId = config.modId;
+        this.key = config.key;
+        this.defaultRecord = deepClone(config.defaultRecord);
+        this.assertShape = config.assertShape;
+        this.assertShape?.(this.defaultRecord);
+        if (!Number.isInteger(config.maxBytes) || config.maxBytes <= 0) {
+            throw new Error(
+                `JsonBuffer: maxBytes must be a positive integer (${config.maxBytes}).`,
+            );
+        }
 
-        this.versionView = ensureBuffer(`${key}:ver`, {
+        this.versionView = ensureBuffer(`${config.key}:ver`, {
             type: "int32",
             length: 1,
         }) as Int32Array;
@@ -57,38 +70,39 @@ export class JsonBuffer<T extends object> {
             // console.log("ATOMIC ---");
             this.useAtomics = false;
         }
-        this.dataView = ensureBuffer(`${key}:json`, {
+        this.dataView = ensureBuffer(`${config.key}:json`, {
             type: "uint8",
-            length: DEFAULT_MAX_BYTES,
+            length: config.maxBytes,
         }) as Uint8Array;
 
         if (this.remoteVersion() > 0) {
             this.cache = this.readFromBuffer();
             this.localVersion = this.remoteVersion();
-        } else if (observe) {
+        } else if (config.observe) {
             // Observe mode: wait for a main-thread commit instead of writing
             // defaults (a worker committing first would clobber the persisted
             // record before the main thread restores it).
-            this.cache = this.defaultRecord ? deepClone(this.defaultRecord) : ({} as T);
+            this.cache = deepClone(this.defaultRecord);
             this.localVersion = this.remoteVersion();
         } else {
             // LongTerm Storage
-            const storedRecord = !percistLoad ? false : sandkit.api.storage.local.get(this.key);
-            if (percist) {
+            const storedRecord = config.loadFromStorage
+                ? sandkit.api.storage.local.get(config.key)
+                : undefined;
+            if (config.persist) {
                 sandkit.api.events.on("store:save", (_payload: unknown) => {
                     this.commit();
                     this.save();
                 });
             }
 
-            this.cache = storedRecord
-                ? storedRecord as T
-                : this.defaultRecord
-                ? deepClone(this.defaultRecord)
-                : ({} as T);
+            this.cache = storedRecord !== null && storedRecord !== undefined
+                ? deepClone(storedRecord as T)
+                : deepClone(this.defaultRecord);
             this.localVersion = -1;
             this.commit();
         }
+        this.assertShape?.(this.cache);
     }
 
     public remoteVersion = () => {
@@ -99,7 +113,10 @@ export class JsonBuffer<T extends object> {
     };
 
     private readFromBuffer = (): T => {
-        const record: T = decodeJson<T>(this.dataView) ?? ({} as T);
+        const record = decodeJson<T>(this.dataView);
+        if (record === null) {
+            throw new Error(`JsonBuffer: shared payload for "${this.key}" is empty or corrupt.`);
+        }
         return record;
     };
 
@@ -122,21 +139,16 @@ export class JsonBuffer<T extends object> {
         this.pull();
         return getPath(this.cache, path);
     }
-    public listPaths(
-        /** How deep to recurse into nested objects/arrays. Default 8. */
-        maxDepth: number = 8,
-        /** Also list object/array container paths themselves (e.g. "players" as kind "array"), not just their leaves/templates. Default false. */
-        includeContainers: boolean = true,
-    ) {
+    public listPaths(options: ListPathsOptions) {
         this.pull();
-        return listPaths(this.cache, maxDepth, includeContainers);
+        return listPaths(this.cache, options);
     }
 
     public setPath(path: string, value: unknown) {
         setPath(this.cache, path, value);
     }
 
-    public addToPath(path: string, value?: unknown) {
+    public addToPath(path: string, value: unknown) {
         addToPath(this.cache, path, value);
     }
 

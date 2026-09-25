@@ -28,17 +28,16 @@ export async function registerBufferControls<T extends object>(
 ): Promise<BufferControlsHandles<T>> {
     const { modId } = config;
 
-    // -- 1. The jsonBuffer record we expose to the player --------------------
-    // `persist` defaults to true: JsonBuffer.loadFromStorage is opt-in and must
-    // be enabled here or the record is only saved, never restored on reload.
-    const buffer = new JsonBuffer<T>(
+    const buffer = new JsonBuffer<T>({
         modId,
-        config.bufferId,
-        config.defaultRecord,
-        undefined,
-        config.persist ?? true,
-        config.persistLoad ?? true,
-    );
+        key: config.bufferId,
+        defaultRecord: config.defaultRecord,
+        assertShape: config.assertShape,
+        maxBytes: config.maxBytes,
+        persist: config.storage.persist,
+        loadFromStorage: config.storage.load,
+        observe: false,
+    });
     // console.log("[pkg-buffControl] 0", modId, config);
     const readBuffer = (path: string): unknown => buffer.getPath(path);
     // console.log("[pkg-buffControl]1 ", modId, buffer.get(), buffer.listPaths());
@@ -57,12 +56,12 @@ export async function registerBufferControls<T extends object>(
         ).values(),
     ];
     const spriteIds = await loadSpriteMap(modId, spriteEntries);
-    const menuItemId = config.menuItemId ?? modId;
+    const menuItemId = config.menuItemId;
 
     // -- 3. BuildingList: one item per scalar path in the record -------------
     // The catalogue resolves each item's sprite entry itself (itemId / tag /
     // kind+action / kind) and takes the loaded id from `spriteIds`.
-    const bound = boundFields(buffer.listPaths());
+    const bound = boundFields(buffer.listPaths(config.pathScan));
     const { buildList: buildList, pathCount } = buildBufferControlList(
         modId,
         bound,
@@ -71,10 +70,16 @@ export async function registerBufferControls<T extends object>(
     );
 
     // The picker swatch resolver: entry id → loaded sprite id.
-    const spriteFor = (item: CatalogueItem): string | undefined =>
-        spriteIds[
-            resolveSpriteEntry(config.sprites, item, menuItemId, config.menu.spriteId) ?? ""
-        ];
+    const spriteFor = (item: CatalogueItem): string => {
+        const entryId = resolveSpriteEntry(config.sprites, item, menuItemId, config.menu.spriteId);
+        const spriteId = spriteIds[entryId];
+        if (typeof spriteId !== "string") {
+            throw new Error(
+                `Sprite "${entryId}" was not loaded for buffer-controls item "${item.id}".`,
+            );
+        }
+        return spriteId;
+    };
 
     // console.log("[pkg-buffControl], 3 ", buildList, pathCount);
 
@@ -151,17 +156,13 @@ export async function registerBufferControls<T extends object>(
     // -- 6. Custom picker: icon + path rows, category tabs -------------------
     createPickerOverlay({
         list: buildList,
-        /** Overlay id. Default `${modId}/picker`. */
-        pickerId: "buffControl:",
-        /** Overlay slot. Default "hotbar". */
-        title: config.pickerTitle,
-        /**
-         * Resolves the sprite id actually loaded for an item. Defaults to
-         * `item.spriteId ?? mod structure-type`, but mods that load sprites under
-         * their own id scheme (e.g. `modId:<id>`) must supply this so the swatches
-         * show the correct art.
-         */
-
+        pickerId: config.picker.id,
+        slot: config.picker.slot,
+        title: config.picker.title,
+        persistSelection: config.picker.persistSelection,
+        unlockTypes: (types) => {
+            for (const type of types) sandkit.api.player.buildings.unlockByType(type);
+        },
         spriteIdFor: spriteFor,
     });
     console.log(`[${modId}] loaded ${pathCount} jsonBuffer paths`);

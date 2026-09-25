@@ -1,6 +1,20 @@
 // Dot/bracket path access: "items[2].name", "config.volume", "items[]" (whole array)
 
 export type PathSegment = string | number | "[]";
+type PathContainer = Record<string, unknown> | unknown[];
+
+function isContainer(value: unknown): value is PathContainer {
+    return value !== null && typeof value === "object";
+}
+
+function asContainer(value: unknown): PathContainer | null {
+    return isContainer(value) ? value : null;
+}
+
+function readChild(value: unknown, part: string | number): unknown {
+    if (!isContainer(value)) return undefined;
+    return (value as Record<string | number, unknown>)[part];
+}
 
 // Three token kinds: a plain name run, a numeric [index], or a literal [] (whole-array marker).
 const TOKEN = /([^[.\]]+)|\[(\d+)\]|(\[\])/g;
@@ -26,36 +40,41 @@ export function parsePath(path: string): PathSegment[] {
  * array). Use a numeric index ("a[0]") to read a specific element.
  */
 export function getPath<V = unknown>(root: unknown, path: string): V | undefined {
-    let cur: any = root;
+    let current: unknown = root;
     for (const part of parsePath(path)) {
         if (part === "[]") continue;
-        if (cur == null) return undefined;
-        cur = cur[part as any];
+        current = readChild(current, part);
     }
-    return cur as V;
+    return current as V | undefined;
 }
 
-function ensureChild(cur: any, part: PathSegment, nextIsIndex: boolean): any {
+function ensureChild(
+    current: PathContainer,
+    part: PathSegment,
+    nextIsIndex: boolean,
+): PathContainer {
     if (part === "[]") {
         throw new Error(`setPath: "[]" cannot appear in the middle of a path being written to.`);
     }
     if (typeof part === "number") {
-        if (!Array.isArray(cur)) {
+        if (!Array.isArray(current)) {
             throw new Error(`setPath: expected an array to index into at "[${part}]"`);
         }
-        while (cur.length <= part) cur.push(nextIsIndex ? [] : {});
-        if (cur[part] == null || typeof cur[part] !== "object") {
-            cur[part] = nextIsIndex ? [] : {};
+        while (current.length <= part) current.push(nextIsIndex ? [] : {});
+        if (!isContainer(current[part])) {
+            current[part] = nextIsIndex ? [] : {};
         }
-    } else {
-        if (cur == null || typeof cur !== "object") {
-            throw new Error(`setPath: cannot descend into "${part}" of a non-object`);
-        }
-        if (cur[part] == null || typeof cur[part] !== "object") {
-            cur[part] = nextIsIndex ? [] : {};
-        }
+        return current[part] as PathContainer;
     }
-    return cur[part as any];
+
+    if (!isContainer(current)) {
+        throw new Error(`setPath: cannot descend into "${part}" of a non-object`);
+    }
+    const record = current as Record<string, unknown>;
+    if (!isContainer(record[part])) {
+        record[part] = nextIsIndex ? [] : {};
+    }
+    return record[part] as PathContainer;
 }
 
 /**
@@ -64,7 +83,7 @@ function ensureChild(cur: any, part: PathSegment, nextIsIndex: boolean): any {
  * ("a[0] = X") to write a specific element, or addToPath()/pushPath() to
  * append a new one.
  */
-export function setPath(root: any, path: string, value: unknown): void {
+export function setPath(root: unknown, path: string, value: unknown): void {
     const parts = parsePath(path);
     if (parts.length === 0) return;
     const last = parts[parts.length - 1];
@@ -74,21 +93,25 @@ export function setPath(root: any, path: string, value: unknown): void {
                 `Use a numeric index to write an element, or addToPath()/pushPath() to append.`,
         );
     }
-    let cur = root;
+    let current = asContainer(root);
+    if (!current) throw new Error(`setPath: root for "${path}" is not an object or array.`);
     for (let i = 0; i < parts.length - 1; i++) {
-        cur = ensureChild(cur, parts[i], typeof parts[i + 1] === "number");
+        current = ensureChild(current, parts[i], typeof parts[i + 1] === "number");
     }
     if (typeof last === "number") {
-        if (!Array.isArray(cur)) throw new Error(`setPath: expected an array at "${path}"`);
-        while (cur.length <= last) cur.push(undefined);
-        cur[last] = value;
+        if (!Array.isArray(current)) throw new Error(`setPath: expected an array at "${path}"`);
+        while (current.length <= last) current.push(undefined);
+        current[last] = value;
     } else {
-        cur[last] = value;
+        if (!isContainer(current)) {
+            throw new Error(`setPath: cannot write "${path}" on a non-object`);
+        }
+        (current as Record<string, unknown>)[last] = value;
     }
 }
 
 /** Push a value onto the array at `path`, creating the array if it doesn't exist yet. Returns the new length. */
-export function pushPath(root: any, path: string, value: unknown): number {
+export function pushPath(root: unknown, path: string, value: unknown): number {
     let arr = getPath<unknown[]>(root, path);
     if (!Array.isArray(arr)) {
         arr = [];
@@ -99,21 +122,20 @@ export function pushPath(root: any, path: string, value: unknown): number {
 }
 
 /**
- * Append to the array at `path`. If `value` is null/undefined, a default
- * item is generated instead of pushing null: it clones the shape of the
- * array's first existing element with every primitive reset to its zero
- * value (0 / false / "" / null), or falls back to `null` if the array is
- * currently empty (no shape to copy). Returns the index of the new item.
+ * Append to the array at `path`, creating the array if it doesn't exist yet.
+ * `null`/`undefined` explicitly requests a shape clone: primitives become their
+ * zero value and objects/arrays are cloned recursively. Returns the new index.
  */
-export function addToPath(root: any, path: string, value?: unknown): number {
+export function addToPath(root: unknown, path: string, value: unknown): number {
     const existing = getPath<unknown[]>(root, path);
-    const arrExists = Array.isArray(existing);
-    const item = value ?? (arrExists && existing.length > 0 ? defaultLike(existing[0]) : null);
+    const item = value === null || value === undefined
+        ? (Array.isArray(existing) && existing.length > 0 ? zeroLike(existing[0]) : null)
+        : value;
     const len = pushPath(root, path, item);
     return len - 1;
 }
 
-function defaultLike(sample: unknown): unknown {
+function zeroLike(sample: unknown): unknown {
     if (sample === null || sample === undefined) return null;
     if (typeof sample === "boolean") return false;
     if (typeof sample === "number") return 0;
@@ -122,7 +144,7 @@ function defaultLike(sample: unknown): unknown {
     if (typeof sample === "object") {
         const out: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(sample as Record<string, unknown>)) {
-            out[k] = defaultLike(v);
+            out[k] = zeroLike(v);
         }
         return out;
     }

@@ -17,19 +17,6 @@ import { adjustHSL } from "@sandmd/shared";
 export const CELL = 16;
 /** Height of the readout rectangle. */
 export const STRUCT_H = 16;
-/** Default width of the readout rectangle, in STRUCT_H units (8 * 16 = 128px). */
-export const DEFAULT_READOUT_CELLS = 8;
-/** Width of the readout rectangle right of the icon (8 cells). Kept for compat. */
-export const RECT_W = DEFAULT_READOUT_CELLS * STRUCT_H;
-
-/** Readout width for `var` (path) structures — paths are long, keep it wide. */
-export const VAR_READOUT_CELLS = 8;
-/** Readout width per kind for `value` (live buffer value) structures. */
-export const VALUE_READOUT_CELLS: Record<string, number> = {
-    string: 8,
-    number: 5,
-    bool: 2,
-};
 
 export interface ReadoutOptions {
     spriteId?: string;
@@ -37,21 +24,19 @@ export interface ReadoutOptions {
     text: string;
     /**
      * Width of the readout rectangle, in STRUCT_H units.
-     * Final pixels = readoutCells * STRUCT_H. Defaults to 8.
-     * Pass a smaller value for bools/numbers (e.g. 2 / 4) and a
-     * larger one for paths/strings (e.g. 8).
+     * Pass the width explicitly for the structure being rendered.
      */
-    readoutCells?: number;
-    /** Draw the 16x16 kind icon left of the readout. Defaults to true. */
-    showIcon?: boolean;
+    readoutCells: number;
+    /** Draw the 16x16 kind icon left of the readout. */
+    showIcon: boolean;
 }
 
 /** Total footprint width in cells: icon (0 or 1) + readout cells. */
 export function readoutTileWidth(
     opts: Pick<ReadoutOptions, "readoutCells" | "showIcon">,
 ): number {
-    const cells = Math.max(1, Math.floor(opts.readoutCells ?? DEFAULT_READOUT_CELLS));
-    return (opts.showIcon ?? true ? 1 : 0) + cells;
+    const cells = Math.max(1, Math.floor(opts.readoutCells));
+    return (opts.showIcon ? 1 : 0) + cells;
 }
 
 /** Resolve the sprite id to a loaded canvas image, or undefined if not ready. */
@@ -74,7 +59,7 @@ export function drawIconAndReadout(
 ): boolean {
     const ctx = render?.ctx;
     if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;
-    const showIcon = opts.showIcon ?? true;
+    const showIcon = opts.showIcon;
     const image = showIcon ? loadImage(opts.spriteId) : undefined;
     if (showIcon && !image) return false;
     const origin = sandkit.api.rendering.getDrawPositionAtCell(structure.x, structure.y);
@@ -82,7 +67,7 @@ export function drawIconAndReadout(
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    const cells = Math.max(1, Math.floor(opts.readoutCells ?? DEFAULT_READOUT_CELLS));
+    const cells = Math.max(1, Math.floor(opts.readoutCells));
 
     if (showIcon) {
         // Kind icon (16x16) at the top of the footprint.
@@ -123,7 +108,7 @@ export function drawBorder(
     structure: { x: number; y: number; data: Record<string, unknown> },
     render: { ctx?: CanvasRenderingContext2D },
     color: string,
-    tileWidth: number = 1,
+    tileWidth: number,
 ): boolean {
     const ctx = render?.ctx;
     if (!ctx || !sandkit.api.rendering?.getDrawPositionAtCell) return false;

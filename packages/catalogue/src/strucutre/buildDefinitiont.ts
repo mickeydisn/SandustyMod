@@ -1,58 +1,44 @@
-/** Shared options for registering any structure-based control. */
+/** Shared options for registering a structure-based control. */
 export interface StructureOptions {
     id: string;
     name: string;
-    spriteId: string;
-    renderSize: { width: number; height: number };
     def: {
         nameKey?: string;
         description?: string;
-        categoryKey?: string;
+        categoryKey: string;
         order?: number;
-        hideFromBuildMenu?: boolean;
-        render?: { imageName: string; size: { width: number; height: number } };
-        shape?: number[][];
-        variants?: Array<{ id: string; angles: number[] }>;
-        buildModes?: Array<{ type: string; directions?: string[] }>;
+        hideFromBuildMenu: boolean;
+        render: { imageName: string; size: { width: number; height: number } };
+        shape: number[][];
+        variants: Array<{ id: string; angles: number[] }>;
+        buildModes: Array<{ type: string; directions?: string[] }>;
     };
-    defaultData?: Record<string, unknown>;
-    activeOnPlace?: boolean;
-    cells?: number | { w: number; h: number };
+    defaultData: Record<string, unknown>;
 }
 
-/** Build a sandkit structure definition from shared options (`cells` → shape/renderSize). */
+/** Build a rectangular empty shape for a structure definition. */
+export function makeShape(width: number, height: number): number[][] {
+    return Array.from({ length: width }, () => Array(height).fill(0));
+}
+
+/** Build a sandkit structure definition from fully specified options. */
 export function buildStructureDefinition(
     opts: StructureOptions,
 ): Record<string, unknown> {
-    const makeEmptyShape = (x: number, y: number) =>
-        Array.from({ length: x }, () => Array(y).fill(0));
-
-    const _shapeEmpty = makeEmptyShape(
-        Math.round(opts.renderSize.width / 4),
-        Math.round(opts.renderSize.height / 4),
-    );
-
     const def = opts.def;
     return {
         id: opts.id,
         name: opts.name,
-        categoryKey: def.categoryKey ?? "misc",
-        buildModes: def.buildModes ?? [{ type: "single" }],
-        variants: def.variants ?? [{ id: opts.id, angles: [0] }],
-        shape: def.shape ?? _shapeEmpty,
-        hideFromBuildMenu: def.hideFromBuildMenu ?? false,
-        render: def.render ?? {
-            imageName: opts.spriteId,
-            size: opts.renderSize ?? { width: 16, height: 16 },
-        },
-
+        categoryKey: def.categoryKey,
+        buildModes: def.buildModes,
+        variants: def.variants,
+        shape: def.shape,
+        hideFromBuildMenu: def.hideFromBuildMenu,
+        render: def.render,
         copyData: true,
-        defaultData: {
-            ...(opts.defaultData ?? {}),
-        },
-        // Menu definition
-        ...(def.nameKey ? { nameKey: def.nameKey } : {}),
-        ...(def.description ? { description: def.description } : {}),
-        ...(def.order != null ? { order: def.order } : {}),
+        defaultData: opts.defaultData,
+        ...(def.nameKey === undefined ? {} : { nameKey: def.nameKey }),
+        ...(def.description === undefined ? {} : { description: def.description }),
+        ...(def.order === undefined ? {} : { order: def.order }),
     };
 }

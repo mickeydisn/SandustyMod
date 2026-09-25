@@ -130,6 +130,8 @@ export const ICON_ITEMS: CatalogueItem[] = [
     "height": 16,
     "filePath": "./assets/icons/char-A-1x1.png",
     "align": "wall",
+    "tags": [],
+    "sizes": [],
     "description": "Decorative. No collision."
   },
   {

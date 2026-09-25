@@ -4,7 +4,8 @@
  *
  * Reads (`live`) work on every thread: they pull the shared version counter
  * first (one Atomics check) and re-decode the JSON only when the version
- * changed. A missing path falls back to the value passed by the profile.
+ * changed. If an older persisted record is missing a path, the value comes
+ * from the typed `PROFILE_DEFAULTS` entry for that profile.
  *
  * Writes (`write`) are main-thread only and go through the JsonBuffer instance
  * owned by `registerBufferControls` (set via `setProfileBuffer`), so storage
@@ -16,7 +17,10 @@ import { MOD_ID } from "../../ids.ts";
 import {
     buildDefaultProfileRecord,
     PROFILE_BUFFER_ID,
+    PROFILE_BUFFER_MAX_BYTES,
+    PROFILE_DEFAULTS,
     type ProfileConfigRecord,
+    type ProfileId,
     type ProfileRuntimeConfig,
     type ProfileRuntimeKey,
 } from "../profileRuntime.ts";
@@ -40,14 +44,15 @@ export function profileBuffer(): JsonBuffer<ProfileConfigRecord> | null {
     if (mainBuffer) return mainBuffer;
     if (observeBuffer) return observeBuffer;
     try {
-        observeBuffer = new JsonBuffer<ProfileConfigRecord>(
-            MOD_ID,
-            PROFILE_BUFFER_ID,
-            buildDefaultProfileRecord(),
-            undefined,
-            true,
-            false,
-        );
+        observeBuffer = new JsonBuffer<ProfileConfigRecord>({
+            modId: MOD_ID,
+            key: PROFILE_BUFFER_ID,
+            defaultRecord: buildDefaultProfileRecord(),
+            maxBytes: PROFILE_BUFFER_MAX_BYTES,
+            persist: true,
+            loadFromStorage: false,
+            observe: true,
+        });
     } catch (e) {
         console.warn(`[${MOD_ID}] profile config buffer unavailable:`, e);
         return null;
@@ -57,18 +62,29 @@ export function profileBuffer(): JsonBuffer<ProfileConfigRecord> | null {
 
 /**
  * Live read of one profile knob from the buffer, e.g.
- * `get tickSpeed() { return live(this.id, "tickSpeed", 50); }`.
- * `key` is the buffer key (`crystalEnabled`, not `crystallizationEnabled`).
+ * `live(this.id, "tickSpeed")`. `key` is the buffer key
+ * (`crystalEnabled`, not `crystallizationEnabled`).
  */
+function isValidProfileValue(key: ProfileRuntimeKey, value: unknown): boolean {
+    if (key === "enabled" || key === "growEnabled" || key === "crystalEnabled") {
+        return typeof value === "boolean";
+    }
+    return typeof value === "number" && Number.isFinite(value);
+}
+
 export function live<K extends ProfileRuntimeKey>(
-    profileId: string,
+    profileId: ProfileId,
     key: K,
-    fallback: ProfileRuntimeConfig[K],
 ): ProfileRuntimeConfig[K] {
+    const defaults = PROFILE_DEFAULTS[profileId];
     const buf = profileBuffer();
-    if (!buf) return fallback;
+    if (!buf) return defaults[key];
     const value = buf.getPath(`P.${profileId}.${key}`);
-    return (value === null || value === undefined ? fallback : value) as ProfileRuntimeConfig[K];
+    if (value === null || value === undefined) return defaults[key];
+    if (!isValidProfileValue(key, value)) {
+        throw new Error(`Invalid Astro profile value at P.${profileId}.${key}.`);
+    }
+    return value as ProfileRuntimeConfig[K];
 }
 
 /**
@@ -79,7 +95,7 @@ export function live<K extends ProfileRuntimeKey>(
  * `setProfileBuffer` has been called.
  */
 export function write<K extends ProfileRuntimeKey>(
-    profileId: string,
+    profileId: ProfileId,
     key: K,
     value: ProfileRuntimeConfig[K],
 ): boolean {

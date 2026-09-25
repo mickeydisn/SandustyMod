@@ -1,64 +1,67 @@
 import { Move } from "@sandmd/element-profiles/worker";
 import { ASTRO_FIELD } from "../../ids.ts";
+import type { ProfileId } from "../profileRuntime.ts";
 import { live } from "./live.ts";
 import { MASK } from "./mask.ts";
 import { ElementType } from "../elementShared/resolve.ts";
 import { channelMatch } from "./keys.ts";
 
-export const buildElementProfie = (ID: string) => (
+const WATER_PROFILE_GROW_AGE = 150;
+const WALL_REPULSION_CHANCE = 100;
+const WALL_REPULSION_WEIGHT = -50;
+
+export const buildElementProfile = (ID: ProfileId) => (
     {
         id: ID,
-        tickSpeed: () => live(ID, "tickSpeed", 50),
-        enabled: () => live(ID, "enabled", true),
-        growEnabled: () => live(ID, "growEnabled", false),
-        crystallizationEnabled: () => live(ID, "crystalEnabled", false),
+        tickSpeed: () => live(ID, "tickSpeed"),
+        enabled: () => live(ID, "enabled"),
+        growEnabled: () => live(ID, "growEnabled"),
+        crystallizationEnabled: () => live(ID, "crystalEnabled"),
         ageField: ASTRO_FIELD.AGE,
-        growAge: () => 150,
+        growAge: () => WATER_PROFILE_GROW_AGE,
         moves: [
             Move.random(
-                () => live(ID, "random_Rate", 0),
-                () => live(ID, "random_Weight", 0),
+                () => live(ID, "random_Rate"),
+                () => live(ID, "random_Weight"),
                 MASK.FULL,
             ),
             // Gravity — liquid gold below pulls the seed down.
             Move.channel({
-                chance: () => live(ID, "gravity_Rate", 0),
-                weight: () => live(ID, "gravity_Weight", 0),
+                chance: () => live(ID, "gravity_Rate"),
+                weight: () => live(ID, "gravity_Weight"),
                 // matchTypes: [ElementType.liquidGold],
                 mask: MASK.GRAVITY,
             }),
 
-            // Move.side(() => live(ID, "moveSide", 0)),
-            // Move.down(() => live(ID, "moveDown", 0)),
-            // Move.up(() => live(ID, "moveUp", 0)),
+            // Optional profile-specific side/down/up moves can be added here.
             // Walls / structure / empty push the seed back in.
             Move.channel({
                 ...channelMatch(["empty", "structure"]),
-                chance: 100,
-                weight: -50,
+                chance: WALL_REPULSION_CHANCE,
+                weight: WALL_REPULSION_WEIGHT,
                 mask: MASK.PLUSS,
             }),
             Move.channel({
-                chance: () => live(ID, "aSeed_Rate", 0),
-                weight: () => live(ID, "aSeed_Weight", 0), // () => live(ID, "weighASeed", 15),
+                chance: () => live(ID, "aSeed_Rate"),
+                weight: () => live(ID, "aSeed_Weight"),
                 matchTypes: [ElementType.astroSeed],
                 mask: MASK.FULL,
             }),
             Move.channel({
-                chance: () => live(ID, "aGold_Rate", 0),
-                weight: () => live(ID, "aGold_Weight", 0), // () => live(ID, "weighASeed", 15),
+                chance: () => live(ID, "aGold_Rate"),
+                weight: () => live(ID, "aGold_Weight"),
                 matchTypes: [ElementType.astroGoldPowder],
                 mask: MASK.FULL,
             }),
             Move.channel({
-                chance: () => live(ID, "aCopper_Rate", 0),
-                weight: () => live(ID, "aCopper_Weight", 0), // () => live(ID, "weighASeed", 15),
+                chance: () => live(ID, "aCopper_Rate"),
+                weight: () => live(ID, "aCopper_Weight"),
                 matchTypes: [ElementType.astroCopperPowder],
                 mask: MASK.FULL,
             }),
             Move.inertia({
-                chance: () => live(ID, "aInertia_Rate", 0),
-                weight: () => live(ID, "aInertia_Weight", 0),
+                chance: () => live(ID, "aInertia_Rate"),
+                weight: () => live(ID, "aInertia_Weight"),
                 mode: "full",
             }),
         ],

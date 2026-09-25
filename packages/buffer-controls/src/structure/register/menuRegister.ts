@@ -17,8 +17,8 @@ export function registerMenuStructures(ops: registerStructureOps): ActionRegiste
     if (ops.item.category !== "menu") return;
 
     // Menu entry keeps the legacy 8-cell readout + icon.
-    const readoutCells = ops.item.readoutCells ?? 8;
-    const showIcon = ops.item.showIcon ?? true;
+    const readoutCells = ops.item.readoutCells;
+    const showIcon = ops.item.showIcon;
     const tileWidth = readoutTileWidth({ readoutCells, showIcon });
 
     const draw = (
@@ -29,7 +29,7 @@ export function registerMenuStructures(ops: registerStructureOps): ActionRegiste
         drawIconAndReadout(structure, render, {
             spriteId: ops.item.spriteId,
             // Path structure: the readout shows the bound jsonBuffer path.
-            text: String(structure.data?.path ?? ops.item.label ?? ops.item.id),
+            text: ops.item.path,
             readoutCells,
             showIcon,
         });
@@ -47,7 +47,7 @@ export function registerMenuStructures(ops: registerStructureOps): ActionRegiste
         ...sectionBuild.single(ops.typeId),
         ...buildMenuRender(ops.item, ops.item.spriteId),
         ...buildSectionTooltips(),
-        ...buildSectionData(ops.item, ops.item.spriteId),
+        ...buildSectionData(ops.item, ops.item.spriteId, {}),
         draw,
     });
 

@@ -13,7 +13,7 @@
  *     middle frames split `(0, 100)` evenly (6 frames: `<=0` / `>0` /
  *     `>=25` / `>=50` / `>=75` / `>=100`; 7 frames: `<=0` / `>0` / `>=20` /
  *     `>=40` / `>=60` / `>=80` / `>=100`). The frame count comes from the
- *     matched sprite entry's `frames` (defaults to 6) and clicking cycles the
+ *     matched sprite entry's `frames`; clicking cycles the
  *     sheet's stops, wrapping back to 0 past 100.
  *
  * Each toggle exists only where the mod's sprite config declares it — a
@@ -23,7 +23,12 @@
 import "@sandmd/sandkit";
 import { buildSectionTooltips, makeShape, sectionBuild } from "../defBuilders.ts";
 import type { StructureLike } from "@sandmd/shared";
-import { ActionRegisterResult, applyAction, toggleRateFrame } from "./actionRegister.ts";
+import {
+    ActionRegisterResult,
+    applyAction,
+    applyRateAction,
+    toggleRateFrame,
+} from "./actionRegister.ts";
 import type { registerStructureOps } from "../register.ts";
 import { drawBorder } from "../render.ts";
 
@@ -38,7 +43,7 @@ export function registerActionToggleNumberStructures(
 ): ActionRegisterResult | void {
     // Only the toggle ops of number paths are owned here; the +1 / -1 / ±10
     // buttons belong to actionNumberRegister.ts.
-    if (!ops.item.tags?.includes("action") || ops.item.kind !== "number") return;
+    if (!ops.item.tags.includes("action") || ops.item.kind !== "number") return;
     if (ops.item.action !== "toggleNum" && ops.item.action !== "toggleRate") return;
 
     const actionItems: { typeId: string; path: string }[] = [];
@@ -57,14 +62,27 @@ export function registerActionToggleNumberStructures(
         sandkit.api.signals?.setOutputAtCell?.(structure.x, structure.y, computeSignal(structure));
     };
 
-    const op = ops.item.action ?? "toggleNum";
+    const op = ops.item.action;
     const path = ops.item.path;
-    const frames = ops.item.action === "toggleRate" ? (ops.item.frames ?? 6) : 6;
+    let frames: number;
+    if (ops.item.action === "toggleRate") {
+        if (ops.item.frames === undefined) {
+            throw new Error(`Rate action for "${path}" must declare a frame count.`);
+        }
+        frames = ops.item.frames;
+    } else {
+        frames = 3;
+    }
 
     const act = (structure: StructureLike): void => {
         const p = structure.data?.path;
         if (typeof p !== "string" || p.length === 0) return;
-        ops.write(p, applyAction(op, ops.read(p), frames));
+        ops.write(
+            p,
+            op === "toggleRate"
+                ? applyRateAction(ops.read(p), frames)
+                : applyAction(op, ops.read(p)),
+        );
         pushSignal(structure);
     };
 
@@ -101,7 +119,7 @@ export function registerActionToggleNumberStructures(
             size: { width: 16, height: 16 },
         },
         copyData: true,
-        defaultData: { path, kind: ops.item.kind ?? "number", op, frames },
+        defaultData: { path, kind: ops.item.kind, op, frames },
         draw,
     });
     // Unlock the buildings

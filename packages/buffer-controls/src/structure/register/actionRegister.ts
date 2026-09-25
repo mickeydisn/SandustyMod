@@ -31,7 +31,7 @@ export function rateStep(frames: number): number {
 }
 
 /** Values cycled by the `toggleRate` click for an N-frame sheet. */
-export function rateStops(frames = 6): number[] {
+export function rateStops(frames: number): number[] {
     const count = Math.max(2, Math.floor(frames));
     const step = rateStep(count);
     const stops = [0];
@@ -42,7 +42,7 @@ export function rateStops(frames = 6): number[] {
 }
 
 /** Next `rateStops` value strictly above `current`, wrapping to 0 past 100. */
-export function nextRateStop(current: unknown, frames = 6): number {
+export function nextRateStop(current: unknown, frames: number): number {
     const n = Number(current) || 0;
     if (n < 0) return 0;
     for (const stop of rateStops(frames)) {
@@ -52,7 +52,7 @@ export function nextRateStop(current: unknown, frames = 6): number {
 }
 
 /** Spritesheet frame for a 0–100 rate value on an N-frame sheet. */
-export function toggleRateFrame(value: unknown, frames = 6): number {
+export function toggleRateFrame(value: unknown, frames: number): number {
     const count = Math.max(1, Math.floor(frames));
     if (count <= 1) return 0;
     const n = Number(value) || 0;
@@ -62,8 +62,11 @@ export function toggleRateFrame(value: unknown, frames = 6): number {
     return Math.min(count - 1, 1 + Math.floor(n / rateStep(count)));
 }
 
-/** Compute the buffer mutation for an op given the current value. */
-export function applyAction(op: ActionOp, current: unknown, frames = 6): unknown {
+/** Compute the buffer mutation for a non-rate action. */
+export function applyAction(
+    op: Exclude<ActionOp, "toggleRate">,
+    current: unknown,
+): unknown {
     switch (op) {
         case "inc":
             return (Number(current) || 0) + 1;
@@ -81,12 +84,12 @@ export function applyAction(op: ActionOp, current: unknown, frames = 6): unknown
             const n = Number(current) || 0;
             return n === 0 ? 0 : -n;
         }
-        case "toggleRate": {
-            // Rate stepper: snap to the next stop of the N-frame sheet,
-            // wrapping back to 0 past 100 (negative values reset to 0).
-            return nextRateStop(current, frames);
-        }
     }
+}
+
+/** Compute the next value for an explicitly sized rate sheet. */
+export function applyRateAction(current: unknown, frames: number): number {
+    return nextRateStop(current, frames);
 }
 
 export interface ActionRegisterResult {

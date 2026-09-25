@@ -58,20 +58,40 @@ export function resolveSpriteEntry(
     item: CatalogueItem,
     menuItemId: string,
     menuSpriteId: string,
-): string | undefined {
+): string {
     if (item.id === menuItemId) return menuSpriteId;
 
     const aItem = item as ActionCatalogueItem;
-    const found = sprites.find((c) => c.itemId != null && c.itemId === item.id) ??
-        sprites.find((c) =>
-            c.tag != null && item.tags?.includes(c.tag) &&
-            (c.kind == null || c.kind === aItem.kind) &&
-            (c.action == null || c.action === aItem.action)
-        ) ??
-        sprites.find((c) => aItem.action && c.action === aItem.action && c.kind === aItem.kind) ??
-        sprites.find((c) => !c.action && c.kind === aItem.kind);
+    const find = (
+        predicate: (entry: BufferControlsSprite) => boolean,
+    ): BufferControlsSprite | undefined => {
+        for (const entry of sprites) {
+            if (predicate(entry)) return entry;
+        }
+        return undefined;
+    };
 
-    return found?.spriteId;
+    let found = find((entry) => entry.itemId !== undefined && entry.itemId === item.id);
+    if (!found) {
+        found = find((entry) =>
+            entry.tag !== undefined && item.tags.includes(entry.tag) &&
+            (entry.kind === undefined || entry.kind === aItem.kind) &&
+            (entry.action === undefined || entry.action === aItem.action)
+        );
+    }
+    if (!found) {
+        found = find((entry) =>
+            aItem.action !== undefined && entry.action === aItem.action && entry.kind === aItem.kind
+        );
+    }
+    if (!found) {
+        found = find((entry) => entry.action === undefined && entry.kind === aItem.kind);
+    }
+
+    if (!found) {
+        throw new Error(`No buffer-controls sprite matches catalogue item "${item.id}".`);
+    }
+    return found.spriteId;
 }
 
 export interface CatalogueResult {
@@ -89,43 +109,57 @@ const menuItem = (
     description: menu.description,
     category: "menu",
     path: "menu",
+    kind: "string",
+    align: "floor",
     tags: ["variables"],
+    sizes: [],
     width: CELL,
     height: CELL,
     color: "#FFFFFF",
+    spriteId: "",
+    readoutCells: 8,
+    showIcon: true,
 });
 
 const variableItem = (
     field: BoundField,
+    category: string,
 ): PathCatalogueItem => ({
     id: field.path,
     path: field.path,
     kind: field.kind,
+    align: "floor",
     label: field.path,
     description: `${field.kind} — linked to jsonBuffer path "${field.path}".`,
-    category: field.path.split(".")[1],
+    category,
     tags: ["variables", ...field.path.split(".").slice(2)],
+    sizes: [],
     width: CELL,
     height: ITEM_HEIGHT,
     color: "#FFFFFF",
+    spriteId: "",
     readoutCells: 8,
     showIcon: true,
 });
 
 const valueItem = (
     field: BoundField,
+    category: string,
 ): PathCatalogueItem => {
     return {
         id: `${VALUE_PREFIX}${field.path}`,
         path: field.path,
         kind: field.kind,
+        align: "floor",
         label: field.path,
         description: `${field.kind} — live value for jsonBuffer path "${field.path}".`,
-        category: field.path.split(".")[1],
+        category,
         tags: ["value", ...field.path.split(".").slice(2)],
+        sizes: [],
         width: CELL,
         height: ITEM_HEIGHT,
         color: "#FFFFFF",
+        spriteId: "",
         readoutCells: 3,
         showIcon: false,
     };
@@ -133,22 +167,35 @@ const valueItem = (
 
 const actionItem = (
     field: BoundField,
+    category: string,
     op: ActionOp,
     frames?: number,
-): ActionCatalogueItem => ({
-    id: `${ACTION_PREFIX}${field.path}:${op}`,
-    action: op,
-    path: field.path,
-    kind: field.kind,
-    label: `${field.path} ${ACTION_LABEL[op]}`,
-    description: `${ACTION_LABEL[op]} — writes jsonBuffer path "${field.path}" then commits.`,
-    category: field.path.split(".")[1],
-    tags: ["action", ...field.path.split(".").slice(2)],
-    width: CELL,
-    height: CELL,
-    color: "#FFFFFF",
-    ...(frames !== undefined ? { frames } : {}),
-});
+): ActionCatalogueItem => {
+    const base = {
+        id: `${ACTION_PREFIX}${field.path}:${op}`,
+        path: field.path,
+        kind: field.kind,
+        align: "floor" as const,
+        label: `${field.path} ${ACTION_LABEL[op]}`,
+        description: `${ACTION_LABEL[op]} — writes jsonBuffer path "${field.path}" then commits.`,
+        category,
+        tags: ["action", ...field.path.split(".").slice(2)],
+        sizes: [],
+        width: CELL,
+        height: CELL,
+        color: "#FFFFFF",
+        spriteId: "",
+        readoutCells: 1,
+        showIcon: true,
+    };
+    if (op === "toggleRate") {
+        if (frames === undefined) {
+            throw new Error(`Rate action for "${field.path}" must declare a frame count.`);
+        }
+        return { ...base, action: op, frames };
+    }
+    return { ...base, action: op };
+};
 
 /**
  * Does a sprite entry declare a toggle behaviour for this field?
@@ -163,37 +210,47 @@ const toggleEntryFor = (
 ): BufferControlsSprite | undefined => {
     const last = field.path.split(".").at(-1);
     const toggleId = `${ACTION_PREFIX}${field.path}:${op}`;
-    return sprites.find((s) => s.action === op && s.itemId === toggleId) ??
-        sprites.find((s) =>
-            s.action === op && s.tag != null && s.tag === last &&
-            (s.kind == null || s.kind === field.kind)
-        );
+    for (const sprite of sprites) {
+        if (sprite.action === op && sprite.itemId === toggleId) return sprite;
+    }
+    for (const sprite of sprites) {
+        if (
+            sprite.action === op &&
+            sprite.tag !== undefined &&
+            sprite.tag === last &&
+            (sprite.kind === undefined || sprite.kind === field.kind)
+        ) {
+            return sprite;
+        }
+    }
+    return undefined;
 };
 
 const actionItemsFor = (
     field: BoundField,
+    category: string,
     sprites: BufferControlsSprites,
 ): ActionCatalogueItem[] => {
     if (field.kind === "number") {
         const items = [
-            actionItem(field, "inc"),
-            actionItem(field, "dec"),
-            actionItem(field, "incX"),
-            actionItem(field, "decX"),
+            actionItem(field, category, "inc"),
+            actionItem(field, category, "dec"),
+            actionItem(field, category, "incX"),
+            actionItem(field, category, "decX"),
         ];
         // A number has no toggle behaviour by default — each toggle exists
         // only where the sprite config declares it (e.g. `*-weigth.png`
         // entries declare `toggleNum`, `*-rate.png` entries declare
         // `toggleRate`).
         const tognum = toggleEntryFor(sprites, field, "toggleNum");
-        if (tognum) items.push(actionItem(field, "toggleNum"));
+        if (tognum) items.push(actionItem(field, category, "toggleNum"));
         const rate = toggleEntryFor(sprites, field, "toggleRate");
-        if (rate) items.push(actionItem(field, "toggleRate", rate.frames));
+        if (rate) items.push(actionItem(field, category, "toggleRate", rate.frames));
         return items;
     }
     if (field.kind === "bool") {
         return [
-            actionItem(field, "toggle"),
+            actionItem(field, category, "toggle"),
         ];
     }
     return [];
@@ -211,7 +268,13 @@ export function boundFields(listed: { kind?: FieldKind; path: string }[]): Bound
 /** The config fields buildBufferControlList needs (record-shape independent). */
 export type CatalogueConfig = Pick<
     BufferControlsConfig,
-    "menu" | "sprites" | "menuItemId" | "categories"
+    | "menu"
+    | "sprites"
+    | "menuItemId"
+    | "initialItemId"
+    | "categories"
+    | "categoryForPath"
+    | "unmappedCategoryColor"
 >;
 
 export function buildBufferControlList(
@@ -221,34 +284,52 @@ export function buildBufferControlList(
     /** Loaded sprite ids keyed by sprite entry id (`spriteId`). */
     spriteIds: SpriteIdMap,
 ): CatalogueResult {
-    const menuId = config.menuItemId ?? modId;
+    const menuId = config.menuItemId;
     const items: PathCatalogueItem[] = [
         menuItem(menuId, config.menu),
-        ...bound.flatMap((field) => [
-            variableItem(field),
-            valueItem(field),
-            ...actionItemsFor(field, config.sprites),
-        ]),
+        ...bound.flatMap((field) => {
+            const category = config.categoryForPath(field.path);
+            if (category.length === 0) {
+                throw new Error(`categoryForPath returned an empty category for "${field.path}".`);
+            }
+            return [
+                variableItem(field, category),
+                valueItem(field, category),
+                ...actionItemsFor(field, category, config.sprites),
+            ];
+        }),
     ];
 
     // One entry resolution drives both the loaded sprite id and the source
-    // file (the picker falls back to `filePath` when no `spriteIdFor` is given).
-    items.forEach((item) => {
+    // file. A missing match is a configuration error, not an empty sprite.
+    for (const item of items) {
         const entryId = resolveSpriteEntry(config.sprites, item, menuId, config.menu.spriteId);
-        item.spriteId = spriteIds[entryId ?? ""];
-        item.filePath = config.sprites.find((s) => s.spriteId === entryId)?.filePath ?? "";
-    });
-    items.forEach((item) =>
-        item.color = config.categories.find((c) => c.id == item.category)?.color ?? "#FFFFFF"
-    );
+        const loadedSpriteId = spriteIds[entryId];
+        if (typeof loadedSpriteId !== "string") {
+            throw new Error(
+                `Sprite "${entryId}" was not loaded for buffer-controls item "${item.id}".`,
+            );
+        }
+        const entry = config.sprites.find((sprite) => sprite.spriteId === entryId);
+        if (!entry) {
+            throw new Error(
+                `Sprite entry "${entryId}" is missing from the buffer-controls config.`,
+            );
+        }
+        item.spriteId = loadedSpriteId;
+        item.filePath = entry.filePath;
+    }
+    for (const item of items) {
+        const category = config.categories.find((entry) => entry.id === item.category);
+        item.color = category === undefined ? config.unmappedCategoryColor : category.color;
+    }
 
     const list: BuildList = createBuildList({
         modId,
         menuId,
         menuLabel: config.menu.label,
-        // categories,
         catalogueItems: items,
-        selectedId: bound[0]?.path,
+        selectedId: config.initialItemId,
     });
 
     return { buildList: list, pathCount: bound.length };

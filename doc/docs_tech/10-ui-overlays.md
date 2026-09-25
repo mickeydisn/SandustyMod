@@ -134,13 +134,15 @@ This is the exact pattern the deco mods use. Three pieces interact:
 ### 5.1 `main.ts` — build the list, register structures, mount the picker
 
 ```ts
+const initialIcon = ICON_ITEMS.find((item) => item.id !== "icons");
+if (!initialIcon) throw new Error("No selectable icon was generated");
+
 const list = createBuildList({
     modId,
     menuId: "icons",
     menuLabel: "Icons",
-    categories: ICON_CATEGORIES,
-    items: ICON_ITEMS,
-    selectedId: ICON_ITEMS.find((i) => i.id !== "icons")?.id,
+    catalogueItems: ICON_ITEMS,
+    selectedId: initialIcon.id,
 });
 
 registerIconStructures(list, spriteIds); // registers every icon structure
@@ -148,7 +150,12 @@ registerIconStructures(list, spriteIds); // registers every icon structure
 createPickerOverlay({
     list,
     title: "Pick icon",
-    pickerId: `${modId}/picker`, // default slot "hotbar"
+    pickerId: `${modId}/picker`,
+    slot: "hotbar",
+    persistSelection: true,
+    unlockTypes: (types) => {
+        for (const type of types) sandkit.api.player.buildings.unlockByType(type);
+    },
     spriteIdFor: (item) => spriteIds[item.id],
 }); // correct swatch art
 ```
@@ -172,9 +179,8 @@ its menu tile shows a representative sprite.
 
 ### 5.3 `picker/overlay.ts` — the click → overlay flow
 
-1. `createPickerOverlay` registers the overlay:
-   `overlays.register(slot, pickerId, () => h(Picker, null))` (overlay.ts 475), then starts a `sync`
-   interval (default 100 ms, overlay.ts 477).
+1. `createPickerOverlay` registers the overlay and subscribes to the engine `action:changed` event;
+   it does not run a polling interval.
 
 2. The player opens the build menu, sees the single `Icons` row, and clicks it. That runs
    `building.selectStructure("sandustry.icons:item/icons")` (bundel.js 53625). `selectStructure`:

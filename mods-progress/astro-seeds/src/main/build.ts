@@ -16,6 +16,8 @@ import { setProfileBuffer } from "../config/elementWorker/live.ts";
 import {
     buildDefaultProfileRecord,
     PROFILE_BUFFER_ID,
+    PROFILE_BUFFER_MAX_BYTES,
+    PROFILE_INITIAL_ITEM_ID,
     PROFILE_SPRITES,
     type ProfileConfigRecord,
     PROFILES_CONFIG,
@@ -46,8 +48,7 @@ export function buildMain(): void {
     safe(() =>
         api.events.on("game:ready", () => {
             api.ui.toast(`Astro Seeds v${VERSION}`, {});
-        })
-    );
+        }), null);
 
     // Live profile configuration — one placeable structure per buffer path
     // (profiles.<id>.tickSpeed / .enabled / .growEnabled / .crystalEnabled).
@@ -58,13 +59,24 @@ export function buildMain(): void {
         modId: MOD_ID,
         bufferId: PROFILE_BUFFER_ID,
         defaultRecord: buildDefaultProfileRecord(),
+        maxBytes: PROFILE_BUFFER_MAX_BYTES,
+        storage: { persist: true, load: true },
+        pathScan: { maxDepth: 8, includeContainers: true },
         menuItemId: `${MOD_ID}:bufferProfile:menu`,
+        initialItemId: PROFILE_INITIAL_ITEM_ID,
         menu: {
             label: "Astro Profiles",
             description: "Astro Profiles — opens the per-profile config picker.",
             spriteId: "menu",
         },
         categories: PROFILES_CONFIG,
+        categoryForPath: (path) => {
+            const parts = path.split(".");
+            if (parts[0] !== "P" || parts.length < 2 || parts[1] === "") {
+                throw new Error(`Unexpected Astro profile path: ${path}`);
+            }
+            return parts[1];
+        },
         // Sprite list — each entry owns its asset file (there is no separate
         // file table any more). Matching order per catalogue item:
         // itemId → tag → action + kind → kind alone, so the generic art below
@@ -115,9 +127,13 @@ export function buildMain(): void {
             // …overridden knob-by-knob with the mod's own art.
             ...PROFILE_SPRITES,
         ],
-        pickerTitle: "Astro profile config",
-        persist: true,
-        persistLoad: true,
+        unmappedCategoryColor: "#FFFFFF",
+        picker: {
+            id: `${MOD_ID}:bufferProfile:picker`,
+            slot: "hotbar",
+            title: "Astro profile config",
+            persistSelection: true,
+        },
     })
         .then(({ buffer }) => setProfileBuffer(buffer))
         .catch((e) => console.warn(`[${MOD_ID}] buffer controls failed:`, e));

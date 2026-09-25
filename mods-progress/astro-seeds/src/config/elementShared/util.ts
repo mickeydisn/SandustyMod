@@ -10,7 +10,7 @@ export function spec(entry: Omit<AstroElementSpec, "id"> & { slug: string }): As
 }
 
 /** Run `fn`, swallowing errors into `fallback` (engine api may be absent). */
-export function safe<T>(fn: () => T, fallback: T | null = null): T | null {
+export function safe<T>(fn: () => T, fallback: T | null): T | null {
     try {
         return fn();
     } catch {

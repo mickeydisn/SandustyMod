@@ -1,5 +1,6 @@
 export type AlignMode = "floor" | "wall" | "center";
 
+/** Item shape accepted from a mod's generated catalogue. */
 export interface CatalogueItem {
     // Basic info
     id: string;
@@ -13,11 +14,18 @@ export interface CatalogueItem {
     // Cat
     path: string;
     category: string;
-    tags?: string[];
-    sizes?: string[];
+    tags: string[];
+    sizes: string[];
     // Sprite alignment and mirroring
-    align?: AlignMode;
+    align: AlignMode;
     isMirrored?: boolean;
     // Data for structure copyData and defaultData, if any. This is optional, but if provided, it will be used to set the structure's data when placed in the world.
     data?: Record<string, unknown>;
+}
+
+/** Item shape cloned and normalized for the live BuildList. */
+export interface ResolvedCatalogueItem extends CatalogueItem {
+    tags: string[];
+    sizes: string[];
+    align: AlignMode;
 }

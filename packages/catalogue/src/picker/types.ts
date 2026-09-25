@@ -3,22 +3,17 @@ import { CatalogueItem } from "../strucutre/types.ts";
 
 export interface PickerOverlayOptions {
     list: BuildList;
-    /** Overlay id. Default `${modId}/picker`. */
-    pickerId?: string;
-    /** Overlay slot. Default "hotbar". */
-    slot?: string;
-    title?: string;
-    persistSelection?: boolean;
+    /** Overlay registration id. */
+    pickerId: string;
+    /** Overlay slot supplied by the host. */
+    slot: string;
+    title: string;
+    persistSelection: boolean;
     itemFilter?: (item: CatalogueItem) => boolean;
     onSelect?: (item: CatalogueItem, mirrored: boolean) => void;
-    unlockTypes?: (types: string[]) => void;
-    /**
-     * Resolves the sprite id actually loaded for an item. Defaults to
-     * `item.spriteId ?? mod structure-type`, but mods that load sprites under
-     * their own id scheme (e.g. `modId:<id>`) must supply this so the swatches
-     * show the correct art.
-     */
-    spriteIdFor?: (item: CatalogueItem) => string | undefined;
+    unlockTypes: (types: string[]) => void;
+    /** Resolves the sprite id actually loaded for an item. */
+    spriteIdFor: (item: CatalogueItem) => string;
     //renderHeaderExtra?: (ctx: PickerContext) => unknown;
     // renderItemBadge?: (item: CatalogueItem) => unknown;
 }

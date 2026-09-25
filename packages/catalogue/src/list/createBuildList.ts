@@ -9,7 +9,7 @@
  * event + linear catalogue scan on every vanilla placement.
  */
 import "@sandmd/sandkit";
-import type { CatalogueItem } from "../strucutre/types.ts";
+import type { CatalogueItem, ResolvedCatalogueItem } from "../strucutre/types.ts";
 import type {
     BuildEventMap,
     BuildEventName,
@@ -29,7 +29,7 @@ export function compareSizes(a: string, b: string): number {
 
 const itemTypePrefix = (modId: string): string => `${modId}:item/`;
 
-export function typeOfCatalogueItem(modId: string, itemId: string, mirrored = false): string {
+export function typeOfCatalogueItem(modId: string, itemId: string, mirrored: boolean): string {
     return `${itemTypePrefix(modId)}${itemId}${mirrored ? MIRROR_SUFFIX : ""}`;
 }
 
@@ -49,9 +49,9 @@ export interface BuildList {
     readonly modId: string;
     readonly menuId: string;
     readonly menuLabel: string;
-    readonly catalogueItems: CatalogueItem[];
+    readonly catalogueItems: ResolvedCatalogueItem[];
     // readonly categories: CatalogueCategory[];
-    getSelected(): CatalogueItem | undefined;
+    getSelected(): ResolvedCatalogueItem | undefined;
     getSelectedType(): string;
     setSelected(id: string): void;
     isMirrored(): boolean;
@@ -74,12 +74,12 @@ export interface BuildList {
     getSelectedSizes(): string[];
     setSelectedSizes(sizes: string[]): void;
     toggleSize(size: string): void;
-    itemsInCategory(id?: string): CatalogueItem[];
-    itemsInPath(path: string): CatalogueItem[];
+    itemsInCategory(id?: string): ResolvedCatalogueItem[];
+    itemsInPath(path: string): ResolvedCatalogueItem[];
 
     countIn(categoryId: string): number;
     structureType(itemId: string, mirrored?: boolean): string;
-    itemFromType(type: string): CatalogueItem | undefined;
+    itemFromType(type: string): ResolvedCatalogueItem | undefined;
     on<K extends BuildEventName>(name: K, handler: BuildListener<K>): () => void;
     /** Fire after a successful world placement. */
     notifyPlace(x: number, y: number, type?: string): PlacedPayload | null;
@@ -89,21 +89,29 @@ export interface BuildList {
 }
 
 export const createBuildList = (options: BuildListOptions): BuildList => {
-    const catalogueItems = options.catalogueItems.slice();
+    const catalogueItems: ResolvedCatalogueItem[] = options.catalogueItems.map((item) => ({
+        ...item,
+        tags: item.tags.slice(),
+        sizes: item.sizes.slice(),
+    }));
+    if (catalogueItems.length === 0) {
+        throw new Error("createBuildList: catalogueItems must contain at least one item.");
+    }
     // O(1) id -> item lookup. findItem() was Array.find over the whole
     // catalogue on every placement — buffer-controls builds 100+ items,
     // and every mod registers its own building:placed listener, so placing
     // a single vanilla wall scanned every catalogue linearly.
-    const byId = new Map<string, CatalogueItem>();
+    const byId = new Map<string, ResolvedCatalogueItem>();
     for (const entry of catalogueItems) byId.set(entry.id, entry);
-    /*
-    const categories = options.categories.filter((c) =>
-        catalogueItems.some((it) => it.category === c.id)
-    );
-    */
-    let selectedId = options.selectedId ?? catalogueItems[0]?.id ?? "";
-    let category = byId.get(selectedId)?.category ?? catalogueItems[0]?.category ?? "";
-    let path = byId.get(selectedId)?.path ?? catalogueItems[0]?.path ?? "";
+    const initial = byId.get(options.selectedId);
+    if (!initial) {
+        throw new Error(
+            `createBuildList: selectedId "${options.selectedId}" is not in catalogueItems.`,
+        );
+    }
+    let selectedId = initial.id;
+    let category = initial.category;
+    let path = initial.path;
     let mirrored = false;
     let selectedTags: string[] = [];
     let selectedSizes: string[] = [];
@@ -174,7 +182,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         allTags() {
             const set = new Set<string>();
             for (const it of catalogueItems) {
-                for (const t of it.tags ?? []) set.add(t);
+                for (const t of it.tags) set.add(t);
             }
             return [...set].sort();
         },
@@ -196,7 +204,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         allSizes() {
             const set = new Set<string>();
             for (const it of catalogueItems) {
-                for (const s of it.sizes ?? []) set.add(s);
+                for (const s of it.sizes) set.add(s);
             }
             return [...set].sort(compareSizes);
         },
@@ -207,7 +215,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
             selectedTags = tags.filter(
                 (t, i) =>
                     tags.indexOf(t) === i &&
-                    catalogueItems.some((it) => (it.tags ?? []).includes(t)),
+                    catalogueItems.some((it) => it.tags.includes(t)),
             );
             emit("tag", { tags: selectedTags, sizes: selectedSizes });
         },
@@ -225,7 +233,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
             selectedSizes = sizes.filter(
                 (s, i) =>
                     sizes.indexOf(s) === i &&
-                    catalogueItems.some((it) => (it.sizes ?? []).includes(s)),
+                    catalogueItems.some((it) => it.sizes.includes(s)),
             );
             emit("tag", { tags: selectedTags, sizes: selectedSizes });
         },
@@ -238,7 +246,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         },
 
         itemsInCategory(id) {
-            const cat = id ?? category;
+            const cat = id === undefined ? category : id;
             return catalogueItems.filter((it) => it.category === cat);
         },
         itemsInPath(path) {
@@ -249,7 +257,8 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
             return catalogueItems.reduce((n, it) => n + (it.category === categoryId ? 1 : 0), 0);
         },
 
-        structureType: (itemId, mir) => typeOfCatalogueItem(options.modId, itemId, mir ?? mirrored),
+        structureType: (itemId, mir) =>
+            typeOfCatalogueItem(options.modId, itemId, mir === undefined ? mirrored : mir),
 
         itemFromType(type) {
             const id = itemIdFromType(options.modId, type);
@@ -263,7 +272,7 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
         },
 
         notifyPlace(x, y, type) {
-            const used = type ?? list.getSelectedType();
+            const used = type === undefined ? list.getSelectedType() : type;
             const item = list.itemFromType(used);
             if (!item) return null;
             const payload: PlacedPayload = {
@@ -322,11 +331,13 @@ export const createBuildList = (options: BuildListOptions): BuildList => {
                     x?: number;
                     y?: number;
                 };
-                const type = String(p.structureId ?? p.type ?? "");
-                const x = Number(p.x);
-                const y = Number(p.y);
+                const rawType = p.structureId !== undefined ? p.structureId : p.type;
+                if (rawType === undefined || typeof p.x !== "number" || typeof p.y !== "number") {
+                    return;
+                }
+                const type = String(rawType);
                 if (!type.startsWith(prefix)) return;
-                list.notifyRemove(x, y, type);
+                list.notifyRemove(p.x, p.y, type);
             });
         };
 

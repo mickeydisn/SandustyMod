@@ -52,7 +52,7 @@ export function structureTypeSet(): Set<number> {
 export function typeOf(key: TMatchKey): TElementType {
     if (key === "empty") return 0;
     if (key === "structure") return 0;
-    return ElementType[key] ?? 0;
+    return ElementType[key] === undefined ? 0 : ElementType[key];
 }
 
 /** A key list → numeric types. `"empty"` is skipped (use `channelMatch`). */

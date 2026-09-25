@@ -22,11 +22,15 @@ interface GameConfig {
     muted: boolean;
 }
 
-const cfg = new JsonBuffer<GameConfig>(
-    "my-mod",
-    "gameConfig",
-    { volume: 1, muted: false },
-);
+const cfg = new JsonBuffer<GameConfig>({
+    modId: "my-mod",
+    key: "gameConfig",
+    defaultRecord: { volume: 1, muted: false },
+    maxBytes: 64 * 1024,
+    persist: false,
+    loadFromStorage: false,
+    observe: false,
+});
 
 cfg.setPath("volume", 0.5);
 cfg.commit(); // writes JSON into the shared buffer + bumps the version
@@ -39,30 +43,41 @@ console.log(cfg.getPath("volume")); // 0.5
 
 ### Constructor
 
-`new JsonBuffer<T>(modId, key, defaultRecord?, assertShape?)`
+`new JsonBuffer<T>(config)`
 
-| arg              | meaning                                                                         |
-| ---------------- | ------------------------------------------------------------------------------- |
-| `modId`          | your mod id, used only for logging                                              |
-| `key`            | unique key for the shared buffers + long-term storage                           |
-| `defaultRecord?` | seed value used if nothing is stored yet                                        |
-| `assertShape?`   | `(value: T) => void` guard run on every `commit()`; throw to reject a bad state |
+| field             | meaning                                                                 |
+| ----------------- | ----------------------------------------------------------------------- |
+| `modId`           | your mod id, used only for logging                                      |
+| `key`             | unique key for the shared buffers + long-term storage                   |
+| `defaultRecord`   | complete seed value used when no stored/shared record exists            |
+| `maxBytes`        | payload capacity in bytes; passed directly to the shared buffer         |
+| `persist`         | save to `sandkit.api.storage.local` on `store:save`                      |
+| `loadFromStorage` | restore the stored record during construction                           |
+| `observe`         | observe-only mode: never commit and never touch storage                  |
+| `assertShape?`    | `(value: T) => void` guard run on every `commit()`                      |
+
+### Mapped counters
+
+`JsonMapBuffer` uses a named configuration with an explicit `counters` map. Every mapped path
+must exist as an integer in `defaultRecord` and declare int32 bounds. `increment(path, delta)` and
+`decrement(path, delta)` always require their delta; storage behavior is controlled by `persist` and
+`loadFromStorage`.
 
 ### Reading
 
 - `get()` — pull latest remote changes, then return the cached record
 - `getPath(path)` — read one dot/bracket path, e.g. `"players[0].score"`
-- `listPaths(maxDepth = 8, includeContainers = true)` — walk every field with its path, inferred
+- `listPaths({ maxDepth, includeContainers })` — walk every field with its path, inferred
   kind (`bool`/`number`/`string`/`array`/`object`), label and current value. Arrays are summarized
-  as a stable `"players[]"` template.
+  as a stable `"players[]"` template; both scan limits are supplied by the caller.
 - `remoteVersion()` / `version()` — remote vs. locally-seen buffer versions
 - `hasUpdate()` — whether a newer version exists remotely
 
 ### Writing
 
 - `setPath(path, value)` — set a value, creating intermediate objects/arrays
-- `addToPath(path, value?)` — append to the array at `path` (creates the array, or clones the shape
-  of an existing element when no value is given)
+- `addToPath(path, value)` — append to the array at `path`; pass `null`/`undefined` explicitly to
+  request a zero-valued shape clone
 - `replace(next)` — swap in a whole new record
 - `commit()` — validate (`assertShape`), encode to the buffer, bump the version, notify subscribers
 
@@ -85,7 +100,7 @@ Every `JsonBuffer` allocates two fixed-size shared buffers on first use (`ensure
 | buffer key    | typed array              | purpose                         |
 | ------------- | ------------------------ | ------------------------------- |
 | `${key}:ver`  | `Int32Array` of length 1 | a monotonic **version counter** |
-| `${key}:json` | `Uint8Array` of 64 KiB   | the **payload**, JSON-encoded   |
+| `${key}:json` | `Uint8Array` of `maxBytes` | the **payload**, JSON-encoded   |
 
 Both are registered with `sandkit.api.shared.buffers`, so **any `JsonBuffer` created with the same
 `key` — on the main thread _or_ in a worker — sees the same two memory regions.** That is the whole
@@ -116,12 +131,10 @@ possible.
 1. **Construction** allocates/attaches the two buffers and reads `remoteVersion()`.
 2. **If a version already exists** (`remoteVersion() > 0`): someone before us committed, so we
    decode the payload from `${key}:json` and set `localVersion` to match. We are now in sync.
-3. **If nothing was committed yet** (`remoteVersion() === 0`): this is a brand new (or
-   multi-instance "writer") buffer. We fall back to:
-   - the **long-term copy** in `sandkit.api.storage.local`, if any, else
-   - the **`defaultRecord`** passed to the constructor, else
-   - an empty `{}`. We set `localVersion = -1` (so we know we hold a _pending un-published_ state)
-     and immediately `commit()` it to seed the buffer.
+3. **If nothing was committed yet** (`remoteVersion() === 0`): a writer first uses the explicitly
+   requested long-term copy (when `loadFromStorage` is true), otherwise the required
+   `defaultRecord`. It sets `localVersion = -1` and commits that record to seed the buffer. An
+   `observe: true` instance instead waits for the first writer commit and never publishes defaults.
 
 ### commit() — publish
 
@@ -163,9 +176,8 @@ without you having to remember to sync manually — and it short-circuits when n
 [ utf-8 JSON bytes ... ][ 0 0 0 ... (empty tail) ]
 ```
 
-- `encodeJsonInBuffer` fills the buffer with zeros, writes `JSON.stringify` output, and warns (does
-  not throw) if the record exceeds the 64 KiB slot — **keep records reasonable** and design your
-  schema accordingly.
+- `encodeJsonInBuffer` fills the buffer with zeros, writes `JSON.stringify` output, and throws if the
+  record exceeds the configured `maxBytes`; size the buffer explicitly for the record.
 - `decodeJson` slices at the first zero byte (a sentinel for "rest is empty") and `JSON.parse`s it.
 
 ### Persistence
@@ -199,7 +211,7 @@ Worked entry points live under [`exemple/`](./exemple), one subdirectory per typ
   (`JsonBuffer`): two instances sharing one key, the version gate, path access, introspection and
   subscriptions.
 - [`exemple/jsonMapBuffer/main.ts`](./exemple/jsonMapBuffer/main.ts) — the atomic-counter variant
-  (`JsonMapBuffer`): auto-mapped numeric leaves, the race-free `increment()` CAS loop, per-path
+  (`JsonMapBuffer`): explicitly mapped numeric leaves, the race-free `increment()` CAS loop, per-path
   logs, and cross-thread visibility.
 
 Each file documents its own run command from the repo root.
@@ -217,7 +229,7 @@ actually needs them.
   the record's shape. Dramatically smaller payloads and faster decode for hot numeric fields;
   current codec is the simplest thing that works.
 
-- **Growable / chunked buffering** — the fixed 64 KiB slot truncates oversized records. Options:
+- **Growable / chunked buffering** — the current payload is a fixed `maxBytes` slot. Options:
   segmented buffers (a header + N chunks) or spilling large blobs to storage and keeping only a
   pointer in the shared buffer.
 

@@ -36,6 +36,11 @@ void (async () => {
         modId: MOD_ID,
         bufferId: `${MOD_ID}:gameConfig`,
         defaultRecord: defaultValue,
+        maxBytes: 64 * 1024,
+        storage: { persist: true, load: true },
+        pathScan: { maxDepth: 8, includeContainers: true },
+        menuItemId: `${MOD_ID}:menu`,
+        initialItemId: "volume",
         menu: {
             label: "Buffer Controls",
             description: "Buffer Controls — opens the variable picker.",
@@ -83,9 +88,16 @@ void (async () => {
                 filePath: "assets/types/toggle.png",
             },
         ],
-        pickerTitle: "Buffer controls",
-        // Flat record: paths have no section segment, so no category colors.
+        // Flat record: every path belongs to the explicit settings category.
         categories: [],
+        categoryForPath: () => "settings",
+        unmappedCategoryColor: "#FFFFFF",
+        picker: {
+            id: `${MOD_ID}:picker`,
+            slot: "hotbar",
+            title: "Buffer controls",
+            persistSelection: true,
+        },
     });
 })();
 

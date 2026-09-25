@@ -10,7 +10,7 @@
  * The controller has no knowledge of DOM/React; it just reacts to state changes
  * and user intent reported by the view.
  */
-import { CatalogueItem } from "../strucutre/types.ts";
+import { ResolvedCatalogueItem } from "../strucutre/types.ts";
 import { persistSelection, restorePickerState } from "../list/persistence.ts";
 import { createPickerView } from "./content.ts";
 import type { PickerContentApi, PickerOverlay, PickerOverlayOptions } from "./types.ts";
@@ -21,9 +21,7 @@ export function createPickerOverlay(
     options: PickerOverlayOptions,
 ): PickerOverlay {
     const list = options.list;
-    const pickerId = options.pickerId ?? `${list.modId}/picker`;
-    const slot = "hotbar";
-    const title = options.title ?? "Pick item";
+    const { pickerId, slot, title, unlockTypes } = options;
 
     let pickerState: PickerState = null;
     let repaint: (() => void) | null = null;
@@ -31,15 +29,10 @@ export function createPickerOverlay(
     let unsubscribe: (() => void) | null = null;
     let registered = false;
 
-    if (options.persistSelection !== false) restorePickerState(list);
-
-    const unlockTypes = options.unlockTypes ??
-        ((types: string[]) => {
-            for (const type of types) sandkit.api.player.buildings.unlockByType(type);
-        });
+    if (options.persistSelection) restorePickerState(list);
 
     const persistIfEnabled = () => {
-        if (options.persistSelection !== false) persistSelection(list);
+        if (options.persistSelection) persistSelection(list);
     };
 
     const selectStructure = (type: string) => {
@@ -65,7 +58,7 @@ export function createPickerOverlay(
         repaint?.();
     };
 
-    const selectItem = (item: CatalogueItem) => {
+    const selectItem = (item: ResolvedCatalogueItem) => {
         const mirrored = list.isMirrored();
         list.setSelected(item.id);
         list.setCategory(item.category);
@@ -96,9 +89,9 @@ export function createPickerOverlay(
         const tags = list.getSelectedTags();
         const sizes = list.getSelectedSizes();
         // AND across groups, OR within each group (same as the picker filter).
-        const matches = (it: CatalogueItem): boolean => {
-            const itemTags = it.tags ?? [];
-            const itemSizes = it.sizes ?? [];
+        const matches = (it: ResolvedCatalogueItem): boolean => {
+            const itemTags = it.tags;
+            const itemSizes = it.sizes;
             if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) return false;
             if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
             return true;
@@ -119,9 +112,9 @@ export function createPickerOverlay(
         const tags = list.getSelectedTags();
         const sizes = list.getSelectedSizes();
         // AND across groups, OR within each group (same as the picker filter).
-        const matches = (it: CatalogueItem): boolean => {
-            const itemTags = it.tags ?? [];
-            const itemSizes = it.sizes ?? [];
+        const matches = (it: ResolvedCatalogueItem): boolean => {
+            const itemTags = it.tags;
+            const itemSizes = it.sizes;
             if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) return false;
             if (sizes.length > 0 && !sizes.some((s) => itemSizes.includes(s))) return false;
             return true;
@@ -140,9 +133,9 @@ export function createPickerOverlay(
         const tags = list.getSelectedTags();
         const avail = new Set<string>();
         for (const it of list.catalogueItems) {
-            const itemTags = it.tags ?? [];
+            const itemTags = it.tags;
             if (tags.length > 0 && !tags.some((t) => itemTags.includes(t))) continue;
-            for (const s of it.sizes ?? []) avail.add(s);
+            for (const s of it.sizes) avail.add(s);
         }
         const stale = list.getSelectedSizes().filter((s) => !avail.has(s));
         if (stale.length > 0) {
@@ -212,7 +205,7 @@ export function createPickerOverlay(
      * `sync()` before `close()` and left the overlay stuck open. Always
      * narrow to string first.
      */
-    const currentSelectedItem = (): CatalogueItem | undefined => {
+    const currentSelectedItem = (): ResolvedCatalogueItem | undefined => {
         try {
             const selected = sandkit.api.action.getSelected?.() as
                 | { id?: unknown; type?: unknown }
