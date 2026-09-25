@@ -1,0 +1,22 @@
+{
+    "tasks": {
+        "build:main": "deno bundle -o build/main.js src/main.ts",
+        "build:modinfo": "cp src/modinfo.json build/modinfo.json",
+        "build:toGame": "mkdir -p \"/Users/mickey/Library/Application Support/sandustry/mods/md-my-hown-mod\" && cp -r build/. \"/Users/mickey/Library/Application Support/sandustry/mods/md-my-hown-mod/\"",
+        "build": "deno task build:main && deno task build:modinfo && deno task build:assets && deno task build:toGame",
+        "check": "deno check src/main.ts",
+        "build:assets": "mkdir -p build/assets && cp -r assets/. build/assets/ 2>/dev/null || true"
+    },
+    "compilerOptions": {
+        "lib": [
+            "deno.window",
+            "dom"
+        ],
+        "strict": true
+    },
+    "exclude": [
+        "main.js",
+        "worker.js",
+        "build"
+    ]
+}

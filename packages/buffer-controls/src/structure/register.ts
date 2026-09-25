@@ -11,7 +11,7 @@
 import "@sandmd/sandkit";
 
 import type { BuildList } from "@sandmd/catalogue";
-import type { JsonBuffer } from "@sandmd/buffer";
+import type { BufferHandle } from "@sandmd/buffer";
 import type { ActionRead, ActionWrite } from "./register/actionRegister.ts";
 import type { ActionOp, PathCatalogueItem } from "../types.ts";
 import { registerMenuStructures } from "./register/menuRegister.ts";
@@ -40,7 +40,7 @@ export interface StructureRegisterResult {
 }
 
 export function registerStructures<T extends object>(
-    buffer: JsonBuffer<T>,
+    buffer: BufferHandle<T>,
     list: BuildList,
 ): StructureRegisterResult {
     const readBuffer = (path: string): unknown => buffer.getPath(path);

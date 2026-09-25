@@ -1,9 +1,10 @@
 /**
- * registerBufferControls — wire a JsonBuffer record to placeable structures.
+ * registerBufferControls — wire a JSON record to placeable structures.
  *
  * This is the single entry point of @sandmd/buffer-controls. Given a declarative
  * config (one `field` per exposed path + the generic kind art + labels) it:
- *   1. builds the JsonBuffer seed record from the field list,
+ *   1. builds the record's seed from the field list and picks the backing store
+ *      (a `JsonBuffer`, or a `JsonMapBuffer` when `config.counters` is set),
  *   2. loads each field's own art plus the generic kind art,
  *   3. re-shapes a restored record onto the field list (fills new knobs, drops
  *      removed ones) and builds the catalogue (variables / value / action),
@@ -17,7 +18,12 @@
  */
 import "@sandmd/sandkit";
 import { loadSpriteMap } from "@sandmd/assets";
-import { JsonBuffer } from "@sandmd/buffer";
+import {
+    type BufferHandle,
+    JsonBuffer,
+    JsonMapBuffer,
+    type JsonMapCounterOptions,
+} from "@sandmd/buffer";
 import { type CatalogueItem, createPickerOverlay } from "@sandmd/catalogue";
 import type {
     BufferControlsConfig,
@@ -29,12 +35,15 @@ import { buildFieldsRecord, fieldsToSprites, normalizeFieldsRecord } from "./fie
 import { formatBufferValue } from "./structure/register/valueRegister.ts";
 import { registerStructures } from "./structure/register.ts";
 
-export async function registerBufferControls<T extends object>(
-    config: BufferControlsConfig<T>,
-): Promise<BufferControlsHandles<T>> {
-    const { modId } = config;
-
-    const buffer = new JsonBuffer<T>({
+/**
+ * Build the record's backing store. `config.counters` selects a
+ * `JsonMapBuffer` — every listed path then also gets a shared Int32 counter a
+ * worker can `increment()` race-free — and without it a plain `JsonBuffer` is
+ * used. Both satisfy `BufferHandle`, so nothing downstream has to know which
+ * one it got.
+ */
+function createBuffer<T extends object>(config: BufferControlsConfig<T>): BufferHandle<T> {
+    const shared = {
         key: config.bufferId,
         // Derived from the field list — the caller never hand-writes a seed
         // record that could drift from the declared paths/defaults.
@@ -43,8 +52,28 @@ export async function registerBufferControls<T extends object>(
         maxBytes: config.maxBytes,
         persist: config.storage.persist,
         loadFromStorage: config.storage.load,
-        observe: false,
-    });
+    };
+    const counters = config.counters;
+    if (counters) return new JsonMapBuffer<T>({ ...shared, counters });
+    // Observe mode is JsonBuffer-only, and this mod always owns its record —
+    // it is never the observe-only handle a worker would create.
+    return new JsonBuffer<T>({ ...shared, observe: false });
+}
+
+/** No counter map: the record is backed by a plain `JsonBuffer`. */
+export function registerBufferControls<T extends object>(
+    config: BufferControlsConfig<T> & { counters?: undefined },
+): Promise<BufferControlsHandles<T, JsonBuffer<T>>>;
+/** A counter map: the record is backed by a `JsonMapBuffer`. */
+export function registerBufferControls<T extends object>(
+    config: BufferControlsConfig<T> & { counters: Record<string, JsonMapCounterOptions> },
+): Promise<BufferControlsHandles<T, JsonMapBuffer<T>>>;
+export async function registerBufferControls<T extends object>(
+    config: BufferControlsConfig<T>,
+): Promise<BufferControlsHandles<T, BufferHandle<T>>> {
+    const { modId } = config;
+
+    const buffer = createBuffer(config);
     // -- 2. Sprites ----------------------------------------------------------
     // Each field's own art, followed by the generic kind/action art it falls
     // back to. Every entry carries its own filePath, so there is no second file

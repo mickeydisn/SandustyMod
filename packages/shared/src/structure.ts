@@ -38,6 +38,19 @@ export interface StructureLike {
     data: Record<string, unknown>;
 }
 
+/**
+ * Engine context handed to a processing tick.
+ * Mirrors StructureProcessingContext in the official SandustryTypes.
+ */
+export interface StructureProcessingContext {
+    /** Resolved element type at a cell, or null. */
+    getResolvedTypeAtCell(cellX: number, cellY: number): number | null;
+    /** True when the cell has neither element nor terrain. */
+    isCellEmptyAtCell(cellX: number, cellY: number): boolean;
+    /** Commit batched grid mutations from the processing callback. */
+    commit(mutations: unknown): void;
+}
+
 export interface SandkitStructure {
     register(definition: unknown, options?: Record<string, unknown>): void;
     update: (structure: StructureLike, options?: Record<string, unknown>) => void;
@@ -55,7 +68,7 @@ export interface SandkitStructure {
             definition: {
                 structureType?: string;
                 intervalMs: number;
-                process: (s: StructureLike, context: unknown) => void;
+                process: (s: StructureLike, context: StructureProcessingContext) => void;
             },
         ) => void;
         setEnabledAt?: (x: number, y: number, enabled: boolean) => void;

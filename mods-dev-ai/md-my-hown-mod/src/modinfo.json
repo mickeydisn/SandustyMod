@@ -1,0 +1,26 @@
+{
+    "manifestVersion": 1,
+    "id": "md-my-hown-mod",
+    "name": "My Own Mod Configurator",
+    "version": "0.1.4",
+    "apiVersion": 1,
+    "entry": "main.js",
+    "author": "MickeyDisn",
+    "description": "In-game configurator to define and register custom elements, structures, items, recipes and processing via JSON config stored in the game. Movable minimizable panel (minimized by default).",
+    "dependencies": [],
+    "loadOrder": 0,
+    "configSchema": {
+        "enabled": {
+            "type": "boolean",
+            "default": true,
+            "label": "Enabled",
+            "description": "Master switch. When off, the mod prunes stale buildings/items, removes its orphaned placed objects and wipes its own storage."
+        },
+        "panelMinimized": {
+            "type": "boolean",
+            "default": false,
+            "label": "Panel minimized by default",
+            "description": "Start the config panel minimized. No item is required to open it."
+        }
+    }
+}

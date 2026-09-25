@@ -3,7 +3,8 @@
         "./packages/*",
         "./mods-pub/*",
         "./mods-progress/*",
-        "./mods-dev/*"
+        "./mods-dev/*",
+        "./mods-dev-ai/*"
     ],
 
     "exclude": [

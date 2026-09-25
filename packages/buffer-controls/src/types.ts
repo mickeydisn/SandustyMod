@@ -7,7 +7,12 @@
  * record, the sprite list and every catalogue item's tag / category / filter
  * tags from that field list (see ./fields.ts).
  */
-import type { JsonBuffer, ListPathsOptions } from "@sandmd/buffer";
+import type {
+    BufferHandle,
+    JsonBuffer,
+    JsonMapCounterOptions,
+    ListPathsOptions,
+} from "@sandmd/buffer";
 import type { BuildList } from "@sandmd/catalogue";
 
 ///-----------------
@@ -165,10 +170,28 @@ export interface BufferControlsConfig<T extends object = Record<string, unknown>
      * keep in sync.
      */
     fields: BufferControlsField[];
-    /** Optional validation guard passed to the underlying JsonBuffer. */
+    /** Optional validation guard passed to the underlying buffer. */
     assertShape?: (value: T) => void;
     /** Maximum JSON payload size in bytes. */
     maxBytes: number;
+    /**
+     * Optional atomic-counter map. Supplying it backs the record with a
+     * `JsonMapBuffer`, so every listed path additionally lives in its own
+     * shared `Int32Array` counter and a worker can do a race-free
+     * `increment(path, delta)`. Omit it — the default — for a plain
+     * `JsonBuffer`.
+     *
+     * Two constraints come from `JsonMapBuffer` and are enforced when the
+     * buffer is built, so they are the caller's job to respect: every mapped
+     * path must be an **integer** in the record derived from `fields`, and a
+     * restored value that falls outside its `min`/`max` throws at boot. Pick
+     * bounds that cover every value the field's action buttons can produce.
+     *
+     * Note that a mapped path is owned by its counter, so the `replace()`
+     * repair below cannot re-seed it — declare the default in `fields` and
+     * leave the initial value to `counters` bounds.
+     */
+    counters?: Record<string, JsonMapCounterOptions>;
     /** Explicit storage policy. */
     storage: BufferControlsStorageConfig;
     /** Explicit field-discovery policy. */
@@ -193,8 +216,17 @@ export interface BufferControlsConfig<T extends object = Record<string, unknown>
     picker: BufferControlsPickerConfig;
 }
 
-export interface BufferControlsHandles<T extends object = Record<string, unknown>> {
-    buffer: JsonBuffer<T>;
+/**
+ * `B` is the concrete backing store: `JsonBuffer<T>` by default, so existing
+ * consumers keep receiving the handle they type against, and
+ * `JsonMapBuffer<T>` when `counters` is supplied. Read it through
+ * `BufferHandle<T>` unless you need a counter specific method.
+ */
+export interface BufferControlsHandles<
+    T extends object = Record<string, unknown>,
+    B extends BufferHandle<T> = JsonBuffer<T>,
+> {
+    buffer: B;
     list: BuildList;
     /** Number of scalar paths exposed as structures. */
     pathCount: number;
