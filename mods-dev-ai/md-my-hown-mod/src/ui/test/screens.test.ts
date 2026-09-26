@@ -32,13 +32,13 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { renderHelp } = await import("./help-panel.ts");
-const { RELATIONS } = await import("./relations.ts");
-const { MENU_GROUPS } = await import("./schema.ts");
-const { graphCategories, buildGraph } = await import("./graph.ts");
-const { renderConfigMap } = await import("./config-map.ts");
+const { renderHelp } = await import("../help-panel.ts");
+const { RELATIONS } = await import("../relations.ts");
+const { MENU_GROUPS } = await import("../schema.ts");
+const { graphCategories, buildGraph } = await import("../graph.ts");
+const { renderConfigMap } = await import("../config-map.ts");
 const { HANDLER_META, HANDLER_TYPE_BLURBS, HANDLER_TYPE_LABELS } = await import(
-    "../hooks/handler-registry.ts"
+    "../../hooks/handler-registry.ts"
 );
 
 /** A `createElement` stand-in that records the tree so it can be searched. */

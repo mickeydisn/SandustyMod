@@ -75,7 +75,7 @@ globalThis.sandkit = {
     },
 };
 
-const { listElements, listItems, listTerrains } = await import("../catalog.ts");
+const { listElements, listItems, listTerrains } = await import("../../catalog.ts");
 const values = (o: { value: string }[]) => o.map((x) => x.value);
 
 // ── elements ─────────────────────────────────────────────────────────────────

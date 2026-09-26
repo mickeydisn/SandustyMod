@@ -26,7 +26,7 @@ const {
     techUnlockStructureIds,
     describeNode,
     unlockLine,
-} = await import("./tech-link.ts");
+} = await import("../tech-link.ts");
 
 /** One structure, no node set — which is the built-in default. */
 const base = () => ({

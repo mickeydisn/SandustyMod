@@ -86,6 +86,7 @@ import {
     hexListToVariants,
     isActive,
     MENU_GROUPS,
+    newEntryForm,
     normalizeShape,
     parseIdList,
     PASSTHROUGH_KEY,
@@ -99,6 +100,7 @@ import {
     validateForm,
     variantsToHexList,
 } from "./schema.ts";
+import { definitionFor } from "./definition/index.ts";
 import {
     handlerDoc,
     listBuildModeTypes,
@@ -512,14 +514,11 @@ export function createPanelComponent(defaultMinimized = true) {
         const startNew = () => {
             setEditingId(null);
             setConfirmId(null);
-            const next = formDefaults(cat);
-            // A structure must name an unlock node, so a new one starts on the
-            // built-in default rather than on nothing. Without this the required
-            // field opens empty and blocks the first save on a rule the author
-            // never chose — "available from the start" is a decision, and this is
-            // where it is pre-made rather than assumed.
-            if (cat === "structures") next.unlockNode = DEFAULT_UNLOCK_NODE;
-            setForm(next);
+            // `newEntryForm` applies the field defaults and then the definition's
+            // own seed, so a tab whose first save needs a decision the author
+            // never made (a structure's unlock node) does not need a special case
+            // here to get one.
+            setForm(newEntryForm(cat));
             setMode("form");
         };
 
@@ -603,65 +602,6 @@ export function createPanelComponent(defaultMinimized = true) {
             applyConfig(loadConfig());
             refresh();
             skApi.toast("Removed");
-        };
-
-        // ── Field rendering ────────────────────────────────────────────────
-        /**
-         * 4×4 footprint editor. The engine only accepts a 4×4 matrix of 0/1, so
-         * this replaces a raw JSON textarea with a clickable grid: click a cell
-         * to toggle it, or use the fill buttons for the common solid/empty cases.
-         */
-        const renderShape = (f: FieldSpec, val: string, err?: string) => {
-            const grid = normalizeShape(safeJson(val) ?? emptyShape(1));
-            const write = (next: number[][]) => setField(f.key, shapeToText(next));
-
-            const cellAt = (y: number, x: number) => {
-                const on = grid[y][x] === 1;
-                return h(
-                    "button",
-                    {
-                        key: `${y}-${x}`,
-                        title: on
-                            ? `cell ${x},${y} — occupied (click to clear)`
-                            : `cell ${x},${y} — empty (click to fill)`,
-                        style: on ? S.shapeCellOn : S.shapeCellOff,
-                        onClick: () => {
-                            const next = grid.map((r) => r.slice());
-                            next[y][x] = on ? 0 : 1;
-                            write(next);
-                        },
-                    },
-                    "",
-                );
-            };
-
-            return h(
-                "div",
-                { style: { display: "flex", flexDirection: "column", gap: 6 } },
-                h(
-                    "div",
-                    { style: S.shapeGridBox },
-                    ...grid.map((_row, y) =>
-                        h(
-                            "div",
-                            { key: y, style: S.shapeRow },
-                            ...grid[y].map((_v, x) => cellAt(y, x)),
-                        )
-                    ),
-                ),
-                h(
-                    "div",
-                    { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" } },
-                    h("button", { style: S.btn, onClick: () => write(emptyShape(1)) }, "Fill 4×4"),
-                    h("button", { style: S.btn, onClick: () => write(emptyShape(0)) }, "Clear all"),
-                    h("button", {
-                        style: S.btn,
-                        onClick: () => write(grid.map((r) => r.slice()).reverse()),
-                    }, "Flip Y"),
-                    h("span", { style: S.hintBelow }, describeShape(grid)),
-                ),
-                err ? h("div", { style: S.errorText }, err) : null,
-            );
         };
 
         /**
@@ -860,123 +800,6 @@ export function createPanelComponent(defaultMinimized = true) {
         };
 
         /**
-         * `buildModes[]` editor — one row per build mode.
-         *
-         * The engine takes a **list** (`Array.isArray(e) && e.forEach(rt)`) and
-         * a structure may have several: a line mode for dragging out a pipe run
-         * plus a single mode for dropping one node. The form used to hold
-         * exactly one (`buildModeType` + `spanTiles`), so a structure with two
-         * modes had the second dropped on save — silently, leaving a structure
-         * that behaved in a way the form never described.
-         *
-         * `spanTiles` is per-row because the engine validates it per mode and
-         * throws: `rt` rejects `spanTiles` on any `type` other than `"line"`.
-         */
-        const renderBuildModes = (f: FieldSpec, val: string, locked: boolean) => {
-            let rows: Record<string, unknown>[] = [];
-            try {
-                const parsed = JSON.parse(val || "[]");
-                if (Array.isArray(parsed)) rows = parsed;
-            } catch { /* raw value stays; validation reports it */ }
-            const writeRows = (next: Record<string, unknown>[]) =>
-                setField(f.key, JSON.stringify(next));
-            const modes = listBuildModeTypes();
-
-            return h(
-                "div",
-                null,
-                rows.length === 0
-                    ? h(
-                        "div",
-                        { style: S.hintBelow },
-                        "No build modes listed — the engine places this as a single point.",
-                    )
-                    : null,
-                ...rows.map((row, i) => {
-                    const type = String(row.type ?? "single");
-                    return h(
-                        "div",
-                        { key: i, style: S.outputsRow },
-                        h(
-                            "select",
-                            {
-                                style: S.input,
-                                title: "build mode type",
-                                value: type,
-                                disabled: locked,
-                                onChange: (e: { target: { value: string } }) => {
-                                    const nextType = e.target.value;
-                                    writeRows(
-                                        rows.map((r, j) => {
-                                            if (j !== i) return r;
-                                            if (nextType === "line") {
-                                                return { ...r, type: nextType };
-                                            }
-                                            // spanTiles is meaningless off a line
-                                            // mode, and leaving it behind would
-                                            // make the engine throw on register.
-                                            const { spanTiles: _drop, ...rest } = r;
-                                            return { ...rest, type: nextType };
-                                        }),
-                                    );
-                                },
-                            },
-                            ...modes.map((o) =>
-                                h("option", { key: o.value, value: o.value }, o.label)
-                            ),
-                        ),
-                        type === "line"
-                            ? h("input", {
-                                type: "number",
-                                style: S.input,
-                                min: 1,
-                                max: 64,
-                                placeholder: "span",
-                                title: "tiles per drag; the engine throws below 1",
-                                value: row.spanTiles === undefined ? "" : String(row.spanTiles),
-                                disabled: locked,
-                                onInput: (e: { currentTarget: { value: string } }) => {
-                                    const raw = e.currentTarget.value.trim();
-                                    writeRows(
-                                        rows.map((r, j) => {
-                                            if (j !== i) return r;
-                                            if (raw === "") {
-                                                const { spanTiles: _drop, ...rest } = r;
-                                                return rest;
-                                            }
-                                            return { ...r, spanTiles: Number(raw) };
-                                        }),
-                                    );
-                                },
-                            })
-                            : h("span", { style: S.hintBelow }, "no span"),
-                        h(
-                            "button",
-                            {
-                                type: "button",
-                                style: { ...S.btnDanger, opacity: locked ? 0.5 : 1 },
-                                disabled: locked,
-                                title: "remove this build mode",
-                                onClick: () => writeRows(rows.filter((_, j) => j !== i)),
-                            },
-                            "✕",
-                        ),
-                    );
-                }),
-                h(
-                    "button",
-                    {
-                        type: "button",
-                        style: S.btn,
-                        disabled: locked,
-                        onClick: () => writeRows([...rows, { type: "single" }]),
-                    },
-                    "+ build mode",
-                ),
-            );
-        };
-
-        /**
          * Excavation `terrainRules[]` editor — one row per matched terrain.
          *
          * These were completely unreachable before: the register layer dropped
@@ -1111,8 +934,23 @@ export function createPanelComponent(defaultMinimized = true) {
                 f.required ? h("span", { style: S.requiredMark }, "*") : null,
             );
 
-            let control: unknown = null;
-            if (f.kind === "select") {
+            // A definition may own the control for one of its own field kinds —
+            // the 4×4 shape grid, the repeating build-modes editor. Asked before
+            // the generic chain below, which then handles every kind it does not
+            // claim. That ordering is the whole point: a structure-only widget is
+            // added without the generic renderer learning that `shape` exists.
+            const own = definitionFor(cat)?.panel?.renderField?.({
+                h,
+                form,
+                cfg,
+                setField,
+                field: f,
+                value: val,
+                error: err,
+                locked,
+            });
+            let control: unknown = own ?? null;
+            if (control === null && f.kind === "select") {
                 const opts = resolveOptions(f, form);
                 const placeholder = f.required ? "— select —" : "— none —";
                 control = h(
@@ -1260,12 +1098,8 @@ export function createPanelComponent(defaultMinimized = true) {
                         onChange: (e: { target: { value: string } }) => set(e.target.value),
                     }),
                 );
-            } else if (f.kind === "shape") {
-                control = renderShape(f, val, err);
             } else if (f.kind === "library") {
                 control = renderLibrary(f, val, err);
-            } else if (f.kind === "buildModes") {
-                control = renderBuildModes(f, val, locked);
             } else if (f.kind === "colorVariants") {
                 control = renderColorVariants(f, val, locked);
             } else if (f.kind === "terrainRules") {
@@ -1495,19 +1329,12 @@ export function createPanelComponent(defaultMinimized = true) {
                     h("span", { style: S.screenBlurb }, meta.blurb),
                     h("button", { style: S.btn, onClick: cancelForm }, "← Back"),
                 ),
-                // The unlock relation, stated in words as well as shown in the
-                // picker — "which node is this behind, and does it need research?"
-                // is the question an author actually has, and answering it needs the
-                // node's kind and cost, not just its id. Only on the structure
-                // screen, which is where the question is asked.
-                ...(cat === "structures"
-                    ? [
-                        h(
-                            "div",
-                            { key: "unlock-row", style: S.unlockRow },
-                            h("span", { style: S.unlockText }, unlockLine(form, cfg)),
-                        ),
-                    ]
+                // Whatever this definition wants above its own fields — the
+                // structure's unlock relation, said in words rather than left to
+                // a dropdown label. A tab with nothing to add contributes
+                // nothing, so this is not a special case for one screen.
+                ...(definitionFor(cat)?.panel?.renderHeader
+                    ? [definitionFor(cat)!.panel!.renderHeader!({ h, form, cfg, setField })]
                     : []),
                 ...sections.map((sec) =>
                     h(
@@ -1848,14 +1675,14 @@ export function createPanelComponent(defaultMinimized = true) {
                             cfg: cfg as unknown as Record<string, unknown>,
                             state: handlerTab,
                             setState: setHandlerTab,
-                            onGoTo: (key) => goCategory(key as Tab),
+                            onGoTo: (key: string) => goCategory(key as Tab),
                             onCopy: copyText,
                         })
                         : cat === "help"
                         ? renderHelp({
                             h: h as never,
                             cfg: cfg as unknown as Record<string, unknown>,
-                            onGoTo: (key) => goCategory(key as Tab),
+                            onGoTo: (key: string) => goCategory(key as Tab),
                             onCopy: copyText,
                             filter: helpFilter,
                             setFilter: setHelpFilter,
@@ -1864,13 +1691,13 @@ export function createPanelComponent(defaultMinimized = true) {
                         ? renderDraws({
                             h: h as never,
                             cfg: cfg as unknown as Record<string, unknown>,
-                            onGoTo: (key) => goCategory(key as Tab),
+                            onGoTo: (key: string) => goCategory(key as Tab),
                         })
                         : cat === "map"
                         ? renderConfigMap({
                             h: h as never,
                             cfg: cfg as unknown as Record<string, unknown>,
-                            onGoTo: (key) => goCategory(key as Tab),
+                            onGoTo: (key: string) => goCategory(key as Tab),
                             onCopy: copyText,
                         })
                         : mode === "form"

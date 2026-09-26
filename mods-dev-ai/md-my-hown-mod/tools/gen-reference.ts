@@ -26,6 +26,8 @@ const ROOT = HERE.replace(/\/tools\/$/, "") + "/";
 const OUT = `${ROOT}doc-bundel/`;
 const DOC = `${ROOT}doc/`;
 
+import { schemaSourceWithDefinitions } from "./schema-source.ts";
+
 export interface Row {
     /** The form control's key, e.g. `shapeJson`. */
     uiKey: string;
@@ -257,7 +259,7 @@ export function statementsOf(block: string): string[] {
  * the part that is invisible in the UI.
  */
 export async function readMapping(): Promise<Map<string, Map<string, string>>> {
-    const src = Deno.readTextFileSync(`${ROOT}src/ui/schema.ts`);
+    const src = schemaSourceWithDefinitions();
     const start = src.indexOf("export function formToEntry");
     const end = src.indexOf("\n}", start);
     const body = src.slice(start, end === -1 ? undefined : end);
@@ -278,6 +280,19 @@ export async function readMapping(): Promise<Map<string, Map<string, string>>> {
         for (
             const k of block.matchAll(
                 /set(?:Str|Num|Bool)\(\s*"(\w+)"\s*,\s*opt\w*\(\s*form\s*,\s*"(\w+)"/g,
+            )
+        ) {
+            map.set(k[2], k[1]);
+        }
+        // …and the same shape through a per-object definition's writer, where the
+        // form is already bound to it: `w.setStr("name", w.opt("name"))`.
+        //
+        // Without this a definition's fields read as unmapped, and the generated
+        // reference renders every one of them as `—`, which reads as "this field
+        // stores nothing" rather than "this reader did not understand it".
+        for (
+            const k of block.matchAll(
+                /\w+\.set(?:Str|Num|Bool)\(\s*"(\w+)"\s*,\s*\w+\.opt\w*\(\s*"(\w+)"\s*\)/g,
             )
         ) {
             map.set(k[2], k[1]);
@@ -324,6 +339,27 @@ export async function readMapping(): Promise<Map<string, Map<string, string>>> {
         for (const k of block.matchAll(/entry\.(\w+)\s*=\s*\{([^{}]*)\}/g)) {
             for (const inner of k[2].matchAll(/(\w+)\s*[:=]/g)) {
                 map.set(inner[1], `${k[1]}.${inner[1]}`);
+            }
+        }
+        // …and the same nested literal written through a definition's writer.
+        //
+        // The pair is a *local* read and a *raw* write, so neither the
+        // same-key regex above nor the local-joining one can see it:
+        //   const image = w.opt("imageName");
+        //   if (image) w.setRaw("render", { imageName: image });
+        // The control is `imageName`; the stored key is `render.imageName`. A
+        // reader that misses it renders `—`, and `—` in this document means
+        // "stores nothing", so the miss is a false statement rather than a gap.
+        for (const k of block.matchAll(/setRaw\(\s*"(\w+)"\s*,\s*\{([^{}]*)\}/g)) {
+            for (const inner of k[2].matchAll(/(\w+)\s*[:=]\s*(\w+)/g)) {
+                const key = inner[1];
+                const local = inner[2];
+                // `imageName: image` — the value names a local, so the ui key is
+                // whatever that local was read from. A literal value is the key.
+                const read = stmts
+                    .map((s) => s.match(new RegExp(`const\\s+${local}\\s*=\\s*\\w+\\.opt\\w*\\(\\s*"(\\w+)"`)))
+                    .find(Boolean);
+                map.set(read?.[1] ?? key, `${k[1]}.${key}`);
             }
         }
         // composite constructions, which no amount of static reading resolves

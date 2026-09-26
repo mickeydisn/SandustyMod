@@ -14,10 +14,10 @@
  * That cannot be exercised without a renderer, so the key is asserted textually.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
-import { emptyViewState, VOLATILE_KEYS } from "./viewstate.ts";
+import { emptyViewState, VOLATILE_KEYS } from "../viewstate.ts";
 
 const panel = Deno.readTextFileSync(
-    new URL("./panel.ts", import.meta.url).pathname,
+    new URL("../panel.ts", import.meta.url).pathname,
 );
 
 Deno.test("emptyViewState clears every volatile field", () => {

@@ -27,7 +27,7 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { buildInstanceMap, instanceMapAsText } = await import("./config-map.ts");
+const { buildInstanceMap, instanceMapAsText } = await import("../config-map.ts");
 
 const BASE = {
     elements: [{ id: "md-my-hown-mod:water" }, { id: "md-my-hown-mod:ash" }],

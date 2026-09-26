@@ -54,26 +54,26 @@ const store: Record<string, unknown> = {};
     enums: {},
 };
 
-const { MENU_GROUPS, CATEGORY_META, fieldsFor, formToEntry } = await import("./schema.ts");
+const { MENU_GROUPS, CATEGORY_META, fieldsFor, formToEntry } = await import("../schema.ts");
 const {
     listLinkedClearance,
     listMaterialIds,
     listEnergyNetworkOpts,
     listElements,
-} = await import("../catalog.ts");
+} = await import("../../catalog.ts");
 
-type FieldSpec = import("./schema.ts").FieldSpec;
+type FieldSpec = import("../schema.ts").FieldSpec;
 
 const tabsOf = (key: string) => MENU_GROUPS.find((g) => g.key === key)?.categories ?? [];
 const field = (tab: string, key: string): FieldSpec | undefined =>
     fieldsFor(tab as never).find((f) => f.key === key);
 const values = (o: { value: string }[]) => o.map((x) => x.value);
 
-const { usageOf, unknownDrawKeys } = await import("./draws-panel.ts");
-const { renderDraws } = await import("./draws-panel.ts");
-const { DRAW_FUNCTIONS, listDrawFunctions, listUpgradeCategoryIds } = await import("../catalog.ts");
-const { UPSERT, REMOVE } = await import("./panel.ts");
-const { PANEL_NATIVES: natives } = await import("../catalog.ts");
+const { usageOf, unknownDrawKeys } = await import("../draws-panel.ts");
+const { renderDraws } = await import("../draws-panel.ts");
+const { DRAW_FUNCTIONS, listDrawFunctions, listUpgradeCategoryIds } = await import("../../catalog.ts");
+const { UPSERT, REMOVE } = await import("../panel.ts");
+const { PANEL_NATIVES: natives } = await import("../../catalog.ts");
 
 // ── 1. menu structure ────────────────────────────────────────────────────────
 

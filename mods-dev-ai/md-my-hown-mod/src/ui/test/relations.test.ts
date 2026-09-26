@@ -30,8 +30,8 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { fieldsFor, CATEGORY_META } = await import("./schema.ts");
-const { RELATIONS, relationsOf, targetsOf } = await import("./relations.ts");
+const { fieldsFor, CATEGORY_META } = await import("../schema.ts");
+const { RELATIONS, relationsOf, targetsOf } = await import("../relations.ts");
 
 Deno.test("the table is not empty", () => {
     assert(RELATIONS.length > 15, `only ${RELATIONS.length} relations`);

@@ -369,7 +369,8 @@ export async function build(): Promise<Report[]> {
     const { params: defs, raw } = await readDefinitions();
     const engine = JSON.parse(Deno.readTextFileSync(`${OUT}definitions.json`));
     const { structuredKeys } = await import("./ui-completeness.ts");
-    const byTab = structuredKeys(Deno.readTextFileSync(`${ROOT}src/ui/schema.ts`));
+    const { schemaSourceWithDefinitions } = await import("./schema-source.ts");
+    const byTab = structuredKeys(schemaSourceWithDefinitions());
     const exposed = new Set<string>();
     for (const keys of byTab.values()) for (const k of keys) exposed.add(k);
 

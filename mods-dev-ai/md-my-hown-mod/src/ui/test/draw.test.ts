@@ -38,8 +38,8 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { resolveDraw } = await import("../register/apply.ts");
-const { DRAW_FUNCTIONS, listDrawFunctions, drawDoc } = await import("../catalog.ts");
+const { resolveDraw } = await import("../../register/apply.ts");
+const { DRAW_FUNCTIONS, listDrawFunctions, drawDoc } = await import("../../catalog.ts");
 
 /**
  * A canvas that records what was done to it, and starts out dirty.

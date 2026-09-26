@@ -14,7 +14,7 @@ import {
     INTERACTION_KINDS,
     splitInteraction,
     TOOLTIP_KINDS,
-} from "./interaction.ts";
+} from "../interaction.ts";
 
 const kinds = INTERACTION_KINDS.map((k) => k.kind);
 

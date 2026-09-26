@@ -22,7 +22,70 @@ import {
     composeInteraction,
     splitInteraction,
 } from "./interaction.ts";
+import { definitionFor } from "./definition/index.ts";
+import {
+    advField,
+    autoGraphicsKey,
+    boolField,
+    DESC_MAX,
+    idField,
+    NAME_MAX,
+    numField,
+    PASSTHROUGH_KEY,
+    passthroughKeysOf,
+    resolveAutoFill,
+    spriteIdField,
+    textField,
+} from "./definition/fields.ts";
+import {
+    composeTooltipHover,
+    describeShape,
+    emptyShape,
+    normalizeShape,
+    parseBuildModes,
+    shapeToText,
+    structureDefinition,
+} from "./definition/structure.ts";
+import {
+    formatIdList,
+    parseIdList,
+    parseObjectOrUndefined,
+    readerFor,
+    safeJson,
+    writerFor,
+} from "./definition/values.ts";
 import { loadConfig } from "../config/store.ts";
+
+/**
+ * Re-exported so the panel, the tests and the doc tools keep importing these
+ * from one place.
+ *
+ * They now live in `./definition/`, because every object definition needs them
+ * and a definition must not reach back into this file to get them — that would
+ * make the registry circular. The import surface does not change.
+ */
+export { formatIdList, parseIdList, safeJson };
+
+/**
+ * Re-exported for the same reason: these now live with the object they describe,
+ * but `schema.ts` has been the panel's import address for them since long before
+ * there was a `definition/` directory, and moving a file is not a reason to
+ * update every caller at once.
+ *
+ * Re-exported from where they are *defined*, not re-declared: the 4×4 codecs and
+ * the build-modes parser belong to the structure, the graphics-key derivation is
+ * shared. One implementation, two names for it.
+ */
+export {
+    composeTooltipHover,
+    describeShape,
+    emptyShape,
+    normalizeShape,
+    parseBuildModes,
+    shapeToText,
+} from "./definition/structure.ts";
+export { autoGraphicsKey, resolveAutoFill } from "./definition/fields.ts";
+export { PASSTHROUGH_KEY, passthroughKeysOf } from "./definition/fields.ts";
 import {
     HANDLER_TYPE_LABELS,
     handlerTypesForKeys,
@@ -257,43 +320,6 @@ export interface FieldSpec {
     autoValue?: string;
 }
 
-const ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,62}$";
-const ID_MSG = "lowercase letters, digits, . _ - (max 63)";
-
-/** Parse a JSON object, or undefined. Never throws — `when` runs on every render. */
-function parseObjectOrUndefined(raw: string | undefined): Record<string, unknown> | undefined {
-    if (!raw?.trim()) return undefined;
-    try {
-        const v = JSON.parse(raw);
-        return v && typeof v === "object" && !Array.isArray(v)
-            ? v as Record<string, unknown>
-            : undefined;
-    } catch {
-        return undefined;
-    }
-}
-
-/**
- * Can the `tooltipHover` controls express this stored object on their own?
- *
- * If not, the raw box is shown so nothing is lost. A descriptor using
- * `valueLabels` / `valueKeys`, or a literal `message` instead of a key, cannot be
- * rebuilt from a key plus one field row, so hiding the box would silently drop
- * those on the next save.
- */
-function tooltipHoverIsComplete(raw: string | undefined): boolean {
-    const obj = parseObjectOrUndefined(raw);
-    if (!obj) return true; // nothing stored, nothing to warn about
-    const msg = (obj as { dataFieldMessage?: Record<string, unknown> }).dataFieldMessage;
-    if (!msg) return false;
-    if (typeof msg.message === "string") return false; // a literal, not a key
-    const fields = Array.isArray(msg.fields) ? msg.fields : [];
-    if (fields.length !== 1) return false; // the form has exactly one field row
-    const only = fields[0] as Record<string, unknown>;
-    if ("valueLabels" in only || "valueKeys" in only) return false;
-    return Object.keys(only).every((k) => ["field", "param", "fallback"].includes(k));
-}
-
 /**
  * Colour variants: the `colors.variants` list, as swatches.
  *
@@ -359,281 +385,22 @@ export function hexListToVariants(list: string[]): [number, number, number, numb
 export function seedVariantFromMapColor(mapColorHex: string | undefined): string {
     return mapColorHex && HEX.test(mapColorHex) ? `${mapColorHex}ff` : "#ccccccff";
 }
-
-/**
- * Build a `StructureTooltipHover` from the form controls.
- *
- * Returns `undefined` when no message key is set, so an untouched form does not
- * register a tooltip. The `field` is only included when it is a real data field
- * (1–4): `Number("")` is `0`, which would register a tooltip bound to a field
- * that does not exist and therefore never render.
- */
-export function composeTooltipHover(
-    f: Record<string, string>,
-): Record<string, unknown> | undefined {
-    const messageKey = (f.tooltipMessageKey ?? "").trim();
-    if (!messageKey) return undefined;
-    const fieldRow: Record<string, unknown> = {};
-    const field = Number(f.tooltipField);
-    if (Number.isInteger(field) && field >= 1 && field <= 4) fieldRow.field = field;
-    if (f.tooltipParam?.trim()) fieldRow.param = f.tooltipParam.trim();
-    if (f.tooltipFallback?.trim()) fieldRow.fallback = f.tooltipFallback.trim();
-    return {
-        type: "custom",
-        dataFieldMessage: { messageKey, fields: [fieldRow] },
-    };
-}
-
-/**
- * Turn the build-modes editor's text into engine `buildModes[]`.
- *
- * Two things the engine cares about, which a naive pass-through gets wrong:
- *
- *  - `spanTiles` is only legal on a `"line"` mode. The engine's own validator
- *    throws `TypeError` otherwise, so it is dropped here rather than at load
- *    time, where the user would only find out by reloading the game.
- *  - `directions` belongs to each mode, but the form shows one set of direction
- *    checkboxes, so it is written onto every mode.
- *
- * An unparseable value yields `[]` and the field's own error reports the bad
- * JSON. Guessing here would overwrite the user's text with something else.
- */
-export function parseBuildModes(
-    raw: string | undefined,
-    directions: string[] = [],
-): Record<string, unknown>[] {
-    if (!raw?.trim()) return [];
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(raw);
-    } catch {
-        return [];
-    }
-    if (!Array.isArray(parsed)) return [];
-    const out: Record<string, unknown>[] = [];
-    for (const row of parsed) {
-        if (!row || typeof row !== "object") continue;
-        const r = row as Record<string, unknown>;
-        const type = typeof r.type === "string" ? r.type.trim() : "";
-        if (!type) continue;
-        const mode: Record<string, unknown> = { type };
-        if (directions.length > 0) mode.directions = [...directions];
-        if (type === "line") {
-            const span = Number(r.spanTiles);
-            if (Number.isFinite(span) && span >= 1) mode.spanTiles = Math.floor(span);
-        }
-        out.push(mode);
-    }
-    return out;
-}
-const SPRITE_ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,62}(:[a-z0-9][a-z0-9._-]{0,62})?$";
-const SPRITE_ID_MSG = "key, or namespace:key — e.g. sprites:crusher";
-const NAME_MAX = 64;
-const DESC_MAX = 200;
-
-function idField(): FieldSpec {
-    return {
-        key: "idSuffix", label: "Id", kind: "text", section: "Identity", required: true,
-        pattern: ID_PATTERN, patternMsg: ID_MSG,
-        hint: `stored as ${MOD_ID}:<id>`,
-        placeholder: "my-thing",
-    };
-}
-
-/**
- * Sprite ids are engine graphics keys ("sprites:crusher"), not mod-namespaced
- * ids — so this field accepts an optional "namespace:key" and is stored verbatim.
- */
-function spriteIdField(): FieldSpec {
-    return {
-        key: "idSuffix", label: "Graphics key", kind: "text", section: "Identity", required: true,
-        pattern: SPRITE_ID_PATTERN, patternMsg: SPRITE_ID_MSG,
-        hint: "used by render.imageName / item.sprite",
-        placeholder: "sprites:crusher",
-    };
-}
-
-/**
- * The form key that carries every stored field the form has no control for.
- *
- * Named rather than spelled out because three places have to agree on it: the
- * field that declares it, the panel that decides whether to show its section,
- * and the label that names what is being carried.
- */
-export const PASSTHROUGH_KEY = "advancedJson";
-
-/**
- * The stored keys a passthrough blob is carrying, or `[]` when it carries none.
- *
- * Takes the raw textarea text rather than a parsed object, because that is what
- * the panel has at hand on every render — and a render must never throw. So
- * anything that is not a JSON *object* reads as carrying nothing: an empty box
- * (`""` is what a form saves for "not set"), a half-typed value, an array, a
- * bare number, `null`. Showing a count of keys for a value that cannot be
- * merged would be claiming a guarantee the save path does not make.
- */
-export function passthroughKeysOf(raw: string | undefined): string[] {
-    const text = (raw ?? "").trim();
-    if (text === "") return [];
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(text);
-    } catch {
-        return []; // mid-edit or hand-typed nonsense — not a carried object yet
-    }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-    return Object.keys(parsed as Record<string, unknown>).sort();
-}
-
-/**
- * The passthrough box, and the only place the panel asks a user to hand-write
- * engine JSON.
- *
- * It is deliberately last: the normal path is a form control, and this exists
- * for the fields the form does not have. It says so on its face — the names
- * being carried, and an explicit note that typing here is a last resort —
- * because the old label ("Extra fields (JSON)") read like an authoring field
- * and invited people to put things there that the form would then fight over.
- *
- * It is also **conditional**, which is the part that is easy to get wrong in
- * both directions. Shown always, it is twelve copies of a box whose own hint
- * says "you do not need to touch this". Never shown, you cannot tell "nothing
- * is hidden" from "my fields are gone" — exactly the moment you need to know.
- * So it appears when it has something in it, and names it.
- */
-function advField(): FieldSpec {
-    return {
-        key: PASSTHROUGH_KEY,
-        label: "Fields this form does not show",
-        kind: "json",
-        section: "Advanced",
-        jsonType: "object",
-        wide: true,
-        when: (f) => passthroughKeysOf(f[PASSTHROUGH_KEY]).length > 0,
-        hint:
-            "Carried through on every edit, so nothing is lost. These keys have no " +
-            "control above. Change one only if you know what the engine expects — a " +
-            "misspelled key here is ignored by the game and will not warn you.",
-        placeholder: "{ }",
-    };
-}
-
-function boolField(key: string, label: string, section: string, def = "false", hint?: string): FieldSpec {
-    return { key, label, kind: "bool", section, def, hint };
-}
-
-function textField(
-    key: string, label: string, section: string,
-    required = false, extra: Partial<FieldSpec> = {},
-): FieldSpec {
-    return { key, label, kind: "text", section, required, maxLength: DESC_MAX, ...extra };
-}
-
-function numField(
-    key: string, label: string, section: string,
-    extra: Partial<FieldSpec> = {},
-): FieldSpec {
-    return { key, label, kind: "number", section, step: 1, int: true, ...extra };
-}
-
-// ── Structure shape (4×4, 0/1 only) ──────────────────────────────────────────
-// The engine normalises an unknown structure id to a 4×4 block when no shape
-// is given, so the footprint is always a 4×4 grid of 0 (empty) / 1 (occupied).
-
-const SHAPE_SIZE = 4;
-
-/** A full 4×4 grid of `fill`. */
-export function emptyShape(fill: 0 | 1 = 0): number[][] {
-    return Array.from({ length: SHAPE_SIZE }, () => Array<number>(SHAPE_SIZE).fill(fill));
-}
-
-/**
- * Coerce any stored shape into a valid 4×4 0/1 matrix.
- * Non-numeric, ragged or oversized input is clamped rather than rejected,
- * because entries can be hand-edited through the JSON escape hatch.
- */
-export function normalizeShape(raw: unknown): number[][] {
-    const grid = emptyShape(0);
-    if (!Array.isArray(raw)) return grid;
-    for (let y = 0; y < SHAPE_SIZE; y++) {
-        const row = raw[y];
-        if (!Array.isArray(row)) continue;
-        for (let x = 0; x < SHAPE_SIZE; x++) {
-            const v = row[x];
-            grid[y][x] = v === 1 || v === "1" || v === true ? 1 : 0;
-        }
-    }
-    return grid;
-}
-
-/** Serialise for the form field (compact one-row-per-line JSON). */
-export function shapeToText(raw: unknown): string {
-    return JSON.stringify(normalizeShape(raw));
-}
-
-/**
- * Decide whether a library pick may overwrite a companion field (e.g. the
- * graphics key auto-derived from a picked asset).
- *
- * Returns the value to store, or `null` to leave the field alone. A hand-typed
- * value is never clobbered: we only write when the field is empty or still holds
- * the value we ourselves generated on a previous pick (`lastAuto`).
- */
-export function resolveAutoFill(
-    current: string | undefined,
-    lastAuto: string | undefined,
-    derived: string,
-): string | null {
-    const cur = current ?? "";
-    if (cur !== "" && cur !== (lastAuto ?? "")) return null;
-    return derived;
-}
-
-/** Graphics key auto-derived from a bundled asset name, e.g. "icon-alien" → "sprites:icon-alien". */
-export function autoGraphicsKey(assetName: string): string {
-    return `sprites:${assetName}`;
-}
-
-/** Parse a 4×4 matrix from text; returns null when not exactly 4 rows of 4. */
-function parseShape(text: string): number[][] | null {
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(text);
-    } catch {
-        return null;
-    }
-    if (!Array.isArray(parsed) || parsed.length !== SHAPE_SIZE) return null;
-    for (const row of parsed) {
-        if (!Array.isArray(row) || row.length !== SHAPE_SIZE) return null;
-        for (const v of row) if (v !== 0 && v !== 1) return null;
-    }
-    return parsed as number[][];
-}
-
-/** Human summary shown under the grid. */
-export function describeShape(raw: unknown): string {
-    const grid = normalizeShape(raw);
-    const filled = grid.flat().filter((v) => v === 1).length;
-    if (filled === 0) return "empty (0 of 16 cells)";
-    if (filled === 16) return "solid 4×4 block (16 of 16 cells)";
-    return `custom — ${filled} of 16 cells occupied`;
-}
-
-/** 4×4 footprint field: visual grid editor instead of a raw JSON textarea. */
-function shapeField(): FieldSpec {
-    return {
-        key: "shapeJson", label: "Shape (4×4)", kind: "shape", section: "Placement", wide: true,
-        hint: "1 = occupied cell, 0 = empty. Use the buttons for solid / empty / clear.",
-    };
-}
-
 function elSelect(key: string, label: string, section: string, required = false, hint?: string): FieldSpec {
     return { key, label, kind: "select", section, required, options: listElements, hint };
 }
 
 // ── Per-category field lists ────────────────────────────────────────────────
 
-const FIELDS: Record<Tab, FieldSpec[]> = {
+/**
+ * Field lists for every tab that has not been split into its own definition.
+ *
+ * Partial on purpose: a tab listed here is a tab that has *not* been moved yet.
+ * `fieldsFor` asks the registry first and falls back to this, so migrating a tab
+ * is deleting its entry here and adding one line to the registry — and a partial
+ * record is what makes that one-step move expressible in the type system rather
+ * than only in someone's memory.
+ */
+const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
     elements: [
         idField(),
         textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
@@ -690,178 +457,6 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
         boolField("collectable", "Collectable", "Behaviour", "true", "collector value path"),
         boolField("hidden", "Hidden", "Flags"),
         boolField("visibleInPicker", "Visible in picker", "Flags", "true"),
-        advField(),
-    ],
-    structures: [
-        idField(),
-        textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
-        textField("description", "Description", "Identity", false, { maxLength: DESC_MAX }),
-        textField("descriptionKey", "Description key (i18n)", "Identity", false, {
-            placeholder: "mods|example|structure|desc",
-            maxLength: 120,
-            hint: "used when no plain description is set",
-        }),
-        {
-            // engine type: Record<string, string | number>
-            key: "descriptionParamsJson", label: "Description parameters", kind: "json",
-            section: "Identity", jsonType: "object", wide: true,
-            hint: "values interpolated into the description, e.g. { \"count\": 3 }",
-        },
-        {
-            // The engine compares this against exactly one string,
-            // `"allOrNothing"`. It was a text box, so a typo read as `undefined`
-            // and silently behaved as "per cell" — a switch wearing a text box's
-            // clothes. See catalog.listLinkedClearance.
-            key: "linkedClearance",
-            label: "Linked clearance",
-            kind: "select",
-            section: "Placement",
-            options: listLinkedClearance,
-            hint: "how a multi-cell footprint is validated against the cells under it",
-        },
-        {
-            key: "categoryKey", label: "Build category", kind: "select", section: "Build menu",
-            required: true, options: listStructureCategories, def: "blocks",
-            hint: "grouping in the build window",
-        },
-        numField("order", "Order", "Build menu", { min: 0, max: 9999, hint: "sort inside the category" }),
-        {
-            // engine: `ot(t.buildModes)` → `Array.isArray(e) && e.forEach(rt)`,
-            // and `rt` throws `spanTiles` unless `type === "line"`. The engine
-            // takes a LIST and a structure may legitimately have several (a
-            // line mode for dragging a run, plus a single mode for one node).
-            // The form held exactly one, so extra modes were dropped on save
-            // without a word. Now it is a real repeating list.
-            key: "buildModesJson", label: "Build modes", kind: "buildModes",
-            section: "Placement", wide: true,
-            hint: "how this is placed in the world. Span is only valid on a line mode — the engine throws otherwise.",
-        },
-        boolField("dirH", "Horizontal", "Placement", "true", "placement directions"),
-        boolField("dirV", "Vertical", "Placement", "true"),
-        boolField("dirD", "Diagonal", "Placement", "false"),
-        shapeField(),
-        // The only menu-visibility lever left. `alwaysUnlocked` used to sit next to
-        // this and is gone: the engine reads it in exactly one place, iterating a
-        // `const` literal of the *vanilla* structures (bundel.js 5251.js, `Ue`),
-        // so for a mod-registered structure the flag was inert. It is superseded by
-        // the **unlock node**, which is not a flag but an entry the author names and
-        // edits: an "always" node says the same thing, legibly and shared between
-        // structures. This flag decides whether it is listed — which the build menu
-        // does honour, reading `hideFromBuildMenu` off the mod registry as well
-        // (bundel.js 7493921).
-        boolField("hideFromBuildMenu", "Hide from build menu", "Flags", "false",
-            "unhide to list it — a structure with no unlock tech is available from the start"),
-        {
-            // Every structure names a node, so the picker never offers an empty
-            // "— none —": "available from the start" is a *node you can see and
-            // edit*, not an absent field that quietly means the same thing.
-            //
-            // The current value is re-added when it is not in the list, so a link to
-            // a deleted node survives the round trip as a visible "(missing node)"
-            // option rather than silently reverting the structure.
-            key: "unlockNode",
-            label: "Unlock node",
-            kind: "select",
-            section: "Flags",
-            required: true,
-            options: (f) => {
-                const opts = listUnlockNodes();
-                const cur = (f.unlockNode ?? "").trim();
-                if (cur && !opts.some((o) => o.value === cur)) {
-                    return [...opts, { value: cur, label: `${cur} (missing node)` }];
-                }
-                return opts;
-            },
-            hint: "every structure names one — the node decides whether research is needed",
-        },
-        boolField("disallowPick", "Disallow pick", "Flags"),
-        {
-            key: "rejectWhenBlocked", label: "Reject when blocked", kind: "bool",
-            section: "Placement",
-            hint: "refuse placement if any footprint cell is occupied",
-        },
-        {
-            // engine type: StructureTooltipHover — { type: "custom", dataFieldMessage }
-            key: "tooltipHoverJson", label: "Hover tooltip", kind: "json",
-            section: "Render", jsonType: "object", wide: true,
-            hint: "custom tooltip driven by structure data fields",
-        },
-        {
-            // engine type: StructureVariant[] — { id: StructureRef; angles: number[] }[]
-            key: "variantsJson", label: "Variants", kind: "json",
-            section: "Render", jsonType: "array", wide: true,
-            hint: "rotation variants, e.g. [ { \"id\": \"…\", \"angles\": [0, 90] } ]",
-        },
-        {
-            key: "imageName", label: "Sprite", kind: "select", section: "Render",
-            options: listSpriteIds, hint: "render.imageName (load a sprite first)",
-        },
-        // ── Fields the engine reads but no form exposed (Phase 3) ──
-        {
-            // engine: registerStructureType(blockGridType ?? id), then
-            // registerStructureTypeAlias(id, blockGridType) when it differs.
-            //
-            // Not a grid *setting* — it names which block grid the structure
-            // joins. Two real uses, and the second is the one that bites:
-            //
-            //  1. Share one grid with another structure (value = its id).
-            //  2. Give a LARGE structure its own grid by setting it to its own
-            //     id. `__scraped-mods/workshop/3791498201` documents this: a
-            //     20x20 Resource Silo omitted it and behaved as a 1-cell unit
-            //     with a hover tooltip that only resolved at the origin cell.
-            //     "Every reference mod that omitted blockGridType only ever used
-            //     shapes up to 8x8." So above 8x8 it is not optional.
-            //
-            // Left empty is only safe for a small structure.
-            key: "blockGridType",
-            label: "Block grid type",
-            kind: "select",
-            section: "Grid",
-            // Not filtered by the id being edited, unlike the "share with
-            // another" pickers: setting this to the structure's OWN id is the
-            // documented fix for a large footprint, so it must be offered.
-            options: listStructures,
-            emptyHint:
-                "no other structures exist yet — save this one first, then pick its own id from the list.",
-            hint:
-                "leave empty only for a footprint of 8x8 or smaller. Above that, set this to the structure's OWN id: without it a large structure places as a single 1-cell unit and its hover tooltip only resolves at the origin cell. Point it at a DIFFERENT structure to share that structure's grid instead.",
-        },
-        {
-            // `draw` is a callback: `T(id, fn)`, called as
-            // `fn(session, instance, {tilemap, ctx, useTilemap, placing, opts})`,
-            // where returning `false` falls through to the normal sprite render.
-            // It cannot be stored as JSON, so the config holds a key that
-            // apply.ts resolves. This was previously a free JSON box that
-            // nothing ever read, so a value set here did nothing at all.
-            key: "drawKey",
-            label: "Custom draw",
-            kind: "select",
-            section: "Render",
-            options: listDrawFunctions,
-            def: "default",
-            hint: "draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game.",
-        },
-        {
-            // engine: !1 === t.copyData && (t.skipCopyData = !0) — setting copyData
-            // to false is enough, so this is offered as the clearer spelling
-            key: "skipCopyData", label: "Skip data copy", kind: "bool", section: "Grid",
-            def: "false",
-            hint: "do not copy grid data on placement (the engine also sets this when copyData is false)",
-        },
-        {
-            // engine deep-clones: t.defaultData = JSON.parse(JSON.stringify(...)),
-            // then on placement `instance.data = clone(defaultData)`. So this is
-            // the data object every placed copy starts with — NOT anything to do
-            // with elements, which is what the old label suggested. The hover
-            // tooltip reads it back through dataField1..4.
-            key: "defaultDataJson",
-            label: "Data for each placed copy",
-            kind: "json",
-            section: "Grid",
-            jsonType: "object",
-            wide: true,
-            hint: "the data object every placed copy starts with; the hover tooltip reads dataField1..4 back out of it. Unrelated to elements.",
-        },
         advField(),
     ],
     items: [
@@ -1760,7 +1355,11 @@ export function isActive(f: FieldSpec, form: Record<string, string>): boolean {
 }
 
 export function fieldsFor(cat: Tab): FieldSpec[] {
-    return FIELDS[cat] ?? [];
+    // A definition that has been split out owns its own field list, so it is
+    // asked first. `FIELDS` is the fallback for every tab not yet moved, which
+    // is what lets the split proceed one object at a time: moving a tab is
+    // deleting its entry here, and nothing else has to know.
+    return definitionFor(cat)?.fields ?? FIELDS[cat] ?? [];
 }
 
 export interface Section {
@@ -1863,7 +1462,7 @@ function validateOutputs(raw: string): string | null {
 }
 
 /** Validate one field against the form. Returns an error message or null. */
-function validateField(f: FieldSpec, form: Record<string, string>): string | null {
+function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): string | null {
     if (!isActive(f, form)) return null;
     const raw = (form[f.key] ?? "").trim();
 
@@ -1873,6 +1472,11 @@ function validateField(f: FieldSpec, form: Record<string, string>): string | nul
         if (f.required) return f.kind === "outputs" ? "add at least one output" : "required";
         return null;
     }
+
+    // A definition owns the validation of its own field kinds. Asked first, so
+    // adding a structure-only kind never means adding a case here.
+    const own = cat === undefined ? undefined : definitionFor(cat)?.validateField?.(f, raw);
+    if (own !== undefined) return own;
 
     switch (f.kind) {
         case "text":
@@ -1915,10 +1519,6 @@ function validateField(f: FieldSpec, form: Record<string, string>): string | nul
         }
         case "color":
             return HEX.test(raw) ? null : "use #rrggbb";
-        case "shape":
-            return parseShape(raw) === null
-                ? `must be a ${SHAPE_SIZE}×${SHAPE_SIZE} grid of 0 or 1`
-                : null;
         case "outputs":
             return validateOutputs(raw);
         case "terrainRules": {
@@ -1961,34 +1561,18 @@ function validateField(f: FieldSpec, form: Record<string, string>): string | nul
 export function validateForm(cat: Tab, form: Record<string, string>): Record<string, string> {
     const errors: Record<string, string> = {};
     for (const f of fieldsFor(cat)) {
-        const err = validateField(f, form);
+        const err = validateField(f, form, cat);
         if (err) errors[f.key] = err;
     }
+    // Cross-field rules belong to the definition that owns the object, so they
+    // travel with it. What is left here is the handful of shared ones that are
+    // not yet split out.
+    definitionFor(cat)?.validate?.(form, errors);
     if (cat === "elements" && !errors.durationRandomMin && !errors.durationRandomMax) {
         const min = form.durationRandomMin?.trim();
         const max = form.durationRandomMax?.trim();
         if (min && max && Number(min) > Number(max)) {
             errors.durationRandomMax = "must be ≥ min";
-        }
-    }
-    // The engine throws `TypeError("Structure build mode spanTiles is only valid
-    // for line modes.")` when spanTiles is set on any other mode type, so the
-    // form must not be able to produce that combination. The check is per row
-    // now, because the list is per row.
-    if (cat === "structures" && !errors.buildModesJson) {
-        const raw = form.buildModesJson?.trim();
-        if (raw) {
-            try {
-                const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed)) {
-                    parsed.forEach((m: Record<string, unknown>, i: number) => {
-                        if (m?.spanTiles !== undefined && m?.type !== "line") {
-                            errors.buildModesJson =
-                                `mode ${i + 1}: span is only valid on a line mode — the engine throws otherwise`;
-                        }
-                    });
-                }
-            } catch { /* the json control reports the parse error */ }
         }
     }
     // The engine guard is `if (!t.id || !t.name && !t.nameKey) throw`, so a
@@ -2017,20 +1601,6 @@ function optNum(form: Record<string, string>, key: string): number | undefined {
     const v = (form[key] ?? "").trim();
     if (v === "" || !NUMERIC.test(v)) return undefined;
     return Number(v);
-}
-
-/** Parse a comma/space separated id list ("a, b ,c") into trimmed, non-empty ids. */
-export function parseIdList(text: string | undefined): string[] {
-    if (!text) return [];
-    return text
-        .split(/[,\n]/)
-        .map((s) => s.trim())
-        .filter((s) => s !== "");
-}
-
-/** Join ids back into the comma-separated form representation. */
-export function formatIdList(ids: readonly string[] | undefined): string {
-    return Array.isArray(ids) ? ids.join(", ") : "";
 }
 
 /** Coerce an optional form string to a boolean ("true" → true). */
@@ -2089,14 +1659,35 @@ function putCustomOrSelect(
 }
 
 /** Default form values for a fresh entry. */
+/**
+ * Default form values for a fresh entry.
+ *
+ * The two rules here are the only ones that are not just `f.def`: a checkbox with
+ * no stated default is "off", and everything else is "empty". Anything richer —
+ * the solid 4×4 a structure starts as — is a `def` on its own field, so a
+ * "what does a new structure look like" question is answered next to the field
+ * rather than in a switch keyed on its kind.
+ */
 export function formDefaults(cat: Tab): Record<string, string> {
     const form: Record<string, string> = {};
     for (const f of fieldsFor(cat)) {
         if (f.kind === "bool") form[f.key] = f.def ?? "false";
-        // A new structure starts as a solid 4×4 block, matching the engine default.
-        else if (f.kind === "shape") form[f.key] = f.def ?? shapeToText(emptyShape(1));
         else form[f.key] = f.def ?? "";
     }
+    return form;
+}
+
+/**
+ * The form a "+ New" opens with: field defaults, then the definition's own seed.
+ *
+ * A definition's seed is for a decision the author should not have to make to get
+ * a first save — a structure must name an unlock node, so a new one starts on the
+ * built-in default. Without it the required field opens empty and blocks the
+ * first save on a rule nobody chose.
+ */
+export function newEntryForm(cat: Tab): Record<string, string> {
+    const form = formDefaults(cat);
+    definitionFor(cat)?.onNewEntry?.(form);
     return form;
 }
 
@@ -2107,14 +1698,6 @@ const FORM_COVERED: Partial<Record<Tab, string[]>> = {
         "horizontalSpeed", "duration",
         "durationRandom", "metaColor", "colors", "flammable", "isTransportable",
         "isGrabbable", "collectable", "hidden", "visibleInPicker",
-    ],
-    structures: [
-        "name", "description", "categoryKey", "order", "buildModes", "spanTiles",
-        "dirH", "dirV", "dirD", "shape",
-        "hideFromBuildMenu", "disallowPick", "unlockNode", "render", "imageName",
-        "blockGridType", "draw", "skipCopyData", "defaultData",
-        "descriptionKey", "descriptionParams", "linkedClearance",
-        "rejectWhenBlocked", "tooltipHover", "variants",
     ],
     items: [
         "name", "description", "descriptionKey", "itemType", "cooldown", "energyCost",
@@ -2187,7 +1770,12 @@ export function passthroughKeys(
 
 /** Extra fields not covered by the form, so Edit never silently drops them. */
 function passthroughOf(cat: Tab, entry: Record<string, unknown>): Record<string, unknown> {
-    const covered = new Set<string>(FORM_COVERED[cat] ?? []);
+    // The definition owns this list once a tab has been split out, for the same
+    // reason it owns the fields: a form that claims a key and a passthrough that
+    // carries it have to be the same decision, made in the same file.
+    const covered = new Set<string>(
+        definitionFor(cat)?.formCovered ?? FORM_COVERED[cat] ?? [],
+    );
     covered.add("id");
     const rest: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(entry)) {
@@ -2242,69 +1830,8 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             break;
         }
         case "structures": {
-            put("name", str(e.name));
-            put("description", str(e.description));
-            put("descriptionKey", str(e.descriptionKey));
-            put("descriptionParamsJson", json(e.descriptionParams));
-            put("linkedClearance", str(e.linkedClearance));
-            put("categoryKey", str(e.categoryKey));
-            put("order", num(e.order));
-            // The whole list round-trips. It used to collapse to
-            // `buildModes[0]` plus loose dirH/dirV/dirD booleans, which is what
-            // lost every mode after the first.
-            const modes = (Array.isArray(e.buildModes) ? e.buildModes : []) as Record<
-                string,
-                unknown
-            >[];
-            put("buildModesJson", JSON.stringify(modes));
-            const m0 = (modes[0] ?? {}) as { directions?: string[] };
-            const dirs = Array.isArray(m0.directions) ? m0.directions : [];
-            if (dirs.includes("horizontal")) put("dirH", "true");
-            if (dirs.includes("vertical")) put("dirV", "true");
-            if (dirs.includes("diagonal")) put("dirD", "true");
-            put("shapeJson", e.shape === undefined ? undefined : shapeToText(e.shape));
-            // `alwaysUnlocked` is deliberately absent. The control was removed (the
-            // engine ignores it on a mod structure — `apply.ts` reads it only while
-            // iterating a literal of the *vanilla* structures), and the unlock node
-            // replaced it. Leaving it listed here or read into the form would claim
-            // ownership the panel no longer has, and the stored value would be
-            // dropped on the next edit instead of falling into the passthrough.
-            for (const k of ["hideFromBuildMenu", "disallowPick"]) {
-                if (typeof e[k] === "boolean") put(k, String(e[k]));
-            }
-            // Read in full, including a link to a node that no longer exists: a
-            // dangling node is resolved to "available from the start" at apply
-            // time, so dropping it here would silently repair the structure behind
-            // the user's back. It stays visible and repairable instead.
-            put("unlockNode", str(e.unlockNode));
-            if (typeof e.rejectWhenBlocked === "boolean") {
-                put("rejectWhenBlocked", String(e.rejectWhenBlocked));
-            }
-            put("tooltipHoverJson", json(e.tooltipHover));
-            // Split the documented shape into controls, keeping the object so an
-            // unrepresentable one (valueLabels, a literal message, several field
-            // rows) is still recoverable.
-            {
-                const th = e.tooltipHover as
-                    | { dataFieldMessage?: { messageKey?: string; fields?: unknown[] } }
-                    | undefined;
-                const msg = th?.dataFieldMessage;
-                put("tooltipMessageKey", str(msg?.messageKey));
-                const only = Array.isArray(msg?.fields) ? msg?.fields[0] : undefined;
-                const f0 = (only ?? {}) as { field?: number; param?: string; fallback?: string };
-                put("tooltipField", num(f0.field));
-                put("tooltipParam", str(f0.param));
-                put("tooltipFallback", str(f0.fallback));
-            }
-            put("variantsJson", json(e.variants));
-            const render = e.render as { imageName?: string } | undefined;
-            put("imageName", str(render?.imageName) ?? str(e.imageName));
-            put("blockGridType", str(e.blockGridType));
-            put("drawKey", str(e.drawKey ?? "default"));
-            if (typeof e.skipCopyData === "boolean") {
-                put("skipCopyData", String(e.skipCopyData));
-            }
-            put("defaultDataJson", json(e.defaultData));
+            // Owned by ./definition/structure.ts — see the note in formToEntry.
+            structureDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "items": {
@@ -2623,53 +2150,10 @@ export function formToEntry(
             break;
         }
         case "structures": {
-            setStr("name", opt(form, "name"));
-            setStr("description", opt(form, "description"));
-            setStr("descriptionKey", opt(form, "descriptionKey"));
-            setStr("linkedClearance", opt(form, "linkedClearance"));
-            const descriptionParams = optJson<Record<string, unknown>>(
-                form,
-                "descriptionParamsJson",
-            );
-            if (descriptionParams) entry.descriptionParams = descriptionParams;
-            setBool("rejectWhenBlocked", optBool(form, "rejectWhenBlocked"));
-            // Rebuild the documented shape from the controls, unless the stored
-            // object held something they cannot express — then keep it verbatim.
-            const existingHover = parseObjectOrUndefined(form.tooltipHoverJson);
-            const hover = composeTooltipHover(form);
-            if (hover) {
-                entry.tooltipHover = tooltipHoverIsComplete(form.tooltipHoverJson)
-                    ? hover
-                    : existingHover;
-            } else if (existingHover) {
-                entry.tooltipHover = existingHover;
-            }
-            const variants = optJson<unknown[]>(form, "variantsJson");
-            if (variants) entry.variants = variants;
-            setStr("categoryKey", opt(form, "categoryKey"));
-            setNum("order", optNum(form, "order"));
-            // Directions live on every mode; the booleans drive the first one.
-            const dirs: string[] = [];
-            if (optBool(form, "dirH")) dirs.push("horizontal");
-            if (optBool(form, "dirV")) dirs.push("vertical");
-            if (optBool(form, "dirD")) dirs.push("diagonal");
-            const modes = parseBuildModes(opt(form, "buildModesJson"), dirs);
-            if (modes.length > 0) entry.buildModes = modes;
-            const shape = optJson<number[][]>(form, "shapeJson");
-            if (shape) entry.shape = normalizeShape(shape);
-            setBool("hideFromBuildMenu", optBool(form, "hideFromBuildMenu"));
-            setBool("disallowPick", optBool(form, "disallowPick"));
-            // Omitted means "available from the start" at apply time, so an empty
-            // picker is a valid save and is not written as an empty string.
-            setStr("unlockNode", opt(form, "unlockNode"));
-            const image = opt(form, "imageName");
-            if (image) entry.render = { imageName: image };
-            setStr("blockGridType", opt(form, "blockGridType"));
-            setBool("skipCopyData", optBool(form, "skipCopyData"));
-            const drawKey = opt(form, "drawKey") ?? "default";
-            if (drawKey !== "default") entry.drawKey = drawKey;
-            const defaultData = optJson<Record<string, unknown>>(form, "defaultDataJson");
-            if (defaultData) entry.defaultData = defaultData;
+            // Owned by ./definition/structure.ts. Delegated rather than inlined so
+            // the structure's schema, its save path and its widgets are one file
+            // that has to be read together to be changed correctly.
+            structureDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "items": {

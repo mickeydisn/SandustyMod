@@ -42,8 +42,8 @@ const {
     autoGraphicsKey,
     MENU_GROUPS,
     parseBuildModes,
-} = await import("./schema.ts");
-const { searchLibraryAssets, listLibraryAssets } = await import("../catalog.ts");
+} = await import("../schema.ts");
+const { searchLibraryAssets, listLibraryAssets } = await import("../../catalog.ts");
 
 let pass = 0;
 let fail = 0;
@@ -563,7 +563,7 @@ console.log("── validation blocks bad input ──");
 {
     // The colour-variant list, against the exact tuples a shipping mod stores
     // (`__scraped-mods/workshop/3790149867`).
-    const sh = await import("./schema.ts");
+    const sh = await import("../schema.ts");
     const raw = JSON.stringify([
         [153, 207, 184, 255],
         [239, 240, 197, 200],
@@ -887,14 +887,14 @@ console.log("── item fields are type-aware ──");
 
 console.log("── handler pickers are domain-scoped and described ──");
 {
-    const H = await import("../hooks/handlers.ts");
+    const H = await import("../../hooks/handlers.ts");
     globalThis.__mdHandlers = {
         ANY_HANDLERS: H.ANY_HANDLERS,
         PROCESS_HANDLERS: H.PROCESS_HANDLERS,
         ANY_HANDLER_DOCS: H.ANY_HANDLER_DOCS,
         PROCESS_HANDLER_DOCS: H.PROCESS_HANDLER_DOCS,
     };
-    const cat = await import("../catalog.ts");
+    const cat = await import("../../catalog.ts");
     const pickers = [
         ["signal", cat.listSignalHandlerKeys, "signalLog"],
         ["trigger", cat.listTriggerHandlerKeys, "triggerLog"],
@@ -969,7 +969,7 @@ console.log("── no fabricated engine fields (6.1) ──");
         JSON.stringify(round.back.alwaysUnlocked),
     );
     // and the JSON schema hints no longer advertise it
-    const { FIELD_HELP } = await import("../constants.ts");
+    const { FIELD_HELP } = await import("../../constants.ts");
     check(
         "field help omits unlockedBy",
         !JSON.stringify(FIELD_HELP.structures).includes("unlockedBy"),
@@ -979,8 +979,8 @@ console.log("── no fabricated engine fields (6.1) ──");
 
 console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
 {
-    const reg = await import("../hooks/handler-registry.ts");
-    const hooks = await import("../hooks/handlers.ts");
+    const reg = await import("../../hooks/handler-registry.ts");
+    const hooks = await import("../../hooks/handlers.ts");
 
     // Every callable reachable from JSON must be described exactly once.
     const real = [
@@ -1148,9 +1148,9 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
 
 console.log("── handlers tab is reachable and wired (9.2) ──");
 {
-    const sch = await import("./schema.ts");
-    const hp = await import("./handlers-panel.ts");
-    const reg = await import("../hooks/handler-registry.ts");
+    const sch = await import("../schema.ts");
+    const hp = await import("../handlers-panel.ts");
+    const reg = await import("../../hooks/handler-registry.ts");
 
     check("handlers is a known tab", "handlers" in sch.CATEGORY_META);
     check(
@@ -1208,10 +1208,10 @@ console.log("── handlers tab is reachable and wired (9.2) ──");
 
 console.log("── item use actions are type-gated (7.4 / 9.7) ──");
 {
-    const reg = await import("../hooks/handler-registry.ts");
-    const cat = await import("../catalog.ts");
-    const hooks = await import("../hooks/handlers.ts");
-    const sch = await import("./schema.ts");
+    const reg = await import("../../hooks/handler-registry.ts");
+    const cat = await import("../../catalog.ts");
+    const hooks = await import("../../hooks/handlers.ts");
+    const sch = await import("../schema.ts");
 
     // ActionType has no Consumable, so no handler may be offered for one.
     check("Consumable offers no use action", reg.itemActionHandlersFor("Consumable").length === 0);
@@ -1298,8 +1298,8 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
 
 console.log("── tech fields are selectors, not free text (Phase 8) ──");
 {
-    const sch = await import("./schema.ts");
-    const cat = await import("../catalog.ts");
+    const sch = await import("../schema.ts");
+    const cat = await import("../../catalog.ts");
     const f = (k: string) => sch.fieldsFor("techs").find((x) => x.key === k)!;
 
     // 8.1 / 8.2 — currency + branch are pickers with a custom escape hatch.
@@ -1485,8 +1485,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
 
     console.log("── unlock nodes: the required owner of every structure's gate ──");
 
-    const cat = await import("../catalog.ts");
-    const tl = await import("./tech-link.ts");
+    const cat = await import("../../catalog.ts");
+    const tl = await import("../tech-link.ts");
     store.config = {
         ...(store.config ?? {}),
         unlockNodes: [
@@ -1622,8 +1622,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
 
 console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
 {
-    const cat = await import("../catalog.ts");
-    const styles = await import("./styles.ts");
+    const cat = await import("../../catalog.ts");
+    const styles = await import("../styles.ts");
     const assets = cat.listLibraryAssets();
     check("library is populated", assets.length > 0, String(assets.length));
 
@@ -1684,13 +1684,13 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
 
 console.log("── re-applying an edit actually reaches the engine ──");
 {
-    const apply = await import("../register/apply.ts");
+    const apply = await import("../../register/apply.ts");
     const calls: { fn: string; a: unknown[] }[] = [];
     const rec = (name: string) => (...a: unknown[]) => {
         calls.push({ fn: name, a });
     };
     // Swap in a fake api surface for the namespaces updateEntry touches.
-    const apiNs = (await import("../packages/mysandkit.ts")).api as unknown as Record<
+    const apiNs = (await import("../../packages/mysandkit.ts")).api as unknown as Record<
         string,
         Record<string, unknown>
     >;
@@ -1763,7 +1763,7 @@ console.log("── handler registry is documented and API-verified ──");
         CODE_HANDLERS,
         PROCESS_HANDLERS,
         PROCESS_HANDLER_DOCS,
-    } = await import("../hooks/handlers.ts");
+    } = await import("../../hooks/handlers.ts");
 
     // Every generic callback must be documented, or the UI shows a bare key.
     for (const key of Object.keys(ANY_HANDLERS)) {

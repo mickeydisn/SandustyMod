@@ -7,11 +7,11 @@
  * and there is no DOM here to click.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
-import { clampChip, DRAG_SLOP, exceedsSlop } from "./drag.ts";
-import { minimizedChip, overlayBox, titleBar } from "./styles.ts";
+import { clampChip, DRAG_SLOP, exceedsSlop } from "../drag.ts";
+import { minimizedChip, overlayBox, titleBar } from "../styles.ts";
 
 const panel = Deno.readTextFileSync(
-    new URL("./panel.ts", import.meta.url).pathname,
+    new URL("../panel.ts", import.meta.url).pathname,
 );
 
 // ── the open panel is a 90vw/90vh overlay ─────────────────────────────────────

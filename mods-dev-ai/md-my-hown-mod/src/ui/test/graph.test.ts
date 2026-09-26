@@ -33,9 +33,9 @@ const {
     graphAsText,
     graphCategories,
     neighboursOf,
-} = await import("./graph.ts");
-const { RELATIONS } = await import("./relations.ts");
-const { MENU_GROUPS } = await import("./schema.ts");
+} = await import("../graph.ts");
+const { RELATIONS } = await import("../relations.ts");
+const { MENU_GROUPS } = await import("../schema.ts");
 
 Deno.test("an empty config produces a graph with no live references", () => {
     const g = buildGraph({});

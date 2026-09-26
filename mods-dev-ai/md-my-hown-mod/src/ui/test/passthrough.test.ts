@@ -65,7 +65,7 @@ const {
     passthroughKeysOf,
     fieldsFor,
     sectionsFor,
-} = await import("./schema.ts");
+} = await import("../schema.ts");
 
 Deno.test("an unknown field survives an edit untouched", () => {
     const entry = {

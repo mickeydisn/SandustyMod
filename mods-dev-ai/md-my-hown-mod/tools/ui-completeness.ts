@@ -21,6 +21,8 @@ const HERE = new URL(".", import.meta.url).pathname;
 const ROOT = HERE.replace(/\/tools\/$/, "") + "/";
 const OUT = `${ROOT}doc-bundel/`;
 
+import { schemaSourceWithDefinitions } from "./schema-source.ts";
+
 export interface Gaps {
     /** the engine reads it, the form does not expose it */
     missingFromUi: string[];
@@ -117,14 +119,11 @@ async function load(): Promise<Sources> {
         "mod",
     );
     const uiFields = new Map<string, string[]>();
+    // Read as one document, so a tab whose `formToEntry` lives in its own
+    // definition file is seen the same as one still inside `schema.ts`.
+    const structured = structuredKeys(schemaSourceWithDefinitions());
     for (const tab of Object.keys(schema.CATEGORY_META)) {
-        uiFields.set(
-            tab,
-            [
-                ...(structuredKeys(Deno.readTextFileSync(`${ROOT}src/ui/schema.ts`))
-                    .get(tab) ?? []),
-            ],
-        );
+        uiFields.set(tab, [...(structured.get(tab) ?? [])]);
     }
     return {
         definitions,
@@ -288,7 +287,7 @@ export function structuredKeys(schemaSrc: string): Map<string, Set<string>> {
         const block = body.slice(m.index! + m[0].length, i);
         const keys = out.get(tab) ?? new Set<string>();
 
-        for (const k of block.matchAll(/set(?:Str|Num|Bool)\(\s*"(\w+)"/g)) {
+        for (const k of block.matchAll(/set(?:Str|Num|Bool|Raw)\(\s*"(\w+)"/g)) {
             keys.add(k[1]);
         }
         for (const k of block.matchAll(/entry\.(\w+)\s*=/g)) keys.add(k[1]);
@@ -298,6 +297,15 @@ export function structuredKeys(schemaSrc: string): Map<string, Set<string>> {
         }
         // nested object literals: `entry.upgrade = { id, nameKey, … }`
         for (const k of block.matchAll(/entry\.(\w+)\s*=\s*\{([^{}]*)\}/g)) {
+            for (const inner of k[2].matchAll(/(\w+)\s*[:=]/g)) {
+                keys.add(`${k[1]}.${inner[1]}`);
+            }
+        }
+        // …and the same shape written through a definition's writer:
+        // `w.setRaw("render", { imageName: image })`. Without this a key a
+        // per-object definition writes would vanish from the report — the same
+        // key, reached through a different call, read as a different answer.
+        for (const k of block.matchAll(/setRaw\(\s*"(\w+)"\s*,\s*\{([^{}]*)\}/g)) {
             for (const inner of k[2].matchAll(/(\w+)\s*[:=]/g)) {
                 keys.add(`${k[1]}.${inner[1]}`);
             }
