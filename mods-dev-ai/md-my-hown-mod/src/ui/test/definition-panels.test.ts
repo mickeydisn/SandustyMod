@@ -38,6 +38,22 @@ const CFG = {
         density: 100,
         colors: { variants: [[255, 0, 0, 255], [0, 255, 0, 200]] },
     }],
+    items: [{
+        id: "i1",
+        name: "Pick",
+        itemType: "Tool",
+        cooldown: 250,
+        excavationProfileId: "md-my-hown-mod:dig",
+        sprite: { id: "sprites:pick", type: "onehand" },
+    }],
+    terrains: [{
+        id: "t1",
+        name: "Stone",
+        hp: 250,
+        colorHSL: [200, 0.4, 0.6],
+        output: { elementType: "md-my-hown-mod:pebble", chance: 0.25 },
+        materialId: 101,
+    }],
 };
 
 let nodes: Node[] = [];
@@ -157,5 +173,87 @@ Deno.test("the element colour swatches survive the same chain", () => {
         control.tag,
         "div",
         "the swatch list was replaced by a fallback control",
+    );
+});
+
+Deno.test("a definition with no widget of its own still renders every control", () => {
+    // Items claims no field kind, so every control comes from the generic
+    // chain. That is exactly the case where a definition is *silently* absent:
+    // a missing `fields` entry and a missing widget look the same on screen.
+    // So the item's fields are asserted to be present and of the right kind.
+    renderFormFor("items", CFG.items[0], "i1");
+    assertEquals(controlOf("itemType")?.tag, "select", "itemType is not a dropdown");
+    assertEquals(controlOf("cooldownMs")?.tag, "input", "cooldownMs is not a number box");
+    assertEquals(controlOf("spriteId")?.tag, "select", "spriteId is not a dropdown");
+    assertEquals(controlOf("spriteType")?.tag, "select", "spriteType is not a dropdown");
+    assertEquals(controlOf("excavationProfileId")?.tag, "select");
+    // The passthrough box is deliberately *conditional* — it appears only when it
+    // is carrying something — so an item with no hidden keys must not show it.
+    // Asserted because that is the designed behaviour, not an omission.
+    assertEquals(controlOf("advancedJson"), undefined, "an empty passthrough box is showing");
+});
+
+Deno.test("an item's conditional fields appear only for their own item type", () => {
+    // A Tool shows the profile and hides the projectile; a Weapon is the
+    // reverse. Getting this backwards offers a Weapon a digging profile, which
+    // is a stored reference to something that cannot work.
+    renderFormFor("items", CFG.items[0], "i1"); // itemType: Tool
+    assert(controlOf("excavationProfileId"), "a Tool lost its excavation profile");
+    assertEquals(controlOf("projectileId"), undefined, "a Tool was offered a projectile");
+
+    hooks[5] = { ...hooks[5], itemType: "Weapon" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("projectileId"), "a Weapon lost its projectile");
+    assertEquals(controlOf("excavationProfileId"), undefined, "a Weapon was offered a profile");
+
+    hooks[5] = { ...hooks[5], itemType: "Consumable" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assertEquals(controlOf("handlerKey"), undefined, "a Consumable was offered a use action");
+});
+
+Deno.test("a terrain's HSL controls follow the toggle", () => {
+    // The stored `[200, 0.4, 0.6]` must arrive as three filled number boxes
+    // with the toggle on — the form's way of saying "this tile has a base
+    // colour". If the toggle were off, the author would see a colourless tile
+    // and could not tell that the config actually carries one.
+    renderFormFor("terrains", CFG.terrains[0], "t1");
+    assert(controlOf("colorHSLHue"), "the hue box is missing for a terrain with colorHSL");
+    assert(controlOf("colorHSLSaturation"), "the saturation box is missing");
+    assert(controlOf("colorHSLLightness"), "the lightness box is missing");
+    // `colorHSLOn` is a bool, so it renders through the generic chain too
+    assert(controlOf("colorHSLOn"), "the HSL toggle is missing");
+
+    hooks[5] = { ...hooks[5], colorHSLOn: "false" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("colorHSLOn"), "the toggle disappeared with the colour off");
+    assertEquals(
+        controlOf("colorHSLHue"),
+        undefined,
+        "the hue box is showing while the HSL toggle is off",
+    );
+});
+
+Deno.test("a terrain's drop chance follows its drop element", () => {
+    // A chance with no element is a drop of nothing, so the control is hidden
+    // rather than inviting a number that cannot mean anything.
+    renderFormFor("terrains", CFG.terrains[0], "t1");
+    assert(controlOf("outputElement"), "the drop picker is missing");
+    assert(controlOf("outputChance"), "the drop chance is missing for a terrain that drops");
+
+    hooks[5] = { ...hooks[5], outputElement: "" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("outputElement"), "the drop picker disappeared");
+    assertEquals(
+        controlOf("outputChance"),
+        undefined,
+        "a drop chance is offered for a terrain that drops nothing",
     );
 });

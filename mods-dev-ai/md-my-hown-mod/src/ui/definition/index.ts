@@ -13,7 +13,9 @@
  * one with no fields.
  */
 import { elementDefinition } from "./element.ts";
+import { itemDefinition } from "./item.ts";
 import { structureDefinition } from "./structure.ts";
+import { terrainDefinition } from "./terrain.ts";
 import type { Definition, Tab } from "./types.ts";
 
 /**
@@ -23,7 +25,9 @@ import type { Definition, Tab } from "./types.ts";
  */
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
     elements: elementDefinition,
+    items: itemDefinition,
     structures: structureDefinition,
+    terrains: terrainDefinition,
 };
 
 /**

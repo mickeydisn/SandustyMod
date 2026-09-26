@@ -60,14 +60,49 @@ export function readerFor(form: Record<string, string>): EntryReader {
             if (value !== undefined) form[key] = value;
         },
         str: (v) => (typeof v === "string" ? v : undefined),
-        num: (v) =>
-            typeof v === "number" && Number.isFinite(v) ? String(v) : undefined,
-        json: (v) =>
-            v === undefined || v === null ? undefined : JSON.stringify(v, null, 2),
+        num: (v) => typeof v === "number" && Number.isFinite(v) ? String(v) : undefined,
+        json: (v) => v === undefined || v === null ? undefined : JSON.stringify(v, null, 2),
     };
 }
 
 const NUMERIC = /^-?\d+(\.\d+)?$/;
+
+/**
+ * The one `#rrggbb` pattern, shared.
+ *
+ * The generic `color` field rule and every definition that packs a colour
+ * validate against this, so it is stated once: a second copy would let the
+ * validator and the widget disagree about what a colour is, and the symptom
+ * would be a colour the picker accepts and the validator then rejects.
+ */
+export const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * `#rrggbb` → the packed `0xRRGGBB` the engine stores for `metaColor`.
+ *
+ * The `& 0xffffff` is load-bearing: a hand-edited config can hold a value wider
+ * than 24 bits, and masking is what makes it display as a 6-digit colour again
+ * rather than a 7-digit one the `color` rule would then reject — turning a
+ * readable stored value into a field that cannot be saved.
+ */
+export function hexToPacked(hex: string): number {
+    return parseInt(hex.slice(1), 16) & 0xffffff;
+}
+
+/**
+ * Packed `0xRRGGBB` → `#rrggbb`, or `""` when the entry has no map colour.
+ *
+ * Handles both a genuine 32-bit unsigned value (`0xff0000ff`, from a config that
+ * packed with `<< 24`) and a signed one, by taking the low 24 bits either way.
+ * Without the mask, `0x1000000` renders as `#1000000` — seven digits, which
+ * `HEX` does not match, so the field fails its own validation and the entry can
+ * no longer be saved.
+ */
+export function packedToHex(n: number | undefined): string {
+    if (typeof n !== "number" || !Number.isFinite(n)) return "";
+    const rgb = n > 0xffffff ? (n >>> 0) & 0xffffff : n & 0xffffff;
+    return `#${rgb.toString(16).padStart(6, "0")}`;
+}
 
 /** The writer a definition is given, reading one form into one entry. */
 export function writerFor(

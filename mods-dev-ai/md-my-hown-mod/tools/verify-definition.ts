@@ -38,6 +38,8 @@ const store: Record<string, unknown> = {};
 
 const { structureDefinition } = await import(`${ROOT}ui/definition/structure.ts`);
 const { elementDefinition } = await import(`${ROOT}ui/definition/element.ts`);
+const { itemDefinition } = await import(`${ROOT}ui/definition/item.ts`);
+const { terrainDefinition } = await import(`${ROOT}ui/definition/terrain.ts`);
 const { DEFINITIONS, definitionFor } = await import(`${ROOT}ui/definition/index.ts`);
 const S = await import(`${ROOT}ui/schema.ts`);
 
@@ -49,9 +51,11 @@ const ok = (cond: boolean, what: string) => {
 // 1. the registry is what `schema.ts` asks
 ok(definitionFor("structures") === structureDefinition, "registry does not serve structures");
 ok(definitionFor("elements") === elementDefinition, "registry does not serve elements");
+ok(definitionFor("items") === itemDefinition, "registry does not serve items");
+ok(definitionFor("terrains") === terrainDefinition, "registry does not serve terrains");
 ok(
-    Object.keys(DEFINITIONS).length === 2,
-    `registry has ${Object.keys(DEFINITIONS).length} entries, expected 2`,
+    Object.keys(DEFINITIONS).length === 4,
+    `registry has ${Object.keys(DEFINITIONS).length} entries, expected 4`,
 );
 
 // 2. the schema comes from the definition, by identity — a stale copy in
@@ -71,6 +75,22 @@ ok(
 );
 ok(elFields.some((f: { key: string }) => f.key === "colorsJson"), "no colorsJson field");
 ok(elFields.some((f: { key: string }) => f.key === "metaColor"), "no metaColor field");
+
+const itFields = S.fieldsFor("items");
+ok(
+    itFields === itemDefinition.fields,
+    "fieldsFor did not return the item definition's own list",
+);
+ok(itFields.some((f: { key: string }) => f.key === "itemType"), "no itemType field");
+ok(itFields.some((f: { key: string }) => f.key === "spriteId"), "no spriteId field");
+
+const trFields = S.fieldsFor("terrains");
+ok(
+    trFields === terrainDefinition.fields,
+    "fieldsFor did not return the terrain definition's own list",
+);
+ok(trFields.some((f: { key: string }) => f.key === "colorHSLOn"), "no colorHSLOn toggle");
+ok(trFields.some((f: { key: string }) => f.key === "materialId"), "no materialId field");
 
 // 3. a new structure is seeded, and starts as a solid block
 const form = S.newEntryForm("structures");
@@ -239,6 +259,23 @@ ok(
 );
 ok(elBack.flammable === true, `element flammable → ${elBack.flammable}`);
 
+// 11b. a stored metaColor wider than 24 bits still reads back as a 6-digit hex.
+//
+// The engine packs a colour into the low 24 bits, but a hand-edited config can
+// hold a full 32-bit value (0xff0000ff) or a signed one. Read unmasked, that
+// renders as a 7-digit hex, which the `color` field rule rejects — so merely
+// opening and saving the entry would be impossible. This is the one place where
+// "the value looks wrong to a human" and "the editor bricks the entry" are the
+// same bug, so it is asserted rather than left to the mask looking correct.
+for (const storedColor of [0x1000000, 0xff0000ff, 0x11223344, -1]) {
+    const read = S.entryToForm("elements", { metaColor: storedColor }).metaColor;
+    ok(
+        /^#[0-9a-f]{6}$/.test(read),
+        `metaColor ${storedColor} read back as ${JSON.stringify(read)}, which the ` +
+            "colour rule would reject — the entry could not be saved",
+    );
+}
+
 // 12. the element's cross-field rule — the one `validateForm` used to special-case
 ok(
     !!S.validateForm("elements", {
@@ -275,8 +312,177 @@ const elExtra = S.formToEntry("elements", {
 }) as Record<string, unknown>;
 ok(elExtra.someEngineKey === 7, "an unmodelled element key was dropped on save");
 
+// 15. the item round trip: two controls write one `sprite` object, and
+//     `cooldownMs` is stored as `cooldown`
+const itStored = {
+    id: "md-my-hown-mod:pick",
+    name: "Pick",
+    itemType: "Tool",
+    cooldown: 250,
+    energyCost: 3,
+    excavationProfileId: "md-my-hown-mod:dig",
+    handlerKey: "someToolHandler",
+    sprite: { id: "sprites:pick", type: "onehand" },
+};
+const itBack = S.formToEntry("items", S.entryToForm("items", itStored)) as Record<
+    string,
+    unknown
+>;
+ok(itBack.id === itStored.id, `item id → ${itBack.id}`);
+ok(itBack.itemType === "Tool", `item itemType → ${itBack.itemType}`);
+ok(itBack.cooldown === 250, `item cooldown → ${itBack.cooldown}`);
+ok(itBack.energyCost === 3, `item energyCost → ${itBack.energyCost}`);
+ok(
+    (itBack.excavationProfileId as string) === "md-my-hown-mod:dig",
+    `item excavationProfileId → ${itBack.excavationProfileId}`,
+);
+ok(
+    JSON.stringify(itBack.sprite) === JSON.stringify(itStored.sprite),
+    `item sprite → ${JSON.stringify(itBack.sprite)}`,
+);
+
+// 16. a Consumable never persists a use action — ActionType has no Consumable,
+//     so the engine would never call it. The rule is in the save path, not the
+//     `when` predicate, because the form still carries the old value.
+const consumable = S.formToEntry("items", {
+    ...S.entryToForm("items", { ...itStored, itemType: "Consumable" }),
+}) as Record<string, unknown>;
+ok(
+    consumable.handlerKey === undefined,
+    `a Consumable persisted a handler: ${consumable.handlerKey}`,
+);
+// …and the rest of the item is untouched by that rule
+ok(
+    JSON.stringify(consumable.sprite) === JSON.stringify(itStored.sprite),
+    "the Consumable rule disturbed the sprite",
+);
+
+// 17. the handler survives a round trip back to a type that can use one, because
+//     it is read into the form even while the control is hidden
+const backToTool = S.formToEntry("items", {
+    ...S.entryToForm("items", { ...itStored, itemType: "Consumable" }),
+    itemType: "Tool",
+}) as Record<string, unknown>;
+ok(
+    backToTool.handlerKey === "someToolHandler",
+    `switching Consumable → Tool lost the handler: ${backToTool.handlerKey}`,
+);
+
+// 18. the item's `when` predicates: each control belongs to one item type only
+const newItem = S.newEntryForm("items");
+const whenOf = (key: string, form: Record<string, string>) =>
+    itFields.find((f: { key: string }) => f.key === key)!.when?.(form) ?? true;
+ok(whenOf("excavationProfileId", { ...newItem, itemType: "Tool" }), "no profile on a Tool");
+ok(
+    !whenOf("excavationProfileId", { ...newItem, itemType: "Weapon" }),
+    "a Weapon is offered an excavation profile",
+);
+ok(whenOf("projectileId", { ...newItem, itemType: "Weapon" }), "no projectile on a Weapon");
+ok(
+    !whenOf("handlerKey", { ...newItem, itemType: "Consumable" }),
+    "a Consumable is offered a use action",
+);
+ok(whenOf("cooldownMs", { ...newItem, itemType: "Tool" }), "no cooldown on a Tool");
+ok(!whenOf("cooldownMs", { ...newItem, itemType: "Mod" }), "a Mod has a cooldown");
+
+// 19. an unmodelled item key still round-trips
+const itExtra = S.formToEntry("items", {
+    ...S.entryToForm("items", { ...itStored, someEngineKey: 11 }),
+}) as Record<string, unknown>;
+ok(itExtra.someEngineKey === 11, "an unmodelled item key was dropped on save");
+
+// 20. the terrain round trip: an HSL triple becomes three controls and back, and
+//     a `{ elementType, chance }` drop becomes two controls and back
+const trStored = {
+    id: "md-my-hown-mod:stone",
+    name: "Stone",
+    nameKey: "terrain.stone",
+    hp: 250,
+    metaColor: 0x808080,
+    colorHSL: [200, 0.4, 0.6],
+    excavationRequirements: ["md-my-hown-mod:pick", "md-my-hown-mod:shovel"],
+    interactions: [{ kind: "default" }],
+    output: { elementType: "md-my-hown-mod:pebble", chance: 0.25 },
+    flammable: false,
+    materialId: 101,
+};
+const trBack = S.formToEntry("terrains", S.entryToForm("terrains", trStored)) as Record<
+    string,
+    unknown
+>;
+ok(trBack.id === trStored.id, `terrain id → ${trBack.id}`);
+ok(trBack.hp === 250, `terrain hp → ${trBack.hp}`);
+ok(trBack.metaColor === 0x808080, `terrain metaColor → ${trBack.metaColor}`);
+ok(trBack.materialId === 101, `terrain materialId → ${trBack.materialId}`);
+ok(
+    JSON.stringify(trBack.colorHSL) === JSON.stringify(trStored.colorHSL),
+    `terrain colorHSL → ${JSON.stringify(trBack.colorHSL)}`,
+);
+ok(
+    JSON.stringify(trBack.excavationRequirements) ===
+        JSON.stringify(trStored.excavationRequirements),
+    `terrain excavationRequirements → ${JSON.stringify(trBack.excavationRequirements)}`,
+);
+ok(
+    JSON.stringify(trBack.output) === JSON.stringify(trStored.output),
+    `terrain output → ${JSON.stringify(trBack.output)}`,
+);
+
+// 21. the HSL toggle is derived from the stored array, not stored beside it, so
+//     a terrain can never show the toggle on with no colour behind it
+const hslRead = S.entryToForm("terrains", { colorHSL: [10, 0.5, 0.7] });
+ok(hslRead.colorHSLOn === "true", "a stored colorHSL did not switch the toggle on");
+ok(
+    S.entryToForm("terrains", {}).colorHSLOn !== "true",
+    "the toggle is on for a terrain with no stored colour",
+);
+
+// 22. …and the save path honours it: the three numbers are written only when the
+//     toggle is on, so an untouched form cannot emit a 0,0,0 black terrain
+const noHsl = S.formToEntry("terrains", {
+    ...S.entryToForm("terrains", { colorHSL: [10, 0.5, 0.7] }),
+    colorHSLOn: "false",
+}) as Record<string, unknown>;
+ok(
+    !("colorHSL" in noHsl),
+    `turning the HSL toggle off left the colour as ${JSON.stringify(noHsl.colorHSL)}`,
+);
+// a half-filled triple is not written at all — a 1- or 2-tuple is a different
+// colour, not a half-specified one
+const halfHsl = S.formToEntry("terrains", {
+    ...S.entryToForm("terrains", { colorHSL: [10, 0.5, 0.7] }),
+    colorHSLLightness: "",
+}) as Record<string, unknown>;
+ok(
+    !("colorHSL" in halfHsl),
+    `a partially filled HSL was written as ${JSON.stringify(halfHsl.colorHSL)}`,
+);
+
+// 23. a drop chance with no element is not a drop
+const chanceOnly = S.formToEntry("terrains", {
+    ...S.entryToForm("terrains", { output: { elementType: "md-my-hown-mod:pebble", chance: 0.5 } }),
+    outputElement: "",
+}) as Record<string, unknown>;
+ok(
+    !("output" in chanceOnly),
+    `a drop chance with no element was written as ${JSON.stringify(chanceOnly.output)}`,
+);
+
+// 24. the `fog` decision: a stored key the form has no control for must survive
+//     through the passthrough rather than being claimed and dropped
+const foggy = S.formToEntry("terrains", {
+    ...S.entryToForm("terrains", { ...trStored, fog: true }),
+}) as Record<string, unknown>;
+ok(foggy.fog === true, "a stored `fog` was dropped — the form does not model it");
+
+// 25. an unmodelled terrain key still round-trips
+const trExtra = S.formToEntry("terrains", {
+    ...S.entryToForm("terrains", { ...trStored, someEngineKey: 5 }),
+}) as Record<string, unknown>;
+ok(trExtra.someEngineKey === 5, "an unmodelled terrain key was dropped on save");
+
 if (failures.length === 0) {
-    console.log("definition check: all 14 passed");
+    console.log("definition check: all 25 passed");
 } else {
     console.error(`definition check: ${failures.length} FAILED`);
     for (const f of failures) console.error(` - ${f}`);

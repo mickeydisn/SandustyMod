@@ -38,6 +38,7 @@ import {
     textField,
 } from "./definition/fields.ts";
 import { elementDefinition } from "./definition/element.ts";
+import { itemDefinition } from "./definition/item.ts";
 import {
     composeTooltipHover,
     describeShape,
@@ -47,15 +48,16 @@ import {
     shapeToText,
     structureDefinition,
 } from "./definition/structure.ts";
+import { terrainDefinition } from "./definition/terrain.ts";
 import {
     formatIdList,
+    HEX,
     parseIdList,
     parseObjectOrUndefined,
     readerFor,
     safeJson,
     writerFor,
 } from "./definition/values.ts";
-import { loadConfig } from "../config/store.ts";
 
 /**
  * Re-exported so the panel, the tests and the doc tools keep importing these
@@ -98,11 +100,9 @@ import {
     listEnergyNetworkOpts,
     listHandlerKeys,
     listHookIds,
-    listItemActionHandlerKeys,
     listItems,
     listKeyCodes,
     listLinkedClearance,
-    listMaterialIds,
     listOutputTargets,
     listProcessorKeys,
     listProjectileHandlerKeys,
@@ -478,105 +478,6 @@ function elSelect(
  * than only in someone's memory.
  */
 const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
-    items: [
-        idField(),
-        textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
-        textField("description", "Description", "Identity", false, { maxLength: DESC_MAX }),
-        textField("descriptionKey", "Description key (i18n)", "Identity", false, {
-            placeholder: "mods|example|item|desc",
-            maxLength: 120,
-        }),
-        {
-            // sandkit.enums.ItemType: Weapon=1, Tool=2, Consumable=3, Mod=4.
-            // `resolveItemType` maps these names to the numeric enum at register time.
-            key: "itemType",
-            label: "Item type",
-            kind: "select",
-            section: "Item",
-            required: true,
-            def: "Tool",
-            options: [
-                { value: "Tool", label: "Tool (2) — digs via an excavation profile" },
-                { value: "Weapon", label: "Weapon (1) — fires a projectile" },
-                { value: "Consumable", label: "Consumable (3) — used up on the player" },
-                { value: "Mod", label: "Mod (4) — passive / misc" },
-            ],
-            hint: "itemType only labels the slot; behaviour comes from the fields below",
-        },
-        // Only a Tool has an excavation profile.
-        {
-            key: "excavationProfileId",
-            label: "Excavation profile",
-            kind: "select",
-            section: "Item",
-            when: (f) => f.itemType === "Tool",
-            options: () => listConfigured("excavationProfiles"),
-            hint: "api.items excavationProfileId — what this tool digs with",
-        },
-        // Weapon behaviour is a projectile reference.
-        {
-            key: "projectileId",
-            label: "Projectile",
-            kind: "select",
-            section: "Item",
-            when: (f) => f.itemType === "Weapon",
-            options: () => listConfigured("projectiles"),
-            hint: "spawned via api.projectiles.createBlueprintFromId(id)",
-        },
-        // `itemType` only labels the slot; the *behaviour* is ItemDefinition.
-        // handleAction, which the engine calls with an ActionType. ActionType has
-        // no Consumable, so a Consumable deliberately gets no handler at all.
-        {
-            key: "handlerKey",
-            label: "Use action",
-            kind: "select",
-            section: "Item",
-            when: (f) => !!f.itemType && f.itemType !== "Consumable",
-            options: (f) => listItemActionHandlerKeys(f.itemType),
-            // The dropdown is already filtered to the item type, so saying so
-            // explains a short list instead of leaving it looking broken.
-            hint: `becomes ItemDefinition.handleAction. ${
-                typesHintFor(() => listItemActionHandlerKeys())
-            } A Consumable gets none, because ActionType has no Consumable.`,
-        },
-        // Cooldown + energy apply to anything the player actively uses.
-        numField("cooldownMs", "Cooldown (ms)", "Item", {
-            min: 0,
-            max: 600000,
-            hint: "0 = none",
-            when: (f) => f.itemType === "Tool" || f.itemType === "Weapon",
-        }),
-        numField("energyCost", "Energy cost", "Item", {
-            min: 0,
-            max: 10000,
-            when: (f) => f.itemType === "Tool" || f.itemType === "Weapon",
-            hint: "energy drawn per use (api.items energyCost)",
-        }),
-        {
-            key: "spriteId",
-            label: "Sprite",
-            kind: "select",
-            section: "Sprite",
-            required: true,
-            options: listSpriteIds,
-            hint: "required by the engine — add it in Assets & hooks → Sprites",
-        },
-        {
-            key: "spriteType",
-            label: "Sprite type",
-            kind: "select",
-            section: "Sprite",
-            required: true,
-            def: "onehand",
-            options: [
-                { value: "onehand", label: "onehand" },
-                { value: "twohand", label: "twohand" },
-                { value: "backhand", label: "backhand" },
-            ],
-        },
-        advField(),
-    ],
-
     recipes: [
         idField(),
         {
@@ -813,101 +714,6 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         },
     ],
 
-    terrains: [
-        idField(),
-        textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
-        textField("nameKey", "Name key (i18n)", "Identity", false, {
-            placeholder: "mods|example|terrain|name",
-            maxLength: 120,
-        }),
-        // engine type: [number, number, number] — H, S, L
-        numField("colorHSLHue", "Hue", "Colour", {
-            min: 0,
-            max: 360,
-            step: 1,
-            int: true,
-            when: (f) => f.colorHSLOn === "true",
-        }),
-        numField("colorHSLSaturation", "Saturation", "Colour", {
-            min: 0,
-            max: 1,
-            step: 0.01,
-            when: (f) => f.colorHSLOn === "true",
-        }),
-        numField("colorHSLLightness", "Lightness", "Colour", {
-            min: 0,
-            max: 1,
-            step: 0.01,
-            when: (f) => f.colorHSLOn === "true",
-        }),
-        {
-            key: "colorHSLOn",
-            label: "Set base HSL colour",
-            kind: "bool",
-            section: "Colour",
-            def: "false",
-            hint: "overrides the default terrain colour; H 0-360, S and L 0-1",
-        },
-        {
-            key: "excavationRequirements",
-            label: "Required tools",
-            kind: "multiselect",
-            section: "Tile",
-            options: listItems,
-            emptyHint: "add an Item first — a terrain can only require a tool that exists.",
-            hint: "item ids needed to dig this terrain",
-        },
-        {
-            // engine type: readonly { kind: string; [key: string]: unknown }[]
-            key: "interactionsJson",
-            label: "Tooltip interactions",
-            kind: "json",
-            section: "Tile",
-            jsonType: "array",
-            wide: true,
-            hint: 'interactions shown for this terrain, e.g. [ { "kind": "…" } ]',
-        },
-        numField("hp", "Hit points", "Tile", { required: true, min: 1, max: 999999, def: "100" }),
-        { key: "metaColor", label: "Colour", kind: "color", section: "Tile" },
-        {
-            key: "outputElement",
-            label: "Drops",
-            kind: "select",
-            section: "Tile",
-            options: listElements,
-            hint: "element dropped when mined (empty = nothing)",
-        },
-        numField("outputChance", "Drop chance", "Tile", {
-            min: 0,
-            max: 1,
-            step: 0.05,
-            int: false,
-            def: "1",
-            when: (f) => f.outputElement !== "",
-        }),
-        boolField("flammable", "Flammable", "Flags"),
-        {
-            // engine: `const s = t?.materialId; if (void 0 !== s) { … throw }`
-            //   must be a number, > i.A.obstacleBreakpoint, and < 150,
-            //   and additionally within [obstacleBreakpoint + 1, 149]
-            // `obstacleBreakpoint` turned out to be a real constant, 100
-            // (`utils-worker.js/90823.js`), so the range is exactly 101–149.
-            // Every value in it is an obstacle, so there are no tiers to name —
-            // the picker offers the engine's own next-free id instead of
-            // inviting a hand-typed collision.
-            key: "materialId",
-            label: "Material id",
-            kind: "select",
-            section: "Tile",
-            options: listMaterialIds,
-            hint:
-                "must be 101–149; every value is an obstacle, so the engine's next-free id is the safe pick",
-        },
-        // No `fog` field: `fog` is not a documented terrain property. "Water Fog"
-        // and "Lava Fog" are *terrain entries*, not a per-terrain boolean, so a
-        // foggy-looking terrain must be registered as its own terrain id.
-        advField(),
-    ],
     unlockNodes: [
         idField(),
         textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
@@ -1630,19 +1436,6 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Config entries of a category (for pickers that only exist in our config). */
-function listConfigured(key: keyof ModConfig): Opt[] {
-    try {
-        const arr = (loadConfig()[key] ?? []) as unknown[];
-        return arr
-            .map((e) => (e && typeof e === "object" ? ((e as { id?: string }).id ?? "") : ""))
-            .filter((id) => id)
-            .map((id) => ({ value: id, label: id }));
-    } catch {
-        return [];
-    }
-}
-
 // ── multiselect encoding ─────────────────────────────────────────────────────
 //
 // Encoding lives in `parseIdList` / `formatIdList` above; a `multiselect` field
@@ -1732,18 +1525,7 @@ function suffixOf(id: string, cat?: Tab): string {
     return id.startsWith(`${MOD_ID}:`) ? id.slice(MOD_ID.length + 1) : id;
 }
 
-const HEX = /^#[0-9a-fA-F]{6}$/;
 const NUMERIC = /^-?\d+(\.\d+)?$/;
-
-function hexToPacked(hex: string): number {
-    return parseInt(hex.slice(1), 16) & 0xffffff;
-}
-
-function packedToHex(n: number | undefined): string {
-    if (typeof n !== "number" || !Number.isFinite(n)) return "";
-    const rgb = n > 0xffffff ? (n >>> 0) & 0xffffff : n & 0xffffff;
-    return `#${rgb.toString(16).padStart(6, "0")}`;
-}
 
 function parseJsonRaw(raw: string): { ok: boolean; value?: unknown; error?: string } {
     try {
@@ -2018,18 +1800,6 @@ export function newEntryForm(cat: Tab): Record<string, string> {
 
 /** Config keys each form owns; everything else round-trips via advancedJson. */
 const FORM_COVERED: Partial<Record<Tab, string[]>> = {
-    items: [
-        "name",
-        "description",
-        "descriptionKey",
-        "itemType",
-        "cooldown",
-        "energyCost",
-        "excavationProfileId",
-        "projectileId",
-        "handlerKey",
-        "sprite",
-    ],
     recipes: [
         "kind",
         "input",
@@ -2043,23 +1813,6 @@ const FORM_COVERED: Partial<Record<Tab, string[]>> = {
     processing: ["mode", "structureType", "structureId", "intervalMs", "handlerKey"],
     contacts: ["inputA", "inputB", "outputA", "outputB", "orientation"],
     interactions: ["elementId", "interaction"],
-    terrains: [
-        "name",
-        "nameKey",
-        "hp",
-        "metaColor",
-        "output",
-        "flammable",
-        "materialId",
-        "colorHSL",
-        "excavationRequirements",
-        "interactions",
-        // `fog` was listed here, claiming the form owns a field it has no
-        // control for. Phase 8 found the only `.fog` in the bundle is a
-        // property of the *cell-type table*, not of a terrain definition.
-        // Removing it means an existing stored `fog` round-trips through
-        // advancedJson untouched instead of being silently claimed.
-    ],
     unlockNodes: [
         "name",
         "description",
@@ -2175,18 +1928,8 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             break;
         }
         case "items": {
-            put("name", str(e.name));
-            put("description", str(e.description));
-            put("descriptionKey", str(e.descriptionKey));
-            put("itemType", str(e.itemType) ?? num(e.itemType));
-            if (typeof e.cooldown === "number") put("cooldownMs", num(e.cooldown));
-            put("energyCost", num(e.energyCost));
-            put("excavationProfileId", str(e.excavationProfileId));
-            put("projectileId", str(e.projectileId));
-            put("handlerKey", str(e.handlerKey));
-            const sprite = e.sprite as { id?: string; type?: string } | undefined;
-            put("spriteId", str(sprite?.id));
-            put("spriteType", str(sprite?.type));
+            // Owned by ./definition/item.ts — see the note in formToEntry.
+            itemDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "recipes": {
@@ -2226,29 +1969,8 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             break;
         }
         case "terrains": {
-            put("name", str(e.name));
-            put("nameKey", str(e.nameKey));
-            const hsl = e.colorHSL as [number, number, number] | undefined;
-            if (Array.isArray(hsl) && hsl.length === 3) {
-                put("colorHSLOn", "true");
-                put("colorHSLHue", num(hsl[0]));
-                put("colorHSLSaturation", num(hsl[1]));
-                put("colorHSLLightness", num(hsl[2]));
-            }
-            if (Array.isArray(e.excavationRequirements)) {
-                put(
-                    "excavationRequirements",
-                    (e.excavationRequirements as unknown[]).join(","),
-                );
-            }
-            put("interactionsJson", json(e.interactions));
-            put("hp", num(e.hp));
-            put("metaColor", packedToHex(e.metaColor as number | undefined));
-            const out = e.output as { elementType?: string | number; chance?: number } | undefined;
-            put("outputElement", str(out?.elementType) ?? num(out?.elementType));
-            put("outputChance", num(out?.chance));
-            if (typeof e.flammable === "boolean") put("flammable", String(e.flammable));
-            put("materialId", num(e.materialId));
+            // Owned by ./definition/terrain.ts — see the note in formToEntry.
+            terrainDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "unlockNodes": {
@@ -2491,27 +2213,10 @@ export function formToEntry(
             break;
         }
         case "items": {
-            setStr("name", opt(form, "name"));
-            setStr("description", opt(form, "description"));
-            setStr("descriptionKey", opt(form, "descriptionKey"));
-            setStr("itemType", opt(form, "itemType"));
-            const cd = optNum(form, "cooldownMs");
-            if (cd !== undefined) entry.cooldown = cd;
-            setNum("energyCost", optNum(form, "energyCost"));
-            setStr("excavationProfileId", opt(form, "excavationProfileId"));
-            setStr("projectileId", opt(form, "projectileId"));
-            // A Consumable has no ActionType to dispatch a use through, so never
-            // persist a handler for one even if the form somehow carried it.
-            if (opt(form, "itemType") !== "Consumable") {
-                setStr("handlerKey", opt(form, "handlerKey"));
-            }
-            const spriteId = opt(form, "spriteId");
-            if (spriteId) {
-                const sprite: Record<string, unknown> = { id: spriteId };
-                const t = opt(form, "spriteType");
-                if (t) sprite.type = t;
-                entry.sprite = sprite;
-            }
+            // Owned by ./definition/item.ts. Delegated rather than inlined so
+            // the item's schema and its save path are one file that has to be
+            // read together to be changed correctly.
+            itemDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "recipes": {
@@ -2559,31 +2264,10 @@ export function formToEntry(
             break;
         }
         case "terrains": {
-            setStr("name", opt(form, "name"));
-            setStr("nameKey", opt(form, "nameKey"));
-            // the three HSL controls are only written when the toggle is on, so
-            // an empty form cannot emit a 0,0,0 terrain colour
-            if (optBool(form, "colorHSLOn")) {
-                const h = optNum(form, "colorHSLHue");
-                const s = optNum(form, "colorHSLSaturation");
-                const l = optNum(form, "colorHSLLightness");
-                if (h !== undefined && s !== undefined && l !== undefined) {
-                    entry.colorHSL = [h, s, l];
-                }
-            }
-            const tools = parseIdList(form.excavationRequirements ?? "");
-            if (tools.length > 0) entry.excavationRequirements = tools;
-            const interactions = optJson<unknown[]>(form, "interactionsJson");
-            if (interactions) entry.interactions = interactions;
-            setNum("hp", optNum(form, "hp"));
-            const hex = opt(form, "metaColor");
-            if (hex && HEX.test(hex)) entry.metaColor = hexToPacked(hex);
-            const outEl = opt(form, "outputElement");
-            if (outEl) {
-                entry.output = { elementType: outEl, chance: optNum(form, "outputChance") ?? 1 };
-            }
-            setBool("flammable", optBool(form, "flammable"));
-            setNum("materialId", optNum(form, "materialId"));
+            // Owned by ./definition/terrain.ts. Delegated rather than inlined so
+            // the terrain's schema, its HSL toggle and its save path are one file
+            // that has to be read together to be changed correctly.
+            terrainDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "unlockNodes": {

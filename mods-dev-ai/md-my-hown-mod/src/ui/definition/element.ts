@@ -18,6 +18,7 @@
 import { listMatterTypes } from "../../catalog.ts";
 import * as S from "../styles.ts";
 import { advField, boolField, DESC_MAX, idField, NAME_MAX, numField, textField } from "./fields.ts";
+import { HEX, hexToPacked, packedToHex } from "./values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "./types.ts";
 
 // ── Colour variants ───────────────────────────────────────────────────────────
@@ -80,19 +81,6 @@ export function hexListToVariants(list: string[]): [number, number, number, numb
  */
 export function seedVariantFromMapColor(mapColorHex: string | undefined): string {
     return mapColorHex && HEX.test(mapColorHex) ? `${mapColorHex}ff` : "#ccccccff";
-}
-
-const HEX = /^#[0-9a-fA-F]{6}$/;
-
-/** `#rrggbb` → the packed `0xRRGGBB` the engine stores. */
-function hexToPacked(hex: string): number {
-    return parseInt(hex.slice(1), 16);
-}
-
-/** Packed `0xRRGGBB` → `#rrggbb`, or `""` when the element has no map colour. */
-function packedToHex(n: number | undefined): string {
-    if (typeof n !== "number" || !Number.isFinite(n)) return "";
-    return "#" + n.toString(16).padStart(6, "0");
 }
 
 // ── The schema ───────────────────────────────────────────────────────────────
@@ -218,8 +206,16 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     }
 }
 
-/** Form strings → stored entry, for the whole element. */
-function formToEntry(form: Record<string, string>, w: EntryWriter): void {
+/**
+ * Form strings → stored entry, for the whole element.
+ *
+ * `_form` is unused: every read goes through the writer, which already carries
+ * the form. The parameter stays because the `Definition` contract has one
+ * signature — a definition that needs a raw form value the writer does not
+ * expose (`structure` reads `form.tooltipHoverJson` for that) has to be able to
+ * ask for it. An element simply does not.
+ */
+function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
     w.setStr("description", w.opt("description"));
     w.setStr("descriptionKey", w.opt("descriptionKey"));
