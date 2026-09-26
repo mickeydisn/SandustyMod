@@ -34,6 +34,7 @@ import {
     listDescribedProcessorKeys,
     listDrawFunctions,
     listElements,
+    listEnergyNetworkOpts,
     listHandlerKeys,
     listHookIds,
     listItemActionHandlerKeys,
@@ -53,6 +54,7 @@ import {
     listTechBranches,
     listTechIds,
     listUnlockNodes,
+    listUpgradeCategoryIds,
     listTriggerHandlerKeys,
     listUpgradeHandlerKeys,
     searchLibraryAssets,
@@ -65,8 +67,11 @@ export type Tab =
     | "elements" | "structures" | "items"
     | "recipes" | "processing" | "contacts" | "interactions"
     | "terrains" | "techs" | "upgrades" | "categories" | "unlockNodes"
-    | "signals" | "triggers" | "behaviors" | "energy" | "excavation" | "projectiles"
+    | "signals" | "triggers" | "behaviors" | "energy" | "networks"
+    | "excavation" | "projectiles"
     | "sprites" | "modifiers" | "inputs"
+    /** Catalogue of the engine's draw functions — no configKey, no storage. */
+    | "draws"
     /** Registry browser — no configKey, renders its own body. */
     | "handlers"
     /** Explains the objects and their relations — no configKey. */
@@ -89,7 +94,11 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
     recipes: { label: "Machine recipes", blurb: "Input → outputs for the built-in machines.", configKey: "recipes" },
     processing: { label: "Processors", blurb: "Timed behaviour attached to a structure type.", configKey: "processing" },
     contacts: { label: "Contact reactions", blurb: "Element A + element B → two outputs.", configKey: "contacts" },
-    interactions: { label: "Element ↔ structure", blurb: "Extra interaction info attached to an element.", configKey: "interactions" },
+    interactions: {
+        label: "Tooltips",
+        blurb: "The hover text and behaviour an element or terrain shows in-game.",
+        configKey: "interactions",
+    },
     terrains: { label: "Terrains", blurb: "Diggable tiles: hp, colour, drop output.", configKey: "terrains" },
     unlockNodes: {
         label: "Unlock nodes",
@@ -112,9 +121,14 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
     triggers: { label: "Triggers", blurb: "Interval callbacks (ticks).", configKey: "triggers" },
     behaviors: { label: "Behaviours", blurb: "Conveyor / launcher behaviour definitions.", configKey: "structureBehaviors" },
     energy: {
-        label: "Energy types",
+        label: "Energy interactions",
         blurb: "Attach a conductor/storage energy node to a structure.",
         configKey: "energyTypes",
+    },
+    networks: {
+        label: "Energy networks",
+        blurb: "Named energy channels. The game ships one; add the ones you need.",
+        configKey: "energyNetworks",
     },
     excavation: { label: "Excavation profiles", blurb: "Dig power + cell pattern.", configKey: "excavationProfiles" },
     projectiles: { label: "Projectiles", blurb: "Sprite-driven projectiles and their options.", configKey: "projectiles" },
@@ -124,10 +138,15 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         label: "Handlers",
         blurb: "Every callable this mod can run — grouped by type, with scope and parameters.",
     },
+    /** Draw functions the engine ships, and which structures use them. */
+    draws: {
+        label: "Custom draw",
+        blurb: "What the engine can paint, and which of it this mod uses.",
+    },
     json: { label: "JSON", blurb: "Full config: inspect, export, import." },
     help: {
-        label: "Help",
-        blurb: "What each object is, every field it has, and what points at what.",
+        label: "Graph",
+        blurb: "What points at what.",
     },
     map: {
         label: "Map",
@@ -154,14 +173,15 @@ export interface MenuGroup {
  * you load, a function you call, and a hook you intercept.
  */
 export const MENU_GROUPS: MenuGroup[] = [
-    { key: "content", label: "Content", hint: "What exists in the game", categories: ["elements", "structures", "items", "terrains"] },
-    { key: "production", label: "Production", hint: "How things transform", categories: ["recipes", "processing", "contacts", "interactions"] },
+    { key: "content", label: "Content", hint: "What the player sees in the world", categories: ["terrains", "elements", "structures", "items"] },
+    { key: "extend", label: "Extend", hint: "Add to what the game already does", categories: ["interactions", "behaviors", "excavation", "projectiles", "signals"] },
+    { key: "production", label: "Production", hint: "How things transform", categories: ["contacts", "recipes"] },
     { key: "tech", label: "Tech", hint: "Research, progression & upgrades", categories: ["unlockNodes", "techs", "categories", "upgrades"] },
-    { key: "systems", label: "Systems", hint: "Logic & machine wiring", categories: ["signals", "triggers", "behaviors", "energy", "excavation", "projectiles", "inputs"] },
-    { key: "assets", label: "Assets", hint: "Images loaded from the mod folder", categories: ["sprites"] },
+    { key: "actions", label: "Actions", hint: "Reacting to the player and the clock", categories: ["triggers", "inputs", "processing", "modifiers"] },
+    { key: "energy", label: "Energy", hint: "Power channels and the nodes on them", categories: ["networks", "energy"] },
+    { key: "assets", label: "Assets", hint: "Images, and the code that paints them", categories: ["sprites", "draws"] },
     { key: "handlers", label: "Handlers", hint: "Every function this mod can call", categories: ["handlers"] },
-    { key: "hooks", label: "Hooks", hint: "Intercept and modify engine hooks", categories: ["modifiers"] },
-    { key: "help", label: "Help", hint: "What points at what", categories: ["help"] },
+    { key: "help", label: "Graph", hint: "What points at what", categories: ["help"] },
     { key: "data", label: "Data", hint: "Raw JSON, and a map of what you have made", categories: ["map", "json"] },
 ];
 
@@ -434,27 +454,66 @@ function spriteIdField(): FieldSpec {
 }
 
 /**
+ * The form key that carries every stored field the form has no control for.
+ *
+ * Named rather than spelled out because three places have to agree on it: the
+ * field that declares it, the panel that decides whether to show its section,
+ * and the label that names what is being carried.
+ */
+export const PASSTHROUGH_KEY = "advancedJson";
+
+/**
+ * The stored keys a passthrough blob is carrying, or `[]` when it carries none.
+ *
+ * Takes the raw textarea text rather than a parsed object, because that is what
+ * the panel has at hand on every render — and a render must never throw. So
+ * anything that is not a JSON *object* reads as carrying nothing: an empty box
+ * (`""` is what a form saves for "not set"), a half-typed value, an array, a
+ * bare number, `null`. Showing a count of keys for a value that cannot be
+ * merged would be claiming a guarantee the save path does not make.
+ */
+export function passthroughKeysOf(raw: string | undefined): string[] {
+    const text = (raw ?? "").trim();
+    if (text === "") return [];
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        return []; // mid-edit or hand-typed nonsense — not a carried object yet
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    return Object.keys(parsed as Record<string, unknown>).sort();
+}
+
+/**
  * The passthrough box, and the only place the panel asks a user to hand-write
  * engine JSON.
  *
  * It is deliberately last: the normal path is a form control, and this exists
- * for the fields the form does not have. It says so on its face — a count, the
- * names being carried, and an explicit note that typing here is a last resort —
+ * for the fields the form does not have. It says so on its face — the names
+ * being carried, and an explicit note that typing here is a last resort —
  * because the old label ("Extra fields (JSON)") read like an authoring field
  * and invited people to put things there that the form would then fight over.
+ *
+ * It is also **conditional**, which is the part that is easy to get wrong in
+ * both directions. Shown always, it is twelve copies of a box whose own hint
+ * says "you do not need to touch this". Never shown, you cannot tell "nothing
+ * is hidden" from "my fields are gone" — exactly the moment you need to know.
+ * So it appears when it has something in it, and names it.
  */
 function advField(): FieldSpec {
     return {
-        key: "advancedJson",
+        key: PASSTHROUGH_KEY,
         label: "Fields this form does not show",
         kind: "json",
         section: "Advanced",
         jsonType: "object",
         wide: true,
+        when: (f) => passthroughKeysOf(f[PASSTHROUGH_KEY]).length > 0,
         hint:
-            "Carried through on every edit so nothing is lost. You do not need to " +
-            "touch this — if you change an entry, these keys are preserved exactly. " +
-            "Editing this box by hand is only for a field the form has no control for.",
+            "Carried through on every edit, so nothing is lost. These keys have no " +
+            "control above. Change one only if you know what the engine expects — a " +
+            "misspelled key here is ignored by the game and will not warn you.",
         placeholder: "{ }",
     };
 }
@@ -690,7 +749,8 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
         // structures. This flag decides whether it is listed — which the build menu
         // does honour, reading `hideFromBuildMenu` off the mod registry as well
         // (bundel.js 7493921).
-        boolField("hideFromBuildMenu", "Hide from build menu", "Flags"),
+        boolField("hideFromBuildMenu", "Hide from build menu", "Flags", "false",
+            "unhide to list it — a structure with no unlock tech is available from the start"),
         {
             // Every structure names a node, so the picker never offers an empty
             // "— none —": "available from the start" is a *node you can see and
@@ -1125,6 +1185,103 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
         // foggy-looking terrain must be registered as its own terrain id.
         advField(),
     ],
+    unlockNodes: [
+        idField(),
+        textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
+        {
+            // Ours, not the engine's. "always" stays mod-owned and needs no
+            // research; "tech" builds a real in-game tech node at apply time.
+            key: "kind",
+            label: "Kind",
+            kind: "select",
+            section: "Identity",
+            required: true,
+            def: "always",
+            options: [
+                { value: "always", label: "always — available from the start" },
+                { value: "tech", label: "tech — a real research step in the game's tech tree" },
+            ],
+            hint: "a tech node is a real research step in the game's tech tree",
+        },
+        {
+            // The borrow is exclusive: an engine tech keeps its own definition,
+            // so a cost typed alongside it would be a second source for the same
+            // node. Rendered as a toggle because that is the decision being made
+            // — build a node, or use one that is already in the tree.
+            key: "useExistingTech",
+            label: "Reuse an engine tech",
+            kind: "bool",
+            section: "Node",
+            def: "false",
+            hint: "off: this node builds its own tech. on: it borrows one already in the tree.",
+        },
+        {
+            key: "techId",
+            label: "Engine tech to reuse",
+            kind: "select",
+            section: "Node",
+            when: (f) => f.kind === "tech" && f.useExistingTech === "true",
+            options: (f) => listTechIds(f.idSuffix),
+            emptyHint: "add a Tech first — there is nothing to borrow.",
+            hint: "several nodes can sit behind the same research step",
+        },
+        numField("cost", "Cost", "Research", {
+            min: 0, max: 999999, def: "100",
+            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
+        }),
+        {
+            key: "currencyType", label: "Currency", kind: "select", section: "Research",
+            options: listCurrencyTypes,
+            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
+            hint: "TechDefinition.currencyType — a free string in the engine",
+        },
+        {
+            key: "currencyTypeCustom", label: "Currency id", kind: "text", section: "Research",
+            when: (f) => f.currencyType === "__custom__",
+            placeholder: "coins", maxLength: 32,
+            pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
+            patternMsg: "lowercase id (a-z 0-9 . _ -)",
+        },
+        {
+            key: "branch", label: "Branch", kind: "select", section: "Research",
+            options: listTechBranches,
+            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
+            hint: "TechDefinition.branch — usually copied from the parent node",
+        },
+        {
+            key: "branchCustom", label: "Branch id", kind: "text", section: "Research",
+            when: (f) => f.branch === "__custom__",
+            placeholder: "industry", maxLength: 32,
+            pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
+            patternMsg: "lowercase id (a-z 0-9 . _ -)",
+        },
+        {
+            key: "parentId", label: "Parent node", kind: "select", section: "Research",
+            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
+            options: (f) => listTechIds(f.idSuffix),
+            emptyHint: "add another Tech first — a node cannot be its own parent.",
+            hint: "without one the tech is never placed in the grid and cannot be bought",
+        },
+        {
+            key: "requires", label: "Requires", kind: "multiselect", section: "Research",
+            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
+            options: (f) => listTechIds(f.idSuffix),
+            emptyHint: "add another Tech first — a node cannot require itself.",
+            hint: "other research that must be done first",
+        },
+        textField("description", "Description", "Identity", false, { maxLength: DESC_MAX }),
+        {
+            // Read-only in the form's terms: the link lives on each structure, and
+            // this is the reverse view of it. Declared so the graph can show what a
+            // node holds back — see the `gatesStructures` row in relations.ts.
+            key: "gatesStructures", label: "Structures it unlocks", kind: "multiselect",
+            section: "Identity",
+            options: listStructures,
+            emptyHint: "no structure points at this node yet.",
+            hint: "derived — set it on each structure, not here. Shown so you can see what rides on this node.",
+        },
+        advField(),
+    ],
     techs: [
         idField(),
         textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
@@ -1288,11 +1445,21 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
             key: "itemId", label: "Item", kind: "select", section: "Upgrade",
             required: true, options: listItems,
         },
-        textField("categoryId", "Category id", "Upgrade", false, {
-            def: "tools", pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
-            patternMsg: "lowercase id (a-z 0-9 . _ -)",
-            hint: "must match a category registered with api.upgrades.registerCategory",
-        }),
+        {
+            // Not a label, a reference — which is why it is a picker and not a text
+            // box whose hint told you to go and look the id up somewhere else.
+            //
+            // `api.upgrades.registerCategory` is write-only: there is no
+            // `listCategories` to call, so the game may well hold categories we
+            // have never heard of. The picker offers what we *do* know plus
+            // `__custom__`, and the hint says so — an unlabelled escape hatch reads
+            // as an oversight, a labelled one is a documented boundary.
+            key: "categoryId", label: "Category", kind: "select", section: "Upgrade",
+            def: "tools", options: listUpgradeCategoryIds,
+            hint:
+                "must be a category the game knows. “custom” is for one it has and we " +
+                "cannot list — api.upgrades has no way to read them back.",
+        },
         textField("itemNameKey", "Item name key (i18n)", "Upgrade", false, {
             placeholder: "mods|example|item|name",
             maxLength: 120,
@@ -1370,11 +1537,36 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
                 { value: "conveyor", label: "conveyor" },
                 { value: "launcher", label: "launcher" },
             ],
+            hint: "which simulation pass this joins — there is no third one",
+        },
+        // The structure ids live inside `definition` because that is the shape
+        // the engine wants, but each is its own control here and each is merged
+        // in on the way out. A conveyor is registered against a single structure
+        // (`definition.id`); a launcher against three, under exactly the names the
+        // engine uses.
+        {
+            key: "structureId", label: "Structure", kind: "select", section: "Behaviour",
+            required: true, when: (f) => f.kind !== "launcher", options: listStructures,
         },
         {
-            key: "definitionJson", label: "Definition", kind: "json", section: "Behaviour",
-            required: true, jsonType: "object", wide: true,
-            hint: "forwarded to structureBehaviors.register*",
+            key: "upType", label: "Up structure", kind: "select", section: "Behaviour",
+            required: true, when: (f) => f.kind === "launcher", options: listStructures,
+        },
+        {
+            key: "leftType", label: "Left structure", kind: "select", section: "Behaviour",
+            required: true, when: (f) => f.kind === "launcher", options: listStructures,
+        },
+        {
+            key: "rightType", label: "Right structure", kind: "select", section: "Behaviour",
+            required: true, when: (f) => f.kind === "launcher", options: listStructures,
+        },
+        {
+            // Whatever the engine reads that the four controls above do not name.
+            // The named ids are merged in on save, and anything typed here wins
+            // over them — so an unmodellable key is still expressible.
+            key: "definitionJson", label: "Rest of the payload", kind: "json", section: "Behaviour",
+            jsonType: "object", wide: true,
+            hint: "everything else, forwarded to structureBehaviors.register*. The structure ids above are merged in; anything here wins over them.",
             placeholder: "{ }",
         },
     ],
@@ -1400,14 +1592,29 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
             when: (f) => f.type === "storage",
             hint: "max energy this node can hold (api.energy.registerType options.capacity)",
         }),
-        textField("energyType", "Network", "Energy", false, {
-            placeholder: "power",
-            hint: "options.energyType — which network to join when several exist",
-        }),
+        {
+            // A closed set in the engine, but one the game gives us no way to
+            // enumerate — `options.energyType` is a bare string and nothing in the
+            // api lists the channels. That is exactly why this is a picker over
+            // *our* config plus the engine's own default: a typo here registers
+            // cleanly and the node then never joins anything, looking configured
+            // and doing nothing.
+            key: "energyType", label: "Network", kind: "select", section: "Energy",
+            options: listEnergyNetworkOpts,
+            hint: "options.energyType — which network to join. The engine's default is \"power\".",
+        },
         numField("priority", "Priority", "Energy", {
             min: 0, max: 1000, def: "0",
             when: () => true,
             hint: "network priority (only read by the engine if it supports it)",
+        }),
+        advField(),
+    ],
+    networks: [
+        idField(),
+        textField("name", "Display name", "Identity", false, {
+            maxLength: DESC_MAX,
+            hint: "optional — shown in this list; the engine only ever sees the id",
         }),
         advField(),
     ],
@@ -1491,8 +1698,11 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
     /** The handlers tab renders its own body from the typed registry. */
     handlers: [],
     json: [],
-    // `help` and `map` render their own bodies from schema/relations rather
-    // than a field list, so they have no form fields of their own.
+    // `draws`, `help` and `map` render their own bodies rather than a form:
+    // a draw function is code the engine calls, not an entry anything creates.
+    // `fieldsFor("draws")` being empty is the assertion that keeps a "New" button
+    // from ever appearing there.
+    draws: [],
     help: [],
     map: [],
 };
@@ -1558,9 +1768,21 @@ export interface Section {
     fields: FieldSpec[];
 }
 
-export function sectionsFor(cat: Tab): Section[] {
+/**
+ * The form's sections, with the ones that have nothing to say left out.
+ *
+ * A section survives only while it holds at least one field that is currently
+ * active, so passing the form matters: without it every section is returned as
+ * declared, which is what the docs and the reference generator want (they
+ * describe the form, not one instance of it).
+ *
+ * The panel passes the live form so an entry carrying nothing hidden shows no
+ * "Advanced" heading at all — see {@link PASSTHROUGH_KEY}.
+ */
+export function sectionsFor(cat: Tab, form?: Record<string, string>): Section[] {
     const out: Section[] = [];
     for (const f of fieldsFor(cat)) {
+        if (form && !isActive(f, form)) continue;
         const last = out[out.length - 1];
         if (last && last.title === f.section) last.fields.push(f);
         else out.push({ title: f.section, fields: [f] });
@@ -1807,7 +2029,7 @@ export function parseIdList(text: string | undefined): string[] {
 }
 
 /** Join ids back into the comma-separated form representation. */
-function formatIdList(ids: readonly string[] | undefined): string {
+export function formatIdList(ids: readonly string[] | undefined): string {
     return Array.isArray(ids) ? ids.join(", ") : "";
 }
 
@@ -1888,7 +2110,7 @@ const FORM_COVERED: Partial<Record<Tab, string[]>> = {
     ],
     structures: [
         "name", "description", "categoryKey", "order", "buildModes", "spanTiles",
-        "dirH", "dirV", "dirD", "shape", "alwaysUnlocked",
+        "dirH", "dirV", "dirD", "shape",
         "hideFromBuildMenu", "disallowPick", "unlockNode", "render", "imageName",
         "blockGridType", "draw", "skipCopyData", "defaultData",
         "descriptionKey", "descriptionParams", "linkedClearance",
@@ -1914,6 +2136,10 @@ const FORM_COVERED: Partial<Record<Tab, string[]>> = {
         // Removing it means an existing stored `fog` round-trips through
         // advancedJson untouched instead of being silently claimed.
     ],
+    unlockNodes: [
+        "name", "description", "kind", "techId", "cost", "currencyType", "branch",
+        "parentId", "requires",
+    ],
     techs: [
         "name", "description", "descriptionKey",
         "cost", "currencyType", "branch", "parentId", "requires",
@@ -1928,8 +2154,12 @@ const FORM_COVERED: Partial<Record<Tab, string[]>> = {
     ],
     signals: ["kind", "target", "handlerKey"],
     triggers: ["triggerId", "interval", "sequentialRuns", "extra", "handlerKey"],
+    // The structure ids are inside `definition`; the four controls are merged
+    // into it on the way out, so it is covered even though the form key is not
+    // one of them.
     behaviors: ["kind", "behaviorType", "definition"],
     energy: ["structureId", "type", "options"],
+    networks: ["name"],
     excavation: ["power", "pattern", "options"],
     projectiles: ["sprite", "getOptionsKey", "options"],
     sprites: ["path", "source", "fromMod", "options"],
@@ -2033,9 +2263,20 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             if (dirs.includes("vertical")) put("dirV", "true");
             if (dirs.includes("diagonal")) put("dirD", "true");
             put("shapeJson", e.shape === undefined ? undefined : shapeToText(e.shape));
-            for (const k of ["alwaysUnlocked", "hideFromBuildMenu", "disallowPick"]) {
+            // `alwaysUnlocked` is deliberately absent. The control was removed (the
+            // engine ignores it on a mod structure — `apply.ts` reads it only while
+            // iterating a literal of the *vanilla* structures), and the unlock node
+            // replaced it. Leaving it listed here or read into the form would claim
+            // ownership the panel no longer has, and the stored value would be
+            // dropped on the next edit instead of falling into the passthrough.
+            for (const k of ["hideFromBuildMenu", "disallowPick"]) {
                 if (typeof e[k] === "boolean") put(k, String(e[k]));
             }
+            // Read in full, including a link to a node that no longer exists: a
+            // dangling node is resolved to "available from the start" at apply
+            // time, so dropping it here would silently repair the structure behind
+            // the user's back. It stays visible and repairable instead.
+            put("unlockNode", str(e.unlockNode));
             if (typeof e.rejectWhenBlocked === "boolean") {
                 put("rejectWhenBlocked", String(e.rejectWhenBlocked));
             }
@@ -2143,6 +2384,39 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             put("materialId", num(e.materialId));
             break;
         }
+        case "unlockNodes": {
+            put("name", str(e.name));
+            put("description", str(e.description));
+            put("kind", str(e.kind));
+            // `useExistingTech` is a form-only toggle: a node either names the
+            // engine tech it borrows or does not, so the presence of `techId` is
+            // the whole decision. Round-tripping it explicitly would let the
+            // toggle and the id disagree.
+            const techId = str(e.techId);
+            if (techId) {
+                put("useExistingTech", "true");
+                put("techId", techId);
+            } else {
+                put("useExistingTech", "false");
+            }
+            // The rest only belong to a node that *builds* a tech. A borrowed one
+            // keeps the engine's definition, so reading them would show fields
+            // the save path is about to ignore.
+            if (str(e.kind) === "tech" && !techId) {
+                put("cost", num(e.cost));
+                putCustomOrSelect(
+                    form,
+                    str(e.currencyType),
+                    "currencyType",
+                    "currencyTypeCustom",
+                    listCurrencyTypes(),
+                );
+                putCustomOrSelect(form, str(e.branch), "branch", "branchCustom", listTechBranches());
+                put("parentId", str(e.parentId));
+                put("requires", formatIdList(e.requires as string[] | undefined) || undefined);
+            }
+            break;
+        }
         case "techs": {
             put("name", str(e.name));
             put("description", str(e.description));
@@ -2223,7 +2497,16 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
         }
         case "behaviors": {
             put("kind", str(e.kind));
-            put("definitionJson", json(e.definition));
+            // The named structure ids are their own controls, but they live
+            // inside `definition` — so they are lifted out for the picker and
+            // merged back on save. What is left over is the raw box.
+            const def = (e.definition ?? {}) as Record<string, unknown>;
+            put("structureId", str(def.id));
+            put("upType", str(def.upType));
+            put("leftType", str(def.leftType));
+            put("rightType", str(def.rightType));
+            const { id: _id, upType: _up, leftType: _l, rightType: _r, ...rest } = def;
+            put("definitionJson", json(Object.keys(rest).length > 0 ? rest : undefined));
             break;
         }
         case "energy": {
@@ -2236,6 +2519,10 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             put("capacity", num(o?.capacity));
             put("energyType", str(o?.energyType));
             put("priority", num(o?.priority));
+            break;
+        }
+        case "networks": {
+            put("name", str(e.name));
             break;
         }
         case "excavation": {
@@ -2370,9 +2657,11 @@ export function formToEntry(
             if (modes.length > 0) entry.buildModes = modes;
             const shape = optJson<number[][]>(form, "shapeJson");
             if (shape) entry.shape = normalizeShape(shape);
-            setBool("alwaysUnlocked", optBool(form, "alwaysUnlocked"));
             setBool("hideFromBuildMenu", optBool(form, "hideFromBuildMenu"));
             setBool("disallowPick", optBool(form, "disallowPick"));
+            // Omitted means "available from the start" at apply time, so an empty
+            // picker is a valid save and is not written as an empty string.
+            setStr("unlockNode", opt(form, "unlockNode"));
             const image = opt(form, "imageName");
             if (image) entry.render = { imageName: image };
             setStr("blockGridType", opt(form, "blockGridType"));
@@ -2479,6 +2768,41 @@ export function formToEntry(
             setNum("materialId", optNum(form, "materialId"));
             break;
         }
+        case "unlockNodes": {
+            setStr("name", opt(form, "name"));
+            setStr("description", opt(form, "description"));
+            setStr("kind", opt(form, "kind"));
+            // The two modes write disjoint sets of fields, and a field read by
+            // one but not written back is silent data loss. An "always" node
+            // writes no research fields at all, so a stale cost from a previous
+            // edit cannot survive as a second, competing source for how the
+            // structure becomes available.
+            const borrowing = opt(form, "kind") === "tech" &&
+                optBool(form, "useExistingTech") === true;
+            if (borrowing) {
+                setStr("techId", opt(form, "techId"));
+            } else if (opt(form, "kind") === "tech") {
+                setNum("cost", optNum(form, "cost"));
+                setStr(
+                    "currencyType",
+                    opt(form, "currencyType") === "__custom__"
+                        ? opt(form, "currencyTypeCustom")
+                        : opt(form, "currencyType"),
+                );
+                setStr(
+                    "branch",
+                    opt(form, "branch") === "__custom__"
+                        ? opt(form, "branchCustom")
+                        : opt(form, "branch"),
+                );
+                setStr("parentId", opt(form, "parentId"));
+                const nodeRequires = parseIdList(opt(form, "requires"));
+                if (nodeRequires.length > 0) entry.requires = nodeRequires;
+            }
+            // `gatesStructures` is derived from each structure's own
+            // `unlockNode`, so it is never written from here.
+            break;
+        }
         case "techs": {
             setStr("name", opt(form, "name"));
             setStr("description", opt(form, "description"));
@@ -2532,7 +2856,12 @@ export function formToEntry(
         case "upgrades": {
             setStr("itemId", opt(form, "itemId"));
             setStr("itemNameKey", opt(form, "itemNameKey"));
-            setStr("categoryId", opt(form, "categoryId"));
+            // `__custom__` is a UI affordance, not an id. Writing it out would
+            // register the upgrade under a category literally named `__custom__`,
+            // which fails at runtime in a way nothing in the panel could explain.
+            // The engine applies its own default when the field is absent.
+            const categoryId = opt(form, "categoryId");
+            if (categoryId && categoryId !== "__custom__") entry.categoryId = categoryId;
             // Build the NESTED `upgrade` object UpgradeDefinition expects.
             const upgrade: Record<string, unknown> = {};
             const upId = opt(form, "upgradeId");
@@ -2566,8 +2895,24 @@ export function formToEntry(
         }
         case "behaviors": {
             setStr("kind", opt(form, "kind"));
-            const def = optJson<Record<string, unknown>>(form, "definitionJson");
-            if (def) entry.definition = def;
+            // The named structure ids are merged into `definition` first, so the
+            // raw box wins over them: an unmodellable key stays expressible.
+            const def: Record<string, unknown> = {
+                ...(optJson<Record<string, unknown>>(form, "definitionJson") ?? {}),
+            };
+            const launcher = opt(form, "kind") === "launcher";
+            const up = opt(form, "upType");
+            const left = opt(form, "leftType");
+            const right = opt(form, "rightType");
+            const id = opt(form, "structureId");
+            if (launcher) {
+                if (up) def.upType = up;
+                if (left) def.leftType = left;
+                if (right) def.rightType = right;
+            } else if (id) {
+                def.id = id;
+            }
+            if (Object.keys(def).length > 0) entry.definition = def;
             break;
         }
         case "energy": {
@@ -2581,6 +2926,12 @@ export function formToEntry(
             const prio = optNum(form, "priority");
             if (prio !== undefined) options.priority = prio;
             if (Object.keys(options).length > 0) entry.options = options;
+            break;
+        }
+        case "networks": {
+            // Panel-only: the engine reads neither field, it only ever sees the
+            // id two energy types have to spell the same way to share a channel.
+            setStr("name", opt(form, "name"));
             break;
         }
         case "excavation": {

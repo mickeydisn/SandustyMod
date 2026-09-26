@@ -217,10 +217,17 @@ export const COMPOSITE: Record<string, [string, string][]> = {
  * Form fields that deliberately store nothing.
  *
  * `advancedJson` is the raw escape hatch, a `*On` toggle only gates its own
- * siblings, and a `*Custom` field is a fallback for a picker. Listing them keeps
+ * siblings, a `*Custom` field is a fallback for a picker, and a `use*` toggle is
+ * a switch between two ways of filling the *same* config keys. Listing them keeps
  * the reference honest: every other field resolves to a config key.
+ *
+ * The `use*` case is `unlockNodes.useExistingTech` — a node either builds its own
+ * tech (writing cost/currency/branch/parent/requires) or borrows one (writing
+ * techId). The toggle itself is not a key, so it has to be named as indirect or
+ * the generator reports it as an unmapped field, which is a real finding about
+ * every *other* field and is not worth spending on this one.
  */
-export const INDIRECT: RegExp = /^(advancedJson|.*On$|.*Custom$)$/;
+export const INDIRECT: RegExp = /^(advancedJson|.*On$|.*Custom$|use[A-Z].*)$/;
 
 /** Split a code block into `;`-terminated statements, ignoring nested ones. */
 export function statementsOf(block: string): string[] {

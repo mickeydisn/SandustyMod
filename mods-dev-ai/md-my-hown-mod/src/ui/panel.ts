@@ -1480,7 +1480,10 @@ export function createPanelComponent(defaultMinimized = true) {
         };
 
         const renderForm = () => {
-            const sections = sectionsFor(cat);
+            // The live form is passed so a section with nothing to show is left
+            // out entirely — that is what keeps an entry with nothing hidden from
+            // showing an empty "Advanced" heading.
+            const sections = sectionsFor(cat, form);
             const title = editingId ? `Edit ${meta.label}` : `New ${meta.label.toLowerCase()}`;
             return h(
                 "div",

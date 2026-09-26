@@ -232,12 +232,12 @@
     ],
     "gaps": {
       "notReadByEngine": [
-        "alwaysUnlocked",
         "categoryKey",
         "description",
         "descriptionKey",
         "descriptionParams",
         "disallowPick",
+        "drawKey",
         "hideFromBuildMenu",
         "linkedClearance",
         "name",
@@ -245,17 +245,19 @@
         "rejectWhenBlocked",
         "render.imageName",
         "tooltipHover",
+        "unlockNode",
         "variants"
       ],
       "missingFromUi": [
-        "copyData"
+        "copyData",
+        "draw"
       ],
       "missingFromConfig": [
         "skipCopyData"
       ],
       "engineReads": 9,
       "uiHas": 22,
-      "configHas": 22
+      "configHas": 24
     }
   },
   {
@@ -266,7 +268,6 @@
     ],
     "gaps": {
       "notReadByEngine": [
-        "alwaysUnlocked",
         "blockGridType",
         "buildModes",
         "categoryKey",
@@ -275,7 +276,7 @@
         "descriptionKey",
         "descriptionParams",
         "disallowPick",
-        "draw",
+        "drawKey",
         "hideFromBuildMenu",
         "id",
         "linkedClearance",
@@ -287,13 +288,14 @@
         "shape",
         "skipCopyData",
         "tooltipHover",
+        "unlockNode",
         "variants"
       ],
       "missingFromUi": [],
       "missingFromConfig": [],
       "engineReads": 0,
       "uiHas": 22,
-      "configHas": 22
+      "configHas": 24
     }
   },
   {

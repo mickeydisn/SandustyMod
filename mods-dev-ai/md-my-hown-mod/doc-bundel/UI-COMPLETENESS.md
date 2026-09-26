@@ -23,8 +23,8 @@ the form exposes.
 | `reactions.registerContact` | `ContactReactionConfig` | contacts | 0 | 6 | 6 | — |
 | `structures.processing.register` | `ProcessingConfig` | processing | 0 | 6 | 4 | — |
 | `structures.recipes.register` | `RecipeConfig` | recipes | 0 | 10 | 9 | — |
-| `structures.register` | `StructureConfig` | structures | 9 | 22 | 22 | `copyData` |
-| `structures.registerPlacementConfig` | `StructureConfig` | structures | 0 | 22 | 22 | — |
+| `structures.register` | `StructureConfig` | structures | 9 | 24 | 22 | `copyData`, `draw` |
+| `structures.registerPlacementConfig` | `StructureConfig` | structures | 0 | 24 | 22 | — |
 | `tech.registerNode` | `TechConfig` | techs | 0 | 22 | 10 | — |
 | `tech.updateDefinition` | `TechConfig` | techs | 0 | 22 | 10 | — |
 | `terrains.register` | `TerrainConfig` | terrains | 2 | 21 | 13 | — |
@@ -80,11 +80,11 @@ Form exposes, engine ignores: `chance`, `id`, `input`, `kind`, `minimumDownwardV
 
 Engine reads, config type cannot hold: `skipCopyData`
 
-Form exposes, engine ignores: `alwaysUnlocked`, `categoryKey`, `description`, `descriptionKey`, `descriptionParams`, `disallowPick`, `hideFromBuildMenu`, `linkedClearance`, `name`, `order`, `rejectWhenBlocked`, `render.imageName`, `tooltipHover`, `variants`
+Form exposes, engine ignores: `categoryKey`, `description`, `descriptionKey`, `descriptionParams`, `disallowPick`, `drawKey`, `hideFromBuildMenu`, `linkedClearance`, `name`, `order`, `rejectWhenBlocked`, `render.imageName`, `tooltipHover`, `unlockNode`, `variants`
 
 ### `structures.registerPlacementConfig`
 
-Form exposes, engine ignores: `alwaysUnlocked`, `blockGridType`, `buildModes`, `categoryKey`, `defaultData`, `description`, `descriptionKey`, `descriptionParams`, `disallowPick`, `draw`, `hideFromBuildMenu`, `id`, `linkedClearance`, `name`, `order`, `rejectWhenBlocked`, `render`, `render.imageName`, `shape`, `skipCopyData`, `tooltipHover`, `variants`
+Form exposes, engine ignores: `blockGridType`, `buildModes`, `categoryKey`, `defaultData`, `description`, `descriptionKey`, `descriptionParams`, `disallowPick`, `drawKey`, `hideFromBuildMenu`, `id`, `linkedClearance`, `name`, `order`, `rejectWhenBlocked`, `render`, `render.imageName`, `shape`, `skipCopyData`, `tooltipHover`, `unlockNode`, `variants`
 
 ### `tech.registerNode`
 

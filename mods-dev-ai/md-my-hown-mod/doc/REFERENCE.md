@@ -251,7 +251,7 @@ Stored under `unlockNodes`.
 | `idSuffix` | Id | `id` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,62}$` | stored as md-my-hown-mod:<id> |
 | `name` | Name | `name` | not read | ≤ 64 chars | — |
 | `kind` | Kind | `(mod-owned: always | tech)` | not read | — | a tech node is a real research step in the game's tech tree |
-| `useExistingTech` | Reuse an engine tech | `requires` | not read | — | off: this node builds its own tech. on: it borrows one already in the tree. |
+| `useExistingTech` | Reuse an engine tech | `—` | not read | — | off: this node builds its own tech. on: it borrows one already in the tree. |
 | `techId` | Engine tech to reuse | `(borrows this engine tech instead of building one)` | not read | — | several nodes can sit behind the same research step |
 | `cost` | Cost | `cost` | not read | min 0, max 999999, whole | — |
 | `currencyType` | Currency | `currencyType` | not read | — | TechDefinition.currencyType — a free string in the engine |
