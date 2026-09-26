@@ -121,62 +121,346 @@ const ALL_SLOTS = [
 export const HANDLER_META: HandlerMeta[] = [
     // ── global ───────────────────────────────────────────────────────────────
     { key: "noop", type: "global", slots: [...ALL_SLOTS], scope: "global", params: [] },
-    { key: "itemDefault", type: "global", slots: ["itemAction"], scope: "item", itemTypes: ["Mod"], params: [p("power", "Power", "number", { def: "5", min: 0 })] },
+    {
+        key: "itemDefault",
+        type: "global",
+        slots: ["itemAction"],
+        scope: "item",
+        itemTypes: ["Mod"],
+        params: [p("power", "Power", "number", { def: "5", min: 0 })],
+    },
     { key: "processorNoop", type: "global", slots: ["processing"], scope: "structure", params: [] },
 
     // ── cell ─────────────────────────────────────────────────────────────────
     // The excavation* presets are the cell-digging behaviour a Tool uses.
-    { key: "excavationDefault", type: "cell", slots: ["itemAction"], scope: "cell", itemTypes: ["Tool"], params: [p("power", "Power", "number", { def: "10", min: 0 })] },
-    { key: "excavationCrusher", type: "cell", slots: ["itemAction"], scope: "cell", itemTypes: ["Tool"], params: [p("power", "Power", "number", { def: "24", min: 0 })] },
-    { key: "excavationDrill", type: "cell", slots: ["itemAction"], scope: "cell", itemTypes: ["Tool"], params: [p("power", "Power", "number", { def: "8", min: 0 }), p("drillTierDamage", "Drill tier damage", "number", { def: "25", min: 0, int: true })] },
-    { key: "excavationGun", type: "cell", slots: ["itemAction"], scope: "cell", itemTypes: ["Tool"], params: [p("power", "Power", "number", { def: "4", min: 0 })] },
-    { key: "excavationShatter", type: "cell", slots: ["itemAction"], scope: "cell", itemTypes: ["Tool"], params: [p("power", "Power", "number", { def: "16", min: 0 })] },
-    { key: "energyDefault", type: "cell", slots: ["processing"], scope: "cell", params: [p("capacity", "Capacity", "number", { def: "1000", min: 0, int: true })] },
-    { key: "energyBank", type: "cell", slots: ["processing"], scope: "cell", params: [p("capacity", "Capacity", "number", { def: "100000", min: 0, int: true })] },
-    { key: "energyWire", type: "cell", slots: ["processing"], scope: "cell", params: [p("capacity", "Capacity", "number", { def: "200", min: 0, int: true })] },
-    { key: "energyConductor", type: "cell", slots: ["processing"], scope: "cell", params: [p("capacity", "Capacity", "number", { def: "0", min: 0, int: true })] },
-    { key: "energyNetwork", type: "cell", slots: ["processing"], scope: "cell", params: [p("energyType", "Energy type", "text", { required: true, hint: "network name to join" })] },
-    { key: "triggerScan", type: "cell", slots: ["trigger"], scope: "cell", params: [p("radius", "Radius", "number", { def: "3", min: 0, int: true })] },
+    {
+        key: "excavationDefault",
+        type: "cell",
+        slots: ["itemAction"],
+        scope: "cell",
+        itemTypes: ["Tool"],
+        params: [p("power", "Power", "number", { def: "10", min: 0 })],
+    },
+    {
+        key: "excavationCrusher",
+        type: "cell",
+        slots: ["itemAction"],
+        scope: "cell",
+        itemTypes: ["Tool"],
+        params: [p("power", "Power", "number", { def: "24", min: 0 })],
+    },
+    {
+        key: "excavationDrill",
+        type: "cell",
+        slots: ["itemAction"],
+        scope: "cell",
+        itemTypes: ["Tool"],
+        params: [
+            p("power", "Power", "number", { def: "8", min: 0 }),
+            p("drillTierDamage", "Drill tier damage", "number", { def: "25", min: 0, int: true }),
+        ],
+    },
+    {
+        key: "excavationGun",
+        type: "cell",
+        slots: ["itemAction"],
+        scope: "cell",
+        itemTypes: ["Tool"],
+        params: [p("power", "Power", "number", { def: "4", min: 0 })],
+    },
+    {
+        key: "excavationShatter",
+        type: "cell",
+        slots: ["itemAction"],
+        scope: "cell",
+        itemTypes: ["Tool"],
+        params: [p("power", "Power", "number", { def: "16", min: 0 })],
+    },
+    {
+        key: "energyDefault",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "1000", min: 0, int: true })],
+    },
+    {
+        key: "energyBank",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "100000", min: 0, int: true })],
+    },
+    {
+        key: "energyWire",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "200", min: 0, int: true })],
+    },
+    {
+        key: "energyConductor",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "0", min: 0, int: true })],
+    },
+    {
+        key: "energyNetwork",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("energyType", "Energy type", "text", {
+                required: true,
+                hint: "network name to join",
+            }),
+        ],
+    },
+    {
+        key: "triggerScan",
+        type: "cell",
+        slots: ["trigger"],
+        scope: "cell",
+        params: [p("radius", "Radius", "number", { def: "3", min: 0, int: true })],
+    },
     // ── message ──────────────────────────────────────────────────────────────
     { key: "signalLog", type: "message", slots: ["signal"], scope: "structure", params: [] },
     { key: "structureInspect", type: "message", slots: ["signal"], scope: "structure", params: [] },
-    { key: "structureReadData", type: "message", slots: ["signal"], scope: "structure", params: [p("field", "Data field", "text", { required: true, hint: "key on the structure's data object" })] },
-    { key: "structureWriteData", type: "message", slots: ["signal"], scope: "structure", params: [p("field", "Data field", "text", { required: true }), p("value", "Value", "text", { required: true })] },
+    {
+        key: "structureReadData",
+        type: "message",
+        slots: ["signal"],
+        scope: "structure",
+        params: [
+            p("field", "Data field", "text", {
+                required: true,
+                hint: "key on the structure's data object",
+            }),
+        ],
+    },
+    {
+        key: "structureWriteData",
+        type: "message",
+        slots: ["signal"],
+        scope: "structure",
+        params: [
+            p("field", "Data field", "text", { required: true }),
+            p("value", "Value", "text", { required: true }),
+        ],
+    },
     { key: "triggerLog", type: "message", slots: ["trigger"], scope: "global", params: [] },
     { key: "triggerTick", type: "message", slots: ["trigger"], scope: "global", params: [] },
-    { key: "itemExcavate", type: "message", slots: ["itemAction"], scope: "cell", itemTypes: ["Tool"], params: [p("profileId", "Excavation profile", "text", { hint: "falls back to the item's excavationProfileId" }), p("power", "Power", "number", { def: "10", min: 0 })] },
-    { key: "itemShoot", type: "message", slots: ["itemAction"], scope: "global", itemTypes: ["Weapon"], params: [p("projectileId", "Projectile", "text", { hint: "falls back to the item's projectileId" }), p("power", "Power", "number", { def: "5", min: 0 }), p("speed", "Speed", "number", { def: "20", min: 0 })] },
+    {
+        key: "itemExcavate",
+        type: "message",
+        slots: ["itemAction"],
+        scope: "cell",
+        itemTypes: ["Tool"],
+        params: [
+            p("profileId", "Excavation profile", "text", {
+                hint: "falls back to the item's excavationProfileId",
+            }),
+            p("power", "Power", "number", { def: "10", min: 0 }),
+        ],
+    },
+    {
+        key: "itemShoot",
+        type: "message",
+        slots: ["itemAction"],
+        scope: "global",
+        itemTypes: ["Weapon"],
+        params: [
+            p("projectileId", "Projectile", "text", {
+                hint: "falls back to the item's projectileId",
+            }),
+            p("power", "Power", "number", { def: "5", min: 0 }),
+            p("speed", "Speed", "number", { def: "20", min: 0 }),
+        ],
+    },
 
     // ── processor ────────────────────────────────────────────────────────────
-    { key: "processorLog", type: "processor", slots: ["processing"], scope: "structure", params: [] },
-    { key: "processorScan", type: "processor", slots: ["processing"], scope: "structure", params: [p("radius", "Radius", "number", { def: "1", min: 0, int: true })] },
-    { key: "processorLift", type: "processor", slots: ["processing"], scope: "cell", params: [p("x", "Cell x", "number", { min: 0, int: true }), p("y", "Cell y", "number", { min: 0, int: true })] },
-    { key: "processorConvert", type: "processor", slots: ["processing"], scope: "cell", params: [p("to", "Output element", "text", { required: true, hint: "element id committed into the cell" }), p("chance", "Chance", "number", { def: "1", min: 0, max: 1 })] },
-    { key: "processorCount", type: "processor", slots: ["processing"], scope: "structure", params: [] },
-    { key: "energyGenerateWhileHeld", type: "processor", slots: ["processing", "trigger"], scope: "cell", params: [p("energyType", "Energy type", "text", { required: true }), p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 })] },
-    { key: "energyConsumePerRun", type: "processor", slots: ["processing", "trigger"], scope: "cell", params: [p("energyType", "Energy type", "text", { required: true }), p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 })] },
+    {
+        key: "processorLog",
+        type: "processor",
+        slots: ["processing"],
+        scope: "structure",
+        params: [],
+    },
+    {
+        key: "processorScan",
+        type: "processor",
+        slots: ["processing"],
+        scope: "structure",
+        params: [p("radius", "Radius", "number", { def: "1", min: 0, int: true })],
+    },
+    {
+        key: "processorLift",
+        type: "processor",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("x", "Cell x", "number", { min: 0, int: true }),
+            p("y", "Cell y", "number", { min: 0, int: true }),
+        ],
+    },
+    {
+        key: "processorConvert",
+        type: "processor",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("to", "Output element", "text", {
+                required: true,
+                hint: "element id committed into the cell",
+            }),
+            p("chance", "Chance", "number", { def: "1", min: 0, max: 1 }),
+        ],
+    },
+    {
+        key: "processorCount",
+        type: "processor",
+        slots: ["processing"],
+        scope: "structure",
+        params: [],
+    },
+    {
+        key: "energyGenerateWhileHeld",
+        type: "processor",
+        slots: ["processing", "trigger"],
+        scope: "cell",
+        params: [
+            p("energyType", "Energy type", "text", { required: true }),
+            p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 }),
+        ],
+    },
+    {
+        key: "energyConsumePerRun",
+        type: "processor",
+        slots: ["processing", "trigger"],
+        scope: "cell",
+        params: [
+            p("energyType", "Energy type", "text", { required: true }),
+            p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 }),
+        ],
+    },
     // ── projectile ───────────────────────────────────────────────────────────
-    { key: "defaultProjectileOptions", type: "projectile", slots: ["projectile"], scope: "global", params: [] },
-    { key: "projectileHeavy", type: "projectile", slots: ["projectile"], scope: "global", params: [] },
-    { key: "projectileFast", type: "projectile", slots: ["projectile"], scope: "global", params: [] },
-    { key: "projectileHoming", type: "projectile", slots: ["projectile"], scope: "global", params: [] },
-    { key: "projectileShotgun", type: "projectile", slots: ["projectile"], scope: "global", params: [] },
-    { key: "projectileExcavate", type: "projectile", slots: ["projectile"], scope: "global", params: [] },
-    { key: "projectileTerrain", type: "projectile", slots: ["projectile"], scope: "global", params: [] },
+    {
+        key: "defaultProjectileOptions",
+        type: "projectile",
+        slots: ["projectile"],
+        scope: "global",
+        params: [],
+    },
+    {
+        key: "projectileHeavy",
+        type: "projectile",
+        slots: ["projectile"],
+        scope: "global",
+        params: [],
+    },
+    {
+        key: "projectileFast",
+        type: "projectile",
+        slots: ["projectile"],
+        scope: "global",
+        params: [],
+    },
+    {
+        key: "projectileHoming",
+        type: "projectile",
+        slots: ["projectile"],
+        scope: "global",
+        params: [],
+    },
+    {
+        key: "projectileShotgun",
+        type: "projectile",
+        slots: ["projectile"],
+        scope: "global",
+        params: [],
+    },
+    {
+        key: "projectileExcavate",
+        type: "projectile",
+        slots: ["projectile"],
+        scope: "global",
+        params: [],
+    },
+    {
+        key: "projectileTerrain",
+        type: "projectile",
+        slots: ["projectile"],
+        scope: "global",
+        params: [],
+    },
 
     // ── tech ─────────────────────────────────────────────────────────────────
-    { key: "techAppendUnlock", type: "tech", slots: ["upgrade"], scope: "tech", params: [p("techId", "Tech node", "text", { required: true })] },
-    { key: "techSetUpgradeLevel", type: "tech", slots: ["upgrade"], scope: "item", params: [p("itemId", "Item", "text", { required: true }), p("level", "Level", "number", { def: "1", min: 0, int: true })] },
-    { key: "techGrantItem", type: "tech", slots: ["upgrade"], scope: "item", params: [p("itemId", "Item", "text", { required: true }), p("count", "Count", "number", { def: "1", min: 0, int: true })] },
-    { key: "upgradeCountLevel", type: "tech", slots: ["upgrade"], scope: "item", params: [p("field", "Data field", "text", { def: "mdLevel" })] },
+    {
+        key: "techAppendUnlock",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "tech",
+        params: [p("techId", "Tech node", "text", { required: true })],
+    },
+    {
+        key: "techSetUpgradeLevel",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "item",
+        params: [
+            p("itemId", "Item", "text", { required: true }),
+            p("level", "Level", "number", { def: "1", min: 0, int: true }),
+        ],
+    },
+    {
+        key: "techGrantItem",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "item",
+        params: [
+            p("itemId", "Item", "text", { required: true }),
+            p("count", "Count", "number", { def: "1", min: 0, int: true }),
+        ],
+    },
+    {
+        key: "upgradeCountLevel",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "item",
+        params: [p("field", "Data field", "text", { def: "mdLevel" })],
+    },
     { key: "upgradeLog", type: "tech", slots: ["upgrade"], scope: "item", params: [] },
-    { key: "upgradeScale", type: "tech", slots: ["upgrade"], scope: "item", params: [p("field", "Numeric field", "text", { required: true }), p("factor", "Factor", "number", { def: "1.1", min: 0 })] },
-    { key: "upgradeAdd", type: "tech", slots: ["upgrade"], scope: "item", params: [p("field", "Numeric field", "text", { required: true }), p("amount", "Amount", "number", { def: "1" })] },
+    {
+        key: "upgradeScale",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "item",
+        params: [
+            p("field", "Numeric field", "text", { required: true }),
+            p("factor", "Factor", "number", { def: "1.1", min: 0 }),
+        ],
+    },
+    {
+        key: "upgradeAdd",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "item",
+        params: [
+            p("field", "Numeric field", "text", { required: true }),
+            p("amount", "Amount", "number", { def: "1" }),
+        ],
+    },
 
     // ── modifier ────────────────────────────────────────────────────────────
     { key: "logArgs", type: "modifier", slots: ["modifier"], scope: "global", params: [] },
     { key: "identity", type: "modifier", slots: ["modifier"], scope: "global", params: [] },
-    { key: "logBuildingPayload", type: "modifier", slots: ["modifier"], scope: "global", params: [] },
+    {
+        key: "logBuildingPayload",
+        type: "modifier",
+        slots: ["modifier"],
+        scope: "global",
+        params: [],
+    },
 ];
 
 const META_BY_KEY: Record<string, HandlerMeta> = Object.fromEntries(
@@ -258,11 +542,17 @@ export function validateHandlerParams(
                 continue;
             }
             if (spec.int && !Number.isInteger(n)) errs.push(`${spec.label} must be a whole number`);
-            if (spec.min !== undefined && n < spec.min) errs.push(`${spec.label} must be ≥ ${spec.min}`);
-            if (spec.max !== undefined && n > spec.max) errs.push(`${spec.label} must be ≤ ${spec.max}`);
+            if (spec.min !== undefined && n < spec.min) {
+                errs.push(`${spec.label} must be ≥ ${spec.min}`);
+            }
+            if (spec.max !== undefined && n > spec.max) {
+                errs.push(`${spec.label} must be ≤ ${spec.max}`);
+            }
         }
         if (spec.kind === "select" && spec.options && !spec.options.some((o) => o.value === raw)) {
-            errs.push(`${spec.label} must be one of: ${spec.options.map((o) => o.value).join(", ")}`);
+            errs.push(
+                `${spec.label} must be one of: ${spec.options.map((o) => o.value).join(", ")}`,
+            );
         }
     }
     return errs;
@@ -334,15 +624,19 @@ export interface HandlerUsage {
  */
 export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
     const out: HandlerUsage[] = [];
-    for (const [slot, [cfgKey, field]] of Object.entries(SLOT_LOCATION) as [
-        HandlerSlot,
-        [string, string],
-    ][]) {
+    for (
+        const [slot, [cfgKey, field]] of Object.entries(SLOT_LOCATION) as [
+            HandlerSlot,
+            [string, string],
+        ][]
+    ) {
         const list = cfg[cfgKey];
         if (!Array.isArray(list)) continue;
         for (const e of list as Record<string, unknown>[]) {
             const k = e?.[field];
-            if (typeof k === "string" && k) out.push({ category: cfgKey, id: String(e.id ?? "?"), slot });
+            if (typeof k === "string" && k) {
+                out.push({ category: cfgKey, id: String(e.id ?? "?"), slot });
+            }
         }
     }
     return out;
@@ -384,6 +678,3 @@ export function usageIndex(cfg: Record<string, unknown>): Record<string, Handler
     }
     return idx;
 }
-
-
-

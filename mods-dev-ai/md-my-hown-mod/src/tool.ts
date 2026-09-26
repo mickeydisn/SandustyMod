@@ -3,7 +3,7 @@
  * Overlay visible only while this tool is the active hotbar item
  * (md-word-statistic pattern).
  */
-import { api, h, React, safe, toast, getSandkit } from "./api.ts";
+import { api, getSandkit, h, React, safe, toast } from "./api.ts";
 import {
     DESC_KEY,
     ITEM_ID,
@@ -32,7 +32,7 @@ export async function registerTool(): Promise<void> {
         a.i18n?.register?.("en", {
             [NAME_KEY]: TOOL_NAME,
             [DESC_KEY]: TOOL_DESC,
-        }),
+        })
     );
 
     try {

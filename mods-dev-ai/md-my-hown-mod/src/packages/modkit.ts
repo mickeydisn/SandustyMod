@@ -138,7 +138,8 @@ export function runDisableCleanup(
 }
 
 export function wipeModStorage(modId: string, keys: readonly string[]): void {
-    const api = ((typeof sandkit !== 'undefined' && sandkit) ? sandkit : (globalThis as any).sandkit)?.api;
+    const api =
+        ((typeof sandkit !== "undefined" && sandkit) ? sandkit : (globalThis as any).sandkit)?.api;
     if (!api?.storage) return;
     try {
         api.storage.ensure?.(modId);

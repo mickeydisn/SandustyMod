@@ -34,6 +34,8 @@ globalThis.sandkit = {
 
 const { renderHelp } = await import("./help-panel.ts");
 const { RELATIONS } = await import("./relations.ts");
+const { MENU_GROUPS } = await import("./schema.ts");
+const { graphCategories, buildGraph } = await import("./graph.ts");
 const { renderConfigMap } = await import("./config-map.ts");
 const { HANDLER_META, HANDLER_TYPE_BLURBS, HANDLER_TYPE_LABELS } = await import(
     "../hooks/handler-registry.ts"
@@ -86,16 +88,19 @@ const noop = () => {};
 Deno.test("the help screen renders on an empty config", () => {
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
-    assert(h.seen.length > 50, `only ${h.seen.length} elements — suspiciously few`);
+    // The bar is deliberately low: the screen is now the graph and its table,
+    // not a page of prose. Whether it drew everything is checked by the arrow
+    // count below, which is a real invariant rather than a rounded-up count.
+    assert(h.seen.length > 30, `only ${h.seen.length} elements — suspiciously few`);
 });
 
 Deno.test("the help screen renders on a populated config", () => {
     const h = fakeH();
     renderHelp({ h, cfg: POPULATED, onGoTo: noop, onCopy: noop });
-    assert(h.seen.length > 50, `only ${h.seen.length} elements`);
+    assert(h.seen.length > 30, `only ${h.seen.length} elements`);
 });
 
-Deno.test("the help screen says there is nothing broken when there is nothing", () => {
+Deno.test("a clean config reports no breakage and does not cry wolf", () => {
     // a *clean* config — POPULATED deliberately contains a broken reference
     const h = fakeH();
     renderHelp({
@@ -107,7 +112,15 @@ Deno.test("the help screen says there is nothing broken when there is nothing", 
         onGoTo: noop,
         onCopy: noop,
     });
-    assert(h.text().includes("No broken references"), "the clean report is missing");
+    const text = h.text();
+    // The clean case is carried by the header chip ("N relations"), not by a
+    // banner. A "nothing is wrong" panel is noise on a screen otherwise
+    // entirely about what *is* wrong, so it went with the rest of the prose.
+    assert(
+        text.includes("relations"),
+        `the header does not report a clean config:\n${text.slice(0, 200)}`,
+    );
+    assert(!text.includes("broken"), "a clean config is crying wolf");
 });
 
 Deno.test("the help screen names a broken reference", () => {
@@ -139,8 +152,9 @@ Deno.test("the help screen names the kinds that own entries", () => {
 });
 
 Deno.test("the help screen is a graph, not a copy of the docs", () => {
-    // The field tables were removed deliberately. This pins that decision, so
-    // they cannot quietly come back as a second, drifting source of truth.
+    // The field tables and the opening paragraphs were removed deliberately.
+    // This pins that decision, so they cannot quietly come back as a second,
+    // drifting source of truth — or as a wall of text above the picture.
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     const text = h.text();
@@ -148,25 +162,242 @@ Deno.test("the help screen is a graph, not a copy of the docs", () => {
         !text.includes("The objects, and their fields"),
         "the per-object field tables are back",
     );
-    assert(text.includes("How the objects relate"), "the relation section is missing");
-    assert(text.includes("Each row is one field"), "the per-field edge rule is unstated");
+    assert(!text.includes("How this mod works"), "the opening prose is back");
+    assert(text.includes("Every reference, in words"), "the relation table is missing");
 });
 
-Deno.test("the help screen draws an svg and one row per field", () => {
+Deno.test("the relation table says what each edge is worth", () => {
+    // The table replaced a plain edge list. It has to carry the five things
+    // that decide whether a relation matters — and in particular the two counts,
+    // because a relation the engine declares and nothing in your config uses
+    // looks identical to one you rely on unless something says otherwise.
+    const h = fakeH();
+    renderHelp({ h, cfg: POPULATED, onGoTo: noop, onCopy: noop });
+    const text = h.text();
+    for (const column of ["Holds", "Field", "Points at", "In use", "Broken"]) {
+        assert(text.includes(column), `the table has no "${column}" column`);
+    }
+});
+
+Deno.test("the graph is grouped into the same columns as the menu", () => {
+    // Grouping is what makes the picture readable: without it twenty nodes are
+    // a flat field of boxes. The groups must be the *menu's* groups, or the two
+    // would have to be learned separately and could disagree.
+    const h = fakeH();
+    renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
+    const text = h.text();
+    for (const g of MENU_GROUPS) {
+        if (!graphCategories().some((c) => g.categories.includes(c))) continue;
+        assert(text.includes(g.label), `the graph has no "${g.label}" column`);
+    }
+});
+
+Deno.test("the help screen draws an svg and one arrow per relation", () => {
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     assert(h.seen.some((n) => n.tag === "svg"), "no svg layer for the arrows");
-    assert(
-        h.seen.filter((n) => n.tag === "path").length > 10,
-        "no arrows drawn",
+    // Each edge is drawn as one group holding a line and its two heads, so
+    // "one arrow per relation" stays a fact you can count rather than something
+    // you have to re-derive from how many paths an arrowhead happens to use.
+    const edges = h.seen.filter((n) =>
+        n.tag === "g" && String(n.props?.key ?? "").endsWith("-edge")
     );
-    // One arrow per declared relation, so the arrow count tracks the table. If
-    // these drift apart the graph is either cluttered or silently missing edges.
+    assert(edges.length > 10, `only ${edges.length} arrows drawn`);
     assertEquals(
-        h.seen.filter((n) => n.tag === "path").length,
+        edges.length,
         RELATIONS.length,
         "arrow count does not match the relation table",
     );
+});
+
+Deno.test("every arrow leaves by the top or bottom and never through a side", () => {
+    // The rule, and the reason it exists: an arrow always attaches to a box's top
+    // or bottom edge. Depth puts the target to the left, so a link between two
+    // kinds in the same group would otherwise have to run *sideways* along the
+    // row, skimming the boxes between it — and a head pointing at a box's flank is
+    // easy to mistake for belonging to its neighbour.
+    //
+    // Deliberately *not* asserting that no arrow crosses a box. With the rows
+    // stacked that is not achievable, and it was never the requirement: a link
+    // from Production up to Content passes over the row in between. The only ways
+    // to stop it are to give up the top/bottom rule, or to route every long link
+    // the long way around the outside of the diagram. The arrows are painted
+    // *under* the boxes, so a crossing hides behind the row it passes rather than
+    // being drawn across a label — a much smaller cost than a diagram where every
+    // arrowhead is ambiguous about which box it belongs to.
+    const h = fakeH();
+    renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
+    const g = buildGraph({});
+    const boxes = g.nodes.map((n) => ({ cat: n.cat, x: n.x, y: n.y, w: n.w, h: n.h }));
+    const onHorizontalEdge = (b: typeof boxes[0], x: number, y: number) =>
+        x >= b.x && x <= b.x + b.w &&
+        (Math.abs(y - b.y) < 1.5 || Math.abs(y - (b.y + b.h)) < 1.5);
+
+    let checked = 0;
+    let rings = 0;
+    for (const n of h.seen) {
+        if (n.tag !== "path") continue;
+        const p = String(n.props?.d ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number);
+        if (!p || p.length !== 8) continue; // the line; heads are two points
+        const [x1, y1, , , , , x2, y2] = p;
+        // A self-reference is a ring standing above its box: both ends level with
+        // each other, just above one box's top edge. Scoped to the box it
+        // surrounds — an earlier version compared against the topmost box in the
+        // graph, which only caught a ring on the first row and let every other one
+        // be reported as a line through a box.
+        const ringHost = boxes.find(
+            (b) =>
+                Math.abs(y1 - y2) < 1 && y1 < b.y && b.y - y1 < 40 &&
+                x1 > b.x - 40 && x1 < b.x + b.w + 40 &&
+                x2 > b.x - 40 && x2 < b.x + b.w + 40,
+        );
+        if (ringHost) {
+            rings++;
+            continue;
+        }
+        // The rule itself: each end sits on a box's top or bottom edge.
+        assert(
+            boxes.some((b) => onHorizontalEdge(b, x1, y1)),
+            `an arrow leaves at ${x1},${y1}, which is not on any box's top or bottom edge`,
+        );
+        assert(
+            boxes.some((b) => onHorizontalEdge(b, x2, y2)),
+            `an arrow arrives at ${x2},${y2}, which is not on any box's top or bottom edge`,
+        );
+        checked++;
+    }
+    assert(checked > 10, `only ${checked} arrows were checked`);
+    assert(rings > 0, "no self-reference was drawn as a ring, so the hard case is not being seen");
+});
+
+Deno.test("a self-reference is drawn as a ring above its box", () => {
+    // `techs` requiring other `techs` has no distance to cross. A ring is the
+    // honest shape, and it has to sit clear of the box it belongs to.
+    const g = buildGraph({});
+    const self = g.edges.filter((e) => e.from === e.to);
+    assert(self.length > 0, "the fixture has no self-references");
+    const techs = g.nodes.find((n) => n.cat === "techs");
+    assert(techs, "there is no techs node to loop on");
+    // A ring is drawn at `a.y - 18`, so the whole shape is above the box.
+    assert(techs.y > 0, "the techs node is at the very top, leaving no room for a ring");
+});
+
+Deno.test("the graph reads left-to-right: a box is never left of what it references", () => {
+    // The property the whole layout exists to guarantee. If it ever fails, the
+    // arrow points the wrong way and the picture is actively misleading rather
+    // than just untidy.
+    //
+    // Equal depth is allowed and must be: terrains and items reference each
+    // other, so they sit in one cycle and share a slot. A cycle has no honest
+    // order inside it, and inventing one would be a lie — so for those, only the
+    // depth claim is made, and the arrow is drawn between them as the geometry
+    // actually falls.
+    const g = buildGraph({});
+    let strict = 0;
+    for (const e of g.edges) {
+        const a = g.nodes.find((n) => n.cat === e.from);
+        const b = g.nodes.find((n) => n.cat === e.to);
+        if (!a || !b || a.cat === b.cat) continue; // a self-loop has no order
+        assert(
+            a.depth >= b.depth,
+            `${e.from} → ${e.to}: the source (depth ${a.depth}) is left of its target (depth ${b.depth})`,
+        );
+        if (a.depth === b.depth) continue; // a cycle — no order to assert
+        strict++;
+        assert(
+            a.x > b.x,
+            `${e.from} → ${e.to}: the source is not drawn to the right of its target`,
+        );
+    }
+    // The strict case has to be the common one, or this test is barely checking
+    // anything. Most relations are not inside a cycle.
+    assert(strict > 10, `only ${strict} edges are strictly right of their target`);
+});
+
+Deno.test("kinds that reference each other share a depth", () => {
+    // A cycle has no honest order inside it, so the layout must not invent one.
+    // If this ever fails, some kind in a cycle is being drawn as though it
+    // depended on something it is in fact mutually dependent with.
+    const g = buildGraph({});
+    const byCat = new Map(g.nodes.map((n) => [n.cat, n]));
+    // terrains → items and items → terrains are both real relations here.
+    const terrains = byCat.get("terrains");
+    const items = byCat.get("items");
+    if (!terrains || !items) return; // the fixture changed; nothing to assert
+    const bothWays = g.edges.some((e) => e.from === "terrains" && e.to === "items") &&
+        g.edges.some((e) => e.from === "items" && e.to === "terrains");
+    if (!bothWays) return;
+    assertEquals(
+        terrains.depth,
+        items.depth,
+        "a cycle was split across depths, inventing an order that is not there",
+    );
+});
+
+Deno.test("groups are ordered by the shallowest box in each", () => {
+    // The request, and the reason it helps: the groups that only feed the graph
+    // come first, and a group that purely consumes lands to the right of what
+    // it consumes, so most arrows are short instead of criss-crossing.
+    const g = buildGraph({});
+    for (let i = 1; i < g.columns.length; i++) {
+        assert(
+            g.columns[i - 1].minDepth <= g.columns[i].minDepth,
+            `${g.columns[i].label} (min depth ${g.columns[i].minDepth}) is placed before ` +
+                `${g.columns[i - 1].label} (min depth ${g.columns[i - 1].minDepth})`,
+        );
+    }
+});
+
+Deno.test("the groups are rows, stacked, and do not overlap", () => {
+    // Groups run across the picture, one per horizontal band, rather than
+    // standing as columns beside each other. Stacked is also what keeps the group
+    // names legible: as columns they were squeezed into a strip the height of a
+    // box, and the longest one had nowhere to go.
+    const g = buildGraph({});
+    for (let i = 1; i < g.columns.length; i++) {
+        const prev = g.columns[i - 1];
+        const cur = g.columns[i];
+        assert(
+            cur.y >= prev.y + prev.h,
+            `${cur.label} overlaps ${prev.label} — group rows must not overlap`,
+        );
+        // And each really is a band, not a column: wider than it is tall.
+        assert(cur.w > cur.h, `${cur.label} is taller than it is wide, so it is a column`);
+    }
+    // Every node sits inside the row it belongs to.
+    for (const n of g.nodes) {
+        const c = g.columns.find((x) => x.key === n.group);
+        assert(c, `${n.cat} has no row`);
+        assert(n.x >= c.x && n.x + n.w <= c.x + c.w, `${n.cat} is outside its row`);
+        assert(n.y >= c.y, `${n.cat} is drawn above its own group label`);
+    }
+});
+
+Deno.test("two kinds in one row never overlap", () => {
+    // Depth is the column now, so two kinds at the same depth in the same row
+    // would land on top of each other. The layout is the one thing not
+    // re-checked at render time, so it is checked here.
+    const g = buildGraph({});
+    for (const col of g.columns) {
+        const members = g.nodes.filter((n) => n.group === col.key);
+        for (let i = 0; i < members.length; i++) {
+            for (let j = i + 1; j < members.length; j++) {
+                const a = members[i];
+                const b = members[j];
+                const overlapX = a.x < b.x + b.w && b.x < a.x + a.w;
+                const overlapY = a.y < b.y + b.h && b.y < a.y + a.h;
+                assert(
+                    !(overlapX && overlapY),
+                    `${a.cat} and ${b.cat} are drawn on top of each other`,
+                );
+            }
+        }
+    }
+    // And every node is inside the canvas.
+    for (const n of g.nodes) {
+        assert(n.y + n.h <= g.height, `${n.cat} is drawn below the canvas`);
+        assert(n.x + n.w <= g.width, `${n.cat} is drawn past the right edge`);
+    }
 });
 
 Deno.test("every details has a summary", () => {
@@ -199,10 +430,10 @@ Deno.test("the map screen renders a populated config", () => {
     assert(h.seen.some((n) => n.tag === "svg"), "no arrow layer");
 });
 
-    // Match the headline, not the phrase. "point at nothing" also appears in
-    // the orphan note's prose, so a substring check would pass with no banner
-    // at all — and fail on a config that merely has orphans.
-    const BANNER = /\d+ references? points? at nothing/;
+// Match the headline, not the phrase. "point at nothing" also appears in
+// the orphan note's prose, so a substring check would pass with no banner
+// at all — and fail on a config that merely has orphans.
+const BANNER = /\d+ references? points? at nothing/;
 
 Deno.test("the map screen flags broken references and orphans", () => {
     const h = fakeH();
@@ -283,4 +514,3 @@ Deno.test("every handler type has a label and a blurb to show", () => {
         assert(HANDLER_TYPE_BLURBS[m.type], `${m.type} has no blurb`);
     }
 });
-

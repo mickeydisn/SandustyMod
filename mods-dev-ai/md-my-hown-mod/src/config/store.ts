@@ -2,32 +2,35 @@
  * Persistent JSON configuration store — all categories including contacts & interactions.
  */
 import {
-    DEFAULT_CONFIG,
-    LOG,
-    type ModConfig,
-    type ElementConfig,
-    type StructureConfig,
-    type ItemConfig,
-    type RecipeConfig,
-    type ProcessingConfig,
     type ContactReactionConfig,
-    type InteractionConfig,
-    type ModifierConfig,
-    type TerrainConfig,
-    type TechConfig,
-    type UpgradeCategoryConfig,
-    type UpgradeConfig,
-    type ProjectileConfig,
+    DEFAULT_CONFIG,
+    type ElementConfig,
+    type EnergyNetworkConfig,
     type EnergyTypeConfig,
     type ExcavationProfileConfig,
-    type StructureBehaviorConfig,
-    type SignalConfig,
-    type TriggerConfig,
-    type SpriteConfig,
     type InputBindingConfig,
+    type InteractionConfig,
+    type ItemConfig,
+    LOG,
+    type ModConfig,
+    type ModifierConfig,
     type PanelState,
+    type ProcessingConfig,
+    type ProjectileConfig,
+    type RecipeConfig,
+    type SignalConfig,
+    type SpriteConfig,
+    type StructureBehaviorConfig,
+    type StructureConfig,
+    type TechConfig,
+    type TerrainConfig,
+    type TriggerConfig,
+    type UnlockNodeConfig,
+    type UpgradeCategoryConfig,
+    type UpgradeConfig,
 } from "../constants.ts";
 import { api } from "../packages/mysandkit.ts";
+import { DEFAULT_UNLOCK_NODE } from "../ui/tech-link.ts";
 
 const CONFIG_KEY = "config";
 const PANEL_KEY = "panel";
@@ -49,6 +52,8 @@ function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
         upgrades: Array.isArray(raw?.upgrades) ? raw!.upgrades! : [],
         projectiles: Array.isArray(raw?.projectiles) ? raw!.projectiles! : [],
         energyTypes: Array.isArray(raw?.energyTypes) ? raw!.energyTypes! : [],
+        energyNetworks: Array.isArray(raw?.energyNetworks) ? raw!.energyNetworks! : [],
+        unlockNodes: Array.isArray(raw?.unlockNodes) ? raw!.unlockNodes! : [],
         excavationProfiles: Array.isArray(raw?.excavationProfiles) ? raw!.excavationProfiles! : [],
         structureBehaviors: Array.isArray(raw?.structureBehaviors) ? raw!.structureBehaviors! : [],
         signals: Array.isArray(raw?.signals) ? raw!.signals! : [],
@@ -273,6 +278,64 @@ export function addOrUpdateEnergyType(entry: EnergyTypeConfig): ModConfig {
 export function removeEnergyType(id: string): ModConfig {
     const cfg = loadConfig();
     cfg.energyTypes = removeById(cfg.energyTypes, id);
+    saveConfig(cfg);
+    return cfg;
+}
+
+export function addOrUpdateEnergyNetwork(entry: EnergyNetworkConfig): ModConfig {
+    const cfg = loadConfig();
+    cfg.energyNetworks = upsert(cfg.energyNetworks, entry);
+    saveConfig(cfg);
+    return cfg;
+}
+export function addOrUpdateUnlockNode(entry: UnlockNodeConfig): ModConfig {
+    const cfg = loadConfig();
+    cfg.unlockNodes = upsert(cfg.unlockNodes, entry);
+    saveConfig(cfg);
+    return cfg;
+}
+export function removeUnlockNode(id: string): ModConfig {
+    const cfg = loadConfig();
+    cfg.unlockNodes = removeById(cfg.unlockNodes, id);
+    // Structures pointed at the deleted node are moved to the built-in default
+    // rather than left dangling: a dangling link reads as *unlocked* at apply
+    // time, so the structures would silently jump from "needs research" to
+    // "available immediately" while the panel still claimed they were gated.
+    cfg.structures = (cfg.structures ?? []).map((s) =>
+        s?.unlockNode === id ? { ...s, unlockNode: DEFAULT_UNLOCK_NODE } : s
+    );
+    saveConfig(cfg);
+    return cfg;
+}
+export function removeEnergyNetwork(id: string): ModConfig {
+    const cfg = loadConfig();
+    cfg.energyNetworks = removeById(cfg.energyNetworks, id);
+    saveConfig(cfg);
+    return cfg;
+}
+
+export function addOrUpdateUpgradeCategory(entry: UpgradeCategoryConfig): ModConfig {
+    const cfg = loadConfig();
+    cfg.upgradeCategories = upsert(cfg.upgradeCategories, entry);
+    saveConfig(cfg);
+    return cfg;
+}
+export function removeUpgradeCategory(id: string): ModConfig {
+    const cfg = loadConfig();
+    cfg.upgradeCategories = removeById(cfg.upgradeCategories, id);
+    saveConfig(cfg);
+    return cfg;
+}
+
+export function addOrUpdateInputBinding(entry: InputBindingConfig): ModConfig {
+    const cfg = loadConfig();
+    cfg.inputBindings = upsert(cfg.inputBindings, entry);
+    saveConfig(cfg);
+    return cfg;
+}
+export function removeInputBinding(id: string): ModConfig {
+    const cfg = loadConfig();
+    cfg.inputBindings = removeById(cfg.inputBindings, id);
     saveConfig(cfg);
     return cfg;
 }

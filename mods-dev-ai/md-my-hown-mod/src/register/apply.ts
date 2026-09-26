@@ -4,24 +4,25 @@
 import { LOG, type ModConfig, type StructureConfig } from "../constants.ts";
 import {
     api,
-    registerRecipe,
-    registerProcessing,
     registerContact,
-    registerInteraction,
-    registerTerrain,
-    registerTech,
-    registerUpgradeCategory,
-    registerUpgrade,
-    registerProjectile,
     registerEnergyType,
     registerExcavationProfile,
-    registerStructureBehavior,
-    registerSignal,
-    registerTrigger,
-    registerSprite,
     registerInputBinding,
+    registerInteraction,
+    registerProcessing,
+    registerProjectile,
+    registerRecipe,
+    registerSignal,
+    registerSprite,
+    registerStructureBehavior,
+    registerTech,
+    registerTerrain,
+    registerTrigger,
+    registerUpgrade,
+    registerUpgradeCategory,
 } from "../packages/mysandkit.ts";
 import { loadConfig } from "../config/store.ts";
+import { engineTechOf, isAlwaysUnlocked, techUnlockStructureIds } from "../ui/tech-link.ts";
 import { applyAllModifiers, detachAllModifiers, resolveAnyHandler } from "../hooks/index.ts";
 
 /**
@@ -170,7 +171,11 @@ function makeOutline({ wCells, hCells }: DrawContext) {
  * cost a lookup per structure per frame for no benefit.
  */
 export function resolveDraw(st: StructureConfig): StructureConfig {
-    const { drawKey, ...rest } = st;
+    // `unlockTech` is ours, not the engine's, and the engine has no use for it —
+    // it reads the same relation off the *tech* as `unlocks.structures`. Stripped
+    // here, in the one place every structure passes through, rather than in the
+    // save path where a new caller would forget.
+    const { drawKey, unlockNode: _ours, ...rest } = st;
     if (!drawKey || drawKey === "default") return rest;
     // The footprint is only known here, at registration, so it is closed over
     // rather than looked up per frame.
@@ -206,6 +211,51 @@ const registered: Record<string, Set<string>> = {
 export function clearRegistrationCache(): void {
     for (const s of Object.values(registered)) s.clear();
     detachAllModifiers();
+}
+
+/**
+ * What this mod has registered, right now — a copy, so it survives the cache
+ * being cleared.
+ *
+ * Needed because the engine has **no unregister** for content kinds. The only
+ * `unregister` in the whole engine is `ui.unregister` for overlays; structures,
+ * elements, items and the rest can only be added or replaced, never removed
+ * (verified across the engine bundle and the sandkit typings). So deleting an
+ * entry from the config cannot un-do the registration — the old definition stays
+ * live until the game reloads, and the only honest response is to say so.
+ */
+export function snapshotRegistered(): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    for (const [cat, ids] of Object.entries(registered)) out[cat] = [...ids];
+    return out;
+}
+
+/**
+ * Ids that were registered before but are gone from `cfg` now.
+ *
+ * These are the ones the game is still holding. Reported rather than silently
+ * ignored, because "I deleted it and it is still in the build menu" is exactly
+ * the kind of thing that makes an authoring panel feel broken.
+ */
+export function staleAfter(
+    cfg: ModConfig,
+    prev: Record<string, string[]>,
+): { cat: string; id: string }[] {
+    const out: { cat: string; id: string }[] = [];
+    for (const [cat, ids] of Object.entries(prev)) {
+        // `registered` is keyed by config key already — `applyConfig` reads
+        // `config.sprites`, `config.structures` and so on with the same names, so
+        // there is no mapping to look up and none to get out of step.
+        const list = (cfg as unknown as Record<string, unknown>)[cat];
+        if (!Array.isArray(list)) continue;
+        const live = new Set(
+            list.map((e) => (e as { id?: unknown } | null)?.id).filter((v): v is string =>
+                typeof v === "string"
+            ),
+        );
+        for (const id of ids) if (!live.has(id)) out.push({ cat, id });
+    }
+    return out;
 }
 
 /**
@@ -264,10 +314,79 @@ export function updateEntry(cat: string, id: string, entry: Record<string, unkno
     }
 }
 
+/**
+ * Put every registered structure in front of the player.
+ *
+ * **Unconditional, and that is the point.** The build menu iterates
+ * `player.buildings` and reads each definition from the vanilla registry *or* the
+ * mod registry (bundel.js 7493921), so the only thing between a registered
+ * structure and the menu is membership of that list.
+ *
+ * The field that looks like it should control this, `alwaysUnlocked`, cannot: the
+ * engine reads it in exactly one place, and that place iterates a `const` object
+ * literal holding the *vanilla* structures (bundel.js 5251.js, `Ue`) which has
+ * zero assignment sites, so a mod id never enters it. The flag is inert for any
+ * mod — which is why the panel no longer offers it. A control that silently does
+ * nothing is worse than no control.
+ *
+ * A tech is the *other* route in, and a better one: the engine grants a node's
+ * `unlocks.structures` on purchase, pushing each id into `player.buildings`
+ * (bundel.js 77135.js, `fe`). A structure that names one is therefore left
+ * alone here and waits to be researched — see `src/ui/tech-link.ts` for why the
+ * link lives on the structure.
+ *
+ * `hideFromBuildMenu` is left alone. Unlocking and hiding are independent, and
+ * unlocked-but-hidden is exactly how a mod offers a buildable type that only its
+ * own UI can select with `building.selectStructure` (md-big-brother does this).
+ *
+ * Idempotent — the engine's `add` is `includes(t) || push(t)` — so this is safe
+ * to call on every apply.
+ */
+export function unlockStructures(cfg: ModConfig): number {
+    let n = 0;
+    for (const st of cfg.structures ?? []) {
+        if (!st?.id) continue;
+        // A dangling link must not gate anything, or the structure would be
+        // unreachable and the player would never know why. See `unlockTechOf`.
+        if (!isAlwaysUnlocked(st.id, cfg)) {
+            // Withdraw any unlock this mod handed out earlier. A structure gated
+            // after being force-unlocked would otherwise stay in the menu until
+            // the game was reloaded, and the change would look ignored.
+            api.player.buildings.removeById(st.id);
+            continue;
+        }
+        if (api.player.buildings.unlockByType(st.id)) n++;
+    }
+    // Warn once, and only when there was something to unlock. A silent no-op here
+    // is the whole failure this function exists to prevent, so it must not be one
+    // itself — the usual cause is the mod loading on a worker, where `player`
+    // does not exist.
+    const ungated = (cfg.structures ?? []).filter((s) => s?.id && isAlwaysUnlocked(s.id, cfg));
+    if (n === 0 && ungated.length > 0) {
+        console.warn(
+            `${LOG} structures could not be unlocked — ` +
+                `api.player.buildings.unlockByType is unavailable on this thread, ` +
+                `so the build menu will be empty`,
+        );
+    }
+    return n;
+}
+
 export function applyConfig(cfg?: ModConfig): void {
     const config = cfg ?? loadConfig();
     let nEl = 0, nSt = 0, nIt = 0, nRe = 0, nPr = 0, nCt = 0, nIx = 0, nMod = 0;
-    let nTe = 0, nTech = 0, nUC = 0, nUp = 0, nPj = 0, nEn = 0, nEx = 0, nSb = 0, nSg = 0, nTr = 0, nSp = 0, nIn = 0;
+    let nTe = 0,
+        nTech = 0,
+        nUC = 0,
+        nUp = 0,
+        nPj = 0,
+        nEn = 0,
+        nEx = 0,
+        nSb = 0,
+        nSg = 0,
+        nTr = 0,
+        nSp = 0,
+        nIn = 0;
 
     // Sprites first so items/structures can reference them
     for (const sp of config.sprites ?? []) {
@@ -292,6 +411,7 @@ export function applyConfig(cfg?: ModConfig): void {
         registered.structures.add(st.id);
         nSt++;
     }
+    unlockStructures(config);
     for (const it of config.items) {
         if (!it?.id || registered.items.has(it.id)) continue;
         api.items.register(it);
@@ -345,9 +465,29 @@ export function applyConfig(cfg?: ModConfig): void {
     }
     for (const t of config.techs ?? []) {
         if (!t?.id || (registered as any).techs?.has(t.id)) continue;
-        registerTech(t);
+        // The engine reads `unlocks.structures` off the *tech*, while a structure
+        // names an unlock *node*, so the tech is handed the union. Without this a
+        // structure whose node builds or borrows this tech would never be granted,
+        // and the node would silently do nothing — the same class of bug as
+        // `alwaysUnlocked`, in the opposite direction.
+        const ids = techUnlockStructureIds(t.id, config);
+        registerTech(ids.length ? { ...t, unlocks: { ...(t.unlocks ?? {}), structures: ids } } : t);
         (registered as any).techs = (registered as any).techs || new Set();
         (registered as any).techs.add(t.id);
+        nTech++;
+    }
+    // A "tech"-kind node *builds* a real engine tech, which is what makes a node
+    // and an in-game research step the same thing to edit. Registered after the
+    // hand-written techs so a node's union already includes everything, and
+    // skipped when it borrows one so the borrowed definition is never overwritten.
+    for (const n of config.unlockNodes ?? []) {
+        if (!n?.id || n.kind !== "tech" || n.techId) continue;
+        if ((registered as any).techs?.has(n.id)) continue;
+        const tech = engineTechOf(n, config);
+        if (!tech) continue;
+        registerTech(tech);
+        (registered as any).techs = (registered as any).techs || new Set();
+        (registered as any).techs.add(n.id);
         nTech++;
     }
     for (const u of config.upgradeCategories ?? []) {
@@ -385,14 +525,16 @@ export function applyConfig(cfg?: ModConfig): void {
     for (const e of config.excavationProfiles ?? []) {
         if (!e?.id || (registered as any).excavationProfiles?.has(e.id)) continue;
         registerExcavationProfile(e);
-        (registered as any).excavationProfiles = (registered as any).excavationProfiles || new Set();
+        (registered as any).excavationProfiles = (registered as any).excavationProfiles ||
+            new Set();
         (registered as any).excavationProfiles.add(e.id);
         nEx++;
     }
     for (const b of config.structureBehaviors ?? []) {
         if (!b?.id || (registered as any).structureBehaviors?.has(b.id)) continue;
         registerStructureBehavior(b);
-        (registered as any).structureBehaviors = (registered as any).structureBehaviors || new Set();
+        (registered as any).structureBehaviors = (registered as any).structureBehaviors ||
+            new Set();
         (registered as any).structureBehaviors.add(b.id);
         nSb++;
     }

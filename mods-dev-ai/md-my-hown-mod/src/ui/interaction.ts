@@ -42,7 +42,11 @@ export const INTERACTION_KINDS: { kind: InteractionKind; label: string; blurb: s
     },
     { kind: "flammable", label: "Flammable", blurb: "This element can burn. No extra fields." },
     { kind: "meltable", label: "Meltable", blurb: "This element can be melted. No extra fields." },
-    { kind: "freezable", label: "Freezable", blurb: "This element can be frozen. No extra fields." },
+    {
+        kind: "freezable",
+        label: "Freezable",
+        blurb: "This element can be frozen. No extra fields.",
+    },
     {
         kind: "custom",
         label: "Custom (handled by your own code)",
@@ -85,8 +89,7 @@ export function composeInteraction(
     if (!kind || !INTERACTION_KINDS.some((k) => k.kind === kind)) return undefined;
 
     const out: Record<string, unknown> = { kind };
-    const idList = (key: string) =>
-        (f[key] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const idList = (key: string) => (f[key] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
     if (kind === "destroyer") {
         const items = idList("destroyerItems");
@@ -167,4 +170,3 @@ export function splitInteraction(
     const unmodelled = Object.keys(interaction).some((k) => !KNOWN.has(k));
     return { fields, unmodelled };
 }
-

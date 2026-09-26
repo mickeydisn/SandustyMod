@@ -2,15 +2,15 @@
  * Thin wrappers around sandkit.api — full field forwarding for every register path.
  */
 import {
+    type ContactReactionConfig,
+    type ElementConfig,
+    type InteractionConfig,
+    type ItemConfig,
     LOG,
     MOD_ID,
-    type ElementConfig,
-    type StructureConfig,
-    type ItemConfig,
-    type RecipeConfig,
     type ProcessingConfig,
-    type ContactReactionConfig,
-    type InteractionConfig,
+    type RecipeConfig,
+    type StructureConfig,
 } from "../constants.ts";
 import { resolveAnyHandler } from "../hooks/handlers.ts";
 
@@ -107,6 +107,61 @@ export const api = {
             return this.getTypeById(id);
         },
     },
+    /**
+     * The only route from a mod structure into the build menu.
+     *
+     * The build menu lists `player.buildings`, and the engine reads
+     * `alwaysUnlocked` in exactly one place — iterating a `const` literal of the
+     * *vanilla* structures (bundel.js 5251.js, `Ue`) that nothing ever writes to.
+     * A mod-registered id never enters it, so the flag on its own is inert and
+     * this call is what actually puts a structure in front of the player.
+     *
+     * Proxied defensively: `player` is a main-thread API and may be absent when
+     * the mod loads in a worker, and a missing unlock is not worth an exception.
+     */
+    player: {
+        buildings: {
+            /**
+             * Returns whether the engine call actually happened.
+             *
+             * The proxy exists whether or not the underlying API does, so a void
+             * return would let a missing engine API look like a successful unlock —
+             * the same silent no-op that made this bug hard to find in the first
+             * place. `apply.ts` uses this to warn once instead.
+             */
+            unlockByType(structureId: string): boolean {
+                try {
+                    const fn = g()?.api?.player?.buildings?.unlockByType;
+                    if (typeof fn !== "function") return false;
+                    fn(structureId);
+                    return true;
+                } catch (e) {
+                    console.error(`${LOG} player.buildings.unlockByType failed`, structureId, e);
+                    return false;
+                }
+            },
+            /**
+             * Undo an unlock. This is what makes gating *retractable*.
+             *
+             * A structure that was force-unlocked on an earlier apply is still in
+             * `player.buildings` after the author ticks "Unlocked by", so without
+             * this the gate would not take effect until the game was reloaded —
+             * the change would look like it had been ignored. Best-effort: on a
+             * fresh game the id is not in the list and this is a no-op.
+             */
+            removeById(structureId: string): boolean {
+                try {
+                    const fn = g()?.api?.player?.buildings?.removeById;
+                    if (typeof fn !== "function") return false;
+                    fn(structureId);
+                    return true;
+                } catch (e) {
+                    console.error(`${LOG} player.buildings.removeById failed`, structureId, e);
+                    return false;
+                }
+            },
+        },
+    },
     structures: {
         /** Patch a registered structure in place (api.structures.updateDefinition). */
         updateDefinition(
@@ -155,7 +210,8 @@ export const api = {
         },
         addVariant(base: string | number, variant: unknown, options?: unknown): void {
             try {
-                const fn = g()?.api?.structures?.addVariant ?? g()?.api?.structures?.registerVariant;
+                const fn = g()?.api?.structures?.addVariant ??
+                    g()?.api?.structures?.registerVariant;
                 fn?.(base, variant, options);
             } catch (e) {
                 console.error(`${LOG} structures.addVariant failed`, e);
@@ -285,7 +341,14 @@ export const api = {
 };
 
 const MATTER_MAP: Record<string, number> = {
-    solid: 1, liquid: 2, particle: 3, gas: 4, static: 5, slushy: 6, wisp: 7, powder: 8,
+    solid: 1,
+    liquid: 2,
+    particle: 3,
+    gas: 4,
+    static: 5,
+    slushy: 6,
+    wisp: 7,
+    powder: 8,
 };
 
 function resolveMatterType(v: string | number | undefined): number | undefined {
@@ -304,7 +367,9 @@ function resolveMatterType(v: string | number | undefined): number | undefined {
     return MATTER_MAP.powder;
 }
 
-function resolveElementRef(v: string | number | null | undefined): string | number | null | undefined {
+function resolveElementRef(
+    v: string | number | null | undefined,
+): string | number | null | undefined {
     if (v === null) return null;
     if (v === undefined) return undefined;
     if (typeof v === "number") return v;
@@ -333,7 +398,9 @@ function resolveStructureType(v: string | number): string | number {
  * string id is already accepted — we only upgrade it to a numeric handle when we
  * can, and otherwise pass the id through unchanged.
  */
-function resolveTerrainRef(v: string | number | null | undefined): string | number | null | undefined {
+function resolveTerrainRef(
+    v: string | number | null | undefined,
+): string | number | null | undefined {
     if (v === null || v === undefined) return v;
     if (typeof v === "number") return v;
     const t = g()?.api?.terrains?.getTypeById?.(v);
@@ -392,7 +459,10 @@ function normalizeStructure(def: StructureConfig): Record<string, unknown> & {
     const name = def.name ?? id;
     const nameKey = def.nameKey ?? `structures|${id}|name`;
     const out: Record<string, unknown> = {
-        ...def, id, name, nameKey,
+        ...def,
+        id,
+        name,
+        nameKey,
         categoryKey: def.categoryKey ?? "blocks",
         buildModes: def.buildModes ?? [{ type: "single" }],
         variants: def.variants ?? [{ id, angles: [0] }],
@@ -441,9 +511,15 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
             out.handleAction = fn;
             // Keep the name in the payload for the panel's "used by" scan.
             out.handlerKey = handlerKey;
-            out.options = { ...(typeof def.options === "object" ? def.options : {}), itemId: id, itemType: def.itemType ?? "Mod" };
+            out.options = {
+                ...(typeof def.options === "object" ? def.options : {}),
+                itemId: id,
+                itemType: def.itemType ?? "Mod",
+            };
         } else {
-            console.warn(`[md-my-hown-mod] item ${id}: unknown handlerKey "${handlerKey}" — registering without a use action`);
+            console.warn(
+                `[md-my-hown-mod] item ${id}: unknown handlerKey "${handlerKey}" — registering without a use action`,
+            );
         }
     } else if (handlerKey) {
         delete out.handlerKey;
@@ -459,8 +535,14 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
 
 /** The 8 machine ids accepted by api.structures.recipes.register. */
 const RECIPE_MACHINES = new Set([
-    "planterBox", "shaker", "kineticPress", "condenser",
-    "steamDryer", "synthesizer", "snowmaker", "smelter",
+    "planterBox",
+    "shaker",
+    "kineticPress",
+    "condenser",
+    "steamDryer",
+    "synthesizer",
+    "snowmaker",
+    "smelter",
 ]);
 
 /**
@@ -546,7 +628,8 @@ export function registerProcessing(p: ProcessingConfig): void {
     // no per-instance registration, so `structures.addProcessor` is not a real API
     // and is no longer called.
     const { id: _id, structureType, structureId, mode: _m, handlerKey: _hk, ...rest } = p as
-        Record<string, unknown> & ProcessingConfig;
+        & Record<string, unknown>
+        & ProcessingConfig;
     // `structureId` is accepted as a legacy alias for `structureType`.
     const target = structureType ?? structureId;
     if (target === undefined) {
@@ -554,7 +637,9 @@ export function registerProcessing(p: ProcessingConfig): void {
         return;
     }
     if (typeof rest.process !== "function") {
-        console.warn(`${LOG} processing ${p.id}: process() not a function (JSON cannot store callbacks). Skip.`);
+        console.warn(
+            `${LOG} processing ${p.id}: process() not a function (JSON cannot store callbacks). Skip.`,
+        );
         return;
     }
     api.structures.processing.register(target, rest);
@@ -615,7 +700,9 @@ export function registerTech(def: import("../constants.ts").TechConfig): void {
     }
 }
 
-export function registerUpgradeCategory(def: import("../constants.ts").UpgradeCategoryConfig): void {
+export function registerUpgradeCategory(
+    def: import("../constants.ts").UpgradeCategoryConfig,
+): void {
     try {
         const { onUpgradeKey, id: _id, ...rest } = def as any;
         // The engine rejects a category that has no id and no localised name:
@@ -712,7 +799,9 @@ export function registerEnergyType(def: import("../constants.ts").EnergyTypeConf
         const type = def.type;
         if (type !== "conductor" && type !== "storage") {
             console.warn(
-                `${LOG} energy ${def.id}: invalid type "${String(type)}" — must be conductor|storage. Skip.`,
+                `${LOG} energy ${def.id}: invalid type "${
+                    String(type)
+                }" — must be conductor|storage. Skip.`,
             );
             return;
         }
@@ -722,12 +811,15 @@ export function registerEnergyType(def: import("../constants.ts").EnergyTypeConf
     }
 }
 
-export function registerExcavationProfile(def: import("../constants.ts").ExcavationProfileConfig): void {
+export function registerExcavationProfile(
+    def: import("../constants.ts").ExcavationProfileConfig,
+): void {
     try {
         // registerProfile(id, { pattern?, power, options?, terrainRules? }) — terrainRules
         // was previously dropped on the floor, making per-terrain dig rules unreachable.
-        const { id, power, pattern, options, terrainRules } = def as
-            typeof def & { terrainRules?: unknown };
+        const { id, power, pattern, options, terrainRules } = def as typeof def & {
+            terrainRules?: unknown;
+        };
         const payload: Record<string, unknown> = { power, pattern, options };
         if (Array.isArray(terrainRules) && terrainRules.length > 0) {
             // cellType → TerrainRef, outputElementType → ElementRef. Both accept a
@@ -753,7 +845,9 @@ export function registerExcavationProfile(def: import("../constants.ts").Excavat
     }
 }
 
-export function registerStructureBehavior(def: import("../constants.ts").StructureBehaviorConfig): void {
+export function registerStructureBehavior(
+    def: import("../constants.ts").StructureBehaviorConfig,
+): void {
     try {
         const api = g()?.api?.structureBehaviors;
         if (!api) {
@@ -793,7 +887,10 @@ export function registerStructureBehavior(def: import("../constants.ts").Structu
     }
 }
 
-export function registerSignal(def: import("../constants.ts").SignalConfig, handler?: Function): void {
+export function registerSignal(
+    def: import("../constants.ts").SignalConfig,
+    handler?: Function,
+): void {
     try {
         const kind = String(def.kind || "targets").toLowerCase();
         const sig = g()?.api?.signals;
@@ -816,7 +913,10 @@ export function registerSignal(def: import("../constants.ts").SignalConfig, hand
     }
 }
 
-export function registerTrigger(def: import("../constants.ts").TriggerConfig, handler?: Function): void {
+export function registerTrigger(
+    def: import("../constants.ts").TriggerConfig,
+    handler?: Function,
+): void {
     try {
         const tid = def.triggerId || def.id;
         if (!handler) {

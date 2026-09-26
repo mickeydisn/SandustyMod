@@ -7,8 +7,8 @@
  * and there is no DOM here to click.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
-import { DRAG_SLOP, clampChip, exceedsSlop } from "./drag.ts";
-import { overlayBox, titleBar, minimizedChip } from "./styles.ts";
+import { clampChip, DRAG_SLOP, exceedsSlop } from "./drag.ts";
+import { minimizedChip, overlayBox, titleBar } from "./styles.ts";
 
 const panel = Deno.readTextFileSync(
     new URL("./panel.ts", import.meta.url).pathname,
@@ -63,8 +63,9 @@ Deno.test("the title bar no longer offers a grab cursor", () => {
 });
 
 Deno.test("the minimised chip does take a drag", () => {
-    const chip = /onPointerDown: onDragDown,[\s\S]*?onPointerCancel: onDragUp,[\s\S]*?style: S\.minimizedChip/
-        .exec(panel)?.[0];
+    const chip =
+        /onPointerDown: onDragDown,[\s\S]*?onPointerCancel: onDragUp,[\s\S]*?style: S\.minimizedChip/
+            .exec(panel)?.[0];
     assert(chip, "the minimised chip has no drag handlers");
     assertEquals(minimizedChip.cursor, "grab");
 });

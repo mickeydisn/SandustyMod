@@ -518,9 +518,7 @@ function renderMarkdown(
         out.push("| method | params | ctx | throws | line | notes |");
         out.push("|---|---|---|---|---|---|");
         for (const m of index[ns]) {
-            const params = m.kind === "re-export" || m.kind === "value"
-                ? "—"
-                : `\`${m.params}\``;
+            const params = m.kind === "re-export" || m.kind === "value" ? "—" : `\`${m.params}\``;
             const note = m.kind === "re-export"
                 ? `re-export → \`${m.snippet}\``
                 : m.snippet.replace(/\|/g, "\\|").slice(0, 110);
@@ -666,7 +664,3 @@ if (import.meta.main) {
         console.log(`-> ${OUT_DIR}api-reconcile.json`);
     }
 }
-
-
-
-

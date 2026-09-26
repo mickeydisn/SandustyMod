@@ -30,11 +30,9 @@ export const SPRITE_PATH = "assets/config-icon.png";
 export const NAME_KEY = `mods|${MOD_ID}|tool|name`;
 export const DESC_KEY = `mods|${MOD_ID}|tool|desc`;
 export const TOOL_NAME = "My Own Mod";
-export const TOOL_DESC =
-    "<b>My Own Mod</b> — in-game content configurator.<br/>" +
+export const TOOL_DESC = "<b>My Own Mod</b> — in-game content configurator.<br/>" +
     "Define elements, structures, items, recipes, processing, and more via JSON.<br/>" +
-    "<span style=\"opacity:0.85\">Select this tool to open the panel.</span>";
-
+    '<span style="opacity:0.85">Select this tool to open the panel.</span>';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MatterType (sandkit.enums.MatterType)
@@ -42,14 +40,22 @@ export const TOOL_DESC =
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type MatterTypeName =
-    | "Solid" | "solid"
-    | "Liquid" | "liquid"
-    | "Particle" | "particle"
-    | "Gas" | "gas"
-    | "Static" | "static"
-    | "Slushy" | "slushy"
-    | "Wisp" | "wisp"
-    | "Powder" | "powder";
+    | "Solid"
+    | "solid"
+    | "Liquid"
+    | "liquid"
+    | "Particle"
+    | "particle"
+    | "Gas"
+    | "gas"
+    | "Static"
+    | "static"
+    | "Slushy"
+    | "slushy"
+    | "Wisp"
+    | "wisp"
+    | "Powder"
+    | "powder";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ELEMENT — sandkit.api.elements.register(ElementDefinition)
@@ -188,8 +194,28 @@ export interface StructureConfig {
     categoryKey?: string;
     /** Sort order within category. */
     order?: number;
+    /**
+     * Inert on a mod structure — the engine only reads it for vanilla ids.
+     *
+     * Kept in the type because it may already be in someone's config, and the
+     * passthrough carries it through an edit. `apply.ts` unlocks every structure
+     * regardless, so setting this changes nothing.
+     *
+     * @see https://github.com/.../bundel.js 5251.js — the single read site
+     */
     alwaysUnlocked?: boolean;
+    /** The real menu-visibility lever. Read off the mod registry by the menu. */
     hideFromBuildMenu?: boolean;
+    /**
+     * Ours, not the engine's: the unlock node that gates this structure.
+     *
+     * Required — a structure always names a node, and the built-in "Unlock by
+     * default" is what "no research needed" means rather than an empty field. The
+     * engine reads the same relation off the *tech* side (`unlocks.structures`),
+     * so `apply.ts` resolves the node into a real tech at registration. See
+     * `src/ui/tech-link.ts`.
+     */
+    unlockNode?: string;
     disallowPick?: boolean;
     /** Alias structure type for the block grid. */
     blockGridType?: string;
@@ -396,8 +422,6 @@ export interface InteractionConfig {
 
 // ═══════════════════════════════════════════════════════════════════════════
 
-
-
 // ═══════════════════════════════════════════════════════════════════════════
 // TERRAIN — terrains.register
 // ═══════════════════════════════════════════════════════════════════════════
@@ -521,6 +545,57 @@ export interface ProjectileConfig {
 // ═══════════════════════════════════════════════════════════════════════════
 // ENERGY — energy.registerType(structureId, type, options)
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A named energy channel.
+ *
+ * This exists only in *our* config. The engine has no "register a network" call:
+ * `energyTypes[].options.energyType` is a plain string, and two energy types
+ * share a channel by spelling it the same. So the set of valid networks is
+ * whatever the config says, plus the engine's own default, and nothing in the
+ * game will tell us a name is wrong.
+ *
+ * That is the whole reason this is a list rather than a text box: without it, a
+ * typo in `options.energyType` registers cleanly and the node simply never
+ * joins a network. It looks configured and does nothing.
+ */
+export interface EnergyNetworkConfig {
+    id: string;
+    name?: string;
+    [key: string]: unknown;
+}
+
+/**
+ * Ours, not the engine's: what a structure is gated behind.
+ *
+ * Every structure names one, so "how does this become available?" always has an
+ * answer with a name attached — there is no empty field that quietly means
+ * "always". A node is either **mod-owned** (`kind: "always"`, granted at apply)
+ * or it **builds an in-game tech node** (`kind: "tech"`), in which case the
+ * fields below become a real engine tech and researching it grants the
+ * structures that point here.
+ *
+ * `techId` borrows an existing engine tech instead of defining one, so several
+ * nodes can sit behind the same research step. When set, the fields below are
+ * ignored — the engine tech keeps its own definition.
+ */
+export interface UnlockNodeConfig {
+    id: string;
+    name?: string;
+    description?: string;
+    /** "always" = no research; "tech" = a research step is required. */
+    kind: "always" | "tech";
+    /** Research cost of the tech this node builds. */
+    cost?: number;
+    currencyType?: string;
+    branch?: string;
+    /** Where the built node sits in the tech grid. */
+    parentId?: string;
+    requires?: string[];
+    /** Use this engine tech as-is instead of building one. */
+    techId?: string;
+    [key: string]: unknown;
+}
 
 export interface EnergyTypeConfig {
     id: string;
@@ -673,7 +748,6 @@ export interface SpriteConfig {
     [key: string]: unknown;
 }
 
-
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOKS / MODIFIERS — hooks.intercept + hooks.modify
 // Docs: https://sandustry.dev/api/hooks
@@ -720,6 +794,16 @@ export type ModConfig = {
     upgrades: UpgradeConfig[];
     projectiles: ProjectileConfig[];
     energyTypes: EnergyTypeConfig[];
+    energyNetworks: EnergyNetworkConfig[];
+    /**
+     * Ours, not the engine's.
+     *
+     * A mod-owned entry that every structure names, standing in for the two ways
+     * a structure becomes available. It is a separate list from `techs` on
+     * purpose: a node is the *thing a structure is gated behind*, while a tech is
+     * a step in a research tree that may do more than unlock.
+     */
+    unlockNodes: UnlockNodeConfig[];
     excavationProfiles: ExcavationProfileConfig[];
     structureBehaviors: StructureBehaviorConfig[];
     signals: SignalConfig[];
@@ -744,6 +828,8 @@ export const DEFAULT_CONFIG: ModConfig = {
     upgrades: [],
     projectiles: [],
     energyTypes: [],
+    energyNetworks: [],
+    unlockNodes: [],
     excavationProfiles: [],
     structureBehaviors: [],
     signals: [],
@@ -776,7 +862,7 @@ export const FIELD_HELP = {
         "id (required)",
         "name, nameKey, description, descriptionKey",
         "categoryKey: blocks|logistics|production|economy|logic|fluids|lighting|special|misc",
-        "order, alwaysUnlocked, hideFromBuildMenu, disallowPick",
+        "order, hideFromBuildMenu, disallowPick",
         "shape: number[][] (1=occupied)",
         "buildModes: [{type: single|line|rectangle|…, directions?}]",
         "variants: [{id, angles: number[]}]",
@@ -844,5 +930,4 @@ export const FIELD_HELP = {
     signals: ["kind: targets|interactables|senderType, target, handlerKey"],
     triggers: ["triggerId, interval, sequentialRuns, extra, handlerKey"],
     sprites: ["id, path (loadFromMod) or source (load), options, fromMod"],
-
 } as const;

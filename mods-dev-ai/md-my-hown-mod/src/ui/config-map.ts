@@ -76,11 +76,26 @@ function entriesOf(
 
 /** The kinds worth drawing, ordered so the layout is predictable. */
 const MAP_ORDER: Tab[] = [
-    "elements", "structures", "items", "terrains",
-    "recipes", "processing", "contacts", "interactions",
-    "techs", "categories", "upgrades",
-    "signals", "triggers", "behaviors", "energy", "excavation",
-    "projectiles", "inputs", "sprites", "modifiers",
+    "elements",
+    "structures",
+    "items",
+    "terrains",
+    "recipes",
+    "processing",
+    "contacts",
+    "interactions",
+    "techs",
+    "categories",
+    "upgrades",
+    "signals",
+    "triggers",
+    "behaviors",
+    "energy",
+    "excavation",
+    "projectiles",
+    "inputs",
+    "sprites",
+    "modifiers",
 ];
 
 /**
@@ -215,7 +230,6 @@ export function instanceMapAsText(
     }
     return lines.join("\n");
 }
-
 
 // ── rendering ────────────────────────────────────────────────────────────────
 
@@ -356,7 +370,8 @@ function orphanNote(h: H, map: InstanceMap): unknown {
             { style: S.sectionTitle },
             `${map.orphans.length} entr${
                 map.orphans.length === 1 ? "y is" : "ies are"
-            } not used anywhere`,        ),
+            } not used anywhere`,
+        ),
         h(
             "div",
             { style: S.hint },
@@ -367,9 +382,7 @@ function orphanNote(h: H, map: InstanceMap): unknown {
             "div",
             { style: { ...S.hint, marginTop: 3 } },
             map.orphans.slice(0, 8).join(", ") +
-                (map.orphans.length > 8
-                    ? ` … and ${map.orphans.length - 8} more`
-                    : ""),
+                (map.orphans.length > 8 ? ` … and ${map.orphans.length - 8} more` : ""),
         ),
     );
 }
@@ -398,7 +411,6 @@ function legend(h: H, map: InstanceMap, onGoTo: Click): unknown {
         ),
     );
 }
-
 
 /** The map itself: one column per kind, one box per entry. */
 function drawMap(h: H, map: InstanceMap, onGoTo: Click): unknown {
@@ -495,9 +507,7 @@ function drawMap(h: H, map: InstanceMap, onGoTo: Click): unknown {
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                     cursor: "pointer",
-                    background: n.orphan
-                        ? "rgba(255,255,255,0.02)"
-                        : "rgba(255,255,255,0.05)",
+                    background: n.orphan ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.05)",
                 },
                 title: n.orphan ? `${n.id} — not referenced by anything` : `${n.id}`,
                 onClick: () => onGoTo(n.cat),
@@ -523,4 +533,3 @@ function drawMap(h: H, map: InstanceMap, onGoTo: Click): unknown {
         ...boxes,
     );
 }
-

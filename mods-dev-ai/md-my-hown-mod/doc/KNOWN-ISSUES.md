@@ -143,3 +143,24 @@ stronger evidence than the typings or the bundle alone.
 - `structures.registerPlacementConfig` is a real call with its own
   definition (`structureId` + `fields`). The mod does not wrap it; it sits
   outside the 36-member config surface.
+
+- **A structure's `tooltipHover` is still a raw JSON box.** The *element*
+  one is a structured editor, and the raw box is kept alongside it only
+  when the stored shape cannot be rebuilt from the controls. The
+  structure's is a different engine type (`StructureTooltipHover`) and has
+  not been modelled field by field. The Tooltips screen surfaces these so
+  they are at least visible in one place.
+
+- **Upgrade categories cannot be enumerated from the game.**
+  `api.upgrades.registerCategory` is write-only — there is no list call —
+  so the `categoryId` picker offers the categories this mod registers plus
+  `tools` (the documented default) and nothing else. A category the game
+  has and this mod has never registered goes through the labelled
+  “custom” option. `__custom__` is a UI affordance and is never
+  persisted; the id is what gets written.
+
+- **Entity types in an `entity` interaction are free text.** There is no
+  entity registry to enumerate, so a picker would be a guess. This is the
+  only reference-like field left as a text box, and
+  `ALLOWED_FREE_TEXT` in `src/ui/pickers.test.ts` records it as a
+  deliberate decision rather than an oversight.

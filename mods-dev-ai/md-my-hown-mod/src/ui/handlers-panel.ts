@@ -16,12 +16,12 @@
  */
 import type { HandlerMeta, HandlerType, HandlerUsage } from "../hooks/handler-registry.ts";
 import {
+    buildHandlerOptions,
     HANDLER_META,
     HANDLER_SCOPE_LABELS,
     HANDLER_SLOT_LABELS,
     HANDLER_TYPE_BLURBS,
     HANDLER_TYPE_LABELS,
-    buildHandlerOptions,
     unreachableHandlers,
     usageIndex,
     validateHandlerParams,
@@ -94,7 +94,10 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
         setState({
             ...state,
             open: meta.key,
-            values: { ...state.values, [meta.key]: { ...defaultParams(meta), ...(state.values[meta.key] ?? {}) } },
+            values: {
+                ...state.values,
+                [meta.key]: { ...defaultParams(meta), ...(state.values[meta.key] ?? {}) },
+            },
         });
     };
 
@@ -109,33 +112,39 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
         const open = state.expanded.includes(type);
         setState({
             ...state,
-            expanded: open
-                ? state.expanded.filter((t) => t !== type)
-                : [...state.expanded, type],
+            expanded: open ? state.expanded.filter((t) => t !== type) : [...state.expanded, type],
         });
     };
 
     // ── unreachable references, surfaced first ──────────────────────────────
-    const warnings = bad.length === 0
-        ? null
-        : h(
+    const warnings = bad.length === 0 ? null : h(
+        "div",
+        { style: { ...S.card, borderColor: "#c0392b", marginBottom: 8 } },
+        h("div", { style: S.sectionTitle }, `⚠ ${bad.length} unusable handler reference(s)`),
+        h(
             "div",
-            { style: { ...S.card, borderColor: "#c0392b", marginBottom: 8 } },
-            h("div", { style: S.sectionTitle }, `⚠ ${bad.length} unusable handler reference(s)`),
+            { style: S.hint },
+            "These are stored in your config but cannot run in the slot they were put in.",
+        ),
+        ...bad.map((b) =>
             h(
                 "div",
-                { style: S.hint },
-                "These are stored in your config but cannot run in the slot they were put in.",
-            ),
-            ...bad.map((b) =>
+                {
+                    key: `${b.key}:${b.usage.id}`,
+                    style: { ...S.row, borderTop: "1px solid rgba(255,255,255,0.06)" },
+                },
+                h("span", {
+                    style: { ...S.chip, cursor: "pointer" },
+                    onClick: () => onGoTo(b.usage.category),
+                }, b.key),
                 h(
-                    "div",
-                    { key: `${b.key}:${b.usage.id}`, style: { ...S.row, borderTop: "1px solid rgba(255,255,255,0.06)" } },
-                    h("span", { style: { ...S.chip, cursor: "pointer" }, onClick: () => onGoTo(b.usage.category) }, b.key),
-                    h("span", { style: S.hint }, ` in ${b.usage.category} → ${b.usage.id}: ${b.reason}`),
-                )
-            ),
-        );
+                    "span",
+                    { style: S.hint },
+                    ` in ${b.usage.category} → ${b.usage.id}: ${b.reason}`,
+                ),
+            )
+        ),
+    );
 
     // ── one collapsible block per handler type ─────────────────────────────
     const blocks = TYPE_ORDER.map((type) => {
@@ -163,9 +172,7 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
                 },
                 h("span", { style: { opacity: 0.7, fontSize: "10px" } }, isOpen ? "▼" : "▶"),
                 `${HANDLER_TYPE_LABELS[type]} (${rows.length})`,
-                usedCount > 0
-                    ? h("span", { style: S.tagChip }, `${usedCount} in use`)
-                    : null,
+                usedCount > 0 ? h("span", { style: S.tagChip }, `${usedCount} in use`) : null,
             ),
             h("div", { style: S.hint }, HANDLER_TYPE_BLURBS[type]),
             isOpen
@@ -289,7 +296,11 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
     const values = state.values[m.key] ?? defaultParams(m);
 
     const slotChips = m.slots.map((s) =>
-        h("span", { key: s, style: S.tagChip, title: HANDLER_SLOT_LABELS[s] }, HANDLER_SLOT_LABELS[s])
+        h(
+            "span",
+            { key: s, style: S.tagChip, title: HANDLER_SLOT_LABELS[s] },
+            HANDLER_SLOT_LABELS[s],
+        )
     );
 
     const usageChips = refs.length === 0
@@ -310,15 +321,22 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
     return h(
         "div",
         { key: m.key, style: { ...S.row, flexDirection: "column", alignItems: "stretch", gap: 4 } },
-
         // header: key, scope, count
         h(
             "div",
             { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
             h("span", { style: S.codeKey }, m.key),
-            h("span", { style: S.tagChip, title: "Default scope" }, `scope: ${HANDLER_SCOPE_LABELS[m.scope]}`),
+            h(
+                "span",
+                { style: S.tagChip, title: "Default scope" },
+                `scope: ${HANDLER_SCOPE_LABELS[m.scope]}`,
+            ),
             refs.length > 0
-                ? h("span", { style: { ...S.tagChip, borderColor: "#4caf50" } }, `used ×${refs.length}`)
+                ? h(
+                    "span",
+                    { style: { ...S.tagChip, borderColor: "#4caf50" } },
+                    `used ×${refs.length}`,
+                )
                 : null,
             h("span", { style: { flex: 1 } }),
             // configure / collapse
@@ -328,11 +346,9 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
                 open ? "Close" : m.params.length > 0 ? "Configure" : "Details",
             ),
         ),
-
         h("div", { style: S.hint }, docs[m.key] ?? "(no description)"),
         h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ...slotChips),
         h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ...usageChips),
-
         open ? renderExpanded(m, values, { h, setParam, onCopy }) : null,
     );
 }
@@ -340,7 +356,11 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
 function renderExpanded(
     m: HandlerMeta,
     values: Record<string, string>,
-    ctx: { h: H; setParam: (key: string, field: string, v: string) => void; onCopy: (t: string) => void },
+    ctx: {
+        h: H;
+        setParam: (key: string, field: string, v: string) => void;
+        onCopy: (t: string) => void;
+    },
 ): unknown {
     const { h, setParam, onCopy } = ctx;
 
@@ -353,7 +373,13 @@ function renderExpanded(
                 "div",
                 { style: S.hint },
                 "Reference it from ",
-                ...m.slots.map((s, i) => h("span", { key: s, style: S.codeKey }, i ? `, ${HANDLER_SLOT_LABELS[s]}` : HANDLER_SLOT_LABELS[s])),
+                ...m.slots.map((s, i) =>
+                    h(
+                        "span",
+                        { key: s, style: S.codeKey },
+                        i ? `, ${HANDLER_SLOT_LABELS[s]}` : HANDLER_SLOT_LABELS[s],
+                    )
+                ),
                 ".",
             ),
         );
@@ -370,7 +396,8 @@ function renderExpanded(
                 value: v,
                 placeholder: p.def ?? "",
                 title: p.hint ?? (p.kind === "number" ? "number" : p.kind),
-                onInput: (e: { currentTarget: { value: string } }) => setParam(m.key, p.key, e.currentTarget.value),
+                onInput: (e: { currentTarget: { value: string } }) =>
+                    setParam(m.key, p.key, e.currentTarget.value),
             }),
         );
     });
@@ -398,4 +425,3 @@ function renderExpanded(
         h("pre", { style: S.codeBlock }, snippet),
     );
 }
-

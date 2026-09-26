@@ -98,7 +98,9 @@ const body = list
         const path = e.paths[sizes[0]];
         return `    { name: ${JSON.stringify(e.name)}, path: ${JSON.stringify(path)}, sizes: ${
             JSON.stringify(sizes)
-        }, preview: ${JSON.stringify(e.preview)}, previewW: ${e.previewW}, previewH: ${e.previewH} },`;
+        }, preview: ${
+            JSON.stringify(e.preview)
+        }, previewW: ${e.previewW}, previewH: ${e.previewH} },`;
     })
     .join("\n");
 

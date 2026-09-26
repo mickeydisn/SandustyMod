@@ -88,11 +88,28 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["metaColor", "metaColor"],
     ],
     upgrades: [
+        // `itemId` is a select over the live item list and is documented
+        // elsewhere; `categoryId` is a select over the categories this mod
+        // registers plus `tools`.
+        ["categoryId", "categoryId"],
         ["upgradeId", "upgrade.id"],
         ["upgradeNameKey", "upgrade.nameKey"],
         ["maxLevel", "upgrade.maxLevel"],
         ["costsJson", "upgrade.costs"],
         ["oneOff", "upgrade.oneOff"],
+    ],
+    behaviors: [
+        // `kind` chooses which `structureBehaviors.register*` call this becomes.
+        // The structure ids are stored inside `definition`, because that is the
+        // shape the engine wants, but each one is its own form field and each is
+        // merged in on the way out. A conveyor is registered against a single
+        // structure (`definition.id`); a launcher against three, under exactly
+        // the names the engine uses.
+        ["structureId", "definition.id"],
+        ["upType", "definition.upType"],
+        ["leftType", "definition.leftType"],
+        ["rightType", "definition.rightType"],
+        ["definitionJson", "definition (everything else)"],
     ],
     interactions: [
         // The descriptor is assembled from the `kind` plus that kind's fields.
@@ -105,8 +122,10 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["tipDataField", "interaction.*.dataField"],
         ["tipDataFieldEquals", "interaction.*.equals"],
         ["tipOnlyWhenTranslated", "interaction.onlyWhenTranslated"],
-        // Kept verbatim, and only rendered when the stored object holds a field
-        // the split form has no control for.
+        // The interaction descriptor's own passthrough. It has the same rule as
+        // `advancedJson` — shown only when the stored object really does hold a
+        // key the split form cannot rebuild — so it is documented, but it is not
+        // a field anyone normally sees.
         ["interactionJson", "interaction (unmodelled fields, verbatim)"],
     ],
     terrains: [
@@ -138,6 +157,19 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["outputA", "outputA"],
         ["outputB", "outputB"],
     ],
+    // Ours, not the engine's: a "tech"-kind node is resolved into a real
+    // TechDefinition at apply time, so these are what it *becomes*, not fields
+    // the engine reads off a node — it never sees one.
+    unlockNodes: [
+        ["kind", "(mod-owned: always | tech)"],
+        ["cost", "cost"],
+        ["currencyType", "currencyType"],
+        ["branch", "branch"],
+        ["parentId", "parentId"],
+        ["requires", "requires"],
+        ["techId", "(borrows this engine tech instead of building one)"],
+        ["gatesStructures", "(derived from each structure's unlockNode — not written)"],
+    ],
     techs: [
         ["requires", "requires"],
         ["unlockStructures", "unlocks.structures"],
@@ -159,8 +191,14 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["energyType", "options.energyType"],
         ["priority", "options.priority"],
     ],
+    // A network is *our* record, not an engine one: the engine has no register
+    // call and reads neither field. `id` is what `options.energyType` must
+    // match; `name` is only ever shown in this panel.
+    networks: [
+        ["idSuffix", "id"],
+        ["name", "name (panel only — the engine never reads it)"],
+    ],
     triggers: [["extraJson", "extra"]],
-    behaviors: [["definitionJson", "definition"]],
     // `requirement` is stored verbatim and never read, so it is filed as a
     // pass-through rather than a working constraint.
     categories: [
@@ -549,7 +587,7 @@ export function renderIssues(): string {
         "  elements and terrains.",
         "- **`listElements` used to store the enum's display name as the id**, and",
         "  fell back to `String(type)` — a bare number, which is not a valid id —",
-        "  for any element whose definition it could not read. Its \"already have",
+        '  for any element whose definition it could not read. Its "already have',
         "  it?\" guard compared the enum's *number* against a map keyed by *id*, so",
         "  it never fired and every element got a second, lowercased duplicate.",
         "- **`hidden` elements are filtered out of the pickers.** The game keeps",
@@ -568,15 +606,15 @@ export function renderIssues(): string {
         "",
         "- **`blockGridType` is not optional above 8x8.** `3791498201` documents the",
         "  failure: a 20x20 Resource Silo that omitted it placed as a single 1-cell",
-        "  unit with a hover tooltip that only resolved at the origin cell. \"Every",
+        '  unit with a hover tooltip that only resolved at the origin cell. "Every',
         "  reference mod that omitted blockGridType only ever used shapes up to",
-        "  8x8.\"",
+        '  8x8."',
         "- **`colors` is `{ variants: [[r,g,b,a], …] }`, not a bare array.** Every",
         "  mod that sets it uses the wrapper (`3790149867`, `3792673946`) and ships",
         "  four or five variants, because a variant is a random per-cell tint and",
         "  one flat colour looks synthetic. A 3-tuple is tolerated as opaque.",
         "- **`interactions[].structures` holds numeric `StructureRef`s, not ids.**",
-        "  `3790149867` writes `{ kind: \"structure\", structures: [16] }`. Enum",
+        '  `3790149867` writes `{ kind: "structure", structures: [16] }`. Enum',
         "  numbers are not stable across builds, so a config-driven form cannot",
         "  offer this as an id picker without resolving them at register time.",
         "- **A custom `draw` must normalise the canvas it inherits.** Tool and",
@@ -591,6 +629,31 @@ export function renderIssues(): string {
         "- `structures.registerPlacementConfig` is a real call with its own",
         "  definition (`structureId` + `fields`). The mod does not wrap it; it sits",
         "  outside the 36-member config surface.",
+        "",
+        // These three live here rather than in a hand-edited file because this
+        // file is generated. A limitation written anywhere else is lost the next
+        // time the reference is rebuilt, which is exactly when someone is most
+        // likely to be reading it.
+        "- **A structure's `tooltipHover` is still a raw JSON box.** The *element*",
+        "  one is a structured editor, and the raw box is kept alongside it only",
+        "  when the stored shape cannot be rebuilt from the controls. The",
+        "  structure's is a different engine type (`StructureTooltipHover`) and has",
+        "  not been modelled field by field. The Tooltips screen surfaces these so",
+        "  they are at least visible in one place.",
+        "",
+        "- **Upgrade categories cannot be enumerated from the game.**",
+        "  `api.upgrades.registerCategory` is write-only — there is no list call —",
+        "  so the `categoryId` picker offers the categories this mod registers plus",
+        "  `tools` (the documented default) and nothing else. A category the game",
+        "  has and this mod has never registered goes through the labelled",
+        "  “custom” option. `__custom__` is a UI affordance and is never",
+        "  persisted; the id is what gets written.",
+        "",
+        "- **Entity types in an `entity` interaction are free text.** There is no",
+        "  entity registry to enumerate, so a picker would be a guess. This is the",
+        "  only reference-like field left as a text box, and",
+        "  `ALLOWED_FREE_TEXT` in `src/ui/pickers.test.ts` records it as a",
+        "  deliberate decision rather than an oversight.",
         "",
     );
     return out.join("\n");
@@ -694,9 +757,9 @@ export function renderDts(): string {
             // flag are reported instead.
             const doc = types && types.length
                 ? types.map((t) => `\`${t.name}\`: ${t.type}`).join("; ")
-                : `arity ${arity}${
-                    m.takesContext ? "; takes the engine context" : ""
-                }${m.throws ? "; throws" : ""}`;
+                : `arity ${arity}${m.takesContext ? "; takes the engine context" : ""}${
+                    m.throws ? "; throws" : ""
+                }`;
             lines.push(
                 `    /** ${doc} */`,
                 `    export function ${m.name}(${sig}): unknown;`,

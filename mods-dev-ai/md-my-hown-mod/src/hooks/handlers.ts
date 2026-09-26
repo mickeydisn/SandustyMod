@@ -145,17 +145,26 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
     // So these handlers only shape the storage/registration options.
     energyDefault: (structure, extra) => {
         const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
-        return { capacity: o.capacity ?? 1000, ...(o.energyType ? { energyType: o.energyType } : {}) };
+        return {
+            capacity: o.capacity ?? 1000,
+            ...(o.energyType ? { energyType: o.energyType } : {}),
+        };
     },
     /** Large buffer — a bank. Storage node, big capacity. */
     energyBank: (structure, extra) => {
         const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
-        return { capacity: o.capacity ?? 100000, ...(o.energyType ? { energyType: o.energyType } : {}) };
+        return {
+            capacity: o.capacity ?? 100000,
+            ...(o.energyType ? { energyType: o.energyType } : {}),
+        };
     },
     /** Small buffer — a wire between machines. Storage node, low capacity. */
     energyWire: (structure, extra) => {
         const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
-        return { capacity: o.capacity ?? 200, ...(o.energyType ? { energyType: o.energyType } : {}) };
+        return {
+            capacity: o.capacity ?? 200,
+            ...(o.energyType ? { energyType: o.energyType } : {}),
+        };
     },
     /** Conductor only — forwards energy, holds nothing (capacity 0). */
     energyConductor: (structure, extra) => {
@@ -225,7 +234,8 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
      * are the id lists to append.
      */
     techAppendUnlock: (node, extra) => {
-        const o = (extra as { techId?: string; structures?: string[]; items?: string[] } | null) ?? {};
+        const o = (extra as { techId?: string; structures?: string[]; items?: string[] } | null) ??
+            {};
         try {
             const sk = (globalThis as { sandkit?: { api?: any } }).sandkit;
             const append = sk?.api?.tech?.conservatory?.appendUnlock;
@@ -376,7 +386,8 @@ export const ANY_HANDLER_DOCS: Record<string, string> = {
     projectileExcavate: "Tuned for digging rather than damage: speed 14, dig flag set.",
     projectileTerrain: "Slow heavy shot flagged to carry terrain.",
     excavationDefault: "Dig options: power 10. The plain 'tool digs terrain' profile.",
-    excavationCrusher: "Blast dig: power 24, treated as a rocket explosion (wide, terrain-breaking).",
+    excavationCrusher:
+        "Blast dig: power 24, treated as a rocket explosion (wide, terrain-breaking).",
     excavationDrill: "Drill dig: power 8, drillTierDamage 25.",
     excavationGun: "Gun dig: power 4, single cell, never destroys indestructible terrain.",
     excavationShatter: "Dig: power 16, debris inherits the incoming cell velocity.",
@@ -396,7 +407,8 @@ export const ANY_HANDLER_DOCS: Record<string, string> = {
     upgradeAdd: "On upgrade: adds a flat amount to a numeric field.",
     techAppendUnlock: "Research complete: api.tech.conservatory.appendUnlock(structures/items).",
     techSetUpgradeLevel: "Research complete: api.upgrades.setLevelById(itemId, upgradeId, level).",
-    techGrantItem: "Research complete: gives the player an item (addById takes no count — we loop).",
+    techGrantItem:
+        "Research complete: gives the player an item (addById takes no count — we loop).",
 };
 
 /**
@@ -424,7 +436,6 @@ export function resolveAnyHandler(key: string | undefined): AnyHandler | undefin
     if (key in PROCESS_HANDLERS) return PROCESS_HANDLERS[key];
     return undefined;
 }
-
 
 export function resolveHandler(key: string | undefined): CodeHandler | undefined {
     if (!key) return undefined;
@@ -455,7 +466,6 @@ export type ProcessHandler = (
     /** Per-entry `options` bag (JSON) — lets one handler serve many configs. */
     options?: unknown,
 ) => void;
-
 
 export const PROCESS_HANDLERS: Record<string, ProcessHandler> = {
     /** Logs the tick — safest way to confirm a processor is wired. */

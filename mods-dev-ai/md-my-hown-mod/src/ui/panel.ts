@@ -10,101 +10,116 @@
  *
  * Field definitions live in ./schema.ts (single source of truth).
  */
+import { LOG, type ModConfig, type PanelState, type StructureConfig } from "../constants.ts";
 import {
-    LOG,
-    type ModConfig,
-    type PanelState,
-} from "../constants.ts";
-import {
-    loadConfig,
-    loadPanelState,
-    savePanelState,
-    addOrUpdateElement,
-    removeElement,
-    addOrUpdateStructure,
-    removeStructure,
-    addOrUpdateItem,
-    removeItem,
-    addOrUpdateRecipe,
-    removeRecipe,
-    addOrUpdateProcessing,
-    removeProcessing,
     addOrUpdateContact,
-    removeContact,
-    addOrUpdateInteraction,
-    removeInteraction,
-    addOrUpdateModifier,
-    removeModifier,
-    addOrUpdateTerrain,
-    removeTerrain,
-    addOrUpdateTech,
-    removeTech,
-    addOrUpdateUpgrade,
-    removeUpgrade,
-    addOrUpdateProjectile,
-    removeProjectile,
+    addOrUpdateElement,
+    addOrUpdateEnergyNetwork,
     addOrUpdateEnergyType,
-    removeEnergyType,
     addOrUpdateExcavationProfile,
-    removeExcavationProfile,
-    addOrUpdateStructureBehavior,
-    removeStructureBehavior,
+    addOrUpdateInputBinding,
+    addOrUpdateInteraction,
+    addOrUpdateItem,
+    addOrUpdateModifier,
+    addOrUpdateProcessing,
+    addOrUpdateProjectile,
+    addOrUpdateRecipe,
     addOrUpdateSignal,
-    removeSignal,
-    addOrUpdateTrigger,
-    removeTrigger,
     addOrUpdateSprite,
-    removeSprite,
+    addOrUpdateStructure,
+    addOrUpdateStructureBehavior,
+    addOrUpdateTech,
+    addOrUpdateTerrain,
+    addOrUpdateTrigger,
+    addOrUpdateUnlockNode,
+    addOrUpdateUpgrade,
+    addOrUpdateUpgradeCategory,
     exportConfigJson,
     importConfigJson,
+    loadConfig,
+    loadPanelState,
+    removeContact,
+    removeElement,
+    removeEnergyNetwork,
+    removeEnergyType,
+    removeExcavationProfile,
+    removeInputBinding,
+    removeInteraction,
+    removeItem,
+    removeModifier,
+    removeProcessing,
+    removeProjectile,
+    removeRecipe,
+    removeSignal,
+    removeSprite,
+    removeStructure,
+    removeStructureBehavior,
+    removeTech,
+    removeTerrain,
+    removeTrigger,
+    removeUnlockNode,
+    removeUpgrade,
+    removeUpgradeCategory,
+    savePanelState,
 } from "../config/store.ts";
-import { applyConfig, clearRegistrationCache, reapplyFromStorage, updateEntry } from "../register/apply.ts";
+import {
+    applyConfig,
+    clearRegistrationCache,
+    reapplyFromStorage,
+    snapshotRegistered,
+    staleAfter,
+    updateEntry,
+} from "../register/apply.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
 import { api, React as HostReact } from "../api.ts";
 import { isToolSelected } from "../select.ts";
 import {
-    CATEGORY_META,
-    type FieldSpec,
-    type Tab,
-    MENU_GROUPS,
     autoGraphicsKey,
+    CATEGORY_META,
     describeShape,
     emptyShape,
     entryToForm,
+    type FieldSpec,
+    formatIdList,
     formDefaults,
     formToEntry,
+    hexListToVariants,
     isActive,
+    MENU_GROUPS,
     normalizeShape,
+    parseIdList,
+    PASSTHROUGH_KEY,
+    passthroughKeysOf,
     resolveAutoFill,
     resolveOptions,
-    parseIdList,
     sectionsFor,
-    shapeToText,
     seedVariantFromMapColor,
-    variantsToHexList,
-    hexListToVariants,
+    shapeToText,
+    type Tab,
     validateForm,
+    variantsToHexList,
 } from "./schema.ts";
 import {
+    handlerDoc,
     listBuildModeTypes,
     listElements,
-    handlerDoc,
     listTerrains,
+    type Opt,
+    PANEL_NATIVES,
     searchLibraryAssets,
 } from "../catalog.ts";
 import * as S from "./styles.ts";
-import {
-    emptyViewState,
-    type ViewMode,
-} from "./viewstate.ts";
+import { emptyViewState, type ViewMode } from "./viewstate.ts";
 import { clampChip, exceedsSlop } from "./drag.ts";
 import {
+    type HandlersTabState,
     initialHandlersState,
     renderHandlersTab,
-    type HandlersTabState,
 } from "./handlers-panel.ts";
 import { renderHelp } from "./help-panel.ts";
 import { renderConfigMap } from "./config-map.ts";
+import { DEFAULT_UNLOCK_NODE, techUnlockStructureIds, unlockLine } from "./tech-link.ts";
+import { renderDraws } from "./draws-panel.ts";
 
 /** Parse JSON text, returning undefined instead of throwing. */
 function safeJson(text: string): unknown {
@@ -132,7 +147,15 @@ const CHIP_H = 40;
 type UpsertFn = (entry: never) => ModConfig;
 type RemoveFn = (id: string) => ModConfig;
 
-const UPSERT: Partial<Record<Tab, UpsertFn>> = {
+/**
+ * Which screen writes to which store function.
+ *
+ * Exported so a test can assert that *every* saveable screen has an entry. The
+ * bug this guards against is invisible from the type system: `saveForm` returns
+ * early when `UPSERT[cat]` is missing, so a screen can list, validate, and
+ * swallow a save without a single complaint. Two screens were in that state.
+ */
+export const UPSERT: Partial<Record<Tab, UpsertFn>> = {
     elements: addOrUpdateElement,
     structures: addOrUpdateStructure,
     items: addOrUpdateItem,
@@ -143,6 +166,7 @@ const UPSERT: Partial<Record<Tab, UpsertFn>> = {
     modifiers: addOrUpdateModifier,
     terrains: addOrUpdateTerrain,
     techs: addOrUpdateTech,
+    unlockNodes: addOrUpdateUnlockNode,
     upgrades: addOrUpdateUpgrade,
     projectiles: addOrUpdateProjectile,
     energy: addOrUpdateEnergyType,
@@ -151,9 +175,12 @@ const UPSERT: Partial<Record<Tab, UpsertFn>> = {
     signals: addOrUpdateSignal,
     triggers: addOrUpdateTrigger,
     sprites: addOrUpdateSprite,
+    networks: addOrUpdateEnergyNetwork,
+    categories: addOrUpdateUpgradeCategory,
+    inputs: addOrUpdateInputBinding,
 };
 
-const REMOVE: Partial<Record<Tab, RemoveFn>> = {
+export const REMOVE: Partial<Record<Tab, RemoveFn>> = {
     elements: removeElement,
     structures: removeStructure,
     items: removeItem,
@@ -164,6 +191,7 @@ const REMOVE: Partial<Record<Tab, RemoveFn>> = {
     modifiers: removeModifier,
     terrains: removeTerrain,
     techs: removeTech,
+    unlockNodes: removeUnlockNode,
     upgrades: removeUpgrade,
     projectiles: removeProjectile,
     energy: removeEnergyType,
@@ -172,6 +200,9 @@ const REMOVE: Partial<Record<Tab, RemoveFn>> = {
     signals: removeSignal,
     triggers: removeTrigger,
     sprites: removeSprite,
+    networks: removeEnergyNetwork,
+    categories: removeUpgradeCategory,
+    inputs: removeInputBinding,
 };
 
 function entriesOf(cfg: ModConfig, cat: Tab): Record<string, unknown>[] {
@@ -199,10 +230,30 @@ export function createPanelComponent(defaultMinimized = true) {
         const [form, setForm] = useState<Record<string, string>>({});
         const [editingId, setEditingId] = useState<string | null>(null);
         const [confirmId, setConfirmId] = useState<string | null>(null);
+        /**
+         * Which reference fields have their native list expanded.
+         *
+         * Collapsed by default on purpose: a form with thirty fields would
+         * otherwise open as a wall. The *count* is shown while collapsed,
+         * because "38 in the game" is the thing worth knowing — it says the
+         * list is real before you spend a click finding out.
+         */
+        const [nativeOpen, setNativeOpen] = useState<Record<string, boolean>>({});
+        /**
+         * Which kind the Graph screen is narrowed to.
+         *
+         * Held here rather than inside the screen because the body remounts on
+         * every category switch (`key: cat:mode`). Filter state that resets on
+         * each visit makes the filter unusable — you narrow the graph, glance at
+         * a screen, come back, and find the whole diagram again.
+         */
+        const [helpFilter, setHelpFilter] = useState("all");
         const [jsonText, setJsonText] = useState("");
         const [jsonError, setJsonError] = useState<string | null>(null);
         /** Handlers tab: which handler is expanded, and its live param values. */
-        const [handlerTab, setHandlerTab] = useState<HandlersTabState>(() => initialHandlersState());
+        const [handlerTab, setHandlerTab] = useState<HandlersTabState>(() =>
+            initialHandlersState()
+        );
         /** Per-field search text for `kind: "library"` pickers. */
         const [libQuery, setLibQuery] = useState<Record<string, string>>({});
         const drag = useRef<{
@@ -252,6 +303,146 @@ export function createPanelComponent(defaultMinimized = true) {
             return () => clearInterval(id);
         }, []);
 
+        /**
+         * The "native" list under a reference field: what already exists, and by
+         * whom.
+         *
+         * This answers the question a select cannot: *how much is there, and is
+         * it mine?* A field offering 38 game elements and 2 of your own is a
+         * very different proposition from one of unknown size, and before this
+         * the only way to find out was to open the dropdown and count.
+         *
+         * It renders for any `select`/`multiselect` whose options carry a
+         * `source`, so the rule is "the catalog knows where these came from"
+         * rather than a hand-kept list of fields that would silently drift out
+         * of date. A field with no sourced options gets nothing — no empty box,
+         * and no count of zero pretending to be information.
+         *
+         * Read-only by design. The value is chosen in the picker above; this
+         * exists to be looked at, not to be a second place to type into.
+         */
+        const nativeBox = (f: FieldSpec, opts: Opt[]): unknown => {
+            if (f.kind !== "select" && f.kind !== "multiselect") return null;
+            if (!opts.length) return null;
+            const game = opts.filter((o) => o.source === "game");
+            const mine = opts.filter((o) => o.source === "mod");
+            // Untagged options mean the catalog recorded no origin. Counting
+            // around them would be a lie, so say nothing instead.
+            if (!game.length && !mine.length) return null;
+
+            const isOpen = !!nativeOpen[f.key];
+            const summary = [
+                game.length ? `${game.length} in the game` : null,
+                mine.length ? `${mine.length} from this mod` : null,
+            ].filter(Boolean).join(" · ");
+
+            return h(
+                "div",
+                { style: S.nativeBox },
+                h(
+                    "button",
+                    {
+                        type: "button",
+                        style: S.nativeToggle,
+                        onClick: () => setNativeOpen({ ...nativeOpen, [f.key]: !isOpen }),
+                        title: isOpen ? "Hide what already exists" : "Show what already exists",
+                    },
+                    `${isOpen ? "▾" : "▸"} ${summary}`,
+                ),
+                isOpen
+                    ? h(
+                        "div",
+                        { style: S.nativeList },
+                        ...game.slice(0, 200).map((o) =>
+                            h("span", { key: `g-${o.value}`, style: S.nativeItem }, o.label)
+                        ),
+                        ...(game.length > 200
+                            ? [
+                                h(
+                                    "span",
+                                    { style: S.nativeItem },
+                                    `…and ${game.length - 200} more`,
+                                ),
+                            ]
+                            : []),
+                        ...mine.map((o) =>
+                            h(
+                                "span",
+                                {
+                                    key: `m-${o.value}`,
+                                    style: { ...S.nativeItem, ...S.nativeItemMod },
+                                },
+                                o.label,
+                            )
+                        ),
+                    )
+                    : null,
+            );
+        };
+
+        /**
+         * "What already exists", at the top of the panel.
+         *
+         * The per-field native box answers this one field at a time, and only
+         * once you have scrolled to a picker. This answers it on arrival, which
+         * is when the question is actually in your head: you opened Elements
+         * because you want to make something out of Water, and you want to know
+         * that Water exists before you start filling in fields.
+         *
+         * Collapsed, but never silent: the summary carries the count, and a count
+         * of zero is a real answer. Only the five screens with something to
+         * enumerate get one — see `PANEL_NATIVES`.
+         */
+        const panelNatives = (cat: Tab): unknown => {
+            const list = PANEL_NATIVES[cat];
+            if (!list) return null;
+            const opts = list();
+            if (!opts.length) return null;
+            const game = opts.filter((o) => o.source === "game");
+            const mine = opts.filter((o) => o.source === "mod");
+            return h(
+                "details",
+                { style: { margin: "0 10px 8px 10px" } },
+                h(
+                    "summary",
+                    { style: S.nativeToggle },
+                    `▸ ${opts.length} in the game already${
+                        mine.length ? ` · ${mine.length} from this mod` : ""
+                    }`,
+                ),
+                h(
+                    "div",
+                    { style: { ...S.nativeList, marginTop: 6 } },
+                    // Sorted, because a registry's order is an implementation
+                    // detail and a list you are scanning to find "is there a
+                    // Water?" should not depend on it.
+                    ...[...opts]
+                        .sort((a, b) => a.value.localeCompare(b.value))
+                        .map((o) =>
+                            h(
+                                "button",
+                                {
+                                    key: o.value,
+                                    type: "button",
+                                    style: {
+                                        ...S.nativeItem,
+                                        ...(o.source === "mod" ? S.nativeItemMod : null),
+                                        cursor: "pointer",
+                                    },
+                                    // The id, not the label. The label is what you
+                                    // read to find it; the id is what you paste
+                                    // into a field, and it is the one that is not
+                                    // obvious from the label.
+                                    title: `${o.value} — click to copy`,
+                                    onClick: () => copyRef.current(o.value),
+                                },
+                                o.label,
+                            )
+                        ),
+                ),
+            );
+        };
+
         const refresh = useCallback(() => setCfg(loadConfig()), []);
 
         /**
@@ -284,21 +475,6 @@ export function createPanelComponent(defaultMinimized = true) {
             setForm((prev) => ({ ...prev, [key]: value }));
         }, []);
 
-        /**
-         * The stored keys this form does not own for the entry being edited.
-         *
-         * Read from the *live* form rather than the config, because the box has
-         * to describe what is in the textarea right now — including anything the
-         * user has just typed into it.
-         */
-        const passthroughNames = useCallback((): string[] => {
-            const parsed = safeJson(form.advancedJson ?? "");
-            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-                return [];
-            }
-            return Object.keys(parsed as Record<string, unknown>).sort();
-        }, [form.advancedJson]);
-
         const goGroup = (key: string) => {
             const g = MENU_GROUPS.find((x) => x.key === key);
             if (!g) return;
@@ -329,18 +505,43 @@ export function createPanelComponent(defaultMinimized = true) {
                 skApi.toast("Clipboard unavailable — select the text instead");
             }
         };
+        // `panelNatives` is built above this, and its chips call it. A ref rather
+        // than a reorder, so the two stay independent of which came first.
+        const copyRef = { current: copyText };
 
         const startNew = () => {
             setEditingId(null);
             setConfirmId(null);
-            setForm(formDefaults(cat));
+            const next = formDefaults(cat);
+            // A structure must name an unlock node, so a new one starts on the
+            // built-in default rather than on nothing. Without this the required
+            // field opens empty and blocks the first save on a rule the author
+            // never chose — "available from the start" is a decision, and this is
+            // where it is pre-made rather than assumed.
+            if (cat === "structures") next.unlockNode = DEFAULT_UNLOCK_NODE;
+            setForm(next);
             setMode("form");
         };
 
         const startEdit = (entry: Record<string, unknown>) => {
             setConfirmId(null);
-            setEditingId(typeof entry.id === "string" ? entry.id : null);
-            setForm(entryToForm(cat, entry));
+            const id = typeof entry.id === "string" ? entry.id : null;
+            setEditingId(id);
+            const next = entryToForm(cat, entry);
+            // A tech's structure-derived unlocks live on the *structures*, not on
+            // the node, so the form would open showing fewer unlocks than the game
+            // will actually grant — and saving would then write that smaller list
+            // back, quietly dropping the link. Seeded here so the picker shows the
+            // truth and an edit is a no-op when nothing was changed.
+            if (cat === "techs" && id) {
+                const ids = techUnlockStructureIds(id, loadConfig());
+                if (ids.length > 0) {
+                    next.unlockStructures = formatIdList(
+                        Array.from(new Set([...parseIdList(next.unlockStructures), ...ids])),
+                    );
+                }
+            }
+            setForm(next);
             setMode("form");
         };
 
@@ -420,7 +621,9 @@ export function createPanelComponent(defaultMinimized = true) {
                     "button",
                     {
                         key: `${y}-${x}`,
-                        title: on ? `cell ${x},${y} — occupied (click to clear)` : `cell ${x},${y} — empty (click to fill)`,
+                        title: on
+                            ? `cell ${x},${y} — occupied (click to clear)`
+                            : `cell ${x},${y} — empty (click to fill)`,
                         style: on ? S.shapeCellOn : S.shapeCellOff,
                         onClick: () => {
                             const next = grid.map((r) => r.slice());
@@ -439,7 +642,11 @@ export function createPanelComponent(defaultMinimized = true) {
                     "div",
                     { style: S.shapeGridBox },
                     ...grid.map((_row, y) =>
-                        h("div", { key: y, style: S.shapeRow }, ...grid[y].map((_v, x) => cellAt(y, x))),
+                        h(
+                            "div",
+                            { key: y, style: S.shapeRow },
+                            ...grid[y].map((_v, x) => cellAt(y, x)),
+                        )
                     ),
                 ),
                 h(
@@ -447,7 +654,10 @@ export function createPanelComponent(defaultMinimized = true) {
                     { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" } },
                     h("button", { style: S.btn, onClick: () => write(emptyShape(1)) }, "Fill 4×4"),
                     h("button", { style: S.btn, onClick: () => write(emptyShape(0)) }, "Clear all"),
-                    h("button", { style: S.btn, onClick: () => write(grid.map((r) => r.slice()).reverse()) }, "Flip Y"),
+                    h("button", {
+                        style: S.btn,
+                        onClick: () => write(grid.map((r) => r.slice()).reverse()),
+                    }, "Flip Y"),
                     h("span", { style: S.hintBelow }, describeShape(grid)),
                 ),
                 err ? h("div", { style: S.errorText }, err) : null,
@@ -533,7 +743,10 @@ export function createPanelComponent(defaultMinimized = true) {
                                 {
                                     key: a.path,
                                     type: "button",
-                                    title: `${a.name}\n${a.path}\n${a.previewW}×${a.previewH} px · sizes: ${a.sizes.join(", ")}`,
+                                    title:
+                                        `${a.name}\n${a.path}\n${a.previewW}×${a.previewH} px · sizes: ${
+                                            a.sizes.join(", ")
+                                        }`,
                                     style: val === a.path ? S.libTileActive : S.libTile,
                                     onClick: () => pick(a.name, a.path),
                                 },
@@ -638,7 +851,8 @@ export function createPanelComponent(defaultMinimized = true) {
                         // Seed from the map colour so a new variant is a variation
                         // on what the element already looks like, not a random
                         // new hue.
-                        onClick: () => write([...swatches, seedVariantFromMapColor(form.metaColor)]),
+                        onClick: () =>
+                            write([...swatches, seedVariantFromMapColor(form.metaColor)]),
                     },
                     "+ variant from map colour",
                 ),
@@ -695,7 +909,9 @@ export function createPanelComponent(defaultMinimized = true) {
                                     writeRows(
                                         rows.map((r, j) => {
                                             if (j !== i) return r;
-                                            if (nextType === "line") return { ...r, type: nextType };
+                                            if (nextType === "line") {
+                                                return { ...r, type: nextType };
+                                            }
                                             // spanTiles is meaningless off a line
                                             // mode, and leaving it behind would
                                             // make the engine throw on register.
@@ -705,7 +921,9 @@ export function createPanelComponent(defaultMinimized = true) {
                                     );
                                 },
                             },
-                            ...modes.map((o) => h("option", { key: o.value, value: o.value }, o.label)),
+                            ...modes.map((o) =>
+                                h("option", { key: o.value, value: o.value }, o.label)
+                            ),
                         ),
                         type === "line"
                             ? h("input", {
@@ -776,13 +994,19 @@ export function createPanelComponent(defaultMinimized = true) {
                 setField(f.key, JSON.stringify(next, null, 2));
             const terrains = listTerrains();
             const elements = listElements();
-            const drop = (cellType: unknown) => (cellType === undefined ? undefined : String(cellType));
+            const drop = (
+                cellType: unknown,
+            ) => (cellType === undefined ? undefined : String(cellType));
 
             return h(
                 "div",
                 null,
                 rows.length === 0
-                    ? h("div", { style: S.hintBelow }, "No rules — this profile treats every terrain the same.")
+                    ? h(
+                        "div",
+                        { style: S.hintBelow },
+                        "No rules — this profile treats every terrain the same.",
+                    )
                     : null,
                 ...rows.map((row, i) =>
                     h(
@@ -797,13 +1021,13 @@ export function createPanelComponent(defaultMinimized = true) {
                                 onChange: (e: { target: { value: string } }) =>
                                     writeRows(
                                         rows.map((r, j) =>
-                                            j === i ? { ...r, cellType: e.target.value } : r,
+                                            j === i ? { ...r, cellType: e.target.value } : r
                                         ),
                                     ),
                             },
                             h("option", { value: "" }, "— terrain —"),
                             ...terrains.map((o) =>
-                                h("option", { key: o.value, value: o.value }, o.label),
+                                h("option", { key: o.value, value: o.value }, o.label)
                             ),
                         ),
                         h("input", {
@@ -846,15 +1070,18 @@ export function createPanelComponent(defaultMinimized = true) {
                             },
                             h("option", { value: "" }, "— drop —"),
                             ...elements.map((o) =>
-                                h("option", { key: o.value, value: o.value }, o.label),
+                                h("option", { key: o.value, value: o.value }, o.label)
                             ),
                         ),
                         h(
                             "button",
-                            { style: S.btnDanger, onClick: () => writeRows(rows.filter((_, j) => j !== i)) },
+                            {
+                                style: S.btnDanger,
+                                onClick: () => writeRows(rows.filter((_, j) => j !== i)),
+                            },
                             "×",
                         ),
-                    ),
+                    )
                 ),
                 h(
                     "button",
@@ -916,16 +1143,23 @@ export function createPanelComponent(defaultMinimized = true) {
                     control = h(
                         "div",
                         { style: S.emptyBox },
-                        `Nothing to pick from yet — ${f.emptyHint ?? "no entries of this kind exist."}`,
+                        `Nothing to pick from yet — ${
+                            f.emptyHint ?? "no entries of this kind exist."
+                        }`,
                         ...(orphans.length
                             ? [
-                                h("div", { style: { marginTop: 4, opacity: 0.85 } }, "Currently set to: "),
+                                h(
+                                    "div",
+                                    { style: { marginTop: 4, opacity: 0.85 } },
+                                    "Currently set to: ",
+                                ),
                                 ...orphans.map((v) =>
                                     h("button", {
                                         key: `orphan-${v}`,
                                         type: "button",
                                         style: { ...S.tagChip, cursor: "pointer" },
-                                        onClick: () => set(chosen.filter((x) => x !== v).join(", ")),
+                                        onClick: () =>
+                                            set(chosen.filter((x) => x !== v).join(", ")),
                                         title: "Click to remove this reference",
                                     }, `${v}  ✕`)
                                 ),
@@ -941,7 +1175,15 @@ export function createPanelComponent(defaultMinimized = true) {
                     };
                     control = h(
                         "div",
-                        { style: { display: "flex", flexWrap: "wrap", gap: 4, maxHeight: 150, overflowY: "auto" } },
+                        {
+                            style: {
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 4,
+                                maxHeight: 150,
+                                overflowY: "auto",
+                            },
+                        },
                         ...opts.map((o) => {
                             const on = chosen.includes(o.value);
                             return h(
@@ -953,7 +1195,9 @@ export function createPanelComponent(defaultMinimized = true) {
                                     style: {
                                         ...S.tagChip,
                                         cursor: locked ? "default" : "pointer",
-                                        background: on ? "rgba(120,190,255,0.3)" : "rgba(90,120,190,0.12)",
+                                        background: on
+                                            ? "rgba(120,190,255,0.3)"
+                                            : "rgba(90,120,190,0.12)",
                                         color: on ? "#ffffff" : "#cfe0ff",
                                         borderColor: on ? "rgba(180,220,255,0.95)" : undefined,
                                     },
@@ -1036,24 +1280,14 @@ export function createPanelComponent(defaultMinimized = true) {
                     placeholder: f.placeholder,
                     onChange: (e: { target: { value: string } }) => set(e.target.value),
                 });
-                // For the passthrough box specifically, name what is being
-                // carried. An empty box is ambiguous: the user cannot tell
-                // "nothing hidden" from "my fields are gone". Listing the keys
-                // makes the round-trip visible without opening the JSON.
-                if (f.key === "advancedJson") {
-                    const keys = passthroughNames();
-                    if (keys.length === 0) {
-                        // Nothing to carry, so nothing to edit. An empty JSON
-                        // box is worse than no box: it invites the user to type
-                        // something, which is then merged *on top of* the real
-                        // fields — the one way this control can do damage.
-                        control = h(
-                            "div",
-                            { style: S.emptyBox },
-                            "This entry has no fields beyond the ones shown above, " +
-                                "so there is nothing to carry and nothing to edit here.",
-                        );
-                    } else {
+                // For the passthrough box, name what is actually being carried.
+                // The box only appears when there is something in it, so this is
+                // never an empty list — but listing the names is still the point:
+                // it is the only place the user can see that a field they cannot
+                // edit is being preserved rather than quietly dropped.
+                if (f.key === PASSTHROUGH_KEY) {
+                    const carried = passthroughKeysOf(val);
+                    if (carried.length) {
                         control = h(
                             "div",
                             null,
@@ -1061,9 +1295,9 @@ export function createPanelComponent(defaultMinimized = true) {
                             h(
                                 "div",
                                 { style: S.hintBelow },
-                                `Carrying ${keys.length} field${
-                                    keys.length === 1 ? "" : "s"
-                                } this form has no control for: ${keys.join(", ")}`,
+                                `Carrying ${carried.length} field${
+                                    carried.length === 1 ? "" : "s"
+                                } this form has no control for: ${carried.join(", ")}`,
                             ),
                         );
                     }
@@ -1082,16 +1316,21 @@ export function createPanelComponent(defaultMinimized = true) {
                 });
             }
 
+            const opts = (f.kind === "select" || f.kind === "multiselect")
+                ? resolveOptions(f, form)
+                : [];
             return h(
                 "div",
                 { key: f.key, style: wide ? S.fieldCellWide : S.fieldCell },
                 labelRow,
                 control,
+                // What the game already has, next to the field that picks from
+                // it. Only for reference fields, and only when the list knows
+                // where its options came from.
+                nativeBox(f, opts),
                 // Show what the selected handler actually does, inline (5.2).
                 f.kind === "select" && f.key.endsWith("Key") && val
-                    ? handlerDoc(val)
-                    ? h("div", { style: S.hintBelow }, handlerDoc(val))
-                    : null
+                    ? handlerDoc(val) ? h("div", { style: S.hintBelow }, handlerDoc(val)) : null
                     : err
                     ? h("div", { style: S.errorText }, err)
                     : f.hint
@@ -1131,14 +1370,14 @@ export function createPanelComponent(defaultMinimized = true) {
                                 onChange: (e: { target: { value: string } }) => {
                                     writeRows(
                                         rows.map((r, j) =>
-                                            j === i ? { ...r, elementType: e.target.value } : r,
+                                            j === i ? { ...r, elementType: e.target.value } : r
                                         ),
                                     );
                                 },
                             },
                             h("option", { value: "" }, "— element —"),
                             ...elements.map((o) =>
-                                h("option", { key: o.value, value: o.value }, o.label),
+                                h("option", { key: o.value, value: o.value }, o.label)
                             ),
                         ),
                         h("input", {
@@ -1153,7 +1392,7 @@ export function createPanelComponent(defaultMinimized = true) {
                             onChange: (e: { target: { value: string } }) => {
                                 writeRows(
                                     rows.map((r, j) =>
-                                        j === i ? { ...r, chance: Number(e.target.value) } : r,
+                                        j === i ? { ...r, chance: Number(e.target.value) } : r
                                     ),
                                 );
                             },
@@ -1167,7 +1406,7 @@ export function createPanelComponent(defaultMinimized = true) {
                             },
                             "×",
                         ),
-                    ),
+                    )
                 ),
                 h(
                     "button",
@@ -1209,7 +1448,7 @@ export function createPanelComponent(defaultMinimized = true) {
                             "div",
                             { style: S.emptyState },
                             `Nothing here yet — press “+ New” to create the first ${meta.label.toLowerCase()}.`,
-                          )
+                        )
                         : h(
                             "div",
                             { style: S.listScroll },
@@ -1220,7 +1459,11 @@ export function createPanelComponent(defaultMinimized = true) {
                                     "div",
                                     { key: id, style: S.row },
                                     h("span", { style: S.rowId, title: id }, entryLabel(entry)),
-                                    h("button", { style: S.btn, onClick: () => startEdit(entry) }, "Edit"),
+                                    h(
+                                        "button",
+                                        { style: S.btn, onClick: () => startEdit(entry) },
+                                        "Edit",
+                                    ),
                                     h(
                                         "button",
                                         {
@@ -1231,7 +1474,7 @@ export function createPanelComponent(defaultMinimized = true) {
                                     ),
                                 );
                             }),
-                          ),
+                        ),
                 ),
             );
         };
@@ -1249,13 +1492,27 @@ export function createPanelComponent(defaultMinimized = true) {
                     h("span", { style: S.screenBlurb }, meta.blurb),
                     h("button", { style: S.btn, onClick: cancelForm }, "← Back"),
                 ),
+                // The unlock relation, stated in words as well as shown in the
+                // picker — "which node is this behind, and does it need research?"
+                // is the question an author actually has, and answering it needs the
+                // node's kind and cost, not just its id. Only on the structure
+                // screen, which is where the question is asked.
+                ...(cat === "structures"
+                    ? [
+                        h(
+                            "div",
+                            { key: "unlock-row", style: S.unlockRow },
+                            h("span", { style: S.unlockText }, unlockLine(form, cfg)),
+                        ),
+                    ]
+                    : []),
                 ...sections.map((sec) =>
                     h(
                         "div",
                         { key: sec.title, style: S.sectionBox },
                         h("div", { style: S.sectionTitle }, sec.title),
                         h("div", { style: S.fieldGrid }, ...sec.fields.map((f) => renderField(f))),
-                    ),
+                    )
                 ),
                 h(
                     "div",
@@ -1264,7 +1521,9 @@ export function createPanelComponent(defaultMinimized = true) {
                         "span",
                         { style: { ...S.footerStatus, color: errorCount ? "#ff9b9b" : "#9fe0b0" } },
                         errorCount
-                            ? `⚠ ${errorCount} issue${errorCount > 1 ? "s" : ""} — fix before saving`
+                            ? `⚠ ${errorCount} issue${
+                                errorCount > 1 ? "s" : ""
+                            } — fix before saving`
                             : "✓ ready to save",
                     ),
                     h("button", { style: S.btn, onClick: cancelForm }, "Cancel"),
@@ -1350,13 +1609,11 @@ export function createPanelComponent(defaultMinimized = true) {
                     placeholder: "click “Load from config”",
                     onChange: (e: { target: { value: string } }) => setJsonText(e.target.value),
                 }),
-                jsonError
-                    ? h("div", { style: S.errorText }, jsonError)
-                    : h(
-                        "div",
-                        { style: S.hint },
-                        "A successful import registers everything immediately.",
-                      ),
+                jsonError ? h("div", { style: S.errorText }, jsonError) : h(
+                    "div",
+                    { style: S.hint },
+                    "A successful import registers everything immediately.",
+                ),
             );
 
         // ── Chrome (drag / minimize) ───────────────────────────────────────
@@ -1442,11 +1699,35 @@ export function createPanelComponent(defaultMinimized = true) {
          * `applyConfig` skips any id already in its registration cache, so without
          * clearing it first this button would report success while the game kept
          * every stale definition. Clearing first makes Apply mean what it says.
+         *
+         * What it still cannot mean is "un-register". The engine has no unregister
+         * for content kinds — only `ui.unregister`, for overlays — so an entry
+         * *deleted* from the config stays live in the game until a reload. That
+         * is reported instead of glossed over, because the alternative is an
+         * author deleting a structure, hitting Apply, and finding it still in the
+         * build menu with nothing anywhere saying why.
+         *
+         * The snapshot has to be taken before the cache is cleared — clearing is
+         * the first thing that happens, and the list of what was registered is
+         * exactly what it destroys.
          */
         const applyNow = () => {
+            const cfgNow = loadConfig();
+            const prev = snapshotRegistered();
             clearRegistrationCache();
-            applyConfig(loadConfig());
-            skApi.toast("Config re-applied to game");
+            applyConfig(cfgNow);
+            const stale = staleAfter(cfgNow, prev);
+            if (stale.length > 0) {
+                const names = stale.slice(0, 3).map((s) => s.id).join(", ");
+                const more = stale.length > 3 ? ` +${stale.length - 3} more` : "";
+                skApi.toast(
+                    `Applied, but the game still holds ${stale.length} removed ` +
+                        `entr${stale.length > 1 ? "ies" : "y"} (${names}${more}). ` +
+                        `Reload the game to clear.`,
+                );
+            } else {
+                skApi.toast("Config re-applied to game");
+            }
         };
 
         const totalEntries = MENU_GROUPS.flatMap((g) => g.categories).reduce(
@@ -1521,7 +1802,7 @@ export function createPanelComponent(defaultMinimized = true) {
                                 onClick: () => goGroup(g.key),
                             },
                             g.label,
-                        ),
+                        )
                     ),
                 ),
                 h(
@@ -1554,9 +1835,11 @@ export function createPanelComponent(defaultMinimized = true) {
                         // could outlive the form that drew it.
                         key: `${cat}:${mode}`,
                     },
-                    cat === "json"
-                        ? renderJson()
-                        : cat === "handlers"
+                    // Above the screen, not inside it, so it is the first thing
+                    // on the panel in both the list and the form — and so it does
+                    // not get remounted with either.
+                    panelNatives(cat),
+                    cat === "json" ? renderJson() : cat === "handlers"
                         ? renderHandlersTab({
                             h: h as never,
                             cfg: cfg as unknown as Record<string, unknown>,
@@ -1571,6 +1854,14 @@ export function createPanelComponent(defaultMinimized = true) {
                             cfg: cfg as unknown as Record<string, unknown>,
                             onGoTo: (key) => goCategory(key as Tab),
                             onCopy: copyText,
+                            filter: helpFilter,
+                            setFilter: setHelpFilter,
+                        })
+                        : cat === "draws"
+                        ? renderDraws({
+                            h: h as never,
+                            cfg: cfg as unknown as Record<string, unknown>,
+                            onGoTo: (key) => goCategory(key as Tab),
                         })
                         : cat === "map"
                         ? renderConfigMap({
@@ -1645,10 +1936,3 @@ export function ConfiguratorPanel(): unknown {
         "My Own Mod — click to open",
     );
 }
-
-
-
-
-
-
-

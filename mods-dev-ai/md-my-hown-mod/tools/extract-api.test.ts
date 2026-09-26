@@ -7,16 +7,8 @@
  * the real source and against hand-written fixtures.
  */
 
-import {
-    assert,
-    assertEquals,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
-import {
-    countParams,
-    extractApi,
-    splitParams,
-    summarise,
-} from "./extract-api.ts";
+import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { countParams, extractApi, splitParams, summarise } from "./extract-api.ts";
 
 const HERE = new URL(".", import.meta.url).pathname;
 const REPO = HERE.replace(/\/$/, "").split("/").slice(0, -3).join("/") + "/";
@@ -217,4 +209,3 @@ Deno.test("summarise counts every entry exactly once", async () => {
     assertEquals(s.namespaces, Object.keys(idx).length);
     assert("elements" in idx, "elements should be an indexed namespace");
 });
-

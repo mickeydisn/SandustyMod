@@ -124,7 +124,8 @@ export const RELATIONS: Relation[] = [
         from: "interactions",
         field: "destroyerItems",
         to: "items",
-        note: "Items this element destroys when used. A corrosion element eats through a drill bit this way.",
+        note:
+            "Items this element destroys when used. A corrosion element eats through a drill bit this way.",
         strength: "optional",
         many: true,
     },
@@ -219,6 +220,59 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
     {
+        // The required owner of the link. The engine only ever reads the *tech*
+        // side, so this is the panel's own handle — and the side an author reasons
+        // from ("this one is behind research").
+        from: "structures",
+        field: "unlockNode",
+        to: "unlockNodes",
+        note: "The node that gates this structure.",
+        strength: "required",
+        many: false,
+    },
+    {
+        // A node either builds a tech of its own or borrows one. The borrow is the
+        // only link *out* of a node, and omitting it would leave a borrowed node
+        // looking like a self-contained one in the graph.
+        from: "unlockNodes",
+        field: "techId",
+        to: "techs",
+        note: "An existing engine tech to use instead of building one.",
+        strength: "optional",
+        many: false,
+    },
+    {
+        // Read-only in the graph's terms: the link is stored on each structure and
+        // this row is the reverse view of it. Declared so the graph can show what a
+        // node holds back, and marked optional because the *authoritative* edge is
+        // the structure → node one above.
+        from: "unlockNodes",
+        field: "gatesStructures",
+        to: "structures",
+        note: "Structures this node gates (derived — set it on the structure).",
+        strength: "optional",
+        many: true,
+    },
+    {
+        // A self-built node places itself in the tech grid. Declared against the
+        // category it is read from, which is `unlockNodes` and not `techs` — the
+        // engine tech it produces is a *result*, not the thing being edited.
+        from: "unlockNodes",
+        field: "parentId",
+        to: "techs",
+        note: "Where the built tech node sits in the grid.",
+        strength: "optional",
+        many: false,
+    },
+    {
+        from: "unlockNodes",
+        field: "requires",
+        to: "techs",
+        note: "Other research the built tech node needs first.",
+        strength: "optional",
+        many: true,
+    },
+    {
         from: "techs",
         field: "unlockItems",
         to: "items",
@@ -238,7 +292,8 @@ export const RELATIONS: Relation[] = [
         from: "techs",
         field: "parentId",
         to: "techs",
-        note: "Another tech that must be researched first. Self-referential — this is what makes a tree.",
+        note:
+            "Another tech that must be researched first. Self-referential — this is what makes a tree.",
         strength: "optional",
     },
     {
@@ -277,6 +332,42 @@ export const RELATIONS: Relation[] = [
         field: "structureId",
         to: "structures",
         note: "The structure that carries this energy node.",
+        strength: "required",
+    },
+    // ── structure behaviours ──
+    //
+    // `api.structureBehaviors` takes *structure ids*, not handler keys: a
+    // conveyor is registered against one structure, a launcher against three
+    // (`upType` / `leftType` / `rightType`). They sit inside the behaviour's
+    // `definition` object because that is the shape the engine wants, but they
+    // are ordinary references and belong in the graph like any other — a typo
+    // here means a conveyor that quietly transports nothing.
+    {
+        from: "behaviors",
+        field: "structureId",
+        to: "structures",
+        note: "The structure this conveyor moves items for.",
+        strength: "required",
+    },
+    {
+        from: "behaviors",
+        field: "upType",
+        to: "structures",
+        note: "The structure a launcher fires upwards.",
+        strength: "required",
+    },
+    {
+        from: "behaviors",
+        field: "leftType",
+        to: "structures",
+        note: "The structure a launcher fires leftwards.",
+        strength: "required",
+    },
+    {
+        from: "behaviors",
+        field: "rightType",
+        to: "structures",
+        note: "The structure a launcher fires rightwards.",
         strength: "required",
     },
     {

@@ -6,10 +6,7 @@
  * (`api.storage.get<T>(k)`), JSDoc examples, and the wrapper-vs-host split.
  */
 
-import {
-    assert,
-    assertEquals,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
     classifyApi,
     countArgs,
@@ -50,8 +47,7 @@ Deno.test("countArgs ignores commas inside literals", () => {
 // --------------------------------------------------------- comment stripping
 
 Deno.test("stripComments blanks comments and strings but keeps offsets", () => {
-    const src =
-        'a; // api.fake.one()\nb; /* api.fake.two() */ c; "api.fake.three()";';
+    const src = 'a; // api.fake.one()\nb; /* api.fake.two() */ c; "api.fake.three()";';
     const out = stripComments(src);
     assertEquals(out.length, src.length, "offsets must be preserved");
     assertEquals(out.split("\n").length, src.split("\n").length);
@@ -128,7 +124,7 @@ Deno.test("a code example inside JSDoc is not parsed as a declaration", () => {
         "  /**",
         "   * @example",
         "   * ```ts",
-        "   * api.structures.processing.register(\"x\", { a: 1 });",
+        '   * api.structures.processing.register("x", { a: 1 });',
         "   * ```",
         "   */",
         "  export function register(id: string, d: object): void;",
@@ -273,5 +269,3 @@ Deno.test("classifyApi tells the wrapper apart from the host handle", () => {
     const dotted = classifyApi("const v = g()?.api?.ui?.toast?.(m);");
     assertEquals(dotted.host, true);
 });
-
-

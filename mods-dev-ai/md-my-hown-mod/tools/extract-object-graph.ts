@@ -21,10 +21,10 @@
  */
 
 import {
-    buildIndex,
-    parseDts,
     type ApiType,
+    buildIndex,
     type Namespace,
+    parseDts,
     type PublicIndex,
 } from "./extract-public-api.ts";
 
@@ -78,13 +78,7 @@ export function classifyIdSpace(name: string, rhs: string, doc = ""): IdSpace {
         else if (/TaggedNumber</.test(p)) numeric = true;
         else if (/[A-Za-z0-9_]Enum$/.test(p)) numeric = true;
     }
-    const role: IdRole = numeric && stringy
-        ? "ref"
-        : numeric
-        ? "handle"
-        : stringy
-        ? "id"
-        : "other";
+    const role: IdRole = numeric && stringy ? "ref" : numeric ? "handle" : stringy ? "id" : "other";
     return { name, role, definition: rhs, doc };
 }
 
@@ -186,9 +180,29 @@ export interface Edge {
 
 /** A type name that is a primitive, a container, or a TypeScript utility. */
 const NOISE = new Set([
-    "string", "number", "boolean", "void", "unknown", "any", "never", "object",
-    "Record", "Partial", "Required", "Readonly", "Array", "Map", "Set", "Date",
-    "PropertyKey", "Function", "Promise", "Error", "RegExp", "Symbol", "BigInt",
+    "string",
+    "number",
+    "boolean",
+    "void",
+    "unknown",
+    "any",
+    "never",
+    "object",
+    "Record",
+    "Partial",
+    "Required",
+    "Readonly",
+    "Array",
+    "Map",
+    "Set",
+    "Date",
+    "PropertyKey",
+    "Function",
+    "Promise",
+    "Error",
+    "RegExp",
+    "Symbol",
+    "BigInt",
 ]);
 
 /** Pull candidate type references out of a field's declared type text. */
@@ -233,8 +247,7 @@ export function buildGraph(namespaces: Namespace[]): Graph {
     }
     const idSpace = classifyIdSpaceAll(defs);
 
-    const roleOf = (name: string): IdRole =>
-        idSpace.find((s) => s.name === name)?.role ?? "other";
+    const roleOf = (name: string): IdRole => idSpace.find((s) => s.name === name)?.role ?? "other";
 
     const edges: Edge[] = [];
     for (const t of types.values()) {
@@ -267,7 +280,6 @@ export function buildGraph(namespaces: Namespace[]): Graph {
         leaves: [...types.keys()].filter((n) => !referenced.has(n)).sort(),
     };
 }
-
 
 // ------------------------------------------------ mod vs engine definitions
 
@@ -357,9 +369,7 @@ export function diffMod(
             openEnded: theirs.openEnded,
             // an open-ended shape permits unknown fields, so nothing the mod
             // stores can be wrong here
-            extra: theirs.openEnded
-                ? []
-                : [...myNames].filter((n) => !theirNames.has(n)).sort(),
+            extra: theirs.openEnded ? [] : [...myNames].filter((n) => !theirNames.has(n)).sort(),
             missing,
             shared: [...myNames].filter((n) => theirNames.has(n)).sort(),
         });
@@ -461,15 +471,15 @@ function render(graph: Graph): string {
     out.push("## References", "");
     out.push("| from | field | to | via | |");
     out.push("|---|---|---|---|---|");
-    for (const e of graph.edges.slice().sort((a, b) =>
-        a.from.localeCompare(b.from) || a.field.localeCompare(b.field)
-    )) {
+    for (
+        const e of graph.edges.slice().sort((a, b) =>
+            a.from.localeCompare(b.from) || a.field.localeCompare(b.field)
+        )
+    ) {
         const field = `\`${e.field}\`${e.optional ? "?" : ""}`;
         const via = `\`${e.via.slice(0, 60)}\``;
         out.push(
-            `| \`${e.from}\` | ${field} | \`${e.to}\` | ${via} | ${
-                ROLE_BADGE[e.role]
-            } |`,
+            `| \`${e.from}\` | ${field} | \`${e.to}\` | ${via} | ${ROLE_BADGE[e.role]} |`,
         );
     }
     out.push("");
@@ -540,4 +550,3 @@ if (import.meta.main) {
     console.log(`-> ${OUT_DIR}OBJECT-GRAPH.md`);
     console.log(`-> ${OUT_DIR}object-graph.json`);
 }
-

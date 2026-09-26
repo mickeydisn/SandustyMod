@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "jsr:@std/assert";
 import {
+    collect,
     COMPOSITE,
     INDIRECT,
-    collect,
     readMapping,
     render,
     statementsOf,
@@ -18,7 +18,9 @@ Deno.test("statementsOf splits on top-level semicolons only", () => {
 });
 
 Deno.test("statementsOf keeps a nested generic intact", () => {
-    const stmts = statementsOf('const c = optJson<Record<string, unknown>>(\n  form,\n  "kJson",\n);\nnext();');
+    const stmts = statementsOf(
+        'const c = optJson<Record<string, unknown>>(\n  form,\n  "kJson",\n);\nnext();',
+    );
     assertEquals(stmts.length, 2);
     assert(stmts[0]!.includes("optJson<Record<string, unknown>>"));
 });

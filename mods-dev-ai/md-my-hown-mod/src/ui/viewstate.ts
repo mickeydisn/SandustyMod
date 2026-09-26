@@ -14,7 +14,7 @@
  * `panel.ts`, so adding a new piece of view state without adding it here — or
  * here without wiring it — is a failing test rather than a bug report.
  */
-import { initialHandlersState, type HandlersTabState } from "./handlers-panel.ts";
+import { type HandlersTabState, initialHandlersState } from "./handlers-panel.ts";
 
 export type ViewMode = "list" | "form";
 

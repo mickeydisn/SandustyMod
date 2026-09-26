@@ -1,13 +1,13 @@
 import { assert, assertEquals } from "jsr:@std/assert";
 import {
-    DEAD_PROBES,
-    MOD_OWN_KEYS,
-    TYPINGS_OMIT,
     argCount,
     coveredConfigTypes,
+    DEAD_PROBES,
     indexPublic,
     isRealCall,
     loadArtefacts,
+    MOD_OWN_KEYS,
+    TYPINGS_OMIT,
 } from "./verify.ts";
 
 const a = loadArtefacts();

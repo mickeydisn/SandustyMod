@@ -119,7 +119,6 @@ Deno.test("hidden elements can still be asked for", () => {
     assert(v.includes("_resolved"), "includeHidden did not include the hidden element");
 });
 
-
 Deno.test("an element with no readable definition still appears", () => {
     // Steam has no definition object, so only the enum fallback can supply it —
     // and only if the fallback resolves a real id.

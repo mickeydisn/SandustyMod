@@ -3,13 +3,30 @@
  */
 import { api, getSandkit, safe } from "./api.ts";
 import { loadConfig } from "./config/store.ts";
+import type { Tab } from "./ui/schema.ts";
+import { allUnlockNodes, DEFAULT_UNLOCK_NODE } from "./ui/tech-link.ts";
 import type { HandlerMeta, HandlerSlot } from "./hooks/handler-registry.ts";
 // Imported as a value, not a type: `handler-registry.ts` has no imports of its
 // own, so this cannot cycle, and the pickers must work even when the hook
 // module has not yet published its `__mdHandlers` global.
-import { HANDLER_META, allHandlerTypes, itemActionHandlersFor } from "./hooks/handler-registry.ts";
+import { allHandlerTypes, HANDLER_META, itemActionHandlersFor } from "./hooks/handler-registry.ts";
 
-export type Opt = { value: string; label: string; color?: string };
+/**
+ * One choice for a reference field.
+ *
+ * `source` is not decoration: it is what lets the panel tell the user how many
+ * of the available ids the *game* already has, and which ones this mod added.
+ * Every list sets it, and the "native" summary box under a field reads it. A
+ * picker that cannot say "38 in the game, 2 yours" leaves the user guessing
+ * whether the list is complete — which is the whole question when you are
+ * wondering what id to type, and why the field must not accept typing at all.
+ */
+export type Opt = {
+    value: string;
+    label: string;
+    color?: string;
+    source?: "game" | "mod";
+};
 
 function sk(): any {
     return getSandkit();
@@ -97,7 +114,13 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
     const types = (safe(() => api.elements?.getRegisteredTypes?.()) ?? []) as number[];
     for (const t of types) {
         const def = safe(() => api.elements?.getDefinitionByType?.(t)) as
-            | { id?: string; name?: string; nameKey?: string; hidden?: boolean; metaColor?: unknown }
+            | {
+                id?: string;
+                name?: string;
+                nameKey?: string;
+                hidden?: boolean;
+                metaColor?: unknown;
+            }
             | undefined;
         // `getIdByType` is the documented way from a type number to an id, and
         // unlike the enum name it is never a guess.
@@ -107,11 +130,13 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
             hidden.add(String(id));
             if (!includeHidden) continue;
         }
-        const name = def?.name ?? safe(() => api.elements?.getNameByType?.(t)) ?? def?.nameKey ?? id;
+        const name = def?.name ?? safe(() => api.elements?.getNameByType?.(t)) ?? def?.nameKey ??
+            id;
         map.set(String(id), {
             value: String(id),
             label: String(name),
             color: colorFromMeta(def?.metaColor),
+            source: "game",
         });
     }
 
@@ -124,7 +149,7 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
         const id = safe(() => api.elements?.getIdByType?.(type));
         if (!id || map.has(String(id))) continue;
         if (hidden.has(String(id))) continue;
-        map.set(String(id), { value: String(id), label: name });
+        map.set(String(id), { value: String(id), label: name, source: "game" });
     }
 
     // ── this mod's config, whether or not it has been registered yet ──
@@ -133,10 +158,65 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
         map.set(el.id, {
             value: el.id,
             label: `${el.name || el.id} (this mod)`,
+            source: "mod",
             color: typeof el.metaColor === "string" ? el.metaColor : colorFromMeta(el.metaColor),
         });
     }
 
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * Energy network ids: the engine's default, plus whatever this mod defines.
+ *
+ * The engine has no "register a network" call and no way to enumerate the ones
+ * in play — `options.energyType` is a bare string. So the only source of truth
+ * is our own config, plus the one name the game ships with.
+ *
+ * That default is seeded in deliberately. Every existing config that never
+ * mentions a network means the default, so a list built only from the config
+ * would not contain the value those configs already use, and the field would
+ * open on a blank select and push the user into inventing a duplicate of the
+ * network their machines are already on.
+ */
+export const DEFAULT_ENERGY_NETWORK = "power";
+
+/**
+ * Per panel: the objects that already exist in the game and are of *this* kind.
+ *
+ * Only five screens can answer this, because only five have a registry to read.
+ * `api.elements`, `api.structures`, `api.items` and the terrain list can be
+ * enumerated; a recipe, a trigger or a signal is something the mod defines, and
+ * there is nothing in the game to enumerate before you do. Asking "what already
+ * exists?" on those screens has the answer "nothing yet", which the empty state
+ * already says.
+ *
+ * This is the whole-list version of the per-field native box, placed where the
+ * question actually gets asked — at the top of the panel, before you have picked
+ * a field — rather than only under each picker after you have got there.
+ */
+export const PANEL_NATIVES: Partial<Record<Tab, () => Opt[]>> = {
+    elements: () => listElements(),
+    structures: () => listStructures(),
+    items: () => listItems(),
+    terrains: () => listTerrains(),
+    sprites: () => listSpriteIds(),
+};
+
+export function listEnergyNetworkOpts(): Opt[] {
+    const map = new Map<string, Opt>();
+    map.set(DEFAULT_ENERGY_NETWORK, {
+        value: DEFAULT_ENERGY_NETWORK,
+        label: `${DEFAULT_ENERGY_NETWORK} — the game's own network`,
+    });
+    for (const n of loadConfig().energyNetworks ?? []) {
+        if (!n?.id) continue;
+        map.set(n.id, {
+            value: n.id,
+            label: n.name ? `${n.name} (${n.id})` : `${n.id} (this mod)`,
+            source: "mod",
+        });
+    }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -161,8 +241,7 @@ export function listStructures(): Opt[] {
         const arr = Array.isArray(raw) ? raw : raw instanceof Set ? [...raw] : [];
         for (const t of arr) {
             const def = safe(() => api.structures?.getDefinitionByType?.(t)) as any;
-            const id =
-                def?.id ??
+            const id = def?.id ??
                 safe(() => api.structures?.getIdByType?.(t)) ??
                 safe(() => api.structures?.getTypeName?.(t)) ??
                 String(t);
@@ -180,7 +259,11 @@ export function listStructures(): Opt[] {
 
     for (const st of loadConfig().structures ?? []) {
         if (st?.id) {
-            map.set(st.id, { value: st.id, label: `${st.name || st.id} (config)` });
+            map.set(st.id, {
+                value: st.id,
+                label: `${st.name || st.id} (this mod)`,
+                source: "mod",
+            });
         }
     }
 
@@ -222,7 +305,8 @@ export function listItems(): Opt[] {
         map.set(v, { value: v, label: v });
     }
     for (const it of loadConfig().items ?? []) {
-        if (it?.id) map.set(it.id, { value: it.id, label: `${it.name || it.id} (this mod)` });
+        if (!it?.id) continue;
+        map.set(it.id, { value: it.id, label: `${it.name || it.id} (this mod)`, source: "mod" });
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -246,12 +330,12 @@ export function listTerrains(): Opt[] {
         if (type === undefined) continue;
         const id = safe(() => api.terrains?.getIdByType?.(type));
         if (!id || map.has(String(id))) continue;
-        map.set(String(id), { value: String(id), label: name });
+        map.set(String(id), { value: String(id), label: name, source: "game" });
     }
 
     for (const t of loadConfig().terrains ?? []) {
         if (!t?.id) continue;
-        map.set(t.id, { value: t.id, label: `${t.name || t.id} (this mod)` });
+        map.set(t.id, { value: t.id, label: `${t.name || t.id} (this mod)`, source: "mod" });
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -355,15 +439,13 @@ export const DRAW_FUNCTIONS: DrawFnMeta[] = [
     {
         key: "outline",
         label: "Outline the footprint",
-        doc:
-            "Draws a thin box around the whole footprint, then lets the sprite render normally underneath. Useful when a large structure's sprite makes its true extent hard to see.",
+        doc: "Draws a thin box around the whole footprint, then lets the sprite render normally underneath. Useful when a large structure's sprite makes its true extent hard to see.",
         passthrough: false,
     },
     {
         key: "hidden",
         label: "Draw nothing",
-        doc:
-            "Handles the frame without drawing it, so the structure is invisible but still placed and still simulates.",
+        doc: "Handles the frame without drawing it, so the structure is invisible but still placed and still simulates.",
         passthrough: false,
     },
 ];
@@ -418,9 +500,26 @@ export function listBuildModeTypes(): Opt[] {
  * Free-form strings are allowed by the engine, but these 20 get localized labels.
  */
 const STRUCTURE_CATEGORIES = [
-    "misc", "logic", "blocks", "testBlocks", "construction", "debug", "drones",
-    "energy", "excavation", "logistics", "production", "tools", "transportation",
-    "utility", "weapons", "economy", "fluids", "thermal", "lighting", "special",
+    "misc",
+    "logic",
+    "blocks",
+    "testBlocks",
+    "construction",
+    "debug",
+    "drones",
+    "energy",
+    "excavation",
+    "logistics",
+    "production",
+    "tools",
+    "transportation",
+    "utility",
+    "weapons",
+    "economy",
+    "fluids",
+    "thermal",
+    "lighting",
+    "special",
 ] as const;
 
 /**
@@ -493,8 +592,14 @@ export function listStructureCategories(): Opt[] {
  * "Structure recipe ID \"…\" is not supported." (doc/api/shared/api.recipes.md)
  */
 export const RECIPE_MACHINES = [
-    "planterBox", "shaker", "kineticPress", "condenser",
-    "steamDryer", "synthesizer", "snowmaker", "smelter",
+    "planterBox",
+    "shaker",
+    "kineticPress",
+    "condenser",
+    "steamDryer",
+    "synthesizer",
+    "snowmaker",
+    "smelter",
 ] as const;
 
 export function listRecipeMachines(): Opt[] {
@@ -572,7 +677,8 @@ export function listSpriteIds(): Opt[] {
         const lib = LIBRARY_ICONS.find((i) => i.path === sp.path);
         map.set(sp.id, {
             value: sp.id,
-            label: lib ? `${sp.id} → ${lib.name}` : `${sp.id} (config)`,
+            label: lib ? `${sp.id} → ${lib.name}` : `${sp.id} (this mod)`,
+            source: "mod",
         });
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -640,7 +746,10 @@ export function listProcessorKeys(): Opt[] {
             return m.listProcessorKeys().map((k: string) => ({ value: k, label: k }));
         }
     } catch { /* */ }
-    return [{ value: "processorLog", label: "processorLog" }, { value: "processorNoop", label: "processorNoop" }];
+    return [{ value: "processorLog", label: "processorLog" }, {
+        value: "processorNoop",
+        label: "processorNoop",
+    }];
 }
 
 // ── Domain-scoped handler pickers ─────────────────────────────────────────────
@@ -760,6 +869,23 @@ export function handlerDoc(key: string): string | undefined {
  * `excludeSuffix` drops the node being edited: the form only holds the id
  * *suffix*, so a tech can never list itself as its own prerequisite.
  */
+/**
+ * Unlock nodes, for the structure picker.
+ *
+ * The built-in "Unlock by default" is first and is *not* in the config — it is
+ * the meaning of "available from the start", so it is offered as a real,
+ * selectable option rather than as an absent field. See `src/ui/tech-link.ts`.
+ */
+export function listUnlockNodes(): Opt[] {
+    return allUnlockNodes(loadConfig()).map((n) => ({
+        value: n.id,
+        label: n.kind === "always"
+            ? `${n.name || n.id} — no research`
+            : `${n.name || n.id} — research${n.cost === undefined ? "" : `, ${n.cost}`}`,
+        source: n.id === DEFAULT_UNLOCK_NODE ? "mod" : "mod",
+    }));
+}
+
 export function listTechIds(excludeSuffix?: string): Opt[] {
     const ex = excludeSuffix?.trim();
     return (loadConfig().techs ?? [])
@@ -778,6 +904,43 @@ export function listTechIds(excludeSuffix?: string): Opt[] {
  * `TechDefinition.branch` is a plain string in the engine — there is no branch
  * enum to read — so this is derived from our own techs plus a custom escape.
  */
+/**
+ * Upgrade category ids.
+ *
+ * Unlike almost every other list here, this one **cannot** read the game's
+ * categories. `api.upgrades.registerCategory` is write-only — there is no
+ * `listCategories` to call — so the game may well have categories we have never
+ * heard of and there is no way to find out from inside the mod.
+ *
+ * That is a real limit and it is worth being explicit about rather than papering
+ * over with a free-text box: the picker offers what we *do* know, which is the
+ * categories this mod registers plus `tools`, the id the field has always
+ * defaulted to. A value the game has and we do not still has to be typed, and
+ * the hint says so — an unlabelled escape hatch reads as an oversight, whereas
+ * a labelled one is a documented boundary.
+ */
+export function listUpgradeCategoryIds(): Opt[] {
+    const map = new Map<string, Opt>();
+    // `tools` is the documented default and the field's own `def`. It is the
+    // one game category worth naming, because an upgrade that forgets to set it
+    // lands here.
+    map.set("tools", { value: "tools", label: "tools (the game's default)", source: "game" });
+    for (const c of loadConfig().upgradeCategories ?? []) {
+        if (!c?.id) continue;
+        map.set(c.id, {
+            value: c.id,
+            label: c.name ? `${c.name} (${c.id})` : `${c.id} (this mod)`,
+            source: "mod",
+        });
+    }
+    // The documented way through, for a category the game has and we cannot see.
+    map.set("__custom__", {
+        value: "__custom__",
+        label: "custom category (the game may have more than we can list)",
+    });
+    return [...map.values()].sort((a, b) => a.value.localeCompare(b.value));
+}
+
 export function listTechBranches(): Opt[] {
     const seen = new Map<string, string>();
     for (const t of loadConfig().techs ?? []) {

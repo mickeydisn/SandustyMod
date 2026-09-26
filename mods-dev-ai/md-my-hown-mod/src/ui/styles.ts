@@ -267,6 +267,23 @@ export const sectionBox: React.CSSProperties = {
     paddingTop: 8,
 };
 
+/** The structure's unlock relation, said in words next to the "Create" action. */
+export const unlockRow: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingTop: 8,
+    borderTop: "1px solid rgba(90, 105, 140, 0.3)",
+};
+
+export const unlockText: React.CSSProperties = {
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 1.4,
+    color: "#9fb0c8",
+};
+
 export const sectionTitle: React.CSSProperties = {
     fontSize: 10,
     textTransform: "uppercase",
@@ -308,6 +325,53 @@ export const errorText: React.CSSProperties = {
 export const hintBelow: React.CSSProperties = {
     fontSize: 10,
     color: "#79829a",
+};
+
+/**
+ * The native list under a reference field.
+ *
+ * Deliberately quiet: it is context for the picker above it, not a control the
+ * eye should land on. The toggle reads as text until hovered, so a form full of
+ * them does not turn into a row of competing buttons.
+ */
+export const nativeBox: React.CSSProperties = {
+    marginTop: 3,
+};
+
+export const nativeToggle: React.CSSProperties = {
+    background: "none",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    fontSize: 10,
+    color: "#6b788a",
+    textAlign: "left",
+};
+
+export const nativeList: React.CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 3,
+    maxHeight: 132,
+    overflowY: "auto",
+    marginTop: 4,
+    padding: 5,
+    border: "1px solid rgba(120,140,180,0.22)",
+    borderRadius: 4,
+    background: "rgba(12,16,26,0.5)",
+};
+
+export const nativeItem: React.CSSProperties = {
+    fontSize: 10,
+    color: "#a9b4c9",
+    padding: "1px 4px",
+    borderRadius: 3,
+    background: "rgba(90,120,190,0.10)",
+};
+
+export const nativeItemMod: React.CSSProperties = {
+    color: "#cfe0ff",
+    background: "rgba(120,190,255,0.22)",
 };
 
 export const footerBar: React.CSSProperties = {

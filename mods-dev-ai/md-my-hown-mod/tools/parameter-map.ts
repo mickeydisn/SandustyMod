@@ -297,9 +297,12 @@ async function readDefinitions(): Promise<
                     else if (text[i] === "}") depth--;
                 }
                 seen.add(iface);
-                out.set(iface, paramsOf(parseInterface(
-                    text.slice(m.index! + m[0].length, i),
-                )));
+                out.set(
+                    iface,
+                    paramsOf(parseInterface(
+                        text.slice(m.index! + m[0].length, i),
+                    )),
+                );
                 raw.set(
                     iface,
                     parseInterface(text.slice(m.index! + m[0].length, i)),

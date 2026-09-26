@@ -17,7 +17,7 @@ A `—` in the **stores** column means the control stores nothing of its
 own: `advancedJson` is the raw escape hatch, a `*On` toggle only gates its
 siblings, and a `*Custom` field is the fallback for a picker.
 
-**20 tabs, 184 fields.**
+**22 tabs, 206 fields.**
 
 | tab | stored under | api call | fields |
 |---|---|---|---|
@@ -27,16 +27,18 @@ siblings, and a `*Custom` field is the fallback for a picker.
 | [Machine recipes](#recipes) | `recipes` | `structures.recipes.register` | 10 |
 | [Processors](#processing) | `processing` | `structures.processing.register` | 5 |
 | [Contact reactions](#contacts) | `contacts` | `reactions.registerContact` | 6 |
-| [Element ↔ structure](#interactions) | `interactions` | — | 12 |
+| [Tooltips](#interactions) | `interactions` | — | 12 |
 | [Terrains](#terrains) | `terrains` | `terrains.register` | 16 |
+| [Unlock nodes](#unlockNodes) | `unlockNodes` | — | 15 |
 | [Tech nodes](#techs) | `techs` | `tech.registerNode`, `tech.updateDefinition` | 14 |
 | [Upgrades](#upgrades) | `upgrades` | `upgrades.register` | 11 |
 | [Upgrade categories](#categories) | `upgradeCategories` | `upgrades.registerCategory` | 6 |
 | [Input bindings](#inputs) | `inputBindings` | — | 9 |
 | [Signals](#signals) | `signals` | `signals.register` | 4 |
 | [Triggers](#triggers) | `triggers` | `triggers.register` | 5 |
-| [Behaviours](#behaviors) | `structureBehaviors` | `conveyors.registerType`, `launchers.registerType` | 3 |
-| [Energy types](#energy) | `energyTypes` | `energy.registerType` | 7 |
+| [Behaviours](#behaviors) | `structureBehaviors` | `conveyors.registerType`, `launchers.registerType` | 7 |
+| [Energy interactions](#energy) | `energyTypes` | `energy.registerType` | 7 |
+| [Energy networks](#networks) | `energyNetworks` | — | 3 |
 | [Excavation profiles](#excavation) | `excavationProfiles` | `excavation.registerProfile` | 5 |
 | [Projectiles](#projectiles) | `projectiles` | `projectiles.register` | 4 |
 | [Sprites](#sprites) | `sprites` | — | 3 |
@@ -70,7 +72,7 @@ Stored under `elements`, applied through ``elements.register``.
 | `collectable` | Collectable | `collectable` | not read | — | collector value path |
 | `hidden` | Hidden | `hidden` | not read | — | — |
 | `visibleInPicker` | Visible in picker | `visibleInPicker` | not read | — | — |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Structures
 
@@ -95,8 +97,8 @@ Stored under `structures`, applied through ``structures.register``.
 | `dirV` | Vertical | `buildModes[].directions` | not read | — | — |
 | `dirD` | Diagonal | `buildModes[].directions` | not read | — | — |
 | `shapeJson` | Shape (4×4) | `shape` | read | — | 1 = occupied cell, 0 = empty. Use the buttons for solid / empty / clear. |
-| `alwaysUnlocked` | Always unlocked | `alwaysUnlocked` | not read | — | show in the build menu with no research — otherwise unlock it from a tech node |
-| `hideFromBuildMenu` | Hide from build menu | `hideFromBuildMenu` | not read | — | — |
+| `hideFromBuildMenu` | Hide from build menu | `hideFromBuildMenu` | not read | — | unhide to list it — a structure with no unlock tech is available from the start |
+| `unlockNode` | Unlock node | `unlockNode` | not read | — | every structure names one — the node decides whether research is needed |
 | `disallowPick` | Disallow pick | `disallowPick` | not read | — | — |
 | `rejectWhenBlocked` | Reject when blocked | `rejectWhenBlocked` | not read | — | refuse placement if any footprint cell is occupied |
 | `tooltipHoverJson` | Hover tooltip | `tooltipHover` | not read | object JSON | custom tooltip driven by structure data fields |
@@ -106,7 +108,7 @@ Stored under `structures`, applied through ``structures.register``.
 | `drawKey` | Custom draw | `draw` | read | — | draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game. |
 | `skipCopyData` | Skip data copy | `skipCopyData` | read | — | do not copy grid data on placement (the engine also sets this when copyData is false) |
 | `defaultDataJson` | Data for each placed copy | `defaultData` | read | object JSON | the data object every placed copy starts with; the hover tooltip reads dataField1..4 back out of it. Unrelated to elements. |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Items
 
@@ -130,7 +132,7 @@ Stored under `items`, applied through ``items.register``.
 | `energyCost` | Energy cost | `energyCost` | not read | min 0, max 10000, whole | energy drawn per use (api.items energyCost) |
 | `spriteId` | Sprite | `sprite.id` | not read | — | required by the engine — add it in Assets & hooks → Sprites |
 | `spriteType` | Sprite type | `sprite.type` | not read | — | — |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Machine recipes
 
@@ -151,7 +153,7 @@ Stored under `recipes`, applied through ``structures.recipes.register``.
 | `outputsAbove` | Outputs above | `outputsAbove` | not read | — | dropped on top of the shaker |
 | `outputsBelow` | Outputs below | `outputsBelow` | not read | — | dropped below the shaker |
 | `minVelocity` | Min downward velocity | `minimumDownwardVelocity` | not read | min 0, max 10000, whole | cells per second the input must fall at |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Processors
 
@@ -167,7 +169,7 @@ Stored under `processing`, applied through ``structures.processing.register``.
 | `structureType` | Structure type | `structureType` | not read | — | process() runs for every placed instance of this structure type |
 | `intervalMs` | Interval (ms) | `intervalMs` | not read | min 16, max 60000, whole | must be > 0 — how often the callback fires per instance |
 | `handlerKey` | Process handler | `handlerKey` | not read | — | process(structure, context) is code — JSON can't store callbacks, pick a preset |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Contact reactions
 
@@ -186,11 +188,11 @@ Stored under `contacts`, applied through ``reactions.registerContact``.
 | `outputB` | Output B | `outputB` | not read | — | what input B becomes (∅ = consumed) |
 | `orientation` | Orientation | `orientation` | not read | — | — |
 
-## Element ↔ structure
+## Tooltips
 
 <a id="interactions"></a>
 
-Extra interaction info attached to an element.
+The hover text and behaviour an element or terrain shows in-game.
 
 Stored under `interactions`.
 
@@ -234,7 +236,33 @@ Stored under `terrains`, applied through ``terrains.register``.
 | `outputChance` | Drop chance | `output.chance` | not read | min 0, max 1 | — |
 | `flammable` | Flammable | `flammable` | not read | — | — |
 | `materialId` | Material id | `materialId` | read | — | must be 101–149; every value is an obstacle, so the engine's next-free id is the safe pick |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
+
+## Unlock nodes
+
+<a id="unlockNodes"></a>
+
+What each structure is gated behind: free from the start, or behind research.
+
+Stored under `unlockNodes`.
+
+| field | label | stores | engine | rules | notes |
+|---|---|---|---|---|---|
+| `idSuffix` | Id | `id` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,62}$` | stored as md-my-hown-mod:<id> |
+| `name` | Name | `name` | not read | ≤ 64 chars | — |
+| `kind` | Kind | `(mod-owned: always | tech)` | not read | — | a tech node is a real research step in the game's tech tree |
+| `useExistingTech` | Reuse an engine tech | `requires` | not read | — | off: this node builds its own tech. on: it borrows one already in the tree. |
+| `techId` | Engine tech to reuse | `(borrows this engine tech instead of building one)` | not read | — | several nodes can sit behind the same research step |
+| `cost` | Cost | `cost` | not read | min 0, max 999999, whole | — |
+| `currencyType` | Currency | `currencyType` | not read | — | TechDefinition.currencyType — a free string in the engine |
+| `currencyTypeCustom` | Currency id | `—` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,31}$`, ≤ 32 chars | — |
+| `branch` | Branch | `branch` | not read | — | TechDefinition.branch — usually copied from the parent node |
+| `branchCustom` | Branch id | `—` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,31}$`, ≤ 32 chars | — |
+| `parentId` | Parent node | `parentId` | not read | — | without one the tech is never placed in the grid and cannot be bought |
+| `requires` | Requires | `requires` | not read | — | other research that must be done first |
+| `description` | Description | `description` | not read | ≤ 200 chars | — |
+| `gatesStructures` | Structures it unlocks | `(derived from each structure's unlockNode — not written)` | not read | — | derived — set it on each structure, not here. Shown so you can see what rides on this node. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Tech nodes
 
@@ -259,7 +287,7 @@ Stored under `techs`, applied through ``tech.registerNode``, ``tech.updateDefini
 | `descriptionKey` | Description key (i18n) | `descriptionKey` | not read | ≤ 120 chars | used when no plain description is set |
 | `unlockStructures` | Unlocks structures | `unlocks.structures` | not read | — | researching this node makes these buildable |
 | `unlockItems` | Unlocks items | `unlocks.items` | not read | — | items granted when the research completes |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Upgrades
 
@@ -273,7 +301,7 @@ Stored under `upgrades`, applied through ``upgrades.register``.
 |---|---|---|---|---|---|
 | `idSuffix` | Id | `id` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,62}$` | stored as md-my-hown-mod:<id> |
 | `itemId` | Item | `itemId` | read | — | — |
-| `categoryId` | Category id | `categoryId` | read | pattern `^[a-z0-9][a-z0-9._-]{0,31}$`, ≤ 200 chars | must match a category registered with api.upgrades.registerCategory |
+| `categoryId` | Category | `categoryId` | read | — | must be a category the game knows. “custom” is for one it has and we cannot list — api.upgrades has no way to read them back. |
 | `itemNameKey` | Item name key (i18n) | `itemNameKey` | read | ≤ 120 chars | overrides the parent item's own display name in the upgrade list |
 | `upgradeNameKey` | Name key (i18n) | `upgrade.nameKey` | not read | ≤ 120 chars | — |
 | `upgradeId` | Upgrade id | `upgrade.id` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,31}$`, ≤ 200 chars | upgrade.id — read it back with api.upgrades.getLevelById(itemId, this) |
@@ -281,7 +309,7 @@ Stored under `upgrades`, applied through ``upgrades.register``.
 | `costsJson` | Costs per level | `upgrade.costs` | not read | array JSON | one number per level, e.g. [100, 250, 500] |
 | `oneOff` | One-off | `upgrade.oneOff` | not read | — | can only be bought once |
 | `onUpgradeKey` | On upgrade handler | `onUpgradeKey` | not read | — | optional code callback run when a level is bought |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Upgrade categories
 
@@ -298,7 +326,7 @@ Stored under `upgradeCategories`, applied through ``upgrades.registerCategory``.
 | `nameKey` | Name key (i18n) | `nameKey` | read | ≤ 120 chars | — |
 | `requirementTechId` | Requirement (stored only) | `requirement (string)` | not read | — | the engine stores this and never reads it, so nothing happens either way. Set it only if you know your build consumes it. |
 | `requirementJson` | Requirement (raw) | `requirement (anything else, verbatim)` | not read | object JSON | for a shape other than a tech id — stored verbatim, and equally unread |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Input bindings
 
@@ -318,7 +346,7 @@ Stored under `inputBindings`.
 | `onDownKey` | Press handler | `onDownKey` | not read | — | runs when the key goes down. Accepts: Modifier, Message, Global, Projectile. |
 | `onUpKey` | Release handler | `onUpKey` | not read | — | runs when the key comes back up. Accepts: Modifier, Message, Global, Projectile. |
 | `subsectionJson` | Subsection | `subsection` | not read | object JSON | optional settings group: { title, titleKey, description, descriptionKey } |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Signals
 
@@ -362,10 +390,14 @@ Stored under `structureBehaviors`, applied through ``conveyors.registerType``, `
 | field | label | stores | engine | rules | notes |
 |---|---|---|---|---|---|
 | `idSuffix` | Id | `id` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,62}$` | stored as md-my-hown-mod:<id> |
-| `kind` | Kind | `kind` | not read | — | — |
-| `definitionJson` | Definition | `definition` | not read | object JSON | forwarded to structureBehaviors.register* |
+| `kind` | Kind | `kind` | not read | — | which simulation pass this joins — there is no third one |
+| `structureId` | Structure | `definition.id` | not read | — | — |
+| `upType` | Up structure | `definition.upType` | not read | — | — |
+| `leftType` | Left structure | `definition.leftType` | not read | — | — |
+| `rightType` | Right structure | `definition.rightType` | not read | — | — |
+| `definitionJson` | Rest of the payload | `definition (everything else)` | not read | object JSON | everything else, forwarded to structureBehaviors.register*. The structure ids above are merged in; anything here wins over them. |
 
-## Energy types
+## Energy interactions
 
 <a id="energy"></a>
 
@@ -379,9 +411,23 @@ Stored under `energyTypes`, applied through ``energy.registerType``.
 | `structureId` | Structure | `structureId` | not read | — | — |
 | `type` | Role | `type` | not read | — | — |
 | `capacity` | Capacity | `options.capacity` | not read | min 0, max 1000000, whole | max energy this node can hold (api.energy.registerType options.capacity) |
-| `energyType` | Network | `options.energyType` | not read | ≤ 200 chars | options.energyType — which network to join when several exist |
+| `energyType` | Network | `options.energyType` | not read | — | options.energyType — which network to join. The engine's default is "power". |
 | `priority` | Priority | `options.priority` | not read | min 0, max 1000, whole | network priority (only read by the engine if it supports it) |
-| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
+
+## Energy networks
+
+<a id="networks"></a>
+
+Named energy channels. The game ships one; add the ones you need.
+
+Stored under `energyNetworks`.
+
+| field | label | stores | engine | rules | notes |
+|---|---|---|---|---|---|
+| `idSuffix` | Id | `id` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,62}$` | stored as md-my-hown-mod:<id> |
+| `name` | Display name | `name (panel only — the engine never reads it)` | not read | ≤ 200 chars | optional — shown in this list; the engine only ever sees the id |
+| `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit, so nothing is lost. These keys have no control above. Change one only if you know what the engine expects — a misspelled key here is ignored by the game and will not warn you. |
 
 ## Excavation profiles
 

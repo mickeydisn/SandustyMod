@@ -349,7 +349,6 @@ export function parseDts(
         baseDepths.push(-1); // never reached, so the root is never popped
     }
 
-
     const flushDoc = () => {
         const d = summariseDoc(doc.join("\n"));
         doc = [];
@@ -616,20 +615,15 @@ export async function buildIndex(): Promise<PublicIndex> {
             mainNamespaces: mainMap.size,
             mainMembers: sum(mainMap, (x) => x.members.length),
             mainTypes: sum(mainMap, (x) => x.types.length),
-            mainFields: sum(mainMap, (x) =>
-                x.types.reduce((k, t) => k + t.fields.length, 0)
-            ),
+            mainFields: sum(mainMap, (x) => x.types.reduce((k, t) => k + t.fields.length, 0)),
             mainAliases: sum(mainMap, (x) => x.aliases.length),
             workerNamespaces: workerMap.size,
             workerMembers: sum(workerMap, (x) => x.members.length),
             sharedNamespaces: sharedMap.size,
             sharedTypes: sum(sharedMap, (x) => x.types.length),
-            sharedFields: sum(sharedMap, (x) =>
-                x.types.reduce((k, t) => k + t.fields.length, 0)
-            ),
+            sharedFields: sum(sharedMap, (x) => x.types.reduce((k, t) => k + t.fields.length, 0)),
             mainOnly: all.filter((k) => !workerMap.has(k)).length,
-            sharedNamespacesWithMain:
-                [...mainMap.keys()].filter((k) => sharedMap.has(k)).length,
+            sharedNamespacesWithMain: [...mainMap.keys()].filter((k) => sharedMap.has(k)).length,
         },
     };
 }
@@ -892,7 +886,9 @@ export async function checkMod(idx: PublicIndex, srcRoot: string) {
         // a single `` `${a}.${b}` `` argument would otherwise read as zero args
         const code = stripComments(f.text);
         const kind = classifyApi(f.text);
-        for (const m of f.text.matchAll(/typeof\s+[\w$.]*?\.?([A-Za-z0-9_$]+)\s*===\s*"function"/g)) {
+        for (
+            const m of f.text.matchAll(/typeof\s+[\w$.]*?\.?([A-Za-z0-9_$]+)\s*===\s*"function"/g)
+        ) {
             probes.add(m[1]);
         }
         for (const c of findCalls(code)) {
@@ -976,9 +972,17 @@ if (import.meta.main) {
     );
     await Deno.writeTextFile(
         `${OUT_DIR}PUBLIC-API.md`,
-        render(idx.main, "Public mod api — `sandkit.api` (main thread)", "__pakages/__other/sandkit/src/sandkit/api/*.d.ts") +
+        render(
+            idx.main,
+            "Public mod api — `sandkit.api` (main thread)",
+            "__pakages/__other/sandkit/src/sandkit/api/*.d.ts",
+        ) +
             "\n\n---\n\n" +
-            render(idx.worker, "Worker api — `sandkit.api` (worker thread)", "__pakages/__other/sandkit/src/worker/*.d.ts"),
+            render(
+                idx.worker,
+                "Worker api — `sandkit.api` (worker thread)",
+                "__pakages/__other/sandkit/src/worker/*.d.ts",
+            ),
     );
     for (const [k, v] of Object.entries(idx.stats)) {
         console.log(`${k.padEnd(20)} ${v}`);
@@ -1036,5 +1040,3 @@ if (import.meta.main) {
         console.log(`-> ${OUT_DIR}mod-api-calls.json`);
     }
 }
-
-

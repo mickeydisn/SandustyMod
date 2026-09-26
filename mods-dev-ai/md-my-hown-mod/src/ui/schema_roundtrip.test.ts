@@ -30,8 +30,19 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { entryToForm, formToEntry, formDefaults, validateForm, fieldsFor, normalizeShape, resolveAutoFill, autoGraphicsKey, MENU_GROUPS, parseBuildModes } =
-    await import("./schema.ts");
+const {
+    entryToForm,
+    formToEntry,
+    formDefaults,
+    validateForm,
+    fieldsFor,
+    sectionsFor,
+    normalizeShape,
+    resolveAutoFill,
+    autoGraphicsKey,
+    MENU_GROUPS,
+    parseBuildModes,
+} = await import("./schema.ts");
 const { searchLibraryAssets, listLibraryAssets } = await import("../catalog.ts");
 
 let pass = 0;
@@ -161,7 +172,10 @@ roundTrip("upgrades", {
     // A second mode must survive the round trip. It used not to: the form
     // collapsed buildModes to [0], so a line mode added alongside a single
     // mode was dropped on save without a word.
-    const two: Record<string, string> = { ...f, buildModesJson: JSON.stringify([{ type: "single" }, { type: "line", spanTiles: 4 }]) };
+    const two: Record<string, string> = {
+        ...f,
+        buildModesJson: JSON.stringify([{ type: "single" }, { type: "line", spanTiles: 4 }]),
+    };
     const entry = formToEntry("structures", two) as { buildModes?: unknown };
     check(
         "a second build mode survives the round trip",
@@ -179,9 +193,8 @@ roundTrip("upgrades", {
     );
     check(
         "directions are written onto every mode",
-        parseBuildModes(JSON.stringify([{ type: "single" }, { type: "line" }]), ["horizontal"]).every((m) =>
-            Array.isArray(m.directions) && m.directions.length === 1
-        ),
+        parseBuildModes(JSON.stringify([{ type: "single" }, { type: "line" }]), ["horizontal"])
+            .every((m) => Array.isArray(m.directions) && m.directions.length === 1),
     );
     check(
         "an unparseable list yields nothing rather than guessing",
@@ -375,7 +388,11 @@ console.log("── unknown fields are preserved ──");
         rejectWhenBlocked: true,
     });
     const back = formToEntry("structures", form);
-    check("passthrough.blockGridType", back.blockGridType === "mdmy.x.block", String(back.blockGridType));
+    check(
+        "passthrough.blockGridType",
+        back.blockGridType === "mdmy.x.block",
+        String(back.blockGridType),
+    );
     check(
         "passthrough.rejectWhenBlocked",
         back.rejectWhenBlocked === true,
@@ -391,6 +408,118 @@ console.log("── unknown fields are preserved ──");
     });
     const back = formToEntry("behaviors", form);
     check("no function in entry", typeof back.draw !== "function", typeof back.draw);
+}
+
+console.log("── a behaviour's structure ids live in the definition, edited as pickers ──");
+{
+    // The engine wants `{ id }` for a conveyor and `{ upType, leftType,
+    // rightType }` for a launcher. The form shows those as pickers, so they
+    // have to survive being lifted out and merged back in.
+    const conveyor = entryToForm("behaviors", {
+        id: "md-my-hown-mod:mdmy.behavior.belt",
+        kind: "conveyor",
+        definition: { id: "md-my-hown-mod:mdmy.structure.belt", speed: 2 },
+    });
+    check(
+        "conveyor picks up its structure",
+        conveyor.structureId === "md-my-hown-mod:mdmy.structure.belt",
+        String(conveyor.structureId),
+    );
+    const backConveyor = formToEntry("behaviors", conveyor) as {
+        definition?: Record<string, unknown>;
+    };
+    check(
+        "conveyor keeps the structure",
+        backConveyor.definition?.id === "md-my-hown-mod:mdmy.structure.belt",
+        JSON.stringify(backConveyor.definition),
+    );
+    // The rest of the payload must survive the merge, not be replaced by it.
+    check(
+        "conveyor keeps the rest of the payload",
+        backConveyor.definition?.speed === 2,
+        JSON.stringify(backConveyor.definition),
+    );
+
+    const launcher = entryToForm("behaviors", {
+        id: "md-my-hown-mod:mdmy.behavior.aim",
+        kind: "launcher",
+        definition: {
+            upType: "md-my-hown-mod:mdmy.structure.up",
+            leftType: "md-my-hown-mod:mdmy.structure.left",
+            rightType: "md-my-hown-mod:mdmy.structure.right",
+            velocity: [0, -1],
+        },
+    });
+    const backLauncher = formToEntry("behaviors", launcher) as {
+        definition?: Record<string, unknown>;
+    };
+    for (const k of ["upType", "leftType", "rightType"]) {
+        check(
+            `launcher keeps ${k}`,
+            backLauncher.definition?.[k] ===
+                `md-my-hown-mod:mdmy.structure.${k.replace("Type", "")}`,
+            JSON.stringify(backLauncher.definition),
+        );
+    }
+    check(
+        "launcher keeps the rest of the payload",
+        Array.isArray(backLauncher.definition?.velocity),
+        JSON.stringify(backLauncher.definition),
+    );
+}
+{
+    // The trap: a stale `id` sitting in the JSON must not beat the picker. If
+    // the box won, choosing a structure would silently do nothing.
+    const form = entryToForm("behaviors", {
+        id: "md-my-hown-mod:mdmy.behavior.belt",
+        kind: "conveyor",
+        definition: { id: "stale" },
+    });
+    form.structureId = "md-my-hown-mod:mdmy.structure.belt";
+    const back = formToEntry("behaviors", form) as { definition?: Record<string, unknown> };
+    check(
+        "the picker beats a stale id in the JSON",
+        back.definition?.id === "md-my-hown-mod:mdmy.structure.belt",
+        JSON.stringify(back.definition),
+    );
+}
+{
+    // Clearing the picker must clear the id, not leave the old one behind.
+    const form = entryToForm("behaviors", {
+        id: "md-my-hown-mod:mdmy.behavior.belt",
+        kind: "conveyor",
+        definition: { id: "md-my-hown-mod:mdmy.structure.belt" },
+    });
+    form.structureId = "";
+    const back = formToEntry("behaviors", form) as { definition?: Record<string, unknown> };
+    check(
+        "clearing the picker clears the id",
+        back.definition?.id === undefined,
+        JSON.stringify(back.definition),
+    );
+}
+{
+    // A launcher must not leave a conveyor's `id` behind when the kind changes.
+    const form = entryToForm("behaviors", {
+        id: "md-my-hown-mod:mdmy.behavior.x",
+        kind: "conveyor",
+        definition: { id: "leftover" },
+    });
+    form.kind = "launcher";
+    form.upType = "u";
+    form.leftType = "l";
+    form.rightType = "r";
+    const back = formToEntry("behaviors", form) as { definition?: Record<string, unknown> };
+    check(
+        "switching kind drops the other kind's ids",
+        back.definition?.id === undefined,
+        JSON.stringify(back.definition),
+    );
+    check(
+        "switching kind keeps the new ones",
+        back.definition?.upType === "u",
+        JSON.stringify(back.definition),
+    );
 }
 
 console.log("── validation blocks bad input ──");
@@ -416,12 +545,20 @@ console.log("── validation blocks bad input ──");
 {
     const form = formDefaults("elements");
     form.idSuffix = "good";
-    // advancedJson is a real free-JSON field. colorsJson used to be tested here
-    // too, but it is a swatch list now, so it cannot hold malformed text at all.
-    form.advancedJson = "{not json";
-    const errs = validateForm("elements", form);
-    check("malformed JSON rejected", !!errs.advancedJson, JSON.stringify(errs));
-    check("malformed JSON rejected", !!errs.advancedJson, JSON.stringify(errs));
+    // The passthrough is a real field again, but a conditional one: it appears
+    // only when the stored entry actually holds a key the form cannot show, so
+    // a plain form offers nothing. That is the difference between a box the user
+    // never sees and one they see on every entry and learn to skip.
+    check(
+        "the passthrough is offered",
+        fieldsFor("elements").map((f) => f.key).includes("advancedJson"),
+        "the passthrough field is gone",
+    );
+    check(
+        "a fresh element shows no Advanced section",
+        !sectionsFor("elements", formDefaults("elements")).some((s) => s.title === "Advanced"),
+        "a new entry shows an Advanced section",
+    );
 }
 {
     // The colour-variant list, against the exact tuples a shipping mod stores
@@ -524,7 +661,11 @@ console.log("── bundled asset library picker ──");
     check("catalog has a sample asset", !!sample?.name, "catalog empty");
     const upper = sample.name.toUpperCase();
     const hit = searchLibraryAssets(upper);
-    check("search is case-insensitive", hit.some((a) => a.name === sample.name), JSON.stringify(hit.map((a) => a.name)));
+    check(
+        "search is case-insensitive",
+        hit.some((a) => a.name === sample.name),
+        JSON.stringify(hit.map((a) => a.name)),
+    );
     const none = searchLibraryAssets("zzz-no-such-icon-zzz");
     check("search misses return empty", none.length === 0, `${none.length}`);
     check("empty query returns all", searchLibraryAssets("").length === listLibraryAssets().length);
@@ -568,7 +709,10 @@ console.log("── bundled asset library picker ──");
     // resolveAutoFill: fill when empty, replace our own previous value, never
     // clobber a hand-typed one.
     check("fills empty field", resolveAutoFill("", undefined, "sprites:a") === "sprites:a");
-    check("fills undefined field", resolveAutoFill(undefined, undefined, "sprites:a") === "sprites:a");
+    check(
+        "fills undefined field",
+        resolveAutoFill(undefined, undefined, "sprites:a") === "sprites:a",
+    );
     check(
         "replaces previous auto value",
         resolveAutoFill("sprites:a", "sprites:a", "sprites:b") === "sprites:b",
@@ -586,7 +730,11 @@ console.log("── bundled asset library picker ──");
     // The sprite form must actually expose a library field bound to the graphics key.
     const pathField = fieldsFor("sprites").find((f) => f.key === "path");
     check("sprite path is a library field", pathField?.kind === "library", pathField?.kind);
-    check("library field auto-fills the graphics key", pathField?.autoKey === "idSuffix", pathField?.autoKey);
+    check(
+        "library field auto-fills the graphics key",
+        pathField?.autoKey === "idSuffix",
+        pathField?.autoKey,
+    );
 }
 
 console.log("── excavation terrain rules ──");
@@ -598,14 +746,21 @@ console.log("── excavation terrain rules ──");
         options: { fromDrill: true },
         terrainRules: [{ cellType: "dune", outputElementType: "sand", damage: 5 }],
     });
-    check("terrainRules round-trips", Array.isArray(back.back.terrainRules), JSON.stringify(back.back.terrainRules));
+    check(
+        "terrainRules round-trips",
+        Array.isArray(back.back.terrainRules),
+        JSON.stringify(back.back.terrainRules),
+    );
     const f = fieldsFor("excavation").find((x) => x.key === "terrainRulesJson");
     check("terrainRules field exists", f?.kind === "terrainRules", f?.kind);
 
     const form = formDefaults("excavation");
     form.idSuffix = "drill";
     form.terrainRulesJson = JSON.stringify([{ damage: 5 }]);
-    check("rule without a terrain is rejected", !!validateForm("excavation", form).terrainRulesJson);
+    check(
+        "rule without a terrain is rejected",
+        !!validateForm("excavation", form).terrainRulesJson,
+    );
     form.terrainRulesJson = JSON.stringify([{ cellType: "dune", damage: "abc" }]);
     check("non-numeric damage rejected", !!validateForm("excavation", form).terrainRulesJson);
     form.terrainRulesJson = JSON.stringify([{ cellType: "dune", damage: 5 }]);
@@ -614,7 +769,11 @@ console.log("── excavation terrain rules ──");
     check("empty rule list accepted", !validateForm("excavation", form).terrainRulesJson);
     // An empty list must not create a spurious empty array in storage.
     const empty = formToEntry("excavation", form);
-    check("empty rules are not stored", empty.terrainRules === undefined, JSON.stringify(empty.terrainRules));
+    check(
+        "empty rules are not stored",
+        empty.terrainRules === undefined,
+        JSON.stringify(empty.terrainRules),
+    );
 }
 
 console.log("── upgrades use the NESTED definition shape ──");
@@ -626,9 +785,17 @@ console.log("── upgrades use the NESTED definition shape ──");
         upgrade: { id: "lvl2", maxLevel: 3, costs: [100, 250, 500], oneOff: true },
     });
     const u = back.back.upgrade;
-    check("upgrade is nested under `upgrade`", u && typeof u === "object", JSON.stringify(back.back.upgrade));
+    check(
+        "upgrade is nested under `upgrade`",
+        u && typeof u === "object",
+        JSON.stringify(back.back.upgrade),
+    );
     check("upgrade.id round-trips", u?.id === "lvl2", JSON.stringify(u));
-    check("upgrade.costs round-trips", JSON.stringify(u?.costs) === "[100,250,500]", JSON.stringify(u?.costs));
+    check(
+        "upgrade.costs round-trips",
+        JSON.stringify(u?.costs) === "[100,250,500]",
+        JSON.stringify(u?.costs),
+    );
     check("upgrade.oneOff round-trips", u?.oneOff === true, JSON.stringify(u?.oneOff));
     check("no flat upgradeJson leaks", back.back.upgradeJson === undefined);
 
@@ -711,13 +878,17 @@ console.log("── item fields are type-aware ──");
         back.back.projectileId === "mdmy.proj.bolt",
         String(back.back.projectileId),
     );
-    check("weapon sprite id round-trips", back.back.sprite?.id === "sprites:bolt", JSON.stringify(back.back.sprite));
+    check(
+        "weapon sprite id round-trips",
+        back.back.sprite?.id === "sprites:bolt",
+        JSON.stringify(back.back.sprite),
+    );
 }
 
 console.log("── handler pickers are domain-scoped and described ──");
 {
     const H = await import("../hooks/handlers.ts");
-    (globalThis).__mdHandlers = {
+    globalThis.__mdHandlers = {
         ANY_HANDLERS: H.ANY_HANDLERS,
         PROCESS_HANDLERS: H.PROCESS_HANDLERS,
         ANY_HANDLER_DOCS: H.ANY_HANDLER_DOCS,
@@ -743,34 +914,60 @@ console.log("── handler pickers are domain-scoped and described ──");
             opts.every((o) => o.value in H.ANY_HANDLERS),
             JSON.stringify(opts.map((o) => o.value)),
         );
-        check(`${name} picker labels carry a description`, opts.every((o) => o.label.includes("—")), opts[0]?.label);
+        check(
+            `${name} picker labels carry a description`,
+            opts.every((o) => o.label.includes("—")),
+            opts[0]?.label,
+        );
     }
     const proc = cat.listDescribedProcessorKeys();
     check("processor picker non-empty", proc.length > 0, `${proc.length}`);
     check("processor picker keys all exist", proc.every((o) => o.value in H.PROCESS_HANDLERS));
-    check("processor picker labels described", proc.every((o) => o.label.includes("—")), proc[0]?.label);
-    check("handlerDoc returns text", !!cat.handlerDoc("signalLog"), String(cat.handlerDoc("signalLog")));
+    check(
+        "processor picker labels described",
+        proc.every((o) => o.label.includes("—")),
+        proc[0]?.label,
+    );
+    check(
+        "handlerDoc returns text",
+        !!cat.handlerDoc("signalLog"),
+        String(cat.handlerDoc("signalLog")),
+    );
     check("handlerDoc unknown is undefined", cat.handlerDoc("nope") === undefined);
 
     for (const c of ["signals", "triggers", "processing"]) {
         check(`${c} has a handlerKey`, !!fieldsFor(c).find((f) => f.key === "handlerKey"));
     }
-    check("projectiles expose getOptionsKey", !!fieldsFor("projectiles").find((f) => f.key === "getOptionsKey"));
+    check(
+        "projectiles expose getOptionsKey",
+        !!fieldsFor("projectiles").find((f) => f.key === "getOptionsKey"),
+    );
 }
 
 console.log("── no fabricated engine fields (6.1) ──");
 {
     // `unlockedBy` was exposed as a structure field but exists in NO sandkit
     // .d.ts. Guard against that class of invention recurring.
-    check("structures dropped unlockedBy", !fieldsFor("structures").some((f) => f.key === "unlockedBy"));
+    check(
+        "structures dropped unlockedBy",
+        !fieldsFor("structures").some((f) => f.key === "unlockedBy"),
+    );
     const round = roundTrip("structures", {
         id: "md-my-hown-mod:mdmy.structure.crusher",
         name: "Crusher",
         categoryKey: "production",
         alwaysUnlocked: true,
     });
-    check("unlockedBy never reappears on save", round.back.unlockedBy === undefined, JSON.stringify(round.back.unlockedBy));
-    check("alwaysUnlocked still round-trips", round.back.alwaysUnlocked === true, JSON.stringify(round.back.alwaysUnlocked));
+    check(
+        "unlockedBy never reappears on save",
+        round.back.unlockedBy === undefined,
+        JSON.stringify(round.back.unlockedBy),
+    );
+    check(
+        "alwaysUnlocked still round-trips",
+        round.back.alwaysUnlocked === true,
+        JSON.stringify(round.back.alwaysUnlocked),
+    );
     // and the JSON schema hints no longer advertise it
     const { FIELD_HELP } = await import("../constants.ts");
     check(
@@ -805,19 +1002,37 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     check("every handler is documented", undoc.length === 0, undoc.join(" "));
 
     // 7.3 / 9.6 — no consumable handler ships.
-    check("itemConsume is gone (ActionType has no Consumable)", !("itemConsume" in hooks.ANY_HANDLERS));
+    check(
+        "itemConsume is gone (ActionType has no Consumable)",
+        !("itemConsume" in hooks.ANY_HANDLERS),
+    );
     check("itemConsume is not in the registry", !known.includes("itemConsume"));
 
     // Every slot is non-empty, and the old hand-kept lists are reproduced.
-    const slots = ["signal", "trigger", "processing", "projectile", "upgrade", "modifier", "itemAction"] as const;
+    const slots = [
+        "signal",
+        "trigger",
+        "processing",
+        "projectile",
+        "upgrade",
+        "modifier",
+        "itemAction",
+    ] as const;
     for (const s of slots) {
         check(`slot "${s}" offers handlers`, reg.handlersForSlot(s).length > 0);
     }
     const keys = (s: typeof slots[number]) => reg.handlersForSlot(s).map((m) => m.key);
-    const sameSet = (a: string[], b: string[]) => a.slice().sort().join() === b.slice().sort().join();
+    const sameSet = (a: string[], b: string[]) =>
+        a.slice().sort().join() === b.slice().sort().join();
     check(
         "signal slot matches the old hardcoded list",
-        sameSet(keys("signal"), ["signalLog", "structureInspect", "structureReadData", "structureWriteData", "noop"]),
+        sameSet(keys("signal"), [
+            "signalLog",
+            "structureInspect",
+            "structureReadData",
+            "structureWriteData",
+            "noop",
+        ]),
         keys("signal").join(" "),
     );
     check(
@@ -838,27 +1053,66 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     // processing resolves through resolveAnyHandler, which spans ANY + PROCESS +
     // CODE handlers, so the real invariant is "every offered key resolves".
     const unresolved = keys("processing").filter((k) => !hooks.resolveAnyHandler(k));
-    check("every processing-slot handler resolves to a function", unresolved.length === 0, unresolved.join(" "));
+    check(
+        "every processing-slot handler resolves to a function",
+        unresolved.length === 0,
+        unresolved.join(" "),
+    );
 
     // 9.5 — a type can never be offered in a slot it cannot serve.
     const mismatch = reg.HANDLER_META.filter((m) => m.slots.length === 0);
-    check("every handler declares at least one slot", mismatch.length === 0, mismatch.map((m) => m.key).join(" "));
+    check(
+        "every handler declares at least one slot",
+        mismatch.length === 0,
+        mismatch.map((m) => m.key).join(" "),
+    );
     const techInSignal = keys("signal").filter((k) => reg.handlerMeta(k)?.type === "tech");
-    check("no tech handler leaks into the signal slot", techInSignal.length === 0, techInSignal.join(" "));
-    const projInProcessing = keys("processing").filter((k) => reg.handlerMeta(k)?.type === "projectile");
-    check("no projectile handler leaks into processing", projInProcessing.length === 0, projInProcessing.join(" "));
+    check(
+        "no tech handler leaks into the signal slot",
+        techInSignal.length === 0,
+        techInSignal.join(" "),
+    );
+    const projInProcessing = keys("processing").filter((k) =>
+        reg.handlerMeta(k)?.type === "projectile"
+    );
+    check(
+        "no projectile handler leaks into processing",
+        projInProcessing.length === 0,
+        projInProcessing.join(" "),
+    );
 
     // 9.3 — parameter validation.
     const write = reg.handlerMeta("structureWriteData")!;
-    check("both required params reported when missing", reg.validateHandlerParams(write, {}).length === 2, JSON.stringify(reg.validateHandlerParams(write, {})));
-    check("valid params produce no errors", reg.validateHandlerParams(write, { field: "charge", value: "5" }).length === 0);
+    check(
+        "both required params reported when missing",
+        reg.validateHandlerParams(write, {}).length === 2,
+        JSON.stringify(reg.validateHandlerParams(write, {})),
+    );
+    check(
+        "valid params produce no errors",
+        reg.validateHandlerParams(write, { field: "charge", value: "5" }).length === 0,
+    );
     const drill = reg.handlerMeta("excavationDrill")!;
-    check("int constraint enforced", reg.validateHandlerParams(drill, { drillTierDamage: "2.5" }).length === 1, JSON.stringify(reg.validateHandlerParams(drill, { drillTierDamage: "2.5" })));
-    check("min constraint enforced", reg.validateHandlerParams(drill, { power: "-1" }).length === 1);
+    check(
+        "int constraint enforced",
+        reg.validateHandlerParams(drill, { drillTierDamage: "2.5" }).length === 1,
+        JSON.stringify(reg.validateHandlerParams(drill, { drillTierDamage: "2.5" })),
+    );
+    check(
+        "min constraint enforced",
+        reg.validateHandlerParams(drill, { power: "-1" }).length === 1,
+    );
     check("nan rejected", reg.validateHandlerParams(drill, { power: "abc" }).length === 1);
     const opts = reg.buildHandlerOptions(drill, { power: "8", drillTierDamage: "25" });
-    check("options are typed, not strings", opts.power === 8 && opts.drillTierDamage === 25, JSON.stringify(opts));
-    check("blank options are dropped", Object.keys(reg.buildHandlerOptions(drill, { power: "" })).length === 0);
+    check(
+        "options are typed, not strings",
+        opts.power === 8 && opts.drillTierDamage === 25,
+        JSON.stringify(opts),
+    );
+    check(
+        "blank options are dropped",
+        Object.keys(reg.buildHandlerOptions(drill, { power: "" })).length === 0,
+    );
 
     // 9.5 — reachability scan over a stored config.
     const cfg = {
@@ -868,9 +1122,17 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     };
     const bad = reg.unreachableHandlers(cfg);
     check("mismatched slot is flagged unreachable", bad.length === 1, JSON.stringify(bad));
-    check("the flagged one is the tech handler", bad[0]?.key === "techGrantItem", JSON.stringify(bad));
+    check(
+        "the flagged one is the tech handler",
+        bad[0]?.key === "techGrantItem",
+        JSON.stringify(bad),
+    );
     const idx = reg.usageIndex(cfg);
-    check("usage index maps handler -> entries", idx.structureWriteData?.[0]?.id === "s1", JSON.stringify(idx));
+    check(
+        "usage index maps handler -> entries",
+        idx.structureWriteData?.[0]?.id === "s1",
+        JSON.stringify(idx),
+    );
     check("usage index covers item actions", idx.itemShoot?.[0]?.id === "i1", JSON.stringify(idx));
 
     // 9.4 — scopes are declared for every handler.
@@ -878,7 +1140,10 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         "every handler declares a scope",
         reg.HANDLER_META.every((m) => !!reg.HANDLER_SCOPE_LABELS[m.scope]),
     );
-    check("scope labels cover all scopes", reg.HANDLER_SCOPES.every((s) => !!reg.HANDLER_SCOPE_LABELS[s]));
+    check(
+        "scope labels cover all scopes",
+        reg.HANDLER_SCOPES.every((s) => !!reg.HANDLER_SCOPE_LABELS[s]),
+    );
 }
 
 console.log("── handlers tab is reachable and wired (9.2) ──");
@@ -888,16 +1153,32 @@ console.log("── handlers tab is reachable and wired (9.2) ──");
     const reg = await import("../hooks/handler-registry.ts");
 
     check("handlers is a known tab", "handlers" in sch.CATEGORY_META);
-    check("handlers is in a menu group", sch.MENU_GROUPS.some((g) => g.categories.includes("handlers")));
-    check("handlers has no config key (it is a browser)", sch.CATEGORY_META.handlers.configKey === undefined);
+    check(
+        "handlers is in a menu group",
+        sch.MENU_GROUPS.some((g) => g.categories.includes("handlers")),
+    );
+    check(
+        "handlers has no config key (it is a browser)",
+        sch.CATEGORY_META.handlers.configKey === undefined,
+    );
     check("handlers has no entry form", sch.fieldsFor("handlers").length === 0);
-    check("every group category has metadata", sch.MENU_GROUPS.every((g) => g.categories.every((c) => !!sch.CATEGORY_META[c])));
+    check(
+        "every group category has metadata",
+        sch.MENU_GROUPS.every((g) => g.categories.every((c) => !!sch.CATEGORY_META[c])),
+    );
     check("initial tab state is collapsed", hp.initialHandlersState().open === null);
 
     // defaultParams seeds the form from declared defaults.
     const drill = reg.handlerMeta("excavationDrill")!;
-    check("defaultParams uses declared defaults", hp.defaultParams(drill).power === "8", JSON.stringify(hp.defaultParams(drill)));
-    check("defaultParams omits params with no default", hp.defaultParams(reg.handlerMeta("structureWriteData")!).field === undefined);
+    check(
+        "defaultParams uses declared defaults",
+        hp.defaultParams(drill).power === "8",
+        JSON.stringify(hp.defaultParams(drill)),
+    );
+    check(
+        "defaultParams omits params with no default",
+        hp.defaultParams(reg.handlerMeta("structureWriteData")!).field === undefined,
+    );
 
     // The tab renders against a config, groups by type, and shows a warning.
     const el = (t: string, p: unknown, ...c: unknown[]) => ({ t, p, c });
@@ -914,8 +1195,14 @@ console.log("── handlers tab is reachable and wired (9.2) ──");
     }) as { t: string; c: unknown[] };
     const flat = JSON.stringify(node);
     check("handlers tab renders its title", flat.includes("Handlers"));
-    check("handlers tab renders every type group", reg.allHandlerTypes().every((ty) => flat.includes(reg.HANDLER_TYPE_LABELS[ty])));
-    check("handlers tab surfaces the unreachable reference", flat.includes("unusable handler reference"));
+    check(
+        "handlers tab renders every type group",
+        reg.allHandlerTypes().every((ty) => flat.includes(reg.HANDLER_TYPE_LABELS[ty])),
+    );
+    check(
+        "handlers tab surfaces the unreachable reference",
+        flat.includes("unusable handler reference"),
+    );
     check("handlers tab names the offending handler", flat.includes("techGrantItem"));
 }
 
@@ -928,8 +1215,14 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
 
     // ActionType has no Consumable, so no handler may be offered for one.
     check("Consumable offers no use action", reg.itemActionHandlersFor("Consumable").length === 0);
-    check("catalog returns none for Consumable", cat.listItemActionHandlerKeys("Consumable").length === 0);
-    check("catalog returns none for lowercase consumable", cat.listItemActionHandlerKeys("consumable").length === 0);
+    check(
+        "catalog returns none for Consumable",
+        cat.listItemActionHandlerKeys("Consumable").length === 0,
+    );
+    check(
+        "catalog returns none for lowercase consumable",
+        cat.listItemActionHandlerKeys("consumable").length === 0,
+    );
     check("Tool offers a use action", cat.listItemActionHandlerKeys("Tool").length > 0);
     check("Weapon offers a use action", cat.listItemActionHandlerKeys("Weapon").length > 0);
     check("Mod offers a use action", cat.listItemActionHandlerKeys("Mod").length > 0);
@@ -941,10 +1234,24 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     check("Tool sees the excavate action", toolKeys.includes("itemExcavate"), toolKeys.join(" "));
     check("Tool never sees the shoot action", !toolKeys.includes("itemShoot"), toolKeys.join(" "));
     check("Weapon sees the shoot action", weaponKeys.includes("itemShoot"), weaponKeys.join(" "));
-    check("Weapon never sees the excavate action", !weaponKeys.includes("itemExcavate"), weaponKeys.join(" "));
-    check("Mod never sees the dig presets", !modKeys.includes("excavationCrusher"), modKeys.join(" "));
-    check("noop is available to every type", toolKeys.includes("noop") && weaponKeys.includes("noop") && modKeys.includes("noop"));
-    check("every offered key resolves to a function", [...toolKeys, ...weaponKeys, ...modKeys].every((k) => !!hooks.resolveAnyHandler(k)));
+    check(
+        "Weapon never sees the excavate action",
+        !weaponKeys.includes("itemExcavate"),
+        weaponKeys.join(" "),
+    );
+    check(
+        "Mod never sees the dig presets",
+        !modKeys.includes("excavationCrusher"),
+        modKeys.join(" "),
+    );
+    check(
+        "noop is available to every type",
+        toolKeys.includes("noop") && weaponKeys.includes("noop") && modKeys.includes("noop"),
+    );
+    check(
+        "every offered key resolves to a function",
+        [...toolKeys, ...weaponKeys, ...modKeys].every((k) => !!hooks.resolveAnyHandler(k)),
+    );
 
     // The picker is form-aware: options follow the itemType field.
     const field = sch.fieldsFor("items").find((f) => f.key === "handlerKey")!;
@@ -955,7 +1262,10 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     const toolOpts = sch.resolveOptions(field, { itemType: "Tool" }).map((o) => o.value);
     const weaponOpts = sch.resolveOptions(field, { itemType: "Weapon" }).map((o) => o.value);
     check("options differ by item type", toolOpts.join() !== weaponOpts.join());
-    check("options follow the form's itemType", !toolOpts.includes("itemShoot") && weaponOpts.includes("itemShoot"));
+    check(
+        "options follow the form's itemType",
+        !toolOpts.includes("itemShoot") && weaponOpts.includes("itemShoot"),
+    );
 
     // Round-trip: the key survives entry → form → entry.
     const rt = roundTrip("items", {
@@ -965,7 +1275,11 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         handlerKey: "itemExcavate",
         sprite: { id: "sprites:pick", type: "onehand" },
     });
-    check("item handlerKey round-trips", rt.back.handlerKey === "itemExcavate", JSON.stringify(rt.back.handlerKey));
+    check(
+        "item handlerKey round-trips",
+        rt.back.handlerKey === "itemExcavate",
+        JSON.stringify(rt.back.handlerKey),
+    );
 
     // A Consumable must never persist one, even if the form hands us one.
     const consumed = formToEntry("items", {
@@ -975,7 +1289,11 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         handlerKey: "itemShoot",
         spriteId: "sprites:juice",
     });
-    check("consumable never stores a handler", consumed.handlerKey === undefined, JSON.stringify(consumed.handlerKey));
+    check(
+        "consumable never stores a handler",
+        consumed.handlerKey === undefined,
+        JSON.stringify(consumed.handlerKey),
+    );
 }
 
 console.log("── tech fields are selectors, not free text (Phase 8) ──");
@@ -988,19 +1306,36 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
     for (const k of ["currencyType", "branch"]) check(`${k} is a select`, f(k).kind === "select");
     check("currencyType has a custom box", f("currencyTypeCustom").kind === "text");
     check("branch has a custom box", f("branchCustom").kind === "text");
-    check("currency custom box only shows for __custom__", f("currencyTypeCustom").when?.({ currencyType: "__custom__" }) === true);
-    check("currency custom box hidden otherwise", f("currencyTypeCustom").when?.({ currencyType: "gold" }) === false);
-    check("branch custom box only shows for __custom__", f("branchCustom").when?.({ branch: "__custom__" }) === true);
+    check(
+        "currency custom box only shows for __custom__",
+        f("currencyTypeCustom").when?.({ currencyType: "__custom__" }) === true,
+    );
+    check(
+        "currency custom box hidden otherwise",
+        f("currencyTypeCustom").when?.({ currencyType: "gold" }) === false,
+    );
+    check(
+        "branch custom box only shows for __custom__",
+        f("branchCustom").when?.({ branch: "__custom__" }) === true,
+    );
 
     // The fabricated hardcoded currency/branch names are gone; options are
     // derived from the config, and "gold" survives (the one id the .d.ts names).
     const curs = cat.listCurrencyTypes().map((o) => o.value);
     const brs = cat.listTechBranches().map((o) => o.value);
     check("gold is offered", curs.includes("gold"), curs.join(" "));
-    check("no invented currency names remain", !curs.some((c) => ["auralite", "artifact", "ticket"].includes(c)), curs.join(" "));
+    check(
+        "no invented currency names remain",
+        !curs.some((c) => ["auralite", "artifact", "ticket"].includes(c)),
+        curs.join(" "),
+    );
     check("currency offers a custom escape", curs.includes("__custom__"));
     check("branch offers a custom escape", brs.includes("__custom__"));
-    check("no invented branch names remain", !brs.includes("alien") && !brs.includes("refining"), brs.join(" "));
+    check(
+        "no invented branch names remain",
+        !brs.includes("alien") && !brs.includes("refining"),
+        brs.join(" "),
+    );
 
     // 8.3 / 8.4 — requires + parentId are multi-selects over configured techs.
     check("requires is a multiselect", f("requires").kind === "multiselect");
@@ -1016,8 +1351,16 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         requires: ["md-my-hown-mod:mdmy.tech.tier1"],
         unlocks: { structures: ["md-my-hown-mod:mdmy.structure.crusher"] },
     });
-    check("requires round-trips as an array", Array.isArray(rt.back.requires) && rt.back.requires[0].endsWith("tier1"), JSON.stringify(rt.back.requires));
-    check("unlocks.structures round-trips", rt.back.unlocks?.structures?.[0]?.endsWith("crusher") === true, JSON.stringify(rt.back.unlocks));
+    check(
+        "requires round-trips as an array",
+        Array.isArray(rt.back.requires) && rt.back.requires[0].endsWith("tier1"),
+        JSON.stringify(rt.back.requires),
+    );
+    check(
+        "unlocks.structures round-trips",
+        rt.back.unlocks?.structures?.[0]?.endsWith("crusher") === true,
+        JSON.stringify(rt.back.unlocks),
+    );
 
     // A tech can never require itself: the picker excludes the edited node.
     // Seed the store first, otherwise the list is empty and the check is vacuous.
@@ -1025,20 +1368,41 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         store.config = { ...(store.config ?? {}), techs };
     };
     seed([
-        { id: "md-my-hown-mod:mdmy.tech.tier1", name: "Tier 1", branch: "industry", currencyType: "gold" },
+        {
+            id: "md-my-hown-mod:mdmy.tech.tier1",
+            name: "Tier 1",
+            branch: "industry",
+            currencyType: "gold",
+        },
         { id: "md-my-hown-mod:mdmy.tech.tier2", name: "Tier 2" },
     ]);
     const allIds = cat.listTechIds().map((o) => o.value);
     check("tech list is populated from the config", allIds.length === 2, allIds.join(" "));
     // The form carries the id suffix, not the ":tail" — use the realistic value.
     const ids = cat.listTechIds("mdmy.tech.tier2").map((o) => o.value);
-    check("self is excluded from the tech list", !ids.some((i) => i.endsWith("mdmy.tech.tier2")), ids.join(" "));
-    check("other nodes remain selectable", ids.some((i) => i.endsWith("mdmy.tech.tier1")), ids.join(" "));
+    check(
+        "self is excluded from the tech list",
+        !ids.some((i) => i.endsWith("mdmy.tech.tier2")),
+        ids.join(" "),
+    );
+    check(
+        "other nodes remain selectable",
+        ids.some((i) => i.endsWith("mdmy.tech.tier1")),
+        ids.join(" "),
+    );
 
     // Branch + currency options come from the config just seeded.
-    check("branch options derive from the config", cat.listTechBranches().map((o) => o.value).includes("industry"), cat.listTechBranches().map((o) => o.value).join(" "));
+    check(
+        "branch options derive from the config",
+        cat.listTechBranches().map((o) => o.value).includes("industry"),
+        cat.listTechBranches().map((o) => o.value).join(" "),
+    );
     seed([{ id: "md-my-hown-mod:mdmy.tech.c", name: "C", currencyType: "weirdcoin" }]);
-    check("currency options derive from the config", cat.listCurrencyTypes().map((o) => o.value).includes("weirdcoin"), cat.listCurrencyTypes().map((o) => o.value).join(" "));
+    check(
+        "currency options derive from the config",
+        cat.listCurrencyTypes().map((o) => o.value).includes("weirdcoin"),
+        cat.listCurrencyTypes().map((o) => o.value).join(" "),
+    );
 
     // Guard the over-exclusion trap: a sibling whose id merely *starts* with the
     // excluded tail must stay selectable.
@@ -1047,8 +1411,16 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         { id: "md-my-hown-mod:mdmy.tech.tier2b", name: "Tier 2b" },
     ]);
     const siblings = cat.listTechIds("mdmy.tech.tier2").map((o) => o.value);
-    check("a similarly-named sibling is not over-excluded", siblings.some((i) => i.endsWith("mdmy.tech.tier2b")), siblings.join(" "));
-    check("self is still excluded alongside a sibling", !siblings.some((i) => i === "md-my-hown-mod:mdmy.tech.tier2"), siblings.join(" "));
+    check(
+        "a similarly-named sibling is not over-excluded",
+        siblings.some((i) => i.endsWith("mdmy.tech.tier2b")),
+        siblings.join(" "),
+    );
+    check(
+        "self is still excluded alongside a sibling",
+        !siblings.some((i) => i === "md-my-hown-mod:mdmy.tech.tier2"),
+        siblings.join(" "),
+    );
     seed([]);
 
     // Free-text customs survive a round trip through the companion box.
@@ -1059,13 +1431,33 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         currencyType: "weirdcoin",
         branch: "weirdbranch",
     });
-    check("unknown currency is preserved, not dropped", cur.back.currencyType === "weirdcoin", JSON.stringify(cur.back.currencyType));
-    check("unknown branch is preserved, not dropped", cur.back.branch === "weirdbranch", JSON.stringify(cur.back.branch));
-    check("unknown currency lands in the custom box", cur.form.currencyType === "__custom__" && cur.form.currencyTypeCustom === "weirdcoin", JSON.stringify(cur.form));
-    check("known currency stays on the picker", (() => {
-        const g = roundTrip("techs", { id: "md-my-hown-mod:mdmy.tech.g", name: "G", cost: 1, currencyType: "gold" });
-        return g.form.currencyType === "gold" && g.form.currencyTypeCustom === "";
-    })());
+    check(
+        "unknown currency is preserved, not dropped",
+        cur.back.currencyType === "weirdcoin",
+        JSON.stringify(cur.back.currencyType),
+    );
+    check(
+        "unknown branch is preserved, not dropped",
+        cur.back.branch === "weirdbranch",
+        JSON.stringify(cur.back.branch),
+    );
+    check(
+        "unknown currency lands in the custom box",
+        cur.form.currencyType === "__custom__" && cur.form.currencyTypeCustom === "weirdcoin",
+        JSON.stringify(cur.form),
+    );
+    check(
+        "known currency stays on the picker",
+        (() => {
+            const g = roundTrip("techs", {
+                id: "md-my-hown-mod:mdmy.tech.g",
+                name: "G",
+                cost: 1,
+                currencyType: "gold",
+            });
+            return g.form.currencyType === "gold" && g.form.currencyTypeCustom === "";
+        })(),
+    );
 
     // Setting __custom__ with an empty box clears the value rather than storing
     // the literal sentinel.
@@ -1076,7 +1468,156 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         currencyType: "__custom__",
         currencyTypeCustom: "",
     });
-    check("empty custom box stores nothing", cleared.currencyType === undefined, JSON.stringify(cleared.currencyType));
+    check(
+        "empty custom box stores nothing",
+        cleared.currencyType === undefined,
+        JSON.stringify(cleared.currencyType),
+    );
+}
+
+{
+    // ── unlock nodes ─────────────────────────────────────────────────────────
+    //
+    // The category that decides whether a structure needs research, and whether a
+    // "tech" node really becomes an in-game tech node. Both halves are round-trip
+    // tested because the two kinds write disjoint sets of fields, and a field
+    // read by one kind but not written back is silent data loss.
+
+    console.log("── unlock nodes: the required owner of every structure's gate ──");
+
+    const cat = await import("../catalog.ts");
+    const tl = await import("./tech-link.ts");
+    store.config = {
+        ...(store.config ?? {}),
+        unlockNodes: [
+            {
+                id: "md-my-hown-mod:unlock.tier1",
+                name: "Tier 1",
+                kind: "tech",
+                cost: 50,
+                parentId: "md-my-hown-mod:unlock.default",
+            },
+            { id: "md-my-hown-mod:unlock.free", name: "Free", kind: "always" },
+        ],
+    };
+
+    // The picker is never empty: the built-in default is always first, so a
+    // structure can always name something even with no nodes configured.
+    const opts = cat.listUnlockNodes().map((o) => o.value);
+    check(
+        "the default node is always offered",
+        opts[0] === "md-my-hown-mod:unlock.default",
+        opts.join(" "),
+    );
+    check("configured nodes are offered", opts.length === 3, opts.join(" "));
+    store.config = { ...(store.config ?? {}), unlockNodes: [] };
+    check(
+        "the default survives an empty node list",
+        cat.listUnlockNodes().length === 1,
+        String(cat.listUnlockNodes().length),
+    );
+    store.config = {
+        ...(store.config ?? {}),
+        unlockNodes: [
+            {
+                id: "md-my-hown-mod:unlock.tier1",
+                name: "Tier 1",
+                kind: "tech",
+                cost: 50,
+                parentId: "md-my-hown-mod:unlock.free",
+            },
+        ],
+    };
+
+    const tech = roundTrip("unlockNodes", {
+        id: "md-my-hown-mod:unlock.tier1",
+        name: "Tier 1",
+        kind: "tech",
+        cost: 50,
+        parentId: "md-my-hown-mod:unlock.free",
+    });
+    check(
+        "a 'tech' node keeps its research fields",
+        tech.back.cost === 50 && tech.back.parentId === "md-my-hown-mod:unlock.free",
+        JSON.stringify(tech.back),
+    );
+    check(
+        "a 'tech' node does not become a borrower",
+        tech.back.techId === undefined,
+        JSON.stringify(tech.back.techId),
+    );
+
+    const free = roundTrip("unlockNodes", {
+        id: "md-my-hown-mod:unlock.free",
+        name: "Free",
+        kind: "always",
+    });
+    // The "always" kind writes no research fields at all, so a stale cost from a
+    // previous edit must not survive as a second, competing source for how the
+    // structure becomes available.
+    check(
+        "an 'always' node keeps no research fields",
+        free.back.cost === undefined && free.back.parentId === undefined,
+        JSON.stringify(free.back),
+    );
+    check(
+        "an 'always' node keeps its kind",
+        free.back.kind === "always",
+        JSON.stringify(free.back.kind),
+    );
+
+    // The borrow is exclusive: an engine tech keeps its own definition, so a cost
+    // typed alongside a borrow would be a second source for the same node.
+    const borrowed = formToEntry("unlockNodes", {
+        idSuffix: "borrowed",
+        name: "Borrowed",
+        kind: "tech",
+        useExistingTech: "true",
+        techId: "md-my-hown-mod:unlock.tier1",
+        cost: "999",
+    });
+    check(
+        "a borrowed node keeps the tech id",
+        borrowed.techId === "md-my-hown-mod:unlock.tier1",
+        JSON.stringify(borrowed.techId),
+    );
+    check(
+        "a borrowed node drops the cost",
+        borrowed.cost === undefined,
+        JSON.stringify(borrowed.cost),
+    );
+
+    // A structure's link is the required field, and it is read in full so a
+    // dangling node stays visible and repairable rather than being dropped.
+    const st = roundTrip("structures", {
+        id: "md-my-hown-mod:crusher",
+        unlockNode: "md-my-hown-mod:unlock.tier1",
+    });
+    check(
+        "a structure keeps its unlock node",
+        st.back.unlockNode === "md-my-hown-mod:unlock.tier1",
+        JSON.stringify(st.back.unlockNode),
+    );
+    const dangling = entryToForm("structures", {
+        id: "md-my-hown-mod:crusher",
+        unlockNode: "md-my-hown-mod:unlock.gone",
+    });
+    check(
+        "a dangling node is still read into the form",
+        dangling.unlockNode === "md-my-hown-mod:unlock.gone",
+        String(dangling.unlockNode),
+    );
+
+    // The last link in the chain: what the node resolves to at registration. A
+    // form that round-trips perfectly is still worthless if the engine never sees
+    // the structures, so the built tech's `unlocks.structures` is checked here
+    // rather than only in the unit tests.
+    const built = tl.engineTechOf(store.config.unlockNodes[0], store.config);
+    check(
+        "a 'tech' node resolves to an engine tech carrying its structures",
+        built?.id === "md-my-hown-mod:unlock.tier1" && Array.isArray(built?.unlocks?.structures),
+        JSON.stringify(built),
+    );
 }
 
 console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
@@ -1088,7 +1629,11 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
 
     // Every entry must carry a usable preview, or the tile renders blank.
     const noPreview = assets.filter((a) => !a.preview?.startsWith("data:image/png;base64,"));
-    check("every asset has a PNG data URL preview", noPreview.length === 0, noPreview.map((a) => a.name).join(" "));
+    check(
+        "every asset has a PNG data URL preview",
+        noPreview.length === 0,
+        noPreview.map((a) => a.name).join(" "),
+    );
 
     // The declared pixel size must match the real PNG header, and be 16×16.
     const decode = (d: string) => {
@@ -1107,16 +1652,34 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
         const d = decode(a.preview);
         return d.w !== a.previewW || d.h !== a.previewH;
     });
-    check("declared preview size matches the PNG header", badSize.length === 0, badSize.map((a) => a.name).join(" "));
+    check(
+        "declared preview size matches the PNG header",
+        badSize.length === 0,
+        badSize.map((a) => a.name).join(" "),
+    );
     const not16 = assets.filter((a) => a.previewW !== 16 || a.previewH !== 16);
-    check("every icon previews at 16×16", not16.length === 0, not16.map((a) => `${a.name} ${a.previewW}x${a.previewH}`).join(" "));
+    check(
+        "every icon previews at 16×16",
+        not16.length === 0,
+        not16.map((a) => `${a.name} ${a.previewW}x${a.previewH}`).join(" "),
+    );
 
     // Nearest-neighbour is what keeps the art crisp when scaled up.
-    check("sprite scaling is pixelated", styles.spritePixel.imageRendering === "pixelated", String(styles.spritePixel.imageRendering));
+    check(
+        "sprite scaling is pixelated",
+        styles.spritePixel.imageRendering === "pixelated",
+        String(styles.spritePixel.imageRendering),
+    );
 
     // Searching still works with the heavier entries.
-    check("search still matches by name", cat.searchLibraryAssets("alien").some((a) => a.name === "icon-alien"));
-    check("search carries previews through", cat.searchLibraryAssets("alien").every((a) => !!a.preview));
+    check(
+        "search still matches by name",
+        cat.searchLibraryAssets("alien").some((a) => a.name === "icon-alien"),
+    );
+    check(
+        "search carries previews through",
+        cat.searchLibraryAssets("alien").every((a) => !!a.preview),
+    );
 }
 
 console.log("── re-applying an edit actually reaches the engine ──");
@@ -1127,7 +1690,10 @@ console.log("── re-applying an edit actually reaches the engine ──");
         calls.push({ fn: name, a });
     };
     // Swap in a fake api surface for the namespaces updateEntry touches.
-    const apiNs = (await import("../packages/mysandkit.ts")).api as unknown as Record<string, Record<string, unknown>>;
+    const apiNs = (await import("../packages/mysandkit.ts")).api as unknown as Record<
+        string,
+        Record<string, unknown>
+    >;
     const saved: Record<string, Record<string, unknown>> = {};
     for (const ns of ["elements", "structures", "items", "tech", "terrains", "upgrades"]) {
         saved[ns] = apiNs[ns];
@@ -1135,15 +1701,26 @@ console.log("── re-applying an edit actually reaches the engine ──");
     }
     try {
         for (const cat of ["elements", "structures", "items", "techs", "terrains", "upgrades"]) {
-            const ok = apply.updateEntry(cat, "md-my-hown-mod:x", { id: "md-my-hown-mod:x", name: "New name" });
+            const ok = apply.updateEntry(cat, "md-my-hown-mod:x", {
+                id: "md-my-hown-mod:x",
+                name: "New name",
+            });
             check(`${cat} update is accepted`, ok === true);
         }
-        check("every category reached the engine", calls.length === 6, JSON.stringify(calls.map((c) => c.fn)));
+        check(
+            "every category reached the engine",
+            calls.length === 6,
+            JSON.stringify(calls.map((c) => c.fn)),
+        );
 
         // The id must not be duplicated into the partial — the engine keys on it.
         const el = calls.find((c) => c.fn === "elements")!;
         check("id is passed as the key", el.a[0] === "md-my-hown-mod:x", JSON.stringify(el.a[0]));
-        check("id is stripped from the partial", !(el.a[1] as Record<string, unknown>).id, JSON.stringify(el.a[1]));
+        check(
+            "id is stripped from the partial",
+            !(el.a[1] as Record<string, unknown>).id,
+            JSON.stringify(el.a[1]),
+        );
         check("edited fields are sent", (el.a[1] as Record<string, unknown>).name === "New name");
 
         // Upgrades are keyed by (itemId, nested upgradeId).
@@ -1155,12 +1732,22 @@ console.log("── re-applying an edit actually reaches the engine ──");
             name: "n",
         });
         const up = calls[0];
-        check("upgrades pass itemId first", up?.a[0] === "md-my-hown-mod:item", JSON.stringify(up?.a));
-        check("upgrades pass the nested upgrade id second", up?.a[1] === "power", JSON.stringify(up?.a));
+        check(
+            "upgrades pass itemId first",
+            up?.a[0] === "md-my-hown-mod:item",
+            JSON.stringify(up?.a),
+        );
+        check(
+            "upgrades pass the nested upgrade id second",
+            up?.a[1] === "power",
+            JSON.stringify(up?.a),
+        );
 
         // A category with no in-place update must not claim success.
         calls.length = 0;
-        const okRecipes = apply.updateEntry("recipes", "md-my-hown-mod:r", { id: "md-my-hown-mod:r" });
+        const okRecipes = apply.updateEntry("recipes", "md-my-hown-mod:r", {
+            id: "md-my-hown-mod:r",
+        });
         check("a non-updatable category reports failure", okRecipes === false);
         check("a non-updatable category does not call the engine", calls.length === 0);
     } finally {
@@ -1170,8 +1757,13 @@ console.log("── re-applying an edit actually reaches the engine ──");
 
 console.log("── handler registry is documented and API-verified ──");
 {
-    const { ANY_HANDLERS, ANY_HANDLER_DOCS, CODE_HANDLERS, PROCESS_HANDLERS, PROCESS_HANDLER_DOCS } =
-        await import("../hooks/handlers.ts");
+    const {
+        ANY_HANDLERS,
+        ANY_HANDLER_DOCS,
+        CODE_HANDLERS,
+        PROCESS_HANDLERS,
+        PROCESS_HANDLER_DOCS,
+    } = await import("../hooks/handlers.ts");
 
     // Every generic callback must be documented, or the UI shows a bare key.
     for (const key of Object.keys(ANY_HANDLERS)) {
@@ -1182,7 +1774,11 @@ console.log("── handler registry is documented and API-verified ──");
         check(`ANY_HANDLER_DOCS live: ${key}`, key in ANY_HANDLERS, "no such handler");
     }
     for (const key of Object.keys(PROCESS_HANDLERS)) {
-        check(`PROCESS_HANDLERS doc: ${key}`, !!PROCESS_HANDLER_DOCS[key], "missing from PROCESS_HANDLER_DOCS");
+        check(
+            `PROCESS_HANDLERS doc: ${key}`,
+            !!PROCESS_HANDLER_DOCS[key],
+            "missing from PROCESS_HANDLER_DOCS",
+        );
     }
     for (const key of Object.keys(PROCESS_HANDLER_DOCS)) {
         check(`PROCESS_HANDLER_DOCS live: ${key}`, key in PROCESS_HANDLERS, "no such handler");
@@ -1220,14 +1816,30 @@ console.log("── handler registry is documented and API-verified ──");
 
     // drillTierDamage is a number (0–1000), not a boolean flag.
     const drill = ANY_HANDLERS.excavationDrill?.();
-    check("drillTierDamage is numeric", typeof drill?.drillTierDamage === "number", String(drill?.drillTierDamage));
+    check(
+        "drillTierDamage is numeric",
+        typeof drill?.drillTierDamage === "number",
+        String(drill?.drillTierDamage),
+    );
 
     // Energy handlers must only emit documented registerType options.
     const allowed = new Set(["capacity", "energyType"]);
-    for (const key of ["energyDefault", "energyBank", "energyWire", "energyConductor", "energyNetwork"]) {
+    for (
+        const key of [
+            "energyDefault",
+            "energyBank",
+            "energyWire",
+            "energyConductor",
+            "energyNetwork",
+        ]
+    ) {
         const out = ANY_HANDLERS[key]?.({} as never, {}) as Record<string, unknown> | undefined;
         const bad = Object.keys(out ?? {}).filter((k) => !allowed.has(k));
-        check(`energy opts documented: ${key}`, bad.length === 0, `undocumented: ${bad.join(", ")}`);
+        check(
+            `energy opts documented: ${key}`,
+            bad.length === 0,
+            `undocumented: ${bad.join(", ")}`,
+        );
     }
 
     // Modifiers keep their own registry + keys.
@@ -1239,12 +1851,18 @@ console.log("── schema matches the real engine contracts ──");
     const keysOf = (cat) => fieldsFor(cat).map((f) => f.key);
     const optValues = (cat, key) => {
         const f = fieldsFor(cat).find((x) => x.key === key);
-        return typeof f?.options === "function" ? f.options() : (f?.options ?? []).map((o) => o.value);
+        return typeof f?.options === "function"
+            ? f.options()
+            : (f?.options ?? []).map((o) => o.value);
     };
 
     // energy: only conductor/storage are legal registerType roles.
     const roles = optValues("energy", "type");
-    check("energy roles are conductor/storage", roles.length === 2 && roles.includes("conductor") && roles.includes("storage"), JSON.stringify(roles));
+    check(
+        "energy roles are conductor/storage",
+        roles.length === 2 && roles.includes("conductor") && roles.includes("storage"),
+        JSON.stringify(roles),
+    );
     check("energy has no producer role", !roles.includes("producer"));
     check("energy has no consumer role", !roles.includes("consumer"));
     check("energy exposes capacity", keysOf("energy").includes("capacity"));
@@ -1272,13 +1890,20 @@ console.log("── schema matches the real engine contracts ──");
     const groups = MENU_GROUPS.map((g) => ({ key: g.key, cats: g.categories }));
     const techGroup = groups.find((g) => g.key === "tech");
     check("there is a Tech group", !!techGroup);
-    check("Tech group holds techs+upgrades", techGroup?.cats.includes("techs") && techGroup?.cats.includes("upgrades"));
+    check(
+        "Tech group holds techs+upgrades",
+        techGroup?.cats.includes("techs") && techGroup?.cats.includes("upgrades"),
+    );
     const worldGroup = groups.find((g) => g.key === "world");
     check("World no longer holds techs", !worldGroup?.cats.includes("techs"));
     check("World no longer holds upgrades", !worldGroup?.cats.includes("upgrades"));
     // every category must still live in exactly one group
     const allCats = groups.flatMap((g) => g.cats);
-    check("no category is orphaned", new Set(allCats).size === allCats.length, JSON.stringify(allCats));
+    check(
+        "no category is orphaned",
+        new Set(allCats).size === allCats.length,
+        JSON.stringify(allCats),
+    );
 }
 
 console.log("── every category exposes fields ──");
@@ -1300,7 +1925,6 @@ for (
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) Deno.exit(1);
-
 
 console.log("── hover tooltip is a structured editor, not a JSON box ──");
 {
@@ -1342,7 +1966,7 @@ console.log("── hover tooltip is a structured editor, not a JSON box ──"
         "a blank data field number is not written as field 0",
         blankEntry.tooltipHover?.dataFieldMessage?.fields?.[0] as Record<string, unknown>
             ? (blankEntry.tooltipHover.dataFieldMessage.fields[0] as Record<string, unknown>)
-                  .field === undefined
+                .field === undefined
             : false,
         JSON.stringify(blankEntry.tooltipHover),
     );
@@ -1384,8 +2008,11 @@ console.log("── an upgrade category's requirement is a pass-through, labelle
     f.name = "Power";
     f.requirementTechId = "mdmy.tech.tier2";
     const entry = formToEntry("categories", f) as { requirement?: unknown };
-    check("a tech requirement is stored as a plain id", entry.requirement === "mdmy.tech.tier2",
-        JSON.stringify(entry.requirement));
+    check(
+        "a tech requirement is stored as a plain id",
+        entry.requirement === "mdmy.tech.tier2",
+        JSON.stringify(entry.requirement),
+    );
 
     // A non-string requirement (a hand-edited config, or one from before the
     // picker existed) falls back to the raw box rather than being dropped.
@@ -1400,8 +2027,11 @@ console.log("── an upgrade category's requirement is a pass-through, labelle
         JSON.stringify(legacyBack.requirement) === JSON.stringify({ techId: "mdmy.tech.tier2" }),
         JSON.stringify(legacyBack.requirement),
     );
-    check("the raw box is shown for an object requirement", legacy.requirementTechId === "__custom__",
-        legacy.requirementTechId);
+    check(
+        "the raw box is shown for an object requirement",
+        legacy.requirementTechId === "__custom__",
+        legacy.requirementTechId,
+    );
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

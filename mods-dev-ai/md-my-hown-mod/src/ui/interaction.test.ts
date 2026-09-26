@@ -9,11 +9,11 @@
  */
 import { assert, assertEquals } from "jsr:@std/assert";
 import {
+    composeInteraction,
     DATA_FIELD_MODES,
     INTERACTION_KINDS,
-    TOOLTIP_KINDS,
-    composeInteraction,
     splitInteraction,
+    TOOLTIP_KINDS,
 } from "./interaction.ts";
 
 const kinds = INTERACTION_KINDS.map((k) => k.kind);
@@ -67,7 +67,6 @@ Deno.test("a flag-only kind ignores fields belonging to another kind", () => {
         }),
         { kind: "flammable" },
     );
-
 });
 
 Deno.test("the structure kind emits structures", () => {

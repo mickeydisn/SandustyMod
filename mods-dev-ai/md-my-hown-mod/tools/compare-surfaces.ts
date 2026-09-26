@@ -22,8 +22,7 @@ const ROOT = HERE.replace(/\/tools\/$/, "") + "/";
 const D = (p: string) => `${REPO}${p}`;
 
 const PUBLIC_API_DTS = D("__pakages/__other/sandkit/src/sandkit/api/sandkit-api.d.ts");
-const WORKER_API_DTS =
-    D("__pakages/__other/sandkit/src/worker/sandkit-api.d.ts");
+const WORKER_API_DTS = D("__pakages/__other/sandkit/src/worker/sandkit-api.d.ts");
 const INDEX_JSON = `${ROOT}doc-bundel/api-index.json`;
 
 async function readNs(path: string): Promise<Set<string>> {
@@ -69,7 +68,9 @@ if (import.meta.main) {
     console.log(`(${missing.length})`);
     for (const n of missing) {
         const hits = await inBundle(n);
-        console.log(`  ${n.padEnd(22)} ${hits.length ? "partial: " + hits[0] : "ABSENT from bundle"}`);
+        console.log(
+            `  ${n.padEnd(22)} ${hits.length ? "partial: " + hits[0] : "ABSENT from bundle"}`,
+        );
     }
 
     console.log("\n=== bundle engine namespaces NOT declared in the public .d.ts ===");

@@ -1,35 +1,32 @@
 export {
     CODE_HANDLERS,
-    resolveHandler,
-    listHandlerKeys,
     type CodeHandler,
     type InterceptHandler,
+    listHandlerKeys,
     type ModifyHandler,
+    resolveHandler,
 } from "./handlers.ts";
 
 export {
-    applyModifier,
-    detachModifier,
-    applyAllModifiers,
-    detachAllModifiers,
     activeModifierIds,
+    applyAllModifiers,
+    applyModifier,
+    detachAllModifiers,
+    detachModifier,
 } from "./apply.ts";
 
-export { ANY_HANDLERS, resolveAnyHandler, type AnyHandler } from "./handlers.ts";
-export {
-    PROCESS_HANDLERS,
-    type ProcessHandler,
-} from "./handlers.ts";
+export { ANY_HANDLERS, type AnyHandler, resolveAnyHandler } from "./handlers.ts";
+export { PROCESS_HANDLERS, type ProcessHandler } from "./handlers.ts";
 import {
-    listHandlerKeys,
-    listAnyHandlerKeys,
-    listProcessorKeys,
-    CODE_HANDLERS,
-    ANY_HANDLERS,
-    PROCESS_HANDLERS,
     ANY_HANDLER_DOCS,
-    PROCESS_HANDLER_DOCS,
+    ANY_HANDLERS,
     CODE_HANDLER_DOCS,
+    CODE_HANDLERS,
+    listAnyHandlerKeys,
+    listHandlerKeys,
+    listProcessorKeys,
+    PROCESS_HANDLER_DOCS,
+    PROCESS_HANDLERS,
 } from "./handlers.ts";
 
 export { listAnyHandlerKeys, listProcessorKeys };
@@ -37,28 +34,28 @@ export { listAnyHandlerKeys, listProcessorKeys };
 // The typed registry: what a handler is, which slots may select it, its scope
 // and its parameters. Published on the same global so the UI can browse it.
 export {
+    allHandlerTypes,
+    buildHandlerOptions,
     HANDLER_META,
-    HANDLER_TYPE_LABELS,
-    HANDLER_TYPE_BLURBS,
-    HANDLER_SLOT_LABELS,
     HANDLER_SCOPE_LABELS,
     HANDLER_SCOPES,
+    HANDLER_SLOT_LABELS,
+    HANDLER_TYPE_BLURBS,
+    HANDLER_TYPE_LABELS,
+    type HandlerMeta,
     handlerMeta,
+    type HandlerParam,
+    type HandlerScope,
     handlersForSlot,
+    type HandlerSlot,
     handlersOfType,
-    allHandlerTypes,
+    type HandlerType,
+    type HandlerUsage,
     isHandlerKey,
-    validateHandlerParams,
-    buildHandlerOptions,
     scanHandlerUsage,
     unreachableHandlers,
     usageIndex,
-    type HandlerType,
-    type HandlerSlot,
-    type HandlerScope,
-    type HandlerMeta,
-    type HandlerParam,
-    type HandlerUsage,
+    validateHandlerParams,
 } from "./handler-registry.ts";
 
 import { HANDLER_META } from "./handler-registry.ts";

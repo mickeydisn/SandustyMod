@@ -52,6 +52,7 @@ import {
     listStructures,
     listTechBranches,
     listTechIds,
+    listUnlockNodes,
     listTriggerHandlerKeys,
     listUpgradeHandlerKeys,
     searchLibraryAssets,
@@ -63,7 +64,7 @@ import {
 export type Tab =
     | "elements" | "structures" | "items"
     | "recipes" | "processing" | "contacts" | "interactions"
-    | "terrains" | "techs" | "upgrades" | "categories"
+    | "terrains" | "techs" | "upgrades" | "categories" | "unlockNodes"
     | "signals" | "triggers" | "behaviors" | "energy" | "excavation" | "projectiles"
     | "sprites" | "modifiers" | "inputs"
     /** Registry browser — no configKey, renders its own body. */
@@ -90,6 +91,11 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
     contacts: { label: "Contact reactions", blurb: "Element A + element B → two outputs.", configKey: "contacts" },
     interactions: { label: "Element ↔ structure", blurb: "Extra interaction info attached to an element.", configKey: "interactions" },
     terrains: { label: "Terrains", blurb: "Diggable tiles: hp, colour, drop output.", configKey: "terrains" },
+    unlockNodes: {
+        label: "Unlock nodes",
+        blurb: "What each structure is gated behind: free from the start, or behind research.",
+        configKey: "unlockNodes",
+    },
     techs: { label: "Tech nodes", blurb: "Research nodes: cost, branch, unlocks.", configKey: "techs" },
     upgrades: { label: "Upgrades", blurb: "Item upgrade levels and costs.", configKey: "upgrades" },
     categories: {
@@ -150,7 +156,7 @@ export interface MenuGroup {
 export const MENU_GROUPS: MenuGroup[] = [
     { key: "content", label: "Content", hint: "What exists in the game", categories: ["elements", "structures", "items", "terrains"] },
     { key: "production", label: "Production", hint: "How things transform", categories: ["recipes", "processing", "contacts", "interactions"] },
-    { key: "tech", label: "Tech", hint: "Research, progression & upgrades", categories: ["techs", "categories", "upgrades"] },
+    { key: "tech", label: "Tech", hint: "Research, progression & upgrades", categories: ["unlockNodes", "techs", "categories", "upgrades"] },
     { key: "systems", label: "Systems", hint: "Logic & machine wiring", categories: ["signals", "triggers", "behaviors", "energy", "excavation", "projectiles", "inputs"] },
     { key: "assets", label: "Assets", hint: "Images loaded from the mod folder", categories: ["sprites"] },
     { key: "handlers", label: "Handlers", hint: "Every function this mod can call", categories: ["handlers"] },
@@ -675,14 +681,39 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
         boolField("dirV", "Vertical", "Placement", "true"),
         boolField("dirD", "Diagonal", "Placement", "false"),
         shapeField(),
-        {
-            // NOTE: there is no `unlockedBy` field in the engine. Build-menu
-            // unlocking is either `alwaysUnlocked`, or a tech node's
-            // `unlocks.structures` / `conservatory.appendUnlock`.
-            key: "alwaysUnlocked", label: "Always unlocked", kind: "bool", section: "Flags",
-            hint: "show in the build menu with no research — otherwise unlock it from a tech node",
-        },
+        // The only menu-visibility lever left. `alwaysUnlocked` used to sit next to
+        // this and is gone: the engine reads it in exactly one place, iterating a
+        // `const` literal of the *vanilla* structures (bundel.js 5251.js, `Ue`),
+        // so for a mod-registered structure the flag was inert. It is superseded by
+        // the **unlock node**, which is not a flag but an entry the author names and
+        // edits: an "always" node says the same thing, legibly and shared between
+        // structures. This flag decides whether it is listed — which the build menu
+        // does honour, reading `hideFromBuildMenu` off the mod registry as well
+        // (bundel.js 7493921).
         boolField("hideFromBuildMenu", "Hide from build menu", "Flags"),
+        {
+            // Every structure names a node, so the picker never offers an empty
+            // "— none —": "available from the start" is a *node you can see and
+            // edit*, not an absent field that quietly means the same thing.
+            //
+            // The current value is re-added when it is not in the list, so a link to
+            // a deleted node survives the round trip as a visible "(missing node)"
+            // option rather than silently reverting the structure.
+            key: "unlockNode",
+            label: "Unlock node",
+            kind: "select",
+            section: "Flags",
+            required: true,
+            options: (f) => {
+                const opts = listUnlockNodes();
+                const cur = (f.unlockNode ?? "").trim();
+                if (cur && !opts.some((o) => o.value === cur)) {
+                    return [...opts, { value: cur, label: `${cur} (missing node)` }];
+                }
+                return opts;
+            },
+            hint: "every structure names one — the node decides whether research is needed",
+        },
         boolField("disallowPick", "Disallow pick", "Flags"),
         {
             key: "rejectWhenBlocked", label: "Reject when blocked", kind: "bool",
@@ -1858,7 +1889,7 @@ const FORM_COVERED: Partial<Record<Tab, string[]>> = {
     structures: [
         "name", "description", "categoryKey", "order", "buildModes", "spanTiles",
         "dirH", "dirV", "dirD", "shape", "alwaysUnlocked",
-        "hideFromBuildMenu", "disallowPick", "render", "imageName",
+        "hideFromBuildMenu", "disallowPick", "unlockNode", "render", "imageName",
         "blockGridType", "draw", "skipCopyData", "defaultData",
         "descriptionKey", "descriptionParams", "linkedClearance",
         "rejectWhenBlocked", "tooltipHover", "variants",

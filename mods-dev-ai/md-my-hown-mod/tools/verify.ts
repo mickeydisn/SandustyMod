@@ -161,6 +161,17 @@ export const MOD_OWN_KEYS = new Set([
     "onUpgradeKey",
     "getOptionsKey",
     "process",
+    // Ours, not the engine's. The engine reads a structure's unlock from the
+    // *tech* side (`tech.unlocks.structures`) and never from the structure, so
+    // the link is stored here to make "which node gates this?" answerable from
+    // the structure panel, and `apply.ts` resolves the node into a real tech at
+    // registration. See `src/ui/tech-link.ts`.
+    "unlockNode",
+    // Ours, on the mod-owned node category. A "tech"-kind node is turned into a
+    // real engine tech at apply time, but the engine never sees a node, so it
+    // reads none of these keys off one.
+    "kind",
+    "techId",
 ]);
 
 /**

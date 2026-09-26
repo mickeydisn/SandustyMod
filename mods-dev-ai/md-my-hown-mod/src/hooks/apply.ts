@@ -82,7 +82,9 @@ export function applyModifier(entry: ModifierConfig): boolean {
                 hooks.intercept(entry.hookId, (handler as { fn: Function }).fn, opts),
             );
             active.set(entry.id, unsub);
-            console.log(`${LOG} modifier ${entry.id}: intercept → ${entry.hookId} (${entry.handlerKey})`);
+            console.log(
+                `${LOG} modifier ${entry.id}: intercept → ${entry.hookId} (${entry.handlerKey})`,
+            );
             return true;
         }
 
@@ -95,7 +97,9 @@ export function applyModifier(entry: ModifierConfig): boolean {
                 hooks.modify(entry.hookId, (handler as { fn: Function }).fn, opts),
             );
             active.set(entry.id, unsub);
-            console.log(`${LOG} modifier ${entry.id}: modify → ${entry.hookId} (${entry.handlerKey})`);
+            console.log(
+                `${LOG} modifier ${entry.id}: modify → ${entry.hookId} (${entry.handlerKey})`,
+            );
             return true;
         }
     } catch (e) {

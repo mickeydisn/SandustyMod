@@ -14,7 +14,7 @@
  * That cannot be exercised without a renderer, so the key is asserted textually.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
-import { VOLATILE_KEYS, emptyViewState } from "./viewstate.ts";
+import { emptyViewState, VOLATILE_KEYS } from "./viewstate.ts";
 
 const panel = Deno.readTextFileSync(
     new URL("./panel.ts", import.meta.url).pathname,
@@ -85,9 +85,8 @@ Deno.test("the screen body is keyed so it remounts instead of reconciling", () =
 Deno.test("renderField returns keyed children", () => {
     // Regression guard: unkeyed children in a list let React mismatch nodes
     // when the field set changes between screens.
-    const ret =
-        /const renderField = \(f: FieldSpec\) => \{[\s\S]*?\n        \};\n/
-            .exec(panel)?.[0] ?? "";
+    const ret = /const renderField = \(f: FieldSpec\) => \{[\s\S]*?\n        \};\n/
+        .exec(panel)?.[0] ?? "";
     assert(ret, "could not find renderField");
     assert(/key: f\.key/.test(ret), "renderField does not key its root element");
 });
