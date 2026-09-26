@@ -1,268 +1,268 @@
 [
-  {
-    "modType": "ElementConfig",
-    "engineType": "ElementDefinition",
-    "openEnded": false,
-    "extra": [
-      "description",
-      "descriptionKey",
-      "duration",
-      "durationRandom",
-      "flammable",
-      "hidden",
-      "interactions",
-      "materialId",
-      "metaColor",
-      "name"
-    ],
-    "missing": [],
-    "shared": [
-      "colors",
-      "defaultDataFields",
-      "density",
-      "getExtraProps",
-      "id",
-      "isGrabbable",
-      "isTransportable",
-      "matterType",
-      "nameKey"
-    ]
-  },
-  {
-    "modType": "StructureConfig",
-    "engineType": "SandkitStructureDefinition",
-    "openEnded": true,
-    "extra": [],
-    "missing": [
-      "descriptionParams",
-      "linkedClearance"
-    ],
-    "shared": [
-      "alwaysUnlocked",
-      "buildModes",
-      "categoryKey",
-      "defaultData",
-      "description",
-      "descriptionKey",
-      "id",
-      "name",
-      "nameKey",
-      "order",
-      "rejectWhenBlocked",
-      "render",
-      "shape",
-      "tooltipHover",
-      "variants"
-    ]
-  },
-  {
-    "modType": "ProcessingConfig",
-    "engineType": "StructureProcessingDefinitionV1",
-    "openEnded": false,
-    "extra": [
-      "id",
-      "mode",
-      "structureId"
-    ],
-    "missing": [],
-    "shared": [
-      "intervalMs",
-      "process",
-      "structureType"
-    ]
-  },
-  {
-    "modType": "ContactReactionConfig",
-    "engineType": "ContactRecipeDefinitionV1",
-    "openEnded": false,
-    "extra": [
-      "id"
-    ],
-    "missing": [],
-    "shared": [
-      "inputA",
-      "inputB",
-      "orientation",
-      "outputA",
-      "outputB"
-    ]
-  },
-  {
-    "modType": "ProjectileConfig",
-    "engineType": "ProjectileDefinition",
-    "openEnded": true,
-    "extra": [],
-    "missing": [
-      "getModData",
-      "getOptions"
-    ],
-    "shared": [
-      "id",
-      "sprite"
-    ]
-  },
-  {
-    "modType": "ExcavationProfileConfig",
-    "engineType": "ExcavationProfileDefinitionV1",
-    "openEnded": false,
-    "extra": [
-      "id"
-    ],
-    "missing": [],
-    "shared": [
-      "options",
-      "pattern",
-      "power",
-      "terrainRules"
-    ]
-  },
-  {
-    "modType": "ItemConfig",
-    "engineType": "ItemDefinition",
-    "openEnded": true,
-    "extra": [],
-    "missing": [
-      "afterRender",
-      "handleAction"
-    ],
-    "shared": []
-  },
-  {
-    "modType": "TerrainConfig",
-    "engineType": "TerrainDefinition",
-    "openEnded": false,
-    "extra": [
-      "background",
-      "backgroundElementType",
-      "colorGradient",
-      "colorHSL",
-      "colorPattern",
-      "description",
-      "descriptionKey",
-      "displayNameOverrideKey",
-      "excavationRequirements",
-      "flammable",
-      "fog",
-      "hp",
-      "id",
-      "isBuilding",
-      "materialId",
-      "metaColor",
-      "name",
-      "nameKey",
-      "noShadow",
-      "output"
-    ],
-    "missing": [],
-    "shared": [
-      "interactions"
-    ]
-  },
-  {
-    "modType": "TechConfig",
-    "engineType": "TechDefinition",
-    "openEnded": true,
-    "extra": [],
-    "missing": [],
-    "shared": [
-      "branch",
-      "cost",
-      "currencyType",
-      "description",
-      "descriptionKey",
-      "name",
-      "nameKey",
-      "requires",
-      "unlocks"
-    ]
-  },
-  {
-    "modType": "UpgradeConfig",
-    "engineType": "UpgradeDefinition",
-    "openEnded": true,
-    "extra": [],
-    "missing": [],
-    "shared": [
-      "categoryId",
-      "itemId",
-      "itemNameKey",
-      "upgrade"
-    ]
-  },
-  {
-    "modType": "UpgradeCategoryConfig",
-    "engineType": "UpgradeCategoryDefinition",
-    "openEnded": true,
-    "extra": [],
-    "missing": [
-      "nameKey"
-    ],
-    "shared": [
-      "id"
-    ]
-  },
-  {
-    "modType": "RecipeConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  },
-  {
-    "modType": "InteractionConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  },
-  {
-    "modType": "ModifierConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  },
-  {
-    "modType": "SignalConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  },
-  {
-    "modType": "TriggerConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  },
-  {
-    "modType": "SpriteConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  },
-  {
-    "modType": "EnergyTypeConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  },
-  {
-    "modType": "StructureBehaviorConfig",
-    "engineType": null,
-    "openEnded": false,
-    "extra": [],
-    "missing": [],
-    "shared": []
-  }
+    {
+        "modType": "ElementConfig",
+        "engineType": "ElementDefinition",
+        "openEnded": false,
+        "extra": [
+            "description",
+            "descriptionKey",
+            "duration",
+            "durationRandom",
+            "flammable",
+            "hidden",
+            "interactions",
+            "materialId",
+            "metaColor",
+            "name"
+        ],
+        "missing": [],
+        "shared": [
+            "colors",
+            "defaultDataFields",
+            "density",
+            "getExtraProps",
+            "id",
+            "isGrabbable",
+            "isTransportable",
+            "matterType",
+            "nameKey"
+        ]
+    },
+    {
+        "modType": "StructureConfig",
+        "engineType": "SandkitStructureDefinition",
+        "openEnded": true,
+        "extra": [],
+        "missing": [
+            "descriptionParams",
+            "linkedClearance"
+        ],
+        "shared": [
+            "alwaysUnlocked",
+            "buildModes",
+            "categoryKey",
+            "defaultData",
+            "description",
+            "descriptionKey",
+            "id",
+            "name",
+            "nameKey",
+            "order",
+            "rejectWhenBlocked",
+            "render",
+            "shape",
+            "tooltipHover",
+            "variants"
+        ]
+    },
+    {
+        "modType": "ProcessingConfig",
+        "engineType": "StructureProcessingDefinitionV1",
+        "openEnded": false,
+        "extra": [
+            "id",
+            "mode",
+            "structureId"
+        ],
+        "missing": [],
+        "shared": [
+            "intervalMs",
+            "process",
+            "structureType"
+        ]
+    },
+    {
+        "modType": "ContactReactionConfig",
+        "engineType": "ContactRecipeDefinitionV1",
+        "openEnded": false,
+        "extra": [
+            "id"
+        ],
+        "missing": [],
+        "shared": [
+            "inputA",
+            "inputB",
+            "orientation",
+            "outputA",
+            "outputB"
+        ]
+    },
+    {
+        "modType": "ProjectileConfig",
+        "engineType": "ProjectileDefinition",
+        "openEnded": true,
+        "extra": [],
+        "missing": [
+            "getModData",
+            "getOptions"
+        ],
+        "shared": [
+            "id",
+            "sprite"
+        ]
+    },
+    {
+        "modType": "ExcavationProfileConfig",
+        "engineType": "ExcavationProfileDefinitionV1",
+        "openEnded": false,
+        "extra": [
+            "id"
+        ],
+        "missing": [],
+        "shared": [
+            "options",
+            "pattern",
+            "power",
+            "terrainRules"
+        ]
+    },
+    {
+        "modType": "ItemConfig",
+        "engineType": "ItemDefinition",
+        "openEnded": true,
+        "extra": [],
+        "missing": [
+            "afterRender",
+            "handleAction"
+        ],
+        "shared": []
+    },
+    {
+        "modType": "TerrainConfig",
+        "engineType": "TerrainDefinition",
+        "openEnded": false,
+        "extra": [
+            "background",
+            "backgroundElementType",
+            "colorGradient",
+            "colorHSL",
+            "colorPattern",
+            "description",
+            "descriptionKey",
+            "displayNameOverrideKey",
+            "excavationRequirements",
+            "flammable",
+            "fog",
+            "hp",
+            "id",
+            "isBuilding",
+            "materialId",
+            "metaColor",
+            "name",
+            "nameKey",
+            "noShadow",
+            "output"
+        ],
+        "missing": [],
+        "shared": [
+            "interactions"
+        ]
+    },
+    {
+        "modType": "TechConfig",
+        "engineType": "TechDefinition",
+        "openEnded": true,
+        "extra": [],
+        "missing": [],
+        "shared": [
+            "branch",
+            "cost",
+            "currencyType",
+            "description",
+            "descriptionKey",
+            "name",
+            "nameKey",
+            "requires",
+            "unlocks"
+        ]
+    },
+    {
+        "modType": "UpgradeConfig",
+        "engineType": "UpgradeDefinition",
+        "openEnded": true,
+        "extra": [],
+        "missing": [],
+        "shared": [
+            "categoryId",
+            "itemId",
+            "itemNameKey",
+            "upgrade"
+        ]
+    },
+    {
+        "modType": "UpgradeCategoryConfig",
+        "engineType": "UpgradeCategoryDefinition",
+        "openEnded": true,
+        "extra": [],
+        "missing": [
+            "nameKey"
+        ],
+        "shared": [
+            "id"
+        ]
+    },
+    {
+        "modType": "RecipeConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    },
+    {
+        "modType": "InteractionConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    },
+    {
+        "modType": "ModifierConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    },
+    {
+        "modType": "SignalConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    },
+    {
+        "modType": "TriggerConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    },
+    {
+        "modType": "SpriteConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    },
+    {
+        "modType": "EnergyTypeConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    },
+    {
+        "modType": "StructureBehaviorConfig",
+        "engineType": null,
+        "openEnded": false,
+        "extra": [],
+        "missing": [],
+        "shared": []
+    }
 ]

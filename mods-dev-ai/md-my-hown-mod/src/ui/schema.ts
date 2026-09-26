@@ -16,11 +16,11 @@
  */
 import { MOD_ID, type ModConfig, type RecipeOutputEntry } from "../constants.ts";
 import {
+    composeInteraction,
     DATA_FIELD_MODES,
     INTERACTION_KINDS,
-    TOOLTIP_KINDS,
-    composeInteraction,
     splitInteraction,
+    TOOLTIP_KINDS,
 } from "./interaction.ts";
 import { definitionFor } from "./definition/index.ts";
 import {
@@ -37,6 +37,7 @@ import {
     spriteIdField,
     textField,
 } from "./definition/fields.ts";
+import { elementDefinition } from "./definition/element.ts";
 import {
     composeTooltipHover,
     describeShape,
@@ -86,10 +87,7 @@ export {
 } from "./definition/structure.ts";
 export { autoGraphicsKey, resolveAutoFill } from "./definition/fields.ts";
 export { PASSTHROUGH_KEY, passthroughKeysOf } from "./definition/fields.ts";
-import {
-    HANDLER_TYPE_LABELS,
-    handlerTypesForKeys,
-} from "../hooks/handler-registry.ts";
+import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../hooks/handler-registry.ts";
 import {
     listAnyHandlerKeys,
     listContactOrientation,
@@ -105,7 +103,6 @@ import {
     listKeyCodes,
     listLinkedClearance,
     listMaterialIds,
-    listMatterTypes,
     listOutputTargets,
     listProcessorKeys,
     listProjectileHandlerKeys,
@@ -116,23 +113,39 @@ import {
     listStructures,
     listTechBranches,
     listTechIds,
+    listTriggerHandlerKeys,
     listUnlockNodes,
     listUpgradeCategoryIds,
-    listTriggerHandlerKeys,
     listUpgradeHandlerKeys,
-    searchLibraryAssets,
     type Opt,
+    searchLibraryAssets,
 } from "../catalog.ts";
 
 // ── Categories & groups ──────────────────────────────────────────────────────
 
 export type Tab =
-    | "elements" | "structures" | "items"
-    | "recipes" | "processing" | "contacts" | "interactions"
-    | "terrains" | "techs" | "upgrades" | "categories" | "unlockNodes"
-    | "signals" | "triggers" | "behaviors" | "energy" | "networks"
-    | "excavation" | "projectiles"
-    | "sprites" | "modifiers" | "inputs"
+    | "elements"
+    | "structures"
+    | "items"
+    | "recipes"
+    | "processing"
+    | "contacts"
+    | "interactions"
+    | "terrains"
+    | "techs"
+    | "upgrades"
+    | "categories"
+    | "unlockNodes"
+    | "signals"
+    | "triggers"
+    | "behaviors"
+    | "energy"
+    | "networks"
+    | "excavation"
+    | "projectiles"
+    | "sprites"
+    | "modifiers"
+    | "inputs"
     /** Catalogue of the engine's draw functions — no configKey, no storage. */
     | "draws"
     /** Registry browser — no configKey, renders its own body. */
@@ -151,24 +164,56 @@ export interface CategoryMeta {
 }
 
 export const CATEGORY_META: Record<Tab, CategoryMeta> = {
-    elements: { label: "Elements", blurb: "New simulation matter: powders, liquids, gases…", configKey: "elements" },
-    structures: { label: "Structures", blurb: "Buildable machines (build menu, shape, render).", configKey: "structures" },
-    items: { label: "Items", blurb: "Hotbar items: tools, weapons, consumables.", configKey: "items" },
-    recipes: { label: "Machine recipes", blurb: "Input → outputs for the built-in machines.", configKey: "recipes" },
-    processing: { label: "Processors", blurb: "Timed behaviour attached to a structure type.", configKey: "processing" },
-    contacts: { label: "Contact reactions", blurb: "Element A + element B → two outputs.", configKey: "contacts" },
+    elements: {
+        label: "Elements",
+        blurb: "New simulation matter: powders, liquids, gases…",
+        configKey: "elements",
+    },
+    structures: {
+        label: "Structures",
+        blurb: "Buildable machines (build menu, shape, render).",
+        configKey: "structures",
+    },
+    items: {
+        label: "Items",
+        blurb: "Hotbar items: tools, weapons, consumables.",
+        configKey: "items",
+    },
+    recipes: {
+        label: "Machine recipes",
+        blurb: "Input → outputs for the built-in machines.",
+        configKey: "recipes",
+    },
+    processing: {
+        label: "Processors",
+        blurb: "Timed behaviour attached to a structure type.",
+        configKey: "processing",
+    },
+    contacts: {
+        label: "Contact reactions",
+        blurb: "Element A + element B → two outputs.",
+        configKey: "contacts",
+    },
     interactions: {
         label: "Tooltips",
         blurb: "The hover text and behaviour an element or terrain shows in-game.",
         configKey: "interactions",
     },
-    terrains: { label: "Terrains", blurb: "Diggable tiles: hp, colour, drop output.", configKey: "terrains" },
+    terrains: {
+        label: "Terrains",
+        blurb: "Diggable tiles: hp, colour, drop output.",
+        configKey: "terrains",
+    },
     unlockNodes: {
         label: "Unlock nodes",
         blurb: "What each structure is gated behind: free from the start, or behind research.",
         configKey: "unlockNodes",
     },
-    techs: { label: "Tech nodes", blurb: "Research nodes: cost, branch, unlocks.", configKey: "techs" },
+    techs: {
+        label: "Tech nodes",
+        blurb: "Research nodes: cost, branch, unlocks.",
+        configKey: "techs",
+    },
     upgrades: { label: "Upgrades", blurb: "Item upgrade levels and costs.", configKey: "upgrades" },
     categories: {
         label: "Upgrade categories",
@@ -180,9 +225,17 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         blurb: "Custom key bindings that appear in the game's settings.",
         configKey: "inputBindings",
     },
-    signals: { label: "Signals", blurb: "Structure click / signal handlers.", configKey: "signals" },
+    signals: {
+        label: "Signals",
+        blurb: "Structure click / signal handlers.",
+        configKey: "signals",
+    },
     triggers: { label: "Triggers", blurb: "Interval callbacks (ticks).", configKey: "triggers" },
-    behaviors: { label: "Behaviours", blurb: "Conveyor / launcher behaviour definitions.", configKey: "structureBehaviors" },
+    behaviors: {
+        label: "Behaviours",
+        blurb: "Conveyor / launcher behaviour definitions.",
+        configKey: "structureBehaviors",
+    },
     energy: {
         label: "Energy interactions",
         blurb: "Attach a conductor/storage energy node to a structure.",
@@ -193,10 +246,26 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         blurb: "Named energy channels. The game ships one; add the ones you need.",
         configKey: "energyNetworks",
     },
-    excavation: { label: "Excavation profiles", blurb: "Dig power + cell pattern.", configKey: "excavationProfiles" },
-    projectiles: { label: "Projectiles", blurb: "Sprite-driven projectiles and their options.", configKey: "projectiles" },
-    sprites: { label: "Sprites", blurb: "Images loaded from the mod folder.", configKey: "sprites" },
-    modifiers: { label: "Hook modifiers", blurb: "Intercept / modify engine hooks (code handlers).", configKey: "modifiers" },
+    excavation: {
+        label: "Excavation profiles",
+        blurb: "Dig power + cell pattern.",
+        configKey: "excavationProfiles",
+    },
+    projectiles: {
+        label: "Projectiles",
+        blurb: "Sprite-driven projectiles and their options.",
+        configKey: "projectiles",
+    },
+    sprites: {
+        label: "Sprites",
+        blurb: "Images loaded from the mod folder.",
+        configKey: "sprites",
+    },
+    modifiers: {
+        label: "Hook modifiers",
+        blurb: "Intercept / modify engine hooks (code handlers).",
+        configKey: "modifiers",
+    },
     handlers: {
         label: "Handlers",
         blurb: "Every callable this mod can run — grouped by type, with scope and parameters.",
@@ -236,22 +305,75 @@ export interface MenuGroup {
  * you load, a function you call, and a hook you intercept.
  */
 export const MENU_GROUPS: MenuGroup[] = [
-    { key: "content", label: "Content", hint: "What the player sees in the world", categories: ["terrains", "elements", "structures", "items"] },
-    { key: "extend", label: "Extend", hint: "Add to what the game already does", categories: ["interactions", "behaviors", "excavation", "projectiles", "signals"] },
-    { key: "production", label: "Production", hint: "How things transform", categories: ["contacts", "recipes"] },
-    { key: "tech", label: "Tech", hint: "Research, progression & upgrades", categories: ["unlockNodes", "techs", "categories", "upgrades"] },
-    { key: "actions", label: "Actions", hint: "Reacting to the player and the clock", categories: ["triggers", "inputs", "processing", "modifiers"] },
-    { key: "energy", label: "Energy", hint: "Power channels and the nodes on them", categories: ["networks", "energy"] },
-    { key: "assets", label: "Assets", hint: "Images, and the code that paints them", categories: ["sprites", "draws"] },
-    { key: "handlers", label: "Handlers", hint: "Every function this mod can call", categories: ["handlers"] },
+    {
+        key: "content",
+        label: "Content",
+        hint: "What the player sees in the world",
+        categories: ["terrains", "elements", "structures", "items"],
+    },
+    {
+        key: "extend",
+        label: "Extend",
+        hint: "Add to what the game already does",
+        categories: ["interactions", "behaviors", "excavation", "projectiles", "signals"],
+    },
+    {
+        key: "production",
+        label: "Production",
+        hint: "How things transform",
+        categories: ["contacts", "recipes"],
+    },
+    {
+        key: "tech",
+        label: "Tech",
+        hint: "Research, progression & upgrades",
+        categories: ["unlockNodes", "techs", "categories", "upgrades"],
+    },
+    {
+        key: "actions",
+        label: "Actions",
+        hint: "Reacting to the player and the clock",
+        categories: ["triggers", "inputs", "processing", "modifiers"],
+    },
+    {
+        key: "energy",
+        label: "Energy",
+        hint: "Power channels and the nodes on them",
+        categories: ["networks", "energy"],
+    },
+    {
+        key: "assets",
+        label: "Assets",
+        hint: "Images, and the code that paints them",
+        categories: ["sprites", "draws"],
+    },
+    {
+        key: "handlers",
+        label: "Handlers",
+        hint: "Every function this mod can call",
+        categories: ["handlers"],
+    },
     { key: "help", label: "Graph", hint: "What points at what", categories: ["help"] },
-    { key: "data", label: "Data", hint: "Raw JSON, and a map of what you have made", categories: ["map", "json"] },
+    {
+        key: "data",
+        label: "Data",
+        hint: "Raw JSON, and a map of what you have made",
+        categories: ["map", "json"],
+    },
 ];
 
 // ── Field specs ──────────────────────────────────────────────────────────────
 
 export type FieldKind =
-    | "text" | "number" | "bool" | "select" | "color" | "json" | "outputs" | "shape" | "library"
+    | "text"
+    | "number"
+    | "bool"
+    | "select"
+    | "color"
+    | "json"
+    | "outputs"
+    | "shape"
+    | "library"
     /** Repeating row editor: [{ cellType, damage, outputElementType }] (excavation). */
     | "terrainRules"
     /**
@@ -321,71 +443,26 @@ export interface FieldSpec {
 }
 
 /**
- * Colour variants: the `colors.variants` list, as swatches.
+ * Colour variants, re-exported from the element definition.
  *
- * The engine's shape is `{ colors: { variants: [[r,g,b,a], …] } }` — confirmed
- * against every workshop mod that uses it (`__scraped-mods/workshop/3790149867`,
- * `3792673946`). Each entry is a per-cell tint chosen at random, which is why
- * real mods ship four or five of them: a single flat colour looks synthetic.
- *
- * These conversions are pure so the editor, the round trip and the tests all
- * agree on one definition. Alpha is kept, not dropped: the real mods use both
- * 255 and 200, and a picker that rounded alpha to opaque would silently change
- * how a translucent liquid looks.
+ * These used to live here, and are still exported from here because the tests
+ * and the tools import them from `schema.ts`. They are element-only — the
+ * `colors.variants` list belongs to exactly one object — so the implementation
+ * moved with the rest of the element into `./definition/element.ts`.
  */
+export {
+    hexListToVariants,
+    seedVariantFromMapColor,
+    variantsToHexList,
+} from "./definition/element.ts";
 
-/** `[[r,g,b,a], …]` → `["#rrggbbaa", …]`, skipping anything malformed. */
-export function variantsToHexList(raw: string | undefined): string[] {
-    if (!raw?.trim()) return [];
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(raw);
-    } catch {
-        return [];
-    }
-    const arr = Array.isArray(parsed)
-        ? parsed
-        : (parsed as { variants?: unknown } | null)?.variants;
-    if (!Array.isArray(arr)) return [];
-    const out: string[] = [];
-    for (const row of arr) {
-        if (!Array.isArray(row) || row.length < 3) continue;
-        const [r, g, b, a] = row as number[];
-        const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
-        const hex = (n: number) => clamp(n).toString(16).padStart(2, "0");
-        out.push(`#${hex(r)}${hex(g)}${hex(b)}${hex(a === undefined ? 255 : a)}`);
-    }
-    return out;
-}
-
-/** `["#rrggbbaa", …]` → the `[[r,g,b,a], …]` the engine wants. */
-export function hexListToVariants(list: string[]): [number, number, number, number][] {
-    return list
-        .filter((h) => /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(h))
-        .map((h) => {
-            const s = h.slice(1);
-            return [
-                parseInt(s.slice(0, 2), 16),
-                parseInt(s.slice(2, 4), 16),
-                parseInt(s.slice(4, 6), 16),
-                s.length >= 8 ? parseInt(s.slice(6, 8), 16) : 255,
-            ];
-        });
-}
-
-/**
- * The variant that should be offered first.
- *
- * An element with a map colour and no variants is a perfectly good element —
- * the colour is just what every cell gets. So the first swatch is seeded from
- * the map colour rather than left to a default, which means setting `metaColor`
- * alone already looks right and the variants are a refinement on top of it
- * rather than a second thing you have to remember to set.
- */
-export function seedVariantFromMapColor(mapColorHex: string | undefined): string {
-    return mapColorHex && HEX.test(mapColorHex) ? `${mapColorHex}ff` : "#ccccccff";
-}
-function elSelect(key: string, label: string, section: string, required = false, hint?: string): FieldSpec {
+function elSelect(
+    key: string,
+    label: string,
+    section: string,
+    required = false,
+    hint?: string,
+): FieldSpec {
     return { key, label, kind: "select", section, required, options: listElements, hint };
 }
 
@@ -401,64 +478,6 @@ function elSelect(key: string, label: string, section: string, required = false,
  * than only in someone's memory.
  */
 const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
-    elements: [
-        idField(),
-        textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
-        textField("description", "Description", "Identity", false, { maxLength: DESC_MAX }),
-        textField("descriptionKey", "Description key (i18n)", "Identity", false, {
-            placeholder: "mods|example|element|desc",
-            maxLength: 120,
-        }),
-        {
-            key: "matterType", label: "Matter type", kind: "select", section: "Physics",
-            required: true, options: listMatterTypes, def: "powder",
-            hint: "How the element behaves in the simulation",
-        },
-        numField("density", "Density", "Physics", {
-            required: true, min: 0, max: 1000, def: "100",
-            hint: "sink / float weight — 0–1000",
-        }),
-        numField("horizontalSpeed", "Horizontal speed", "Physics", {
-            min: 0, max: 1000, step: 0.1, int: false,
-            hint: "optional lateral spread",
-        }),
-        numField("duration", "Lifetime (s)", "Physics", {
-            min: 0, max: 3600, step: 0.1, int: false,
-            hint: "empty = permanent",
-        }),
-        numField("durationRandomMin", "Lifetime min (s)", "Physics", {
-            min: 0, max: 3600, step: 0.1, int: false, when: (f) => f.duration !== "",
-        }),
-        numField("durationRandomMax", "Lifetime max (s)", "Physics", {
-            min: 0, max: 3600, step: 0.1, int: false, when: (f) => f.duration !== "",
-        }),
-        {
-            key: "metaColor", label: "Map colour", kind: "color", section: "Appearance",
-            hint: "packed 0xRRGGBB (minimap / inspector)",
-        },
-        {
-            // engine shape: `{ colors: { variants: [[r,g,b,a], …] } }`, confirmed
-            // against every workshop mod that uses it. Each variant is a tint
-            // the engine picks at random per cell, which is why shipping mods
-            // list four or five — a single flat colour looks synthetic. It was a
-            // raw JSON textarea, so the user hand-wrote nested tuples and had to
-            // remember alpha was the fourth number.
-            key: "colorsJson",
-            label: "Colour variants",
-            kind: "colorVariants",
-            section: "Appearance",
-            wide: true,
-            hint:
-                "one tint per cell, picked at random. With none set, every cell uses the map colour. Add four or five for a natural look.",
-        },
-        boolField("flammable", "Flammable", "Behaviour"),
-        boolField("isTransportable", "Transportable", "Behaviour", "true", "conveyors / launchers can move it"),
-        boolField("isGrabbable", "Grabbable", "Behaviour"),
-        boolField("collectable", "Collectable", "Behaviour", "true", "collector value path"),
-        boolField("hidden", "Hidden", "Flags"),
-        boolField("visibleInPicker", "Visible in picker", "Flags", "true"),
-        advField(),
-    ],
     items: [
         idField(),
         textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
@@ -470,8 +489,12 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         {
             // sandkit.enums.ItemType: Weapon=1, Tool=2, Consumable=3, Mod=4.
             // `resolveItemType` maps these names to the numeric enum at register time.
-            key: "itemType", label: "Item type", kind: "select", section: "Item",
-            required: true, def: "Tool",
+            key: "itemType",
+            label: "Item type",
+            kind: "select",
+            section: "Item",
+            required: true,
+            def: "Tool",
             options: [
                 { value: "Tool", label: "Tool (2) — digs via an excavation profile" },
                 { value: "Weapon", label: "Weapon (1) — fires a projectile" },
@@ -482,14 +505,20 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         },
         // Only a Tool has an excavation profile.
         {
-            key: "excavationProfileId", label: "Excavation profile", kind: "select", section: "Item",
+            key: "excavationProfileId",
+            label: "Excavation profile",
+            kind: "select",
+            section: "Item",
             when: (f) => f.itemType === "Tool",
             options: () => listConfigured("excavationProfiles"),
             hint: "api.items excavationProfileId — what this tool digs with",
         },
         // Weapon behaviour is a projectile reference.
         {
-            key: "projectileId", label: "Projectile", kind: "select", section: "Item",
+            key: "projectileId",
+            label: "Projectile",
+            kind: "select",
+            section: "Item",
             when: (f) => f.itemType === "Weapon",
             options: () => listConfigured("projectiles"),
             hint: "spawned via api.projectiles.createBlueprintFromId(id)",
@@ -498,7 +527,10 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         // handleAction, which the engine calls with an ActionType. ActionType has
         // no Consumable, so a Consumable deliberately gets no handler at all.
         {
-            key: "handlerKey", label: "Use action", kind: "select", section: "Item",
+            key: "handlerKey",
+            label: "Use action",
+            kind: "select",
+            section: "Item",
             when: (f) => !!f.itemType && f.itemType !== "Consumable",
             options: (f) => listItemActionHandlerKeys(f.itemType),
             // The dropdown is already filtered to the item type, so saying so
@@ -509,22 +541,33 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         },
         // Cooldown + energy apply to anything the player actively uses.
         numField("cooldownMs", "Cooldown (ms)", "Item", {
-            min: 0, max: 600000, hint: "0 = none",
+            min: 0,
+            max: 600000,
+            hint: "0 = none",
             when: (f) => f.itemType === "Tool" || f.itemType === "Weapon",
         }),
         numField("energyCost", "Energy cost", "Item", {
-            min: 0, max: 10000,
+            min: 0,
+            max: 10000,
             when: (f) => f.itemType === "Tool" || f.itemType === "Weapon",
             hint: "energy drawn per use (api.items energyCost)",
         }),
         {
-            key: "spriteId", label: "Sprite", kind: "select", section: "Sprite",
-            required: true, options: listSpriteIds,
+            key: "spriteId",
+            label: "Sprite",
+            kind: "select",
+            section: "Sprite",
+            required: true,
+            options: listSpriteIds,
             hint: "required by the engine — add it in Assets & hooks → Sprites",
         },
         {
-            key: "spriteType", label: "Sprite type", kind: "select", section: "Sprite",
-            required: true, def: "onehand",
+            key: "spriteType",
+            label: "Sprite type",
+            kind: "select",
+            section: "Sprite",
+            required: true,
+            def: "onehand",
             options: [
                 { value: "onehand", label: "onehand" },
                 { value: "twohand", label: "twohand" },
@@ -537,37 +580,68 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
     recipes: [
         idField(),
         {
-            key: "machine", label: "Machine", kind: "select", section: "Recipe",
-            required: true, options: listRecipeMachines, def: "smelter",
+            key: "machine",
+            label: "Machine",
+            kind: "select",
+            section: "Recipe",
+            required: true,
+            options: listRecipeMachines,
+            def: "smelter",
             hint: "only these 8 ids are accepted by the engine",
         },
         elSelect("input", "Input element", "Recipe", true),
         {
-            key: "outputElement", label: "Output element", kind: "select", section: "Outputs",
-            required: true, options: listElements, when: (f) => f.machine === "planterBox",
+            key: "outputElement",
+            label: "Output element",
+            kind: "select",
+            section: "Outputs",
+            required: true,
+            options: listElements,
+            when: (f) => f.machine === "planterBox",
         },
         numField("outputChance", "Output chance", "Outputs", {
-            min: 0, max: 1, step: 0.05, int: false, def: "1",
+            min: 0,
+            max: 1,
+            step: 0.05,
+            int: false,
+            def: "1",
             when: (f) => f.machine === "planterBox",
         }),
         {
-            key: "outputs", label: "Outputs (element + chance)", kind: "outputs", section: "Outputs",
-            required: true, wide: true,
+            key: "outputs",
+            label: "Outputs (element + chance)",
+            kind: "outputs",
+            section: "Outputs",
+            required: true,
+            wide: true,
             when: (f) => f.machine !== "planterBox" && f.machine !== "shaker",
             hint: "chance 0–1, max 255 rows",
         },
         {
-            key: "outputsAbove", label: "Outputs above", kind: "outputs", section: "Outputs",
-            required: true, wide: true, when: (f) => f.machine === "shaker",
+            key: "outputsAbove",
+            label: "Outputs above",
+            kind: "outputs",
+            section: "Outputs",
+            required: true,
+            wide: true,
+            when: (f) => f.machine === "shaker",
             hint: "dropped on top of the shaker",
         },
         {
-            key: "outputsBelow", label: "Outputs below", kind: "outputs", section: "Outputs",
-            required: true, wide: true, when: (f) => f.machine === "shaker",
+            key: "outputsBelow",
+            label: "Outputs below",
+            kind: "outputs",
+            section: "Outputs",
+            required: true,
+            wide: true,
+            when: (f) => f.machine === "shaker",
             hint: "dropped below the shaker",
         },
         numField("minVelocity", "Min downward velocity", "Outputs", {
-            required: true, min: 0, max: 10000, def: "20",
+            required: true,
+            min: 0,
+            max: 10000,
+            def: "20",
             when: (f) => f.machine === "kineticPress",
             hint: "cells per second the input must fall at",
         }),
@@ -579,17 +653,28 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             // api.structures.processing.register(id, { structureType, intervalMs, process }).
             // There is NO "single instance" mode — the definition is keyed by
             // *structure type*, so the old mode/structureId pair was invented.
-            key: "structureType", label: "Structure type", kind: "select", section: "Target",
-            required: true, options: listStructures,
+            key: "structureType",
+            label: "Structure type",
+            kind: "select",
+            section: "Target",
+            required: true,
+            options: listStructures,
             hint: "process() runs for every placed instance of this structure type",
         },
         numField("intervalMs", "Interval (ms)", "Timing", {
-            required: true, min: 16, max: 60000, def: "1000",
+            required: true,
+            min: 16,
+            max: 60000,
+            def: "1000",
             hint: "must be > 0 — how often the callback fires per instance",
         }),
         {
-            key: "handlerKey", label: "Process handler", kind: "select", section: "Timing",
-            required: true, options: listDescribedProcessorKeys,
+            key: "handlerKey",
+            label: "Process handler",
+            kind: "select",
+            section: "Timing",
+            required: true,
+            options: listDescribedProcessorKeys,
             hint: "process(structure, context) is code — JSON can't store callbacks, pick a preset",
         },
         advField(),
@@ -599,18 +684,31 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         elSelect("inputA", "Input A", "Reaction", true),
         elSelect("inputB", "Input B", "Reaction", true),
         {
-            key: "outputA", label: "Output A", kind: "select", section: "Reaction",
-            required: true, options: listOutputTargets,
+            key: "outputA",
+            label: "Output A",
+            kind: "select",
+            section: "Reaction",
+            required: true,
+            options: listOutputTargets,
             hint: "what input A becomes (∅ = consumed)",
         },
         {
-            key: "outputB", label: "Output B", kind: "select", section: "Reaction",
-            required: true, options: listOutputTargets,
+            key: "outputB",
+            label: "Output B",
+            kind: "select",
+            section: "Reaction",
+            required: true,
+            options: listOutputTargets,
             hint: "what input B becomes (∅ = consumed)",
         },
         {
-            key: "orientation", label: "Orientation", kind: "select", section: "Reaction",
-            required: true, def: "any", options: listContactOrientation,
+            key: "orientation",
+            label: "Orientation",
+            kind: "select",
+            section: "Reaction",
+            required: true,
+            def: "any",
+            options: listContactOrientation,
         },
     ],
     interactions: [
@@ -710,7 +808,8 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             jsonType: "object",
             wide: true,
             when: (f) => splitInteraction(parseObjectOrUndefined(f.interactionJson)).unmodelled,
-            hint: "carried through untouched — edit only to set a field this panel has no control for",
+            hint:
+                "carried through untouched — edit only to set a field this panel has no control for",
         },
     ],
 
@@ -723,39 +822,67 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         }),
         // engine type: [number, number, number] — H, S, L
         numField("colorHSLHue", "Hue", "Colour", {
-            min: 0, max: 360, step: 1, int: true, when: (f) => f.colorHSLOn === "true",
+            min: 0,
+            max: 360,
+            step: 1,
+            int: true,
+            when: (f) => f.colorHSLOn === "true",
         }),
         numField("colorHSLSaturation", "Saturation", "Colour", {
-            min: 0, max: 1, step: 0.01, when: (f) => f.colorHSLOn === "true",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            when: (f) => f.colorHSLOn === "true",
         }),
         numField("colorHSLLightness", "Lightness", "Colour", {
-            min: 0, max: 1, step: 0.01, when: (f) => f.colorHSLOn === "true",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            when: (f) => f.colorHSLOn === "true",
         }),
         {
-            key: "colorHSLOn", label: "Set base HSL colour", kind: "bool", section: "Colour",
+            key: "colorHSLOn",
+            label: "Set base HSL colour",
+            kind: "bool",
+            section: "Colour",
             def: "false",
             hint: "overrides the default terrain colour; H 0-360, S and L 0-1",
         },
         {
-            key: "excavationRequirements", label: "Required tools", kind: "multiselect",
-            section: "Tile", options: listItems,
+            key: "excavationRequirements",
+            label: "Required tools",
+            kind: "multiselect",
+            section: "Tile",
+            options: listItems,
             emptyHint: "add an Item first — a terrain can only require a tool that exists.",
             hint: "item ids needed to dig this terrain",
         },
         {
             // engine type: readonly { kind: string; [key: string]: unknown }[]
-            key: "interactionsJson", label: "Tooltip interactions", kind: "json",
-            section: "Tile", jsonType: "array", wide: true,
-            hint: "interactions shown for this terrain, e.g. [ { \"kind\": \"…\" } ]",
+            key: "interactionsJson",
+            label: "Tooltip interactions",
+            kind: "json",
+            section: "Tile",
+            jsonType: "array",
+            wide: true,
+            hint: 'interactions shown for this terrain, e.g. [ { "kind": "…" } ]',
         },
         numField("hp", "Hit points", "Tile", { required: true, min: 1, max: 999999, def: "100" }),
         { key: "metaColor", label: "Colour", kind: "color", section: "Tile" },
         {
-            key: "outputElement", label: "Drops", kind: "select", section: "Tile",
-            options: listElements, hint: "element dropped when mined (empty = nothing)",
+            key: "outputElement",
+            label: "Drops",
+            kind: "select",
+            section: "Tile",
+            options: listElements,
+            hint: "element dropped when mined (empty = nothing)",
         },
         numField("outputChance", "Drop chance", "Tile", {
-            min: 0, max: 1, step: 0.05, int: false, def: "1",
+            min: 0,
+            max: 1,
+            step: 0.05,
+            int: false,
+            def: "1",
             when: (f) => f.outputElement !== "",
         }),
         boolField("flammable", "Flammable", "Flags"),
@@ -773,7 +900,8 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             kind: "select",
             section: "Tile",
             options: listMaterialIds,
-            hint: "must be 101–149; every value is an obstacle, so the engine's next-free id is the safe pick",
+            hint:
+                "must be 101–149; every value is an obstacle, so the engine's next-free id is the safe pick",
         },
         // No `fog` field: `fog` is not a documented terrain property. "Water Fog"
         // and "Lava Fog" are *terrain entries*, not a per-terrain boolean, so a
@@ -821,44 +949,66 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             hint: "several nodes can sit behind the same research step",
         },
         numField("cost", "Cost", "Research", {
-            min: 0, max: 999999, def: "100",
+            min: 0,
+            max: 999999,
+            def: "100",
             when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
         }),
         {
-            key: "currencyType", label: "Currency", kind: "select", section: "Research",
+            key: "currencyType",
+            label: "Currency",
+            kind: "select",
+            section: "Research",
             options: listCurrencyTypes,
             when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
             hint: "TechDefinition.currencyType — a free string in the engine",
         },
         {
-            key: "currencyTypeCustom", label: "Currency id", kind: "text", section: "Research",
+            key: "currencyTypeCustom",
+            label: "Currency id",
+            kind: "text",
+            section: "Research",
             when: (f) => f.currencyType === "__custom__",
-            placeholder: "coins", maxLength: 32,
+            placeholder: "coins",
+            maxLength: 32,
             pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
             patternMsg: "lowercase id (a-z 0-9 . _ -)",
         },
         {
-            key: "branch", label: "Branch", kind: "select", section: "Research",
+            key: "branch",
+            label: "Branch",
+            kind: "select",
+            section: "Research",
             options: listTechBranches,
             when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
             hint: "TechDefinition.branch — usually copied from the parent node",
         },
         {
-            key: "branchCustom", label: "Branch id", kind: "text", section: "Research",
+            key: "branchCustom",
+            label: "Branch id",
+            kind: "text",
+            section: "Research",
             when: (f) => f.branch === "__custom__",
-            placeholder: "industry", maxLength: 32,
+            placeholder: "industry",
+            maxLength: 32,
             pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
             patternMsg: "lowercase id (a-z 0-9 . _ -)",
         },
         {
-            key: "parentId", label: "Parent node", kind: "select", section: "Research",
+            key: "parentId",
+            label: "Parent node",
+            kind: "select",
+            section: "Research",
             when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
             options: (f) => listTechIds(f.idSuffix),
             emptyHint: "add another Tech first — a node cannot be its own parent.",
             hint: "without one the tech is never placed in the grid and cannot be bought",
         },
         {
-            key: "requires", label: "Requires", kind: "multiselect", section: "Research",
+            key: "requires",
+            label: "Requires",
+            kind: "multiselect",
+            section: "Research",
             when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
             options: (f) => listTechIds(f.idSuffix),
             emptyHint: "add another Tech first — a node cannot require itself.",
@@ -869,11 +1019,14 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             // Read-only in the form's terms: the link lives on each structure, and
             // this is the reverse view of it. Declared so the graph can show what a
             // node holds back — see the `gatesStructures` row in relations.ts.
-            key: "gatesStructures", label: "Structures it unlocks", kind: "multiselect",
+            key: "gatesStructures",
+            label: "Structures it unlocks",
+            kind: "multiselect",
             section: "Identity",
             options: listStructures,
             emptyHint: "no structure points at this node yet.",
-            hint: "derived — set it on each structure, not here. Shown so you can see what rides on this node.",
+            hint:
+                "derived — set it on each structure, not here. Shown so you can see what rides on this node.",
         },
         advField(),
     ],
@@ -885,34 +1038,56 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         // no CurrencyType or Branch enum to read. Offering a picker anyway stops
         // typos reaching the engine, while "__custom__" keeps custom values legal.
         {
-            key: "currencyType", label: "Currency", kind: "select", section: "Research",
-            options: listCurrencyTypes, hint: "TechDefinition.currencyType — a free string in the engine",
+            key: "currencyType",
+            label: "Currency",
+            kind: "select",
+            section: "Research",
+            options: listCurrencyTypes,
+            hint: "TechDefinition.currencyType — a free string in the engine",
         },
         {
-            key: "currencyTypeCustom", label: "Currency id", kind: "text", section: "Research",
+            key: "currencyTypeCustom",
+            label: "Currency id",
+            kind: "text",
+            section: "Research",
             when: (f) => f.currencyType === "__custom__",
-            placeholder: "coins", maxLength: 32,
+            placeholder: "coins",
+            maxLength: 32,
             pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
             patternMsg: "lowercase id (a-z 0-9 . _ -)",
         },
         {
-            key: "branch", label: "Branch", kind: "select", section: "Research",
-            options: listTechBranches, hint: "TechDefinition.branch — usually copied from the parent node",
+            key: "branch",
+            label: "Branch",
+            kind: "select",
+            section: "Research",
+            options: listTechBranches,
+            hint: "TechDefinition.branch — usually copied from the parent node",
         },
         {
-            key: "branchCustom", label: "Branch id", kind: "text", section: "Research",
+            key: "branchCustom",
+            label: "Branch id",
+            kind: "text",
+            section: "Research",
             when: (f) => f.branch === "__custom__",
-            placeholder: "industry", maxLength: 32,
+            placeholder: "industry",
+            maxLength: 32,
             pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
             patternMsg: "lowercase id (a-z 0-9 . _ -)",
         },
         {
-            key: "parentId", label: "Parent node", kind: "select", section: "Research",
+            key: "parentId",
+            label: "Parent node",
+            kind: "select",
+            section: "Research",
             options: (f) => listTechIds(f.idSuffix),
             hint: "feeds registerNode(techId, def, { parentId }) — grids this node under a parent",
         },
         {
-            key: "requires", label: "Requires", kind: "multiselect", section: "Research",
+            key: "requires",
+            label: "Requires",
+            kind: "multiselect",
+            section: "Research",
             options: (f) => listTechIds(f.idSuffix),
             emptyHint: "add another Tech first — a node cannot require itself.",
             hint: "TechDefinition.requires — a node can never require itself",
@@ -929,13 +1104,19 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             // TechDefinition.unlocks = { structures?: string[], items?: string[] }.
             // This is the declarative route — no handler needed. It is also the
             // ONLY route: there is no per-structure "unlockedBy" field.
-            key: "unlockStructures", label: "Unlocks structures", kind: "multiselect", section: "Unlocks",
+            key: "unlockStructures",
+            label: "Unlocks structures",
+            kind: "multiselect",
+            section: "Unlocks",
             options: listStructures,
             emptyHint: "add a Structure first — or tick Always unlocked on the structure itself.",
             hint: "researching this node makes these buildable",
         },
         {
-            key: "unlockItems", label: "Unlocks items", kind: "multiselect", section: "Unlocks",
+            key: "unlockItems",
+            label: "Unlocks items",
+            kind: "multiselect",
+            section: "Unlocks",
             options: listItems,
             emptyHint: "add an Item first — there is nothing this node can grant yet.",
             hint: "items granted when the research completes",
@@ -951,7 +1132,10 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             // not marked `required` on its own — that would reject a category
             // that supplies only a name key. The rule is enforced by the
             // cross-field check in validateForm instead.
-            key: "name", label: "Display name", kind: "text", section: "Identity",
+            key: "name",
+            label: "Display name",
+            kind: "text",
+            section: "Identity",
             maxLength: NAME_MAX,
             hint: "needed unless a name key is set — the engine throws without one",
         },
@@ -974,7 +1158,8 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             section: "Identity",
             options: (f) => listTechIds(f.idSuffix),
             emptyHint: "add a Tech first — there is nothing to point at.",
-            hint: "the engine stores this and never reads it, so nothing happens either way. Set it only if you know your build consumes it.",
+            hint:
+                "the engine stores this and never reads it, so nothing happens either way. Set it only if you know your build consumes it.",
         },
         {
             key: "requirementJson",
@@ -1006,28 +1191,38 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             // KeyCode is a LooseString union, so this is a picker that offers
             // suggestions rather than a closed list — chords like
             // "Control+KeyC" are valid and cannot be enumerated ahead of time.
-            key: "defaultKeys", label: "Default keys", kind: "multiselect",
-            section: "Binding", options: listKeyCodes,
-            emptyHint: "no suggested keys are available from the host yet; the binding will start unbound.",
+            key: "defaultKeys",
+            label: "Default keys",
+            kind: "multiselect",
+            section: "Binding",
+            options: listKeyCodes,
+            emptyHint:
+                "no suggested keys are available from the host yet; the binding will start unbound.",
             hint: "chords like Control+KeyC are allowed",
         },
         {
-            key: "onDownKey", label: "Press handler", kind: "select", section: "Binding",
+            key: "onDownKey",
+            label: "Press handler",
+            kind: "select",
+            section: "Binding",
             options: listAnyHandlerKeys,
-            hint: `runs when the key goes down. ${
-                typesHintFor(() => listAnyHandlerKeys())
-            }`,
+            hint: `runs when the key goes down. ${typesHintFor(() => listAnyHandlerKeys())}`,
         },
         {
-            key: "onUpKey", label: "Release handler", kind: "select", section: "Binding",
+            key: "onUpKey",
+            label: "Release handler",
+            kind: "select",
+            section: "Binding",
             options: listAnyHandlerKeys,
-            hint: `runs when the key comes back up. ${
-                typesHintFor(() => listAnyHandlerKeys())
-            }`,
+            hint: `runs when the key comes back up. ${typesHintFor(() => listAnyHandlerKeys())}`,
         },
         {
-            key: "subsectionJson", label: "Subsection", kind: "json", section: "Identity",
-            jsonType: "object", wide: true,
+            key: "subsectionJson",
+            label: "Subsection",
+            kind: "json",
+            section: "Identity",
+            jsonType: "object",
+            wide: true,
             hint: "optional settings group: { title, titleKey, description, descriptionKey }",
         },
         advField(),
@@ -1037,8 +1232,12 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         {
             // api.upgrades.register({ itemId, categoryId, upgrade: { id, maxLevel, costs, oneOff? } })
             // The payload is NESTED under `upgrade` — the old flat guess was wrong.
-            key: "itemId", label: "Item", kind: "select", section: "Upgrade",
-            required: true, options: listItems,
+            key: "itemId",
+            label: "Item",
+            kind: "select",
+            section: "Upgrade",
+            required: true,
+            options: listItems,
         },
         {
             // Not a label, a reference — which is why it is a picker and not a text
@@ -1049,10 +1248,13 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             // have never heard of. The picker offers what we *do* know plus
             // `__custom__`, and the hint says so — an unlabelled escape hatch reads
             // as an oversight, a labelled one is a documented boundary.
-            key: "categoryId", label: "Category", kind: "select", section: "Upgrade",
-            def: "tools", options: listUpgradeCategoryIds,
-            hint:
-                "must be a category the game knows. “custom” is for one it has and we " +
+            key: "categoryId",
+            label: "Category",
+            kind: "select",
+            section: "Upgrade",
+            def: "tools",
+            options: listUpgradeCategoryIds,
+            hint: "must be a category the game knows. “custom” is for one it has and we " +
                 "cannot list — api.upgrades has no way to read them back.",
         },
         textField("itemNameKey", "Item name key (i18n)", "Upgrade", false, {
@@ -1071,18 +1273,29 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             hint: "upgrade.id — read it back with api.upgrades.getLevelById(itemId, this)",
         }),
         numField("maxLevel", "Max level", "Upgrade", {
-            required: true, min: 1, max: 100, def: "3",
+            required: true,
+            min: 1,
+            max: 100,
+            def: "3",
         }),
         {
             // costs is number[] — one entry per level, priced in gold.
-            key: "costsJson", label: "Costs per level", kind: "json", section: "Upgrade",
-            jsonType: "array", required: true, wide: true,
+            key: "costsJson",
+            label: "Costs per level",
+            kind: "json",
+            section: "Upgrade",
+            jsonType: "array",
+            required: true,
+            wide: true,
             hint: "one number per level, e.g. [100, 250, 500]",
             placeholder: "[100, 250, 500]",
         },
         boolField("oneOff", "One-off", "Upgrade", "false", "can only be bought once"),
         {
-            key: "onUpgradeKey", label: "On upgrade handler", kind: "select", section: "Upgrade",
+            key: "onUpgradeKey",
+            label: "On upgrade handler",
+            kind: "select",
+            section: "Upgrade",
             options: listUpgradeHandlerKeys,
             hint: "optional code callback run when a level is bought",
         },
@@ -1091,44 +1304,74 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
     signals: [
         idField(),
         {
-            key: "kind", label: "Kind", kind: "select", section: "Signal",
-            required: true, def: "interactables", options: [
+            key: "kind",
+            label: "Kind",
+            kind: "select",
+            section: "Signal",
+            required: true,
+            def: "interactables",
+            options: [
                 { value: "interactables", label: "interactables — structure click" },
                 { value: "targets", label: "targets — signal receiver" },
                 { value: "senderType", label: "senderType — signal sender" },
             ],
         },
         {
-            key: "target", label: "Target structure", kind: "select", section: "Signal",
-            required: true, options: listStructures,
+            key: "target",
+            label: "Target structure",
+            kind: "select",
+            section: "Signal",
+            required: true,
+            options: listStructures,
         },
         {
-            key: "handlerKey", label: "Handler", kind: "select", section: "Signal",
-            required: true, options: listSignalHandlerKeys,
+            key: "handlerKey",
+            label: "Handler",
+            kind: "select",
+            section: "Signal",
+            required: true,
+            options: listSignalHandlerKeys,
             hint: "code callback — without it the entry is stored but never attached",
         },
     ],
     triggers: [
         idField(),
         numField("interval", "Interval (ticks)", "Timing", {
-            required: true, min: 1, max: 100000, def: "60",
+            required: true,
+            min: 1,
+            max: 100000,
+            def: "60",
         }),
         numField("sequentialRuns", "Runs per fire", "Timing", { min: 1, max: 1000, def: "1" }),
         {
-            key: "handlerKey", label: "Handler", kind: "select", section: "Timing",
-            required: true, options: listTriggerHandlerKeys,
+            key: "handlerKey",
+            label: "Handler",
+            kind: "select",
+            section: "Timing",
+            required: true,
+            options: listTriggerHandlerKeys,
         },
         {
-            key: "extraJson", label: "Extra payload", kind: "json", section: "Timing",
-            jsonType: "object", wide: true, placeholder: "{ }",
+            key: "extraJson",
+            label: "Extra payload",
+            kind: "json",
+            section: "Timing",
+            jsonType: "object",
+            wide: true,
+            placeholder: "{ }",
         },
     ],
 
     behaviors: [
         idField(),
         {
-            key: "kind", label: "Kind", kind: "select", section: "Behaviour",
-            required: true, def: "conveyor", options: [
+            key: "kind",
+            label: "Kind",
+            kind: "select",
+            section: "Behaviour",
+            required: true,
+            def: "conveyor",
+            options: [
                 { value: "conveyor", label: "conveyor" },
                 { value: "launcher", label: "launcher" },
             ],
@@ -1140,50 +1383,86 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         // (`definition.id`); a launcher against three, under exactly the names the
         // engine uses.
         {
-            key: "structureId", label: "Structure", kind: "select", section: "Behaviour",
-            required: true, when: (f) => f.kind !== "launcher", options: listStructures,
+            key: "structureId",
+            label: "Structure",
+            kind: "select",
+            section: "Behaviour",
+            required: true,
+            when: (f) => f.kind !== "launcher",
+            options: listStructures,
         },
         {
-            key: "upType", label: "Up structure", kind: "select", section: "Behaviour",
-            required: true, when: (f) => f.kind === "launcher", options: listStructures,
+            key: "upType",
+            label: "Up structure",
+            kind: "select",
+            section: "Behaviour",
+            required: true,
+            when: (f) => f.kind === "launcher",
+            options: listStructures,
         },
         {
-            key: "leftType", label: "Left structure", kind: "select", section: "Behaviour",
-            required: true, when: (f) => f.kind === "launcher", options: listStructures,
+            key: "leftType",
+            label: "Left structure",
+            kind: "select",
+            section: "Behaviour",
+            required: true,
+            when: (f) => f.kind === "launcher",
+            options: listStructures,
         },
         {
-            key: "rightType", label: "Right structure", kind: "select", section: "Behaviour",
-            required: true, when: (f) => f.kind === "launcher", options: listStructures,
+            key: "rightType",
+            label: "Right structure",
+            kind: "select",
+            section: "Behaviour",
+            required: true,
+            when: (f) => f.kind === "launcher",
+            options: listStructures,
         },
         {
             // Whatever the engine reads that the four controls above do not name.
             // The named ids are merged in on save, and anything typed here wins
             // over them — so an unmodellable key is still expressible.
-            key: "definitionJson", label: "Rest of the payload", kind: "json", section: "Behaviour",
-            jsonType: "object", wide: true,
-            hint: "everything else, forwarded to structureBehaviors.register*. The structure ids above are merged in; anything here wins over them.",
+            key: "definitionJson",
+            label: "Rest of the payload",
+            kind: "json",
+            section: "Behaviour",
+            jsonType: "object",
+            wide: true,
+            hint:
+                "everything else, forwarded to structureBehaviors.register*. The structure ids above are merged in; anything here wins over them.",
             placeholder: "{ }",
         },
     ],
     energy: [
         idField(),
         {
-            key: "structureId", label: "Structure", kind: "select", section: "Energy",
-            required: true, options: listStructures,
+            key: "structureId",
+            label: "Structure",
+            kind: "select",
+            section: "Energy",
+            required: true,
+            options: listStructures,
         },
         {
             // api.energy.registerType(structureId, type, options?) accepts exactly
             // two roles: "conductor" (forwards energy) and "storage" (holds it).
             // There is no producer/consumer role — producing or consuming energy is
             // done by a processor handler calling addAtCell / consume.
-            key: "type", label: "Role", kind: "select", section: "Energy",
-            required: true, def: "storage", options: [
+            key: "type",
+            label: "Role",
+            kind: "select",
+            section: "Energy",
+            required: true,
+            def: "storage",
+            options: [
                 { value: "storage", label: "storage — holds energy (needs a capacity)" },
                 { value: "conductor", label: "conductor — forwards energy, holds nothing" },
             ],
         },
         numField("capacity", "Capacity", "Energy", {
-            min: 0, max: 1_000_000, def: "1000",
+            min: 0,
+            max: 1_000_000,
+            def: "1000",
             when: (f) => f.type === "storage",
             hint: "max energy this node can hold (api.energy.registerType options.capacity)",
         }),
@@ -1194,12 +1473,17 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             // *our* config plus the engine's own default: a typo here registers
             // cleanly and the node then never joins anything, looking configured
             // and doing nothing.
-            key: "energyType", label: "Network", kind: "select", section: "Energy",
+            key: "energyType",
+            label: "Network",
+            kind: "select",
+            section: "Energy",
             options: listEnergyNetworkOpts,
-            hint: "options.energyType — which network to join. The engine's default is \"power\".",
+            hint: 'options.energyType — which network to join. The engine\'s default is "power".',
         },
         numField("priority", "Priority", "Energy", {
-            min: 0, max: 1000, def: "0",
+            min: 0,
+            max: 1000,
+            def: "0",
             when: () => true,
             hint: "network priority (only read by the engine if it supports it)",
         }),
@@ -1217,45 +1501,74 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
         idField(),
         numField("power", "Power", "Profile", { required: true, min: 0, max: 1000, def: "10" }),
         {
-            key: "patternJson", label: "Pattern", kind: "json", section: "Profile",
-            required: true, jsonType: "matrix", wide: true,
+            key: "patternJson",
+            label: "Pattern",
+            kind: "json",
+            section: "Profile",
+            required: true,
+            jsonType: "matrix",
+            wide: true,
             hint: "cells removed per dig — 1 = dug, 0 = kept",
             placeholder: "[[1, 1], [1, 1]]",
         },
         {
-            key: "terrainRulesJson", label: "Terrain rules", kind: "terrainRules", section: "Profile",
+            key: "terrainRulesJson",
+            label: "Terrain rules",
+            kind: "terrainRules",
+            section: "Profile",
             wide: true,
-            hint: "per-terrain dig behaviour: which terrain matches, how much damage, what it drops",
+            hint:
+                "per-terrain dig behaviour: which terrain matches, how much damage, what it drops",
         },
         {
-            key: "optionsJson", label: "Options", kind: "json", section: "Profile",
-            jsonType: "object", wide: true,
+            key: "optionsJson",
+            label: "Options",
+            kind: "json",
+            section: "Profile",
+            jsonType: "object",
+            wide: true,
             hint: "{ fromGun?, fromDrill?, drillTierDamage? (0–1000), forceRemoveAll?, … }",
-            placeholder: "{ \"fromDrill\": true }",
+            placeholder: '{ "fromDrill": true }',
         },
     ],
     projectiles: [
         idField(),
         {
-            key: "spriteId", label: "Sprite", kind: "select", section: "Look",
-            required: true, options: listSpriteIds,
+            key: "spriteId",
+            label: "Sprite",
+            kind: "select",
+            section: "Look",
+            required: true,
+            options: listSpriteIds,
         },
         {
-            key: "getOptionsKey", label: "Options handler", kind: "select", section: "Look",
+            key: "getOptionsKey",
+            label: "Options handler",
+            kind: "select",
+            section: "Look",
             options: listProjectileHandlerKeys,
             hint: "dynamic options factory (optional) — overrides the static options below",
         },
         {
-            key: "optionsJson", label: "Static options", kind: "json", section: "Look",
-            jsonType: "object", wide: true, when: (f) => f.getOptionsKey === "",
+            key: "optionsJson",
+            label: "Static options",
+            kind: "json",
+            section: "Look",
+            jsonType: "object",
+            wide: true,
+            when: (f) => f.getOptionsKey === "",
             hint: "{ speed?, rotateWithVelocity?, tint?, … }",
-            placeholder: "{ \"speed\": 10 }",
+            placeholder: '{ "speed": 10 }',
         },
     ],
     sprites: [
         spriteIdField(),
         {
-            key: "path", label: "Bundled asset", kind: "library", section: "File", required: true,
+            key: "path",
+            label: "Bundled asset",
+            kind: "library",
+            section: "File",
+            required: true,
             wide: true,
             autoKey: "idSuffix",
             placeholder: "search icons by name…",
@@ -1266,8 +1579,12 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
     modifiers: [
         idField(),
         {
-            key: "hookId", label: "Engine hook", kind: "select", section: "Hook",
-            required: true, options: listHookIds,
+            key: "hookId",
+            label: "Engine hook",
+            kind: "select",
+            section: "Hook",
+            required: true,
+            options: listHookIds,
             hint: "documented hooks only — see doc-tech/03",
         },
         textField("hookCustom", "Custom hook id", "Hook", true, {
@@ -1276,15 +1593,24 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
             patternMsg: "e.g. element:update",
         }),
         {
-            key: "kind", label: "Mode", kind: "select", section: "Hook",
-            required: true, def: "intercept", options: [
+            key: "kind",
+            label: "Mode",
+            kind: "select",
+            section: "Hook",
+            required: true,
+            def: "intercept",
+            options: [
                 { value: "intercept", label: "intercept — observe, can cancel" },
                 { value: "modify", label: "modify — transform the value" },
             ],
         },
         {
-            key: "handlerKey", label: "Code handler", kind: "select", section: "Hook",
-            required: true, options: listHandlerKeys,
+            key: "handlerKey",
+            label: "Code handler",
+            kind: "select",
+            section: "Hook",
+            required: true,
+            options: listHandlerKeys,
             hint: "defined in src/hooks/handlers.ts",
         },
         boolField("enabled", "Enabled", "Hook", "true"),
@@ -1454,7 +1780,10 @@ function validateOutputs(raw: string): string | null {
         if (typeof r.elementType !== "string" || !r.elementType.trim()) {
             return "every row needs an element";
         }
-        if (typeof r.chance !== "number" || !Number.isFinite(r.chance) || r.chance < 0 || r.chance > 1) {
+        if (
+            typeof r.chance !== "number" || !Number.isFinite(r.chance) || r.chance < 0 ||
+            r.chance > 1
+        ) {
             return "chance must be a number 0–1";
         }
     }
@@ -1544,11 +1873,14 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
             if (!parsed.ok) return parsed.error ?? "invalid JSON";
             if (
                 f.jsonType === "object" &&
-                (typeof parsed.value !== "object" || parsed.value === null || Array.isArray(parsed.value))
+                (typeof parsed.value !== "object" || parsed.value === null ||
+                    Array.isArray(parsed.value))
             ) {
                 return "must be a JSON object { }";
             }
-            if (f.jsonType === "array" && !Array.isArray(parsed.value)) return "must be a JSON array [ ]";
+            if (f.jsonType === "array" && !Array.isArray(parsed.value)) {
+                return "must be a JSON array [ ]";
+            }
             if (f.jsonType === "matrix") return validateMatrix(parsed.value);
             return null;
         }
@@ -1568,13 +1900,6 @@ export function validateForm(cat: Tab, form: Record<string, string>): Record<str
     // travel with it. What is left here is the handful of shared ones that are
     // not yet split out.
     definitionFor(cat)?.validate?.(form, errors);
-    if (cat === "elements" && !errors.durationRandomMin && !errors.durationRandomMax) {
-        const min = form.durationRandomMin?.trim();
-        const max = form.durationRandomMax?.trim();
-        if (min && max && Number(min) > Number(max)) {
-            errors.durationRandomMax = "must be ≥ min";
-        }
-    }
     // The engine guard is `if (!t.id || !t.name && !t.nameKey) throw`, so a
     // category with neither name fails at registration with nothing to point at.
     // `name` alone is not marked required, because a name key is equally valid.
@@ -1693,26 +2018,42 @@ export function newEntryForm(cat: Tab): Record<string, string> {
 
 /** Config keys each form owns; everything else round-trips via advancedJson. */
 const FORM_COVERED: Partial<Record<Tab, string[]>> = {
-    elements: [
-        "name", "description", "descriptionKey", "matterType", "density",
-        "horizontalSpeed", "duration",
-        "durationRandom", "metaColor", "colors", "flammable", "isTransportable",
-        "isGrabbable", "collectable", "hidden", "visibleInPicker",
-    ],
     items: [
-        "name", "description", "descriptionKey", "itemType", "cooldown", "energyCost",
-        "excavationProfileId", "projectileId", "handlerKey", "sprite",
+        "name",
+        "description",
+        "descriptionKey",
+        "itemType",
+        "cooldown",
+        "energyCost",
+        "excavationProfileId",
+        "projectileId",
+        "handlerKey",
+        "sprite",
     ],
     recipes: [
-        "kind", "input", "output", "chance", "outputs", "outputsAbove", "outputsBelow",
+        "kind",
+        "input",
+        "output",
+        "chance",
+        "outputs",
+        "outputsAbove",
+        "outputsBelow",
         "minimumDownwardVelocity",
     ],
     processing: ["mode", "structureType", "structureId", "intervalMs", "handlerKey"],
     contacts: ["inputA", "inputB", "outputA", "outputB", "orientation"],
     interactions: ["elementId", "interaction"],
     terrains: [
-        "name", "nameKey", "hp", "metaColor", "output", "flammable", "materialId",
-        "colorHSL", "excavationRequirements", "interactions",
+        "name",
+        "nameKey",
+        "hp",
+        "metaColor",
+        "output",
+        "flammable",
+        "materialId",
+        "colorHSL",
+        "excavationRequirements",
+        "interactions",
         // `fog` was listed here, claiming the form owns a field it has no
         // control for. Phase 8 found the only `.fog` in the bundle is a
         // property of the *cell-type table*, not of a terrain definition.
@@ -1720,20 +2061,38 @@ const FORM_COVERED: Partial<Record<Tab, string[]>> = {
         // advancedJson untouched instead of being silently claimed.
     ],
     unlockNodes: [
-        "name", "description", "kind", "techId", "cost", "currencyType", "branch",
-        "parentId", "requires",
+        "name",
+        "description",
+        "kind",
+        "techId",
+        "cost",
+        "currencyType",
+        "branch",
+        "parentId",
+        "requires",
     ],
     techs: [
-        "name", "description", "descriptionKey",
-        "cost", "currencyType", "branch", "parentId", "requires",
+        "name",
+        "description",
+        "descriptionKey",
+        "cost",
+        "currencyType",
+        "branch",
+        "parentId",
+        "requires",
     ],
     upgrades: ["itemId", "itemNameKey", "categoryId", "upgrade"],
     // The engine reads `id`, `name`, `nameKey` and `requirement` on a category;
     // without `id` or a name the registration throws.
     categories: ["name", "nameKey", "requirement"],
     inputs: [
-        "displayName", "displayNameKey", "category", "defaultKeys",
-        "onDownKey", "onUpKey", "subsection",
+        "displayName",
+        "displayNameKey",
+        "category",
+        "defaultKeys",
+        "onDownKey",
+        "onUpKey",
+        "subsection",
     ],
     signals: ["kind", "target", "handlerKey"],
     triggers: ["triggerId", "interval", "sequentialRuns", "extra", "handlerKey"],
@@ -1794,39 +2153,20 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
     const put = (k: string, v: string | undefined) => {
         if (v !== undefined) form[k] = v;
     };
-    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? String(v) : undefined);
+    const num = (
+        v: unknown,
+    ) => (typeof v === "number" && Number.isFinite(v) ? String(v) : undefined);
     const str = (v: unknown) => (typeof v === "string" ? v : undefined);
-    const json = (v: unknown) => (v === undefined || v === null ? undefined : JSON.stringify(v, null, 2));
+    const json = (
+        v: unknown,
+    ) => (v === undefined || v === null ? undefined : JSON.stringify(v, null, 2));
 
     if (typeof e.id === "string") form.idSuffix = suffixOf(e.id, cat);
 
     switch (cat) {
         case "elements": {
-            put("name", str(e.name));
-            put("description", str(e.description));
-            put("descriptionKey", str(e.descriptionKey));
-            put("matterType", str(e.matterType) ?? num(e.matterType));
-            put("density", num(e.density));
-            put("horizontalSpeed", num(e.horizontalSpeed));
-            put("duration", num(e.duration));
-            const dr = e.durationRandom as { min?: number; max?: number } | undefined;
-            put("durationRandomMin", num(dr?.min));
-            put("durationRandomMax", num(dr?.max));
-            put("metaColor", packedToHex(e.metaColor as number | undefined));
-            const colors = e.colors as { variants?: number[][] } | number[][] | undefined;
-            put("colorsJson", json(Array.isArray(colors) ? colors : colors?.variants));
-            for (
-                const k of [
-                    "flammable",
-                    "isTransportable",
-                    "isGrabbable",
-                    "collectable",
-                    "hidden",
-                    "visibleInPicker",
-                ]
-            ) {
-                if (typeof e[k] === "boolean") put(k, String(e[k]));
-            }
+            // Owned by ./definition/element.ts — see the note in formToEntry.
+            elementDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "structures": {
@@ -1938,7 +2278,13 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
                     "currencyTypeCustom",
                     listCurrencyTypes(),
                 );
-                putCustomOrSelect(form, str(e.branch), "branch", "branchCustom", listTechBranches());
+                putCustomOrSelect(
+                    form,
+                    str(e.branch),
+                    "branch",
+                    "branchCustom",
+                    listTechBranches(),
+                );
                 put("parentId", str(e.parentId));
                 put("requires", formatIdList(e.requires as string[] | undefined) || undefined);
             }
@@ -1955,7 +2301,13 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             // A stored value outside the picker's options (hand-edited JSON, or a
             // config saved before these pickers existed) is moved into the
             // companion custom box so saving cannot silently drop it.
-            putCustomOrSelect(form, str(e.currencyType), "currencyType", "currencyTypeCustom", listCurrencyTypes());
+            putCustomOrSelect(
+                form,
+                str(e.currencyType),
+                "currencyType",
+                "currencyTypeCustom",
+                listCurrencyTypes(),
+            );
             putCustomOrSelect(form, str(e.branch), "branch", "branchCustom", listTechBranches());
             put("parentId", str(e.parentId));
             put("requires", formatIdList(e.requires as string[] | undefined) || undefined);
@@ -1999,7 +2351,13 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             put("categoryId", str(e.categoryId));
             // UpgradeDefinition.upgrade is a nested object.
             const u = e.upgrade as
-                | { id?: string; maxLevel?: number; costs?: number[]; oneOff?: boolean; nameKey?: string }
+                | {
+                    id?: string;
+                    maxLevel?: number;
+                    costs?: number[];
+                    oneOff?: boolean;
+                    nameKey?: string;
+                }
                 | undefined;
             put("upgradeId", str(u?.id));
             put("upgradeNameKey", str(u?.nameKey));
@@ -2119,34 +2477,10 @@ export function formToEntry(
 
     switch (cat) {
         case "elements": {
-            setStr("name", opt(form, "name"));
-            setStr("description", opt(form, "description"));
-            setStr("descriptionKey", opt(form, "descriptionKey"));
-            setStr("matterType", opt(form, "matterType"));
-            setNum("density", optNum(form, "density"));
-            setNum("horizontalSpeed", optNum(form, "horizontalSpeed"));
-            setNum("duration", optNum(form, "duration"));
-            const dMin = optNum(form, "durationRandomMin");
-            const dMax = optNum(form, "durationRandomMax");
-            if (dMin !== undefined || dMax !== undefined) {
-                entry.durationRandom = { min: dMin ?? 0, max: dMax ?? dMin ?? 0 };
-            }
-            const hex = opt(form, "metaColor");
-            if (hex && HEX.test(hex)) entry.metaColor = hexToPacked(hex);
-            const colors = optJson<number[][]>(form, "colorsJson");
-            if (colors) entry.colors = { variants: colors };
-            for (
-                const k of [
-                    "flammable",
-                    "isTransportable",
-                    "isGrabbable",
-                    "collectable",
-                    "hidden",
-                    "visibleInPicker",
-                ]
-            ) {
-                setBool(k, optBool(form, k));
-            }
+            // Owned by ./definition/element.ts. Delegated rather than inlined so
+            // the element's schema, its save path and its widgets are one file
+            // that has to be read together to be changed correctly.
+            elementDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "structures": {
@@ -2293,8 +2627,18 @@ export function formToEntry(
             setStr("descriptionKey", opt(form, "descriptionKey"));
             setNum("cost", optNum(form, "cost"));
             // "__custom__" on the picker means "use the companion text box".
-            setStr("currencyType", opt(form, "currencyType") === "__custom__" ? opt(form, "currencyTypeCustom") : opt(form, "currencyType"));
-            setStr("branch", opt(form, "branch") === "__custom__" ? opt(form, "branchCustom") : opt(form, "branch"));
+            setStr(
+                "currencyType",
+                opt(form, "currencyType") === "__custom__"
+                    ? opt(form, "currencyTypeCustom")
+                    : opt(form, "currencyType"),
+            );
+            setStr(
+                "branch",
+                opt(form, "branch") === "__custom__"
+                    ? opt(form, "branchCustom")
+                    : opt(form, "branch"),
+            );
             setStr("parentId", opt(form, "parentId"));
             const requires = parseIdList(opt(form, "requires"));
             if (requires.length > 0) entry.requires = requires;
@@ -2455,7 +2799,3 @@ export function formToEntry(
 
     return entry;
 }
-
-
-
-

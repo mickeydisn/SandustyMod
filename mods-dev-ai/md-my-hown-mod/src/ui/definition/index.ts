@@ -12,6 +12,7 @@
  * than the registry inventing an empty definition that would look like a real
  * one with no fields.
  */
+import { elementDefinition } from "./element.ts";
 import { structureDefinition } from "./structure.ts";
 import type { Definition, Tab } from "./types.ts";
 
@@ -21,6 +22,7 @@ import type { Definition, Tab } from "./types.ts";
  * Adding an object is one line here plus one file beside it.
  */
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
+    elements: elementDefinition,
     structures: structureDefinition,
 };
 

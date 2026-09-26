@@ -335,6 +335,36 @@ export async function readMapping(): Promise<Map<string, Map<string, string>>> {
                 map.set(name[1], name[1]);
             }
         }
+        // …and the same loop over a *named* list rather than a literal one:
+        //   const FLAGS = ["flammable", …];
+        //   for (const k of FLAGS) w.setBool(k, w.optBool(k));
+        //
+        // Naming the list is the right thing to do in the source — it is the
+        // single definition both directions of the round trip read, so a literal
+        // in each direction is two lists that can drift. But a reader that only
+        // understands a literal array now reports every field in the list as
+        // storing nothing, which is a false statement in a generated document
+        // rather than an obvious gap. So the list is resolved and read for real.
+        for (
+            const loop of block.matchAll(
+                /for \(\s*const\s+(\w+)\s+of\s+([A-Z_][A-Z_0-9]*)\s*\)[\s\S]{0,120}?set(?:Str|Num|Bool)\(\s*\1\s*,\s*\w+\.opt\w*\(\s*\1\s*\)/g,
+            )
+        ) {
+            const list = loop[2];
+            // The constant is declared beside the loop, inside the same block, so
+            // the synthetic text these readers see still contains it.
+            const decl = new RegExp(`const\\s+${list}\\s*=\\s*\\[([^\\]]*)\\]`).exec(block);
+            if (!decl) {
+                throw new Error(
+                    `readMapping: the loop over \`${list}\` has no resolvable list in ` +
+                        "its own block — declare it as `const " + list +
+                        ' = ["a", "b"]` next to the loop so the tools can read it.',
+                );
+            }
+            for (const name of decl[1].matchAll(/"(\w+)"/g)) {
+                map.set(name[1], name[1]);
+            }
+        }
         // `entry.upgrade = { id: …, maxLevel: … }` — a nested object literal
         for (const k of block.matchAll(/entry\.(\w+)\s*=\s*\{([^{}]*)\}/g)) {
             for (const inner of k[2].matchAll(/(\w+)\s*[:=]/g)) {
@@ -357,7 +387,11 @@ export async function readMapping(): Promise<Map<string, Map<string, string>>> {
                 // `imageName: image` — the value names a local, so the ui key is
                 // whatever that local was read from. A literal value is the key.
                 const read = stmts
-                    .map((s) => s.match(new RegExp(`const\\s+${local}\\s*=\\s*\\w+\\.opt\\w*\\(\\s*"(\\w+)"`)))
+                    .map((s) =>
+                        s.match(
+                            new RegExp(`const\\s+${local}\\s*=\\s*\\w+\\.opt\\w*\\(\\s*"(\\w+)"`),
+                        )
+                    )
                     .find(Boolean);
                 map.set(read?.[1] ?? key, `${k[1]}.${key}`);
             }

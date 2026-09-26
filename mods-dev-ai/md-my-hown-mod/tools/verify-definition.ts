@@ -1,11 +1,11 @@
 /**
- * End-to-end check that the structure definition actually drives the panel.
+ * End-to-end check that the definitions actually drive the panel.
  *
- * The unit tests assert the codecs; this asserts the *wiring* — that
- * `schema.ts` and `panel.ts` read the definition rather than keeping their own
- * copy of it. A refactor that moved the code but left a stale duplicate behind
- * would pass every existing test and still show the old behaviour, so these
- * checks are deliberately about identity and delegation, not about output.
+ * The unit tests assert the codecs; this asserts the *wiring* — that `schema.ts`
+ * and `panel.ts` read each definition rather than keeping their own copy of it.
+ * A refactor that moved the code but left a stale duplicate behind would pass
+ * every existing test and still show the old behaviour, so these checks are
+ * deliberately about identity and delegation, not about output.
  *
  * Run with: deno run -A tools/verify-definition.ts
  */
@@ -37,6 +37,7 @@ const store: Record<string, unknown> = {};
 };
 
 const { structureDefinition } = await import(`${ROOT}ui/definition/structure.ts`);
+const { elementDefinition } = await import(`${ROOT}ui/definition/element.ts`);
 const { DEFINITIONS, definitionFor } = await import(`${ROOT}ui/definition/index.ts`);
 const S = await import(`${ROOT}ui/schema.ts`);
 
@@ -47,17 +48,29 @@ const ok = (cond: boolean, what: string) => {
 
 // 1. the registry is what `schema.ts` asks
 ok(definitionFor("structures") === structureDefinition, "registry does not serve structures");
-ok(Object.keys(DEFINITIONS).length === 1, `registry has ${Object.keys(DEFINITIONS).length} entries`);
+ok(definitionFor("elements") === elementDefinition, "registry does not serve elements");
+ok(
+    Object.keys(DEFINITIONS).length === 2,
+    `registry has ${Object.keys(DEFINITIONS).length} entries, expected 2`,
+);
 
 // 2. the schema comes from the definition, by identity — a stale copy in
 //    `schema.ts` would be equal in content but not the same array
 const fields = S.fieldsFor("structures");
 ok(
     fields === structureDefinition.fields,
-    "fieldsFor did not return the definition's own list",
+    "fieldsFor did not return the structure definition's own list",
 );
 ok(fields.some((f: { key: string }) => f.key === "shapeJson"), "no shapeJson field");
 ok(fields.some((f: { key: string }) => f.key === "unlockNode"), "no unlockNode field");
+
+const elFields = S.fieldsFor("elements");
+ok(
+    elFields === elementDefinition.fields,
+    "fieldsFor did not return the element definition's own list",
+);
+ok(elFields.some((f: { key: string }) => f.key === "colorsJson"), "no colorsJson field");
+ok(elFields.some((f: { key: string }) => f.key === "metaColor"), "no metaColor field");
 
 // 3. a new structure is seeded, and starts as a solid block
 const form = S.newEntryForm("structures");
@@ -104,7 +117,10 @@ ok(
 );
 
 // 6. the 4×4 rule is the definition's, not the generic one
-ok(!!S.validateForm("structures", { ...form, shapeJson: "[[1,1],[0]]" }).shapeJson, "a bad shape passed");
+ok(
+    !!S.validateForm("structures", { ...form, shapeJson: "[[1,1],[0]]" }).shapeJson,
+    "a bad shape passed",
+);
 ok(!S.validateForm("structures", form).shapeJson, "the default shape failed its own rule");
 
 // 7. a full round trip preserves what the engine reads
@@ -190,8 +206,77 @@ ok(
     `a cleared field persisted as ${JSON.stringify(cleared.blockGridType)}`,
 );
 
+// 11. the element round trip: the two shapes the form flattens and re-nests
+const elForm = S.newEntryForm("elements");
+const elStored = {
+    id: "md-my-hown-mod:goo",
+    name: "Goo",
+    matterType: "liquid",
+    density: 400,
+    durationRandom: { min: 2, max: 8 },
+    metaColor: 0xff8800,
+    colors: { variants: [[255, 0, 0, 255], [0, 128, 255, 200]] },
+    flammable: true,
+    isGrabbable: false,
+    collectable: true,
+};
+const elBack = S.formToEntry("elements", S.entryToForm("elements", elStored)) as Record<
+    string,
+    unknown
+>;
+ok(elBack.id === elStored.id, `element id → ${elBack.id}`);
+ok(elBack.matterType === "liquid", `element matterType → ${elBack.matterType}`);
+// the packed colour is the part that cannot be compared as a string
+ok(elBack.metaColor === 0xff8800, `element metaColor → ${elBack.metaColor}`);
+// the form holds a flat `[[r,g,b,a]]`; the engine wants it wrapped
+ok(
+    JSON.stringify(elBack.colors) === JSON.stringify(elStored.colors),
+    `element colors → ${JSON.stringify(elBack.colors)}`,
+);
+ok(
+    JSON.stringify(elBack.durationRandom) === JSON.stringify(elStored.durationRandom),
+    `element durationRandom → ${JSON.stringify(elBack.durationRandom)}`,
+);
+ok(elBack.flammable === true, `element flammable → ${elBack.flammable}`);
+
+// 12. the element's cross-field rule — the one `validateForm` used to special-case
+ok(
+    !!S.validateForm("elements", {
+        ...elForm,
+        duration: "10",
+        durationRandomMin: "8",
+        durationRandomMax: "2",
+    }).durationRandomMax,
+    "a lifetime max below the min was not rejected",
+);
+ok(
+    !S.validateForm("elements", {
+        ...elForm,
+        duration: "10",
+        durationRandomMin: "2",
+        durationRandomMax: "8",
+    }).durationRandomMax,
+    "a legal lifetime range was rejected",
+);
+
+// 13. a bare `colors` array — what a hand-written config may hold — is read and
+//     re-wrapped rather than dropped
+const bareColors = S.formToEntry("elements", {
+    ...S.entryToForm("elements", { colors: [[1, 2, 3, 4]] }),
+}) as Record<string, unknown>;
+ok(
+    JSON.stringify(bareColors.colors) === JSON.stringify({ variants: [[1, 2, 3, 4]] }),
+    `a bare colors array → ${JSON.stringify(bareColors.colors)}`,
+);
+
+// 14. an unmodelled element key still round-trips
+const elExtra = S.formToEntry("elements", {
+    ...S.entryToForm("elements", { ...elStored, someEngineKey: 7 }),
+}) as Record<string, unknown>;
+ok(elExtra.someEngineKey === 7, "an unmodelled element key was dropped on save");
+
 if (failures.length === 0) {
-    console.log("definition check: all 10 passed");
+    console.log("definition check: all 14 passed");
 } else {
     console.error(`definition check: ${failures.length} FAILED`);
     for (const f of failures) console.error(` - ${f}`);

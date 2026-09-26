@@ -48,6 +48,24 @@ function bodyOf(src: string, decl: RegExp): string | null {
 }
 
 /**
+ * A definition's top-level string-array constants, as declarations.
+ *
+ * A definition is allowed to name a list it loops over — `const FLAGS = ["a","b"]`
+ * — which is better source than repeating the literal in both directions of the
+ * round trip. But the readers work on the *spliced* text, and a module-level
+ * constant is not inside `formToEntry`'s braces, so a loop over it would resolve
+ * to nothing and every field in the list would read as storing nothing.
+ *
+ * So the constants travel with the body. Only string arrays, only top-level:
+ * those are the ones a loop can iterate and a reader can resolve.
+ */
+function constDeclsOf(src: string): string {
+    return [...src.matchAll(/^const\s+[A-Z_][A-Z_0-9]*\s*=\s*\[[^\]]*\];/gm)]
+        .map((m) => m[0])
+        .join("\n");
+}
+
+/**
  * `schema.ts` plus every definition's `formToEntry`, keyed to its own tab.
  *
  * Returned as one string because that is what the existing parsers take. The
@@ -94,7 +112,12 @@ function definitionBlocks(): string[] {
                     "stop expecting one here.",
             );
         }
-        out.push(`        /* definition: ${path} */\n        case "${tab}": {${body}\n        }`);
+        const consts = constDeclsOf(src);
+        out.push(
+            `        /* definition: ${path} */\n        case "${tab}": {` +
+                (consts ? `\n${consts}` : "") + body +
+                "\n        }",
+        );
     }
     return out;
 }

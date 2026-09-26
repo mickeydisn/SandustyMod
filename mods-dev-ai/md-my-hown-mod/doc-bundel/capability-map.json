@@ -1,751 +1,751 @@
 {
-  "totals": {
-    "namespaces": 72,
-    "members": 300,
-    "registerable": 36,
-    "queryable": 94,
-    "runtime": 92,
-    "internal": 78
-  },
-  "rows": [
-    {
-      "namespace": "structures",
-      "members": 21,
-      "registerable": 5,
-      "queryable": 7,
-      "runtime": 9,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "structures.recipes",
-      "members": 4,
-      "registerable": 4,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "tech",
-      "members": 8,
-      "registerable": 3,
-      "queryable": 3,
-      "runtime": 2,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "upgrades",
-      "members": 6,
-      "registerable": 3,
-      "queryable": 2,
-      "runtime": 1,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "processing",
-      "members": 3,
-      "registerable": 3,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "elements",
-      "members": 30,
-      "registerable": 2,
-      "queryable": 3,
-      "runtime": 13,
-      "internal": 12,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "terrains",
-      "members": 11,
-      "registerable": 2,
-      "queryable": 0,
-      "runtime": 5,
-      "internal": 4,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "items",
-      "members": 6,
-      "registerable": 2,
-      "queryable": 3,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "structureBehaviors",
-      "members": 2,
-      "registerable": 2,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "i18n",
-      "members": 20,
-      "registerable": 1,
-      "queryable": 8,
-      "runtime": 4,
-      "internal": 7,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "input",
-      "members": 10,
-      "registerable": 1,
-      "queryable": 5,
-      "runtime": 4,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "projectiles",
-      "members": 7,
-      "registerable": 1,
-      "queryable": 3,
-      "runtime": 2,
-      "internal": 1,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "energy",
-      "members": 6,
-      "registerable": 1,
-      "queryable": 2,
-      "runtime": 3,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "structures.processing",
-      "members": 3,
-      "registerable": 1,
-      "queryable": 0,
-      "runtime": 2,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "ui.overlays",
-      "members": 3,
-      "registerable": 1,
-      "queryable": 0,
-      "runtime": 2,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "excavation",
-      "members": 1,
-      "registerable": 1,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "reactions",
-      "members": 1,
-      "registerable": 1,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "signals.targets",
-      "members": 1,
-      "registerable": 1,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "triggers",
-      "members": 1,
-      "registerable": 1,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "player",
-      "members": 9,
-      "registerable": 0,
-      "queryable": 3,
-      "runtime": 5,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "sound",
-      "members": 8,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 7,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "entities",
-      "members": 7,
-      "registerable": 0,
-      "queryable": 2,
-      "runtime": 4,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "ui",
-      "members": 7,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 6,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "authorization",
-      "members": 6,
-      "registerable": 0,
-      "queryable": 6,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "effects",
-      "members": 6,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 5,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "grid",
-      "members": 6,
-      "registerable": 0,
-      "queryable": 3,
-      "runtime": 0,
-      "internal": 3,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "pickups",
-      "members": 6,
-      "registerable": 0,
-      "queryable": 2,
-      "runtime": 4,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "collector",
-      "members": 5,
-      "registerable": 0,
-      "queryable": 4,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "rendering",
-      "members": 5,
-      "registerable": 0,
-      "queryable": 4,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "sprites",
-      "members": 5,
-      "registerable": 0,
-      "queryable": 1,
-      "runtime": 0,
-      "internal": 4,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "utils",
-      "members": 5,
-      "registerable": 0,
-      "queryable": 5,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "building",
-      "members": 4,
-      "registerable": 0,
-      "queryable": 4,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "lights.persistent",
-      "members": 4,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 3,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "pipes",
-      "members": 4,
-      "registerable": 0,
-      "queryable": 3,
-      "runtime": 1,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "storage",
-      "members": 4,
-      "registerable": 0,
-      "queryable": 1,
-      "runtime": 2,
-      "internal": 1,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "tools.grabber",
-      "members": 4,
-      "registerable": 0,
-      "queryable": 3,
-      "runtime": 1,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "assets",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 3,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "camera",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 2,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "factory",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 3,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "fire",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 1,
-      "runtime": 0,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "maps",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 2,
-      "runtime": 1,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "player.buildings",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "settings",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 2,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "storage.local",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 1,
-      "runtime": 2,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "ui.navigation",
-      "members": 3,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 2,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "blueprints",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "cooldown",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 1,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "discoveries",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 2,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "events",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 1,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "hooks",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "lights.temporary",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "patterns",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "player.inventory",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 2,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "random",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "resources",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 2,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "shared.buffers",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "time",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 2,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "world",
-      "members": 2,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 2,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "game",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "mods",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 1,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "progression",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "raycast",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "scene",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 1,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "schedule",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "tech.conservatory",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 1,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "workers",
-      "members": 1,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 1,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "constants",
-      "members": 0,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "lights",
-      "members": 0,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "shared",
-      "members": 0,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "signals",
-      "members": 0,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": true,
-      "unwrapped": []
-    },
-    {
-      "namespace": "tools",
-      "members": 0,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    },
-    {
-      "namespace": "world.pickups",
-      "members": 0,
-      "registerable": 0,
-      "queryable": 0,
-      "runtime": 0,
-      "internal": 0,
-      "modUses": false,
-      "unwrapped": []
-    }
-  ],
-  "uncovered": [],
-  "unwrapped": [],
-  "modWrappers": [
-    "registerContact",
-    "registerEnergyType",
-    "registerExcavationProfile",
-    "registerInputBinding",
-    "registerInteraction",
-    "registerProcessing",
-    "registerProjectile",
-    "registerRecipe",
-    "registerSignal",
-    "registerStructureBehavior",
-    "registerTech",
-    "registerTerrain",
-    "registerTrigger",
-    "registerUpgrade",
-    "registerUpgradeCategory"
-  ]
+    "totals": {
+        "namespaces": 72,
+        "members": 300,
+        "registerable": 36,
+        "queryable": 94,
+        "runtime": 92,
+        "internal": 78
+    },
+    "rows": [
+        {
+            "namespace": "structures",
+            "members": 21,
+            "registerable": 5,
+            "queryable": 7,
+            "runtime": 9,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "structures.recipes",
+            "members": 4,
+            "registerable": 4,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "tech",
+            "members": 8,
+            "registerable": 3,
+            "queryable": 3,
+            "runtime": 2,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "upgrades",
+            "members": 6,
+            "registerable": 3,
+            "queryable": 2,
+            "runtime": 1,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "processing",
+            "members": 3,
+            "registerable": 3,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "elements",
+            "members": 30,
+            "registerable": 2,
+            "queryable": 3,
+            "runtime": 13,
+            "internal": 12,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "terrains",
+            "members": 11,
+            "registerable": 2,
+            "queryable": 0,
+            "runtime": 5,
+            "internal": 4,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "items",
+            "members": 6,
+            "registerable": 2,
+            "queryable": 3,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "structureBehaviors",
+            "members": 2,
+            "registerable": 2,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "i18n",
+            "members": 20,
+            "registerable": 1,
+            "queryable": 8,
+            "runtime": 4,
+            "internal": 7,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "input",
+            "members": 10,
+            "registerable": 1,
+            "queryable": 5,
+            "runtime": 4,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "projectiles",
+            "members": 7,
+            "registerable": 1,
+            "queryable": 3,
+            "runtime": 2,
+            "internal": 1,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "energy",
+            "members": 6,
+            "registerable": 1,
+            "queryable": 2,
+            "runtime": 3,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "structures.processing",
+            "members": 3,
+            "registerable": 1,
+            "queryable": 0,
+            "runtime": 2,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "ui.overlays",
+            "members": 3,
+            "registerable": 1,
+            "queryable": 0,
+            "runtime": 2,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "excavation",
+            "members": 1,
+            "registerable": 1,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "reactions",
+            "members": 1,
+            "registerable": 1,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "signals.targets",
+            "members": 1,
+            "registerable": 1,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "triggers",
+            "members": 1,
+            "registerable": 1,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "player",
+            "members": 9,
+            "registerable": 0,
+            "queryable": 3,
+            "runtime": 5,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "sound",
+            "members": 8,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 7,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "entities",
+            "members": 7,
+            "registerable": 0,
+            "queryable": 2,
+            "runtime": 4,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "ui",
+            "members": 7,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 6,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "authorization",
+            "members": 6,
+            "registerable": 0,
+            "queryable": 6,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "effects",
+            "members": 6,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 5,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "grid",
+            "members": 6,
+            "registerable": 0,
+            "queryable": 3,
+            "runtime": 0,
+            "internal": 3,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "pickups",
+            "members": 6,
+            "registerable": 0,
+            "queryable": 2,
+            "runtime": 4,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "collector",
+            "members": 5,
+            "registerable": 0,
+            "queryable": 4,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "rendering",
+            "members": 5,
+            "registerable": 0,
+            "queryable": 4,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "sprites",
+            "members": 5,
+            "registerable": 0,
+            "queryable": 1,
+            "runtime": 0,
+            "internal": 4,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "utils",
+            "members": 5,
+            "registerable": 0,
+            "queryable": 5,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "building",
+            "members": 4,
+            "registerable": 0,
+            "queryable": 4,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "lights.persistent",
+            "members": 4,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 3,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "pipes",
+            "members": 4,
+            "registerable": 0,
+            "queryable": 3,
+            "runtime": 1,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "storage",
+            "members": 4,
+            "registerable": 0,
+            "queryable": 1,
+            "runtime": 2,
+            "internal": 1,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "tools.grabber",
+            "members": 4,
+            "registerable": 0,
+            "queryable": 3,
+            "runtime": 1,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "assets",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 3,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "camera",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 2,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "factory",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 3,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "fire",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 1,
+            "runtime": 0,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "maps",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 2,
+            "runtime": 1,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "player.buildings",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "settings",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 2,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "storage.local",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 1,
+            "runtime": 2,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "ui.navigation",
+            "members": 3,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 2,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "blueprints",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "cooldown",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 1,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "discoveries",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 2,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "events",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 1,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "hooks",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "lights.temporary",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "patterns",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "player.inventory",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 2,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "random",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "resources",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 2,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "shared.buffers",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "time",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 2,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "world",
+            "members": 2,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 2,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "game",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "mods",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 1,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "progression",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "raycast",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "scene",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 1,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "schedule",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "tech.conservatory",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 1,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "workers",
+            "members": 1,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 1,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "constants",
+            "members": 0,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "lights",
+            "members": 0,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "shared",
+            "members": 0,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "signals",
+            "members": 0,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": true,
+            "unwrapped": []
+        },
+        {
+            "namespace": "tools",
+            "members": 0,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        },
+        {
+            "namespace": "world.pickups",
+            "members": 0,
+            "registerable": 0,
+            "queryable": 0,
+            "runtime": 0,
+            "internal": 0,
+            "modUses": false,
+            "unwrapped": []
+        }
+    ],
+    "uncovered": [],
+    "unwrapped": [],
+    "modWrappers": [
+        "registerContact",
+        "registerEnergyType",
+        "registerExcavationProfile",
+        "registerInputBinding",
+        "registerInteraction",
+        "registerProcessing",
+        "registerProjectile",
+        "registerRecipe",
+        "registerSignal",
+        "registerStructureBehavior",
+        "registerTech",
+        "registerTerrain",
+        "registerTrigger",
+        "registerUpgrade",
+        "registerUpgradeCategory"
+    ]
 }

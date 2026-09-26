@@ -83,7 +83,6 @@ import {
     formatIdList,
     formDefaults,
     formToEntry,
-    hexListToVariants,
     isActive,
     MENU_GROUPS,
     newEntryForm,
@@ -94,11 +93,9 @@ import {
     resolveAutoFill,
     resolveOptions,
     sectionsFor,
-    seedVariantFromMapColor,
     shapeToText,
     type Tab,
     validateForm,
-    variantsToHexList,
 } from "./schema.ts";
 import { definitionFor } from "./definition/index.ts";
 import {
@@ -717,89 +714,6 @@ export function createPanelComponent(defaultMinimized = true) {
         };
 
         /**
-         * Colour-variant swatches — one row per `colors.variants` entry.
-         *
-         * The engine shape is a nested array of RGBA tuples, which as a raw
-         * textarea meant hand-counting brackets and remembering that alpha is a
-         * fourth number. Every workshop mod that uses this ships four or five
-         * variants (`__scraped-mods/workshop/3790149867`), so the common case is
-         * a list, and a list deserves a list control.
-         */
-        const renderColorVariants = (f: FieldSpec, val: string, locked: boolean) => {
-            const swatches = variantsToHexList(val);
-            const write = (next: string[]) =>
-                setField(f.key, JSON.stringify(hexListToVariants(next)));
-
-            return h(
-                "div",
-                null,
-                swatches.length === 0
-                    ? h(
-                        "div",
-                        { style: S.hintBelow },
-                        "No variants — every cell uses the map colour, which is fine for most elements.",
-                    )
-                    : null,
-                ...swatches.map((hexValue, i) =>
-                    h(
-                        "div",
-                        { key: `cv-${i}`, style: S.outputsRow },
-                        h("input", {
-                            type: "color",
-                            value: hexValue.slice(0, 7),
-                            disabled: locked,
-                            title: `variant ${i + 1}`,
-                            style: {
-                                width: 40,
-                                height: 26,
-                                border: "none",
-                                background: "transparent",
-                                cursor: locked ? "default" : "pointer",
-                            },
-                            onChange: (e: { target: { value: string } }) => {
-                                const next = [...swatches];
-                                // A colour input has no alpha, so the swatch keeps
-                                // whatever alpha it already had.
-                                next[i] = e.target.value + hexValue.slice(7);
-                                write(next);
-                            },
-                        }),
-                        h(
-                            "span",
-                            { style: { ...S.hint, fontFamily: "monospace" } },
-                            hexValue,
-                        ),
-                        h(
-                            "button",
-                            {
-                                type: "button",
-                                style: { ...S.btnDanger, opacity: locked ? 0.5 : 1 },
-                                disabled: locked,
-                                title: "remove this variant",
-                                onClick: () => write(swatches.filter((_, j) => j !== i)),
-                            },
-                            "✕",
-                        ),
-                    )
-                ),
-                h(
-                    "button",
-                    {
-                        type: "button",
-                        style: S.btn,
-                        disabled: locked,
-                        // Seed from the map colour so a new variant is a variation
-                        // on what the element already looks like, not a random
-                        // new hue.
-                        onClick: () =>
-                            write([...swatches, seedVariantFromMapColor(form.metaColor)]),
-                    },
-                    "+ variant from map colour",
-                ),
-            );
-        };
-
-        /**
          * Excavation `terrainRules[]` editor — one row per matched terrain.
          *
          * These were completely unreachable before: the register layer dropped
@@ -950,6 +864,15 @@ export function createPanelComponent(defaultMinimized = true) {
                 locked,
             });
             let control: unknown = own ?? null;
+            // The generic chain below is a fallback, so it must be *guarded* by
+            // `control === null` as a whole — not just on its first branch.
+            //
+            // Checking only the first `if` looks equivalent and is not: the chain
+            // is an if/else-if ladder, so a field the definition claimed (`shape`,
+            // `buildModes`) fails the first test on `f.kind`, falls all the way
+            // down, and lands in the final `else` — which assigns a plain text
+            // input over the widget that was just built. The 4×4 grid and the
+            // build-modes editor both silently rendered as an empty text box.
             if (control === null && f.kind === "select") {
                 const opts = resolveOptions(f, form);
                 const placeholder = f.required ? "— select —" : "— none —";
@@ -964,7 +887,7 @@ export function createPanelComponent(defaultMinimized = true) {
                     h("option", { value: "" }, placeholder),
                     ...opts.map((o) => h("option", { key: o.value, value: o.value }, o.label)),
                 );
-            } else if (f.kind === "multiselect") {
+            } else if (control === null && f.kind === "multiselect") {
                 const opts = resolveOptions(f, form);
                 const chosen = parseIdList(val);
                 if (opts.length === 0) {
@@ -1098,13 +1021,11 @@ export function createPanelComponent(defaultMinimized = true) {
                         onChange: (e: { target: { value: string } }) => set(e.target.value),
                     }),
                 );
-            } else if (f.kind === "library") {
+            } else if (control === null && f.kind === "library") {
                 control = renderLibrary(f, val, err);
-            } else if (f.kind === "colorVariants") {
-                control = renderColorVariants(f, val, locked);
-            } else if (f.kind === "terrainRules") {
+            } else if (control === null && f.kind === "terrainRules") {
                 control = renderTerrainRules(f, val, err);
-            } else if (f.kind === "json") {
+            } else if (control === null && f.kind === "json") {
                 control = h("textarea", {
                     style: err ? { ...S.textarea, ...S.inputError } : S.textarea,
                     value: val,
@@ -1136,9 +1057,9 @@ export function createPanelComponent(defaultMinimized = true) {
                         );
                     }
                 }
-            } else if (f.kind === "outputs") {
+            } else if (control === null && f.kind === "outputs") {
                 control = renderOutputs(f, val, inputStyle, locked);
-            } else {
+            } else if (control === null) {
                 control = h("input", {
                     type: "text",
                     style: inputStyle,

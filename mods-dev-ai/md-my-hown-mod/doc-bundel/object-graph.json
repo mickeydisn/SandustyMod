@@ -1,689 +1,689 @@
 {
-  "stats": {
-    "types": 101,
-    "edges": 40,
-    "idSpace": 23,
-    "roots": 89,
-    "leaves": 85
-  },
-  "idSpace": [
-    {
-      "name": "EventId",
-      "role": "id",
-      "definition": "LooseString<keyof EventPayloadMap>",
-      "doc": "Known event names plus any custom string id."
+    "stats": {
+        "types": 101,
+        "edges": 40,
+        "idSpace": 23,
+        "roots": 89,
+        "leaves": 85
     },
-    {
-      "name": "InterceptHookId",
-      "role": "id",
-      "definition": "LooseString< | \"item:use\" | \"teleport:effect:create\" | \"teleport:effect\" | \"action:start\" | \"action:intercept\" | \"input:keyDown\" | \"input:keydown\" | \"input:keyUp\" | \"input:keyup\" | \"placePoints:suppress\" | \"placePoints:isSuppressed\" | \"placePoints:directionalArrows:suppress\" | \"placePoints:directionalArrows:isSuppressed\" | \"entity:update\" | \"building:place\" | \"building:clearShape\" | \"input:scroll\" | \"input:boostDown\" | \"input:boost-down\" | \"input:descendDown\" | \"input:descend-down\" | \"input:escape\" | \"interactable:suppressHover\" | \"fire:element:ignite\" | \"projectile:fire:overStructure\" | \"projectile:hit\" | \"player:position:commit\" | \"progression:purchase\" >",
-      "doc": "Known main-thread intercept hook ids plus custom strings."
-    },
-    {
-      "name": "ModifyHookId",
-      "role": "id",
-      "definition": "LooseString< | \"excavation:prepare\" | \"locator:scan:prepare\" | \"vacuum:prepare\" | \"vacuum:element:prepare\" | \"player:movement:prepare\" | \"player:movement\" | \"building:placementLimit:prepare\" | \"building:placementLimit\" | \"building:placement-limit\" | \"fluxEmanator:processing:prepare\" | \"fluxEmanator:processing\" | \"flux-emanator:processing\" | \"render:pipes:prepare\" | \"render:pipes\" | \"structures:moved:prepare\" | \"structures:removed:prepare\" | \"weapon:reload:prepare\" | \"projectile:travel:prepare\" | \"projectile:impact:prepare\" | \"player:collision:prepare\" | \"trigger:schedule:prepare\" | \"progression:cost:prepare\" | \"resource:collection:prepare\" | \"resource:delivery:prepare\" | \"resource:balance:prepare\" | \"gold:removal:prepare\" | \"gold:removal:settle\" >",
-      "doc": "Known main-thread modify hook ids plus custom strings."
-    },
-    {
-      "name": "Locale",
-      "role": "id",
-      "definition": "LooseString<\"en\">",
-      "doc": "Locale code. `\"en\"` autocompletes; any locale string is allowed."
-    },
-    {
-      "name": "KeyCode",
-      "role": "id",
-      "definition": "LooseString< | \"Shift\" | \"Alt\" | \"Control\" | \"Meta\" | \"ShiftLeft\" | \"ShiftRight\" | \"AltLeft\" | \"AltRight\" | \"ControlLeft\" | \"ControlRight\" | \"MetaLeft\" | \"MetaRight\" >",
-      "doc": "KeyboardEvent.code, a modifier alias (`Shift`), or a chord (`Control+KeyC`)."
-    },
-    {
-      "name": "ItemId",
-      "role": "ref",
-      "definition": "ItemIdEnum | LooseString<never>",
-      "doc": "Inventory item id. Built-in {@link ItemIdEnum} values autocomplete; custom string ids are allowed."
-    },
-    {
-      "name": "ItemType",
-      "role": "handle",
-      "definition": "ItemTypeEnum | TaggedNumber<\"itemType\">",
-      "doc": "Item category handle. Built-in {@link ItemTypeEnum} values autocomplete."
-    },
-    {
-      "name": "PickupType",
-      "role": "handle",
-      "definition": "PickupTypeEnum",
-      "doc": "Official pickup type discriminator."
-    },
-    {
-      "name": "WorldItemType",
-      "role": "handle",
-      "definition": "PickupType",
-      "doc": ""
-    },
-    {
-      "name": "Scene",
-      "role": "handle",
-      "definition": "SceneEnum",
-      "doc": "Scene enum values."
-    },
-    {
-      "name": "FieldId",
-      "role": "id",
-      "definition": "LooseString<never>",
-      "doc": "Settings field id. Any string is allowed."
-    },
-    {
-      "name": "StructureType",
-      "role": "handle",
-      "definition": "StructureTypeEnum | TaggedNumber<\"structureType\">",
-      "doc": "Numeric structure type handle. Built-in enum values autocomplete."
-    },
-    {
-      "name": "TechGridId",
-      "role": "ref",
-      "definition": "TechEnum | LooseString<never> | TaggedNumber<\"tech\">",
-      "doc": "Tech grid node id. Built-in {@link TechEnum} values autocomplete; custom string ids and tagged handles are allowed."
-    },
-    {
-      "name": "OverlaySlot",
-      "role": "id",
-      "definition": "LooseString<\"hotbar\" | \"global\">",
-      "doc": "Overlay slot name. Known vanilla slots autocomplete; any string is allowed."
-    },
-    {
-      "name": "ComponentId",
-      "role": "ref",
-      "definition": "ComponentIdEnum | LooseString<never>",
-      "doc": "Registered UI component id. Built-in {@link ComponentIdEnum} values autocomplete; custom string ids are allowed."
-    },
-    {
-      "name": "ElementType",
-      "role": "handle",
-      "definition": "ElementTypeEnum | TaggedNumber<\"elementType\">",
-      "doc": "Numeric element type handle. Built-in {@link ElementTypeEnum} values autocomplete; {@link getTypeById} returns a tagged handle."
-    },
-    {
-      "name": "ElementId",
-      "role": "id",
-      "definition": "LooseString<never>",
-      "doc": "Mod or built-in element string id."
-    },
-    {
-      "name": "ElementRef",
-      "role": "ref",
-      "definition": "ElementType | ElementId",
-      "doc": "Type handle or string id accepted by lookup helpers."
-    },
-    {
-      "name": "StructureId",
-      "role": "id",
-      "definition": "LooseString<never>",
-      "doc": "Mod or built-in structure string id."
-    },
-    {
-      "name": "StructureRef",
-      "role": "ref",
-      "definition": "StructureType | StructureId",
-      "doc": "Type handle or string id accepted by lookup helpers."
-    },
-    {
-      "name": "TerrainType",
-      "role": "handle",
-      "definition": "CellTypeEnum | TaggedNumber<\"terrainType\">",
-      "doc": "Numeric terrain / {@link CellTypeEnum} handle."
-    },
-    {
-      "name": "TerrainId",
-      "role": "id",
-      "definition": "LooseString<never>",
-      "doc": "Mod or built-in terrain string id."
-    },
-    {
-      "name": "TerrainRef",
-      "role": "ref",
-      "definition": "TerrainType | TerrainId",
-      "doc": "Type handle or string id accepted by mutation helpers."
-    }
-  ],
-  "edges": [
-    {
-      "from": "ExcavationProfileDefinitionV1",
-      "field": "options",
-      "to": "ExcavationProfileOptions",
-      "via": "ExcavationProfileOptions",
-      "optional": true,
-      "role": "other",
-      "doc": "Optional profile-specific excavation flags."
-    },
-    {
-      "from": "ExcavationProfileDefinitionV1",
-      "field": "terrainRules",
-      "to": "ExcavationTerrainRule",
-      "via": "readonly ExcavationTerrainRule[]",
-      "optional": true,
-      "role": "other",
-      "doc": "Per-terrain output and damage rules."
-    },
-    {
-      "from": "ExcavationTerrainRule",
-      "field": "cellType",
-      "to": "TerrainRef",
-      "via": "terrains.TerrainRef",
-      "optional": false,
-      "role": "ref",
-      "doc": "Terrain cell type to match."
-    },
-    {
-      "from": "ExcavationTerrainRule",
-      "field": "terrainType",
-      "to": "TerrainRef",
-      "via": "terrains.TerrainRef",
-      "optional": true,
-      "role": "ref",
-      "doc": ""
-    },
-    {
-      "from": "ExcavationTerrainRule",
-      "field": "outputElementType",
-      "to": "ElementRef",
-      "via": "elements.ElementRef",
-      "optional": true,
-      "role": "ref",
-      "doc": "Element type produced when this terrain is excavated."
-    },
-    {
-      "from": "GridMutationWriter",
-      "field": "elements",
-      "to": "GridMutationWriterElements",
-      "via": "GridMutationWriterElements",
-      "optional": false,
-      "role": "other",
-      "doc": "Element cell mutations inside a {@link mutate} callback."
-    },
-    {
-      "from": "GridMutationWriter",
-      "field": "terrains",
-      "to": "GridMutationWriterTerrains",
-      "via": "GridMutationWriterTerrains",
-      "optional": false,
-      "role": "other",
-      "doc": "Terrain cell mutations inside a {@link mutate} callback."
-    },
-    {
-      "from": "InputBindingDefinition",
-      "field": "handlers",
-      "to": "InputBindingHandlers",
-      "via": "InputBindingHandlers",
-      "optional": false,
-      "role": "other",
-      "doc": "Press and release handlers."
-    },
-    {
-      "from": "WorldItem",
-      "field": "type",
-      "to": "PickupType",
-      "via": "PickupType",
-      "optional": false,
-      "role": "handle",
-      "doc": ""
-    },
-    {
-      "from": "WeightedRecipeOutput",
-      "field": "elementType",
-      "to": "ElementType",
-      "via": "elements.ElementType",
-      "optional": false,
-      "role": "handle",
-      "doc": "Output element type (1–255)."
-    },
-    {
-      "from": "PlanterBoxRecipeDefinitionV1",
-      "field": "input",
-      "to": "ElementType",
-      "via": "elements.ElementType",
-      "optional": false,
-      "role": "handle",
-      "doc": "Input element type placed on the grower."
-    },
-    {
-      "from": "PlanterBoxRecipeDefinitionV1",
-      "field": "output",
-      "to": "ElementType",
-      "via": "elements.ElementType",
-      "optional": false,
-      "role": "handle",
-      "doc": "Output element type produced by the grower."
-    },
-    {
-      "from": "ShakerRecipeDefinitionV1",
-      "field": "input",
-      "to": "ElementType",
-      "via": "elements.ElementType",
-      "optional": false,
-      "role": "handle",
-      "doc": "Input element type dropped on the shaker."
-    },
-    {
-      "from": "ShakerRecipeDefinitionV1",
-      "field": "outputsAbove",
-      "to": "WeightedRecipeOutput",
-      "via": "WeightedRecipeOutput[]",
-      "optional": false,
-      "role": "other",
-      "doc": "Weighted outputs ejected upward."
-    },
-    {
-      "from": "ShakerRecipeDefinitionV1",
-      "field": "outputsBelow",
-      "to": "WeightedRecipeOutput",
-      "via": "WeightedRecipeOutput[]",
-      "optional": false,
-      "role": "other",
-      "doc": "Weighted outputs ejected downward."
-    },
-    {
-      "from": "KineticPressRecipeDefinitionV1",
-      "field": "input",
-      "to": "ElementType",
-      "via": "elements.ElementType",
-      "optional": false,
-      "role": "handle",
-      "doc": "Input element type processed by the press."
-    },
-    {
-      "from": "KineticPressRecipeDefinitionV1",
-      "field": "outputs",
-      "to": "WeightedRecipeOutput",
-      "via": "WeightedRecipeOutput[]",
-      "optional": false,
-      "role": "other",
-      "doc": "Weighted outputs produced by the press."
-    },
-    {
-      "from": "ProjectileDefinition",
-      "field": "getModData",
-      "to": "Projectile",
-      "via": "(state: unknown, projectile: Projectile) => Record<string, unknown>",
-      "optional": true,
-      "role": "other",
-      "doc": "Optional per-projectile mutable data factory."
-    },
-    {
-      "from": "ContactRecipeDefinitionV1",
-      "field": "inputA",
-      "to": "ElementType",
-      "via": "elements.ElementType",
-      "optional": false,
-      "role": "handle",
-      "doc": "First reacting element type."
-    },
-    {
-      "from": "ContactRecipeDefinitionV1",
-      "field": "inputB",
-      "to": "ElementType",
-      "via": "elements.ElementType",
-      "optional": false,
-      "role": "handle",
-      "doc": "Second reacting element type."
-    },
-    {
-      "from": "ContactRecipeDefinitionV1",
-      "field": "outputA",
-      "to": "ElementType",
-      "via": "elements.ElementType | null",
-      "optional": false,
-      "role": "handle",
-      "doc": "Element type produced from input A, or null for no output."
-    },
-    {
-      "from": "ContactRecipeDefinitionV1",
-      "field": "outputB",
-      "to": "ElementType",
-      "via": "elements.ElementType | null",
-      "optional": false,
-      "role": "handle",
-      "doc": "Element type produced from input B, or null for no output."
-    },
-    {
-      "from": "StructureVariant",
-      "field": "id",
-      "to": "StructureRef",
-      "via": "StructureRef",
-      "optional": false,
-      "role": "ref",
-      "doc": ""
-    },
-    {
-      "from": "StructureRender",
-      "field": "ui",
-      "to": "StructureRenderUi",
-      "via": "StructureRenderUi",
-      "optional": true,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "StructureRender",
-      "field": "spritesheet",
-      "to": "StructureSpritesheet",
-      "via": "StructureSpritesheet",
-      "optional": true,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "SandkitStructureDefinition",
-      "field": "id",
-      "to": "StructureId",
-      "via": "StructureId",
-      "optional": false,
-      "role": "id",
-      "doc": ""
-    },
-    {
-      "from": "SandkitStructureDefinition",
-      "field": "buildModes",
-      "to": "StructureBuildMode",
-      "via": "StructureBuildMode[]",
-      "optional": true,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "SandkitStructureDefinition",
-      "field": "variants",
-      "to": "StructureVariant",
-      "via": "StructureVariant[]",
-      "optional": true,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "SandkitStructureDefinition",
-      "field": "render",
-      "to": "StructureRender",
-      "via": "StructureRender",
-      "optional": true,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "SandkitStructureDefinition",
-      "field": "tooltipHover",
-      "to": "StructureTooltipHover",
-      "via": "StructureTooltipHover",
-      "optional": true,
-      "role": "other",
-      "doc": "Custom hover tooltip over the built structure."
-    },
-    {
-      "from": "StructureProcessorDefinitionV1",
-      "field": "process",
-      "to": "Structure",
-      "via": "(structure: Structure, context: StructureProcessingContext) => void",
-      "optional": false,
-      "role": "other",
-      "doc": "Synchronous callback invoked for each structure instance."
-    },
-    {
-      "from": "StructureProcessorDefinitionV1",
-      "field": "process",
-      "to": "StructureProcessingContext",
-      "via": "(structure: Structure, context: StructureProcessingContext) => void",
-      "optional": false,
-      "role": "other",
-      "doc": "Synchronous callback invoked for each structure instance."
-    },
-    {
-      "from": "PlacementConfigDefinition",
-      "field": "structureId",
-      "to": "StructureId",
-      "via": "StructureId",
-      "optional": false,
-      "role": "id",
-      "doc": ""
-    },
-    {
-      "from": "WeightedRefineryRecipeDefinitionV1",
-      "field": "input",
-      "to": "WeightedRecipeOutput",
-      "via": "processingApi.WeightedRecipeOutput[\"elementType\"]",
-      "optional": false,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "WeightedRefineryRecipeDefinitionV1",
-      "field": "outputs",
-      "to": "WeightedRecipeOutput",
-      "via": "processingApi.WeightedRecipeOutput[]",
-      "optional": false,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "StructureProcessingDefinitionV1",
-      "field": "structureType",
-      "to": "StructureRef",
-      "via": "StructureRef",
-      "optional": false,
-      "role": "ref",
-      "doc": ""
-    },
-    {
-      "from": "StructureProcessingDefinitionV1",
-      "field": "process",
-      "to": "Structure",
-      "via": "(structure: Structure, context: StructureProcessingContext) => void",
-      "optional": false,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "StructureProcessingDefinitionV1",
-      "field": "process",
-      "to": "StructureProcessingContext",
-      "via": "(structure: Structure, context: StructureProcessingContext) => void",
-      "optional": false,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "Structure",
-      "field": "data",
-      "to": "StructureData",
-      "via": "StructureData",
-      "optional": true,
-      "role": "other",
-      "doc": ""
-    },
-    {
-      "from": "TerrainDataAtCell",
-      "field": "cellType",
-      "to": "TerrainType",
-      "via": "TerrainType",
-      "optional": false,
-      "role": "handle",
-      "doc": "Numeric terrain cell type."
-    }
-  ],
-  "roots": [
-    "ActiveMapV1",
-    "ArtifactLocation",
-    "AssetProviderV1",
-    "AvailableMapV1",
-    "BindingId",
-    "BlueprintStructure",
-    "ConservatoryUnlocks",
-    "ContactRecipeDefinitionV1",
-    "Cooldown",
-    "DistortionEffectOptions",
-    "EffectOptions",
-    "ElementCreateOptions",
-    "ElementDefinition",
-    "ElementRemovalOptions",
-    "EnergyAddOptions",
-    "EnergyRegisterTypeOptions",
-    "Entity",
-    "EventPayloadMap",
-    "ExcavateOptions",
-    "ExcavationProfileOptions",
-    "ExcavationTerrainRule",
-    "FocusOptions",
-    "Focusable",
-    "GameStartOptions",
-    "GridDimensions",
-    "GridMutationWriterElements",
-    "GridMutationWriterTerrains",
-    "HookContext",
-    "HookOptions",
-    "I18nNumberFormatOptions",
-    "I18nTextKey",
-    "I18nTranslatable",
-    "InputBindingHandlers",
-    "InteractionCustom",
-    "InteractionDestroyer",
-    "InteractionEntity",
-    "InteractionFlammable",
-    "InteractionFreezable",
-    "InteractionMeltable",
-    "InteractionStructure",
-    "InteractionStructureMetadata",
-    "InterceptHookMap",
-    "ItemDefinition",
-    "LaserEffectHandle",
-    "LaserEffectOptions",
-    "LoadedSprite",
-    "MainTriggerDefinition",
-    "ModifierHookMap",
-    "ModifyHookOptions",
-    "ParticleEffectOptions",
-    "PersistentLightOptions",
-    "PipeVentCell",
-    "PlacementConfigChoiceField",
-    "PlacementConfigDefinition",
-    "PlacementConfigIntegerField",
-    "PlanterBoxRecipeDefinitionV1",
-    "PlayerCollisionPreparePayload",
-    "ProgressionCompletionRequestV1",
-    "Projectile",
-    "ProjectileBlueprint",
-    "SoundHandle",
-    "SoundLayer",
-    "SoundLayersOptions",
-    "SoundOptions",
-    "StructureBuildMode",
-    "StructureBuildOptions",
-    "StructureBulkRemovalOptions",
-    "StructureData",
-    "StructureProcessingContext",
-    "StructureRemovalOptions",
-    "StructureRenderUi",
-    "StructureSpritesheet",
-    "StructureTooltipHover",
-    "StructureTooltipHoverField",
-    "StructureVariant",
-    "TechDefinition",
-    "TechGridPosition",
-    "TemporaryLightHandle",
-    "TemporaryLightOptions",
-    "TerrainDataAtCell",
-    "TerrainDefinition",
-    "TerrainMutationOptions",
-    "ToastOptions",
-    "TooltipMessageData",
-    "UpgradeCategoryDefinition",
-    "UpgradeDefinition",
-    "WeightedRecipeOutput",
-    "WorldItem",
-    "WorldItemLight"
-  ],
-  "leaves": [
-    "ActiveMapV1",
-    "ArtifactLocation",
-    "AssetProviderV1",
-    "AvailableMapV1",
-    "BindingId",
-    "BlueprintStructure",
-    "ConservatoryUnlocks",
-    "ContactRecipeDefinitionV1",
-    "Cooldown",
-    "DistortionEffectOptions",
-    "EffectOptions",
-    "ElementCreateOptions",
-    "ElementDefinition",
-    "ElementRemovalOptions",
-    "EnergyAddOptions",
-    "EnergyRegisterTypeOptions",
-    "Entity",
-    "EventPayloadMap",
-    "ExcavateOptions",
-    "ExcavationProfileDefinitionV1",
-    "FocusOptions",
-    "Focusable",
-    "GameStartOptions",
-    "GridDimensions",
-    "GridMutationWriter",
-    "HookContext",
-    "HookOptions",
-    "I18nNumberFormatOptions",
-    "I18nTextKey",
-    "I18nTranslatable",
-    "InputBindingDefinition",
-    "InteractionCustom",
-    "InteractionDestroyer",
-    "InteractionEntity",
-    "InteractionFlammable",
-    "InteractionFreezable",
-    "InteractionMeltable",
-    "InteractionStructure",
-    "InteractionStructureMetadata",
-    "InterceptHookMap",
-    "ItemDefinition",
-    "KineticPressRecipeDefinitionV1",
-    "LaserEffectHandle",
-    "LaserEffectOptions",
-    "LoadedSprite",
-    "MainTriggerDefinition",
-    "ModifierHookMap",
-    "ModifyHookOptions",
-    "ParticleEffectOptions",
-    "PersistentLightOptions",
-    "PipeVentCell",
-    "PlacementConfigChoiceField",
-    "PlacementConfigDefinition",
-    "PlacementConfigIntegerField",
-    "PlanterBoxRecipeDefinitionV1",
-    "PlayerCollisionPreparePayload",
-    "ProgressionCompletionRequestV1",
-    "ProjectileBlueprint",
-    "ProjectileDefinition",
-    "SandkitStructureDefinition",
-    "ShakerRecipeDefinitionV1",
-    "SoundHandle",
-    "SoundLayer",
-    "SoundLayersOptions",
-    "SoundOptions",
-    "StructureBuildOptions",
-    "StructureBulkRemovalOptions",
-    "StructureProcessingDefinitionV1",
-    "StructureProcessorDefinitionV1",
-    "StructureRemovalOptions",
-    "StructureTooltipHoverField",
-    "TechDefinition",
-    "TechGridPosition",
-    "TemporaryLightHandle",
-    "TemporaryLightOptions",
-    "TerrainDataAtCell",
-    "TerrainDefinition",
-    "TerrainMutationOptions",
-    "ToastOptions",
-    "TooltipMessageData",
-    "UpgradeCategoryDefinition",
-    "UpgradeDefinition",
-    "WeightedRefineryRecipeDefinitionV1",
-    "WorldItem",
-    "WorldItemLight"
-  ]
+    "idSpace": [
+        {
+            "name": "EventId",
+            "role": "id",
+            "definition": "LooseString<keyof EventPayloadMap>",
+            "doc": "Known event names plus any custom string id."
+        },
+        {
+            "name": "InterceptHookId",
+            "role": "id",
+            "definition": "LooseString< | \"item:use\" | \"teleport:effect:create\" | \"teleport:effect\" | \"action:start\" | \"action:intercept\" | \"input:keyDown\" | \"input:keydown\" | \"input:keyUp\" | \"input:keyup\" | \"placePoints:suppress\" | \"placePoints:isSuppressed\" | \"placePoints:directionalArrows:suppress\" | \"placePoints:directionalArrows:isSuppressed\" | \"entity:update\" | \"building:place\" | \"building:clearShape\" | \"input:scroll\" | \"input:boostDown\" | \"input:boost-down\" | \"input:descendDown\" | \"input:descend-down\" | \"input:escape\" | \"interactable:suppressHover\" | \"fire:element:ignite\" | \"projectile:fire:overStructure\" | \"projectile:hit\" | \"player:position:commit\" | \"progression:purchase\" >",
+            "doc": "Known main-thread intercept hook ids plus custom strings."
+        },
+        {
+            "name": "ModifyHookId",
+            "role": "id",
+            "definition": "LooseString< | \"excavation:prepare\" | \"locator:scan:prepare\" | \"vacuum:prepare\" | \"vacuum:element:prepare\" | \"player:movement:prepare\" | \"player:movement\" | \"building:placementLimit:prepare\" | \"building:placementLimit\" | \"building:placement-limit\" | \"fluxEmanator:processing:prepare\" | \"fluxEmanator:processing\" | \"flux-emanator:processing\" | \"render:pipes:prepare\" | \"render:pipes\" | \"structures:moved:prepare\" | \"structures:removed:prepare\" | \"weapon:reload:prepare\" | \"projectile:travel:prepare\" | \"projectile:impact:prepare\" | \"player:collision:prepare\" | \"trigger:schedule:prepare\" | \"progression:cost:prepare\" | \"resource:collection:prepare\" | \"resource:delivery:prepare\" | \"resource:balance:prepare\" | \"gold:removal:prepare\" | \"gold:removal:settle\" >",
+            "doc": "Known main-thread modify hook ids plus custom strings."
+        },
+        {
+            "name": "Locale",
+            "role": "id",
+            "definition": "LooseString<\"en\">",
+            "doc": "Locale code. `\"en\"` autocompletes; any locale string is allowed."
+        },
+        {
+            "name": "KeyCode",
+            "role": "id",
+            "definition": "LooseString< | \"Shift\" | \"Alt\" | \"Control\" | \"Meta\" | \"ShiftLeft\" | \"ShiftRight\" | \"AltLeft\" | \"AltRight\" | \"ControlLeft\" | \"ControlRight\" | \"MetaLeft\" | \"MetaRight\" >",
+            "doc": "KeyboardEvent.code, a modifier alias (`Shift`), or a chord (`Control+KeyC`)."
+        },
+        {
+            "name": "ItemId",
+            "role": "ref",
+            "definition": "ItemIdEnum | LooseString<never>",
+            "doc": "Inventory item id. Built-in {@link ItemIdEnum} values autocomplete; custom string ids are allowed."
+        },
+        {
+            "name": "ItemType",
+            "role": "handle",
+            "definition": "ItemTypeEnum | TaggedNumber<\"itemType\">",
+            "doc": "Item category handle. Built-in {@link ItemTypeEnum} values autocomplete."
+        },
+        {
+            "name": "PickupType",
+            "role": "handle",
+            "definition": "PickupTypeEnum",
+            "doc": "Official pickup type discriminator."
+        },
+        {
+            "name": "WorldItemType",
+            "role": "handle",
+            "definition": "PickupType",
+            "doc": ""
+        },
+        {
+            "name": "Scene",
+            "role": "handle",
+            "definition": "SceneEnum",
+            "doc": "Scene enum values."
+        },
+        {
+            "name": "FieldId",
+            "role": "id",
+            "definition": "LooseString<never>",
+            "doc": "Settings field id. Any string is allowed."
+        },
+        {
+            "name": "StructureType",
+            "role": "handle",
+            "definition": "StructureTypeEnum | TaggedNumber<\"structureType\">",
+            "doc": "Numeric structure type handle. Built-in enum values autocomplete."
+        },
+        {
+            "name": "TechGridId",
+            "role": "ref",
+            "definition": "TechEnum | LooseString<never> | TaggedNumber<\"tech\">",
+            "doc": "Tech grid node id. Built-in {@link TechEnum} values autocomplete; custom string ids and tagged handles are allowed."
+        },
+        {
+            "name": "OverlaySlot",
+            "role": "id",
+            "definition": "LooseString<\"hotbar\" | \"global\">",
+            "doc": "Overlay slot name. Known vanilla slots autocomplete; any string is allowed."
+        },
+        {
+            "name": "ComponentId",
+            "role": "ref",
+            "definition": "ComponentIdEnum | LooseString<never>",
+            "doc": "Registered UI component id. Built-in {@link ComponentIdEnum} values autocomplete; custom string ids are allowed."
+        },
+        {
+            "name": "ElementType",
+            "role": "handle",
+            "definition": "ElementTypeEnum | TaggedNumber<\"elementType\">",
+            "doc": "Numeric element type handle. Built-in {@link ElementTypeEnum} values autocomplete; {@link getTypeById} returns a tagged handle."
+        },
+        {
+            "name": "ElementId",
+            "role": "id",
+            "definition": "LooseString<never>",
+            "doc": "Mod or built-in element string id."
+        },
+        {
+            "name": "ElementRef",
+            "role": "ref",
+            "definition": "ElementType | ElementId",
+            "doc": "Type handle or string id accepted by lookup helpers."
+        },
+        {
+            "name": "StructureId",
+            "role": "id",
+            "definition": "LooseString<never>",
+            "doc": "Mod or built-in structure string id."
+        },
+        {
+            "name": "StructureRef",
+            "role": "ref",
+            "definition": "StructureType | StructureId",
+            "doc": "Type handle or string id accepted by lookup helpers."
+        },
+        {
+            "name": "TerrainType",
+            "role": "handle",
+            "definition": "CellTypeEnum | TaggedNumber<\"terrainType\">",
+            "doc": "Numeric terrain / {@link CellTypeEnum} handle."
+        },
+        {
+            "name": "TerrainId",
+            "role": "id",
+            "definition": "LooseString<never>",
+            "doc": "Mod or built-in terrain string id."
+        },
+        {
+            "name": "TerrainRef",
+            "role": "ref",
+            "definition": "TerrainType | TerrainId",
+            "doc": "Type handle or string id accepted by mutation helpers."
+        }
+    ],
+    "edges": [
+        {
+            "from": "ExcavationProfileDefinitionV1",
+            "field": "options",
+            "to": "ExcavationProfileOptions",
+            "via": "ExcavationProfileOptions",
+            "optional": true,
+            "role": "other",
+            "doc": "Optional profile-specific excavation flags."
+        },
+        {
+            "from": "ExcavationProfileDefinitionV1",
+            "field": "terrainRules",
+            "to": "ExcavationTerrainRule",
+            "via": "readonly ExcavationTerrainRule[]",
+            "optional": true,
+            "role": "other",
+            "doc": "Per-terrain output and damage rules."
+        },
+        {
+            "from": "ExcavationTerrainRule",
+            "field": "cellType",
+            "to": "TerrainRef",
+            "via": "terrains.TerrainRef",
+            "optional": false,
+            "role": "ref",
+            "doc": "Terrain cell type to match."
+        },
+        {
+            "from": "ExcavationTerrainRule",
+            "field": "terrainType",
+            "to": "TerrainRef",
+            "via": "terrains.TerrainRef",
+            "optional": true,
+            "role": "ref",
+            "doc": ""
+        },
+        {
+            "from": "ExcavationTerrainRule",
+            "field": "outputElementType",
+            "to": "ElementRef",
+            "via": "elements.ElementRef",
+            "optional": true,
+            "role": "ref",
+            "doc": "Element type produced when this terrain is excavated."
+        },
+        {
+            "from": "GridMutationWriter",
+            "field": "elements",
+            "to": "GridMutationWriterElements",
+            "via": "GridMutationWriterElements",
+            "optional": false,
+            "role": "other",
+            "doc": "Element cell mutations inside a {@link mutate} callback."
+        },
+        {
+            "from": "GridMutationWriter",
+            "field": "terrains",
+            "to": "GridMutationWriterTerrains",
+            "via": "GridMutationWriterTerrains",
+            "optional": false,
+            "role": "other",
+            "doc": "Terrain cell mutations inside a {@link mutate} callback."
+        },
+        {
+            "from": "InputBindingDefinition",
+            "field": "handlers",
+            "to": "InputBindingHandlers",
+            "via": "InputBindingHandlers",
+            "optional": false,
+            "role": "other",
+            "doc": "Press and release handlers."
+        },
+        {
+            "from": "WorldItem",
+            "field": "type",
+            "to": "PickupType",
+            "via": "PickupType",
+            "optional": false,
+            "role": "handle",
+            "doc": ""
+        },
+        {
+            "from": "WeightedRecipeOutput",
+            "field": "elementType",
+            "to": "ElementType",
+            "via": "elements.ElementType",
+            "optional": false,
+            "role": "handle",
+            "doc": "Output element type (1–255)."
+        },
+        {
+            "from": "PlanterBoxRecipeDefinitionV1",
+            "field": "input",
+            "to": "ElementType",
+            "via": "elements.ElementType",
+            "optional": false,
+            "role": "handle",
+            "doc": "Input element type placed on the grower."
+        },
+        {
+            "from": "PlanterBoxRecipeDefinitionV1",
+            "field": "output",
+            "to": "ElementType",
+            "via": "elements.ElementType",
+            "optional": false,
+            "role": "handle",
+            "doc": "Output element type produced by the grower."
+        },
+        {
+            "from": "ShakerRecipeDefinitionV1",
+            "field": "input",
+            "to": "ElementType",
+            "via": "elements.ElementType",
+            "optional": false,
+            "role": "handle",
+            "doc": "Input element type dropped on the shaker."
+        },
+        {
+            "from": "ShakerRecipeDefinitionV1",
+            "field": "outputsAbove",
+            "to": "WeightedRecipeOutput",
+            "via": "WeightedRecipeOutput[]",
+            "optional": false,
+            "role": "other",
+            "doc": "Weighted outputs ejected upward."
+        },
+        {
+            "from": "ShakerRecipeDefinitionV1",
+            "field": "outputsBelow",
+            "to": "WeightedRecipeOutput",
+            "via": "WeightedRecipeOutput[]",
+            "optional": false,
+            "role": "other",
+            "doc": "Weighted outputs ejected downward."
+        },
+        {
+            "from": "KineticPressRecipeDefinitionV1",
+            "field": "input",
+            "to": "ElementType",
+            "via": "elements.ElementType",
+            "optional": false,
+            "role": "handle",
+            "doc": "Input element type processed by the press."
+        },
+        {
+            "from": "KineticPressRecipeDefinitionV1",
+            "field": "outputs",
+            "to": "WeightedRecipeOutput",
+            "via": "WeightedRecipeOutput[]",
+            "optional": false,
+            "role": "other",
+            "doc": "Weighted outputs produced by the press."
+        },
+        {
+            "from": "ProjectileDefinition",
+            "field": "getModData",
+            "to": "Projectile",
+            "via": "(state: unknown, projectile: Projectile) => Record<string, unknown>",
+            "optional": true,
+            "role": "other",
+            "doc": "Optional per-projectile mutable data factory."
+        },
+        {
+            "from": "ContactRecipeDefinitionV1",
+            "field": "inputA",
+            "to": "ElementType",
+            "via": "elements.ElementType",
+            "optional": false,
+            "role": "handle",
+            "doc": "First reacting element type."
+        },
+        {
+            "from": "ContactRecipeDefinitionV1",
+            "field": "inputB",
+            "to": "ElementType",
+            "via": "elements.ElementType",
+            "optional": false,
+            "role": "handle",
+            "doc": "Second reacting element type."
+        },
+        {
+            "from": "ContactRecipeDefinitionV1",
+            "field": "outputA",
+            "to": "ElementType",
+            "via": "elements.ElementType | null",
+            "optional": false,
+            "role": "handle",
+            "doc": "Element type produced from input A, or null for no output."
+        },
+        {
+            "from": "ContactRecipeDefinitionV1",
+            "field": "outputB",
+            "to": "ElementType",
+            "via": "elements.ElementType | null",
+            "optional": false,
+            "role": "handle",
+            "doc": "Element type produced from input B, or null for no output."
+        },
+        {
+            "from": "StructureVariant",
+            "field": "id",
+            "to": "StructureRef",
+            "via": "StructureRef",
+            "optional": false,
+            "role": "ref",
+            "doc": ""
+        },
+        {
+            "from": "StructureRender",
+            "field": "ui",
+            "to": "StructureRenderUi",
+            "via": "StructureRenderUi",
+            "optional": true,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "StructureRender",
+            "field": "spritesheet",
+            "to": "StructureSpritesheet",
+            "via": "StructureSpritesheet",
+            "optional": true,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "SandkitStructureDefinition",
+            "field": "id",
+            "to": "StructureId",
+            "via": "StructureId",
+            "optional": false,
+            "role": "id",
+            "doc": ""
+        },
+        {
+            "from": "SandkitStructureDefinition",
+            "field": "buildModes",
+            "to": "StructureBuildMode",
+            "via": "StructureBuildMode[]",
+            "optional": true,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "SandkitStructureDefinition",
+            "field": "variants",
+            "to": "StructureVariant",
+            "via": "StructureVariant[]",
+            "optional": true,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "SandkitStructureDefinition",
+            "field": "render",
+            "to": "StructureRender",
+            "via": "StructureRender",
+            "optional": true,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "SandkitStructureDefinition",
+            "field": "tooltipHover",
+            "to": "StructureTooltipHover",
+            "via": "StructureTooltipHover",
+            "optional": true,
+            "role": "other",
+            "doc": "Custom hover tooltip over the built structure."
+        },
+        {
+            "from": "StructureProcessorDefinitionV1",
+            "field": "process",
+            "to": "Structure",
+            "via": "(structure: Structure, context: StructureProcessingContext) => void",
+            "optional": false,
+            "role": "other",
+            "doc": "Synchronous callback invoked for each structure instance."
+        },
+        {
+            "from": "StructureProcessorDefinitionV1",
+            "field": "process",
+            "to": "StructureProcessingContext",
+            "via": "(structure: Structure, context: StructureProcessingContext) => void",
+            "optional": false,
+            "role": "other",
+            "doc": "Synchronous callback invoked for each structure instance."
+        },
+        {
+            "from": "PlacementConfigDefinition",
+            "field": "structureId",
+            "to": "StructureId",
+            "via": "StructureId",
+            "optional": false,
+            "role": "id",
+            "doc": ""
+        },
+        {
+            "from": "WeightedRefineryRecipeDefinitionV1",
+            "field": "input",
+            "to": "WeightedRecipeOutput",
+            "via": "processingApi.WeightedRecipeOutput[\"elementType\"]",
+            "optional": false,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "WeightedRefineryRecipeDefinitionV1",
+            "field": "outputs",
+            "to": "WeightedRecipeOutput",
+            "via": "processingApi.WeightedRecipeOutput[]",
+            "optional": false,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "StructureProcessingDefinitionV1",
+            "field": "structureType",
+            "to": "StructureRef",
+            "via": "StructureRef",
+            "optional": false,
+            "role": "ref",
+            "doc": ""
+        },
+        {
+            "from": "StructureProcessingDefinitionV1",
+            "field": "process",
+            "to": "Structure",
+            "via": "(structure: Structure, context: StructureProcessingContext) => void",
+            "optional": false,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "StructureProcessingDefinitionV1",
+            "field": "process",
+            "to": "StructureProcessingContext",
+            "via": "(structure: Structure, context: StructureProcessingContext) => void",
+            "optional": false,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "Structure",
+            "field": "data",
+            "to": "StructureData",
+            "via": "StructureData",
+            "optional": true,
+            "role": "other",
+            "doc": ""
+        },
+        {
+            "from": "TerrainDataAtCell",
+            "field": "cellType",
+            "to": "TerrainType",
+            "via": "TerrainType",
+            "optional": false,
+            "role": "handle",
+            "doc": "Numeric terrain cell type."
+        }
+    ],
+    "roots": [
+        "ActiveMapV1",
+        "ArtifactLocation",
+        "AssetProviderV1",
+        "AvailableMapV1",
+        "BindingId",
+        "BlueprintStructure",
+        "ConservatoryUnlocks",
+        "ContactRecipeDefinitionV1",
+        "Cooldown",
+        "DistortionEffectOptions",
+        "EffectOptions",
+        "ElementCreateOptions",
+        "ElementDefinition",
+        "ElementRemovalOptions",
+        "EnergyAddOptions",
+        "EnergyRegisterTypeOptions",
+        "Entity",
+        "EventPayloadMap",
+        "ExcavateOptions",
+        "ExcavationProfileOptions",
+        "ExcavationTerrainRule",
+        "FocusOptions",
+        "Focusable",
+        "GameStartOptions",
+        "GridDimensions",
+        "GridMutationWriterElements",
+        "GridMutationWriterTerrains",
+        "HookContext",
+        "HookOptions",
+        "I18nNumberFormatOptions",
+        "I18nTextKey",
+        "I18nTranslatable",
+        "InputBindingHandlers",
+        "InteractionCustom",
+        "InteractionDestroyer",
+        "InteractionEntity",
+        "InteractionFlammable",
+        "InteractionFreezable",
+        "InteractionMeltable",
+        "InteractionStructure",
+        "InteractionStructureMetadata",
+        "InterceptHookMap",
+        "ItemDefinition",
+        "LaserEffectHandle",
+        "LaserEffectOptions",
+        "LoadedSprite",
+        "MainTriggerDefinition",
+        "ModifierHookMap",
+        "ModifyHookOptions",
+        "ParticleEffectOptions",
+        "PersistentLightOptions",
+        "PipeVentCell",
+        "PlacementConfigChoiceField",
+        "PlacementConfigDefinition",
+        "PlacementConfigIntegerField",
+        "PlanterBoxRecipeDefinitionV1",
+        "PlayerCollisionPreparePayload",
+        "ProgressionCompletionRequestV1",
+        "Projectile",
+        "ProjectileBlueprint",
+        "SoundHandle",
+        "SoundLayer",
+        "SoundLayersOptions",
+        "SoundOptions",
+        "StructureBuildMode",
+        "StructureBuildOptions",
+        "StructureBulkRemovalOptions",
+        "StructureData",
+        "StructureProcessingContext",
+        "StructureRemovalOptions",
+        "StructureRenderUi",
+        "StructureSpritesheet",
+        "StructureTooltipHover",
+        "StructureTooltipHoverField",
+        "StructureVariant",
+        "TechDefinition",
+        "TechGridPosition",
+        "TemporaryLightHandle",
+        "TemporaryLightOptions",
+        "TerrainDataAtCell",
+        "TerrainDefinition",
+        "TerrainMutationOptions",
+        "ToastOptions",
+        "TooltipMessageData",
+        "UpgradeCategoryDefinition",
+        "UpgradeDefinition",
+        "WeightedRecipeOutput",
+        "WorldItem",
+        "WorldItemLight"
+    ],
+    "leaves": [
+        "ActiveMapV1",
+        "ArtifactLocation",
+        "AssetProviderV1",
+        "AvailableMapV1",
+        "BindingId",
+        "BlueprintStructure",
+        "ConservatoryUnlocks",
+        "ContactRecipeDefinitionV1",
+        "Cooldown",
+        "DistortionEffectOptions",
+        "EffectOptions",
+        "ElementCreateOptions",
+        "ElementDefinition",
+        "ElementRemovalOptions",
+        "EnergyAddOptions",
+        "EnergyRegisterTypeOptions",
+        "Entity",
+        "EventPayloadMap",
+        "ExcavateOptions",
+        "ExcavationProfileDefinitionV1",
+        "FocusOptions",
+        "Focusable",
+        "GameStartOptions",
+        "GridDimensions",
+        "GridMutationWriter",
+        "HookContext",
+        "HookOptions",
+        "I18nNumberFormatOptions",
+        "I18nTextKey",
+        "I18nTranslatable",
+        "InputBindingDefinition",
+        "InteractionCustom",
+        "InteractionDestroyer",
+        "InteractionEntity",
+        "InteractionFlammable",
+        "InteractionFreezable",
+        "InteractionMeltable",
+        "InteractionStructure",
+        "InteractionStructureMetadata",
+        "InterceptHookMap",
+        "ItemDefinition",
+        "KineticPressRecipeDefinitionV1",
+        "LaserEffectHandle",
+        "LaserEffectOptions",
+        "LoadedSprite",
+        "MainTriggerDefinition",
+        "ModifierHookMap",
+        "ModifyHookOptions",
+        "ParticleEffectOptions",
+        "PersistentLightOptions",
+        "PipeVentCell",
+        "PlacementConfigChoiceField",
+        "PlacementConfigDefinition",
+        "PlacementConfigIntegerField",
+        "PlanterBoxRecipeDefinitionV1",
+        "PlayerCollisionPreparePayload",
+        "ProgressionCompletionRequestV1",
+        "ProjectileBlueprint",
+        "ProjectileDefinition",
+        "SandkitStructureDefinition",
+        "ShakerRecipeDefinitionV1",
+        "SoundHandle",
+        "SoundLayer",
+        "SoundLayersOptions",
+        "SoundOptions",
+        "StructureBuildOptions",
+        "StructureBulkRemovalOptions",
+        "StructureProcessingDefinitionV1",
+        "StructureProcessorDefinitionV1",
+        "StructureRemovalOptions",
+        "StructureTooltipHoverField",
+        "TechDefinition",
+        "TechGridPosition",
+        "TemporaryLightHandle",
+        "TemporaryLightOptions",
+        "TerrainDataAtCell",
+        "TerrainDefinition",
+        "TerrainMutationOptions",
+        "ToastOptions",
+        "TooltipMessageData",
+        "UpgradeCategoryDefinition",
+        "UpgradeDefinition",
+        "WeightedRefineryRecipeDefinitionV1",
+        "WorldItem",
+        "WorldItemLight"
+    ]
 }
