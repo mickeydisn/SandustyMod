@@ -15,6 +15,26 @@ export const panelRoot: React.CSSProperties = {
     pointerEvents: "auto",
 };
 
+/**
+ * Where the open panel sits: a near-fullscreen overlay, centred.
+ *
+ * `90vw`/`90vh` with `5vw`/`5vh` of margin on every side, so it is centred
+ * whatever the viewport is. The open panel is deliberately *not* draggable — a
+ * window that can be shoved to a screen corner is not an overlay, and at this
+ * size dragging it could only ever put it somewhere useless. Dragging belongs
+ * to the minimised chip, which is small and wants to be parked out of the way.
+ */
+export const overlayBox: React.CSSProperties = {
+    width: "90vw",
+    height: "90vh",
+    left: "5vw",
+    top: "5vh",
+    right: "auto",
+    bottom: "auto",
+    maxWidth: "100vw",
+    maxHeight: "100vh",
+};
+
 export const panelChrome: React.CSSProperties = {
     background: "rgba(18, 20, 28, 0.94)",
     border: "1px solid rgba(120, 140, 180, 0.45)",
@@ -32,7 +52,9 @@ export const titleBar: React.CSSProperties = {
     gap: 8,
     padding: "6px 10px",
     background: "linear-gradient(180deg, rgba(50,60,90,0.9), rgba(30,36,55,0.95))",
-    cursor: "grab",
+    // The open panel is a fixed overlay, so there is nothing to grab. Only the
+    // minimised chip takes a drag, and it carries its own cursor.
+    cursor: "default",
     borderBottom: "1px solid rgba(100,120,160,0.35)",
 };
 
@@ -82,12 +104,6 @@ export const tabs: React.CSSProperties = {
 export const tab: React.CSSProperties = {
     ...btn,
     background: "rgba(40, 48, 70, 0.8)",
-};
-
-export const tabActive: React.CSSProperties = {
-    ...tab,
-    background: "rgba(70, 100, 160, 0.9)",
-    borderColor: "rgba(160, 190, 230, 0.6)",
 };
 
 export const list: React.CSSProperties = {
@@ -148,13 +164,6 @@ export const textarea: React.CSSProperties = {
     resize: "vertical",
 };
 
-export const toolbar: React.CSSProperties = {
-    display: "flex",
-    gap: 6,
-    flexWrap: "wrap",
-    marginBottom: 8,
-};
-
 export const hint: React.CSSProperties = {
     fontSize: 11,
     color: "#8890a8",
@@ -164,7 +173,10 @@ export const hint: React.CSSProperties = {
 export const minimizedChip: React.CSSProperties = {
     ...panelChrome,
     padding: "8px 14px",
-    cursor: "pointer",
+    // The one draggable thing in this panel, so it is the one thing with a
+    // grab cursor. It both drags (to park it) and clicks (to open it).
+    cursor: "grab",
+    touchAction: "none",
     display: "inline-flex",
     alignItems: "center",
     gap: 8,
@@ -343,11 +355,190 @@ export const requiredMark: React.CSSProperties = {
     marginLeft: 2,
 };
 
-export const warnBox: React.CSSProperties = {
-    ...hint,
-    background: "rgba(90, 70, 20, 0.35)",
-    border: "1px solid rgba(200, 160, 60, 0.4)",
+export const shapeGridBox: React.CSSProperties = {
+    display: "inline-flex",
+    flexDirection: "column",
+    gap: 2,
+    padding: 4,
+    background: "rgba(0,0,0,0.28)",
+    border: "1px solid rgba(120,170,255,0.35)",
+    borderRadius: 6,
+};
+
+export const shapeRow: React.CSSProperties = {
+    display: "flex",
+    gap: 2,
+};
+
+export const shapeCellOn: React.CSSProperties = {
+    width: 26,
+    height: 26,
+    padding: 0,
+    cursor: "pointer",
+    background: "rgba(120,190,255,0.92)",
+    border: "1px solid rgba(180,220,255,0.9)",
+    borderRadius: 3,
+};
+
+export const shapeCellOff: React.CSSProperties = {
+    width: 26,
+    height: 26,
+    padding: 0,
+    cursor: "pointer",
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(120,170,255,0.35)",
+    borderRadius: 3,
+};
+
+// ── Bundled asset library picker ──────────────────────────────────────────────
+
+export const libSearch: React.CSSProperties = {
+    ...input,
+    marginBottom: 6,
+};
+
+export const libGrid: React.CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 4,
+    maxHeight: 190,
+    overflowY: "auto",
+    padding: 5,
+    background: "rgba(0,0,0,0.28)",
+    border: "1px solid rgba(120,170,255,0.35)",
+    borderRadius: 6,
+};
+
+export const libTile: React.CSSProperties = {
+    width: 62,
+    padding: "3px 2px",
+    cursor: "pointer",
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(120,170,255,0.35)",
     borderRadius: 4,
-    padding: "5px 8px",
-    color: "#e8d49a",
+    color: "#cfe0ff",
+    font: "10px/1.25 system-ui,sans-serif",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
+
+export const libTileActive: React.CSSProperties = {
+    ...libTile,
+    background: "rgba(120,190,255,0.28)",
+    border: "1px solid rgba(180,220,255,0.95)",
+    color: "#ffffff",
+};
+
+// ── Handlers tab ────────────────────────────────────────────────────────────
+
+/** A boxed group of rows (one handler type, or the warning block). */
+export const card: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    padding: 8,
+    background: "rgba(18, 24, 40, 0.6)",
+    border: "1px solid rgba(120, 160, 220, 0.25)",
+    borderRadius: 4,
+};
+
+/**
+ * "There is nothing here yet, and here is what to do about it."
+ *
+ * Used where a reference field has an empty option list, and by the advanced
+ * box when an entry has no preserved fields. Deliberately informational rather
+ * than alarming — nothing is wrong, there is just nothing to show.
+ */
+export const emptyBox: React.CSSProperties = {
+    padding: "8px 10px",
+    fontSize: 12,
+    lineHeight: "17px",
+    color: "rgba(220, 228, 245, 0.8)",
+    background: "rgba(30, 38, 58, 0.5)",
+    border: "1px dashed rgba(120, 160, 220, 0.35)",
+    borderRadius: 4,
+};
+
+/** Small non-interactive label: scope, slot, usage counts. */
+export const tagChip: React.CSSProperties = {
+    display: "inline-block",
+    padding: "1px 6px",
+    fontSize: 10,
+    lineHeight: "15px",
+    color: "#cfe0ff",
+    background: "rgba(90, 120, 190, 0.22)",
+    border: "1px solid rgba(120, 160, 220, 0.3)",
+    borderRadius: 3,
+    whiteSpace: "nowrap",
+};
+
+/** Monospace identifier. */
+export const codeKey: React.CSSProperties = {
+    fontFamily: "ui-monospace, Menlo, Consolas, monospace",
+    fontSize: 12,
+    color: "#ffe9a8",
+};
+
+/** Inset area holding a form or explanatory text. */
+export const noteBox: React.CSSProperties = {
+    padding: 8,
+    background: "rgba(10, 14, 26, 0.55)",
+    border: "1px solid rgba(120, 160, 220, 0.18)",
+    borderRadius: 3,
+};
+
+/** Preformatted JSON snippet. */
+export const codeBlock: React.CSSProperties = {
+    margin: "6px 0 0 0",
+    padding: 6,
+    fontFamily: "ui-monospace, Menlo, Consolas, monospace",
+    fontSize: 11,
+    color: "#b8ffd0",
+    background: "rgba(0, 0, 0, 0.35)",
+    borderRadius: 3,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-all",
+};
+
+// ── Asset preview ───────────────────────────────────────────────────────────
+
+/**
+ * Nearest-neighbour scaling.
+ *
+ * `image-rendering: pixelated` is the whole trick: without it a 16×16 sprite
+ * scaled to 32px is bilinearly smoothed into a blur, and you cannot tell one
+ * icon from another. `crisp-edges` is the older alias some engines still want.
+ */
+export const spritePixel: React.CSSProperties = {
+    imageRendering: "pixelated",
+    width: 32,
+    height: 32,
+    display: "block",
+};
+
+/** Icon name under a tile thumbnail. */
+export const libTileName: React.CSSProperties = {
+    marginTop: 2,
+    fontSize: 9,
+    color: "rgba(220, 230, 255, 0.75)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    maxWidth: 68,
+};
+
+/** Row holding the magnified preview of the selected asset. */
+export const spritePreviewRow: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+    padding: 6,
+    background: "rgba(0, 0, 0, 0.3)",
+    borderRadius: 3,
+    // A checkerboard makes transparency in the art visible instead of guessed.
+    backgroundImage:
+        "linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%)",
+    backgroundSize: "8px 8px",
+    backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0",
 };

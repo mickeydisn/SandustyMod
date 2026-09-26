@@ -189,8 +189,6 @@ export interface StructureConfig {
     /** Sort order within category. */
     order?: number;
     alwaysUnlocked?: boolean;
-    /** Id whose unlock also grants this one. */
-    unlockedBy?: string;
     hideFromBuildMenu?: boolean;
     disallowPick?: boolean;
     /** Alias structure type for the block grid. */
@@ -205,10 +203,25 @@ export interface StructureConfig {
     variants?: StructureVariant[];
     render?: StructureRender;
     /**
-     * Custom canvas draw — NOT JSON-serialisable.
-     * Strip before storage; inject only at runtime if needed.
+     * Custom canvas draw.
+     *
+     * A **function**, and never JSON: the engine does `T(id, def.draw)` and the
+     * render loop calls
+     * `fn(session, instance, {tilemap, ctx, useTilemap, placing, opts})`.
+     * Returning `false` falls through to the normal sprite render; anything
+     * else means the frame was handled. The config stores `drawKey` instead and
+     * `apply.ts` supplies the function.
+     *
+     * The parameters are untyped on purpose. Naming them makes the field parser
+     * in `tools/verify.ts` read them as config keys, which they are not.
      */
-    draw?: (...args: unknown[]) => void;
+    draw?: (...args: never[]) => boolean | void;
+    /**
+     * Which built-in `draw` to use. The stored form is a key, because `draw`
+     * itself is a function and JSON cannot hold one; `apply.ts` swaps it for
+     * the real function at registration time. `"default"` means no custom draw.
+     */
+    drawKey?: string;
     /** Default per-instance data (deep-cloned on register). */
     defaultData?: Record<string, unknown>;
     /** false → copier skips instance data (skipCopyData). Default true. */
@@ -256,6 +269,12 @@ export interface ItemConfig {
     sprite?: ItemSprite;
     /** Per-use cooldown tracking when set. */
     cooldown?: number | { last?: number; [key: string]: unknown };
+    /**
+     * Name of a handler in `src/hooks/handlers.ts`, attached as
+     * `ItemDefinition.handleAction` at register time. Ignored for Consumable —
+     * `ActionType` has no Consumable member, so no use action can be dispatched.
+     */
+    handlerKey?: string;
     [key: string]: unknown;
 }
 
@@ -324,19 +343,21 @@ export interface RecipeConfig {
 export interface ProcessingConfig {
     id: string;
     /**
-     * structureType (for processing.register) OR structure instance handle
-     * (for addProcessor). Prefer string type id for config-driven use.
+     * Structure *type* this processor runs for. The engine definition is
+     * `{ structureType, intervalMs, process }` — there is no per-instance mode.
      */
     structureType?: string | number;
+    /** Legacy alias for {@link structureType}; still read when the above is absent. */
     structureId?: string | number;
-    /** Interval between process ticks (ms). Must be finite > 0 for addProcessor. */
+    /** Interval between process ticks (ms). Must be finite > 0. */
     intervalMs?: number;
     /**
-     * process(ctx, api) — NOT JSON-serialisable.
+     * process(structure, context) — NOT JSON-serialisable.
      * Leave undefined in stored config; attach via code if needed.
      */
     process?: (ctx: unknown, api: unknown) => void;
-    mode?: "type" | "instance"; // type → processing.register; instance → addProcessor
+    /** @deprecated The engine has no instance mode; ignored. */
+    mode?: "type" | "instance";
     [key: string]: unknown;
 }
 
@@ -444,6 +465,13 @@ export interface TechConfig {
 
 export interface UpgradeCategoryConfig {
     id: string;
+    /**
+     * Display name. The engine requires `name` or `nameKey` on a category and
+     * throws without one, so at least one of these two must be supplied.
+     */
+    name?: string;
+    /** Translation key for the category name. */
+    nameKey?: string;
     categoryId: string;
     itemId?: string | number;
     itemName?: string;
@@ -498,9 +526,20 @@ export interface EnergyTypeConfig {
     id: string;
     /** Structure / node id this energy type attaches to. */
     structureId: string;
-    /** Behaviour class e.g. "storage". */
-    type: string;
-    options?: { priority?: number; excludeFromNetwork?: boolean; [key: string]: unknown };
+    /**
+     * Graph role. `api.energy.registerType` accepts EXACTLY two values:
+     * "conductor" (forwards energy) or "storage" (holds energy).
+     * There is no producer/consumer role — generating or drawing energy is done by
+     * a processor handler calling `api.energy.addAtCell` / `api.energy.consume`.
+     */
+    type: "conductor" | "storage" | (string & {});
+    /** Documented options: `capacity` (storage) and `energyType` (network id). */
+    options?: {
+        capacity?: number;
+        energyType?: string;
+        priority?: number;
+        [key: string]: unknown;
+    };
     [key: string]: unknown;
 }
 
@@ -519,9 +558,22 @@ export interface ExcavationProfileConfig {
         useLiteralOutVelocity?: boolean;
         destroyNonDestructible?: boolean;
         forceRemoveAll?: boolean;
+        /** Clamped to 0–1000 when set. A number, NOT a boolean flag. */
         drillTierDamage?: number;
         [key: string]: unknown;
     };
+    /**
+     * Per-terrain dig rules (api.excavation `terrainRules`).
+     * `cellType` / `outputElementType` are runtime handles, so they are stored as
+     * ids here and resolved at registration time.
+     */
+    terrainRules?: {
+        cellType?: string | number;
+        terrainType?: string | number;
+        damage?: number;
+        outputElementType?: string | number;
+        [key: string]: unknown;
+    }[];
     [key: string]: unknown;
 }
 
@@ -550,6 +602,44 @@ export interface SignalConfig {
     /** Target type name / structure type / sender type id. */
     target: string;
     handlerKey?: string;
+    [key: string]: unknown;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUT BINDINGS — input.registerBinding
+//
+//   registerBinding(bindingId, defaultKeys, definition): BindingId
+//
+// `KeyCode` is a LooseString union, not a closed enum: a modifier alias
+// ("Shift"), a KeyboardEvent.code ("KeyO"), or a chord ("Control+KeyC") are
+// all valid, so the default keys stay a free list rather than a fixed choice.
+// `BindingId` is likewise LooseString over the vanilla `KeyBinding` names, so a
+// custom id is legal — which is the only safe default, since reusing a vanilla
+// name would replace a built-in binding.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface InputBindingConfig {
+    /** Passed as `bindingId`; also the id shown in the game's settings. */
+    id: string;
+    /** Required by the engine; shown in settings. */
+    displayName: string;
+    /** i18n key; overrides `displayName` when set. */
+    displayNameKey?: string;
+    /** Settings grouping. Required by the engine. */
+    category: string;
+    /** `defaultKeys` — KeyCode strings such as "KeyO" or "Control+KeyC". */
+    defaultKeys?: string[];
+    /** `handlers.down` — a handler key, resolved at apply time. */
+    onDownKey?: string;
+    /** `handlers.up` — a handler key, resolved at apply time. */
+    onUpKey?: string;
+    /** Optional settings subsection shown above the binding. */
+    subsection?: {
+        title?: string;
+        titleKey?: string;
+        description?: string;
+        descriptionKey?: string;
+    };
     [key: string]: unknown;
 }
 
@@ -635,6 +725,7 @@ export type ModConfig = {
     signals: SignalConfig[];
     triggers: TriggerConfig[];
     sprites: SpriteConfig[];
+    inputBindings: InputBindingConfig[];
 };
 
 export const DEFAULT_CONFIG: ModConfig = {
@@ -658,6 +749,7 @@ export const DEFAULT_CONFIG: ModConfig = {
     signals: [],
     triggers: [],
     sprites: [],
+    inputBindings: [],
 };
 
 export type PanelState = {
@@ -684,7 +776,7 @@ export const FIELD_HELP = {
         "id (required)",
         "name, nameKey, description, descriptionKey",
         "categoryKey: blocks|logistics|production|economy|logic|fluids|lighting|special|misc",
-        "order, alwaysUnlocked, unlockedBy, hideFromBuildMenu, disallowPick",
+        "order, alwaysUnlocked, hideFromBuildMenu, disallowPick",
         "shape: number[][] (1=occupied)",
         "buildModes: [{type: single|line|rectangle|…, directions?}]",
         "variants: [{id, angles: number[]}]",

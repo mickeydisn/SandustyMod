@@ -1,0 +1,437 @@
+[
+  {
+    "method": "conveyors.registerType",
+    "modType": "StructureBehaviorConfig",
+    "tabs": [
+      "behaviors"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "definition",
+        "id",
+        "kind"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 3,
+      "configHas": 4
+    }
+  },
+  {
+    "method": "elements.register",
+    "modType": "ElementConfig",
+    "tabs": [
+      "elements"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "colors.variants",
+        "density",
+        "description",
+        "descriptionKey",
+        "duration",
+        "durationRandom",
+        "durationRandom.max",
+        "durationRandom.min",
+        "horizontalSpeed",
+        "matterType",
+        "name"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 3,
+      "uiHas": 14,
+      "configHas": 19
+    }
+  },
+  {
+    "method": "energy.registerType",
+    "modType": "EnergyTypeConfig",
+    "tabs": [
+      "energy"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "id",
+        "options",
+        "structureId",
+        "type"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 4,
+      "configHas": 4
+    }
+  },
+  {
+    "method": "excavation.registerProfile",
+    "modType": "ExcavationProfileConfig",
+    "tabs": [
+      "excavation"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "id",
+        "options",
+        "pattern",
+        "power",
+        "terrainRules"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 5,
+      "configHas": 5
+    }
+  },
+  {
+    "method": "items.register",
+    "modType": "ItemConfig",
+    "tabs": [
+      "items"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "cooldown",
+        "description",
+        "descriptionKey",
+        "energyCost",
+        "excavationProfileId",
+        "handlerKey",
+        "name",
+        "projectileId"
+      ],
+      "missingFromUi": [
+        "pivot",
+        "x",
+        "y"
+      ],
+      "missingFromConfig": [
+        "pivot",
+        "x",
+        "y"
+      ],
+      "engineReads": 6,
+      "uiHas": 11,
+      "configHas": 11
+    }
+  },
+  {
+    "method": "launchers.registerType",
+    "modType": "StructureBehaviorConfig",
+    "tabs": [
+      "behaviors"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "definition",
+        "id",
+        "kind"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 3,
+      "configHas": 4
+    }
+  },
+  {
+    "method": "projectiles.register",
+    "modType": "ProjectileConfig",
+    "tabs": [
+      "projectiles"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "getOptionsKey",
+        "options",
+        "sprite",
+        "sprite.id"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 1,
+      "uiHas": 5,
+      "configHas": 4
+    }
+  },
+  {
+    "method": "reactions.registerContact",
+    "modType": "ContactReactionConfig",
+    "tabs": [
+      "contacts"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "id",
+        "inputA",
+        "inputB",
+        "orientation",
+        "outputA",
+        "outputB"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 6,
+      "configHas": 6
+    }
+  },
+  {
+    "method": "structures.processing.register",
+    "modType": "ProcessingConfig",
+    "tabs": [
+      "processing"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "handlerKey",
+        "id",
+        "intervalMs",
+        "structureType"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 4,
+      "configHas": 6
+    }
+  },
+  {
+    "method": "structures.recipes.register",
+    "modType": "RecipeConfig",
+    "tabs": [
+      "recipes"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "chance",
+        "id",
+        "input",
+        "kind",
+        "minimumDownwardVelocity",
+        "output",
+        "outputs",
+        "outputsAbove",
+        "outputsBelow"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 9,
+      "configHas": 10
+    }
+  },
+  {
+    "method": "structures.register",
+    "modType": "StructureConfig",
+    "tabs": [
+      "structures"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "alwaysUnlocked",
+        "categoryKey",
+        "description",
+        "descriptionKey",
+        "descriptionParams",
+        "disallowPick",
+        "hideFromBuildMenu",
+        "linkedClearance",
+        "name",
+        "order",
+        "rejectWhenBlocked",
+        "render.imageName",
+        "tooltipHover",
+        "variants"
+      ],
+      "missingFromUi": [
+        "copyData"
+      ],
+      "missingFromConfig": [
+        "skipCopyData"
+      ],
+      "engineReads": 9,
+      "uiHas": 22,
+      "configHas": 22
+    }
+  },
+  {
+    "method": "structures.registerPlacementConfig",
+    "modType": "StructureConfig",
+    "tabs": [
+      "structures"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "alwaysUnlocked",
+        "blockGridType",
+        "buildModes",
+        "categoryKey",
+        "defaultData",
+        "description",
+        "descriptionKey",
+        "descriptionParams",
+        "disallowPick",
+        "draw",
+        "hideFromBuildMenu",
+        "id",
+        "linkedClearance",
+        "name",
+        "order",
+        "rejectWhenBlocked",
+        "render",
+        "render.imageName",
+        "shape",
+        "skipCopyData",
+        "tooltipHover",
+        "variants"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 22,
+      "configHas": 22
+    }
+  },
+  {
+    "method": "tech.registerNode",
+    "modType": "TechConfig",
+    "tabs": [
+      "techs"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "branch",
+        "cost",
+        "currencyType",
+        "description",
+        "descriptionKey",
+        "id",
+        "name",
+        "parentId",
+        "requires",
+        "unlocks"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 10,
+      "configHas": 22
+    }
+  },
+  {
+    "method": "tech.updateDefinition",
+    "modType": "TechConfig",
+    "tabs": [
+      "techs"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "branch",
+        "cost",
+        "currencyType",
+        "description",
+        "descriptionKey",
+        "id",
+        "name",
+        "parentId",
+        "requires",
+        "unlocks"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 0,
+      "uiHas": 10,
+      "configHas": 22
+    }
+  },
+  {
+    "method": "terrains.register",
+    "modType": "TerrainConfig",
+    "tabs": [
+      "terrains"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "colorHSL",
+        "excavationRequirements",
+        "flammable",
+        "hp",
+        "interactions",
+        "metaColor",
+        "name",
+        "nameKey",
+        "output",
+        "output.chance",
+        "output.elementType"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 2,
+      "uiHas": 13,
+      "configHas": 21
+    }
+  },
+  {
+    "method": "triggers.register",
+    "modType": "TriggerConfig",
+    "tabs": [
+      "triggers"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "handlerKey",
+        "id",
+        "interval",
+        "triggerId"
+      ],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 2,
+      "uiHas": 6,
+      "configHas": 6
+    }
+  },
+  {
+    "method": "upgrades.register",
+    "modType": "UpgradeConfig",
+    "tabs": [
+      "upgrades"
+    ],
+    "gaps": {
+      "notReadByEngine": [
+        "id",
+        "onUpgradeKey"
+      ],
+      "missingFromUi": [
+        "itemName",
+        "onUpgrade",
+        "requirement"
+      ],
+      "missingFromConfig": [
+        "onUpgrade"
+      ],
+      "engineReads": 7,
+      "uiHas": 6,
+      "configHas": 8
+    }
+  },
+  {
+    "method": "upgrades.registerCategory",
+    "modType": "UpgradeCategoryConfig",
+    "tabs": [
+      "categories"
+    ],
+    "gaps": {
+      "notReadByEngine": [],
+      "missingFromUi": [],
+      "missingFromConfig": [],
+      "engineReads": 4,
+      "uiHas": 4,
+      "configHas": 10
+    }
+  }
+]

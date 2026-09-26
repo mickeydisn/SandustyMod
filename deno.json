@@ -4,16 +4,16 @@
         "./mods-pub/*",
         "./mods-progress/*",
         "./mods-dev/*",
-        "./mods-dev-ai/*"
+        "./mods-dev-ai/*",
+        "./_bundel/*"
     ],
 
     "exclude": [
         "__archive",
-        "__bundel",
         "__scraped-mods",
         "__pakages",
+        "_other",
         "sandgenerator-web",
-        "__*",
         "build*"
     ],
     "fmt": {

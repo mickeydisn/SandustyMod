@@ -1,0 +1,1270 @@
+{
+  "methods": [
+    {
+      "method": "conveyors.registerType",
+      "params": "(e, t, n)",
+      "line": 2672,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "debug.register",
+      "params": "(e, t, n)",
+      "line": 3554,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "elements.register",
+      "params": "(e, t)",
+      "line": 1275,
+      "reads": [
+        {
+          "field": "colors",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "id",
+          "valueReads": 3,
+          "derefs": 0
+        },
+        {
+          "field": "metaColor",
+          "valueReads": 2,
+          "derefs": 0
+        }
+      ],
+      "passthrough": true,
+      "i18nNormalised": true,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "elements.updateDefinition",
+      "params": "(e, t, n)",
+      "line": 1303,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": true,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "energy.registerType",
+      "params": "(e, t, n, r)",
+      "line": 3031,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "excavation.registerProfile",
+      "params": "(e, t, n)",
+      "line": 2650,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "i18n.register",
+      "params": "(e, t)",
+      "line": 4397,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "input.registerKeyBinding",
+      "params": "(e, t, n, o)",
+      "line": 3938,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "items.register",
+      "params": "(e, t)",
+      "line": 2490,
+      "reads": [
+        {
+          "field": "id",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "itemType",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "pivot",
+          "valueReads": 0,
+          "derefs": 2
+        },
+        {
+          "field": "sprite",
+          "valueReads": 1,
+          "derefs": 4
+        },
+        {
+          "field": "x",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "y",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": true,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "items.updateDefinition",
+      "params": "(e, t, n)",
+      "line": 2535,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": true,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "launchers.registerType",
+      "params": "(e, t)",
+      "line": 3002,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "matters.register",
+      "params": "(e, t)",
+      "line": 1206,
+      "reads": [
+        {
+          "field": "displaceable",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "id",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "transportable",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "uiTab",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "update",
+          "valueReads": 0,
+          "derefs": 1
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "misc.register",
+      "params": "(e, t)",
+      "line": 3011,
+      "reads": [
+        {
+          "field": "id",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "processing.registerGrower",
+      "params": "(e, t)",
+      "line": 2659,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Structure recipe ID \"…\" is not supported."
+      ],
+      "delegatedThrough": [
+        "{\n                if (qe(t, \"Structure r"
+      ],
+      "delegatesToModule": null
+    },
+    {
+      "method": "processing.registerKineticPress",
+      "params": "(e, t)",
+      "line": 2667,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Structure recipe ID \"…\" is not supported."
+      ],
+      "delegatedThrough": [
+        "{\n                if (qe(t, \"Structure r"
+      ],
+      "delegatesToModule": null
+    },
+    {
+      "method": "processing.registerShaker",
+      "params": "(e, t)",
+      "line": 2663,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Structure recipe ID \"…\" is not supported."
+      ],
+      "delegatedThrough": [
+        "{\n                if (qe(t, \"Structure r"
+      ],
+      "delegatesToModule": null
+    },
+    {
+      "method": "projectiles.register",
+      "params": "(e, t)",
+      "line": 2558,
+      "reads": [
+        {
+          "field": "id",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "queue.registerHandler",
+      "params": "(e, t)",
+      "line": 3344,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "reactions.registerContact",
+      "params": "(e, t)",
+      "line": 2644,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "signals.targets.register",
+      "params": "(e, t, n)",
+      "line": 2682,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Signals must be initialized before registering targets."
+      ],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "structures.processing.register",
+      "params": "(e, t, n)",
+      "line": 2724,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Structure \"…\" must be registered before its processing."
+      ],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "structures.recipes.register",
+      "params": "(e, t, n)",
+      "line": 2709,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Structure recipe ID \"…\" is not supported."
+      ],
+      "delegatedThrough": [
+        "{\n                if (qe(t, \"Structure r"
+      ],
+      "delegatesToModule": null
+    },
+    {
+      "method": "structures.register",
+      "params": "(e, t, n)",
+      "line": 2746,
+      "reads": [
+        {
+          "field": "blockGridType",
+          "valueReads": 4,
+          "derefs": 0
+        },
+        {
+          "field": "buildModes",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "copyData",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "defaultData",
+          "valueReads": 3,
+          "derefs": 0
+        },
+        {
+          "field": "draw",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "id",
+          "valueReads": 7,
+          "derefs": 0
+        },
+        {
+          "field": "render",
+          "valueReads": 5,
+          "derefs": 0
+        },
+        {
+          "field": "shape",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "skipCopyData",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": true,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "structures.registerPlacementConfig",
+      "params": "(e, t)",
+      "line": 2822,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "structures.updateDefinition",
+      "params": "(e, t, n, o)",
+      "line": 2772,
+      "reads": [
+        {
+          "field": "useRawShape",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "tech.registerNode",
+      "params": "(e, t, n)",
+      "line": 3745,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "tech.updateDefinition",
+      "params": "(e, t)",
+      "line": 3737,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "terrains.register",
+      "params": "(e, t)",
+      "line": 1957,
+      "reads": [
+        {
+          "field": "id",
+          "valueReads": 4,
+          "derefs": 0
+        },
+        {
+          "field": "materialId",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": true,
+      "throws": true,
+      "throwMessages": [
+        "Terrain '…' has invalid materialId …. It must be a number > obstacleBreakpoint (…) and < 150.",
+        "Terrain '…' materialId … must be in range …-…."
+      ],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "terrains.updateDefinition",
+      "params": "(e, t, n)",
+      "line": 2005,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": true,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "triggers.register",
+      "params": "(e, t, n)",
+      "line": 3665,
+      "reads": [
+        {
+          "field": "extra",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "sequentialRuns",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "ui.overlays.register",
+      "params": "(e, t, n, r)",
+      "line": 3517,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Unknown UI overlay slot \"…\"."
+      ],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "ui.overrides.register",
+      "params": "(e, t, n)",
+      "line": 3504,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "upgrades.register",
+      "params": "(e, t)",
+      "line": 4242,
+      "reads": [
+        {
+          "field": "categoryId",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "itemId",
+          "valueReads": 8,
+          "derefs": 0
+        },
+        {
+          "field": "itemName",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "itemNameKey",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "onUpgrade",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "requirement",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "upgrade",
+          "valueReads": 1,
+          "derefs": 3
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "upgrades.registerCategory",
+      "params": "(e, t)",
+      "line": 4228,
+      "reads": [
+        {
+          "field": "id",
+          "valueReads": 3,
+          "derefs": 0
+        },
+        {
+          "field": "name",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "nameKey",
+          "valueReads": 2,
+          "derefs": 0
+        },
+        {
+          "field": "requirement",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": true,
+      "throwMessages": [
+        "Upgrade category requires an id and localized name."
+      ],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "upgrades.updateDefinition",
+      "params": "(e, t, n, r)",
+      "line": 4262,
+      "reads": [
+        {
+          "field": "id",
+          "valueReads": 1,
+          "derefs": 0
+        },
+        {
+          "field": "maxLevel",
+          "valueReads": 5,
+          "derefs": 0
+        },
+        {
+          "field": "upgrades",
+          "valueReads": 1,
+          "derefs": 0
+        }
+      ],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    },
+    {
+      "method": "workers.triggers.register",
+      "params": "(e, t, n)",
+      "line": 3610,
+      "reads": [],
+      "passthrough": false,
+      "i18nNormalised": false,
+      "throws": false,
+      "throwMessages": [],
+      "delegatedThrough": [],
+      "delegatesToModule": null
+    }
+  ],
+  "comparison": [
+    {
+      "method": "conveyors.registerType",
+      "modType": "StructureBehaviorConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "behaviorType",
+        "definition",
+        "id",
+        "kind"
+      ]
+    },
+    {
+      "method": "debug.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "elements.register",
+      "modType": "ElementConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [
+        "colors",
+        "id",
+        "metaColor"
+      ],
+      "modOnly": [],
+      "neverRead": [
+        "defaultDataFields",
+        "density",
+        "description",
+        "descriptionKey",
+        "duration",
+        "durationRandom",
+        "flammable",
+        "getExtraProps",
+        "hidden",
+        "interactions",
+        "isGrabbable",
+        "isTransportable",
+        "materialId",
+        "matterType",
+        "name",
+        "nameKey"
+      ]
+    },
+    {
+      "method": "elements.updateDefinition",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "energy.registerType",
+      "modType": "EnergyTypeConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "id",
+        "options",
+        "structureId",
+        "type"
+      ]
+    },
+    {
+      "method": "excavation.registerProfile",
+      "modType": "ExcavationProfileConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "id",
+        "options",
+        "pattern",
+        "power",
+        "terrainRules"
+      ]
+    },
+    {
+      "method": "i18n.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "input.registerKeyBinding",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "items.register",
+      "modType": "ItemConfig",
+      "determined": true,
+      "requiredByEngine": [
+        "pivot",
+        "sprite"
+      ],
+      "ignoredByEngine": [
+        "id",
+        "itemType",
+        "x",
+        "y"
+      ],
+      "modOnly": [
+        "pivot",
+        "x",
+        "y"
+      ],
+      "neverRead": [
+        "categoryKey",
+        "cooldown",
+        "description",
+        "descriptionKey",
+        "handlerKey",
+        "name",
+        "nameKey",
+        "type"
+      ]
+    },
+    {
+      "method": "items.updateDefinition",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "launchers.registerType",
+      "modType": "StructureBehaviorConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "behaviorType",
+        "definition",
+        "id",
+        "kind"
+      ]
+    },
+    {
+      "method": "matters.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [
+        "update"
+      ],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "misc.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "processing.registerGrower",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "processing.registerKineticPress",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "processing.registerShaker",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "projectiles.register",
+      "modType": "ProjectileConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [
+        "id"
+      ],
+      "modOnly": [],
+      "neverRead": [
+        "getOptionsKey",
+        "options",
+        "sprite"
+      ]
+    },
+    {
+      "method": "queue.registerHandler",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "reactions.registerContact",
+      "modType": "ContactReactionConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "id",
+        "inputA",
+        "inputB",
+        "orientation",
+        "outputA",
+        "outputB"
+      ]
+    },
+    {
+      "method": "signals.targets.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "structures.processing.register",
+      "modType": "ProcessingConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "id",
+        "intervalMs",
+        "mode",
+        "process",
+        "structureId",
+        "structureType"
+      ]
+    },
+    {
+      "method": "structures.recipes.register",
+      "modType": "RecipeConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "chance",
+        "id",
+        "input",
+        "kind",
+        "minimumDownwardVelocity",
+        "output",
+        "outputs",
+        "outputsAbove",
+        "outputsBelow",
+        "structureType"
+      ]
+    },
+    {
+      "method": "structures.register",
+      "modType": "StructureConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [
+        "blockGridType",
+        "buildModes",
+        "copyData",
+        "defaultData",
+        "draw",
+        "id",
+        "render",
+        "shape",
+        "skipCopyData"
+      ],
+      "modOnly": [
+        "skipCopyData"
+      ],
+      "neverRead": [
+        "altOriginOffsetY",
+        "alwaysUnlocked",
+        "categoryKey",
+        "description",
+        "descriptionKey",
+        "disallowPick",
+        "hideFromBuildMenu",
+        "name",
+        "nameKey",
+        "order",
+        "registerOptions",
+        "rejectWhenBlocked",
+        "tooltipHover",
+        "variants"
+      ]
+    },
+    {
+      "method": "structures.registerPlacementConfig",
+      "modType": "StructureConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "altOriginOffsetY",
+        "alwaysUnlocked",
+        "blockGridType",
+        "buildModes",
+        "categoryKey",
+        "copyData",
+        "defaultData",
+        "description",
+        "descriptionKey",
+        "disallowPick",
+        "draw",
+        "hideFromBuildMenu",
+        "id",
+        "name",
+        "nameKey",
+        "order",
+        "registerOptions",
+        "rejectWhenBlocked",
+        "render",
+        "shape",
+        "tooltipHover",
+        "variants"
+      ]
+    },
+    {
+      "method": "structures.updateDefinition",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "tech.registerNode",
+      "modType": "TechConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "branch",
+        "cost",
+        "currencyType",
+        "description",
+        "descriptionKey",
+        "descriptionParams",
+        "electricityNodeStyle",
+        "icon",
+        "id",
+        "isAlien",
+        "isElectricity",
+        "locked",
+        "name",
+        "nameKey",
+        "nameParams",
+        "parentId",
+        "preferredPosition",
+        "radiusUnlockPx",
+        "requires",
+        "threshold",
+        "unavailable",
+        "unlocks"
+      ]
+    },
+    {
+      "method": "tech.updateDefinition",
+      "modType": "TechConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": [
+        "branch",
+        "cost",
+        "currencyType",
+        "description",
+        "descriptionKey",
+        "descriptionParams",
+        "electricityNodeStyle",
+        "icon",
+        "id",
+        "isAlien",
+        "isElectricity",
+        "locked",
+        "name",
+        "nameKey",
+        "nameParams",
+        "parentId",
+        "preferredPosition",
+        "radiusUnlockPx",
+        "requires",
+        "threshold",
+        "unavailable",
+        "unlocks"
+      ]
+    },
+    {
+      "method": "terrains.register",
+      "modType": "TerrainConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [
+        "id",
+        "materialId"
+      ],
+      "modOnly": [],
+      "neverRead": [
+        "background",
+        "backgroundElementType",
+        "colorGradient",
+        "colorHSL",
+        "colorPattern",
+        "description",
+        "descriptionKey",
+        "displayNameOverrideKey",
+        "excavationRequirements",
+        "flammable",
+        "fog",
+        "hp",
+        "interactions",
+        "isBuilding",
+        "metaColor",
+        "name",
+        "nameKey",
+        "noShadow",
+        "output"
+      ]
+    },
+    {
+      "method": "terrains.updateDefinition",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "triggers.register",
+      "modType": "TriggerConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [
+        "extra",
+        "sequentialRuns"
+      ],
+      "modOnly": [],
+      "neverRead": [
+        "handlerKey",
+        "id",
+        "interval",
+        "triggerId"
+      ]
+    },
+    {
+      "method": "ui.overlays.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "ui.overrides.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "upgrades.register",
+      "modType": "UpgradeConfig",
+      "determined": true,
+      "requiredByEngine": [
+        "upgrade"
+      ],
+      "ignoredByEngine": [
+        "categoryId",
+        "itemId",
+        "itemName",
+        "itemNameKey",
+        "onUpgrade",
+        "requirement"
+      ],
+      "modOnly": [
+        "onUpgrade"
+      ],
+      "neverRead": [
+        "id",
+        "onUpgradeKey"
+      ]
+    },
+    {
+      "method": "upgrades.registerCategory",
+      "modType": "UpgradeCategoryConfig",
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [
+        "id",
+        "name",
+        "nameKey",
+        "requirement"
+      ],
+      "modOnly": [],
+      "neverRead": [
+        "categoryId",
+        "itemId",
+        "itemName",
+        "itemNameKey",
+        "onUpgradeKey",
+        "upgrade"
+      ]
+    },
+    {
+      "method": "upgrades.updateDefinition",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    },
+    {
+      "method": "workers.triggers.register",
+      "modType": null,
+      "determined": true,
+      "requiredByEngine": [],
+      "ignoredByEngine": [],
+      "modOnly": [],
+      "neverRead": []
+    }
+  ]
+}

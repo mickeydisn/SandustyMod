@@ -1,7 +1,7 @@
 /**
  * Apply stored JSON config → sandkit registration APIs (all categories).
  */
-import { LOG, type ModConfig } from "../constants.ts";
+import { LOG, type ModConfig, type StructureConfig } from "../constants.ts";
 import {
     api,
     registerRecipe,
@@ -19,9 +19,177 @@ import {
     registerSignal,
     registerTrigger,
     registerSprite,
+    registerInputBinding,
 } from "../packages/mysandkit.ts";
 import { loadConfig } from "../config/store.ts";
 import { applyAllModifiers, detachAllModifiers, resolveAnyHandler } from "../hooks/index.ts";
+
+/**
+ * The built-in `draw` functions, keyed as they are in the config.
+ *
+ * `structures.register` does `T(id, def.draw)` and the render loop then calls
+ * it as `fn(session, instance, {tilemap, ctx, useTilemap, placing, opts})`,
+ * where returning `false` falls through to the normal sprite render. A *string*
+ * would not throw — it would simply stop drawing — which is why the config
+ * stores a key and this is where the key becomes a function.
+ *
+ * Every renderer here is written against the API a shipping mod actually uses
+ * (`__scraped-mods/workshop/3791498201`): `context.ctx`, `structure.x/.y`,
+ * `structure.data`, `api.rendering.getGridMetrics()` and
+ * `api.rendering.getDrawPositionAtCell()`. Nothing here is guessed.
+ *
+ * The canvas-state reset in `safeCanvas` is not optional. That mod's comment is
+ * worth quoting because it is a trap that produces no error:
+ *
+ *   "Tool/weapon effects can leave temporary canvas state active while custom
+ *    structure draw callbacks run. If inherited, filters/compositing can make
+ *    the silo sprite render solid black and keep repainting that way."
+ *
+ * The camera transform is deliberately NOT reset — the engine still needs it.
+ */
+type DrawCtx = {
+    ctx?: {
+        save(): void;
+        restore(): void;
+        strokeRect(x: number, y: number, w: number, h: number): void;
+        strokeStyle: string;
+        lineWidth: number;
+        globalAlpha: number;
+        globalCompositeOperation: string;
+        filter: string;
+        shadowBlur: number;
+        shadowOffsetX: number;
+        shadowOffsetY: number;
+        shadowColor: string;
+    };
+    useTilemap?: boolean;
+    placing?: boolean;
+};
+
+/** What a draw function needs to know about the structure it is drawing. */
+export interface DrawContext {
+    /** Footprint width in cells, from the registered `shape`. */
+    wCells: number;
+    hCells: number;
+}
+
+/**
+ * Normalise the canvas state a custom draw callback inherits.
+ *
+ * Anything left dirty by a tool or weapon effect tints the structure, and in
+ * practice renders it solid black with no error to explain why. Deliberately
+ * leaves the transform alone — the engine's camera transform is still required.
+ */
+function safeCanvas(ctx: NonNullable<DrawCtx["ctx"]>): void {
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    try {
+        ctx.filter = "none";
+    } catch { /* older canvas impls */ }
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.shadowColor = "rgba(0,0,0,0)";
+}
+
+/**
+ * Cell size in pixels, from the host's render API.
+ *
+ * Read through `api.raw`, because the mod's own `api` wrapper is a curated
+ * subset of the host surface and does not carry `rendering`. Falls back to 4 —
+ * the engine's own default — so a host without it still draws at the right
+ * scale rather than not at all.
+ */
+function gridMetrics(): { cellSize: number } {
+    const m = (api.raw as
+        | { rendering?: { getGridMetrics?: () => { cellSize?: number } } }
+        | undefined)?.rendering?.getGridMetrics?.();
+    return { cellSize: m?.cellSize ?? 4 };
+}
+
+/** Top-left pixel of a cell, in world space. */
+function drawPosAt(x: number, y: number): { x: number; y: number } {
+    const p = (api.raw as
+        | {
+            rendering?: {
+                getDrawPositionAtCell?: (cx: number, cy: number) => { x: number; y: number };
+            };
+        }
+        | undefined)?.rendering?.getDrawPositionAtCell?.(x, y);
+    return p ?? { x: x * 4, y: y * 4 };
+}
+
+/** Consume the frame without drawing: placed, simulates, invisible. */
+const hidden = () => true;
+
+/**
+ * Stroke a 1px outline around the footprint, then let the engine draw the
+ * sprite as normal.
+ *
+ * Returning `false` is the documented way to say "I have not handled this
+ * frame", so the outline sits on top of the normal render rather than replacing
+ * it. Useful for seeing a footprint's true extent, which a large structure's
+ * sprite can make ambiguous.
+ */
+function makeOutline({ wCells, hCells }: DrawContext) {
+    return (
+        _session: unknown,
+        structure: unknown,
+        context: unknown,
+    ): boolean => {
+        const ctx = (context as DrawCtx | undefined)?.ctx;
+        const at_cell = structure as { x?: number; y?: number } | undefined;
+        if (!ctx || typeof at_cell?.x !== "number" || typeof at_cell?.y !== "number") {
+            return false;
+        }
+        try {
+            const { cellSize } = gridMetrics();
+            const at = drawPosAt(at_cell.x, at_cell.y);
+            safeCanvas(ctx);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "rgba(120, 200, 255, 0.9)";
+            ctx.strokeRect(
+                at.x + 0.5,
+                at.y + 0.5,
+                Math.max(1, wCells * cellSize) - 1,
+                Math.max(1, hCells * cellSize) - 1,
+            );
+            ctx.restore();
+        } catch { /* never break the render loop */ }
+        // false = the engine still draws the sprite underneath.
+        return false;
+    };
+}
+
+/**
+ * Build the draw function for a stored `drawKey`.
+ *
+ * `default` (and anything unknown) means "no custom draw", so the key is
+ * dropped rather than passed through — registering a passthrough function would
+ * cost a lookup per structure per frame for no benefit.
+ */
+export function resolveDraw(st: StructureConfig): StructureConfig {
+    const { drawKey, ...rest } = st;
+    if (!drawKey || drawKey === "default") return rest;
+    // The footprint is only known here, at registration, so it is closed over
+    // rather than looked up per frame.
+    //
+    // `shape` is `[row][col]`: the outer array is rows, the inner is columns.
+    // So the *width* in cells is `shape[0].length` and the *height* is
+    // `shape.length`. Getting these the wrong way round produces an outline
+    // that is right for a square footprint and silently wrong for every other
+    // one, which is why the axis is spelled out here rather than left to a
+    // reader.
+    const shape = Array.isArray(st.shape) ? st.shape : [];
+    const ctx: DrawContext = {
+        wCells: Math.max(1, shape[0]?.length || 1),
+        hCells: Math.max(1, shape.length || 1),
+    };
+    if (drawKey === "hidden") return { ...rest, draw: hidden };
+    if (drawKey === "outline") return { ...rest, draw: makeOutline(ctx) };
+    return rest;
+}
 
 const registered: Record<string, Set<string>> = {
     sprites: new Set<string>(),
@@ -40,10 +208,66 @@ export function clearRegistrationCache(): void {
     detachAllModifiers();
 }
 
+/**
+ * Categories the engine can patch in place.
+ *
+ * Verified in the sandkit `.d.ts`: elements, structures, items, techs, terrains
+ * and upgrades all expose `updateDefinition`. Without this, editing an *existing*
+ * entry and saving was a no-op, because `applyConfig` skips any id already in
+ * its registration cache — the game kept the old definition while the UI
+ * reported success.
+ */
+type UpdateFn = (id: string, partial: Record<string, unknown>) => void;
+
+const UPDATABLE: Record<string, UpdateFn> = {
+    elements: (id, p) => api.elements.updateDefinition(id, p),
+    structures: (id, p) => api.structures.updateDefinition(id, p),
+    items: (id, p) => api.items.updateDefinition(id, p),
+    techs: (id, p) => api.tech.updateDefinition(id, p),
+    terrains: (id, p) => api.terrains.updateDefinition(id, p),
+    // Upgrades are keyed by (itemId, upgradeId). The engine's upgradeId is the
+    // *nested* `upgrade.id`, not the entry's own `id` (see UpgradeConfig).
+    upgrades: (id, p) => {
+        const nested = p.upgrade as { id?: string } | undefined;
+        api.upgrades.updateDefinition(
+            String(p.itemId ?? ""),
+            String(nested?.id ?? id),
+            p,
+        );
+    },
+};
+
+/**
+ * Push one edited entry into the live game.
+ *
+ * Returns true when the engine actually accepted the update. Categories without
+ * an `updateDefinition` are re-registered instead, after dropping their cache
+ * entry so the next `applyConfig` pass will not skip them.
+ */
+export function updateEntry(cat: string, id: string, entry: Record<string, unknown>): boolean {
+    const patch = UPDATABLE[cat];
+    if (!patch) {
+        // No in-place update: forget the id so a later apply re-registers it.
+        registered[cat]?.delete(id);
+        return false;
+    }
+    try {
+        // `id` is part of the definition; the engine keys on it, so drop it from
+        // the partial to avoid an id/handle mismatch.
+        const { id: _drop, ...partial } = entry;
+        patch(id, partial);
+        return true;
+    } catch (e) {
+        console.warn(`${LOG} updateDefinition failed for ${cat} ${id}`, e);
+        registered[cat]?.delete(id);
+        return false;
+    }
+}
+
 export function applyConfig(cfg?: ModConfig): void {
     const config = cfg ?? loadConfig();
     let nEl = 0, nSt = 0, nIt = 0, nRe = 0, nPr = 0, nCt = 0, nIx = 0, nMod = 0;
-    let nTe = 0, nTech = 0, nUC = 0, nUp = 0, nPj = 0, nEn = 0, nEx = 0, nSb = 0, nSg = 0, nTr = 0, nSp = 0;
+    let nTe = 0, nTech = 0, nUC = 0, nUp = 0, nPj = 0, nEn = 0, nEx = 0, nSb = 0, nSg = 0, nTr = 0, nSp = 0, nIn = 0;
 
     // Sprites first so items/structures can reference them
     for (const sp of config.sprites ?? []) {
@@ -64,7 +288,7 @@ export function applyConfig(cfg?: ModConfig): void {
     }
     for (const st of config.structures) {
         if (!st?.id || registered.structures.has(st.id)) continue;
-        api.structures.register(st);
+        api.structures.register(resolveDraw(st));
         registered.structures.add(st.id);
         nSt++;
     }
@@ -187,8 +411,29 @@ export function applyConfig(cfg?: ModConfig): void {
         nTr++;
     }
 
+    // Input bindings: `handlers` is a function pair, so the stored keys are
+    // resolved to functions here rather than in the config.
+    for (const b of config.inputBindings ?? []) {
+        if (!b?.id || (registered as any).inputBindings?.has(b.id)) continue;
+        const entry = { ...b } as Record<string, unknown>;
+        if (b.onDownKey) {
+            const fn = resolveAnyHandler(b.onDownKey);
+            if (typeof fn === "function") entry.onDownKey = fn;
+            else console.warn(`${LOG} input binding ${b.id}: unknown onDownKey "${b.onDownKey}"`);
+        }
+        if (b.onUpKey) {
+            const fn = resolveAnyHandler(b.onUpKey);
+            if (typeof fn === "function") entry.onUpKey = fn;
+            else console.warn(`${LOG} input binding ${b.id}: unknown onUpKey "${b.onUpKey}"`);
+        }
+        registerInputBinding(entry as never);
+        (registered as any).inputBindings = (registered as any).inputBindings || new Set();
+        (registered as any).inputBindings.add(b.id);
+        nIn++;
+    }
+
     console.log(
-        `${LOG} applied: el${nEl} st${nSt} it${nIt} re${nRe} pr${nPr} ct${nCt} ix${nIx} mod${nMod} te${nTe} tech${nTech} uc${nUC} up${nUp} pj${nPj} en${nEn} ex${nEx} sb${nSb} sg${nSg} tr${nTr} sp${nSp}`,
+        `${LOG} applied: el${nEl} st${nSt} it${nIt} re${nRe} pr${nPr} ct${nCt} ix${nIx} mod${nMod} te${nTe} tech${nTech} uc${nUC} up${nUp} pj${nPj} en${nEn} ex${nEx} sb${nSb} sg${nSg} tr${nTr} sp${nSp} in${nIn}`,
     );
 }
 

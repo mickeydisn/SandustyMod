@@ -53,11 +53,14 @@ export function readSettings<S extends SettingsSchema>(
         const def = schema[key];
         let raw: unknown;
         try {
-            raw = api?.settings?.get?.(modId, key);
-            if (raw === undefined) {
-                // fallback dotted key
-                raw = api?.settings?.get?.(`${modId}.${key}`);
-            }
+            // `settings.get(fieldId)` takes ONE argument and `FieldId` is any
+            // string, so the settings field is named `"<modId>.<key>"`. Passing
+            // `(modId, key)` looked right — it mirrors `storage.get` — but the
+            // second argument is ignored and the first is read as a field named
+            // after the mod id alone, which never exists. It only ever worked
+            // because this second call corrected it.
+            raw = api?.settings?.get?.(`${modId}.${key}`);
+            if (raw === undefined) raw = api?.settings?.get?.(key);
         } catch {
             raw = undefined;
         }
@@ -76,7 +79,13 @@ export function onSettingsChange<S extends SettingsSchema>(
         return () => {};
     }
     try {
-        const unsub = api.settings.onChange(modId, () => {
+        // `settings.onChange(callback)` takes ONE argument. Calling it as
+        // `onChange(modId, callback)` passed the mod id *as the callback*, so
+        // the engine either threw on subscribe or threw when it later invoked
+        // the string — and the `catch` below turned that into a silent no-op.
+        // The subscription has therefore never worked; the callback reads
+        // through `readSettings`, so the values argument is unused.
+        const unsub = api.settings.onChange(() => {
             cb(readSettings(modId, schema));
         });
         return typeof unsub === "function" ? unsub : () => {};

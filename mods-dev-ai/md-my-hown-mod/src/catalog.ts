@@ -3,6 +3,11 @@
  */
 import { api, getSandkit, safe } from "./api.ts";
 import { loadConfig } from "./config/store.ts";
+import type { HandlerMeta, HandlerSlot } from "./hooks/handler-registry.ts";
+// Imported as a value, not a type: `handler-registry.ts` has no imports of its
+// own, so this cannot cycle, and the pickers must work even when the hook
+// module has not yet published its `__mdHandlers` global.
+import { HANDLER_META, allHandlerTypes, itemActionHandlersFor } from "./hooks/handler-registry.ts";
 
 export type Opt = { value: string; label: string; color?: string };
 
@@ -84,7 +89,12 @@ export function listElements(): Opt[] {
 export function listStructures(): Opt[] {
     const map = new Map<string, Opt>();
 
-    // Try common discovery APIs
+    // Phase 8 checked all four of these against the public api index: **none of
+    // them exist**. The engine exposes no way to enumerate registered
+    // structures, so every probe returns undefined and the result below is the
+    // `StructureType` enum only. The probes are kept because a future build may
+    // add one, and they cannot throw — but nothing here discovers a mod's own
+    // structures at runtime.
     const tryList = [
         () => api.structures?.getRegisteredTypes?.(),
         () => api.structures?.getAvailableTypes?.(),
@@ -166,6 +176,128 @@ export function listTerrains(): Opt[] {
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/**
+ * `structure.linkedClearance` — clearance mode for linked placement.
+ *
+ * The engine minifies this to `structureConfig.n`, and the *only* comparison
+ * anywhere in the bundle is `=== "allOrNothing"`. Any other value — including a
+ * typo, and including absent — skips the all-or-nothing check, so the field
+ * behaved like a switch wearing a text box's clothes. There are two real states.
+ */
+export function listLinkedClearance(): Opt[] {
+    return [
+        {
+            value: "",
+            label: "Per cell (default) — every blocked cell is rejected on its own",
+        },
+        {
+            value: "allOrNothing",
+            label: "All or nothing — one blocked cell rejects the whole footprint",
+        },
+    ];
+}
+
+/**
+ * Legal `terrain.materialId` values.
+ *
+ * The engine throws unless the id is a number `> obstacleBreakpoint` and `< 150`,
+ * and `obstacleBreakpoint` is `100` (`utils-worker.js/90823.js`) — so the legal
+ * range is exactly 101–149. Every value in that range is an obstacle
+ * (`materialId >= obstacleBreakpoint` is the only test anywhere), so there are
+ * no named tiers to offer and naming any would be invention.
+ *
+ * What *is* useful is the id to pick. The engine computes its own next-free
+ * value — `max(<highest builtin>, ...our terrain cellTypes) + 1` — so that is
+ * what leads the list. Two terrains sharing a material id sort against each
+ * other unpredictably, and a free-typed number is how that happens.
+ */
+export function listMaterialIds(): Opt[] {
+    const used = (loadConfig().terrains ?? [])
+        .map((t) => Number((t as { materialId?: unknown } | undefined)?.materialId))
+        .filter((n) => Number.isFinite(n));
+    const taken = new Set(used);
+
+    // Highest id already in use, so "next free" really is free.
+    let next = 101;
+    for (const n of used) if (n >= next && n < 149) next = n + 1;
+
+    const opts: Opt[] = [
+        { value: "", label: "Leave empty — the engine uses its default (150)" },
+    ];
+    if (next <= 149) {
+        opts.push({
+            value: String(next),
+            label: `${next} — next free id${taken.size ? " (recommended)" : ""}`,
+        });
+    }
+    for (let n = 101; n <= 149; n++) {
+        if (taken.has(n) || n === next) continue;
+        opts.push({ value: String(n), label: String(n) });
+    }
+    return opts;
+}
+
+/**
+ * Built-in `draw` functions for `structures.register({ draw })`.
+ *
+ * `draw` is a **function**, not data. The engine stores it per structure *type*
+ * (`T(id, fn)` into a map) and calls it as:
+ *
+ *     fn(session, instance, { tilemap, ctx, useTilemap, placing, opts })
+ *       → false  : fall through to the normal sprite render
+ *       → else   : the frame is handled, the default render is skipped
+ *
+ * So it cannot be expressed in JSON, which is why the config holds a *key* and
+ * `apply.ts` resolves it to one of these. Anything not in this table does not
+ * reach the game.
+ *
+ * The set stays small on purpose, but it is no longer a placeholder: each entry
+ * is written against the API a shipping mod actually uses
+ * (`__scraped-mods/workshop/3791498201`). Adding more means writing them that
+ * way, not guessing.
+ */
+export interface DrawFnMeta {
+    key: string;
+    label: string;
+    /** What the function does, in one line. */
+    doc: string;
+    /** True when it returns false and lets the engine draw as normal. */
+    passthrough: boolean;
+}
+
+export const DRAW_FUNCTIONS: DrawFnMeta[] = [
+    {
+        key: "default",
+        label: "Normal sprite render",
+        doc: "No custom draw. The engine renders the sprite exactly as it would anyway.",
+        passthrough: true,
+    },
+    {
+        key: "outline",
+        label: "Outline the footprint",
+        doc:
+            "Draws a thin box around the whole footprint, then lets the sprite render normally underneath. Useful when a large structure's sprite makes its true extent hard to see.",
+        passthrough: false,
+    },
+    {
+        key: "hidden",
+        label: "Draw nothing",
+        doc:
+            "Handles the frame without drawing it, so the structure is invisible but still placed and still simulates.",
+        passthrough: false,
+    },
+];
+
+/** Option list for the `draw` field. */
+export function listDrawFunctions(): Opt[] {
+    return DRAW_FUNCTIONS.map((d) => ({ value: d.key, label: `${d.label} — ${d.doc}` }));
+}
+
+/** One-line description for a draw key, or undefined when unknown. */
+export function drawDoc(key: string): string | undefined {
+    return DRAW_FUNCTIONS.find((d) => d.key === key)?.doc;
+}
+
 export function listMatterTypes(): Opt[] {
     // Static lowercase names: resolveMatterType() maps them to MatterType numbers.
     // (Numeric enum strings do NOT resolve reliably — keep values lowercase.)
@@ -185,7 +317,9 @@ export function listMatterTypes(): Opt[] {
  * Engine build-mode types (structures.register → buildModes[].type).
  * Verified in doc/doc-artifacts/doc.api/definitions/api.structures.definition.md
  */
-export const BUILD_MODE_TYPES = [
+// The three data constants below are implementation details of their list*
+// wrappers and are not part of the module's public surface.
+const BUILD_MODE_TYPES = [
     "single",
     "singleDirectional",
     "line",
@@ -199,20 +333,76 @@ export function listBuildModeTypes(): Opt[] {
     return BUILD_MODE_TYPES.map((v) => ({ value: v, label: v }));
 }
 
-/** Legacy alias (kept so old imports keep working). */
-export function listBuildModes(): Opt[] {
-    return listBuildModeTypes();
-}
-
 /**
  * Built-in build-menu categories (engine list `LR`, doc-tech/13).
  * Free-form strings are allowed by the engine, but these 20 get localized labels.
  */
-export const STRUCTURE_CATEGORIES = [
+const STRUCTURE_CATEGORIES = [
     "misc", "logic", "blocks", "testBlocks", "construction", "debug", "drones",
     "energy", "excavation", "logistics", "production", "tools", "transportation",
     "utility", "weapons", "economy", "fluids", "thermal", "lighting", "special",
 ] as const;
+
+/**
+ * Suggested `KeyCode` values for an input binding's default keys.
+ *
+ * The engine's `KeyCode` is a `LooseString` union, not a closed enum: a
+ * modifier alias ("Shift"), a raw `KeyboardEvent.code` ("KeyO"), or a chord
+ * ("Control+KeyC") are all accepted, and `defaultKeys` is a `KeyCode[]`. So
+ * this is an offer, not a whitelist — the field itself stays free text.
+ */
+export const KEY_CODE_SUGGESTIONS = [
+    "Shift",
+    "Alt",
+    "Control",
+    "Meta",
+    "ShiftLeft",
+    "ShiftRight",
+    "AltLeft",
+    "AltRight",
+    "ControlLeft",
+    "ControlRight",
+    "MetaLeft",
+    "MetaRight",
+    "Escape",
+    "Enter",
+    "Space",
+    "Tab",
+    "Backspace",
+    "Delete",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "KeyA",
+    "KeyB",
+    "KeyC",
+    "KeyE",
+    "KeyG",
+    "KeyM",
+    "KeyO",
+    "KeyQ",
+    "KeyR",
+    "KeyS",
+    "KeyT",
+    "KeyX",
+    "KeyZ",
+    "Digit0",
+    "Digit1",
+    "Digit2",
+    "Digit3",
+    "F1",
+    "F2",
+    "F5",
+    "F11",
+    "Mouse0",
+    "Mouse1",
+    "Mouse2",
+];
+
+export function listKeyCodes(): Opt[] {
+    return KEY_CODE_SUGGESTIONS.map((v) => ({ value: v, label: v }));
+}
 
 export function listStructureCategories(): Opt[] {
     return [...STRUCTURE_CATEGORIES].map((v) => ({ value: v, label: v }));
@@ -252,7 +442,7 @@ export function listContactOrientation(): Opt[] {
  * Documented interceptable hooks (doc-tech/03-hooks-reference.md) + "custom".
  * Restrictive by default: users pick a real hook instead of typing anything.
  */
-export const HOOK_IDS = [
+const HOOK_IDS = [
     "element:move",
     "element:blocked",
     "element:move:blocked",
@@ -295,15 +485,55 @@ export function listSpriteIds(): Opt[] {
             }
         }
     }
+    // Config entries reference their icon by graphics key; when the path points
+    // at a bundled asset, surface that so the sprite form can prefill it.
     for (const sp of loadConfig().sprites ?? []) {
-        if (sp?.id) map.set(sp.id, { value: sp.id, label: `${sp.id} (config)` });
+        if (!sp?.id) continue;
+        const lib = LIBRARY_ICONS.find((i) => i.path === sp.path);
+        map.set(sp.id, {
+            value: sp.id,
+            label: lib ? `${sp.id} → ${lib.name}` : `${sp.id} (config)`,
+        });
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/** Structure ids for processing / signals / energy targets (live + config). */
-export function listStructureIds(): Opt[] {
-    return listStructures();
+// ── Bundled icon library ─────────────────────────────────────────────────────
+// assets/icons/*.png are scanned at build time (tools/gen-sprite-library.ts)
+// because the game runtime has no filesystem access. Every entry is a real PNG
+// shipped inside this mod, so a sprite can be registered straight from it.
+
+export interface LibraryAsset {
+    /** Base name, e.g. "icon-alien". */
+    name: string;
+    /** Mod-root-relative path passed directly to sprites.loadFromMod. */
+    path: string;
+    /** Cell sizes found on disk, e.g. ["1x1", "2x2", "3x3"]. */
+    sizes: string[];
+    /**
+     * The PNG inlined as a data URL. The runtime cannot read the file, so the
+     * generator bakes the bytes in and the panel renders these directly.
+     */
+    preview: string;
+    /** Pixel size of the previewed PNG — 16×16 for a 1x1 icon. */
+    previewW: number;
+    previewH: number;
+}
+
+import { LIBRARY_ICONS } from "./generated/sprite-library.ts";
+export { LIBRARY_ICONS };
+
+/** All bundled icons, sorted by name. */
+export function listLibraryAssets(): LibraryAsset[] {
+    return [...LIBRARY_ICONS].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Case-insensitive substring search over the bundled icon library. */
+export function searchLibraryAssets(query: string): LibraryAsset[] {
+    const q = query.trim().toLowerCase();
+    const all = listLibraryAssets();
+    if (!q) return all;
+    return all.filter((i) => i.name.toLowerCase().includes(q));
 }
 
 /** Element ids + a "∅ consume (null)" sentinel — used by contact outputs. */
@@ -333,44 +563,170 @@ export function listProcessorKeys(): Opt[] {
     return [{ value: "processorLog", label: "processorLog" }, { value: "processorNoop", label: "processorNoop" }];
 }
 
-export function listRecipeKinds(): Opt[] {
-    return [
-        { value: "shaker", label: "Shaker" },
-        { value: "kineticPress", label: "Kinetic press" },
-        { value: "grower", label: "Grower / planter" },
-        { value: "smelter", label: "Smelter" },
-        { value: "condenser", label: "Condenser" },
-        { value: "steamDryer", label: "Steam dryer" },
-        { value: "synthesizer", label: "Synthesizer" },
-        { value: "snowmaker", label: "Snowmaker" },
-        { value: "generic", label: "Generic / structure recipe" },
-    ];
+// ── Domain-scoped handler pickers ─────────────────────────────────────────────
+// A flat list of ~30 keys is unusable: a signal handler and a projectile options
+// factory have nothing to do with each other. Each domain gets its own list, and
+// options are labelled `key — what it does` so the description is visible in the
+// dropdown itself rather than hidden behind a tooltip.
+
+/** Read the handler registries exposed by src/hooks/handlers.ts at runtime. */
+function handlerRegistry(): {
+    any?: Record<string, unknown>;
+    process?: Record<string, unknown>;
+    anyDocs?: Record<string, string>;
+    processDocs?: Record<string, string>;
+    codeDocs?: Record<string, string>;
+    meta?: HandlerMeta[];
+} {
+    const m = (globalThis as any).__mdHandlers;
+    return {
+        any: m?.ANY_HANDLERS,
+        process: m?.PROCESS_HANDLERS,
+        anyDocs: m?.ANY_HANDLER_DOCS,
+        processDocs: m?.PROCESS_HANDLER_DOCS,
+        codeDocs: m?.CODE_HANDLER_DOCS,
+        meta: m?.HANDLER_META,
+    };
 }
 
-export function listProcessingKinds(): Opt[] {
-    return [
-        { value: "structure", label: "Structure processor" },
-        { value: "filter", label: "Filter" },
-        { value: "velociumCollector", label: "Velocium collector" },
-        { value: "generic", label: "Generic" },
-    ];
+/** `key — description` options from a registry, skipping unknown keys. */
+function describedOptions(
+    reg: Record<string, unknown> | undefined,
+    docs: Record<string, string> | undefined,
+    keys?: string[],
+): Opt[] {
+    if (!reg) return [];
+    const names = keys ?? Object.keys(reg);
+    return names
+        .filter((k) => k in reg)
+        .map((k) => {
+            const doc = docs?.[k];
+            return doc ? { value: k, label: `${k} — ${doc}` } : { value: k, label: k };
+        });
 }
 
-export function listHookKinds(): Opt[] {
-    return [
-        { value: "intercept", label: "intercept (observe)" },
-        { value: "modify", label: "modify (transform)" },
-    ];
+/**
+ * Slot-scoped handler options, driven by the typed registry
+ * (`src/hooks/handler-registry.ts`) instead of a hand-kept array.
+ *
+ * The old hardcoded lists could only ever be as correct as the last time
+ * somebody edited them. The registry is the single source of truth: adding a
+ * handler there automatically makes it appear in every slot that can use it,
+ * and nowhere else.
+ */
+function slotHandlerKeys(slot: HandlerSlot, registry: "any" | "process" = "any"): Opt[] {
+    const r = handlerRegistry();
+    const metas = HANDLER_META.filter((m) => m.slots.includes(slot));
+    if (metas.length === 0) return [];
+    const reg = registry === "process" ? r.process : r.any;
+    const docs = registry === "process" ? r.processDocs : r.anyDocs;
+    // Fall back to a synthetic registry so options still render if the handler
+    // module has not published its globals yet.
+    const fallback = Object.fromEntries(metas.map((m) => [m.key, 1]));
+    return describedOptions(reg ?? fallback, docs, metas.map((m) => m.key));
 }
 
-export function listSignalKinds(): Opt[] {
-    return [
-        { value: "targets", label: "Signal target" },
-        { value: "interactables", label: "Interactable structure" },
-        { value: "senderType", label: "Sender type" },
-    ];
+export function listProjectileHandlerKeys(): Opt[] {
+    return slotHandlerKeys("projectile");
 }
 
+export function listSignalHandlerKeys(): Opt[] {
+    return slotHandlerKeys("signal");
+}
+
+export function listTriggerHandlerKeys(): Opt[] {
+    return slotHandlerKeys("trigger");
+}
+
+export function listUpgradeHandlerKeys(): Opt[] {
+    return slotHandlerKeys("upgrade");
+}
+
+/**
+ * `ItemDefinition.handleAction` callbacks, narrowed to one `ItemType`.
+ *
+ * A Consumable yields nothing: `ItemType` has such a member but the `ActionType`
+ * that `handleAction` receives does not, so there is no action a consumable use
+ * could be dispatched through.
+ */
+export function listItemActionHandlerKeys(itemType?: string): Opt[] {
+    const metas = itemActionHandlersFor(itemType);
+    const r = handlerRegistry();
+    const docs = r.anyDocs;
+    const fallback = Object.fromEntries(metas.map((m) => [m.key, 1]));
+    return describedOptions(r.any ?? fallback, docs, metas.map((m) => m.key));
+}
+
+/** Processors, labelled with their descriptions. */
+export function listDescribedProcessorKeys(): Opt[] {
+    return slotHandlerKeys("processing", "process");
+}
+
+/**
+ * Description for one handler key, or undefined when unknown.
+ *
+ * Reads all three registries, so a hook-modifier key (which lives in
+ * CODE_HANDLERS, not ANY_HANDLERS) still gets its description.
+ */
+export function handlerDoc(key: string): string | undefined {
+    const r = handlerRegistry();
+    return r.anyDocs?.[key] ?? r.processDocs?.[key] ?? r.codeDocs?.[key];
+}
+
+/**
+ * Configured tech ids, for pickers that reference other tech nodes
+ * (`requires`, `parentId`, tech-scoped handler parameters).
+ *
+ * `excludeSuffix` drops the node being edited: the form only holds the id
+ * *suffix*, so a tech can never list itself as its own prerequisite.
+ */
+export function listTechIds(excludeSuffix?: string): Opt[] {
+    const ex = excludeSuffix?.trim();
+    return (loadConfig().techs ?? [])
+        .filter((t) => {
+            if (!t?.id) return false;
+            // The form holds the id *suffix* ("mdmy.tech.tier2") while a stored id
+            // is the full `${MOD_ID}:mdmy.tech.tier2`, so a plain endsWith on the
+            // suffix is the match — not one on a ":" boundary.
+            return ex ? t.id !== ex && !t.id.endsWith(ex) : true;
+        })
+        .map((t) => ({ value: t.id, label: t.name ? `${t.name} — ${t.id}` : t.id }));
+}
+
+/**
+ * Branch ids already in use, so the picker offers what the config actually has.
+ * `TechDefinition.branch` is a plain string in the engine — there is no branch
+ * enum to read — so this is derived from our own techs plus a custom escape.
+ */
+export function listTechBranches(): Opt[] {
+    const seen = new Map<string, string>();
+    for (const t of loadConfig().techs ?? []) {
+        const b = typeof t?.branch === "string" ? t.branch.trim() : "";
+        if (b) seen.set(b, b);
+    }
+    return [...seen.values()]
+        .sort()
+        .map((b) => ({ value: b, label: b }))
+        .concat([{ value: "__custom__", label: "custom branch (type below)" }]);
+}
+
+/**
+ * Currency ids already in use. Like `branch` this is a free string in the
+ * engine; `gold` is the example named in the TechDefinition docs.
+ */
+export function listCurrencyTypes(): Opt[] {
+    const seen = new Set<string>(["gold"]);
+    for (const t of loadConfig().techs ?? []) {
+        const c = typeof t?.currencyType === "string" ? t.currencyType.trim() : "";
+        if (c) seen.add(c);
+    }
+    return [...seen]
+        .sort()
+        .map((c) => ({ value: c, label: c }))
+        .concat([{ value: "__custom__", label: "custom currency (type below)" }]);
+}
+
+/** Hook-modifier handlers, from CODE_HANDLERS (used by the modifiers tab). */
 export function listHandlerKeys(): Opt[] {
     try {
         const m = (globalThis as any).__mdHandlers;
@@ -386,187 +742,4 @@ export function listHandlerKeys(): Opt[] {
         { value: "noop", label: "noop" },
         { value: "defaultProjectileOptions", label: "defaultProjectileOptions" },
     ];
-}
-
-export function listCurrencyTypes(): Opt[] {
-    return [
-        { value: "gold", label: "gold" },
-        { value: "auralite", label: "auralite" },
-        { value: "artifact", label: "artifact" },
-        { value: "ticket", label: "ticket" },
-        { value: "energy", label: "energy" },
-    ];
-}
-
-export function listTechBranches(): Opt[] {
-    return [
-        { value: "refining", label: "refining" },
-        { value: "logistics", label: "logistics" },
-        { value: "exploration", label: "exploration" },
-        { value: "excavation", label: "excavation" },
-        { value: "alien", label: "alien" },
-        { value: "tools", label: "tools" },
-        { value: "heat", label: "heat" },
-        { value: "electricity", label: "electricity" },
-        { value: "lighting", label: "lighting" },
-        { value: "fluids", label: "fluids" },
-    ];
-}
-
-export type FieldType = "text" | "number" | "select" | "color" | "bool" | "textarea";
-
-export type FieldDef = {
-    key: string;
-    label: string;
-    type: FieldType;
-    /** Options for select, or a function that returns them (live). */
-    options?: Opt[] | (() => Opt[]);
-    placeholder?: string;
-    hint?: string;
-};
-
-export function fieldsForTab(tab: string): FieldDef[] {
-    const el = () => listElements();
-    const st = () => listStructures();
-    const it = () => listItems();
-
-    switch (tab) {
-        case "elements":
-            return [
-                { key: "name", label: "Display name", type: "text", placeholder: "My Powder" },
-                { key: "description", label: "Description", type: "text" },
-                { key: "matterType", label: "Matter type", type: "select", options: listMatterTypes },
-                { key: "density", label: "Density", type: "number", placeholder: "10" },
-                { key: "metaColor", label: "Color", type: "color" },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea", hint: "Optional extra fields merged on save" },
-            ];
-        case "structures":
-            return [
-                { key: "name", label: "Display name", type: "text" },
-                { key: "description", label: "Description", type: "text" },
-                { key: "buildMode", label: "Build mode", type: "select", options: listBuildModes },
-                { key: "shapeJson", label: "Shape (JSON grid)", type: "textarea", placeholder: "[[1,1],[1,1]]", hint: "2D array of cells" },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea" },
-            ];
-        case "items":
-            return [
-                { key: "name", label: "Display name", type: "text" },
-                { key: "description", label: "Description", type: "text" },
-                { key: "itemType", label: "Item type", type: "select", options: [
-                    { value: "tool", label: "tool" },
-                    { value: "weapon", label: "weapon" },
-                    { value: "building", label: "building" },
-                    { value: "mod", label: "mod" },
-                ] },
-                { key: "spriteId", label: "Sprite id", type: "text", hint: "Must match a loaded sprite" },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea" },
-            ];
-        case "recipes":
-            return [
-                { key: "kind", label: "Recipe kind", type: "select", options: listRecipeKinds },
-                { key: "structureId", label: "Structure", type: "select", options: st, hint: "Machine that runs this recipe" },
-                { key: "inputElement", label: "Input element", type: "select", options: el },
-                { key: "outputElement", label: "Output element", type: "select", options: el },
-                { key: "outputChance", label: "Output chance (0–1)", type: "number", placeholder: "1" },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea", hint: "Full recipe payload overrides" },
-            ];
-        case "processing":
-            return [
-                { key: "kind", label: "Processing kind", type: "select", options: listProcessingKinds },
-                { key: "structureId", label: "Structure", type: "select", options: st },
-                { key: "bodyJson", label: "Options JSON (advanced)", type: "textarea" },
-            ];
-        case "contacts":
-            return [
-                { key: "elementA", label: "Element A", type: "select", options: el },
-                { key: "elementB", label: "Element B", type: "select", options: el },
-                { key: "resultElement", label: "Result element", type: "select", options: el },
-                { key: "chance", label: "Chance (0–1)", type: "number", placeholder: "1" },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea" },
-            ];
-        case "interactions":
-            return [
-                { key: "elementId", label: "Target element", type: "select", options: el },
-                { key: "bodyJson", label: "Interaction descriptor JSON", type: "textarea", hint: "Passed to elements.addInteractionInfo" },
-            ];
-        case "modifiers":
-            return [
-                { key: "hookId", label: "Hook id", type: "text", placeholder: "e.g. building:placed", hint: "Engine hook point name" },
-                { key: "kind", label: "Kind", type: "select", options: listHookKinds },
-                { key: "handlerKey", label: "Handler", type: "select", options: listHandlerKeys },
-                { key: "enabled", label: "Enabled", type: "bool" },
-                { key: "notes", label: "Notes", type: "text" },
-            ];
-        case "terrains":
-            return [
-                { key: "name", label: "Display name", type: "text" },
-                { key: "hp", label: "HP", type: "number" },
-                { key: "metaColor", label: "Color", type: "color" },
-                { key: "outputElement", label: "Dig output element", type: "select", options: el },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea" },
-            ];
-        case "techs":
-            return [
-                { key: "name", label: "Display name", type: "text" },
-                { key: "cost", label: "Cost", type: "number" },
-                { key: "currencyType", label: "Currency", type: "select", options: listCurrencyTypes },
-                { key: "branch", label: "Branch", type: "select", options: listTechBranches },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea" },
-            ];
-        case "upgrades":
-            return [
-                { key: "itemId", label: "Item", type: "select", options: it },
-                { key: "categoryId", label: "Category id", type: "text", placeholder: "tools" },
-                { key: "bodyJson", label: "Upgrade payload JSON", type: "textarea", hint: "{ id, maxLevel, costs: [] }" },
-            ];
-        case "projectiles":
-            return [
-                { key: "spriteId", label: "Sprite id", type: "text" },
-                { key: "getOptionsKey", label: "getOptions handler", type: "select", options: listHandlerKeys },
-                { key: "bodyJson", label: "Extra JSON (advanced)", type: "textarea" },
-            ];
-        case "energy":
-            return [
-                { key: "structureId", label: "Structure", type: "select", options: st },
-                { key: "type", label: "Energy type", type: "select", options: [
-                    { value: "storage", label: "storage" },
-                    { value: "producer", label: "producer" },
-                    { value: "consumer", label: "consumer" },
-                ] },
-                { key: "bodyJson", label: "Options JSON", type: "textarea" },
-            ];
-        case "excavation":
-            return [
-                { key: "power", label: "Power (0–1000)", type: "number" },
-                { key: "patternJson", label: "Pattern (square grid JSON)", type: "textarea", placeholder: "[[1,1],[1,1]]" },
-                { key: "bodyJson", label: "Options JSON", type: "textarea" },
-            ];
-        case "behaviors":
-            return [
-                { key: "kind", label: "Kind", type: "select", options: [
-                    { value: "conveyor", label: "conveyor" },
-                    { value: "launcher", label: "launcher" },
-                ] },
-                { key: "bodyJson", label: "Definition JSON", type: "textarea" },
-            ];
-        case "signals":
-            return [
-                { key: "kind", label: "Kind", type: "select", options: listSignalKinds },
-                { key: "target", label: "Target structure / type", type: "select", options: st },
-                { key: "handlerKey", label: "Handler", type: "select", options: listHandlerKeys },
-            ];
-        case "triggers":
-            return [
-                { key: "interval", label: "Interval (ticks)", type: "number", placeholder: "60" },
-                { key: "handlerKey", label: "Handler", type: "select", options: listHandlerKeys },
-                { key: "bodyJson", label: "Extra payload JSON", type: "textarea" },
-            ];
-        case "sprites":
-            return [
-                { key: "path", label: "Path in mod folder", type: "text", placeholder: "assets/icon.png" },
-                { key: "fromMod", label: "Load from mod folder", type: "bool" },
-            ];
-        default:
-            return [];
-    }
 }

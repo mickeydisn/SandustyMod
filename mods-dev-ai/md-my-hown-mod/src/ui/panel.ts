@@ -58,7 +58,7 @@ import {
     exportConfigJson,
     importConfigJson,
 } from "../config/store.ts";
-import { applyConfig, reapplyFromStorage } from "../register/apply.ts";
+import { applyConfig, clearRegistrationCache, reapplyFromStorage, updateEntry } from "../register/apply.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
 import { api, React as HostReact } from "../api.ts";
 import { isToolSelected } from "../select.ts";
@@ -67,16 +67,53 @@ import {
     type FieldSpec,
     type Tab,
     MENU_GROUPS,
+    autoGraphicsKey,
+    describeShape,
+    emptyShape,
     entryToForm,
     formDefaults,
     formToEntry,
     isActive,
+    normalizeShape,
+    resolveAutoFill,
     resolveOptions,
+    parseIdList,
     sectionsFor,
+    shapeToText,
+    seedVariantFromMapColor,
+    variantsToHexList,
+    hexListToVariants,
     validateForm,
 } from "./schema.ts";
-import { listElements } from "../catalog.ts";
+import {
+    listBuildModeTypes,
+    listElements,
+    handlerDoc,
+    listTerrains,
+    searchLibraryAssets,
+} from "../catalog.ts";
 import * as S from "./styles.ts";
+import {
+    emptyViewState,
+    type ViewMode,
+} from "./viewstate.ts";
+import { clampChip, exceedsSlop } from "./drag.ts";
+import {
+    initialHandlersState,
+    renderHandlersTab,
+    type HandlersTabState,
+} from "./handlers-panel.ts";
+import { renderHelp } from "./help-panel.ts";
+import { renderConfigMap } from "./config-map.ts";
+
+/** Parse JSON text, returning undefined instead of throwing. */
+function safeJson(text: string): unknown {
+    try {
+        return JSON.parse(text);
+    } catch {
+        return undefined;
+    }
+}
 
 /** External expand request (hotkey). Panel polls via useEffect. */
 let expandRequest = 0;
@@ -86,7 +123,11 @@ export function forceExpandPanel(): void {
     console.log(`${LOG} forceExpandPanel #${expandRequest}`);
 }
 
-type Mode = "list" | "form";
+type Mode = ViewMode;
+
+/** Rough chip size, used only to keep a dragged chip fully on-screen. */
+const CHIP_W = 150;
+const CHIP_H = 40;
 
 type UpsertFn = (entry: never) => ModConfig;
 type RemoveFn = (id: string) => ModConfig;
@@ -160,7 +201,24 @@ export function createPanelComponent(defaultMinimized = true) {
         const [confirmId, setConfirmId] = useState<string | null>(null);
         const [jsonText, setJsonText] = useState("");
         const [jsonError, setJsonError] = useState<string | null>(null);
-        const drag = useRef<{ ox: number; oy: number; active: boolean }>({ ox: 0, oy: 0, active: false });
+        /** Handlers tab: which handler is expanded, and its live param values. */
+        const [handlerTab, setHandlerTab] = useState<HandlersTabState>(() => initialHandlersState());
+        /** Per-field search text for `kind: "library"` pickers. */
+        const [libQuery, setLibQuery] = useState<Record<string, string>>({});
+        const drag = useRef<{
+            ox: number;
+            oy: number;
+            active: boolean;
+            /** True once the pointer has travelled far enough to be a drag. */
+            moved: boolean;
+            startX: number;
+            startY: number;
+        }>({ ox: 0, oy: 0, active: false, moved: false, startX: 0, startY: 0 });
+        /**
+         * Set when a drag just ended, so the click that follows can tell the
+         * difference between "moved the chip" and "clicked the chip".
+         */
+        const suppressClick = useRef(false);
 
         const group = MENU_GROUPS.find((g) => g.key === groupKey) ?? MENU_GROUPS[0];
         const meta = CATEGORY_META[cat];
@@ -196,27 +254,80 @@ export function createPanelComponent(defaultMinimized = true) {
 
         const refresh = useCallback(() => setCfg(loadConfig()), []);
 
+        /**
+         * Return the view to a clean screen.
+         *
+         * Both `goGroup` and `goCategory` used to clear only `mode`, `form`,
+         * `editingId` and `confirmId`, so the raw-JSON buffer, the open handler
+         * and its parameter values, and every library-picker search string all
+         * survived a category change. That is what made a switch look like it
+         * half-worked: the next screen inherited the last one's scratch state.
+         *
+         * One function, called from both paths — a second reset path is a
+         * second bug waiting to happen.
+         */
+        const resetView = useCallback(() => {
+            // The list of what gets cleared lives in ./viewstate.ts so it can be
+            // tested; this only applies it to the separate useState hooks.
+            const clean = emptyViewState();
+            setMode(clean.mode);
+            setConfirmId(clean.confirmId);
+            setEditingId(clean.editingId);
+            setForm(clean.form);
+            setJsonText(clean.jsonText);
+            setJsonError(clean.jsonError);
+            setLibQuery(clean.libQuery);
+            setHandlerTab(clean.handlerTab);
+        }, []);
+
         const setField = useCallback((key: string, value: string) => {
             setForm((prev) => ({ ...prev, [key]: value }));
         }, []);
 
+        /**
+         * The stored keys this form does not own for the entry being edited.
+         *
+         * Read from the *live* form rather than the config, because the box has
+         * to describe what is in the textarea right now — including anything the
+         * user has just typed into it.
+         */
+        const passthroughNames = useCallback((): string[] => {
+            const parsed = safeJson(form.advancedJson ?? "");
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                return [];
+            }
+            return Object.keys(parsed as Record<string, unknown>).sort();
+        }, [form.advancedJson]);
+
         const goGroup = (key: string) => {
             const g = MENU_GROUPS.find((x) => x.key === key);
             if (!g) return;
+            resetView();
             setGroupKey(key);
             setCat(g.categories[0]);
-            setMode("list");
-            setConfirmId(null);
-            setEditingId(null);
-            setForm({});
         };
 
         const goCategory = (next: Tab) => {
+            resetView();
             setCat(next);
-            setMode("list");
-            setConfirmId(null);
-            setEditingId(null);
-            setForm({});
+        };
+
+        /**
+         * Shared by the Handlers, Help and Map screens.
+         *
+         * Three screens all offer "copy this as text", and the clipboard is
+         * missing or blocked often enough that the fallback toast matters more
+         * than the happy path.
+         */
+        const copyText = (text: string) => {
+            try {
+                (globalThis as {
+                    navigator?: { clipboard?: { writeText?: (t: string) => void } };
+                }).navigator?.clipboard?.writeText?.(text);
+                skApi.toast("Copied to the clipboard");
+            } catch {
+                skApi.toast("Clipboard unavailable — select the text instead");
+            }
         };
 
         const startNew = () => {
@@ -267,6 +378,9 @@ export function createPanelComponent(defaultMinimized = true) {
                 return;
             }
             applyConfig(loadConfig());
+            // An edit to an already-registered entry is skipped by applyConfig's
+            // cache, so push it through updateDefinition explicitly.
+            if (editingId) updateEntry(cat, editingId, entry);
             refresh();
             skApi.toast(`${meta.label} saved`);
             cancelForm();
@@ -291,6 +405,469 @@ export function createPanelComponent(defaultMinimized = true) {
         };
 
         // ── Field rendering ────────────────────────────────────────────────
+        /**
+         * 4×4 footprint editor. The engine only accepts a 4×4 matrix of 0/1, so
+         * this replaces a raw JSON textarea with a clickable grid: click a cell
+         * to toggle it, or use the fill buttons for the common solid/empty cases.
+         */
+        const renderShape = (f: FieldSpec, val: string, err?: string) => {
+            const grid = normalizeShape(safeJson(val) ?? emptyShape(1));
+            const write = (next: number[][]) => setField(f.key, shapeToText(next));
+
+            const cellAt = (y: number, x: number) => {
+                const on = grid[y][x] === 1;
+                return h(
+                    "button",
+                    {
+                        key: `${y}-${x}`,
+                        title: on ? `cell ${x},${y} — occupied (click to clear)` : `cell ${x},${y} — empty (click to fill)`,
+                        style: on ? S.shapeCellOn : S.shapeCellOff,
+                        onClick: () => {
+                            const next = grid.map((r) => r.slice());
+                            next[y][x] = on ? 0 : 1;
+                            write(next);
+                        },
+                    },
+                    "",
+                );
+            };
+
+            return h(
+                "div",
+                { style: { display: "flex", flexDirection: "column", gap: 6 } },
+                h(
+                    "div",
+                    { style: S.shapeGridBox },
+                    ...grid.map((_row, y) =>
+                        h("div", { key: y, style: S.shapeRow }, ...grid[y].map((_v, x) => cellAt(y, x))),
+                    ),
+                ),
+                h(
+                    "div",
+                    { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" } },
+                    h("button", { style: S.btn, onClick: () => write(emptyShape(1)) }, "Fill 4×4"),
+                    h("button", { style: S.btn, onClick: () => write(emptyShape(0)) }, "Clear all"),
+                    h("button", { style: S.btn, onClick: () => write(grid.map((r) => r.slice()).reverse()) }, "Flip Y"),
+                    h("span", { style: S.hintBelow }, describeShape(grid)),
+                ),
+                err ? h("div", { style: S.errorText }, err) : null,
+            );
+        };
+
+        /**
+         * Bundled-asset picker over the build-time sprite catalog (248 icons).
+         *
+         * The mod runtime has no filesystem access, so `src/generated/sprite-library.ts`
+         * is generated by `deno task build:sprites` and imported here. Picking a tile
+         * writes the asset path into the field; when the field declares `autoKey`, the
+         * companion field (e.g. the graphics key) is auto-filled too — but only if the
+         * user has not hand-typed something that is not a previous auto-value, so a
+         * manual edit is never silently clobbered.
+         */
+        const renderLibrary = (f: FieldSpec, val: string, err?: string) => {
+            const q = libQuery[f.key] ?? "";
+            // Cap the rendered slice: 248 tiles is a lot of DOM for a side panel.
+            const matches = searchLibraryAssets(q);
+            const shown = matches.slice(0, 120);
+
+            /** Big pixelated preview of the currently selected asset. */
+            const selectedPreview = (path: string) => {
+                const a = matches.find((x) => x.path === path);
+                if (!a?.preview) {
+                    return [h("span", { style: S.hint }, `No bundled preview for ${path}.`)];
+                }
+                return [
+                    h("span", { style: S.hint }, "16×16:"),
+                    h("img", {
+                        src: a.preview,
+                        alt: a.name,
+                        width: a.previewW,
+                        height: a.previewH,
+                        style: { ...S.spritePixel, width: 96, height: 96 },
+                    }),
+                ];
+            };
+
+            const pick = (name: string, path: string) => {
+                setField(f.key, path);
+                const target = f.autoKey;
+                if (!target) return;
+                const derived = autoGraphicsKey(name);
+                setForm((prev) => {
+                    // Never clobber a hand-typed graphics key: only write when the
+                    // field is empty or still holds our own previous auto-value.
+                    const next = resolveAutoFill(prev[target], prev[`${target}__auto`], derived);
+                    if (next === null) return prev;
+                    return { ...prev, [target]: next, [`${target}__auto`]: next };
+                });
+            };
+
+            return h(
+                "div",
+                null,
+                h("input", {
+                    type: "text",
+                    style: err ? { ...S.libSearch, ...S.inputError } : S.libSearch,
+                    value: q,
+                    spellCheck: false,
+                    placeholder: f.placeholder ?? "search the bundled icon library…",
+                    onChange: (e: { target: { value: string } }) =>
+                        setLibQuery((p) => ({ ...p, [f.key]: e.target.value })),
+                }),
+                val
+                    ? h(
+                        "div",
+                        { style: S.hintBelow },
+                        "Selected: ",
+                        h("code", null, val),
+                    )
+                    : null,
+                matches.length === 0
+                    ? h("div", { style: S.hintBelow }, `No bundled asset matches “${q}”.`)
+                    : h(
+                        "div",
+                        { style: S.libGrid },
+                        ...shown.map((a) =>
+                            h(
+                                "button",
+                                {
+                                    key: a.path,
+                                    type: "button",
+                                    title: `${a.name}\n${a.path}\n${a.previewW}×${a.previewH} px · sizes: ${a.sizes.join(", ")}`,
+                                    style: val === a.path ? S.libTileActive : S.libTile,
+                                    onClick: () => pick(a.name, a.path),
+                                },
+                                // The real art, upscaled with nearest-neighbour so
+                                // the 16×16 pixel grid stays crisp.
+                                h("img", {
+                                    src: a.preview,
+                                    alt: a.name,
+                                    width: a.previewW,
+                                    height: a.previewH,
+                                    style: S.spritePixel,
+                                }),
+                                h("span", { style: S.libTileName }, a.name),
+                            )
+                        ),
+                    ),
+                matches.length > shown.length
+                    ? h(
+                        "div",
+                        { style: S.hintBelow },
+                        `Showing ${shown.length} of ${matches.length} — refine the search.`,
+                    )
+                    : null,
+                // Magnified 16×16 view of the current pick.
+                val ? h("div", { style: S.spritePreviewRow }, ...selectedPreview(val)) : null,
+                err ? h("div", { style: S.errorText }, err) : null,
+            );
+        };
+
+        /**
+         * Colour-variant swatches — one row per `colors.variants` entry.
+         *
+         * The engine shape is a nested array of RGBA tuples, which as a raw
+         * textarea meant hand-counting brackets and remembering that alpha is a
+         * fourth number. Every workshop mod that uses this ships four or five
+         * variants (`__scraped-mods/workshop/3790149867`), so the common case is
+         * a list, and a list deserves a list control.
+         */
+        const renderColorVariants = (f: FieldSpec, val: string, locked: boolean) => {
+            const swatches = variantsToHexList(val);
+            const write = (next: string[]) =>
+                setField(f.key, JSON.stringify(hexListToVariants(next)));
+
+            return h(
+                "div",
+                null,
+                swatches.length === 0
+                    ? h(
+                        "div",
+                        { style: S.hintBelow },
+                        "No variants — every cell uses the map colour, which is fine for most elements.",
+                    )
+                    : null,
+                ...swatches.map((hexValue, i) =>
+                    h(
+                        "div",
+                        { key: `cv-${i}`, style: S.outputsRow },
+                        h("input", {
+                            type: "color",
+                            value: hexValue.slice(0, 7),
+                            disabled: locked,
+                            title: `variant ${i + 1}`,
+                            style: {
+                                width: 40,
+                                height: 26,
+                                border: "none",
+                                background: "transparent",
+                                cursor: locked ? "default" : "pointer",
+                            },
+                            onChange: (e: { target: { value: string } }) => {
+                                const next = [...swatches];
+                                // A colour input has no alpha, so the swatch keeps
+                                // whatever alpha it already had.
+                                next[i] = e.target.value + hexValue.slice(7);
+                                write(next);
+                            },
+                        }),
+                        h(
+                            "span",
+                            { style: { ...S.hint, fontFamily: "monospace" } },
+                            hexValue,
+                        ),
+                        h(
+                            "button",
+                            {
+                                type: "button",
+                                style: { ...S.btnDanger, opacity: locked ? 0.5 : 1 },
+                                disabled: locked,
+                                title: "remove this variant",
+                                onClick: () => write(swatches.filter((_, j) => j !== i)),
+                            },
+                            "✕",
+                        ),
+                    )
+                ),
+                h(
+                    "button",
+                    {
+                        type: "button",
+                        style: S.btn,
+                        disabled: locked,
+                        // Seed from the map colour so a new variant is a variation
+                        // on what the element already looks like, not a random
+                        // new hue.
+                        onClick: () => write([...swatches, seedVariantFromMapColor(form.metaColor)]),
+                    },
+                    "+ variant from map colour",
+                ),
+            );
+        };
+
+        /**
+         * `buildModes[]` editor — one row per build mode.
+         *
+         * The engine takes a **list** (`Array.isArray(e) && e.forEach(rt)`) and
+         * a structure may have several: a line mode for dragging out a pipe run
+         * plus a single mode for dropping one node. The form used to hold
+         * exactly one (`buildModeType` + `spanTiles`), so a structure with two
+         * modes had the second dropped on save — silently, leaving a structure
+         * that behaved in a way the form never described.
+         *
+         * `spanTiles` is per-row because the engine validates it per mode and
+         * throws: `rt` rejects `spanTiles` on any `type` other than `"line"`.
+         */
+        const renderBuildModes = (f: FieldSpec, val: string, locked: boolean) => {
+            let rows: Record<string, unknown>[] = [];
+            try {
+                const parsed = JSON.parse(val || "[]");
+                if (Array.isArray(parsed)) rows = parsed;
+            } catch { /* raw value stays; validation reports it */ }
+            const writeRows = (next: Record<string, unknown>[]) =>
+                setField(f.key, JSON.stringify(next));
+            const modes = listBuildModeTypes();
+
+            return h(
+                "div",
+                null,
+                rows.length === 0
+                    ? h(
+                        "div",
+                        { style: S.hintBelow },
+                        "No build modes listed — the engine places this as a single point.",
+                    )
+                    : null,
+                ...rows.map((row, i) => {
+                    const type = String(row.type ?? "single");
+                    return h(
+                        "div",
+                        { key: i, style: S.outputsRow },
+                        h(
+                            "select",
+                            {
+                                style: S.input,
+                                title: "build mode type",
+                                value: type,
+                                disabled: locked,
+                                onChange: (e: { target: { value: string } }) => {
+                                    const nextType = e.target.value;
+                                    writeRows(
+                                        rows.map((r, j) => {
+                                            if (j !== i) return r;
+                                            if (nextType === "line") return { ...r, type: nextType };
+                                            // spanTiles is meaningless off a line
+                                            // mode, and leaving it behind would
+                                            // make the engine throw on register.
+                                            const { spanTiles: _drop, ...rest } = r;
+                                            return { ...rest, type: nextType };
+                                        }),
+                                    );
+                                },
+                            },
+                            ...modes.map((o) => h("option", { key: o.value, value: o.value }, o.label)),
+                        ),
+                        type === "line"
+                            ? h("input", {
+                                type: "number",
+                                style: S.input,
+                                min: 1,
+                                max: 64,
+                                placeholder: "span",
+                                title: "tiles per drag; the engine throws below 1",
+                                value: row.spanTiles === undefined ? "" : String(row.spanTiles),
+                                disabled: locked,
+                                onInput: (e: { currentTarget: { value: string } }) => {
+                                    const raw = e.currentTarget.value.trim();
+                                    writeRows(
+                                        rows.map((r, j) => {
+                                            if (j !== i) return r;
+                                            if (raw === "") {
+                                                const { spanTiles: _drop, ...rest } = r;
+                                                return rest;
+                                            }
+                                            return { ...r, spanTiles: Number(raw) };
+                                        }),
+                                    );
+                                },
+                            })
+                            : h("span", { style: S.hintBelow }, "no span"),
+                        h(
+                            "button",
+                            {
+                                type: "button",
+                                style: { ...S.btnDanger, opacity: locked ? 0.5 : 1 },
+                                disabled: locked,
+                                title: "remove this build mode",
+                                onClick: () => writeRows(rows.filter((_, j) => j !== i)),
+                            },
+                            "✕",
+                        ),
+                    );
+                }),
+                h(
+                    "button",
+                    {
+                        type: "button",
+                        style: S.btn,
+                        disabled: locked,
+                        onClick: () => writeRows([...rows, { type: "single" }]),
+                    },
+                    "+ build mode",
+                ),
+            );
+        };
+
+        /**
+         * Excavation `terrainRules[]` editor — one row per matched terrain.
+         *
+         * These were completely unreachable before: the register layer dropped
+         * `terrainRules` on the floor and the form had no field for it.
+         * `cellType` / `outputElementType` are stored as ids; the engine wants
+         * runtime handles, which `registerExcavationProfile` resolves.
+         */
+        const renderTerrainRules = (f: FieldSpec, val: string, err?: string) => {
+            let rows: Record<string, unknown>[] = [];
+            try {
+                const parsed = JSON.parse(val || "[]");
+                if (Array.isArray(parsed)) rows = parsed;
+            } catch { /* raw value stays; validation reports it */ }
+            const writeRows = (next: Record<string, unknown>[]) =>
+                setField(f.key, JSON.stringify(next, null, 2));
+            const terrains = listTerrains();
+            const elements = listElements();
+            const drop = (cellType: unknown) => (cellType === undefined ? undefined : String(cellType));
+
+            return h(
+                "div",
+                null,
+                rows.length === 0
+                    ? h("div", { style: S.hintBelow }, "No rules — this profile treats every terrain the same.")
+                    : null,
+                ...rows.map((row, i) =>
+                    h(
+                        "div",
+                        { key: i, style: S.outputsRow },
+                        h(
+                            "select",
+                            {
+                                style: S.input,
+                                title: "terrain matched by this rule",
+                                value: drop(row.cellType) ?? "",
+                                onChange: (e: { target: { value: string } }) =>
+                                    writeRows(
+                                        rows.map((r, j) =>
+                                            j === i ? { ...r, cellType: e.target.value } : r,
+                                        ),
+                                    ),
+                            },
+                            h("option", { value: "" }, "— terrain —"),
+                            ...terrains.map((o) =>
+                                h("option", { key: o.value, value: o.value }, o.label),
+                            ),
+                        ),
+                        h("input", {
+                            type: "number",
+                            style: S.input,
+                            value: row.damage === undefined ? "" : String(row.damage),
+                            placeholder: "damage",
+                            title: "damage applied when this terrain matches (optional)",
+                            onChange: (e: { target: { value: string } }) => {
+                                const v = e.target.value;
+                                writeRows(
+                                    rows.map((r, j) => {
+                                        if (j !== i) return r;
+                                        const next = { ...r };
+                                        if (v === "") delete next.damage;
+                                        else next.damage = Number(v);
+                                        return next;
+                                    }),
+                                );
+                            },
+                        }),
+                        h(
+                            "select",
+                            {
+                                style: S.input,
+                                title: "element produced when dug",
+                                value: drop(row.outputElementType) ?? "",
+                                onChange: (e: { target: { value: string } }) => {
+                                    const v = e.target.value;
+                                    writeRows(
+                                        rows.map((r, j) => {
+                                            if (j !== i) return r;
+                                            const next = { ...r };
+                                            if (v === "") delete next.outputElementType;
+                                            else next.outputElementType = v;
+                                            return next;
+                                        }),
+                                    );
+                                },
+                            },
+                            h("option", { value: "" }, "— drop —"),
+                            ...elements.map((o) =>
+                                h("option", { key: o.value, value: o.value }, o.label),
+                            ),
+                        ),
+                        h(
+                            "button",
+                            { style: S.btnDanger, onClick: () => writeRows(rows.filter((_, j) => j !== i)) },
+                            "×",
+                        ),
+                    ),
+                ),
+                h(
+                    "button",
+                    {
+                        style: S.btn,
+                        onClick: () => writeRows([...rows, { cellType: "" }]),
+                    },
+                    "+ Add terrain rule",
+                ),
+                err ? h("div", { style: S.errorText }, err) : null,
+            );
+        };
+
         const renderField = (f: FieldSpec) => {
             if (!isActive(f, form)) return null;
             const err = errors[f.key];
@@ -309,7 +886,7 @@ export function createPanelComponent(defaultMinimized = true) {
 
             let control: unknown = null;
             if (f.kind === "select") {
-                const opts = resolveOptions(f);
+                const opts = resolveOptions(f, form);
                 const placeholder = f.required ? "— select —" : "— none —";
                 control = h(
                     "select",
@@ -322,6 +899,71 @@ export function createPanelComponent(defaultMinimized = true) {
                     h("option", { value: "" }, placeholder),
                     ...opts.map((o) => h("option", { key: o.value, value: o.value }, o.label)),
                 );
+            } else if (f.kind === "multiselect") {
+                const opts = resolveOptions(f, form);
+                const chosen = parseIdList(val);
+                if (opts.length === 0) {
+                    // No free-text fallback, on purpose.
+                    //
+                    // An empty option list means the thing being referenced does
+                    // not exist yet — not that the user should type the id. A
+                    // text box here let a typo through to the engine, and the
+                    // one thing a reference field must never do is invent a
+                    // value. Any value already chosen is still shown, so an
+                    // entry that has since become unreferenceable stays visible
+                    // and fixable rather than silently uneditable.
+                    const orphans = chosen.filter((v) => v && v !== "__none__");
+                    control = h(
+                        "div",
+                        { style: S.emptyBox },
+                        `Nothing to pick from yet — ${f.emptyHint ?? "no entries of this kind exist."}`,
+                        ...(orphans.length
+                            ? [
+                                h("div", { style: { marginTop: 4, opacity: 0.85 } }, "Currently set to: "),
+                                ...orphans.map((v) =>
+                                    h("button", {
+                                        key: `orphan-${v}`,
+                                        type: "button",
+                                        style: { ...S.tagChip, cursor: "pointer" },
+                                        onClick: () => set(chosen.filter((x) => x !== v).join(", ")),
+                                        title: "Click to remove this reference",
+                                    }, `${v}  ✕`)
+                                ),
+                            ]
+                            : []),
+                    );
+                } else {
+                    const toggle = (value: string) => {
+                        const next = chosen.includes(value)
+                            ? chosen.filter((v) => v !== value)
+                            : [...chosen, value];
+                        set(next.join(", "));
+                    };
+                    control = h(
+                        "div",
+                        { style: { display: "flex", flexWrap: "wrap", gap: 4, maxHeight: 150, overflowY: "auto" } },
+                        ...opts.map((o) => {
+                            const on = chosen.includes(o.value);
+                            return h(
+                                "button",
+                                {
+                                    key: o.value,
+                                    type: "button",
+                                    disabled: locked,
+                                    style: {
+                                        ...S.tagChip,
+                                        cursor: locked ? "default" : "pointer",
+                                        background: on ? "rgba(120,190,255,0.3)" : "rgba(90,120,190,0.12)",
+                                        color: on ? "#ffffff" : "#cfe0ff",
+                                        borderColor: on ? "rgba(180,220,255,0.95)" : undefined,
+                                    },
+                                    onClick: () => toggle(o.value),
+                                },
+                                on ? `✓ ${o.label}` : o.label,
+                            );
+                        }),
+                    );
+                }
             } else if (f.kind === "bool") {
                 control = h(
                     "select",
@@ -374,6 +1016,16 @@ export function createPanelComponent(defaultMinimized = true) {
                         onChange: (e: { target: { value: string } }) => set(e.target.value),
                     }),
                 );
+            } else if (f.kind === "shape") {
+                control = renderShape(f, val, err);
+            } else if (f.kind === "library") {
+                control = renderLibrary(f, val, err);
+            } else if (f.kind === "buildModes") {
+                control = renderBuildModes(f, val, locked);
+            } else if (f.kind === "colorVariants") {
+                control = renderColorVariants(f, val, locked);
+            } else if (f.kind === "terrainRules") {
+                control = renderTerrainRules(f, val, err);
             } else if (f.kind === "json") {
                 control = h("textarea", {
                     style: err ? { ...S.textarea, ...S.inputError } : S.textarea,
@@ -384,6 +1036,38 @@ export function createPanelComponent(defaultMinimized = true) {
                     placeholder: f.placeholder,
                     onChange: (e: { target: { value: string } }) => set(e.target.value),
                 });
+                // For the passthrough box specifically, name what is being
+                // carried. An empty box is ambiguous: the user cannot tell
+                // "nothing hidden" from "my fields are gone". Listing the keys
+                // makes the round-trip visible without opening the JSON.
+                if (f.key === "advancedJson") {
+                    const keys = passthroughNames();
+                    if (keys.length === 0) {
+                        // Nothing to carry, so nothing to edit. An empty JSON
+                        // box is worse than no box: it invites the user to type
+                        // something, which is then merged *on top of* the real
+                        // fields — the one way this control can do damage.
+                        control = h(
+                            "div",
+                            { style: S.emptyBox },
+                            "This entry has no fields beyond the ones shown above, " +
+                                "so there is nothing to carry and nothing to edit here.",
+                        );
+                    } else {
+                        control = h(
+                            "div",
+                            null,
+                            control,
+                            h(
+                                "div",
+                                { style: S.hintBelow },
+                                `Carrying ${keys.length} field${
+                                    keys.length === 1 ? "" : "s"
+                                } this form has no control for: ${keys.join(", ")}`,
+                            ),
+                        );
+                    }
+                }
             } else if (f.kind === "outputs") {
                 control = renderOutputs(f, val, inputStyle, locked);
             } else {
@@ -403,7 +1087,12 @@ export function createPanelComponent(defaultMinimized = true) {
                 { key: f.key, style: wide ? S.fieldCellWide : S.fieldCell },
                 labelRow,
                 control,
-                err
+                // Show what the selected handler actually does, inline (5.2).
+                f.kind === "select" && f.key.endsWith("Key") && val
+                    ? handlerDoc(val)
+                    ? h("div", { style: S.hintBelow }, handlerDoc(val))
+                    : null
+                    : err
                     ? h("div", { style: S.errorText }, err)
                     : f.hint
                     ? h("div", { style: S.hintBelow }, f.hint)
@@ -688,6 +1377,9 @@ export function createPanelComponent(defaultMinimized = true) {
                 ox: e.clientX - rect.left,
                 oy: e.clientY - rect.top,
                 active: true,
+                moved: false,
+                startX: e.clientX,
+                startY: e.clientY,
             };
             try {
                 e.target.setPointerCapture?.(e.pointerId);
@@ -699,28 +1391,62 @@ export function createPanelComponent(defaultMinimized = true) {
 
         const onDragMove = (e: { clientX: number; clientY: number }) => {
             if (!drag.current.active) return;
+            // A drag must not also count as a click. The chip both drags and
+            // opens, so without this a user who nudges it would open the panel
+            // they were trying to move.
+            if (exceedsSlop(drag.current.startX, drag.current.startY, e.clientX, e.clientY)) {
+                drag.current.moved = true;
+            }
+            if (!drag.current.moved) return;
             // globalThis, not window: the mod runs in the game host, not a browser.
             const vw = (globalThis as { innerWidth?: number }).innerWidth ?? 1280;
             const vh = (globalThis as { innerHeight?: number }).innerHeight ?? 720;
-            const x = Math.max(4, Math.min(vw - 140, e.clientX - drag.current.ox));
-            const y = Math.max(4, Math.min(vh - 40, e.clientY - drag.current.oy));
-            setPanel((p) => ({ ...p, x, y }));
+            const next = clampChip(
+                e.clientX - drag.current.ox,
+                e.clientY - drag.current.oy,
+                vw,
+                vh,
+                CHIP_W,
+                CHIP_H,
+            );
+            setPanel((p) => ({ ...p, x: next.x, y: next.y }));
         };
 
         const onDragUp = () => {
             if (!drag.current.active) return;
+            const moved = drag.current.moved;
             drag.current.active = false;
+            // clear the flag on the next tick, so the click that follows this
+            // pointerup still sees it
+            if (moved) suppressClick.current = true;
             setPanel((p) => {
                 savePanelState(p);
                 return p;
             });
         };
 
+        /** Open the panel, unless this click was really the end of a drag. */
+        const openFromChip = () => {
+            if (suppressClick.current) {
+                suppressClick.current = false;
+                return;
+            }
+            persistPanel({ ...panel, minimized: false });
+        };
+
         const toggleMin = () => persistPanel({ ...panel, minimized: !panel.minimized });
 
+        /**
+         * Re-apply the whole config.
+         *
+         * `applyConfig` skips any id already in its registration cache, so without
+         * clearing it first this button would report success while the game kept
+         * every stale definition. Clearing first makes Apply mean what it says.
+         */
         const applyNow = () => {
+            clearRegistrationCache();
             applyConfig(loadConfig());
-            skApi.toast("Config applied to game");
+            skApi.toast("Config re-applied to game");
         };
 
         const totalEntries = MENU_GROUPS.flatMap((g) => g.categories).reduce(
@@ -728,18 +1454,34 @@ export function createPanelComponent(defaultMinimized = true) {
             0,
         );
 
-        const posStyle =
-            panel.x >= 0 && panel.y >= 0
+        /**
+         * Where the panel sits, which depends entirely on whether it is open.
+         *
+         * Open: a centred 90vw/90vh overlay, and the stored drag position is
+         * ignored — a full-screen window has no business being parked in a
+         * corner. Minimised: at the stored position, or the default corner when
+         * it has never been dragged.
+         */
+        const posStyle = panel.minimized
+            ? (panel.x >= 0 && panel.y >= 0
                 ? { left: panel.x, top: panel.y, right: "auto", bottom: "auto" }
-                : {};
+                : {})
+            : S.overlayBox;
 
         if (panel.minimized) {
             return h(
                 "div",
-                { style: { ...S.panelRoot, ...posStyle } },
+                {
+                    style: { ...S.panelRoot, ...posStyle },
+                    // The chip is the one draggable surface in the panel.
+                    onPointerDown: onDragDown,
+                    onPointerMove: onDragMove,
+                    onPointerUp: onDragUp,
+                    onPointerCancel: onDragUp,
+                },
                 h(
                     "div",
-                    { style: S.minimizedChip, onClick: toggleMin },
+                    { style: S.minimizedChip, onClick: openFromChip },
                     "⚙ My Own Mod",
                     h("span", { style: S.chipCount }, String(totalEntries)),
                 ),
@@ -756,10 +1498,10 @@ export function createPanelComponent(defaultMinimized = true) {
                     "div",
                     {
                         style: S.titleBar,
-                        onPointerDown: onDragDown,
-                        onPointerMove: onDragMove,
-                        onPointerUp: onDragUp,
-                        onPointerCancel: onDragUp,
+                        // No drag handlers here on purpose: the open panel is a
+                        // fixed 90vw/90vh overlay. Dragging lives on the
+                        // minimised chip, which is the only thing small enough
+                        // for a position to mean anything.
                     },
                     h("span", { style: S.titleText }, "My Own Mod — Configurator"),
                     h("span", { style: S.chipCount }, `${totalEntries} entries`),
@@ -802,9 +1544,41 @@ export function createPanelComponent(defaultMinimized = true) {
                 ),
                 h(
                     "div",
-                    { style: S.body },
+                    {
+                        style: S.body,
+                        // Remount the screen when the category or the
+                        // list/form mode genuinely changes. Without this React
+                        // reconciles the previous screen's DOM into the new
+                        // one positionally, and anything holding DOM state
+                        // survives the switch — which is how a stale section
+                        // could outlive the form that drew it.
+                        key: `${cat}:${mode}`,
+                    },
                     cat === "json"
                         ? renderJson()
+                        : cat === "handlers"
+                        ? renderHandlersTab({
+                            h: h as never,
+                            cfg: cfg as unknown as Record<string, unknown>,
+                            state: handlerTab,
+                            setState: setHandlerTab,
+                            onGoTo: (key) => goCategory(key as Tab),
+                            onCopy: copyText,
+                        })
+                        : cat === "help"
+                        ? renderHelp({
+                            h: h as never,
+                            cfg: cfg as unknown as Record<string, unknown>,
+                            onGoTo: (key) => goCategory(key as Tab),
+                            onCopy: copyText,
+                        })
+                        : cat === "map"
+                        ? renderConfigMap({
+                            h: h as never,
+                            cfg: cfg as unknown as Record<string, unknown>,
+                            onGoTo: (key) => goCategory(key as Tab),
+                            onCopy: copyText,
+                        })
                         : mode === "form"
                         ? renderForm()
                         : renderList(),
@@ -866,7 +1640,9 @@ export function ConfiguratorPanel(): unknown {
             },
             onClick: () => forceExpandPanel(),
         },
-        "My Own Mod — click / Alt+M",
+        // Click-only: the minimised chip is the single way back in. There is no
+        // Alt+M binding — do not advertise one until one is actually wired up.
+        "My Own Mod — click to open",
     );
 }
 

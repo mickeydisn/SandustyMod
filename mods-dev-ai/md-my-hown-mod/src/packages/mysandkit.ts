@@ -12,6 +12,7 @@ import {
     type ContactReactionConfig,
     type InteractionConfig,
 } from "../constants.ts";
+import { resolveAnyHandler } from "../hooks/handlers.ts";
 
 declare const sandkit: any;
 const g = () => {
@@ -86,16 +87,39 @@ export const api = {
                 console.error(`${LOG} elements.addInteractionInfo failed`, e);
             }
         },
-        getTypeFromId(id: string): number | undefined {
+        /**
+         * Resolve an element id to its numeric type.
+         *
+         * The engine spells this `getTypeById`; `getTypeFromId` is the
+         * `@deprecated` spelling kept for older builds. The current name is
+         * tried first, so a build that drops the old one still works.
+         */
+        getTypeById(id: string): number | undefined {
             try {
-                return g()?.api?.elements?.getTypeFromId?.(id)
-                    ?? g()?.api?.elements?.getTypeById?.(id);
+                return g()?.api?.elements?.getTypeById?.(id) ??
+                    g()?.api?.elements?.getTypeFromId?.(id);
             } catch {
                 return undefined;
             }
         },
+        /** @deprecated kept for callers written against the old name. */
+        getTypeFromId(id: string): number | undefined {
+            return this.getTypeById(id);
+        },
     },
     structures: {
+        /** Patch a registered structure in place (api.structures.updateDefinition). */
+        updateDefinition(
+            idOrType: string | number,
+            partial: Record<string, unknown>,
+            options?: { useRawShape?: boolean },
+        ): void {
+            try {
+                g()?.api?.structures?.updateDefinition?.(idOrType, partial, options);
+            } catch (e) {
+                console.error(`${LOG} structures.updateDefinition failed`, idOrType, e);
+            }
+        },
         register(def: StructureConfig): void {
             try {
                 const { registerOptions, ...body } = normalizeStructure(def);
@@ -129,13 +153,6 @@ export const api = {
                 }
             },
         },
-        addProcessor(structureId: string | number, def: Record<string, unknown>): void {
-            try {
-                g()?.api?.structures?.addProcessor?.(structureId, def);
-            } catch (e) {
-                console.error(`${LOG} structures.addProcessor failed`, e);
-            }
-        },
         addVariant(base: string | number, variant: unknown, options?: unknown): void {
             try {
                 const fn = g()?.api?.structures?.addVariant ?? g()?.api?.structures?.registerVariant;
@@ -151,6 +168,46 @@ export const api = {
                 g()?.api?.items?.register?.(normalizeItem(def));
             } catch (e) {
                 console.error(`${LOG} items.register failed`, def.id, e);
+            }
+        },
+        /** Patch a registered item in place (api.items.updateDefinition). */
+        updateDefinition(idOrType: string | number, partial: Record<string, unknown>): void {
+            try {
+                g()?.api?.items?.updateDefinition?.(idOrType, partial);
+            } catch (e) {
+                console.error(`${LOG} items.updateDefinition failed`, idOrType, e);
+            }
+        },
+    },
+    /** Patch a registered definition in place. */
+    tech: {
+        updateDefinition(id: string, partial: Record<string, unknown>): void {
+            try {
+                g()?.api?.tech?.updateDefinition?.(id, partial);
+            } catch (e) {
+                console.error(`${LOG} tech.updateDefinition failed`, id, e);
+            }
+        },
+    },
+    terrains: {
+        updateDefinition(idOrType: string | number, partial: Record<string, unknown>): void {
+            try {
+                g()?.api?.terrains?.updateDefinition?.(idOrType, partial);
+            } catch (e) {
+                console.error(`${LOG} terrains.updateDefinition failed`, idOrType, e);
+            }
+        },
+    },
+    upgrades: {
+        updateDefinition(
+            itemId: string,
+            upgradeId: string,
+            partial: Record<string, unknown>,
+        ): void {
+            try {
+                g()?.api?.upgrades?.updateDefinition?.(itemId, upgradeId, partial);
+            } catch (e) {
+                console.error(`${LOG} upgrades.updateDefinition failed`, itemId, upgradeId, e);
             }
         },
     },
@@ -252,7 +309,11 @@ function resolveElementRef(v: string | number | null | undefined): string | numb
     if (v === undefined) return undefined;
     if (typeof v === "number") return v;
     if (typeof v === "string") {
-        const t = api.elements.getTypeFromId(v);
+        // `getTypeFromId` is marked `@deprecated` in favour of `getTypeById`, and
+        // this was a *direct* call — not optional-chained — so a rename would
+        // have thrown here. The facade tries the current name first and keeps
+        // the old one as a fallback for older builds.
+        const t = api.elements.getTypeById?.(v);
         return t !== undefined ? t : v;
     }
     return v;
@@ -265,6 +326,20 @@ function resolveStructureType(v: string | number): string | number {
     return v;
 }
 
+/**
+ * Resolve a stored terrain id to its numeric cell type when the runtime knows it.
+ *
+ * `terrainRules[].cellType` is a `TerrainRef = TerrainType | TerrainId`, so a plain
+ * string id is already accepted — we only upgrade it to a numeric handle when we
+ * can, and otherwise pass the id through unchanged.
+ */
+function resolveTerrainRef(v: string | number | null | undefined): string | number | null | undefined {
+    if (v === null || v === undefined) return v;
+    if (typeof v === "number") return v;
+    const t = g()?.api?.terrains?.getTypeById?.(v);
+    return t !== undefined && t !== null ? t : v;
+}
+
 function resolveItemType(v: string | number | undefined): number | string {
     if (typeof v === "number") return v;
     const enums = g()?.enums?.ItemType;
@@ -274,6 +349,13 @@ function resolveItemType(v: string | number | undefined): number | string {
         if (cap in enums) return enums[cap];
     }
     return enums?.Mod ?? "Mod";
+}
+
+/** ItemType.Consumable — labelled in the hotbar but never given a use action. */
+function isConsumableType(v: string | number | undefined): boolean {
+    if (v === "Consumable" || v === "consumable") return true;
+    if (typeof v === "number") return v === g()?.enums?.ItemType?.Consumable;
+    return false;
 }
 
 function registerI18n(map: Record<string, string>) {
@@ -333,6 +415,7 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
     const name = def.name ?? id;
     const nameKey = def.nameKey ?? `items|${id}|name`;
     const itemType = resolveItemType(def.itemType ?? def.type);
+    const isConsumable = isConsumableType(def.itemType ?? def.type);
     const out: Record<string, unknown> = { ...def, id, name, nameKey, itemType, type: itemType };
     if (!out.sprite || typeof out.sprite !== "object" || !(out.sprite as any).id) {
         out.sprite = {
@@ -345,6 +428,28 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
     if (def.description && !def.descriptionKey) {
         out.descriptionKey = `items|${id}|description`;
     }
+
+    // `handleAction` is a real slot on ItemDefinition ("Handles item use
+    // actions"), but it is a *function* — JSON can only name one, so resolve the
+    // stored handlerKey here. A Consumable is skipped on purpose: ItemType has a
+    // Consumable member but ActionType does not, so the engine can never
+    // dispatch a use action to one.
+    const handlerKey = typeof def.handlerKey === "string" ? def.handlerKey : "";
+    if (handlerKey && !isConsumable) {
+        const fn = resolveAnyHandler(handlerKey);
+        if (typeof fn === "function") {
+            out.handleAction = fn;
+            // Keep the name in the payload for the panel's "used by" scan.
+            out.handlerKey = handlerKey;
+            out.options = { ...(typeof def.options === "object" ? def.options : {}), itemId: id, itemType: def.itemType ?? "Mod" };
+        } else {
+            console.warn(`[md-my-hown-mod] item ${id}: unknown handlerKey "${handlerKey}" — registering without a use action`);
+        }
+    } else if (handlerKey) {
+        delete out.handlerKey;
+        delete out.options;
+    }
+
     const i18n: Record<string, string> = {};
     if (typeof name === "string") i18n[nameKey] = name;
     if (typeof def.description === "string") i18n[String(out.descriptionKey)] = def.description;
@@ -436,33 +541,23 @@ export function registerRecipe(r: RecipeConfig): void {
 }
 
 export function registerProcessing(p: ProcessingConfig): void {
-    const mode = p.mode ?? (p.structureType ? "type" : "instance");
     // handlerKey is a UI/code concern — never forward it to the engine.
+    // The engine definition is `{ structureType, intervalMs, process }`; there is
+    // no per-instance registration, so `structures.addProcessor` is not a real API
+    // and is no longer called.
     const { id: _id, structureType, structureId, mode: _m, handlerKey: _hk, ...rest } = p as
         Record<string, unknown> & ProcessingConfig;
-    if (mode === "type") {
-        const target = structureType ?? structureId;
-        if (target === undefined) {
-            console.warn(`${LOG} processing ${p.id}: missing structureType`);
-            return;
-        }
-        if (typeof rest.process !== "function") {
-            console.warn(`${LOG} processing ${p.id}: process() not a function (JSON cannot store callbacks). Skip.`);
-            return;
-        }
-        api.structures.processing.register(target, rest);
-        return;
-    }
-    const target = structureId ?? structureType;
+    // `structureId` is accepted as a legacy alias for `structureType`.
+    const target = structureType ?? structureId;
     if (target === undefined) {
-        console.warn(`${LOG} processing ${p.id}: missing structureId`);
+        console.warn(`${LOG} processing ${p.id}: missing structureType`);
         return;
     }
     if (typeof rest.process !== "function") {
-        console.warn(`${LOG} processing ${p.id}: process() missing — skip addProcessor`);
+        console.warn(`${LOG} processing ${p.id}: process() not a function (JSON cannot store callbacks). Skip.`);
         return;
     }
-    api.structures.addProcessor(target, rest);
+    api.structures.processing.register(target, rest);
 }
 
 export function registerContact(c: ContactReactionConfig): void {
@@ -523,7 +618,17 @@ export function registerTech(def: import("../constants.ts").TechConfig): void {
 export function registerUpgradeCategory(def: import("../constants.ts").UpgradeCategoryConfig): void {
     try {
         const { onUpgradeKey, id: _id, ...rest } = def as any;
-        g()?.api?.upgrades?.registerCategory?.(rest);
+        // The engine rejects a category that has no id and no localised name:
+        //     if (!t.id || !t.name && !t.nameKey)
+        //         throw new Error("Upgrade category requires an id and localized name.");
+        // Dropping `id` here meant *every* category registration threw, so the
+        // id is forwarded and a name is derived when the author supplied none.
+        const body: Record<string, unknown> = { ...rest, id: def.id };
+        if (!body.name && !body.nameKey) {
+            body.name = def.id;
+            body.nameKey = `upgrades|${def.id}|name`;
+        }
+        g()?.api?.upgrades?.registerCategory?.(body);
     } catch (e) {
         console.error(`${LOG} upgrades.registerCategory failed`, def.id, e);
     }
@@ -535,6 +640,50 @@ export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): v
         g()?.api?.upgrades?.register?.(rest);
     } catch (e) {
         console.error(`${LOG} upgrades.register failed`, def.id, e);
+    }
+}
+
+/**
+ * input.registerBinding(bindingId, defaultKeys, definition) — the last of the
+ * 36 config-reachable api members the mod had not wrapped.
+ *
+ * The engine's `handlers` is a `{ down?, up? }` pair of functions, which JSON
+ * cannot express, so the mod stores handler *keys* and resolves them at apply
+ * time — the same substitution already used for `getOptionsKey` on projectiles.
+ *
+ * `displayName` and `category` are required by the typings and are both passed
+ * through verbatim; nothing is inferred.
+ */
+export function registerInputBinding(
+    def: import("../constants.ts").InputBindingConfig,
+): void {
+    try {
+        const input = g()?.api?.input;
+        if (!input?.registerBinding) {
+            console.warn(`${LOG} input.registerBinding unavailable — ${def.id} stored only`);
+            return;
+        }
+        // a binding with neither handler would be inert; the engine still
+        // accepts it, so register with an empty pair rather than skipping
+        const handlers: Record<string, Function> = {};
+        if (typeof def.onDownKey === "function") handlers.down = def.onDownKey;
+        if (typeof def.onUpKey === "function") handlers.up = def.onUpKey;
+
+        const definition: Record<string, unknown> = {
+            displayName: def.displayName,
+            category: def.category,
+            handlers,
+        };
+        if (def.displayNameKey) definition.displayNameKey = def.displayNameKey;
+        if (def.subsection) definition.subsection = def.subsection;
+
+        input.registerBinding(
+            def.id,
+            def.defaultKeys ?? [],
+            definition as never,
+        );
+    } catch (e) {
+        console.error(`${LOG} input.registerBinding failed`, def.id, e);
     }
 }
 
@@ -557,7 +706,17 @@ export function registerProjectile(def: import("../constants.ts").ProjectileConf
 
 export function registerEnergyType(def: import("../constants.ts").EnergyTypeConfig): void {
     try {
-        g()?.api?.energy?.registerType?.(def.structureId, def.type, def.options ?? {});
+        // api.energy.registerType accepts only "conductor" | "storage". Guard here so a
+        // hand-edited / imported config with a bogus role is skipped loudly instead of
+        // being forwarded to the engine.
+        const type = def.type;
+        if (type !== "conductor" && type !== "storage") {
+            console.warn(
+                `${LOG} energy ${def.id}: invalid type "${String(type)}" — must be conductor|storage. Skip.`,
+            );
+            return;
+        }
+        g()?.api?.energy?.registerType?.(def.structureId, type, def.options ?? {});
     } catch (e) {
         console.error(`${LOG} energy.registerType failed`, def.id, e);
     }
@@ -565,8 +724,30 @@ export function registerEnergyType(def: import("../constants.ts").EnergyTypeConf
 
 export function registerExcavationProfile(def: import("../constants.ts").ExcavationProfileConfig): void {
     try {
-        const { id, power, pattern, options } = def;
-        g()?.api?.excavation?.registerProfile?.(id, { power, pattern, options });
+        // registerProfile(id, { pattern?, power, options?, terrainRules? }) — terrainRules
+        // was previously dropped on the floor, making per-terrain dig rules unreachable.
+        const { id, power, pattern, options, terrainRules } = def as
+            typeof def & { terrainRules?: unknown };
+        const payload: Record<string, unknown> = { power, pattern, options };
+        if (Array.isArray(terrainRules) && terrainRules.length > 0) {
+            // cellType → TerrainRef, outputElementType → ElementRef. Both accept a
+            // string id, but we upgrade to numeric handles when the runtime knows them.
+            payload.terrainRules = terrainRules.map((raw) => {
+                const r = (raw ?? {}) as Record<string, unknown>;
+                const cellType = resolveTerrainRef(
+                    (r.cellType ?? r.terrainType) as string | number | undefined,
+                );
+                const out: Record<string, unknown> = {};
+                if (cellType !== undefined && cellType !== null) out.cellType = cellType;
+                if (r.damage !== undefined) out.damage = r.damage;
+                const el = resolveElementRef(
+                    r.outputElementType as string | number | undefined,
+                );
+                if (el !== undefined && el !== null) out.outputElementType = el;
+                return out;
+            });
+        }
+        g()?.api?.excavation?.registerProfile?.(id, payload);
     } catch (e) {
         console.error(`${LOG} excavation.registerProfile failed`, def.id, e);
     }
@@ -581,17 +762,31 @@ export function registerStructureBehavior(def: import("../constants.ts").Structu
         }
         const kind = String(def.kind || "").toLowerCase();
         const payload = def.definition ?? def;
-        if (kind === "conveyor" && typeof api.registerConveyor === "function") {
-            api.registerConveyor(payload);
-        } else if (kind === "launcher" && typeof api.registerLauncher === "function") {
-            api.registerLauncher(payload);
-        } else if (typeof api.register === "function") {
-            api.register(payload);
+        // Documented names are `registerConveyorType(structureId, options?)`
+        // and `registerLauncherType(definition)`. Older builds are still probed
+        // so a renamed api degrades to a warning rather than a crash.
+        if (kind === "conveyor") {
+            const id = String((payload as { id?: string })?.id ?? def.id);
+            if (typeof api.registerConveyorType === "function") {
+                api.registerConveyorType(
+                    id,
+                    (payload as { options?: unknown })?.options ?? payload,
+                );
+            } else if (typeof api.registerConveyor === "function") {
+                api.registerConveyor(payload);
+            } else {
+                console.warn(`${LOG} no conveyor registration method`, def.id);
+            }
+        } else if (kind === "launcher") {
+            if (typeof api.registerLauncherType === "function") {
+                api.registerLauncherType(payload);
+            } else if (typeof api.registerLauncher === "function") {
+                api.registerLauncher(payload);
+            } else {
+                console.warn(`${LOG} no launcher registration method`, def.id);
+            }
         } else {
-            // best-effort: try both common names
-            api.registerConveyor?.(payload);
-            api.registerLauncher?.(payload);
-            console.warn(`${LOG} structureBehaviors: forwarded generically for`, def.id);
+            console.warn(`${LOG} unknown structure behavior kind`, def.kind);
         }
     } catch (e) {
         console.error(`${LOG} structureBehaviors failed`, def.id, e);

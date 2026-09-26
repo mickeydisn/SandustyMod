@@ -24,6 +24,7 @@ import {
     type SignalConfig,
     type TriggerConfig,
     type SpriteConfig,
+    type InputBindingConfig,
     type PanelState,
 } from "../constants.ts";
 import { api } from "../packages/mysandkit.ts";
@@ -53,6 +54,7 @@ function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
         signals: Array.isArray(raw?.signals) ? raw!.signals! : [],
         triggers: Array.isArray(raw?.triggers) ? raw!.triggers! : [],
         sprites: Array.isArray(raw?.sprites) ? raw!.sprites! : [],
+        inputBindings: Array.isArray(raw?.inputBindings) ? raw!.inputBindings! : [],
     };
 }
 
@@ -61,7 +63,7 @@ export function loadConfig(): ModConfig {
     return ensureArrays(api.storage.get<Partial<ModConfig>>(CONFIG_KEY));
 }
 
-export function saveConfig(cfg: ModConfig): void {
+function saveConfig(cfg: ModConfig): void {
     const clean = JSON.parse(JSON.stringify(cfg, (_k, v) => {
         if (typeof v === "function") return undefined;
         return v;
@@ -188,9 +190,6 @@ export function removeInteraction(id: string): ModConfig {
     saveConfig(cfg);
     return cfg;
 }
-export function replaceConfig(cfg: ModConfig): void {
-    saveConfig(cfg);
-}
 export function exportConfigJson(): string {
     return JSON.stringify(loadConfig(), null, 2);
 }
@@ -235,19 +234,6 @@ export function addOrUpdateTech(entry: TechConfig): ModConfig {
 export function removeTech(id: string): ModConfig {
     const cfg = loadConfig();
     cfg.techs = removeById(cfg.techs, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateUpgradeCategory(entry: UpgradeCategoryConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.upgradeCategories = upsert(cfg.upgradeCategories, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeUpgradeCategory(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.upgradeCategories = removeById(cfg.upgradeCategories, id);
     saveConfig(cfg);
     return cfg;
 }
