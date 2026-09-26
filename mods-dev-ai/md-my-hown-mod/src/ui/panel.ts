@@ -101,8 +101,6 @@ import { definitionFor } from "./definition/index.ts";
 import {
     handlerDoc,
     listBuildModeTypes,
-    listElements,
-    listTerrains,
     type Opt,
     PANEL_NATIVES,
     searchLibraryAssets,
@@ -713,125 +711,6 @@ export function createPanelComponent(defaultMinimized = true) {
             );
         };
 
-        /**
-         * Excavation `terrainRules[]` editor — one row per matched terrain.
-         *
-         * These were completely unreachable before: the register layer dropped
-         * `terrainRules` on the floor and the form had no field for it.
-         * `cellType` / `outputElementType` are stored as ids; the engine wants
-         * runtime handles, which `registerExcavationProfile` resolves.
-         */
-        const renderTerrainRules = (f: FieldSpec, val: string, err?: string) => {
-            let rows: Record<string, unknown>[] = [];
-            try {
-                const parsed = JSON.parse(val || "[]");
-                if (Array.isArray(parsed)) rows = parsed;
-            } catch { /* raw value stays; validation reports it */ }
-            const writeRows = (next: Record<string, unknown>[]) =>
-                setField(f.key, JSON.stringify(next, null, 2));
-            const terrains = listTerrains();
-            const elements = listElements();
-            const drop = (
-                cellType: unknown,
-            ) => (cellType === undefined ? undefined : String(cellType));
-
-            return h(
-                "div",
-                null,
-                rows.length === 0
-                    ? h(
-                        "div",
-                        { style: S.hintBelow },
-                        "No rules — this profile treats every terrain the same.",
-                    )
-                    : null,
-                ...rows.map((row, i) =>
-                    h(
-                        "div",
-                        { key: i, style: S.outputsRow },
-                        h(
-                            "select",
-                            {
-                                style: S.input,
-                                title: "terrain matched by this rule",
-                                value: drop(row.cellType) ?? "",
-                                onChange: (e: { target: { value: string } }) =>
-                                    writeRows(
-                                        rows.map((r, j) =>
-                                            j === i ? { ...r, cellType: e.target.value } : r
-                                        ),
-                                    ),
-                            },
-                            h("option", { value: "" }, "— terrain —"),
-                            ...terrains.map((o) =>
-                                h("option", { key: o.value, value: o.value }, o.label)
-                            ),
-                        ),
-                        h("input", {
-                            type: "number",
-                            style: S.input,
-                            value: row.damage === undefined ? "" : String(row.damage),
-                            placeholder: "damage",
-                            title: "damage applied when this terrain matches (optional)",
-                            onChange: (e: { target: { value: string } }) => {
-                                const v = e.target.value;
-                                writeRows(
-                                    rows.map((r, j) => {
-                                        if (j !== i) return r;
-                                        const next = { ...r };
-                                        if (v === "") delete next.damage;
-                                        else next.damage = Number(v);
-                                        return next;
-                                    }),
-                                );
-                            },
-                        }),
-                        h(
-                            "select",
-                            {
-                                style: S.input,
-                                title: "element produced when dug",
-                                value: drop(row.outputElementType) ?? "",
-                                onChange: (e: { target: { value: string } }) => {
-                                    const v = e.target.value;
-                                    writeRows(
-                                        rows.map((r, j) => {
-                                            if (j !== i) return r;
-                                            const next = { ...r };
-                                            if (v === "") delete next.outputElementType;
-                                            else next.outputElementType = v;
-                                            return next;
-                                        }),
-                                    );
-                                },
-                            },
-                            h("option", { value: "" }, "— drop —"),
-                            ...elements.map((o) =>
-                                h("option", { key: o.value, value: o.value }, o.label)
-                            ),
-                        ),
-                        h(
-                            "button",
-                            {
-                                style: S.btnDanger,
-                                onClick: () => writeRows(rows.filter((_, j) => j !== i)),
-                            },
-                            "×",
-                        ),
-                    )
-                ),
-                h(
-                    "button",
-                    {
-                        style: S.btn,
-                        onClick: () => writeRows([...rows, { cellType: "" }]),
-                    },
-                    "+ Add terrain rule",
-                ),
-                err ? h("div", { style: S.errorText }, err) : null,
-            );
-        };
-
         const renderField = (f: FieldSpec) => {
             if (!isActive(f, form)) return null;
             const err = errors[f.key];
@@ -1023,8 +902,6 @@ export function createPanelComponent(defaultMinimized = true) {
                 );
             } else if (control === null && f.kind === "library") {
                 control = renderLibrary(f, val, err);
-            } else if (control === null && f.kind === "terrainRules") {
-                control = renderTerrainRules(f, val, err);
             } else if (control === null && f.kind === "json") {
                 control = h("textarea", {
                     style: err ? { ...S.textarea, ...S.inputError } : S.textarea,
@@ -1057,8 +934,6 @@ export function createPanelComponent(defaultMinimized = true) {
                         );
                     }
                 }
-            } else if (control === null && f.kind === "outputs") {
-                control = renderOutputs(f, val, inputStyle, locked);
             } else if (control === null) {
                 control = h("input", {
                     type: "text",
@@ -1091,87 +966,6 @@ export function createPanelComponent(defaultMinimized = true) {
                     : f.hint
                     ? h("div", { style: S.hintBelow }, f.hint)
                     : null,
-            );
-        };
-
-        const renderOutputs = (
-            f: FieldSpec,
-            val: string,
-            inputStyle: Record<string, unknown>,
-            locked: boolean,
-        ) => {
-            let rows: { elementType?: string; chance?: number }[] = [];
-            try {
-                const parsed = JSON.parse(val || "[]");
-                if (Array.isArray(parsed)) rows = parsed;
-            } catch { /* raw value stays in the form; validation reports it */ }
-            const writeRows = (next: { elementType?: string; chance?: number }[]) =>
-                setField(f.key, JSON.stringify(next, null, 2));
-            const elements = listElements();
-
-            return h(
-                "div",
-                null,
-                ...rows.map((row, i) =>
-                    h(
-                        "div",
-                        { key: i, style: S.outputsRow },
-                        h(
-                            "select",
-                            {
-                                style: { ...inputStyle, cursor: "pointer" },
-                                value: row.elementType ?? "",
-                                disabled: locked,
-                                onChange: (e: { target: { value: string } }) => {
-                                    writeRows(
-                                        rows.map((r, j) =>
-                                            j === i ? { ...r, elementType: e.target.value } : r
-                                        ),
-                                    );
-                                },
-                            },
-                            h("option", { value: "" }, "— element —"),
-                            ...elements.map((o) =>
-                                h("option", { key: o.value, value: o.value }, o.label)
-                            ),
-                        ),
-                        h("input", {
-                            type: "number",
-                            style: inputStyle,
-                            value: row.chance === undefined ? "1" : String(row.chance),
-                            disabled: locked,
-                            min: 0,
-                            max: 1,
-                            step: 0.05,
-                            title: "chance 0–1",
-                            onChange: (e: { target: { value: string } }) => {
-                                writeRows(
-                                    rows.map((r, j) =>
-                                        j === i ? { ...r, chance: Number(e.target.value) } : r
-                                    ),
-                                );
-                            },
-                        }),
-                        h(
-                            "button",
-                            {
-                                style: S.btnDanger,
-                                disabled: locked,
-                                onClick: () => writeRows(rows.filter((_, j) => j !== i)),
-                            },
-                            "×",
-                        ),
-                    )
-                ),
-                h(
-                    "button",
-                    {
-                        style: S.btn,
-                        disabled: locked,
-                        onClick: () => writeRows([...rows, { elementType: "", chance: 1 }]),
-                    },
-                    "+ Add output",
-                ),
             );
         };
 

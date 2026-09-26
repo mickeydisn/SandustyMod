@@ -54,6 +54,25 @@ const CFG = {
         output: { elementType: "md-my-hown-mod:pebble", chance: 0.25 },
         materialId: 101,
     }],
+    recipes: [{
+        id: "r1",
+        kind: "smelter",
+        input: "md-my-hown-mod:ore",
+        outputs: [{ elementType: "md-my-hown-mod:ingot", chance: 1 }],
+    }],
+    excavation: [{
+        id: "x1",
+        power: 25,
+        pattern: [[1, 1], [0, 1]],
+        terrainRules: [
+            { cellType: "md-my-hown-mod:stone", damage: 3 },
+        ],
+    }],
+    projectiles: [{
+        id: "p1",
+        sprite: { id: "sprites:bolt" },
+        options: { speed: 10 },
+    }],
 };
 
 let nodes: Node[] = [];
@@ -256,4 +275,96 @@ Deno.test("a terrain's drop chance follows its drop element", () => {
         undefined,
         "a drop chance is offered for a terrain that drops nothing",
     );
+});
+
+Deno.test("the recipe's output row editor survives the chain", () => {
+    // `outputs` is the recipe's own kind, so its control comes from the
+    // definition. If the generic chain overwrote it — the bug this file
+    // exists to catch — every recipe output would degrade to a raw text box and
+    // the per-row chance would become a hand-typed number.
+    renderFormFor("recipes", CFG.recipes[0], "r1");
+    const control = controlOf("outputs");
+    assert(control, "the outputs field rendered no control at all");
+    assertEquals(
+        control.tag,
+        "div",
+        "the output row editor was replaced by a fallback control",
+    );
+});
+
+Deno.test("a recipe's output shape follows its machine", () => {
+    // A smelter has one output list; a planterBox has a single element and a
+    // chance; a shaker has two lists. Showing the wrong one writes a key the
+    // machine never reads.
+    renderFormFor("recipes", CFG.recipes[0], "r1"); // smelter
+    assert(controlOf("outputs"), "a smelter lost its output list");
+    assertEquals(controlOf("outputElement"), undefined, "a smelter was offered a single output");
+
+    hooks[5] = { ...hooks[5], machine: "planterBox" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("outputElement"), "a planterBox lost its single output");
+    assert(controlOf("outputChance"), "a planterBox lost its output chance");
+    assertEquals(controlOf("outputs"), undefined, "a planterBox was offered a list");
+
+    hooks[5] = { ...hooks[5], machine: "shaker" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("outputsAbove"), "a shaker lost its 'above' list");
+    assert(controlOf("outputsBelow"), "a shaker lost its 'below' list");
+    assertEquals(controlOf("outputs"), undefined, "a shaker was offered the single list");
+
+    hooks[5] = { ...hooks[5], machine: "kineticPress" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("minVelocity"), "a kineticPress lost its minimum velocity");
+});
+
+Deno.test("the excavation rule editor survives the chain", () => {
+    // `terrainRules` is the profile's own kind. Before the refactor it had a
+    // widget in the panel but no field in the form, so the editor was
+    // unreachable; it now comes from the definition, and this asserts it renders
+    // as rows rather than degrading into a textarea of nested objects.
+    renderFormFor("excavation", CFG.excavation[0], "x1");
+    const control = controlOf("terrainRulesJson");
+    assert(control, "the terrain-rules field rendered no control at all");
+    assertEquals(
+        control.tag,
+        "div",
+        "the terrain-rule editor was replaced by a fallback control",
+    );
+    // The pattern is *not* the definition's kind — it is a plain json box, and
+    // must still be one.
+    assertEquals(controlOf("patternJson")?.tag, "textarea");
+});
+
+Deno.test("a projectile's static options hide behind an options handler", () => {
+    // The handler's options are the ones that reach the engine, so the static
+    // box is hidden rather than inviting values the engine ignores.
+    renderFormFor("projectiles", CFG.projectiles[0], "p1");
+    assert(controlOf("optionsJson"), "the static options box is missing");
+    assertEquals(controlOf("spriteId")?.tag, "select");
+
+    hooks[5] = { ...hooks[5], getOptionsKey: "someHandler" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("getOptionsKey"), "the handler picker disappeared");
+    assertEquals(
+        controlOf("optionsJson"),
+        undefined,
+        "the static options box is showing behind an options handler",
+    );
+});
+
+Deno.test("a signal renders its three dropdowns", () => {
+    // A definition with no widget of its own is the case that fails silently, so
+    // its controls are asserted to be present and of the right kind.
+    renderFormFor("signals", { id: "s2", kind: "targets" }, "s2");
+    assertEquals(controlOf("kind")?.tag, "select");
+    assertEquals(controlOf("target")?.tag, "select");
+    assertEquals(controlOf("handlerKey")?.tag, "select");
 });

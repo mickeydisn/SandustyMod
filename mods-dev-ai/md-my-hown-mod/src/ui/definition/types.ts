@@ -155,7 +155,6 @@ export interface Section {
     fields: FieldSpec[];
 }
 
-
 // ── The mapping context ──────────────────────────────────────────────────────
 
 /**
@@ -176,6 +175,15 @@ export interface EntryReader {
     num(v: unknown): string | undefined;
     /** A stored value as indented JSON, or undefined for `null`/`undefined`. */
     json(v: unknown): string | undefined;
+    /**
+     * A stored `string[]` as the comma-separated form text a `multiselect` uses.
+     *
+     * On the reader rather than left to each definition because the separator
+     * and the empty-list case have to agree with `parseIdList` on the writer
+     * side: one joining with ", " and the other splitting on commas is how a
+     * round trip quietly inserts spaces into every id.
+     */
+    jsonList(v: unknown): string | undefined;
 }
 
 /**
@@ -207,7 +215,6 @@ export interface EntryWriter {
     /** Parsed JSON; blank or unparseable → undefined (validation blocks Save). */
     optJson<T>(key: string): T | undefined;
 }
-
 
 // ── The panel context ────────────────────────────────────────────────────────
 

@@ -159,7 +159,12 @@ Deno.test("input binding handlers are a callback, never a literal", () => {
 
 Deno.test("the input binding form produces every non-callback parameter", async () => {
     const { structuredKeys } = await import("./ui-completeness.ts");
-    const keys = structuredKeys(Deno.readTextFileSync(SCHEMA)).get("inputs") ??
+    // Read the schema *with* the definition bodies spliced back in. The
+    // `inputs` tab lives in `src/ui/definition/input.ts` now, and parsing
+    // `schema.ts` alone would report it as having no fields at all — a green
+    // test about a form that no longer appears to exist.
+    const { schemaSourceWithDefinitions } = await import("./schema-source.ts");
+    const keys = structuredKeys(schemaSourceWithDefinitions()).get("inputs") ??
         new Set<string>();
     for (
         const k of [

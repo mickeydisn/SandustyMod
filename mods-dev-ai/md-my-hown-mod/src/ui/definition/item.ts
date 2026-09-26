@@ -19,8 +19,15 @@
 import { listItemActionHandlerKeys, listSpriteIds, type Opt } from "../../catalog.ts";
 import { loadConfig } from "../../config/store.ts";
 import type { ModConfig } from "../../constants.ts";
-import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../../hooks/handler-registry.ts";
-import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "./fields.ts";
+import {
+    advField,
+    DESC_MAX,
+    idField,
+    NAME_MAX,
+    numField,
+    textField,
+    typesHintFor,
+} from "./fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
 
 /**
@@ -41,21 +48,6 @@ function listConfigured(key: keyof ModConfig): Opt[] {
     } catch {
         return [];
     }
-}
-
-/**
- * Name the handler types a slot accepts, as part of the field's own hint.
- *
- * A dropdown filtered to one item type is short on purpose, and a short list
- * with no explanation reads as a broken picker. Naming the types turns "why is
- * this list so small" into "because this is the list for that type".
- */
-function typesHintFor(pick: () => Opt[]): string {
-    const types = handlerTypesForKeys(pick().map((o) => o.value));
-    if (types.length === 0) {
-        return "No handler serves this slot.";
-    }
-    return `Accepts: ${types.map((t) => HANDLER_TYPE_LABELS[t]).join(", ")}.`;
 }
 
 /** Item types, with the engine's own numbering so the mapping is checkable. */

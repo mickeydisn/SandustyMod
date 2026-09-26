@@ -846,6 +846,93 @@ console.log("── tech unlocks are declarative ──");
     check("empty list is omitted", e.unlocks?.items === undefined, JSON.stringify(e.unlocks));
 }
 
+console.log("── a picker and its companion box are a read/write contract ──");
+// `currencyType` and `branch` are free strings in TechDefinition, so the panel
+// offers a picker *and* a text box. The pair only works if both halves agree on
+// `__custom__`: a stored value the picker does not list must move into the box
+// on read and back out on write. If either half stops understanding the
+// sentinel, the literal string "__custom__" is persisted as the currency.
+{
+    const form = entryToForm("techs", {
+        id: "md-my-hown-mod:t",
+        name: "T",
+        cost: 1,
+        currencyType: "bits",
+    });
+    check(
+        "an unlisted currency switches the picker to custom",
+        form.currencyType === "__custom__",
+        String(form.currencyType),
+    );
+    check(
+        "…and lands in the companion box",
+        form.currencyTypeCustom === "bits",
+        String(form.currencyTypeCustom),
+    );
+    check(
+        "…and comes back out as the value, not the sentinel",
+        formToEntry("techs", form).currencyType === "bits",
+        JSON.stringify(formToEntry("techs", form).currencyType),
+    );
+
+    // The reverse direction: an author who picks a real option must not get the
+    // companion box's leftovers.
+    const picked = formToEntry("techs", { ...form, currencyType: "gold" });
+    check(
+        "a picked option wins over the companion box",
+        picked.currencyType === "gold",
+        JSON.stringify(picked.currencyType),
+    );
+}
+
+console.log("── an upgrade category requirement is stored, never read ──");
+// `registerCategory` keeps `requirement` and nothing in the repo reads it. The
+// raw box is jsonType "object", so an *object* requirement survives a save and a
+// bare string does not — the control shows a stored string but drops it on save.
+// Preserved deliberately: the alternative is to start writing a value that a
+// decade of saves never wrote, which is a behaviour change, not a refactor.
+{
+    const withObj = entryToForm("categories", {
+        id: "md-my-hown-mod:c",
+        name: "N",
+        requirement: { techId: "t1" },
+    });
+    check(
+        "an object requirement round-trips",
+        JSON.stringify(formToEntry("categories", withObj).requirement) ===
+            JSON.stringify({ techId: "t1" }),
+        JSON.stringify(formToEntry("categories", withObj).requirement),
+    );
+
+    const withStr = entryToForm("categories", {
+        id: "md-my-hown-mod:c",
+        name: "N",
+        requirement: "t1",
+    });
+    check(
+        "a string requirement is shown",
+        withStr.requirementJson === "t1",
+        String(withStr.requirementJson),
+    );
+    check(
+        "…and is dropped on save, as it always was",
+        formToEntry("categories", withStr).requirement === undefined,
+        JSON.stringify(formToEntry("categories", withStr).requirement),
+    );
+
+    // A hand-picked tech id *is* written, which is the one path that works.
+    const picked = formToEntry("categories", {
+        ...withStr,
+        requirementTechId: "t9",
+        requirementJson: "",
+    });
+    check(
+        "a hand-picked requirement is written as a string",
+        picked.requirement === "t9",
+        JSON.stringify(picked.requirement),
+    );
+}
+
 console.log("── item fields are type-aware ──");
 {
     const isActiveFor = (itemType, key) => {

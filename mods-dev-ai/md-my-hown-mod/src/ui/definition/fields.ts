@@ -8,14 +8,34 @@
  * live in the definition that owns them, because a helper named after the thing
  * it is for is one nobody moves when that thing changes.
  */
+import { listElements } from "../../catalog.ts";
 import { MOD_ID } from "../../constants.ts";
+import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../../hooks/handler-registry.ts";
+import type { Opt } from "../../catalog.ts";
 import type { FieldSpec } from "./types.ts";
+
+/**
+ * Name the handler types a slot accepts, as part of the field's own hint.
+ *
+ * A dropdown filtered to one item type is short on purpose, and a short list
+ * with no explanation reads as a broken picker. Naming the types turns "why is
+ * this list so small" into "because this is the list for that type".
+ *
+ * Takes a thunk rather than the options so the hint can be built inside a
+ * `FieldSpec` literal without freezing the list at schema-construction time.
+ */
+export function typesHintFor(pick: () => Opt[]): string {
+    const types = handlerTypesForKeys(pick().map((o) => o.value));
+    if (types.length === 0) {
+        return "No handler serves this slot.";
+    }
+    return `Accepts: ${types.map((t) => HANDLER_TYPE_LABELS[t]).join(", ")}.`;
+}
 
 export const ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,62}$";
 export const ID_MSG = "lowercase letters, digits, . _ - (max 63)";
 
-export const SPRITE_ID_PATTERN =
-    "^[a-z0-9][a-z0-9._-]{0,62}(:[a-z0-9][a-z0-9._-]{0,62})?$";
+export const SPRITE_ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,62}(:[a-z0-9][a-z0-9._-]{0,62})?$";
 export const SPRITE_ID_MSG = "key, or namespace:key — e.g. sprites:crusher";
 
 export const NAME_MAX = 64;
@@ -24,8 +44,13 @@ export const DESC_MAX = 200;
 /** The mod-namespaced id field, stored as `md-my-hown-mod:<suffix>`. */
 export function idField(): FieldSpec {
     return {
-        key: "idSuffix", label: "Id", kind: "text", section: "Identity", required: true,
-        pattern: ID_PATTERN, patternMsg: ID_MSG,
+        key: "idSuffix",
+        label: "Id",
+        kind: "text",
+        section: "Identity",
+        required: true,
+        pattern: ID_PATTERN,
+        patternMsg: ID_MSG,
         hint: `stored as ${MOD_ID}:<id>`,
         placeholder: "my-thing",
     };
@@ -37,8 +62,13 @@ export function idField(): FieldSpec {
  */
 export function spriteIdField(): FieldSpec {
     return {
-        key: "idSuffix", label: "Graphics key", kind: "text", section: "Identity", required: true,
-        pattern: SPRITE_ID_PATTERN, patternMsg: SPRITE_ID_MSG,
+        key: "idSuffix",
+        label: "Graphics key",
+        kind: "text",
+        section: "Identity",
+        required: true,
+        pattern: SPRITE_ID_PATTERN,
+        patternMsg: SPRITE_ID_MSG,
         hint: "used by render.imageName / item.sprite",
         placeholder: "sprites:crusher",
     };
@@ -101,8 +131,7 @@ export function advField(): FieldSpec {
         jsonType: "object",
         wide: true,
         when: (f) => passthroughKeysOf(f[PASSTHROUGH_KEY]).length > 0,
-        hint:
-            "Carried through on every edit, so nothing is lost. These keys have no " +
+        hint: "Carried through on every edit, so nothing is lost. These keys have no " +
             "control above. Change one only if you know what the engine expects — a " +
             "misspelled key here is ignored by the game and will not warn you.",
         placeholder: "{ }",
@@ -136,6 +165,24 @@ export function numField(
     extra: Partial<FieldSpec> = {},
 ): FieldSpec {
     return { key, label, kind: "number", section, step: 1, int: true, ...extra };
+}
+
+/**
+ * A select over the engine's element ids.
+ *
+ * Several objects point *at* an element rather than holding one — a recipe's
+ * input, a contact's two reactants, an interaction's subject — and each wants
+ * the same picker. Written once here so those definitions do not each re-spell
+ * it, and so a change to the options reaches all of them.
+ */
+export function elSelect(
+    key: string,
+    label: string,
+    section: string,
+    required = false,
+    hint?: string,
+): FieldSpec {
+    return { key, label, kind: "select", section, required, options: listElements, hint };
 }
 
 /**

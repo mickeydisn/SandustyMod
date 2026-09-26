@@ -12,10 +12,28 @@
  * than the registry inventing an empty definition that would look like a real
  * one with no fields.
  */
+import { behaviorDefinition } from "./behavior.ts";
+import { contactDefinition } from "./contact.ts";
 import { elementDefinition } from "./element.ts";
+import { energyDefinition } from "./energy.ts";
+import { excavationDefinition } from "./excavation.ts";
+import { inputDefinition } from "./input.ts";
+import { interactionDefinition } from "./interaction.ts";
 import { itemDefinition } from "./item.ts";
+import { modifierDefinition } from "./modifier.ts";
+import { networkDefinition } from "./network.ts";
+import { processingDefinition } from "./processing.ts";
+import { projectileDefinition } from "./projectile.ts";
+import { recipeDefinition } from "./recipe.ts";
+import { signalDefinition } from "./signal.ts";
+import { spriteDefinition } from "./sprite.ts";
 import { structureDefinition } from "./structure.ts";
+import { techDefinition } from "./tech.ts";
 import { terrainDefinition } from "./terrain.ts";
+import { triggerDefinition } from "./trigger.ts";
+import { unlockNodeDefinition } from "./unlock-node.ts";
+import { upgradeDefinition } from "./upgrade.ts";
+import { upgradeCategoryDefinition } from "./upgrade-category.ts";
 import type { Definition, Tab } from "./types.ts";
 
 /**
@@ -24,10 +42,28 @@ import type { Definition, Tab } from "./types.ts";
  * Adding an object is one line here plus one file beside it.
  */
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
+    behaviors: behaviorDefinition,
+    categories: upgradeCategoryDefinition,
+    contacts: contactDefinition,
     elements: elementDefinition,
+    energy: energyDefinition,
+    excavation: excavationDefinition,
+    inputs: inputDefinition,
+    interactions: interactionDefinition,
     items: itemDefinition,
+    modifiers: modifierDefinition,
+    networks: networkDefinition,
+    processing: processingDefinition,
+    projectiles: projectileDefinition,
+    recipes: recipeDefinition,
+    signals: signalDefinition,
+    sprites: spriteDefinition,
     structures: structureDefinition,
+    techs: techDefinition,
     terrains: terrainDefinition,
+    triggers: triggerDefinition,
+    unlockNodes: unlockNodeDefinition,
+    upgrades: upgradeDefinition,
 };
 
 /**

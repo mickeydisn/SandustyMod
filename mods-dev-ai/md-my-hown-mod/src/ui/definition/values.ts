@@ -11,6 +11,7 @@
  *
  * So they live here, and a definition is handed them rather than writing its own.
  */
+import type { Opt } from "../../catalog.ts";
 import type { EntryReader, EntryWriter } from "./types.ts";
 
 /** Parse JSON text, returning undefined instead of throwing. */
@@ -51,6 +52,54 @@ export function formatIdList(ids: readonly string[] | undefined): string {
     return Array.isArray(ids) ? ids.join(", ") : "";
 }
 
+/** The sentinel a select carries to mean "the companion text box holds it". */
+export const CUSTOM = "__custom__";
+
+/**
+ * Load a "picker or custom text" pair into a form.
+ *
+ * Several fields store a free string in the engine but are worth a picker in the
+ * form, because the values already in use are enumerable even though the type is
+ * not — a tech's `currencyType` or `branch`, an upgrade's `categoryId`. The
+ * cost of a picker is that a value it does not list needs somewhere to go, and
+ * dropping it silently would lose a hand-edited config on the next save.
+ *
+ * So an unlisted value switches the select to `__custom__` and moves into the
+ * companion box, which is a control that always exists. The pair is read back by
+ * `optOrCustom`.
+ *
+ * Lives here rather than in a definition because a tech, an unlock node and an
+ * upgrade all use it, and the read and the write have to agree on the sentinel.
+ */
+export function putCustomOrSelect(
+    put: (key: string, value: string) => void,
+    value: string | undefined,
+    selectKey: string,
+    customKey: string,
+    options: Opt[],
+): void {
+    const v = (value ?? "").trim();
+    if (!v) return;
+    if (options.some((o) => o.value === v)) put(selectKey, v);
+    else {
+        put(selectKey, CUSTOM);
+        put(customKey, v);
+    }
+}
+
+/**
+ * Read a "picker or custom text" pair back out: the companion box when the
+ * select says `__custom__`, otherwise the selected value.
+ *
+ * The inverse of `putCustomOrSelect`, and the reason it is exported beside it —
+ * a reader that wrote the sentinel but a writer that did not understand it
+ * would persist the literal string `__custom__` as the stored value.
+ */
+export function optOrCustom(form: Record<string, string>, selectKey: string, customKey: string) {
+    const picked = (form[selectKey] ?? "").trim();
+    return picked === CUSTOM ? (form[customKey] ?? "").trim() || undefined : picked || undefined;
+}
+
 /** The reader a definition is given, writing into one form. */
 export function readerFor(form: Record<string, string>): EntryReader {
     return {
@@ -62,6 +111,7 @@ export function readerFor(form: Record<string, string>): EntryReader {
         str: (v) => (typeof v === "string" ? v : undefined),
         num: (v) => typeof v === "number" && Number.isFinite(v) ? String(v) : undefined,
         json: (v) => v === undefined || v === null ? undefined : JSON.stringify(v, null, 2),
+        jsonList: (v) => Array.isArray(v) ? (v as unknown[]).join(", ") || undefined : undefined,
     };
 }
 

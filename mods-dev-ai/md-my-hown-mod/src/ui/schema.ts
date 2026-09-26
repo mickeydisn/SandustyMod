@@ -14,46 +14,35 @@
  *   doc/doc-tech/13-struct-interaction-and-categories.md (build categories)
  *   doc/doc-tech/03-hooks-reference.md                (hook ids)
  */
-import { MOD_ID, type ModConfig, type RecipeOutputEntry } from "../constants.ts";
-import {
-    composeInteraction,
-    DATA_FIELD_MODES,
-    INTERACTION_KINDS,
-    splitInteraction,
-    TOOLTIP_KINDS,
-} from "./interaction.ts";
+import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
-import {
-    advField,
-    autoGraphicsKey,
-    boolField,
-    DESC_MAX,
-    idField,
-    NAME_MAX,
-    numField,
-    PASSTHROUGH_KEY,
-    passthroughKeysOf,
-    resolveAutoFill,
-    spriteIdField,
-    textField,
-} from "./definition/fields.ts";
+import {} from "./definition/fields.ts";
+import { behaviorDefinition } from "./definition/behavior.ts";
+import { contactDefinition } from "./definition/contact.ts";
 import { elementDefinition } from "./definition/element.ts";
+import { energyDefinition } from "./definition/energy.ts";
+import { excavationDefinition } from "./definition/excavation.ts";
+import { inputDefinition } from "./definition/input.ts";
+import { interactionDefinition } from "./definition/interaction.ts";
 import { itemDefinition } from "./definition/item.ts";
-import {
-    composeTooltipHover,
-    describeShape,
-    emptyShape,
-    normalizeShape,
-    parseBuildModes,
-    shapeToText,
-    structureDefinition,
-} from "./definition/structure.ts";
+import { modifierDefinition } from "./definition/modifier.ts";
+import { networkDefinition } from "./definition/network.ts";
+import { processingDefinition } from "./definition/processing.ts";
+import { projectileDefinition } from "./definition/projectile.ts";
+import { recipeDefinition } from "./definition/recipe.ts";
+import { signalDefinition } from "./definition/signal.ts";
+import { spriteDefinition } from "./definition/sprite.ts";
+import { structureDefinition } from "./definition/structure.ts";
 import { terrainDefinition } from "./definition/terrain.ts";
+import { techDefinition } from "./definition/tech.ts";
+import { triggerDefinition } from "./definition/trigger.ts";
+import { unlockNodeDefinition } from "./definition/unlock-node.ts";
+import { upgradeDefinition } from "./definition/upgrade.ts";
+import { upgradeCategoryDefinition } from "./definition/upgrade-category.ts";
 import {
     formatIdList,
     HEX,
     parseIdList,
-    parseObjectOrUndefined,
     readerFor,
     safeJson,
     writerFor,
@@ -89,37 +78,7 @@ export {
 } from "./definition/structure.ts";
 export { autoGraphicsKey, resolveAutoFill } from "./definition/fields.ts";
 export { PASSTHROUGH_KEY, passthroughKeysOf } from "./definition/fields.ts";
-import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../hooks/handler-registry.ts";
-import {
-    listAnyHandlerKeys,
-    listContactOrientation,
-    listCurrencyTypes,
-    listDescribedProcessorKeys,
-    listDrawFunctions,
-    listElements,
-    listEnergyNetworkOpts,
-    listHandlerKeys,
-    listHookIds,
-    listItems,
-    listKeyCodes,
-    listLinkedClearance,
-    listOutputTargets,
-    listProcessorKeys,
-    listProjectileHandlerKeys,
-    listRecipeMachines,
-    listSignalHandlerKeys,
-    listSpriteIds,
-    listStructureCategories,
-    listStructures,
-    listTechBranches,
-    listTechIds,
-    listTriggerHandlerKeys,
-    listUnlockNodes,
-    listUpgradeCategoryIds,
-    listUpgradeHandlerKeys,
-    type Opt,
-    searchLibraryAssets,
-} from "../catalog.ts";
+import { type Opt, searchLibraryAssets } from "../catalog.ts";
 
 // ── Categories & groups ──────────────────────────────────────────────────────
 
@@ -456,16 +415,6 @@ export {
     variantsToHexList,
 } from "./definition/element.ts";
 
-function elSelect(
-    key: string,
-    label: string,
-    section: string,
-    required = false,
-    hint?: string,
-): FieldSpec {
-    return { key, label, kind: "select", section, required, options: listElements, hint };
-}
-
 // ── Per-category field lists ────────────────────────────────────────────────
 
 /**
@@ -477,962 +426,24 @@ function elSelect(
  * record is what makes that one-step move expressible in the type system rather
  * than only in someone's memory.
  */
-const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
-    recipes: [
-        idField(),
-        {
-            key: "machine",
-            label: "Machine",
-            kind: "select",
-            section: "Recipe",
-            required: true,
-            options: listRecipeMachines,
-            def: "smelter",
-            hint: "only these 8 ids are accepted by the engine",
-        },
-        elSelect("input", "Input element", "Recipe", true),
-        {
-            key: "outputElement",
-            label: "Output element",
-            kind: "select",
-            section: "Outputs",
-            required: true,
-            options: listElements,
-            when: (f) => f.machine === "planterBox",
-        },
-        numField("outputChance", "Output chance", "Outputs", {
-            min: 0,
-            max: 1,
-            step: 0.05,
-            int: false,
-            def: "1",
-            when: (f) => f.machine === "planterBox",
-        }),
-        {
-            key: "outputs",
-            label: "Outputs (element + chance)",
-            kind: "outputs",
-            section: "Outputs",
-            required: true,
-            wide: true,
-            when: (f) => f.machine !== "planterBox" && f.machine !== "shaker",
-            hint: "chance 0–1, max 255 rows",
-        },
-        {
-            key: "outputsAbove",
-            label: "Outputs above",
-            kind: "outputs",
-            section: "Outputs",
-            required: true,
-            wide: true,
-            when: (f) => f.machine === "shaker",
-            hint: "dropped on top of the shaker",
-        },
-        {
-            key: "outputsBelow",
-            label: "Outputs below",
-            kind: "outputs",
-            section: "Outputs",
-            required: true,
-            wide: true,
-            when: (f) => f.machine === "shaker",
-            hint: "dropped below the shaker",
-        },
-        numField("minVelocity", "Min downward velocity", "Outputs", {
-            required: true,
-            min: 0,
-            max: 10000,
-            def: "20",
-            when: (f) => f.machine === "kineticPress",
-            hint: "cells per second the input must fall at",
-        }),
-        advField(),
-    ],
-    processing: [
-        idField(),
-        {
-            // api.structures.processing.register(id, { structureType, intervalMs, process }).
-            // There is NO "single instance" mode — the definition is keyed by
-            // *structure type*, so the old mode/structureId pair was invented.
-            key: "structureType",
-            label: "Structure type",
-            kind: "select",
-            section: "Target",
-            required: true,
-            options: listStructures,
-            hint: "process() runs for every placed instance of this structure type",
-        },
-        numField("intervalMs", "Interval (ms)", "Timing", {
-            required: true,
-            min: 16,
-            max: 60000,
-            def: "1000",
-            hint: "must be > 0 — how often the callback fires per instance",
-        }),
-        {
-            key: "handlerKey",
-            label: "Process handler",
-            kind: "select",
-            section: "Timing",
-            required: true,
-            options: listDescribedProcessorKeys,
-            hint: "process(structure, context) is code — JSON can't store callbacks, pick a preset",
-        },
-        advField(),
-    ],
-    contacts: [
-        idField(),
-        elSelect("inputA", "Input A", "Reaction", true),
-        elSelect("inputB", "Input B", "Reaction", true),
-        {
-            key: "outputA",
-            label: "Output A",
-            kind: "select",
-            section: "Reaction",
-            required: true,
-            options: listOutputTargets,
-            hint: "what input A becomes (∅ = consumed)",
-        },
-        {
-            key: "outputB",
-            label: "Output B",
-            kind: "select",
-            section: "Reaction",
-            required: true,
-            options: listOutputTargets,
-            hint: "what input B becomes (∅ = consumed)",
-        },
-        {
-            key: "orientation",
-            label: "Orientation",
-            kind: "select",
-            section: "Reaction",
-            required: true,
-            def: "any",
-            options: listContactOrientation,
-        },
-    ],
-    interactions: [
-        idField(),
-        elSelect("elementId", "Element", "Target", true),
-        // The panel used to be one free JSON box under a label that gave no clue
-        // what it was for. Now it is the `kind` union from `elements.d.ts`, with
-        // only the fields the chosen kind actually has.
-        {
-            key: "interactionKind",
-            label: "What kind of interaction",
-            kind: "select",
-            section: "What it does",
-            required: true,
-            options: INTERACTION_KINDS.map((k) => ({ value: k.kind, label: k.label })),
-            hint: "this is the tooltip shown when you hold a tool over this element",
-        },
-        {
-            key: "structures",
-            label: "Structures",
-            kind: "multiselect",
-            section: "What it does",
-            options: listStructures,
-            emptyHint: "add a Structure first — there is nothing this can point at yet.",
-            when: (f) => f.interactionKind === "structure",
-            hint: "the machines this element interacts with",
-        },
-        {
-            key: "destroyerItems",
-            label: "Items it destroys",
-            kind: "multiselect",
-            section: "What it does",
-            options: listItems,
-            emptyHint: "add an Item first — there is nothing this could destroy yet.",
-            when: (f) => f.interactionKind === "destroyer",
-        },
-        {
-            // There is no entity registry to enumerate, so unlike the two above
-            // this one really is free text. It is the only reference field in the
-            // form that is, and the hint says why.
-            key: "entities",
-            label: "Entity types",
-            kind: "text",
-            section: "What it does",
-            when: (f) => f.interactionKind === "entity",
-            placeholder: "enemy, drone",
-            maxLength: 200,
-            hint: "comma-separated. The engine exposes no entity list to pick from.",
-        },
-        textField("tipTextKey", "Tooltip text key (i18n)", "Tooltip", false, {
-            placeholder: "mods|example|acid|interaction",
-            maxLength: 120,
-            when: (f) => TOOLTIP_KINDS.includes(f.interactionKind as never),
-        }),
-        {
-            key: "tipVisibility",
-            label: "When to show it",
-            kind: "select",
-            section: "Tooltip",
-            options: DATA_FIELD_MODES,
-            when: (f) => TOOLTIP_KINDS.includes(f.interactionKind as never),
-        },
-        numField("tipDataField", "Data field number", "Tooltip", {
-            min: 1,
-            max: 4,
-            int: true,
-            when: (f) =>
-                TOOLTIP_KINDS.includes(f.interactionKind as never) &&
-                (f.tipVisibility === "visibleWhen" || f.tipVisibility === "crossedOutWhen"),
-            hint: "1–4; matches the data field a structure writes",
-        }),
-        numField("tipDataFieldEquals", "Equals", "Tooltip", {
-            min: 0,
-            max: 255,
-            int: true,
-            when: (f) =>
-                TOOLTIP_KINDS.includes(f.interactionKind as never) &&
-                (f.tipVisibility === "visibleWhen" || f.tipVisibility === "crossedOutWhen"),
-        }),
-        {
-            key: "tipOnlyWhenTranslated",
-            label: "Only if translated",
-            kind: "bool",
-            section: "Tooltip",
-            def: "false",
-            hint: "hide the label rather than showing raw text when the key has no translation",
-        },
-        {
-            // Not offered as a control. Kept in the round trip so a stored
-            // descriptor — or one with a field this form does not model —
-            // survives a save byte for byte. Only rendered when the stored
-            // object really does hold something this panel cannot show.
-            key: "interactionJson",
-            label: "Fields this panel does not show",
-            kind: "json",
-            section: "Advanced",
-            jsonType: "object",
-            wide: true,
-            when: (f) => splitInteraction(parseObjectOrUndefined(f.interactionJson)).unmodelled,
-            hint:
-                "carried through untouched — edit only to set a field this panel has no control for",
-        },
-    ],
-
-    unlockNodes: [
-        idField(),
-        textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
-        {
-            // Ours, not the engine's. "always" stays mod-owned and needs no
-            // research; "tech" builds a real in-game tech node at apply time.
-            key: "kind",
-            label: "Kind",
-            kind: "select",
-            section: "Identity",
-            required: true,
-            def: "always",
-            options: [
-                { value: "always", label: "always — available from the start" },
-                { value: "tech", label: "tech — a real research step in the game's tech tree" },
-            ],
-            hint: "a tech node is a real research step in the game's tech tree",
-        },
-        {
-            // The borrow is exclusive: an engine tech keeps its own definition,
-            // so a cost typed alongside it would be a second source for the same
-            // node. Rendered as a toggle because that is the decision being made
-            // — build a node, or use one that is already in the tree.
-            key: "useExistingTech",
-            label: "Reuse an engine tech",
-            kind: "bool",
-            section: "Node",
-            def: "false",
-            hint: "off: this node builds its own tech. on: it borrows one already in the tree.",
-        },
-        {
-            key: "techId",
-            label: "Engine tech to reuse",
-            kind: "select",
-            section: "Node",
-            when: (f) => f.kind === "tech" && f.useExistingTech === "true",
-            options: (f) => listTechIds(f.idSuffix),
-            emptyHint: "add a Tech first — there is nothing to borrow.",
-            hint: "several nodes can sit behind the same research step",
-        },
-        numField("cost", "Cost", "Research", {
-            min: 0,
-            max: 999999,
-            def: "100",
-            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
-        }),
-        {
-            key: "currencyType",
-            label: "Currency",
-            kind: "select",
-            section: "Research",
-            options: listCurrencyTypes,
-            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
-            hint: "TechDefinition.currencyType — a free string in the engine",
-        },
-        {
-            key: "currencyTypeCustom",
-            label: "Currency id",
-            kind: "text",
-            section: "Research",
-            when: (f) => f.currencyType === "__custom__",
-            placeholder: "coins",
-            maxLength: 32,
-            pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
-            patternMsg: "lowercase id (a-z 0-9 . _ -)",
-        },
-        {
-            key: "branch",
-            label: "Branch",
-            kind: "select",
-            section: "Research",
-            options: listTechBranches,
-            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
-            hint: "TechDefinition.branch — usually copied from the parent node",
-        },
-        {
-            key: "branchCustom",
-            label: "Branch id",
-            kind: "text",
-            section: "Research",
-            when: (f) => f.branch === "__custom__",
-            placeholder: "industry",
-            maxLength: 32,
-            pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
-            patternMsg: "lowercase id (a-z 0-9 . _ -)",
-        },
-        {
-            key: "parentId",
-            label: "Parent node",
-            kind: "select",
-            section: "Research",
-            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
-            options: (f) => listTechIds(f.idSuffix),
-            emptyHint: "add another Tech first — a node cannot be its own parent.",
-            hint: "without one the tech is never placed in the grid and cannot be bought",
-        },
-        {
-            key: "requires",
-            label: "Requires",
-            kind: "multiselect",
-            section: "Research",
-            when: (f) => f.kind === "tech" && f.useExistingTech !== "true",
-            options: (f) => listTechIds(f.idSuffix),
-            emptyHint: "add another Tech first — a node cannot require itself.",
-            hint: "other research that must be done first",
-        },
-        textField("description", "Description", "Identity", false, { maxLength: DESC_MAX }),
-        {
-            // Read-only in the form's terms: the link lives on each structure, and
-            // this is the reverse view of it. Declared so the graph can show what a
-            // node holds back — see the `gatesStructures` row in relations.ts.
-            key: "gatesStructures",
-            label: "Structures it unlocks",
-            kind: "multiselect",
-            section: "Identity",
-            options: listStructures,
-            emptyHint: "no structure points at this node yet.",
-            hint:
-                "derived — set it on each structure, not here. Shown so you can see what rides on this node.",
-        },
-        advField(),
-    ],
-    techs: [
-        idField(),
-        textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
-        numField("cost", "Cost", "Research", { required: true, min: 0, max: 999999, def: "100" }),
-        // `currencyType` / `branch` are plain strings in TechDefinition — there is
-        // no CurrencyType or Branch enum to read. Offering a picker anyway stops
-        // typos reaching the engine, while "__custom__" keeps custom values legal.
-        {
-            key: "currencyType",
-            label: "Currency",
-            kind: "select",
-            section: "Research",
-            options: listCurrencyTypes,
-            hint: "TechDefinition.currencyType — a free string in the engine",
-        },
-        {
-            key: "currencyTypeCustom",
-            label: "Currency id",
-            kind: "text",
-            section: "Research",
-            when: (f) => f.currencyType === "__custom__",
-            placeholder: "coins",
-            maxLength: 32,
-            pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
-            patternMsg: "lowercase id (a-z 0-9 . _ -)",
-        },
-        {
-            key: "branch",
-            label: "Branch",
-            kind: "select",
-            section: "Research",
-            options: listTechBranches,
-            hint: "TechDefinition.branch — usually copied from the parent node",
-        },
-        {
-            key: "branchCustom",
-            label: "Branch id",
-            kind: "text",
-            section: "Research",
-            when: (f) => f.branch === "__custom__",
-            placeholder: "industry",
-            maxLength: 32,
-            pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
-            patternMsg: "lowercase id (a-z 0-9 . _ -)",
-        },
-        {
-            key: "parentId",
-            label: "Parent node",
-            kind: "select",
-            section: "Research",
-            options: (f) => listTechIds(f.idSuffix),
-            hint: "feeds registerNode(techId, def, { parentId }) — grids this node under a parent",
-        },
-        {
-            key: "requires",
-            label: "Requires",
-            kind: "multiselect",
-            section: "Research",
-            options: (f) => listTechIds(f.idSuffix),
-            emptyHint: "add another Tech first — a node cannot require itself.",
-            hint: "TechDefinition.requires — a node can never require itself",
-        },
-        textField("description", "Description", "Research", false, {
-            maxLength: DESC_MAX,
-        }),
-        textField("descriptionKey", "Description key (i18n)", "Research", false, {
-            placeholder: "mods|example|tech|desc",
-            maxLength: 120,
-            hint: "used when no plain description is set",
-        }),
-        {
-            // TechDefinition.unlocks = { structures?: string[], items?: string[] }.
-            // This is the declarative route — no handler needed. It is also the
-            // ONLY route: there is no per-structure "unlockedBy" field.
-            key: "unlockStructures",
-            label: "Unlocks structures",
-            kind: "multiselect",
-            section: "Unlocks",
-            options: listStructures,
-            emptyHint: "add a Structure first — or tick Always unlocked on the structure itself.",
-            hint: "researching this node makes these buildable",
-        },
-        {
-            key: "unlockItems",
-            label: "Unlocks items",
-            kind: "multiselect",
-            section: "Unlocks",
-            options: listItems,
-            emptyHint: "add an Item first — there is nothing this node can grant yet.",
-            hint: "items granted when the research completes",
-        },
-        advField(),
-    ],
-    categories: [
-        idField(),
-        {
-            // api.upgrades.registerCategory({ id, name?, nameKey?, requirement? })
-            // The engine guard is: if (!t.id || !t.name && !t.nameKey) throw
-            // so at least one of `name` / `nameKey` must be set. This field is
-            // not marked `required` on its own — that would reject a category
-            // that supplies only a name key. The rule is enforced by the
-            // cross-field check in validateForm instead.
-            key: "name",
-            label: "Display name",
-            kind: "text",
-            section: "Identity",
-            maxLength: NAME_MAX,
-            hint: "needed unless a name key is set — the engine throws without one",
-        },
-        textField("nameKey", "Name key (i18n)", "Identity", false, {
-            placeholder: "mods|example|category|name",
-            maxLength: 120,
-        }),
-        {
-            // `upgrades.registerCategory` stores this verbatim as
-            // `mods.upgradeCategories[id].requirement`, and a grep of the whole
-            // repo finds nothing that reads it. No shipped mod sets it either.
-            //
-            // So it is offered as a tech id — the only shape a mod would
-            // plausibly mean by "requirement" — but labelled as a pass-through
-            // the engine stores and never uses, rather than dressed up as a
-            // feature. The raw box stays as the honest escape hatch.
-            key: "requirementTechId",
-            label: "Requirement (stored only)",
-            kind: "select",
-            section: "Identity",
-            options: (f) => listTechIds(f.idSuffix),
-            emptyHint: "add a Tech first — there is nothing to point at.",
-            hint:
-                "the engine stores this and never reads it, so nothing happens either way. Set it only if you know your build consumes it.",
-        },
-        {
-            key: "requirementJson",
-            label: "Requirement (raw)",
-            kind: "json",
-            section: "Advanced",
-            jsonType: "object",
-            wide: true,
-            when: (f) => f.requirementTechId === "__custom__",
-            hint: "for a shape other than a tech id — stored verbatim, and equally unread",
-        },
-        advField(),
-    ],
-    inputs: [
-        idField(),
-        // api.input.registerBinding(bindingId, defaultKeys, definition)
-        textField("displayName", "Display name", "Identity", true, { maxLength: NAME_MAX }),
-        textField("displayNameKey", "Display name key (i18n)", "Identity", false, {
-            placeholder: "mods|example|toggle",
-            maxLength: 120,
-            hint: "overrides the display name when set",
-        }),
-        textField("category", "Settings category", "Identity", true, {
-            maxLength: NAME_MAX,
-            def: "Mod controls",
-            hint: "grouping heading in the game's settings screen",
-        }),
-        {
-            // KeyCode is a LooseString union, so this is a picker that offers
-            // suggestions rather than a closed list — chords like
-            // "Control+KeyC" are valid and cannot be enumerated ahead of time.
-            key: "defaultKeys",
-            label: "Default keys",
-            kind: "multiselect",
-            section: "Binding",
-            options: listKeyCodes,
-            emptyHint:
-                "no suggested keys are available from the host yet; the binding will start unbound.",
-            hint: "chords like Control+KeyC are allowed",
-        },
-        {
-            key: "onDownKey",
-            label: "Press handler",
-            kind: "select",
-            section: "Binding",
-            options: listAnyHandlerKeys,
-            hint: `runs when the key goes down. ${typesHintFor(() => listAnyHandlerKeys())}`,
-        },
-        {
-            key: "onUpKey",
-            label: "Release handler",
-            kind: "select",
-            section: "Binding",
-            options: listAnyHandlerKeys,
-            hint: `runs when the key comes back up. ${typesHintFor(() => listAnyHandlerKeys())}`,
-        },
-        {
-            key: "subsectionJson",
-            label: "Subsection",
-            kind: "json",
-            section: "Identity",
-            jsonType: "object",
-            wide: true,
-            hint: "optional settings group: { title, titleKey, description, descriptionKey }",
-        },
-        advField(),
-    ],
-    upgrades: [
-        idField(),
-        {
-            // api.upgrades.register({ itemId, categoryId, upgrade: { id, maxLevel, costs, oneOff? } })
-            // The payload is NESTED under `upgrade` — the old flat guess was wrong.
-            key: "itemId",
-            label: "Item",
-            kind: "select",
-            section: "Upgrade",
-            required: true,
-            options: listItems,
-        },
-        {
-            // Not a label, a reference — which is why it is a picker and not a text
-            // box whose hint told you to go and look the id up somewhere else.
-            //
-            // `api.upgrades.registerCategory` is write-only: there is no
-            // `listCategories` to call, so the game may well hold categories we
-            // have never heard of. The picker offers what we *do* know plus
-            // `__custom__`, and the hint says so — an unlabelled escape hatch reads
-            // as an oversight, a labelled one is a documented boundary.
-            key: "categoryId",
-            label: "Category",
-            kind: "select",
-            section: "Upgrade",
-            def: "tools",
-            options: listUpgradeCategoryIds,
-            hint: "must be a category the game knows. “custom” is for one it has and we " +
-                "cannot list — api.upgrades has no way to read them back.",
-        },
-        textField("itemNameKey", "Item name key (i18n)", "Upgrade", false, {
-            placeholder: "mods|example|item|name",
-            maxLength: 120,
-            hint: "overrides the parent item's own display name in the upgrade list",
-        }),
-        textField("upgradeNameKey", "Name key (i18n)", "Upgrade", false, {
-            placeholder: "mods|example|upgrade|name",
-            maxLength: 120,
-        }),
-        textField("upgradeId", "Upgrade id", "Upgrade", true, {
-            def: "lvl2",
-            pattern: "^[a-z0-9][a-z0-9._-]{0,31}$",
-            patternMsg: "lowercase id (a-z 0-9 . _ -)",
-            hint: "upgrade.id — read it back with api.upgrades.getLevelById(itemId, this)",
-        }),
-        numField("maxLevel", "Max level", "Upgrade", {
-            required: true,
-            min: 1,
-            max: 100,
-            def: "3",
-        }),
-        {
-            // costs is number[] — one entry per level, priced in gold.
-            key: "costsJson",
-            label: "Costs per level",
-            kind: "json",
-            section: "Upgrade",
-            jsonType: "array",
-            required: true,
-            wide: true,
-            hint: "one number per level, e.g. [100, 250, 500]",
-            placeholder: "[100, 250, 500]",
-        },
-        boolField("oneOff", "One-off", "Upgrade", "false", "can only be bought once"),
-        {
-            key: "onUpgradeKey",
-            label: "On upgrade handler",
-            kind: "select",
-            section: "Upgrade",
-            options: listUpgradeHandlerKeys,
-            hint: "optional code callback run when a level is bought",
-        },
-        advField(),
-    ],
-    signals: [
-        idField(),
-        {
-            key: "kind",
-            label: "Kind",
-            kind: "select",
-            section: "Signal",
-            required: true,
-            def: "interactables",
-            options: [
-                { value: "interactables", label: "interactables — structure click" },
-                { value: "targets", label: "targets — signal receiver" },
-                { value: "senderType", label: "senderType — signal sender" },
-            ],
-        },
-        {
-            key: "target",
-            label: "Target structure",
-            kind: "select",
-            section: "Signal",
-            required: true,
-            options: listStructures,
-        },
-        {
-            key: "handlerKey",
-            label: "Handler",
-            kind: "select",
-            section: "Signal",
-            required: true,
-            options: listSignalHandlerKeys,
-            hint: "code callback — without it the entry is stored but never attached",
-        },
-    ],
-    triggers: [
-        idField(),
-        numField("interval", "Interval (ticks)", "Timing", {
-            required: true,
-            min: 1,
-            max: 100000,
-            def: "60",
-        }),
-        numField("sequentialRuns", "Runs per fire", "Timing", { min: 1, max: 1000, def: "1" }),
-        {
-            key: "handlerKey",
-            label: "Handler",
-            kind: "select",
-            section: "Timing",
-            required: true,
-            options: listTriggerHandlerKeys,
-        },
-        {
-            key: "extraJson",
-            label: "Extra payload",
-            kind: "json",
-            section: "Timing",
-            jsonType: "object",
-            wide: true,
-            placeholder: "{ }",
-        },
-    ],
-
-    behaviors: [
-        idField(),
-        {
-            key: "kind",
-            label: "Kind",
-            kind: "select",
-            section: "Behaviour",
-            required: true,
-            def: "conveyor",
-            options: [
-                { value: "conveyor", label: "conveyor" },
-                { value: "launcher", label: "launcher" },
-            ],
-            hint: "which simulation pass this joins — there is no third one",
-        },
-        // The structure ids live inside `definition` because that is the shape
-        // the engine wants, but each is its own control here and each is merged
-        // in on the way out. A conveyor is registered against a single structure
-        // (`definition.id`); a launcher against three, under exactly the names the
-        // engine uses.
-        {
-            key: "structureId",
-            label: "Structure",
-            kind: "select",
-            section: "Behaviour",
-            required: true,
-            when: (f) => f.kind !== "launcher",
-            options: listStructures,
-        },
-        {
-            key: "upType",
-            label: "Up structure",
-            kind: "select",
-            section: "Behaviour",
-            required: true,
-            when: (f) => f.kind === "launcher",
-            options: listStructures,
-        },
-        {
-            key: "leftType",
-            label: "Left structure",
-            kind: "select",
-            section: "Behaviour",
-            required: true,
-            when: (f) => f.kind === "launcher",
-            options: listStructures,
-        },
-        {
-            key: "rightType",
-            label: "Right structure",
-            kind: "select",
-            section: "Behaviour",
-            required: true,
-            when: (f) => f.kind === "launcher",
-            options: listStructures,
-        },
-        {
-            // Whatever the engine reads that the four controls above do not name.
-            // The named ids are merged in on save, and anything typed here wins
-            // over them — so an unmodellable key is still expressible.
-            key: "definitionJson",
-            label: "Rest of the payload",
-            kind: "json",
-            section: "Behaviour",
-            jsonType: "object",
-            wide: true,
-            hint:
-                "everything else, forwarded to structureBehaviors.register*. The structure ids above are merged in; anything here wins over them.",
-            placeholder: "{ }",
-        },
-    ],
-    energy: [
-        idField(),
-        {
-            key: "structureId",
-            label: "Structure",
-            kind: "select",
-            section: "Energy",
-            required: true,
-            options: listStructures,
-        },
-        {
-            // api.energy.registerType(structureId, type, options?) accepts exactly
-            // two roles: "conductor" (forwards energy) and "storage" (holds it).
-            // There is no producer/consumer role — producing or consuming energy is
-            // done by a processor handler calling addAtCell / consume.
-            key: "type",
-            label: "Role",
-            kind: "select",
-            section: "Energy",
-            required: true,
-            def: "storage",
-            options: [
-                { value: "storage", label: "storage — holds energy (needs a capacity)" },
-                { value: "conductor", label: "conductor — forwards energy, holds nothing" },
-            ],
-        },
-        numField("capacity", "Capacity", "Energy", {
-            min: 0,
-            max: 1_000_000,
-            def: "1000",
-            when: (f) => f.type === "storage",
-            hint: "max energy this node can hold (api.energy.registerType options.capacity)",
-        }),
-        {
-            // A closed set in the engine, but one the game gives us no way to
-            // enumerate — `options.energyType` is a bare string and nothing in the
-            // api lists the channels. That is exactly why this is a picker over
-            // *our* config plus the engine's own default: a typo here registers
-            // cleanly and the node then never joins anything, looking configured
-            // and doing nothing.
-            key: "energyType",
-            label: "Network",
-            kind: "select",
-            section: "Energy",
-            options: listEnergyNetworkOpts,
-            hint: 'options.energyType — which network to join. The engine\'s default is "power".',
-        },
-        numField("priority", "Priority", "Energy", {
-            min: 0,
-            max: 1000,
-            def: "0",
-            when: () => true,
-            hint: "network priority (only read by the engine if it supports it)",
-        }),
-        advField(),
-    ],
-    networks: [
-        idField(),
-        textField("name", "Display name", "Identity", false, {
-            maxLength: DESC_MAX,
-            hint: "optional — shown in this list; the engine only ever sees the id",
-        }),
-        advField(),
-    ],
-    excavation: [
-        idField(),
-        numField("power", "Power", "Profile", { required: true, min: 0, max: 1000, def: "10" }),
-        {
-            key: "patternJson",
-            label: "Pattern",
-            kind: "json",
-            section: "Profile",
-            required: true,
-            jsonType: "matrix",
-            wide: true,
-            hint: "cells removed per dig — 1 = dug, 0 = kept",
-            placeholder: "[[1, 1], [1, 1]]",
-        },
-        {
-            key: "terrainRulesJson",
-            label: "Terrain rules",
-            kind: "terrainRules",
-            section: "Profile",
-            wide: true,
-            hint:
-                "per-terrain dig behaviour: which terrain matches, how much damage, what it drops",
-        },
-        {
-            key: "optionsJson",
-            label: "Options",
-            kind: "json",
-            section: "Profile",
-            jsonType: "object",
-            wide: true,
-            hint: "{ fromGun?, fromDrill?, drillTierDamage? (0–1000), forceRemoveAll?, … }",
-            placeholder: '{ "fromDrill": true }',
-        },
-    ],
-    projectiles: [
-        idField(),
-        {
-            key: "spriteId",
-            label: "Sprite",
-            kind: "select",
-            section: "Look",
-            required: true,
-            options: listSpriteIds,
-        },
-        {
-            key: "getOptionsKey",
-            label: "Options handler",
-            kind: "select",
-            section: "Look",
-            options: listProjectileHandlerKeys,
-            hint: "dynamic options factory (optional) — overrides the static options below",
-        },
-        {
-            key: "optionsJson",
-            label: "Static options",
-            kind: "json",
-            section: "Look",
-            jsonType: "object",
-            wide: true,
-            when: (f) => f.getOptionsKey === "",
-            hint: "{ speed?, rotateWithVelocity?, tint?, … }",
-            placeholder: '{ "speed": 10 }',
-        },
-    ],
-    sprites: [
-        spriteIdField(),
-        {
-            key: "path",
-            label: "Bundled asset",
-            kind: "library",
-            section: "File",
-            required: true,
-            wide: true,
-            autoKey: "idSuffix",
-            placeholder: "search icons by name…",
-            hint: "pick a PNG from assets/icons/ — the path is filled in for you",
-        },
-        boolField("fromMod", "Load from mod folder", "File", "true"),
-    ],
-    modifiers: [
-        idField(),
-        {
-            key: "hookId",
-            label: "Engine hook",
-            kind: "select",
-            section: "Hook",
-            required: true,
-            options: listHookIds,
-            hint: "documented hooks only — see doc-tech/03",
-        },
-        textField("hookCustom", "Custom hook id", "Hook", true, {
-            when: (f) => f.hookId === "__custom__",
-            pattern: "^[a-z][a-z0-9]*(:[a-zA-Z0-9]+)+$",
-            patternMsg: "e.g. element:update",
-        }),
-        {
-            key: "kind",
-            label: "Mode",
-            kind: "select",
-            section: "Hook",
-            required: true,
-            def: "intercept",
-            options: [
-                { value: "intercept", label: "intercept — observe, can cancel" },
-                { value: "modify", label: "modify — transform the value" },
-            ],
-        },
-        {
-            key: "handlerKey",
-            label: "Code handler",
-            kind: "select",
-            section: "Hook",
-            required: true,
-            options: listHandlerKeys,
-            hint: "defined in src/hooks/handlers.ts",
-        },
-        boolField("enabled", "Enabled", "Hook", "true"),
-        textField("notes", "Notes", "Hook", false, { maxLength: 120 }),
-    ],
-    /** The handlers tab renders its own body from the typed registry. */
-    handlers: [],
-    json: [],
-    // `draws`, `help` and `map` render their own bodies rather than a form:
-    // a draw function is code the engine calls, not an entry anything creates.
-    // `fieldsFor("draws")` being empty is the assertion that keeps a "New" button
-    // from ever appearing there.
-    draws: [],
-    help: [],
-    map: [],
-};
+/**
+ * Field lists for every tab that has not been split into its own definition.
+ *
+ * Empty now, and that is the end state rather than a leftover. The five tabs that
+ * used to be listed here render their own body rather than a form: a handler or
+ * a draw function is code the engine calls, not an entry anything creates, and
+ * `json`, `map` and `help` are raw views over stored config.
+ *
+ * They are absent rather than explicitly empty because a tab with no definition
+ * already resolves to no fields — and `fieldsFor("draws")` coming back empty is
+ * the assertion that keeps a "New" button from ever appearing there.
+ *
+ * Kept as an empty record rather than deleted, because `fieldsFor` reads it and
+ * the fallback is what makes a definition-less tab return nothing rather than
+ * throw. An empty `FIELDS` is now the honest summary: every object is defined
+ * elsewhere.
+ */
+const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1440,21 +451,6 @@ const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {
 //
 // Encoding lives in `parseIdList` / `formatIdList` above; a `multiselect` field
 // is a comma-separated string in the form and a real `string[]` in the entry.
-
-/**
- * Name the handler types a slot accepts, for the slot's own hint.
- *
- * The pickers already filter to legal handlers, so the dropdown is never wrong —
- * but a short list with no explanation reads as a bug. This turns the filter
- * into a sentence, at the point where the user is actually choosing.
- */
-function typesHintFor(pick: () => Opt[]): string {
-    const types = handlerTypesForKeys(pick().map((o) => o.value));
-    if (types.length === 0) {
-        return "No handler serves this slot.";
-    }
-    return `Accepts: ${types.map((t) => HANDLER_TYPE_LABELS[t]).join(", ")}.`;
-}
 
 export function resolveOptions(f: FieldSpec, form: Record<string, string> = {}): Opt[] {
     if (!f.options) return [];
@@ -1535,43 +531,6 @@ function parseJsonRaw(raw: string): { ok: boolean; value?: unknown; error?: stri
     }
 }
 
-function validateMatrix(value: unknown): string | null {
-    if (!Array.isArray(value) || value.length === 0) return "must be a non-empty array of rows";
-    const width = Array.isArray(value[0]) ? value[0].length : -1;
-    if (width <= 0) return "rows must be non-empty arrays";
-    for (const row of value) {
-        if (!Array.isArray(row)) return "every row must be an array";
-        if (row.length !== width) return "rows must all be the same length";
-        for (const cell of row) {
-            if (cell !== 0 && cell !== 1) return "cells must be 0 or 1";
-        }
-    }
-    return null;
-}
-
-function validateOutputs(raw: string): string | null {
-    const parsed = parseJsonRaw(raw);
-    if (!parsed.ok) return parsed.error ?? "invalid JSON";
-    const rows = parsed.value;
-    if (!Array.isArray(rows)) return "must be an array of { elementType, chance }";
-    if (rows.length === 0) return "add at least one output";
-    if (rows.length > 255) return "max 255 outputs";
-    for (const row of rows) {
-        if (!row || typeof row !== "object") return "rows must be objects";
-        const r = row as { elementType?: unknown; chance?: unknown };
-        if (typeof r.elementType !== "string" || !r.elementType.trim()) {
-            return "every row needs an element";
-        }
-        if (
-            typeof r.chance !== "number" || !Number.isFinite(r.chance) || r.chance < 0 ||
-            r.chance > 1
-        ) {
-            return "chance must be a number 0–1";
-        }
-    }
-    return null;
-}
-
 /** Validate one field against the form. Returns an error message or null. */
 function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): string | null {
     if (!isActive(f, form)) return null;
@@ -1580,12 +539,17 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
     if (f.kind === "bool") return null;
 
     if (!raw) {
-        if (f.required) return f.kind === "outputs" ? "add at least one output" : "required";
-        return null;
+        // A definition may have something to say about an *empty* value too —
+        // an `outputs` list that is required but empty is not merely "required",
+        // it is missing its one row. So the definition is asked before the
+        // generic "required", which would otherwise answer first and pre-empt it.
+        const empty = cat === undefined ? undefined : definitionFor(cat)?.validateField?.(f, raw);
+        if (empty !== undefined) return empty;
+        return f.required ? "required" : null;
     }
 
     // A definition owns the validation of its own field kinds. Asked first, so
-    // adding a structure-only kind never means adding a case here.
+    // adding a recipe-only kind never means adding a case here.
     const own = cat === undefined ? undefined : definitionFor(cat)?.validateField?.(f, raw);
     if (own !== undefined) return own;
 
@@ -1630,26 +594,6 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
         }
         case "color":
             return HEX.test(raw) ? null : "use #rrggbb";
-        case "outputs":
-            return validateOutputs(raw);
-        case "terrainRules": {
-            const parsed = parseJsonRaw(raw);
-            if (!parsed.ok) return parsed.error ?? "invalid JSON";
-            if (!Array.isArray(parsed.value)) return "must be a JSON array [ ]";
-            for (const [i, rule] of parsed.value.entries()) {
-                if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
-                    return `rule ${i + 1} must be an object`;
-                }
-                const r = rule as Record<string, unknown>;
-                if (r.cellType === undefined && r.terrainType === undefined) {
-                    return `rule ${i + 1}: pick a terrain`;
-                }
-                if (r.damage !== undefined && !Number.isFinite(Number(r.damage))) {
-                    return `rule ${i + 1}: damage must be a number`;
-                }
-            }
-            return null;
-        }
         case "json": {
             const parsed = parseJsonRaw(raw);
             if (!parsed.ok) return parsed.error ?? "invalid JSON";
@@ -1663,7 +607,9 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
             if (f.jsonType === "array" && !Array.isArray(parsed.value)) {
                 return "must be a JSON array [ ]";
             }
-            if (f.jsonType === "matrix") return validateMatrix(parsed.value);
+            // `jsonType: "matrix"` is checked by the definition that owns the
+            // field — only an excavation profile's `pattern` is a matrix, and
+            // the shape rules belong beside the schema that declares them.
             return null;
         }
         default:
@@ -1679,56 +625,30 @@ export function validateForm(cat: Tab, form: Record<string, string>): Record<str
         if (err) errors[f.key] = err;
     }
     // Cross-field rules belong to the definition that owns the object, so they
-    // travel with it. What is left here is the handful of shared ones that are
-    // not yet split out.
+    // travel with it. Nothing is left here that is not yet split out.
     definitionFor(cat)?.validate?.(form, errors);
-    // The engine guard is `if (!t.id || !t.name && !t.nameKey) throw`, so a
-    // category with neither name fails at registration with nothing to point at.
-    // `name` alone is not marked required, because a name key is equally valid.
-    if (cat === "categories" && !errors.name && !errors.nameKey) {
-        const name = form.name?.trim();
-        const nameKey = form.nameKey?.trim();
-        if (!name && !nameKey) {
-            errors.name = "required unless a name key is set";
-        }
-    }
     return errors;
 }
 
 // ── Form ⇄ entry mapping ─────────────────────────────────────────────────────
-
-/** Coerce an optional form string to a trimmed string ("" → undefined). */
-function opt(form: Record<string, string>, key: string): string | undefined {
-    const v = (form[key] ?? "").trim();
-    return v === "" ? undefined : v;
-}
-
-/** Coerce an optional form string to a number. Invalid → undefined. */
-function optNum(form: Record<string, string>, key: string): number | undefined {
-    const v = (form[key] ?? "").trim();
-    if (v === "" || !NUMERIC.test(v)) return undefined;
-    return Number(v);
-}
-
-/** Coerce an optional form string to a boolean ("true" → true). */
-function optBool(form: Record<string, string>, key: string): boolean | undefined {
-    const v = (form[key] ?? "").trim();
-    if (v === "") return undefined;
-    return v === "true";
-}
+//
+// The coercion helpers below used to live here and were called from each `case`
+// in `formToEntry`. Every tab is a definition now, and each is handed an
+// `EntryWriter` built in `./definition/values.ts` that does the same coercing —
+// so these are gone rather than duplicated. Keeping a second copy would be two
+// places to disagree about what an empty control means, and the writer is the
+// one the definitions actually use.
 
 /**
  * Select values carry sentinels:
  *   ""           → leave unset
  *   "__null__"   → explicit null (engine: "consume this input")
  *   "__custom__" → the companion *Custom text field supplies the value
+ *
+ * The sentinel vocabulary is documented here because the *fields* rely on it —
+ * a `when` compares against `"__custom__"` — while the reading and writing of it
+ * live with whichever object owns the pair.
  */
-function optSel(form: Record<string, string>, key: string): string | number | null | undefined {
-    const v = (form[key] ?? "").trim();
-    if (v === "" || v === "__custom__") return undefined;
-    if (v === "__null__") return null;
-    return v;
-}
 
 /** Parse an optional JSON textarea. Empty/invalid → undefined. */
 function optJson<T>(form: Record<string, string>, key: string): T | undefined {
@@ -1742,28 +662,15 @@ function optJson<T>(form: Record<string, string>, key: string): T | undefined {
 }
 
 /**
- * Load a "picker or custom text" pair into the form.
+ * `putCustomOrSelect` — loading a picker/companion-box pair.
  *
- * When the stored value is not one of the picker's options (hand-edited JSON, or
- * a config saved before the picker existed) the select is switched to
- * `__custom__` and the value is moved into the companion text field, so saving
- * cannot silently drop it.
+ * Re-exported from `./definition/values.ts` for callers that have always
+ * reached for it here. It now lives beside the three definitions that use it
+ * (a tech, an unlock node, a modifier), because the read and the write have to
+ * agree on `__custom__` and splitting a pair across two files is how the
+ * sentinel ends up stored as a value.
  */
-function putCustomOrSelect(
-    form: Record<string, string>,
-    value: string | undefined,
-    selectKey: string,
-    customKey: string,
-    options: Opt[],
-): void {
-    const v = (value ?? "").trim();
-    if (!v) return;
-    if (options.some((o) => o.value === v)) form[selectKey] = v;
-    else {
-        form[selectKey] = "__custom__";
-        form[customKey] = v;
-    }
-}
+export { putCustomOrSelect } from "./definition/values.ts";
 
 /** Default form values for a fresh entry. */
 /**
@@ -1799,68 +706,6 @@ export function newEntryForm(cat: Tab): Record<string, string> {
 }
 
 /** Config keys each form owns; everything else round-trips via advancedJson. */
-const FORM_COVERED: Partial<Record<Tab, string[]>> = {
-    recipes: [
-        "kind",
-        "input",
-        "output",
-        "chance",
-        "outputs",
-        "outputsAbove",
-        "outputsBelow",
-        "minimumDownwardVelocity",
-    ],
-    processing: ["mode", "structureType", "structureId", "intervalMs", "handlerKey"],
-    contacts: ["inputA", "inputB", "outputA", "outputB", "orientation"],
-    interactions: ["elementId", "interaction"],
-    unlockNodes: [
-        "name",
-        "description",
-        "kind",
-        "techId",
-        "cost",
-        "currencyType",
-        "branch",
-        "parentId",
-        "requires",
-    ],
-    techs: [
-        "name",
-        "description",
-        "descriptionKey",
-        "cost",
-        "currencyType",
-        "branch",
-        "parentId",
-        "requires",
-    ],
-    upgrades: ["itemId", "itemNameKey", "categoryId", "upgrade"],
-    // The engine reads `id`, `name`, `nameKey` and `requirement` on a category;
-    // without `id` or a name the registration throws.
-    categories: ["name", "nameKey", "requirement"],
-    inputs: [
-        "displayName",
-        "displayNameKey",
-        "category",
-        "defaultKeys",
-        "onDownKey",
-        "onUpKey",
-        "subsection",
-    ],
-    signals: ["kind", "target", "handlerKey"],
-    triggers: ["triggerId", "interval", "sequentialRuns", "extra", "handlerKey"],
-    // The structure ids are inside `definition`; the four controls are merged
-    // into it on the way out, so it is covered even though the form key is not
-    // one of them.
-    behaviors: ["kind", "behaviorType", "definition"],
-    energy: ["structureId", "type", "options"],
-    networks: ["name"],
-    excavation: ["power", "pattern", "options"],
-    projectiles: ["sprite", "getOptionsKey", "options"],
-    sprites: ["path", "source", "fromMod", "options"],
-    modifiers: ["hookId", "kind", "handlerKey", "enabled", "notes"],
-};
-
 /**
  * The stored keys this form does *not* own, for one entry.
  *
@@ -1882,12 +727,11 @@ export function passthroughKeys(
 
 /** Extra fields not covered by the form, so Edit never silently drops them. */
 function passthroughOf(cat: Tab, entry: Record<string, unknown>): Record<string, unknown> {
-    // The definition owns this list once a tab has been split out, for the same
-    // reason it owns the fields: a form that claims a key and a passthrough that
-    // carries it have to be the same decision, made in the same file.
-    const covered = new Set<string>(
-        definitionFor(cat)?.formCovered ?? FORM_COVERED[cat] ?? [],
-    );
+    // The definition owns this list, for the same reason it owns the fields: a
+    // form that claims a key and a passthrough that carries it have to be the
+    // same decision, made in the same file. Every tab is a definition now, so
+    // there is no fallback table left here to disagree with one.
+    const covered = new Set<string>(definitionFor(cat)?.formCovered ?? []);
     covered.add("id");
     const rest: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(entry)) {
@@ -1933,39 +777,23 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             break;
         }
         case "recipes": {
-            put("machine", str(e.kind));
-            put("input", str(e.input) ?? num(e.input));
-            put("outputElement", str(e.output) ?? num(e.output));
-            put("outputChance", num(e.chance));
-            put("outputs", json(e.outputs));
-            put("outputsAbove", json(e.outputsAbove));
-            put("outputsBelow", json(e.outputsBelow));
-            put("minVelocity", num(e.minimumDownwardVelocity));
+            // Owned by ./definition/recipe.ts — see the note in formToEntry.
+            recipeDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "processing": {
-            put("structureType", str(e.structureType) ?? num(e.structureType));
-            put("intervalMs", num(e.intervalMs));
-            put("handlerKey", str(e.handlerKey));
+            // Owned by ./definition/processing.ts — see the note in formToEntry.
+            processingDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "contacts": {
-            put("inputA", str(e.inputA) ?? num(e.inputA));
-            put("inputB", str(e.inputB) ?? num(e.inputB));
-            put("outputA", e.outputA === null ? "__null__" : str(e.outputA) ?? num(e.outputA));
-            put("outputB", e.outputB === null ? "__null__" : str(e.outputB) ?? num(e.outputB));
-            put("orientation", str(e.orientation));
+            // Owned by ./definition/contact.ts — see the note in formToEntry.
+            contactDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "interactions": {
-            put("elementId", str(e.elementId) ?? num(e.elementId));
-            // Split into the kind + per-kind fields, and keep the original object
-            // so a descriptor the form does not fully model is still recoverable.
-            const ix = splitInteraction(
-                e.interaction as Record<string, unknown> | undefined,
-            );
-            for (const [k, v] of Object.entries(ix.fields)) put(k, v);
-            put("interactionJson", json(e.interaction));
+            // Owned by ./definition/interaction.ts — see the note in formToEntry.
+            interactionDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "terrains": {
@@ -1974,97 +802,23 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             break;
         }
         case "unlockNodes": {
-            put("name", str(e.name));
-            put("description", str(e.description));
-            put("kind", str(e.kind));
-            // `useExistingTech` is a form-only toggle: a node either names the
-            // engine tech it borrows or does not, so the presence of `techId` is
-            // the whole decision. Round-tripping it explicitly would let the
-            // toggle and the id disagree.
-            const techId = str(e.techId);
-            if (techId) {
-                put("useExistingTech", "true");
-                put("techId", techId);
-            } else {
-                put("useExistingTech", "false");
-            }
-            // The rest only belong to a node that *builds* a tech. A borrowed one
-            // keeps the engine's definition, so reading them would show fields
-            // the save path is about to ignore.
-            if (str(e.kind) === "tech" && !techId) {
-                put("cost", num(e.cost));
-                putCustomOrSelect(
-                    form,
-                    str(e.currencyType),
-                    "currencyType",
-                    "currencyTypeCustom",
-                    listCurrencyTypes(),
-                );
-                putCustomOrSelect(
-                    form,
-                    str(e.branch),
-                    "branch",
-                    "branchCustom",
-                    listTechBranches(),
-                );
-                put("parentId", str(e.parentId));
-                put("requires", formatIdList(e.requires as string[] | undefined) || undefined);
-            }
+            // Owned by ./definition/unlock-node.ts — see the note in formToEntry.
+            unlockNodeDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "techs": {
-            put("name", str(e.name));
-            put("description", str(e.description));
-            put("descriptionKey", str(e.descriptionKey));
-            put("cost", num(e.cost));
-            // A stored value that is not in the option list (hand-edited JSON, a
-            // config from before this picker existed) falls back to "__custom__"
-            // so the value is preserved rather than silently dropped on save.
-            // A stored value outside the picker's options (hand-edited JSON, or a
-            // config saved before these pickers existed) is moved into the
-            // companion custom box so saving cannot silently drop it.
-            putCustomOrSelect(
-                form,
-                str(e.currencyType),
-                "currencyType",
-                "currencyTypeCustom",
-                listCurrencyTypes(),
-            );
-            putCustomOrSelect(form, str(e.branch), "branch", "branchCustom", listTechBranches());
-            put("parentId", str(e.parentId));
-            put("requires", formatIdList(e.requires as string[] | undefined) || undefined);
-            const unlocks = e.unlocks as { structures?: string[]; items?: string[] } | undefined;
-            put("unlockStructures", formatIdList(unlocks?.structures) || undefined);
-            put("unlockItems", formatIdList(unlocks?.items) || undefined);
+            // Owned by ./definition/tech.ts — see the note in formToEntry.
+            techDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "categories": {
-            put("name", str(e.name));
-            put("nameKey", str(e.nameKey));
-            // A plain string requirement (the only shape the picker writes) goes
-            // in the select; anything else — an object from a hand-edited config,
-            // or from before this picker existed — falls back to the raw box so a
-            // save cannot silently drop it. Nothing reads this field, but losing
-            // it anyway would be its own kind of wrong.
-            const req = e.requirement;
-            if (typeof req === "string") {
-                putCustomOrSelect(form, req, "requirementTechId", "requirementJson", []);
-            } else if (req !== undefined) {
-                put("requirementTechId", "__custom__");
-                put("requirementJson", json(req));
-            }
+            // Owned by ./definition/upgrade-category.ts.
+            upgradeCategoryDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "inputs": {
-            put("displayName", str(e.displayName));
-            put("displayNameKey", str(e.displayNameKey));
-            put("category", str(e.category));
-            if (Array.isArray(e.defaultKeys)) {
-                put("defaultKeys", (e.defaultKeys as unknown[]).join(","));
-            }
-            put("onDownKey", str(e.onDownKey));
-            put("onUpKey", str(e.onUpKey));
-            put("subsectionJson", json(e.subsection));
+            // Owned by ./definition/input.ts — see the note in formToEntry.
+            inputDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "upgrades": {
@@ -2090,80 +844,48 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             break;
         }
         case "signals": {
-            put("kind", str(e.kind));
-            put("target", str(e.target));
-            put("handlerKey", str(e.handlerKey));
+            // Owned by ./definition/signal.ts — see the note in formToEntry.
+            signalDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "triggers": {
-            put("interval", num(e.interval));
-            put("sequentialRuns", num(e.sequentialRuns));
-            put("handlerKey", str(e.handlerKey));
-            put("extraJson", json(e.extra));
+            // Owned by ./definition/trigger.ts — see the note in formToEntry.
+            triggerDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "behaviors": {
-            put("kind", str(e.kind));
-            // The named structure ids are their own controls, but they live
-            // inside `definition` — so they are lifted out for the picker and
-            // merged back on save. What is left over is the raw box.
-            const def = (e.definition ?? {}) as Record<string, unknown>;
-            put("structureId", str(def.id));
-            put("upType", str(def.upType));
-            put("leftType", str(def.leftType));
-            put("rightType", str(def.rightType));
-            const { id: _id, upType: _up, leftType: _l, rightType: _r, ...rest } = def;
-            put("definitionJson", json(Object.keys(rest).length > 0 ? rest : undefined));
+            // Owned by ./definition/behavior.ts — see the note in formToEntry.
+            behaviorDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "energy": {
-            put("structureId", str(e.structureId));
-            put("type", str(e.type));
-            // Documented registerType options: capacity (storage) + energyType.
-            const o = e.options as
-                | { capacity?: number; energyType?: string; priority?: number }
-                | undefined;
-            put("capacity", num(o?.capacity));
-            put("energyType", str(o?.energyType));
-            put("priority", num(o?.priority));
+            // Owned by ./definition/energy.ts — see the note in formToEntry.
+            energyDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "networks": {
-            put("name", str(e.name));
+            // Owned by ./definition/network.ts — see the note in formToEntry.
+            networkDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "excavation": {
-            put("power", num(e.power));
-            put("patternJson", json(e.pattern));
-            put("terrainRulesJson", json(e.terrainRules));
-            put("optionsJson", json(e.options));
+            // Owned by ./definition/excavation.ts — see the note in formToEntry.
+            excavationDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "projectiles": {
-            const sprite = e.sprite as { id?: string } | undefined;
-            put("spriteId", str(sprite?.id));
-            put("getOptionsKey", str(e.getOptionsKey));
-            put("optionsJson", json(e.options));
+            // Owned by ./definition/projectile.ts — see the note in formToEntry.
+            projectileDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "sprites": {
-            put("path", str(e.path));
-            if (typeof e.fromMod === "boolean") put("fromMod", String(e.fromMod));
+            // Owned by ./definition/sprite.ts — see the note in formToEntry.
+            spriteDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "modifiers": {
-            const hook = str(e.hookId) ?? "";
-            // A hook id outside the documented list round-trips via the custom box.
-            if (hook && !listHookIds().some((o) => o.value === hook)) {
-                form.hookId = "__custom__";
-                put("hookCustom", hook);
-            } else {
-                put("hookId", hook || undefined);
-            }
-            put("kind", str(e.kind));
-            put("handlerKey", str(e.handlerKey));
-            put("notes", str(e.notes));
-            if (typeof e.enabled === "boolean") put("enabled", String(e.enabled));
+            // Owned by ./definition/modifier.ts — see the note in formToEntry.
+            modifierDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         default:
@@ -2185,15 +907,10 @@ export function formToEntry(
     const entry: Record<string, unknown> = {
         ...(optJson<Record<string, unknown>>(form, "advancedJson") ?? {}),
     };
-    const setNum = (k: string, v: number | undefined) => {
-        if (v !== undefined) entry[k] = v;
-    };
-    const setStr = (k: string, v: string | undefined) => {
-        if (v !== undefined) entry[k] = v;
-    };
-    const setBool = (k: string, v: boolean | undefined) => {
-        if (v !== undefined) entry[k] = v;
-    };
+    // Every tab is a definition now, and each writes through the `EntryWriter`
+    // from `writerFor` — which owns "an undefined clears the key" for all three
+    // types. The local setters these replaced would have been a second copy of
+    // that rule, and the definitions would not have used them anyway.
     const id = fullIdOf(form, cat);
     if (id) entry.id = id;
 
@@ -2220,47 +937,31 @@ export function formToEntry(
             break;
         }
         case "recipes": {
-            setStr("kind", opt(form, "machine"));
-            setStr("input", opt(form, "input"));
-            setStr("output", opt(form, "outputElement"));
-            setNum("chance", optNum(form, "outputChance"));
-            const outs = optJson<RecipeOutputEntry[]>(form, "outputs");
-            if (outs) entry.outputs = outs;
-            const above = optJson<RecipeOutputEntry[]>(form, "outputsAbove");
-            if (above) entry.outputsAbove = above;
-            const below = optJson<RecipeOutputEntry[]>(form, "outputsBelow");
-            if (below) entry.outputsBelow = below;
-            setNum("minimumDownwardVelocity", optNum(form, "minVelocity"));
+            // Owned by ./definition/recipe.ts. Delegated rather than inlined so
+            // the recipe's schema, its machine-dependent output shape and its row
+            // editor are one file that has to be read together.
+            recipeDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "processing": {
-            setStr("structureType", opt(form, "structureType"));
-            setNum("intervalMs", optNum(form, "intervalMs"));
-            setStr("handlerKey", opt(form, "handlerKey"));
+            // Owned by ./definition/processing.ts. Delegated rather than inlined
+            // so the removed mode/structureId pair stays explained next to the
+            // field that replaced it.
+            processingDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "contacts": {
-            setStr("inputA", opt(form, "inputA"));
-            setStr("inputB", opt(form, "inputB"));
-            const oa = optSel(form, "outputA");
-            if (oa !== undefined) entry.outputA = oa;
-            const ob = optSel(form, "outputB");
-            if (ob !== undefined) entry.outputB = ob;
-            setStr("orientation", opt(form, "orientation"));
+            // Owned by ./definition/contact.ts. Delegated rather than inlined so
+            // the "consume this input" null and the form's sentinel for it stay
+            // in one file — they are a pair, and splitting them loses the meaning.
+            contactDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "interactions": {
-            setStr("elementId", opt(form, "elementId"));
-            // Re-compose from the split fields, unless the stored object held
-            // something the form does not model — then keep it verbatim rather
-            // than silently rewriting it into a kind it was not.
-            const existing = parseObjectOrUndefined(form.interactionJson);
-            const composed = composeInteraction(form);
-            if (composed) {
-                entry.interaction = splitInteraction(existing).unmodelled ? existing : composed;
-            } else if (existing) {
-                entry.interaction = existing;
-            }
+            // Owned by ./definition/interaction.ts. Delegated rather than inlined
+            // so the "keep an unmodelled descriptor verbatim" rule — which decides
+            // whether a save is a rewrite — stays with the split that created it.
+            interactionDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "terrains": {
@@ -2271,210 +972,90 @@ export function formToEntry(
             break;
         }
         case "unlockNodes": {
-            setStr("name", opt(form, "name"));
-            setStr("description", opt(form, "description"));
-            setStr("kind", opt(form, "kind"));
-            // The two modes write disjoint sets of fields, and a field read by
-            // one but not written back is silent data loss. An "always" node
-            // writes no research fields at all, so a stale cost from a previous
-            // edit cannot survive as a second, competing source for how the
-            // structure becomes available.
-            const borrowing = opt(form, "kind") === "tech" &&
-                optBool(form, "useExistingTech") === true;
-            if (borrowing) {
-                setStr("techId", opt(form, "techId"));
-            } else if (opt(form, "kind") === "tech") {
-                setNum("cost", optNum(form, "cost"));
-                setStr(
-                    "currencyType",
-                    opt(form, "currencyType") === "__custom__"
-                        ? opt(form, "currencyTypeCustom")
-                        : opt(form, "currencyType"),
-                );
-                setStr(
-                    "branch",
-                    opt(form, "branch") === "__custom__"
-                        ? opt(form, "branchCustom")
-                        : opt(form, "branch"),
-                );
-                setStr("parentId", opt(form, "parentId"));
-                const nodeRequires = parseIdList(opt(form, "requires"));
-                if (nodeRequires.length > 0) entry.requires = nodeRequires;
-            }
-            // `gatesStructures` is derived from each structure's own
-            // `unlockNode`, so it is never written from here.
+            // Owned by ./definition/unlock-node.ts. Delegated rather than inlined
+            // so the "borrowed tech owns its own definition" rule stays with the
+            // `when` conditions that depend on it.
+            unlockNodeDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "techs": {
-            setStr("name", opt(form, "name"));
-            setStr("description", opt(form, "description"));
-            setStr("descriptionKey", opt(form, "descriptionKey"));
-            setNum("cost", optNum(form, "cost"));
-            // "__custom__" on the picker means "use the companion text box".
-            setStr(
-                "currencyType",
-                opt(form, "currencyType") === "__custom__"
-                    ? opt(form, "currencyTypeCustom")
-                    : opt(form, "currencyType"),
-            );
-            setStr(
-                "branch",
-                opt(form, "branch") === "__custom__"
-                    ? opt(form, "branchCustom")
-                    : opt(form, "branch"),
-            );
-            setStr("parentId", opt(form, "parentId"));
-            const requires = parseIdList(opt(form, "requires"));
-            if (requires.length > 0) entry.requires = requires;
-            // TechDefinition.unlocks = { structures?, items? } — declarative, no
-            // handler, and the only way a structure becomes unlocked.
-            const unlockStructures = parseIdList(opt(form, "unlockStructures"));
-            const unlockItems = parseIdList(opt(form, "unlockItems"));
-            if (unlockStructures.length > 0 || unlockItems.length > 0) {
-                const unlocks: Record<string, string[]> = {};
-                if (unlockStructures.length > 0) unlocks.structures = unlockStructures;
-                if (unlockItems.length > 0) unlocks.items = unlockItems;
-                entry.unlocks = unlocks;
-            }
+            // Owned by ./definition/tech.ts. Delegated rather than inlined so the
+            // two picker/text pairs — which are a read/write contract, not two
+            // fields — stay in one file with the schema that declares them.
+            techDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "categories": {
-            // Mirrors the engine guard: `if (!t.id || !t.name && !t.nameKey) throw`
-            setStr("name", opt(form, "name"));
-            setStr("nameKey", opt(form, "nameKey"));
-            const rawReq = optJson<Record<string, unknown>>(form, "requirementJson");
-            const techReq = opt(form, "requirementTechId");
-            if (techReq === "__custom__") {
-                if (rawReq) entry.requirement = rawReq;
-            } else if (techReq) {
-                entry.requirement = techReq;
-            } else if (rawReq) {
-                entry.requirement = rawReq;
-            }
+            // Owned by ./definition/upgrade-category.ts. The name-or-nameKey rule
+            // moves with it, since it is a property of this object.
+            upgradeCategoryDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "inputs": {
-            setStr("displayName", opt(form, "displayName"));
-            setStr("displayNameKey", opt(form, "displayNameKey"));
-            setStr("category", opt(form, "category"));
-            const keys = parseIdList(form.defaultKeys ?? "");
-            if (keys.length > 0) entry.defaultKeys = keys;
-            setStr("onDownKey", opt(form, "onDownKey"));
-            setStr("onUpKey", opt(form, "onUpKey"));
-            const subsection = optJson<Record<string, unknown>>(form, "subsectionJson");
-            if (subsection) entry.subsection = subsection;
+            // Owned by ./definition/input.ts — see the note in formToEntry.
+            inputDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "upgrades": {
-            setStr("itemId", opt(form, "itemId"));
-            setStr("itemNameKey", opt(form, "itemNameKey"));
-            // `__custom__` is a UI affordance, not an id. Writing it out would
-            // register the upgrade under a category literally named `__custom__`,
-            // which fails at runtime in a way nothing in the panel could explain.
-            // The engine applies its own default when the field is absent.
-            const categoryId = opt(form, "categoryId");
-            if (categoryId && categoryId !== "__custom__") entry.categoryId = categoryId;
-            // Build the NESTED `upgrade` object UpgradeDefinition expects.
-            const upgrade: Record<string, unknown> = {};
-            const upId = opt(form, "upgradeId");
-            if (upId) upgrade.id = upId;
-            const nameKey = opt(form, "upgradeNameKey");
-            if (nameKey) upgrade.nameKey = nameKey;
-            const maxLevel = optNum(form, "maxLevel");
-            if (maxLevel !== undefined) upgrade.maxLevel = maxLevel;
-            const costs = optJson<number[]>(form, "costsJson");
-            if (costs) upgrade.costs = costs;
-            const oneOff = optBool(form, "oneOff");
-            if (oneOff !== undefined) upgrade.oneOff = oneOff;
-            if (Object.keys(upgrade).length > 0) entry.upgrade = upgrade;
-            setStr("onUpgradeKey", opt(form, "onUpgradeKey"));
+            // Owned by ./definition/upgrade.ts. Delegated rather than inlined so
+            // the nested `upgrade` payload and the `__custom__` category rule
+            // stay in one file.
+            upgradeDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "signals": {
-            setStr("kind", opt(form, "kind"));
-            setStr("target", opt(form, "target"));
-            setStr("handlerKey", opt(form, "handlerKey"));
+            // Owned by ./definition/signal.ts. Delegated rather than inlined so
+            // the signal's schema and its save path are one file.
+            signalDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "triggers": {
-            setStr("triggerId", opt(form, "triggerId"));
-            setNum("interval", optNum(form, "interval"));
-            setNum("sequentialRuns", optNum(form, "sequentialRuns"));
-            setStr("handlerKey", opt(form, "handlerKey"));
-            const extra = optJson<Record<string, unknown>>(form, "extraJson");
-            if (extra) entry.extra = extra;
+            // Owned by ./definition/trigger.ts. Delegated rather than inlined so
+            // the un-rendered `triggerId` passthrough stays explained beside the
+            // field that is the real identity.
+            triggerDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "behaviors": {
-            setStr("kind", opt(form, "kind"));
-            // The named structure ids are merged into `definition` first, so the
-            // raw box wins over them: an unmodellable key stays expressible.
-            const def: Record<string, unknown> = {
-                ...(optJson<Record<string, unknown>>(form, "definitionJson") ?? {}),
-            };
-            const launcher = opt(form, "kind") === "launcher";
-            const up = opt(form, "upType");
-            const left = opt(form, "leftType");
-            const right = opt(form, "rightType");
-            const id = opt(form, "structureId");
-            if (launcher) {
-                if (up) def.upType = up;
-                if (left) def.leftType = left;
-                if (right) def.rightType = right;
-            } else if (id) {
-                def.id = id;
-            }
-            if (Object.keys(def).length > 0) entry.definition = def;
+            // Owned by ./definition/behavior.ts. Delegated rather than inlined so
+            // the split between the four named pickers and the raw payload box —
+            // and the order they merge in — stays in one file.
+            behaviorDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "energy": {
-            setStr("structureId", opt(form, "structureId"));
-            setStr("type", opt(form, "type"));
-            const options: Record<string, unknown> = {};
-            const cap = optNum(form, "capacity");
-            if (cap !== undefined) options.capacity = cap;
-            const net = opt(form, "energyType");
-            if (net) options.energyType = net;
-            const prio = optNum(form, "priority");
-            if (prio !== undefined) options.priority = prio;
-            if (Object.keys(options).length > 0) entry.options = options;
+            // Owned by ./definition/energy.ts — see the note in formToEntry.
+            energyDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "networks": {
-            // Panel-only: the engine reads neither field, it only ever sees the
-            // id two energy types have to spell the same way to share a channel.
-            setStr("name", opt(form, "name"));
+            // Owned by ./definition/network.ts — see the note in formToEntry.
+            networkDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "excavation": {
-            setNum("power", optNum(form, "power"));
-            const pattern = optJson<number[][]>(form, "patternJson");
-            if (pattern) entry.pattern = pattern;
-            const rules = optJson<Record<string, unknown>[]>(form, "terrainRulesJson");
-            if (rules && rules.length > 0) entry.terrainRules = rules;
-            const options = optJson<Record<string, unknown>>(form, "optionsJson");
-            if (options) entry.options = options;
+            // Owned by ./definition/excavation.ts. Delegated rather than inlined
+            // so the profile's schema, its pattern rules and its rule editor stay
+            // in one file.
+            excavationDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "projectiles": {
-            const spriteId = opt(form, "spriteId");
-            if (spriteId) entry.sprite = { id: spriteId };
-            setStr("getOptionsKey", opt(form, "getOptionsKey"));
-            const options = optJson<Record<string, unknown>>(form, "optionsJson");
-            if (options) entry.options = options;
+            // Owned by ./definition/projectile.ts. Delegated rather than inlined so
+            // the sprite control and the handler-wins-over-options rule — which is
+            // a form decision and a save decision together — stay in one file.
+            projectileDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "sprites": {
-            setStr("path", opt(form, "path"));
-            setBool("fromMod", optBool(form, "fromMod"));
+            // Owned by ./definition/sprite.ts — see the note in formToEntry.
+            spriteDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "modifiers": {
-            setStr("hookId", opt(form, "hookCustom") ?? opt(form, "hookId"));
-            setStr("kind", opt(form, "kind"));
-            setStr("handlerKey", opt(form, "handlerKey"));
-            setStr("notes", opt(form, "notes"));
-            setBool("enabled", optBool(form, "enabled"));
+            // Owned by ./definition/modifier.ts. Delegated rather than inlined so
+            // the hook-id picker and its companion box stay a read/write pair.
+            modifierDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         default:
