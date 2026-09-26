@@ -113,6 +113,22 @@ export const RELATIONS: Relation[] = [
         strength: "required",
     },
     {
+        from: "interactions",
+        field: "structures",
+        to: "structures",
+        note: "The machines named in this element's interaction tooltip.",
+        strength: "optional",
+        many: true,
+    },
+    {
+        from: "interactions",
+        field: "destroyerItems",
+        to: "items",
+        note: "Items this element destroys when used. A corrosion element eats through a drill bit this way.",
+        strength: "optional",
+        many: true,
+    },
+    {
         from: "processing",
         field: "structureType",
         to: "structures",
@@ -237,6 +253,14 @@ export const RELATIONS: Relation[] = [
         field: "categoryId",
         to: "categories",
         note: "Which upgrade category it is listed under. The engine rejects one with no name.",
+        strength: "optional",
+    },
+    {
+        from: "categories",
+        field: "requirementTechId",
+        to: "techs",
+        note:
+            "A tech id stored on the category. Nothing in the engine ever reads it, so a dangling id here is harmless — but it is recorded because it looks like it should matter.",
         strength: "optional",
     },
 

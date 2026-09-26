@@ -125,6 +125,55 @@ Deno.test("techs.requires and techs.parentId are separate edges", () => {
     assertEquals(req.dangling, 0);
 });
 
+Deno.test("a reference to a game id is not reported as dangling", () => {
+    // The pickers offer the game's own elements, so pointing at one is the
+    // normal case — not a broken reference. Before this, `known` held only the
+    // mod's own entries, so a reaction on the game's "Sand" was flagged the
+    // moment the mod had one element of its own.
+    const d = findDangling(
+        {
+            contacts: [{ id: "c", inputA: "Sand", inputB: "mdmy.acid" }],
+            elements: [{ id: "mdmy.acid" }],
+        },
+        () => new Set(["Sand", "Water"]),
+    );
+    assertEquals(
+        d.map((x: { target: string }) => x.target),
+        [],
+        "a resolvable game id was reported as dangling",
+    );
+});
+
+Deno.test("a reference to nothing at all is still reported", () => {
+    // The fix above must not turn the check off.
+    const d = findDangling(
+        { contacts: [{ id: "c", inputA: "Unobtainium" }], elements: [{ id: "mdmy.acid" }] },
+        () => new Set(["Sand"]),
+    );
+    assertEquals(d.length, 1);
+    assertEquals(d[0].target, "Unobtainium");
+});
+
+Deno.test("a hidden game id resolves, so pointing at one is not an alarm", () => {
+    // A mod that deliberately targets an internal element has a working
+    // reference; flagging it would invite the user to "fix" something correct.
+    const d = findDangling(
+        { contacts: [{ id: "c", inputA: "_resolved" }], elements: [] },
+        () => new Set(["_resolved"]),
+    );
+    assertEquals(d.length, 0);
+});
+
+Deno.test("with no host available, nothing built-in is invented", () => {
+    // An unavailable host must degrade to config-only rather than report every
+    // built-in as broken.
+    const d = findDangling(
+        { contacts: [{ id: "c", inputA: "Sand" }], elements: [] },
+        () => new Set(),
+    );
+    assertEquals(d.length, 0, "an empty registry must not make everything dangle");
+});
+
 Deno.test("the layout is stable for the same config", () => {
     // Stability is the whole reason this is a fixed layout and not a force
     // simulation: a node that moves when nothing changed is useless to aim at.

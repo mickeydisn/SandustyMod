@@ -1300,3 +1300,109 @@ for (
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) Deno.exit(1);
+
+
+console.log("── hover tooltip is a structured editor, not a JSON box ──");
+{
+    // The documented shape, taken from two shipping mods
+    // (`__scraped-mods/workshop/3784291891`, `3792792689`).
+    const f = formDefaults("structures");
+    f.idSuffix = "reader";
+    f.tooltipMessageKey = "structures|reader|status";
+    f.tooltipField = "2";
+    f.tooltipParam = "summary";
+    f.tooltipFallback = "idle";
+    const entry = formToEntry("structures", f) as {
+        tooltipHover?: Record<string, unknown>;
+    };
+    check(
+        "a hover tooltip is composed from the controls",
+        entry.tooltipHover?.type === "custom" &&
+            JSON.stringify(entry.tooltipHover) ===
+                JSON.stringify({
+                    type: "custom",
+                    dataFieldMessage: {
+                        messageKey: "structures|reader|status",
+                        fields: [{ field: 2, param: "summary", fallback: "idle" }],
+                    },
+                }),
+        JSON.stringify(entry.tooltipHover),
+    );
+
+    // `Number("")` is 0, and data field 0 does not exist, so the tooltip would
+    // be bound to nothing and silently never render.
+    const blank = formDefaults("structures");
+    blank.idSuffix = "reader";
+    blank.tooltipMessageKey = "structures|reader|status";
+    blank.tooltipField = "";
+    const blankEntry = formToEntry("structures", blank) as {
+        tooltipHover?: { dataFieldMessage?: { fields?: unknown[] } };
+    };
+    check(
+        "a blank data field number is not written as field 0",
+        blankEntry.tooltipHover?.dataFieldMessage?.fields?.[0] as Record<string, unknown>
+            ? (blankEntry.tooltipHover.dataFieldMessage.fields[0] as Record<string, unknown>)
+                  .field === undefined
+            : false,
+        JSON.stringify(blankEntry.tooltipHover),
+    );
+
+    const none = formDefaults("structures");
+    none.idSuffix = "reader";
+    const noneEntry = formToEntry("structures", none) as { tooltipHover?: unknown };
+    check("no message key means no tooltip at all", noneEntry.tooltipHover === undefined);
+
+    // An unrepresentable stored object (valueLabels, two field rows) must
+    // survive rather than be rebuilt into something the author did not write.
+    const exotic = entryToForm("structures", {
+        id: "md-my-hown-mod:mdmy.structure.reader",
+        tooltipHover: {
+            type: "custom",
+            dataFieldMessage: {
+                messageKey: "structures|reader|status",
+                fields: [
+                    { field: "mode", param: "mode", valueLabels: { in: "In", out: "Out" } },
+                    { field: "channel", param: "channel" },
+                ],
+            },
+        },
+    } as never);
+    const exoticBack = formToEntry("structures", exotic) as {
+        tooltipHover?: { dataFieldMessage?: { fields?: unknown[] } };
+    };
+    check(
+        "a tooltip the controls cannot express survives a save",
+        exoticBack.tooltipHover?.dataFieldMessage?.fields?.length === 2,
+        JSON.stringify(exoticBack.tooltipHover),
+    );
+}
+
+console.log("── an upgrade category's requirement is a pass-through, labelled as one ──");
+{
+    const f = formDefaults("categories");
+    f.idSuffix = "power";
+    f.name = "Power";
+    f.requirementTechId = "mdmy.tech.tier2";
+    const entry = formToEntry("categories", f) as { requirement?: unknown };
+    check("a tech requirement is stored as a plain id", entry.requirement === "mdmy.tech.tier2",
+        JSON.stringify(entry.requirement));
+
+    // A non-string requirement (a hand-edited config, or one from before the
+    // picker existed) falls back to the raw box rather than being dropped.
+    const legacy = entryToForm("categories", {
+        id: "md-my-hown-mod:mdmy.upgradeCategory.power",
+        name: "Power",
+        requirement: { techId: "mdmy.tech.tier2" },
+    } as never);
+    const legacyBack = formToEntry("categories", legacy) as { requirement?: unknown };
+    check(
+        "an object requirement is kept verbatim",
+        JSON.stringify(legacyBack.requirement) === JSON.stringify({ techId: "mdmy.tech.tier2" }),
+        JSON.stringify(legacyBack.requirement),
+    );
+    check("the raw box is shown for an object requirement", legacy.requirementTechId === "__custom__",
+        legacy.requirementTechId);
+}
+
+console.log(`\n${pass} passed, ${fail} failed`);
+if (fail > 0) Deno.exit(1);

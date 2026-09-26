@@ -27,6 +27,32 @@ function enumOpts(name: string): Opt[] {
     return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/**
+ * The enum member *names* for an enum, with no numeric value in the label.
+ *
+ * Separated from `enumOpts` because its "does this exist already?" guard was
+ * the bug: `enumOpts` returns a `value` that is the *number*, and callers compare
+ * it against a map keyed by *id*, so the guard never fired.
+ */
+function enumNames(name: string): string[] {
+    const e = sk()?.enums?.[name];
+    if (!e || typeof e !== "object") return [];
+    return Object.keys(e).filter((k) => Number.isNaN(Number(k))).sort();
+}
+
+/** The numeric value of one enum member, or undefined if there is no such member. */
+function enumValue(enumName: string, member: string): number | undefined {
+    const v = enumRawValue(enumName, member);
+    return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+
+/** One enum member's value, whatever type it has. */
+function enumRawValue(enumName: string, member: string): unknown {
+    const e = sk()?.enums?.[enumName];
+    if (!e || typeof e !== "object") return undefined;
+    return (e as Record<string, unknown>)[member];
+}
+
 function colorFromMeta(meta: unknown): string | undefined {
     if (typeof meta === "number" && Number.isFinite(meta)) {
         const rgb = meta > 0xffffff ? (meta >>> 0) & 0xffffff : meta & 0xffffff;
@@ -38,24 +64,50 @@ function colorFromMeta(meta: unknown): string | undefined {
     return undefined;
 }
 
-/** All known element ids (vanilla + mods + our config). */
-export function listElements(): Opt[] {
+/**
+ * Element ids for a picker: the game's own elements, then this mod's config.
+ *
+ * Read from the live registry, not from the enum. The enum only maps
+ * `Name -> number`, and the *id* is a separate string the engine only hands out
+ * through `getIdByType` / `getDefinitionByType`. Guessing the id from the enum
+ * name is how this list used to be wrong in two ways at once:
+ *
+ *  - it added a **second, lowercased** entry for every element already found
+ *    through the registry, because the "already have it?" guard compared the
+ *    enum's *number* against a map keyed by *id*, so it never matched;
+ *  - elements whose definition could not be read fell back to `String(type)`,
+ *    i.e. the bare number, which is not a valid element id at all.
+ *
+ * `hidden` elements are excluded. The game keeps a number of internal element
+ * types around (resolved pointers, intermediate states) that are not things a
+ * recipe should name, and offering them in a contact-reaction picker invites a
+ * reference that quietly never fires. Pass `includeHidden` when you genuinely
+ * need one — the Help screen's orphan check does, so a mod that already points
+ * at a hidden element can still see that it resolves.
+ */
+export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
     const map = new Map<string, Opt>();
+    const includeHidden = !!opts?.includeHidden;
+    // Ids the registry knows about but we are hiding. The enum fallback below
+    // walks the same types, so without this a hidden element would be filtered
+    // out of the registry pass and then straight back in through the fallback.
+    const hidden = new Set<string>();
 
-    // From live registry
-    const types = safe(() => api.elements?.getRegisteredTypes?.(), []) ?? [];
-    for (const t of types as any[]) {
-        const def = safe(() => api.elements?.getDefinitionByType?.(t)) as any;
-        const id =
-            def?.id ??
-            safe(() => api.elements?.getIdByType?.(t)) ??
-            safe(() => api.elements?.getIdFromType?.(t)) ??
-            String(t);
-        const name =
-            safe(() => api.elements?.getNameByType?.(t)) ??
-            def?.name ??
-            def?.nameKey ??
-            id;
+    // ── the live registry: the only source of real ids ──
+    const types = (safe(() => api.elements?.getRegisteredTypes?.()) ?? []) as number[];
+    for (const t of types) {
+        const def = safe(() => api.elements?.getDefinitionByType?.(t)) as
+            | { id?: string; name?: string; nameKey?: string; hidden?: boolean; metaColor?: unknown }
+            | undefined;
+        // `getIdByType` is the documented way from a type number to an id, and
+        // unlike the enum name it is never a guess.
+        const id = def?.id ?? safe(() => api.elements?.getIdByType?.(t));
+        if (!id) continue;
+        if (def?.hidden === true) {
+            hidden.add(String(id));
+            if (!includeHidden) continue;
+        }
+        const name = def?.name ?? safe(() => api.elements?.getNameByType?.(t)) ?? def?.nameKey ?? id;
         map.set(String(id), {
             value: String(id),
             label: String(name),
@@ -63,24 +115,26 @@ export function listElements(): Opt[] {
         });
     }
 
-    // Enum ElementType names as fallbacks
-    for (const o of enumOpts("ElementType")) {
-        if (!map.has(o.value)) {
-            // also try lowercase name
-            const name = o.label.split(" ")[0];
-            map.set(name.toLowerCase(), { value: name.toLowerCase(), label: o.label });
-        }
+    // ── enum fallback, for types with no readable definition ──
+    // Only for ids the registry did not already give us, and the id comes from
+    // `getIdByType` rather than a lowercased enum name.
+    for (const name of enumNames("ElementType")) {
+        const type = enumValue("ElementType", name);
+        if (type === undefined) continue;
+        const id = safe(() => api.elements?.getIdByType?.(type));
+        if (!id || map.has(String(id))) continue;
+        if (hidden.has(String(id))) continue;
+        map.set(String(id), { value: String(id), label: name });
     }
 
-    // Our stored config
+    // ── this mod's config, whether or not it has been registered yet ──
     for (const el of loadConfig().elements ?? []) {
-        if (el?.id) {
-            map.set(el.id, {
-                value: el.id,
-                label: `${el.name || el.id} (config)`,
-                color: typeof el.metaColor === "string" ? el.metaColor : colorFromMeta(el.metaColor),
-            });
-        }
+        if (!el?.id) continue;
+        map.set(el.id, {
+            value: el.id,
+            label: `${el.name || el.id} (this mod)`,
+            color: typeof el.metaColor === "string" ? el.metaColor : colorFromMeta(el.metaColor),
+        });
     }
 
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -153,25 +207,51 @@ export function listItems(): Opt[] {
             }
         }
     }
-    for (const o of enumOpts("ItemId")) {
-        const name = o.label.split(" ")[0];
-        map.set(name, { value: name, label: o.label });
+    // Enum fallback.
+    //
+    // `ItemId` is the one reference list with **no** enumeration API and **no**
+    // `getIdByType` to reverse-map it, so the enum is the only source of the
+    // game's item ids. Its *value* is the id; its *member name* is a display
+    // name and is not an id. This used to store `o.label.split(" ")[0]` — the
+    // display name — as the value, which offered ids the engine cannot resolve.
+    // Only a string-valued member is taken, because only that can be an id.
+    for (const name of enumNames("ItemId")) {
+        const v = enumRawValue("ItemId", name);
+        if (typeof v !== "string" || !v) continue;
+        if (map.has(v)) continue;
+        map.set(v, { value: v, label: v });
     }
     for (const it of loadConfig().items ?? []) {
-        if (it?.id) map.set(it.id, { value: it.id, label: `${it.name || it.id} (config)` });
+        if (it?.id) map.set(it.id, { value: it.id, label: `${it.name || it.id} (this mod)` });
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/**
+ * Terrain ids for a picker: the game's own terrains, then this mod's config.
+ *
+ * Same discipline as `listElements`, and for the same reason. The `CellType`
+ * enum maps a *name* to a *number*; neither is the terrain **id**, and
+ * `resolveTerrainRef` looks ids up with `terrains.getTypeById`. So the enum is
+ * walked to get the numbers, and the numbers are turned back into real ids with
+ * `terrains.getIdByType` — a member whose id cannot be resolved is dropped
+ * rather than offered as a number, because a bare cell type is not something
+ * the config layer round-trips.
+ */
 export function listTerrains(): Opt[] {
     const map = new Map<string, Opt>();
-    // Enum / known terrains
-    for (const o of enumOpts("CellType")) {
-        const name = o.label.split(" ")[0];
-        map.set(name, { value: name, label: o.label });
+
+    for (const name of enumNames("CellType")) {
+        const type = enumValue("CellType", name);
+        if (type === undefined) continue;
+        const id = safe(() => api.terrains?.getIdByType?.(type));
+        if (!id || map.has(String(id))) continue;
+        map.set(String(id), { value: String(id), label: name });
     }
+
     for (const t of loadConfig().terrains ?? []) {
-        if (t?.id) map.set(t.id, { value: t.id, label: `${t.name || t.id} (config)` });
+        if (!t?.id) continue;
+        map.set(t.id, { value: t.id, label: `${t.name || t.id} (this mod)` });
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }

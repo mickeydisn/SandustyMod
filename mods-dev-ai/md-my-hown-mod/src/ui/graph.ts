@@ -16,6 +16,14 @@
 import type { Tab } from "./schema.ts";
 import { CATEGORY_META } from "./schema.ts";
 import { RELATIONS, relationsOf } from "./relations.ts";
+import {
+    listElements,
+    listItems,
+    listSpriteIds,
+    listStructures,
+    listTechIds,
+    listTerrains,
+} from "../catalog.ts";
 
 export interface GraphNode {
     cat: Tab;
@@ -129,20 +137,65 @@ function entriesOf(
 }
 
 /**
+ * Ids the *game* already owns, for one target tab.
+ *
+ * The dangling check has to know about built-ins. Before this, `known` held
+ * only the mod's own entries, so a contact reaction pointing at the game's
+ * "Sand" was reported as a broken reference the moment the mod had even one
+ * element of its own — which is exactly what the picker tells you to do. The
+ * pickers offer game ids, so the check has to accept them.
+ *
+ * `includeHidden: true` matters: a mod that deliberately points at an internal
+ * element has a reference that *does* resolve, and reporting it as dangling
+ * would be a false alarm that invites the user to "fix" something that works.
+ *
+ * Returns an empty set when the host is unavailable, which degrades to the old
+ * config-only behaviour rather than reporting every built-in as broken.
+ */
+const GAME_ID_LOADERS: Partial<Record<Tab, () => string[]>> = {
+    elements: () => listElements({ includeHidden: true }).map((o) => o.value),
+    items: () => listItems().map((o) => o.value),
+    terrains: () => listTerrains().map((o) => o.value),
+    structures: () => listStructures().map((o) => o.value),
+    sprites: () => listSpriteIds().map((o) => o.value),
+    techs: () => listTechIds().map((o) => o.value),
+};
+
+function gameIds(tab: Tab): Set<string> {
+    const load = GAME_ID_LOADERS[tab];
+    if (!load) return new Set();
+    const out = new Set<string>();
+    try {
+        for (const id of load()) if (id) out.add(id);
+    } catch {
+        return new Set();
+    }
+    return out;
+}
+
+/**
  * Every reference the current config makes that does not resolve.
  *
  * This is the most valuable thing on the screen. A terrain pointing at an
  * element that no longer exists produces no error anywhere — the entry
  * registers, the list looks fine, and the feature simply never happens.
+ *
+ * `known` is injectable so this stays testable headless; the default asks the
+ * host, and an unavailable host degrades to config-only rather than crying wolf.
  */
-export function findDangling(cfg: Record<string, unknown>): DanglingRef[] {
+export function findDangling(
+    cfg: Record<string, unknown>,
+    known?: (tab: Tab) => Set<string>,
+): DanglingRef[] {
+    const builtins = known ?? gameIds;
     const out: DanglingRef[] = [];
     for (const r of RELATIONS) {
         const list = entriesOf(cfg, r.from);
         if (list.length === 0) continue;
         const known = new Set(entriesOf(cfg, r.to).map((e) => String(e.id ?? "")));
-        // A reference into a kind the user has not created at all is not
-        // "dangling" — it may legitimately point at a built-in.
+        for (const id of builtins(r.to)) known.add(id);
+        // A reference into a kind that nothing knows about — neither the mod's
+        // config nor the host — is not "dangling", we simply cannot tell.
         if (known.size === 0) continue;
         for (const entry of list) {
             const raw = entry[r.field];

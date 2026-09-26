@@ -94,6 +94,21 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["costsJson", "upgrade.costs"],
         ["oneOff", "upgrade.oneOff"],
     ],
+    interactions: [
+        // The descriptor is assembled from the `kind` plus that kind's fields.
+        ["interactionKind", "interaction.kind"],
+        ["structures", "interaction.structures"],
+        ["destroyerItems", "interaction.items"],
+        ["entities", "interaction.entities"],
+        ["tipTextKey", "interaction.textKey"],
+        ["tipVisibility", "interaction.visibleWhen | interaction.crossedOutWhen"],
+        ["tipDataField", "interaction.*.dataField"],
+        ["tipDataFieldEquals", "interaction.*.equals"],
+        ["tipOnlyWhenTranslated", "interaction.onlyWhenTranslated"],
+        // Kept verbatim, and only rendered when the stored object holds a field
+        // the split form has no control for.
+        ["interactionJson", "interaction (unmodelled fields, verbatim)"],
+    ],
     terrains: [
         ["outputElement", "output.elementType"],
         ["outputChance", "output.chance"],
@@ -128,7 +143,8 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["unlockStructures", "unlocks.structures"],
         ["unlockItems", "unlocks.items"],
     ],
-    interactions: [["interactionJson", "interaction"]],
+    // `interactions` is assembled from the `kind` plus that kind's fields, so
+    // the old single `interactionJson → interaction` row no longer applies.
     projectiles: [
         ["spriteId", "sprite.id"],
         ["optionsJson", "options"],
@@ -145,7 +161,12 @@ export const COMPOSITE: Record<string, [string, string][]> = {
     ],
     triggers: [["extraJson", "extra"]],
     behaviors: [["definitionJson", "definition"]],
-    categories: [["requirementJson", "requirement"]],
+    // `requirement` is stored verbatim and never read, so it is filed as a
+    // pass-through rather than a working constraint.
+    categories: [
+        ["requirementTechId", "requirement (string)"],
+        ["requirementJson", "requirement (anything else, verbatim)"],
+    ],
     inputs: [
         ["subsectionJson", "subsection"],
         ["defaultKeys", "defaultKeys"],
@@ -511,6 +532,34 @@ export function renderIssues(): string {
         '  such as `"Control+KeyC"` is valid, so a fixed picker would be wrong. A',
         "  `BindingId` may also reuse a vanilla `KeyBinding` name, which would",
         "  *replace* a built-in binding — the mod uses custom ids.",
+        "",
+        "## The enum is not the id",
+        "",
+        "The hardest thing to get right in the reference pickers, and the source",
+        "of a long-standing bug: an enum member maps a **display name** to a",
+        "**number**, and the config layer wants an **id** — a third thing, handed",
+        "out only by `getIdByType` / `getDefinitionByType`.",
+        "",
+        "- **Element and terrain refs hold ids.** `resolveElementRef` uses",
+        "  `getTypeById`, and `resolveTerrainRef` uses `terrains.getTypeById`, so",
+        "  the stored value is an id string.",
+        "- **Structure refs hold enum member names.** `resolveStructureType` does",
+        "  `enums[v]` — it looks a member *name* up to get the number. So the",
+        "  same enum is the right source for structures and the wrong source for",
+        "  elements and terrains.",
+        "- **`listElements` used to store the enum's display name as the id**, and",
+        "  fell back to `String(type)` — a bare number, which is not a valid id —",
+        "  for any element whose definition it could not read. Its \"already have",
+        "  it?\" guard compared the enum's *number* against a map keyed by *id*, so",
+        "  it never fired and every element got a second, lowercased duplicate.",
+        "- **`hidden` elements are filtered out of the pickers.** The game keeps",
+        "  internal types (resolved pointers, intermediate states) that are not",
+        "  things a recipe should name. The Help screen's orphan check asks for",
+        "  them with `includeHidden`, so a deliberate reference to one still",
+        "  resolves instead of being reported as broken.",
+        "- **Items have no enumeration API and no `getIdByType`**, so the",
+        "  string-valued members of the `ItemId` enum are the only source of the",
+        "  game's item ids. A number-valued member is skipped rather than offered.",
         "",
         "## Confirmed against shipped mods",
         "",

@@ -15,6 +15,13 @@
  *   doc/doc-tech/03-hooks-reference.md                (hook ids)
  */
 import { MOD_ID, type ModConfig, type RecipeOutputEntry } from "../constants.ts";
+import {
+    DATA_FIELD_MODES,
+    INTERACTION_KINDS,
+    TOOLTIP_KINDS,
+    composeInteraction,
+    splitInteraction,
+} from "./interaction.ts";
 import { loadConfig } from "../config/store.ts";
 import {
     HANDLER_TYPE_LABELS,
@@ -227,20 +234,40 @@ export interface FieldSpec {
 const ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,62}$";
 const ID_MSG = "lowercase letters, digits, . _ - (max 63)";
 
+/** Parse a JSON object, or undefined. Never throws — `when` runs on every render. */
+function parseObjectOrUndefined(raw: string | undefined): Record<string, unknown> | undefined {
+    if (!raw?.trim()) return undefined;
+    try {
+        const v = JSON.parse(raw);
+        return v && typeof v === "object" && !Array.isArray(v)
+            ? v as Record<string, unknown>
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
- * Turn the build-modes editor's text into engine `buildModes[]`.
+ * Can the `tooltipHover` controls express this stored object on their own?
  *
- * Two things the engine cares about, which a naive pass-through gets wrong:
- *
- *  - `spanTiles` is only legal on a `"line"` mode. The engine's own validator
- *    throws `TypeError` otherwise, so it is dropped here rather than at load
- *    time, where the user would only find out by reloading the game.
- *  - `directions` belongs to each mode, but the form shows one set of direction
- *    checkboxes, so it is written onto every mode.
- *
- * An unparseable value yields `[]` and the field's own error reports the bad
- * JSON. Guessing here would overwrite the user's text with something else.
+ * If not, the raw box is shown so nothing is lost. A descriptor using
+ * `valueLabels` / `valueKeys`, or a literal `message` instead of a key, cannot be
+ * rebuilt from a key plus one field row, so hiding the box would silently drop
+ * those on the next save.
  */
+function tooltipHoverIsComplete(raw: string | undefined): boolean {
+    const obj = parseObjectOrUndefined(raw);
+    if (!obj) return true; // nothing stored, nothing to warn about
+    const msg = (obj as { dataFieldMessage?: Record<string, unknown> }).dataFieldMessage;
+    if (!msg) return false;
+    if (typeof msg.message === "string") return false; // a literal, not a key
+    const fields = Array.isArray(msg.fields) ? msg.fields : [];
+    if (fields.length !== 1) return false; // the form has exactly one field row
+    const only = fields[0] as Record<string, unknown>;
+    if ("valueLabels" in only || "valueKeys" in only) return false;
+    return Object.keys(only).every((k) => ["field", "param", "fallback"].includes(k));
+}
+
 /**
  * Colour variants: the `colors.variants` list, as swatches.
  *
@@ -307,6 +334,44 @@ export function seedVariantFromMapColor(mapColorHex: string | undefined): string
     return mapColorHex && HEX.test(mapColorHex) ? `${mapColorHex}ff` : "#ccccccff";
 }
 
+/**
+ * Build a `StructureTooltipHover` from the form controls.
+ *
+ * Returns `undefined` when no message key is set, so an untouched form does not
+ * register a tooltip. The `field` is only included when it is a real data field
+ * (1–4): `Number("")` is `0`, which would register a tooltip bound to a field
+ * that does not exist and therefore never render.
+ */
+export function composeTooltipHover(
+    f: Record<string, string>,
+): Record<string, unknown> | undefined {
+    const messageKey = (f.tooltipMessageKey ?? "").trim();
+    if (!messageKey) return undefined;
+    const fieldRow: Record<string, unknown> = {};
+    const field = Number(f.tooltipField);
+    if (Number.isInteger(field) && field >= 1 && field <= 4) fieldRow.field = field;
+    if (f.tooltipParam?.trim()) fieldRow.param = f.tooltipParam.trim();
+    if (f.tooltipFallback?.trim()) fieldRow.fallback = f.tooltipFallback.trim();
+    return {
+        type: "custom",
+        dataFieldMessage: { messageKey, fields: [fieldRow] },
+    };
+}
+
+/**
+ * Turn the build-modes editor's text into engine `buildModes[]`.
+ *
+ * Two things the engine cares about, which a naive pass-through gets wrong:
+ *
+ *  - `spanTiles` is only legal on a `"line"` mode. The engine's own validator
+ *    throws `TypeError` otherwise, so it is dropped here rather than at load
+ *    time, where the user would only find out by reloading the game.
+ *  - `directions` belongs to each mode, but the form shows one set of direction
+ *    checkboxes, so it is written onto every mode.
+ *
+ * An unparseable value yields `[]` and the field's own error reports the bad
+ * JSON. Guessing here would overwrite the user's text with something else.
+ */
 export function parseBuildModes(
     raw: string | undefined,
     directions: string[] = [],
@@ -865,11 +930,101 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
     interactions: [
         idField(),
         elSelect("elementId", "Element", "Target", true),
+        // The panel used to be one free JSON box under a label that gave no clue
+        // what it was for. Now it is the `kind` union from `elements.d.ts`, with
+        // only the fields the chosen kind actually has.
         {
-            key: "interactionJson", label: "Interaction descriptor", kind: "json", section: "Target",
-            required: true, jsonType: "object", wide: true,
-            hint: "read by the structure's processor — shape is per structure (doc-tech/08)",
-            placeholder: "{ \"kind\": \"…\" }",
+            key: "interactionKind",
+            label: "What kind of interaction",
+            kind: "select",
+            section: "What it does",
+            required: true,
+            options: INTERACTION_KINDS.map((k) => ({ value: k.kind, label: k.label })),
+            hint: "this is the tooltip shown when you hold a tool over this element",
+        },
+        {
+            key: "structures",
+            label: "Structures",
+            kind: "multiselect",
+            section: "What it does",
+            options: listStructures,
+            emptyHint: "add a Structure first — there is nothing this can point at yet.",
+            when: (f) => f.interactionKind === "structure",
+            hint: "the machines this element interacts with",
+        },
+        {
+            key: "destroyerItems",
+            label: "Items it destroys",
+            kind: "multiselect",
+            section: "What it does",
+            options: listItems,
+            emptyHint: "add an Item first — there is nothing this could destroy yet.",
+            when: (f) => f.interactionKind === "destroyer",
+        },
+        {
+            // There is no entity registry to enumerate, so unlike the two above
+            // this one really is free text. It is the only reference field in the
+            // form that is, and the hint says why.
+            key: "entities",
+            label: "Entity types",
+            kind: "text",
+            section: "What it does",
+            when: (f) => f.interactionKind === "entity",
+            placeholder: "enemy, drone",
+            maxLength: 200,
+            hint: "comma-separated. The engine exposes no entity list to pick from.",
+        },
+        textField("tipTextKey", "Tooltip text key (i18n)", "Tooltip", false, {
+            placeholder: "mods|example|acid|interaction",
+            maxLength: 120,
+            when: (f) => TOOLTIP_KINDS.includes(f.interactionKind as never),
+        }),
+        {
+            key: "tipVisibility",
+            label: "When to show it",
+            kind: "select",
+            section: "Tooltip",
+            options: DATA_FIELD_MODES,
+            when: (f) => TOOLTIP_KINDS.includes(f.interactionKind as never),
+        },
+        numField("tipDataField", "Data field number", "Tooltip", {
+            min: 1,
+            max: 4,
+            int: true,
+            when: (f) =>
+                TOOLTIP_KINDS.includes(f.interactionKind as never) &&
+                (f.tipVisibility === "visibleWhen" || f.tipVisibility === "crossedOutWhen"),
+            hint: "1–4; matches the data field a structure writes",
+        }),
+        numField("tipDataFieldEquals", "Equals", "Tooltip", {
+            min: 0,
+            max: 255,
+            int: true,
+            when: (f) =>
+                TOOLTIP_KINDS.includes(f.interactionKind as never) &&
+                (f.tipVisibility === "visibleWhen" || f.tipVisibility === "crossedOutWhen"),
+        }),
+        {
+            key: "tipOnlyWhenTranslated",
+            label: "Only if translated",
+            kind: "bool",
+            section: "Tooltip",
+            def: "false",
+            hint: "hide the label rather than showing raw text when the key has no translation",
+        },
+        {
+            // Not offered as a control. Kept in the round trip so a stored
+            // descriptor — or one with a field this form does not model —
+            // survives a save byte for byte. Only rendered when the stored
+            // object really does hold something this panel cannot show.
+            key: "interactionJson",
+            label: "Fields this panel does not show",
+            kind: "json",
+            section: "Advanced",
+            jsonType: "object",
+            wide: true,
+            when: (f) => splitInteraction(parseObjectOrUndefined(f.interactionJson)).unmodelled,
+            hint: "carried through untouched — edit only to set a field this panel has no control for",
         },
     ],
 
@@ -1022,10 +1177,31 @@ const FIELDS: Record<Tab, FieldSpec[]> = {
             maxLength: 120,
         }),
         {
-            key: "requirementJson", label: "Requirement", kind: "json", section: "Identity",
-            jsonType: "object", wide: true,
-            hint: "passed through unchanged; leave empty for none",
-            placeholder: '{ "techId": "…" }',
+            // `upgrades.registerCategory` stores this verbatim as
+            // `mods.upgradeCategories[id].requirement`, and a grep of the whole
+            // repo finds nothing that reads it. No shipped mod sets it either.
+            //
+            // So it is offered as a tech id — the only shape a mod would
+            // plausibly mean by "requirement" — but labelled as a pass-through
+            // the engine stores and never uses, rather than dressed up as a
+            // feature. The raw box stays as the honest escape hatch.
+            key: "requirementTechId",
+            label: "Requirement (stored only)",
+            kind: "select",
+            section: "Identity",
+            options: (f) => listTechIds(f.idSuffix),
+            emptyHint: "add a Tech first — there is nothing to point at.",
+            hint: "the engine stores this and never reads it, so nothing happens either way. Set it only if you know your build consumes it.",
+        },
+        {
+            key: "requirementJson",
+            label: "Requirement (raw)",
+            kind: "json",
+            section: "Advanced",
+            jsonType: "object",
+            wide: true,
+            when: (f) => f.requirementTechId === "__custom__",
+            hint: "for a shape other than a tech id — stored verbatim, and equally unread",
         },
         advField(),
     ],
@@ -1833,6 +2009,21 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
                 put("rejectWhenBlocked", String(e.rejectWhenBlocked));
             }
             put("tooltipHoverJson", json(e.tooltipHover));
+            // Split the documented shape into controls, keeping the object so an
+            // unrepresentable one (valueLabels, a literal message, several field
+            // rows) is still recoverable.
+            {
+                const th = e.tooltipHover as
+                    | { dataFieldMessage?: { messageKey?: string; fields?: unknown[] } }
+                    | undefined;
+                const msg = th?.dataFieldMessage;
+                put("tooltipMessageKey", str(msg?.messageKey));
+                const only = Array.isArray(msg?.fields) ? msg?.fields[0] : undefined;
+                const f0 = (only ?? {}) as { field?: number; param?: string; fallback?: string };
+                put("tooltipField", num(f0.field));
+                put("tooltipParam", str(f0.param));
+                put("tooltipFallback", str(f0.fallback));
+            }
             put("variantsJson", json(e.variants));
             const render = e.render as { imageName?: string } | undefined;
             put("imageName", str(render?.imageName) ?? str(e.imageName));
@@ -1886,6 +2077,12 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
         }
         case "interactions": {
             put("elementId", str(e.elementId) ?? num(e.elementId));
+            // Split into the kind + per-kind fields, and keep the original object
+            // so a descriptor the form does not fully model is still recoverable.
+            const ix = splitInteraction(
+                e.interaction as Record<string, unknown> | undefined,
+            );
+            for (const [k, v] of Object.entries(ix.fields)) put(k, v);
             put("interactionJson", json(e.interaction));
             break;
         }
@@ -1938,7 +2135,18 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
         case "categories": {
             put("name", str(e.name));
             put("nameKey", str(e.nameKey));
-            put("requirementJson", json(e.requirement));
+            // A plain string requirement (the only shape the picker writes) goes
+            // in the select; anything else — an object from a hand-edited config,
+            // or from before this picker existed — falls back to the raw box so a
+            // save cannot silently drop it. Nothing reads this field, but losing
+            // it anyway would be its own kind of wrong.
+            const req = e.requirement;
+            if (typeof req === "string") {
+                putCustomOrSelect(form, req, "requirementTechId", "requirementJson", []);
+            } else if (req !== undefined) {
+                put("requirementTechId", "__custom__");
+                put("requirementJson", json(req));
+            }
             break;
         }
         case "inputs": {
@@ -2107,8 +2315,17 @@ export function formToEntry(
             );
             if (descriptionParams) entry.descriptionParams = descriptionParams;
             setBool("rejectWhenBlocked", optBool(form, "rejectWhenBlocked"));
-            const tooltipHover = optJson<Record<string, unknown>>(form, "tooltipHoverJson");
-            if (tooltipHover) entry.tooltipHover = tooltipHover;
+            // Rebuild the documented shape from the controls, unless the stored
+            // object held something they cannot express — then keep it verbatim.
+            const existingHover = parseObjectOrUndefined(form.tooltipHoverJson);
+            const hover = composeTooltipHover(form);
+            if (hover) {
+                entry.tooltipHover = tooltipHoverIsComplete(form.tooltipHoverJson)
+                    ? hover
+                    : existingHover;
+            } else if (existingHover) {
+                entry.tooltipHover = existingHover;
+            }
             const variants = optJson<unknown[]>(form, "variantsJson");
             if (variants) entry.variants = variants;
             setStr("categoryKey", opt(form, "categoryKey"));
@@ -2191,8 +2408,16 @@ export function formToEntry(
         }
         case "interactions": {
             setStr("elementId", opt(form, "elementId"));
-            const interaction = optJson<Record<string, unknown>>(form, "interactionJson");
-            if (interaction) entry.interaction = interaction;
+            // Re-compose from the split fields, unless the stored object held
+            // something the form does not model — then keep it verbatim rather
+            // than silently rewriting it into a kind it was not.
+            const existing = parseObjectOrUndefined(form.interactionJson);
+            const composed = composeInteraction(form);
+            if (composed) {
+                entry.interaction = splitInteraction(existing).unmodelled ? existing : composed;
+            } else if (existing) {
+                entry.interaction = existing;
+            }
             break;
         }
         case "terrains": {
@@ -2250,8 +2475,15 @@ export function formToEntry(
             // Mirrors the engine guard: `if (!t.id || !t.name && !t.nameKey) throw`
             setStr("name", opt(form, "name"));
             setStr("nameKey", opt(form, "nameKey"));
-            const requirement = optJson<Record<string, unknown>>(form, "requirementJson");
-            if (requirement) entry.requirement = requirement;
+            const rawReq = optJson<Record<string, unknown>>(form, "requirementJson");
+            const techReq = opt(form, "requirementTechId");
+            if (techReq === "__custom__") {
+                if (rawReq) entry.requirement = rawReq;
+            } else if (techReq) {
+                entry.requirement = techReq;
+            } else if (rawReq) {
+                entry.requirement = rawReq;
+            }
             break;
         }
         case "inputs": {

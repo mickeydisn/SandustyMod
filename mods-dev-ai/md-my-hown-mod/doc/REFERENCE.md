@@ -17,7 +17,7 @@ A `—` in the **stores** column means the control stores nothing of its
 own: `advancedJson` is the raw escape hatch, a `*On` toggle only gates its
 siblings, and a `*Custom` field is the fallback for a picker.
 
-**20 tabs, 174 fields.**
+**20 tabs, 184 fields.**
 
 | tab | stored under | api call | fields |
 |---|---|---|---|
@@ -27,11 +27,11 @@ siblings, and a `*Custom` field is the fallback for a picker.
 | [Machine recipes](#recipes) | `recipes` | `structures.recipes.register` | 10 |
 | [Processors](#processing) | `processing` | `structures.processing.register` | 5 |
 | [Contact reactions](#contacts) | `contacts` | `reactions.registerContact` | 6 |
-| [Element ↔ structure](#interactions) | `interactions` | — | 3 |
+| [Element ↔ structure](#interactions) | `interactions` | — | 12 |
 | [Terrains](#terrains) | `terrains` | `terrains.register` | 16 |
 | [Tech nodes](#techs) | `techs` | `tech.registerNode`, `tech.updateDefinition` | 14 |
 | [Upgrades](#upgrades) | `upgrades` | `upgrades.register` | 11 |
-| [Upgrade categories](#categories) | `upgradeCategories` | `upgrades.registerCategory` | 5 |
+| [Upgrade categories](#categories) | `upgradeCategories` | `upgrades.registerCategory` | 6 |
 | [Input bindings](#inputs) | `inputBindings` | — | 9 |
 | [Signals](#signals) | `signals` | `signals.register` | 4 |
 | [Triggers](#triggers) | `triggers` | `triggers.register` | 5 |
@@ -198,7 +198,16 @@ Stored under `interactions`.
 |---|---|---|---|---|---|
 | `idSuffix` | Id | `id` | not read | pattern `^[a-z0-9][a-z0-9._-]{0,62}$` | stored as md-my-hown-mod:<id> |
 | `elementId` | Element | `elementId` | not read | — | — |
-| `interactionJson` | Interaction descriptor | `interaction` | not read | object JSON | read by the structure's processor — shape is per structure (doc-tech/08) |
+| `interactionKind` | What kind of interaction | `interaction.kind` | not read | — | this is the tooltip shown when you hold a tool over this element |
+| `structures` | Structures | `interaction.structures` | not read | — | the machines this element interacts with |
+| `destroyerItems` | Items it destroys | `interaction.items` | not read | — | — |
+| `entities` | Entity types | `interaction.entities` | not read | ≤ 200 chars | comma-separated. The engine exposes no entity list to pick from. |
+| `tipTextKey` | Tooltip text key (i18n) | `interaction.textKey` | not read | ≤ 120 chars | — |
+| `tipVisibility` | When to show it | `interaction.visibleWhen | interaction.crossedOutWhen` | not read | — | — |
+| `tipDataField` | Data field number | `interaction.*.dataField` | not read | min 1, max 4, whole | 1–4; matches the data field a structure writes |
+| `tipDataFieldEquals` | Equals | `interaction.*.equals` | not read | min 0, max 255, whole | — |
+| `tipOnlyWhenTranslated` | Only if translated | `interaction.onlyWhenTranslated` | not read | — | hide the label rather than showing raw text when the key has no translation |
+| `interactionJson` | Fields this panel does not show | `interaction (unmodelled fields, verbatim)` | not read | object JSON | carried through untouched — edit only to set a field this panel has no control for |
 
 ## Terrains
 
@@ -287,7 +296,8 @@ Stored under `upgradeCategories`, applied through ``upgrades.registerCategory``.
 | `idSuffix` | Id | `id` | read | pattern `^[a-z0-9][a-z0-9._-]{0,62}$` | stored as md-my-hown-mod:<id> |
 | `name` | Display name | `name` | read | ≤ 64 chars | needed unless a name key is set — the engine throws without one |
 | `nameKey` | Name key (i18n) | `nameKey` | read | ≤ 120 chars | — |
-| `requirementJson` | Requirement | `requirement` | read | object JSON | passed through unchanged; leave empty for none |
+| `requirementTechId` | Requirement (stored only) | `requirement (string)` | not read | — | the engine stores this and never reads it, so nothing happens either way. Set it only if you know your build consumes it. |
+| `requirementJson` | Requirement (raw) | `requirement (anything else, verbatim)` | not read | object JSON | for a shape other than a tech id — stored verbatim, and equally unread |
 | `advancedJson` | Fields this form does not show | `—` | not read | object JSON | Carried through on every edit so nothing is lost. You do not need to touch this — if you change an entry, these keys are preserved exactly. Editing this box by hand is only for a field the form has no control for. |
 
 ## Input bindings
