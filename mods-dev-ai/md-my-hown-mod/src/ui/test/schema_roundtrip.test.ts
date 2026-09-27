@@ -1198,7 +1198,32 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         ]),
         keys("projectile").join(" "),
     );
-    check("triggerScan stays a trigger handler", keys("trigger").includes("triggerScan"));
+    // `triggerScan` used to be asserted here as a trigger handler. It is now on
+    // `processing` and the assertion is gone, because keeping it would have meant
+    // pinning the bug: it reads `payload.x`/`.y`, and the engine calls a trigger
+    // callback with no arguments at all, so on that slot it could only ever return
+    // early. The check below replaces it — it asks the *scope* question, which is
+    // the one that actually decides legality, rather than re-listing a name.
+    {
+        const { canRunAt, needsOf } = await import("../../hooks/scope.ts");
+        const overOffered = reg.handlersForSlot("trigger")
+            .map((m) => m.key)
+            .filter((k) => !canRunAt(k, "trigger"));
+        check(
+            "every trigger-slot handler can actually run on a trigger",
+            overOffered.length === 0,
+            overOffered.join(" "),
+        );
+        check(
+            "triggerScan is not offered on trigger — it needs a position",
+            !reg.handlersForSlot("trigger").some((m) => m.key === "triggerScan"),
+        );
+        check(
+            "triggerScan is offered where a position is delivered",
+            needsOf("triggerScan").includes("pos") &&
+                canRunAt("triggerScan", "processing"),
+        );
+    }
     // Every slot resolves through `resolveAction`, which spans all three
     // registries. The real invariant is "every offered key resolves".
     // Imported dynamically like everything else here: this file sets the
@@ -1347,15 +1372,48 @@ console.log("── handlers tab is reachable and wired (9.2) ──");
     }) as { t: string; c: unknown[] };
     const flat = JSON.stringify(node);
     check("handlers tab renders its title", flat.includes("Handlers"));
-    // The tab is grouped on the **API axis** now, not on `type` — which measured
-    // neither axis. Asserted against the real data: every `api.*` namespace with at
-    // least one action has a section, and both halves are labelled.
-    for (const m of reg.HANDLER_META) {
-        if (m.api) {
-            check(`handlers tab has a section for api.${m.api}`, flat.includes(`api.${m.api}`));
+
+    // The tab no longer groups on the **API axis**. That axis could not group
+    // anything useful: `api` lives on `globalThis`, so every call site has it and
+    // it says nothing about where an action can run — and 33 of the 46 call none,
+    // which put four fifths of the catalogue under one heading. It is a flat
+    // alphabetical list now, filtered on three axes that each answer a real
+    // question, so that is what gets asserted: every domain and every effect is
+    // offered as a filter, and the scope filter is the one wired to `canRunAt`.
+    {
+        const { ACTION_DOMAIN_LABELS, ACTION_EFFECT_LABELS } = await import(
+            "../../hooks/action-class.ts"
+        );
+        const { CALL_SITE_SCOPE, SCOPE_NEED_LABELS } = await import("../../hooks/scope.ts");
+        for (const label of Object.values(ACTION_DOMAIN_LABELS)) {
+            check(`handlers tab offers a ${label} filter`, flat.includes(label));
         }
+        for (const label of Object.values(ACTION_EFFECT_LABELS)) {
+            check(`handlers tab offers a "${label}" filter`, flat.includes(label));
+        }
+        for (const label of Object.values(SCOPE_NEED_LABELS)) {
+            check(`handlers tab offers a "${label}" scope filter`, flat.includes(label));
+        }
+        const { CALL_SITE_LABELS } = await import("../../hooks/process.ts");
+        for (const site of Object.keys(CALL_SITE_SCOPE)) {
+            check(
+                `handlers tab offers a "${
+                    CALL_SITE_LABELS[site as keyof typeof CALL_SITE_LABELS]
+                }" call-site filter`,
+                flat.includes(CALL_SITE_LABELS[site as keyof typeof CALL_SITE_LABELS]),
+            );
+        }
+        check("handlers tab is searchable", flat.includes("Search"));
+        // The toggle names both of its states, so the control is legible without
+        // having to be clicked into its other state first.
+        check(
+            "handlers tab has an in-use toggle that names both states",
+            flat.includes("In use only") && flat.includes("hide the ones nothing uses"),
+        );
     }
-    // …and the two halves are both there, because the whole point is two axes.
+
+    // …and the two halves are both there, because the whole point is two halves:
+    // the catalogue of actions, and the processes that are actually using them.
     check("the action half is labelled", flat.includes("Actions"));
     check("the process half is labelled", flat.includes("Processes in use"));
     check(

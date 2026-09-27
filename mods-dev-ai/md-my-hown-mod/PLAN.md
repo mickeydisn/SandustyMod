@@ -143,6 +143,98 @@ Consequences, in the order they will bite:
 
 ## Decisions
 
+### The scope model — replacing "grouped by api"
+
+**The `api` axis is ambient, and ambient things cannot discriminate.** The five
+api-calling actions read `globalThis.sandkit.api` — a module global, not an argument.
+Every call site provides it. So "which api does it call" says nothing about *where the
+action can run*, which is the only question the axis was being asked. Worse, 41 of 46
+actions call no api at all, so grouping by it puts four fifths of the catalogue in one
+bucket labelled "reaches for nothing". The `cls` ladder then sorts that bucket by how
+far short of the api rule each action falls, which is a quality measure pretending to
+be a category.
+
+**What actually discriminates is the payload the call site delivers.** Measured with
+`tools/analyze-scopes.ts`, an action needs at most three things, and each is one
+boolean:
+
+| need | reads | e.g. |
+| --- | --- | --- |
+| `pos` | `payload.x` / `.y` | `processorLift`, `triggerScan` |
+| `data` | `payload.data` | `structureReadData`, `upgradeScale` |
+| `cell` | `ctx.commit` / `ctx.getResolvedTypeAtCell` | `processorConvert` |
+
+And each call site provides a subset, read off `CALL_SITE_SIGNATURES` and the
+registration code — not assumed:
+
+| call site | engine call | pos | data | cell | ret |
+| --- | --- | :-: | :-: | :-: | :-: |
+| `processing` | `process(structure, context)` | ✓ | ✓ | ✓ | |
+| `signal` | `handler(structure)` | ✓ | ✓ | | |
+| `itemAction` | `handleAction(state, action)` | | ✓ | | |
+| `upgrade` | `onUpgrade(item)` | | ✓ | | |
+| `modifier` | `intercept/modify(args, ctx)` | ✓ | ✓ | ✓ | ✓ |
+| `trigger` | `callback()` | | | | |
+| `projectile` | `getOptions()` | | | | ✓ |
+| `behavior` | `onDownKey(key)` | | | | |
+
+**The rule is one line: an action may sit in a process iff its needs are a subset of
+what the call site delivers.** That is what "the process context defines the scope of
+actions it can use" means concretely — and it is *derived*, so `slots` stops being 46
+hand-written arrays that can drift from the code.
+
+`ret` is listed above but is deliberately **not** part of the subset rule: a value an
+action returns is only meaningful where the engine reads it, and that is the separate
+question the vacuous-return triage is about.
+
+- [x] **Build `scope.ts`** — `ProcessScope`, `CALL_SITE_SCOPE`, `ACTION_SCOPE`,
+      `canRunAt(key, site)`, `slotsFor(key)`, all probe-derived, with
+      `needs ⊆ provides` pinned by a test. Done, and it paid for itself immediately:
+      `tools/analyze-scopes.ts` found **five live bugs** the old axes could not see.
+
+### The five bugs the scope model found
+
+None of these threw, warned, or looked wrong in the editor. All five were actions
+doing **nothing at all**, correctly configured.
+
+1. **`techAppendUnlock`, `techSetUpgradeLevel`, `techGrantItem`** read their options
+   from **argument 2** instead of 3 — a leftover of the pre-split 2-arg signature.
+   So `extra` was bound to the engine's *context*, `o.techId` was `undefined`, and
+   each returned before touching its API. Fixed to `(node, _ctx, extra)`; a test now
+   calls them the way `compileProcess` does and asserts the API call happens.
+   *Same class of bug as `processorConvert` had — found by measurement, not review.*
+2. **`triggerScan`** and 3. **`energyGenerateWhileHeld`** were offered on `trigger`,
+   where the engine calls `callback()` with **no arguments at all** —
+   `registerTrigger` puts `extra` in the *registration*, not the call. Both need a
+   position, so both could only ever return early. Re-slotted to `processing`.
+
+The old `slots` arrays were hand-written 46 times, and that is exactly how these got
+in: nothing checked a declaration against what the code actually reads. `scope.test.ts`
+now asserts every declared slot is servable, so the class cannot recur.
+
+- [ ] **Derive `HANDLER_META.slots` from it** instead of hand-declaring. They are now
+      *correct* and the test enforces that, but they are still 46 hand-written arrays
+      kept in step by hand.
+- [x] **Rebuild the Handlers panel** around a **flat alphabetical list with three
+      filter axes** — decided after measuring, because 33 of 46 actions need nothing
+      and any grouping built on that fact would be a bucket, not a category:
+      - **Needs** — `a position` / `instance data` / `the cell grid`. The only axis
+        that decides legality, so it doubles as the "what can I put in *this*
+        process" filter.
+      - **Effect** — returns / calls an API / changes the grid / writes data /
+        reads / logs. Measured; this is the axis that separates the 33.
+      - **Domain** — energy, grid, items, tech, projectiles, excavation, structure,
+        diagnostics. The only *declared* axis, pinned by a coverage test.
+      - Plus **"Runs on"** (call site, wired to `canRunAt`) and an **in-use toggle**.
+      Each row shows its three chips instead of the old deprecated `scope:` label,
+      and flags the vacuous returns. "Processes in use" is unchanged below it.
+- [ ] **Drop `ACTION_CLASSES` / `cls`** once scope groups the panel — it measures a
+      rule we are no longer enforcing, and keeping it invites the same confusion
+      back. Worth knowing before the panel work: the grouping it implies is *worse*,
+      not better. **33 of 46 actions need nothing at all**, so "reaches for nothing"
+      is both the honest bucket and the biggest one — which is the real reason the
+      old panel felt wrong, and the thing the new one has to design around.
+
 ### Resolved by the implementation
 
 These were questions when the plan was written. The code now answers them, and each is

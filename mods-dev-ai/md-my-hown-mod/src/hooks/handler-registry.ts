@@ -246,10 +246,20 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             }),
         ],
     },
+    // `triggerScan` was `slots: ["trigger"]`, and that was wrong. It reads
+    // `payload.x`/`payload.y` to find a position, but the engine calls a trigger's
+    // callback with **no arguments at all** — `registerTrigger` puts `extra` in the
+    // *registration*, not the call. On this slot it could only ever return early,
+    // so it was the one trigger action that provably did nothing while looking
+    // correctly configured. `tools/analyze-scopes.ts` is what turned that from a
+    // hunch into a measurement.
+    //
+    // It still works on `processing`, which does deliver a position, and the scan
+    // it does there is a real one.
     {
         key: "triggerScan",
         type: "cell",
-        slots: ["trigger"],
+        slots: ["processing"],
         scope: "cell",
         params: [p("radius", "Radius", "number", { def: "3", min: 0, int: true })],
     },
@@ -278,6 +288,12 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             p("value", "Value", "text", { required: true }),
         ],
     },
+    // `triggerScan` reads `payload.x`/`payload.y` to find a position — but the
+    // engine calls a trigger's callback with **no arguments at all**
+    // (`registerTrigger` puts `extra` in the registration, not the call). So on
+    // this slot it could only ever return early: the one action in the trigger
+    // family that provably did nothing, while looking correctly configured.
+    // `triggerLog` and `triggerTick` are the ones that actually work there.
     { key: "triggerLog", type: "message", slots: ["trigger"], scope: "global", params: [] },
     { key: "triggerTick", type: "message", slots: ["trigger"], scope: "global", params: [] },
     {
@@ -353,16 +369,24 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         scope: "structure",
         params: [],
     },
+    // `processing` only. This used to also list `trigger`, but it reads
+    // `structure.x`/`structure.y` to locate the energy network, and a trigger
+    // hands its callback no arguments at all — so on that slot it returned before
+    // touching the API. The `trigger` entry was the same silent-nothing bug
+    // `triggerScan` had, in a different family.
     {
         key: "energyGenerateWhileHeld",
         type: "processor",
-        slots: ["processing", "trigger"],
+        slots: ["processing"],
         scope: "cell",
         params: [
             p("energyType", "Energy type", "text", { required: true }),
             p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 }),
         ],
     },
+    // `trigger` is legal here and there: `energyConsumePerRun` needs no position,
+    // so it does something on both. That is the scope rule doing its job rather
+    // than a blanket guess about the family.
     {
         key: "energyConsumePerRun",
         type: "processor",

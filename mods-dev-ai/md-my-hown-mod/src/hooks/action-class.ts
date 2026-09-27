@@ -273,6 +273,273 @@ export function actionsWithoutApi(): string[] {
     return Object.keys(ACTION_CLASSES).filter((k) => !ACTION_APIS[k]);
 }
 
+// ── The effect axis ──────────────────────────────────────────────────────────
+
+/**
+ * What an action **does**, as opposed to what it needs (`./scope.ts`) or which
+ * subject it is about (`ACTION_DOMAINS`).
+ *
+ * `scope` answers "where can this run", and that is enough to make the wiring
+ * correct — but it is not enough to make a *list* usable. Measured, 33 of the 46
+ * actions need nothing at all, so a scope-grouped panel would put two thirds of
+ * the catalogue under one heading and tell a reader nothing. Effect is the axis
+ * that separates them: it says whether an action returns a value, mutates the
+ * world, or merely reports, which is the first thing you want to know.
+ *
+ * It is **measured**, by the same probe as the class, and a test re-measures it.
+ * That matters more here than elsewhere: the distinction between `returns` and
+ * `effect` is exactly the one the 13 vacuous handlers fall on the wrong side of,
+ * so it has to be a fact about the code rather than a claim about it.
+ */
+export type ActionEffect =
+    /** Returns a value the engine may read. A factory. */
+    | "returns"
+    /** Calls `api.*` — the ambient engine surface. */
+    | "api"
+    /** Mutates `ctx` — `ctx.commit(...)`, i.e. changes the grid. */
+    | "commits"
+    /** Writes to the payload, normally `payload.data[field] = value`. */
+    | "writes"
+    /** Reads the payload or context and does nothing with it but look. */
+    | "reads"
+    /** Only `console.log`/`warn`. */
+    | "logs";
+
+export const ACTION_EFFECT_LABELS: Record<ActionEffect, string> = {
+    returns: "Returns a value",
+    api: "Calls an API",
+    commits: "Changes the grid",
+    writes: "Writes instance data",
+    reads: "Reads",
+    logs: "Logs only",
+};
+
+export const ACTION_EFFECT_BLURBS: Record<ActionEffect, string> = {
+    returns: "Produces a value — useful where the engine reads the return.",
+    api: "Drives the engine through `api.*`.",
+    commits: "Commits a mutation to the cell grid via the processing context.",
+    writes: "Stores a value on the instance's own data.",
+    reads: "Looks at what it is given, and changes nothing.",
+    logs: "Prints to the console. Scaffolding, not behaviour.",
+};
+
+/**
+ * The single effect of each action, **measured**.
+ *
+ * Ordered by how strong the claim is, and the first match wins — so an action that
+ * both calls an API and writes data is filed `api`, because reaching into the
+ * engine is the more consequential thing it does. This is the same
+ * priority-ladder idea the old `class` axis used, applied to a question that
+ * actually has an answer: `action-class.ts` asked "how far short of the api rule
+ * does this fall", which is a measure of failure. This asks "what is it".
+ */
+export const ACTION_EFFECTS: Record<string, ActionEffect> = {
+    // commits — the only three that can change the world
+    processorConvert: "commits",
+    processorLift: "commits",
+    processorScan: "reads",
+
+    // api — the five that reach the engine
+    energyGenerateWhileHeld: "api",
+    energyConsumePerRun: "api",
+    techAppendUnlock: "api",
+    techSetUpgradeLevel: "api",
+    techGrantItem: "api",
+
+    // returns — factories and presets
+    defaultProjectileOptions: "returns",
+    projectileHeavy: "returns",
+    projectileFast: "returns",
+    projectileHoming: "returns",
+    projectileShotgun: "returns",
+    projectileExcavate: "returns",
+    projectileTerrain: "returns",
+    excavationDefault: "returns",
+    excavationCrusher: "returns",
+    excavationDrill: "returns",
+    excavationGun: "returns",
+    excavationShatter: "returns",
+    energyDefault: "returns",
+    energyBank: "returns",
+    energyWire: "returns",
+    energyConductor: "returns",
+    energyNetwork: "returns",
+    itemDefault: "returns",
+    itemExcavate: "returns",
+    itemShoot: "returns",
+
+    // writes — the instance's own data
+    structureWriteData: "writes",
+    processorCount: "writes",
+    upgradeCountLevel: "writes",
+    upgradeScale: "writes",
+    upgradeAdd: "writes",
+
+    // reads — looks, changes nothing
+    structureInspect: "reads",
+    structureReadData: "reads",
+    triggerScan: "reads",
+    identity: "reads",
+
+    // logs — the rest
+    signalLog: "logs",
+    triggerLog: "logs",
+    triggerTick: "logs",
+    processorLog: "logs",
+    processorNoop: "logs",
+    upgradeLog: "logs",
+    logArgs: "logs",
+    logBuildingPayload: "logs",
+    noop: "logs",
+};
+
+/** One action's effect, or undefined for a key that does not exist. */
+export function effectOf(key: string): ActionEffect | undefined {
+    return ACTION_EFFECTS[key];
+}
+
+/**
+ * The 13 actions that return a descriptor into a slot which discards it.
+ *
+ * `returns` is a real effect, but it only *does* something where the engine reads
+ * the return — and measured, that is one slot of eight. Everywhere else a
+ * `returns` action produces a value that is computed and then dropped, which is
+ * why the panel flags them rather than presenting them as if they were peers of
+ * `commits`.
+ *
+ * Kept here rather than in the panel so the flag and the triage cannot disagree.
+ */
+export function isVacuousReturn(key: string, callSiteUsesReturn: boolean): boolean {
+    return ACTION_EFFECTS[key] === "returns" && !callSiteUsesReturn;
+}
+
+// ── The domain axis ──────────────────────────────────────────────────────────
+
+/**
+ * Which **subject** an action is about — energy, the grid, an item, and so on.
+ *
+ * This is the one axis that is **declared rather than measured**, and it is worth
+ * being honest about why, because the other two earn their keep by being derived.
+ *
+ * A domain is not a property of what an action *touches* — `energyBank` touches
+ * nothing at all, it just returns `{ capacity: 100000 }`, and
+ * `techGrantItem` calls `api.player.inventory`, not `api.tech`. A domain says what
+ * the action is *for*, which is a naming decision, and no probe can read it off the
+ * code. Trying to derive one produced exactly the failure the `api` axis already
+ * had: a mechanical rule that mostly lines up and silently does not for the
+ * interesting cases.
+ *
+ * So it is declared, and kept honest the only way a declared axis can be: a test
+ * asserts every registered action has exactly one, and that the vocabulary is
+ * closed. A new action cannot slip through unfiled.
+ */
+export type ActionDomain =
+    | "energy"
+    | "grid"
+    | "items"
+    | "tech"
+    | "projectiles"
+    | "excavation"
+    | "structure"
+    | "diagnostics";
+
+export const ACTION_DOMAIN_LABELS: Record<ActionDomain, string> = {
+    energy: "Energy",
+    grid: "Cell grid",
+    items: "Items",
+    tech: "Tech & upgrades",
+    projectiles: "Projectiles",
+    excavation: "Excavation",
+    structure: "Structure data",
+    diagnostics: "Diagnostics",
+};
+
+export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
+    energy: "Produces, consumes, or configures an energy network.",
+    grid: "Reads or changes the cells around a structure.",
+    items: "What an item does when the player uses it.",
+    tech: "Research completion and upgrade levels.",
+    projectiles: "Spawn-time options for a projectile.",
+    excavation: "Dig behaviour for a tool.",
+    structure: "Per-instance data on a placed structure.",
+    diagnostics: "Logging and no-ops — wiring tests, not behaviour.",
+};
+
+export const ACTION_DOMAINS: Record<string, ActionDomain> = {
+    // energy
+    energyDefault: "energy",
+    energyBank: "energy",
+    energyWire: "energy",
+    energyConductor: "energy",
+    energyNetwork: "energy",
+    energyGenerateWhileHeld: "energy",
+    energyConsumePerRun: "energy",
+
+    // grid — the only domain that can change the world
+    processorConvert: "grid",
+    processorLift: "grid",
+    processorScan: "grid",
+    triggerScan: "grid",
+
+    // items
+    itemDefault: "items",
+    itemExcavate: "items",
+    itemShoot: "items",
+
+    // tech & upgrades
+    techAppendUnlock: "tech",
+    techSetUpgradeLevel: "tech",
+    techGrantItem: "tech",
+    upgradeCountLevel: "tech",
+    upgradeScale: "tech",
+    upgradeAdd: "tech",
+
+    // projectiles
+    defaultProjectileOptions: "projectiles",
+    projectileHeavy: "projectiles",
+    projectileFast: "projectiles",
+    projectileHoming: "projectiles",
+    projectileShotgun: "projectiles",
+    projectileExcavate: "projectiles",
+    projectileTerrain: "projectiles",
+
+    // excavation
+    excavationDefault: "excavation",
+    excavationCrusher: "excavation",
+    excavationDrill: "excavation",
+    excavationGun: "excavation",
+    excavationShatter: "excavation",
+
+    // structure data
+    structureInspect: "structure",
+    structureReadData: "structure",
+    structureWriteData: "structure",
+    processorCount: "structure",
+
+    // diagnostics
+    noop: "diagnostics",
+    processorNoop: "diagnostics",
+    processorLog: "diagnostics",
+    signalLog: "diagnostics",
+    triggerLog: "diagnostics",
+    triggerTick: "diagnostics",
+    upgradeLog: "diagnostics",
+    logArgs: "diagnostics",
+    identity: "diagnostics",
+    logBuildingPayload: "diagnostics",
+};
+
+export function domainOf(key: string): ActionDomain | undefined {
+    return ACTION_DOMAINS[key];
+}
+
+/** How many actions each domain holds, for the filter chips. */
+export function domainCounts(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const d of Object.values(ACTION_DOMAINS)) out[d] = (out[d] ?? 0) + 1;
+    return out;
+}
+
 /** Every action that does not satisfy the "must call one api.*" rule. */
 export function offRuleActions(): { key: string; cls: HandlerActionClass }[] {
     return Object.entries(ACTION_CLASSES)

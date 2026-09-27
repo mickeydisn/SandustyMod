@@ -15,8 +15,27 @@
  * silently in-game.
  */
 import type { HandlerMeta, HandlerUsage } from "../hooks/handler-registry.ts";
-import { ACTION_CLASS_BLURBS } from "../hooks/action-class.ts";
-import { actionRefsOf } from "../hooks/process.ts";
+import {
+    ACTION_DOMAIN_BLURBS,
+    ACTION_DOMAIN_LABELS,
+    ACTION_EFFECT_BLURBS,
+    ACTION_EFFECT_LABELS,
+    type ActionDomain,
+    type ActionEffect,
+    domainOf,
+    effectOf,
+} from "../hooks/action-class.ts";
+import {
+    CALL_SITE_SCOPE,
+    canRunAt,
+    describeNeeds,
+    needsOf,
+    SCOPE_NEED_BLURBS,
+    SCOPE_NEED_LABELS,
+    SCOPE_NEEDS,
+    type ScopeNeed,
+} from "../hooks/scope.ts";
+import { actionRefsOf, CALL_SITE_LABELS } from "../hooks/process.ts";
 import {
     buildHandlerOptions,
     HANDLER_META,
@@ -38,18 +57,36 @@ export interface HandlersTabState {
     /** Live parameter values for the open handler. */
     values: Record<string, Record<string, string>>;
     /**
-     * Which handler-type sections are unfolded.
+     * Free-text filter over key, description and domain. Empty means "no filter".
      *
-     * A set rather than a single `open`, because a user comparing two types
-     * should not have to collapse the first to see the second. All closed by
-     * default: the screen is a wall of ~40 rows otherwise, and the point of
-     * this screen is to find one thing and then leave.
+     * Kept as the raw string rather than a debounced copy because the list is 46
+     * rows: filtering it is cheaper than re-rendering the input on a timer, and a
+     * debounce that lags behind the caret is worse than a little work per keystroke.
      */
-    expanded: string[];
+    query: string;
+    /** Domain filter. Empty means "every domain". */
+    domain: string;
+    /** Effect filter. Empty means "every effect". */
+    effect: string;
+    /** Scope filter — show only actions that need this. Empty means "any". */
+    need: string;
+    /** Call-site filter — show only actions that can run here. Empty means "any". */
+    callSite: string;
+    /** When true, hide actions no process currently uses. */
+    onlyUsed: boolean;
 }
 
 export function initialHandlersState(): HandlersTabState {
-    return { open: null, values: {}, expanded: [] };
+    return {
+        open: null,
+        values: {},
+        query: "",
+        domain: "",
+        effect: "",
+        need: "",
+        callSite: "",
+        onlyUsed: false,
+    };
 }
 
 /** Default parameter bag for a handler, taken from its declared defaults. */
@@ -91,39 +128,206 @@ const PROCESS_SLOTS: { slot: string; category: string; label: string }[] = [
 const API_SECTION_KEY = "(no api — the action reaches for nothing)";
 
 /**
- * Sections for the action half, built from the real data rather than a fixed list.
+ * The list, filtered.
  *
- * The `api.*` namespaces come first, because that is the shape the split wants: an
- * action that calls one namespace *is* the rule, and everything after it is measuring
- * how far short of the rule the rest fall. Then the classes that call none, in the
- * ladder's order — `pure` last, because it is nearly half the catalogue and is mostly
- * scaffolding, and leading with it would bury the five that follow the rule.
+ * Split out as a pure function because it is the only interesting logic on this
+ * screen and it is the part worth testing: the axes are *independent*, so the
+ * failure mode is a filter that silently does nothing, and that is much easier to
+ * catch in a unit test than by clicking through chips.
+ *
+ * The axes answer three genuinely different questions, which is why they are all
+ * here rather than one "category" that pretends to be a taxonomy:
+ *
+ *   - **scope** — what the engine must hand it. The only axis that decides whether
+ *     a process *can* use it, so it is also the filter that answers "what can I put
+ *     in this trigger".
+ *   - **effect** — what it does. Measured; the difference between `returns` and
+ *     `commits` is the one that matters.
+ *   - **domain** — what it is about. Declared, because a domain is a naming
+ *     decision no probe can read.
  */
-function actionSections(): { title: string; blurb: string; rows: HandlerMeta[] }[] {
-    const byApi = new Map<string, HandlerMeta[]>();
-    for (const m of HANDLER_META) {
-        const k = m.api ?? API_SECTION_KEY;
-        byApi.set(k, [...(byApi.get(k) ?? []), m]);
-    }
-    const sections: { title: string; blurb: string; rows: HandlerMeta[] }[] = [];
-    for (const ns of [...byApi.keys()].sort()) {
-        if (ns === API_SECTION_KEY) continue;
-        sections.push({
-            title: `api.${ns}`,
-            blurb: `Calls api.${ns} — the shape the split wants.`,
-            rows: byApi.get(ns)!,
+export function filterActions(
+    metas: readonly HandlerMeta[],
+    state: HandlersTabState,
+    used: Record<string, HandlerUsage[]>,
+    docs: Record<string, string>,
+): HandlerMeta[] {
+    const q = state.query.trim().toLowerCase();
+    return [...metas]
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .filter((m) => {
+            if (state.onlyUsed && !(used[m.key] ?? []).length) return false;
+            if (state.domain && domainOf(m.key) !== state.domain) return false;
+            if (state.effect && effectOf(m.key) !== state.effect) return false;
+            if (state.need && !needsOf(m.key).includes(state.need as ScopeNeed)) return false;
+            if (state.callSite && !canRunAt(m.key, state.callSite)) return false;
+            if (!q) return true;
+            // Search the things a reader would actually type. The description is in
+            // here because "convert" should find `processorConvert` even if they never
+            // learned the key, and the domain because "energy" should find all seven.
+            const hay = `${m.key} ${docs[m.key] ?? ""} ${domainOf(m.key) ?? ""} ${
+                effectOf(m.key) ?? ""
+            } ${m.slots.join(" ")}`.toLowerCase();
+            return hay.includes(q);
         });
-    }
-    for (const cls of ["context-bound", "self-sufficient", "pure"] as const) {
-        const rows = HANDLER_META.filter((m) => m.cls === cls);
-        if (!rows.length) continue;
-        sections.push({
-            title: `no api · ${cls}`,
-            blurb: ACTION_CLASS_BLURBS[cls],
-            rows,
-        });
-    }
-    return sections;
+}
+
+/** One clickable chip. `active` is the selected state. */
+function chip(
+    h: H,
+    label: string,
+    active: boolean,
+    onClick: () => void,
+    title?: string,
+    count?: number,
+): unknown {
+    return h(
+        "button",
+        {
+            style: active ? S.chipActive : S.chip,
+            onClick,
+            title: title ?? label,
+        },
+        label,
+        count === undefined ? null : ` ${count}`,
+    );
+}
+
+/** The filter bar: a search box, then one row of chips per axis. */
+function filterBar(
+    h: H,
+    state: HandlersTabState,
+    setState: (n: HandlersTabState) => void,
+    used: Record<string, HandlerUsage[]>,
+    shown: number,
+    total: number,
+): unknown {
+    const set = (patch: Partial<HandlersTabState>) => setState({ ...state, ...patch });
+    const toggleVal = (field: "domain" | "effect" | "need" | "callSite", v: string) =>
+        set({ [field]: state[field] === v ? "" : v } as Partial<HandlersTabState>);
+
+    const domains = Object.keys(ACTION_DOMAIN_LABELS) as ActionDomain[];
+    const effects = Object.keys(ACTION_EFFECT_LABELS) as ActionEffect[];
+    const needs = [...SCOPE_NEEDS];
+    const sites = Object.keys(CALL_SITE_SCOPE);
+
+    return h(
+        "div",
+        { style: { ...S.card, marginBottom: 8 } },
+        h(
+            "div",
+            { style: { display: "flex", alignItems: "center", gap: 6 } },
+            h("input", {
+                style: { ...S.input, flex: 1 },
+                value: state.query,
+                placeholder: "Search 46 actions…",
+                onInput: (e: { currentTarget: { value: string } }) =>
+                    set({ query: e.currentTarget.value }),
+            }),
+            chip(
+                h,
+                state.onlyUsed ? "In use only" : "All",
+                state.onlyUsed,
+                () => set({ onlyUsed: !state.onlyUsed }),
+                // Both states named in the title, so the control explains itself
+                // without having to be clicked into its other state first — and so
+                // the screen can be read without hover.
+                state.onlyUsed
+                    ? "In use only — showing actions a process uses. Click for all."
+                    : "All — showing every action. Click for 'In use only' to hide the ones nothing uses.",
+            ),
+            h("span", { style: S.hint }, `${shown}/${total}`),
+        ),
+        // Each axis is a labelled row, so it is obvious that a *combination* of
+        // filters is running rather than one mystery category.
+        ...([
+            [
+                "Needs",
+                needs.map((n) =>
+                    chip(
+                        h,
+                        SCOPE_NEED_LABELS[n],
+                        state.need === n,
+                        () => toggleVal("need", n),
+                        SCOPE_NEED_BLURBS[n],
+                    )
+                ),
+                state.need,
+                "need",
+            ],
+            [
+                "Effect",
+                effects.map((e) =>
+                    chip(
+                        h,
+                        ACTION_EFFECT_LABELS[e],
+                        state.effect === e,
+                        () => toggleVal("effect", e),
+                        ACTION_EFFECT_BLURBS[e],
+                    )
+                ),
+                state.effect,
+                "effect",
+            ],
+            [
+                "Domain",
+                domains.map((d) =>
+                    chip(
+                        h,
+                        ACTION_DOMAIN_LABELS[d],
+                        state.domain === d,
+                        () => toggleVal("domain", d),
+                        ACTION_DOMAIN_BLURBS[d],
+                    )
+                ),
+                state.domain,
+                "domain",
+            ],
+            [
+                "Runs on",
+                sites.map((s) =>
+                    chip(
+                        h,
+                        CALL_SITE_LABELS[s as keyof typeof CALL_SITE_LABELS] ?? s,
+                        state.callSite === s,
+                        () => toggleVal("callSite", s),
+                        `Only actions a ${s} process can actually run`,
+                    )
+                ),
+                state.callSite,
+                "callSite",
+            ],
+        ] as const).map(([label, chipsFor, active]) =>
+            h(
+                "div",
+                {
+                    key: label,
+                    style: {
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        marginTop: 4,
+                        flexWrap: "wrap",
+                    },
+                },
+                h("span", { style: { ...S.label, minWidth: 58, opacity: 0.6 } }, label),
+                ...chipsFor,
+                active
+                    ? h(
+                        "button",
+                        {
+                            style: { ...S.chip, opacity: 0.7 },
+                            onClick: () =>
+                                set({
+                                    [label === "Runs on" ? "callSite" : label.toLowerCase()]: "",
+                                } as Partial<HandlersTabState>),
+                        },
+                        "clear",
+                    )
+                    : null,
+            )
+        ),
+    );
 }
 
 export function renderHandlersTab(props: HandlersTabProps): unknown {
@@ -154,13 +358,33 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
         });
     };
 
-    const toggleType = (type: string) => {
-        const open = state.expanded.includes(type);
-        setState({
-            ...state,
-            expanded: open ? state.expanded.filter((t) => t !== type) : [...state.expanded, type],
-        });
-    };
+    // ── the list, filtered on three independent axes ─────────────────────────
+    //
+    // It used to be collapsible blocks, grouped by `api.*` then by `cls`. That
+    // grouping is gone for a measured reason: `api` is ambient (it lives on
+    // `globalThis`, so every call site has it) and 33 of 46 actions call none, so
+    // it put four fifths of the catalogue under one heading. A flat alphabetical
+    // list with real filters is more honest than a hierarchy built on a fiction.
+    const shown = filterActions(HANDLER_META, state, used, docs);
+    const bar = filterBar(h, state, setState, used, shown.length, HANDLER_META.length);
+
+    const rows = shown.map((m) =>
+        renderRow(m, { h, state, used, docs, toggle, setParam, onCopy, onGoTo })
+    );
+
+    const list = shown.length === 0
+        ? h(
+            "div",
+            { style: S.card },
+            h("div", { style: S.hint }, "No action matches those filters."),
+            h(
+                "div",
+                { style: S.hint },
+                "That is often the answer rather than a dead end — a trigger really cannot ",
+                "run anything that needs a position, because the engine calls it with no arguments.",
+            ),
+        )
+        : h("div", { style: { ...S.card, paddingTop: 2, paddingBottom: 2 } }, ...rows);
 
     // ── unreachable references, surfaced first ──────────────────────────────
     const warnings = bad.length === 0 ? null : h(
@@ -193,49 +417,6 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
     );
 
     // ── one collapsible block per section, on the API axis ──────────────────
-    //
-    // It used to be one block per `type`, and `type` measured **neither** axis:
-    // `cell` spanned three call sites, `tech` was an API name sitting on the
-    // `upgrade` call site, and `message` put a signal, a trigger and an item action
-    // under one label with nothing in common. The section titles are now the axis
-    // that means something — the `api.*` an action calls, then the class for the
-    // ones that call none.
-    const blocks = actionSections().map(({ title, blurb, rows }) => {
-        const isOpen = state.expanded.includes(title);
-        const usedCount = rows.filter((m) => (used[m.key] ?? []).length > 0).length;
-        return h(
-            "div",
-            { key: title, style: { ...S.card, marginBottom: 8 } },
-            h(
-                "div",
-                {
-                    style: {
-                        ...S.sectionTitle,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        userSelect: "none",
-                    },
-                    onClick: () => toggleType(title),
-                },
-                h("span", { style: { opacity: 0.7, fontSize: "10px" } }, isOpen ? "▼" : "▶"),
-                `${title} (${rows.length})`,
-                usedCount > 0 ? h("span", { style: S.tagChip }, `${usedCount} in use`) : null,
-            ),
-            h("div", { style: S.hint }, blurb),
-            isOpen
-                ? h(
-                    "div",
-                    { style: { marginTop: 6 } },
-                    ...rows.map((m) =>
-                        renderRow(m, { h, state, used, docs, toggle, setParam, onCopy, onGoTo })
-                    ),
-                )
-                : null,
-        );
-    });
-
     // The other axis, in full below. Grouped by call site, because that is what a
     // process *is*: an ordered list of actions an object runs.
     const processGroups = processGroupsFor(h, cfg, onGoTo);
@@ -247,13 +428,18 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
         h(
             "div",
             { style: S.hint },
-            `${HANDLER_META.length} actions, grouped by the api.* each one calls. A process is an `,
-            "ordered list of them — the second half of this screen lists yours.",
+            `${HANDLER_META.length} actions, listed alphabetically. Filter by what an action `,
+            "needs from the engine, what it does, or what it is about. A process is an ordered ",
+            "list of them — the second half of this screen lists yours.",
         ),
-        howToUse(h, onGoTo),
         warnings,
-        h("div", { style: { ...S.sectionTitle, marginTop: 4 } }, "Actions"),
-        ...blocks,
+        bar,
+        h(
+            "div",
+            { style: { ...S.sectionTitle, marginTop: 8 } },
+            `Actions${shown.length === HANDLER_META.length ? "" : ` (${shown.length})`}`,
+        ),
+        list,
         h("div", { style: { ...S.sectionTitle, marginTop: 12 } }, "Processes in use"),
         processGroups.length ? h("div", null, ...processGroups) : h(
             "div",
@@ -314,79 +500,6 @@ function processGroupsFor(
     }).filter((n) => n !== null);
 }
 
-/**
- * The one thing this screen was missing: how to actually use a handler.
- *
- * Everything else here is a reference. A user arriving at this screen has a
- * concrete goal — "make this trigger do something" — and the reference answers
- * none of the four questions on the way there. The chain is short and is stated
- * as steps rather than prose.
- */
-function howToUse(h: H, onGoTo: Click): unknown {
-    const steps: [string, string][] = [
-        [
-            "Pick the object that runs your code",
-            "A trigger, a processor, a projectile, a modifier, or a signal. Open that screen and create or edit the entry.",
-        ],
-        [
-            "Find the slot field",
-            "Each object has one or more fields ending in “Key” — that is where a handler is attached. Triggers have “onFireKey”, processors have “processKey”, and so on.",
-        ],
-        [
-            "Choose the handler",
-            "The dropdown only offers handlers that are legal for that slot, because it filters by the type the slot accepts. If nothing is listed, no handler serves that slot.",
-        ],
-        [
-            "Set the parameters",
-            "Open the handler here to see the parameters it takes and what they default to. Parameters are stored on the object, not on the handler.",
-        ],
-    ];
-    return h(
-        "div",
-        { style: { ...S.card, marginBottom: 8, borderColor: "rgba(120,180,255,0.35)" } },
-        h("div", { style: S.sectionTitle }, "How to configure a handler"),
-        h(
-            "div",
-            { style: S.hint },
-            "Four steps. The chain is: object → slot field → handler key → parameters.",
-        ),
-        ...steps.map(([title, body], i) =>
-            h(
-                "div",
-                {
-                    key: `step-${i}`,
-                    style: {
-                        display: "flex",
-                        gap: 8,
-                        marginTop: 6,
-                        alignItems: "flex-start",
-                    },
-                },
-                h(
-                    "span",
-                    {
-                        style: {
-                            ...S.tagChip,
-                            cursor: "pointer",
-                            minWidth: 16,
-                            textAlign: "center",
-                        },
-                        title: "Go to the first screen",
-                        onClick: () => onGoTo("triggers"),
-                    },
-                    String(i + 1),
-                ),
-                h(
-                    "div",
-                    null,
-                    h("div", null, title),
-                    h("div", { style: S.hint }, body),
-                ),
-            )
-        ),
-    );
-}
-
 // ── one handler row ─────────────────────────────────────────────────────────
 
 interface RowCtx {
@@ -414,6 +527,54 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
         )
     );
 
+    const needs = needsOf(m.key);
+    const effect = effectOf(m.key);
+    const domain = domainOf(m.key);
+    // Only worth flagging when a value is returned and *no* slot this action can
+    // run in reads one. On `projectile` it is read, so the flag would be noise.
+    const vacuous = m.slots.every((s) => CALL_SITE_SCOPE[s] && !CALL_SITE_SCOPE[s].ret) &&
+        effect === "returns";
+
+    const axisChips = [
+        domain
+            ? h(
+                "span",
+                { key: "d", style: S.tagChip, title: ACTION_DOMAIN_BLURBS[domain] },
+                ACTION_DOMAIN_LABELS[domain],
+            )
+            : null,
+        effect
+            ? h(
+                "span",
+                { key: "e", style: S.tagChip, title: ACTION_EFFECT_BLURBS[effect] },
+                ACTION_EFFECT_LABELS[effect],
+            )
+            : null,
+        h(
+            "span",
+            {
+                key: "n",
+                style: S.tagChip,
+                title: needs.length
+                    ? needs.map((n) => SCOPE_NEED_BLURBS[n]).join("\n")
+                    : "Needs nothing from the engine, so it runs anywhere.",
+            },
+            `needs: ${describeNeeds(needs)}`,
+        ),
+        vacuous
+            ? h(
+                "span",
+                {
+                    key: "v",
+                    style: { ...S.tagChip, borderColor: "#c0392b" },
+                    title: "This action returns a value, but no slot it can run in reads one — " +
+                        "the value is computed and discarded. Open decision in PLAN.md.",
+                },
+                "return discarded",
+            )
+            : null,
+    ];
+
     const usageChips = refs.length === 0
         ? [h("span", { key: "none", style: { ...S.tagChip, opacity: 0.5 } }, "unused")]
         : refs.map((r, i) =>
@@ -437,11 +598,6 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
             "div",
             { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
             h("span", { style: S.codeKey }, m.key),
-            h(
-                "span",
-                { style: S.tagChip, title: "Default scope" },
-                `scope: ${HANDLER_SCOPE_LABELS[m.scope]}`,
-            ),
             refs.length > 0
                 ? h(
                     "span",
@@ -458,6 +614,7 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
             ),
         ),
         h("div", { style: S.hint }, docs[m.key] ?? "(no description)"),
+        h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ...axisChips),
         h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ...slotChips),
         h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ...usageChips),
         open ? renderExpanded(m, values, { h, setParam, onCopy }) : null,

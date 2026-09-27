@@ -241,7 +241,7 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
      * only. `options.techId` selects the node, `options.structures` / `options.items`
      * are the id lists to append.
      */
-    techAppendUnlock: (node, extra) => {
+    techAppendUnlock: (node, _ctx, extra) => {
         const o = (extra as { techId?: string; structures?: string[]; items?: string[] } | null) ??
             {};
         try {
@@ -263,7 +263,7 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
      * register / registerCategory / updateDefinition / getLevelById /
      * getAvailableLevelById / setLevelById.
      */
-    techSetUpgradeLevel: (node, extra) => {
+    techSetUpgradeLevel: (node, _ctx, extra) => {
         const o = (extra as { itemId?: string; upgradeId?: string; level?: number } | null) ?? {};
         try {
             const sk = (globalThis as { sandkit?: { api?: any } }).sandkit;
@@ -280,7 +280,7 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
      * `api.player.inventory.addById(itemId)` takes a SINGLE argument — there is no
      * count parameter, so `options.count` is honoured by calling it repeatedly.
      */
-    techGrantItem: (node, extra) => {
+    techGrantItem: (node, _ctx, extra) => {
         const o = (extra as { itemId?: string; count?: number } | null) ?? {};
         try {
             const sk = (globalThis as { sandkit?: { api?: any } }).sandkit;

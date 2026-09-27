@@ -49,7 +49,10 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     energyWire: ["processing"],
     energyConductor: ["processing"],
     energyNetwork: ["processing"],
-    triggerScan: ["trigger"],
+    // Was ["trigger"], where it could never run: a trigger callback is called with no
+    // arguments. It needs a position, so it belongs on the one site that supplies
+    // one. See ACTION_SCOPE and tools/analyze-scopes.ts.
+    triggerScan: ["processing"],
     signalLog: ["signal"],
     structureInspect: ["signal"],
     structureReadData: ["signal"],
@@ -63,7 +66,9 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     processorLift: ["processing"],
     processorConvert: ["processing"],
     processorCount: ["processing"],
-    energyGenerateWhileHeld: ["processing", "trigger"],
+    // Was also "trigger". It reads structure.x/y to find the network, and a trigger
+    // sends nothing, so that entry could only ever return early.
+    energyGenerateWhileHeld: ["processing"],
     energyConsumePerRun: ["processing", "trigger"],
     defaultProjectileOptions: ["projectile"],
     projectileHeavy: ["projectile"],
@@ -163,10 +168,16 @@ Deno.test("`type` measures neither axis — that is why the split is real", () =
         byType.set(meta.type, [...(byType.get(meta.type) ?? []), ...slots]);
     }
     const cellSpans = new Set(byType.get("cell"));
+    // This used to assert three call sites. It is two now, and the reason matters:
+    // the third was `triggerScan`, which is filed `cell` and reads a position, but
+    // a trigger callback is called with no arguments — so it could never do the
+    // cell scan its own doc comment describes. Dropping the slot was the fix, and
+    // this assertion is what noticed. If it ever spans three again, the extra one
+    // is a `type`/`slots` disagreement rather than a new capability.
     assertEquals(
         [...cellSpans].sort(),
-        ["itemAction", "processing", "trigger"],
-        'type:"cell" no longer spans three call sites',
+        ["itemAction", "processing"],
+        'type:"cell" spans a different set of call sites than the scope rule allows',
     );
     // A call-site label and an API label in one field, both still load-bearing.
     assert(byType.has("processor"), "the call-site label went away");
@@ -415,4 +426,68 @@ Deno.test("every item action is offered to at least one non-Consumable type", ()
             `${m.key} is unreachable`,
         );
     }
+});
+
+Deno.test("every action reads its options from argument 3, not argument 2", () => {
+    // **A second instance of the bug `processorConvert` had**, found by
+    // `tools/analyze-scopes.ts` rather than by reading. The Process/Action split
+    // re-signed the whole registry to `(payload, ctx, options)`, and three actions
+    // were missed: they still read `(node, extra)`, so `extra` was bound to the
+    // engine's *context* and their own options never arrived.
+    //
+    // The failure is silent and total. `techAppendUnlock` guards on `o.techId`;
+    // receiving the context means `o.techId` is `undefined`, so it returned before
+    // ever calling `appendUnlock`. All three looked correctly configured and did
+    // nothing — the worst kind of bug, because nothing errors and nothing warns.
+    //
+    // So this is asserted behaviourally: call each one the way `compileProcess`
+    // does, with a context that is *not* the options, and require that the API
+    // call it makes reflects the options that were passed.
+    const calls: { append?: unknown; level?: unknown; granted: number } = { granted: 0 };
+    const prev = (globalThis as { sandkit?: unknown }).sandkit;
+    (globalThis as { sandkit?: unknown }).sandkit = {
+        api: {
+            tech: {
+                conservatory: {
+                    appendUnlock: (id: unknown, u: unknown) => {
+                        calls.append = [id, u];
+                    },
+                },
+            },
+            upgrades: {
+                setLevelById: (i: unknown, u: unknown, l: unknown) => {
+                    calls.level = [i, u, l];
+                },
+            },
+            player: {
+                inventory: {
+                    addById: () => {
+                        calls.granted++;
+                    },
+                },
+            },
+        },
+    };
+    // Deliberately not the options — this is the engine's context, which is what
+    // argument 2 actually is at runtime.
+    const ctx = { definitely: "not the options" };
+    try {
+        ANY_HANDLERS.techAppendUnlock({ id: "t1" }, ctx, {
+            techId: "t1",
+            structures: ["a"],
+        });
+        ANY_HANDLERS.techSetUpgradeLevel({ id: "t1" }, ctx, {
+            itemId: "sword",
+            upgradeId: "u1",
+            level: 3,
+        });
+        ANY_HANDLERS.techGrantItem({ id: "t1" }, ctx, { itemId: "gem", count: 4 });
+    } finally {
+        if (prev === undefined) delete (globalThis as { sandkit?: unknown }).sandkit;
+        else (globalThis as { sandkit?: unknown }).sandkit = prev;
+    }
+
+    assertEquals(calls.append, ["t1", { structures: ["a"] }], "appendUnlock never fired");
+    assertEquals(calls.level, ["sword", "u1", 3], "setLevelById never fired");
+    assertEquals(calls.granted, 4, "addById takes one id, so count is a loop");
 });
