@@ -67,7 +67,7 @@ export function renderHelp(props: HelpProps): unknown {
         : neighboursOf(whole, filter as Tab);
 
     // Re-laid out *from* the filter, not filtered after laying out. The kept kinds
-    // get their depths re-derived and their rows re-packed, so a filtered graph
+    // get their depths re-derived and their slots re-packed, so a filtered graph
     // fills the panel instead of leaving five boxes marooned in one corner of a
     // diagram sized for sixteen.
     const shown = buildGraph(cfg, keep);
@@ -476,48 +476,72 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
                 ];
             }
 
-            // An arrow always leaves one box by its **bottom** and arrives at
-            // another by its **top** — never from the side, whichever way round
-            // the two happen to be.
+            // An arrow leaves one box by the edge that faces the other and arrives
+            // at the other's facing edge — so it runs *between* the two boxes, never
+            // back through either one. The one exception is the same-height case
+            // below.
             //
             // That is a deliberate constraint rather than a consequence of the
-            // layout. Depth puts the target to the left, so a link between two
-            // kinds in the same group would otherwise have to run sideways along
-            // the row, skimming the boxes between it. Entering from the top and
-            // leaving by the bottom gives every link the same "it hangs off the
-            // end" reading, and it means a head is never pointing at a box's
-            // flank where it is easy to mistake for belonging to the neighbour.
+            // layout. Depth puts the target above, so a link between two kinds in
+            // the same group would otherwise have to run sideways along the row,
+            // skimming the boxes between it. Attaching to the facing edges gives
+            // every link the same "it hangs off the end" reading, and it means a
+            // head is never pointing at a box's flank where it is easy to mistake
+            // for belonging to the neighbour.
             const aMid = a.x + a.w / 2;
             const bMid = b.x + b.w / 2;
             const targetBelow = b.y + b.h / 2 > a.y + a.h / 2;
-            const towards = targetBelow ? "down" : "up";
-            // Both ends attach to a top or bottom edge, never a side.
-            const y1 = targetBelow ? a.y : a.y + a.h;
+            const towards: Dir = targetBelow ? "down" : "up";
+            // Each end attaches to the edge that *faces* the other box, so the line
+            // starts at A's near side and stops at B's near side. Leaving A by the
+            // far edge instead would run the line back through A's own body before
+            // it got anywhere, which is exactly the "arrow leaves by the top or
+            // bottom" rule this is for — an end on the *wrong* horizontal edge is
+            // worse than one on a side.
+            const y1 = targetBelow ? a.y + a.h : a.y;
             const y2 = targetBelow ? b.y : b.y + b.h;
             let d: string;
+            let endA: Dir = opposite(towards);
+            let endB: Dir = towards;
             if (a.y === b.y) {
-                // The same row. Both ends are within one box-height of each
-                // other, so a direct curve between them is a horizontal line
-                // drawn straight through every box in between — and no bow fixes
-                // it, because a bow is still a curve between two points in the
-                // same band.
+                // The same height. Both ends are within one box-height of each
+                // other, so a direct curve between them is a horizontal line drawn
+                // straight through every column in between — and no bow fixes it,
+                // because a bow is still a curve between two points in the same
+                // band.
                 //
-                // So it goes *under*: the arc leaves the source's bottom edge, drops
-                // past the whole group row, and comes back up into the target's top
-                // edge. It reads as "this one goes underneath", which is also the
-                // truth — the two kinds sit at the same height, so the link has to
-                // get past the ones between them somehow.
+                // So it goes *around*: the arc leaves the source's side, swings
+                // clear past the last group column it would otherwise cut through,
+                // and comes back in from the target's other side. It reads as
+                // "this one goes around", which is also the truth — the two kinds
+                // sit at the same height, so the link has to get past the ones
+                // between them somehow.
                 //
-                // "The whole row" is the important part. Dipping by one box-height
-                // looks right and is not: the row stacks its boxes diagonally, so a
-                // shallow arc still lands inside the next one down.
-                const rowBottom = graph.columns.find((c) => c.key === a.group);
-                const dip = (rowBottom ? rowBottom.y + rowBottom.h : a.y + a.h) + 14;
-                d = `M ${aMid} ${y1} C ${aMid} ${dip}, ${bMid} ${dip}, ${bMid} ${y2}`;
+                // "The last column it would cross" is the important part. Stopping
+                // at the first gap looks right and is not: the columns are full of
+                // boxes, and a shallow arc still lands inside one of them.
+                //
+                // This is the transpose of the layout it replaced, where the same
+                // case dipped *below* the whole group row instead. Both ends now
+                // attach to a side, which is the one place a head points sideways;
+                // everything else still enters by the top and leaves by the bottom.
+                const lo = Math.min(a.x, b.x);
+                const hi = Math.max(a.x + a.w, b.x + b.w);
+                const crossed = graph.columns.filter((c) => c.x + c.w > lo && c.x < hi);
+                const toRight = bMid >= aMid;
+                const detour = toRight
+                    ? Math.max(...crossed.map((c) => c.x + c.w), hi) + 14
+                    : Math.min(...crossed.map((c) => c.x), lo) - 14;
+                const yMid = (a.y + a.h / 2 + b.y + b.h / 2) / 2;
+                const x1 = toRight ? a.x + a.w : a.x;
+                const x2 = toRight ? b.x : b.x + b.w;
+                d = `M ${x1} ${yMid} C ${detour} ${yMid}, ${detour} ${yMid}, ${x2} ${yMid}`;
+                endA = toRight ? "right" : "left";
+                endB = toRight ? "left" : "right";
             } else {
-                // Different rows: a direct curve between the facing edges, bowed
-                // by the horizontal gap so a long link is not a straight vertical
-                // line painted over everything on the way.
+                // Different heights: a direct curve between the facing edges,
+                // bowed by the horizontal gap so a long link is not a straight
+                // vertical line painted over everything on the way.
                 const midY = (y1 + y2) / 2;
                 const bow = bMid === aMid
                     ? 0
@@ -541,8 +565,8 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
                         strokeDasharray: dash,
                         opacity: dim,
                     }),
-                    head(h, bMid, y2, towards, colour, width, dim),
-                    head(h, aMid, y1, opposite(towards), colour, width, dim),
+                    head(h, bMid, y2, endB, colour, width, dim),
+                    head(h, aMid, y1, endA, colour, width, dim),
                 ),
             ];
         }),

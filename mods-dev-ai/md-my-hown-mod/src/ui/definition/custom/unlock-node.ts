@@ -23,10 +23,15 @@
  *
  * Ground truth: `doc/doc-tech/10-research-and-unlocks.md`.
  */
-import { listCurrencyTypes, listStructures, listTechBranches, listTechIds } from "../../catalog.ts";
-import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "./fields.ts";
-import { parseIdList, putCustomOrSelect } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import {
+    listCurrencyTypes,
+    listStructures,
+    listTechBranches,
+    listTechIds,
+} from "../../../catalog.ts";
+import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "../fields.ts";
+import { parseIdList, putCustomOrSelect } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

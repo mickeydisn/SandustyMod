@@ -24,17 +24,17 @@
  *
  * Ground truth: `elements.d.ts`, the `ElementInteraction` union.
  */
-import { listItems, listStructures } from "../../catalog.ts";
+import { listItems, listStructures } from "../../../catalog.ts";
 import {
     composeInteraction,
     DATA_FIELD_MODES,
     INTERACTION_KINDS,
     splitInteraction,
     TOOLTIP_KINDS,
-} from "../interaction.ts";
-import { elSelect, idField, numField, textField } from "./fields.ts";
-import { parseObjectOrUndefined } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+} from "../../interaction.ts";
+import { elSelect, idField, numField, textField } from "../fields.ts";
+import { parseObjectOrUndefined } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /** True for the kinds that carry the tooltip block. */
 const hasTooltip = (f: Record<string, string>) =>

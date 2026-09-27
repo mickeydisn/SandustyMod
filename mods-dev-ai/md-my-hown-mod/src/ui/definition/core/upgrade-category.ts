@@ -14,10 +14,10 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.upgrades.md`.
  */
-import { listTechIds } from "../../catalog.ts";
-import { advField, idField, NAME_MAX, textField } from "./fields.ts";
-import { CUSTOM, parseIdList, parseObjectOrUndefined, putCustomOrSelect } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listTechIds } from "../../../catalog.ts";
+import { advField, idField, NAME_MAX, textField } from "../fields.ts";
+import { CUSTOM, parseIdList, parseObjectOrUndefined, putCustomOrSelect } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

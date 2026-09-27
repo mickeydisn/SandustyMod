@@ -16,9 +16,9 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.structures.md`.
  */
-import { listDescribedProcessorKeys, listStructures } from "../../catalog.ts";
-import { advField, idField, numField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listDescribedProcessorKeys, listStructures } from "../../../catalog.ts";
+import { advField, idField, numField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

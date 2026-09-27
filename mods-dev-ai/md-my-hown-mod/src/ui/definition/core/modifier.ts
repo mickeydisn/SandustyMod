@@ -16,10 +16,10 @@
  *
  * Ground truth: `doc/doc-tech/03-hooks-reference.md`.
  */
-import { listHandlerKeys, listHookIds } from "../../catalog.ts";
-import { boolField, idField, textField } from "./fields.ts";
-import { putCustomOrSelect } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listHandlerKeys, listHookIds } from "../../../catalog.ts";
+import { boolField, idField, textField } from "../fields.ts";
+import { putCustomOrSelect } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

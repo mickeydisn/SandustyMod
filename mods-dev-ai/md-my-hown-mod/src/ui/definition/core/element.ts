@@ -15,11 +15,19 @@
  *
  * Ground truth: `doc/doc-tech/08-registering-elements.md`.
  */
-import { listMatterTypes } from "../../catalog.ts";
-import * as S from "../styles.ts";
-import { advField, boolField, DESC_MAX, idField, NAME_MAX, numField, textField } from "./fields.ts";
-import { HEX, hexToPacked, packedToHex } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "./types.ts";
+import { listMatterTypes } from "../../../catalog.ts";
+import * as S from "../../styles.ts";
+import {
+    advField,
+    boolField,
+    DESC_MAX,
+    idField,
+    NAME_MAX,
+    numField,
+    textField,
+} from "../fields.ts";
+import { HEX, hexToPacked, packedToHex } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
 
 // ── Colour variants ───────────────────────────────────────────────────────────
 // The engine shape is `{ colors: { variants: [[r,g,b,a], …] } }`, confirmed

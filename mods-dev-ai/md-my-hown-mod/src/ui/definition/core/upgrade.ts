@@ -15,10 +15,10 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.upgrades.md`.
  */
-import { listItems, listUpgradeCategoryIds, listUpgradeHandlerKeys } from "../../catalog.ts";
-import { advField, boolField, idField, numField, textField } from "./fields.ts";
-import { CUSTOM } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listItems, listUpgradeCategoryIds, listUpgradeHandlerKeys } from "../../../catalog.ts";
+import { advField, boolField, idField, numField, textField } from "../fields.ts";
+import { CUSTOM } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

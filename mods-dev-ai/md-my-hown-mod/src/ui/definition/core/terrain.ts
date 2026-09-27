@@ -13,10 +13,10 @@
  *
  * Ground truth: `doc/doc-tech/06-registering-terrains.md`.
  */
-import { listElements, listItems, listMaterialIds } from "../../catalog.ts";
-import { advField, boolField, idField, NAME_MAX, numField, textField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
-import { HEX, hexToPacked, packedToHex, parseIdList } from "./values.ts";
+import { listElements, listItems, listMaterialIds } from "../../../catalog.ts";
+import { advField, boolField, idField, NAME_MAX, numField, textField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
+import { HEX, hexToPacked, packedToHex, parseIdList } from "../values.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

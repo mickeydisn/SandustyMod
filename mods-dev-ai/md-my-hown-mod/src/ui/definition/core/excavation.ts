@@ -302,7 +302,7 @@ export const excavationDefinition: Definition = {
     // and terrainRules shapes above) or a `required` flag.
     panel: { renderField },
 };
-import { listElements, listTerrains } from "../../catalog.ts";
-import * as S from "../styles.ts";
-import { idField, numField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "./types.ts";
+import { listElements, listTerrains } from "../../../catalog.ts";
+import * as S from "../../styles.ts";
+import { idField, numField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";

@@ -11,35 +11,56 @@
  * lookups return `undefined` and each caller decides what that means, rather
  * than the registry inventing an empty definition that would look like a real
  * one with no fields.
+ *
+ * Definitions are split by *who owns the object*, and the two folders answer
+ * different questions:
+ *
+ *   - `./core/` — the engine has a first-class object for it. `api.elements`,
+ *     `api.structures`, `api.tech` and the rest each have a `register()` and a
+ *     documented shape, and the definition is that shape. Renaming one of these
+ *     would be renaming something the game already knows.
+ *
+ *   - `./custom/` — the mod invented the object, and the engine only ever sees
+ *     the *strings* it resolves to. `networks` is a list of names that produce
+ *     ids for `energy` types to spell identically; `unlockNodes` is the mod's
+ *     own gate in front of a structure. Neither is a thing `register()` ever
+ *     receives, which is why they cannot be documented by an engine API and why
+ *     their definitions say so in their own words.
+ *
+ * The test is not "is this useful" or "is this complex" — `network` is two
+ * fields and lives in `custom`, `structure` is the widest tab in the panel and
+ * lives in `core`. It is whether the game has heard of the object itself.
  */
-import { behaviorDefinition } from "./behavior.ts";
-import { contactDefinition } from "./contact.ts";
-import { elementDefinition } from "./element.ts";
-import { energyDefinition } from "./energy.ts";
-import { excavationDefinition } from "./excavation.ts";
-import { inputDefinition } from "./input.ts";
-import { interactionDefinition } from "./interaction.ts";
-import { itemDefinition } from "./item.ts";
-import { modifierDefinition } from "./modifier.ts";
-import { networkDefinition } from "./network.ts";
-import { processingDefinition } from "./processing.ts";
-import { projectileDefinition } from "./projectile.ts";
-import { recipeDefinition } from "./recipe.ts";
-import { signalDefinition } from "./signal.ts";
-import { spriteDefinition } from "./sprite.ts";
-import { structureDefinition } from "./structure.ts";
-import { techDefinition } from "./tech.ts";
-import { terrainDefinition } from "./terrain.ts";
-import { triggerDefinition } from "./trigger.ts";
-import { unlockNodeDefinition } from "./unlock-node.ts";
-import { upgradeDefinition } from "./upgrade.ts";
-import { upgradeCategoryDefinition } from "./upgrade-category.ts";
+import { behaviorDefinition } from "./core/behavior.ts";
+import { contactDefinition } from "./core/contact.ts";
+import { elementDefinition } from "./core/element.ts";
+import { energyDefinition } from "./core/energy.ts";
+import { excavationDefinition } from "./core/excavation.ts";
+import { inputDefinition } from "./core/input.ts";
+import { interactionDefinition } from "./core/interaction.ts";
+import { itemDefinition } from "./core/item.ts";
+import { modifierDefinition } from "./core/modifier.ts";
+import { processingDefinition } from "./core/processing.ts";
+import { projectileDefinition } from "./core/projectile.ts";
+import { recipeDefinition } from "./core/recipe.ts";
+import { signalDefinition } from "./core/signal.ts";
+import { spriteDefinition } from "./core/sprite.ts";
+import { structureDefinition } from "./core/structure.ts";
+import { techDefinition } from "./core/tech.ts";
+import { terrainDefinition } from "./core/terrain.ts";
+import { triggerDefinition } from "./core/trigger.ts";
+import { upgradeDefinition } from "./core/upgrade.ts";
+import { upgradeCategoryDefinition } from "./core/upgrade-category.ts";
+import { networkDefinition } from "./custom/network.ts";
+import { unlockNodeDefinition } from "./custom/unlock-node.ts";
 import type { Definition, Tab } from "./types.ts";
 
 /**
  * Every object definition, keyed by the tab that reaches it.
  *
- * Adding an object is one line here plus one file beside it.
+ * Adding an object is one file beside its folder and one line here. Which
+ * folder it goes in is the ownership question in the note above: an engine
+ * object in `core`, a mod-owned one in `custom`.
  */
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
     behaviors: behaviorDefinition,

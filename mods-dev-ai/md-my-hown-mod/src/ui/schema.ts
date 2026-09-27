@@ -17,28 +17,28 @@
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
 import {} from "./definition/fields.ts";
-import { behaviorDefinition } from "./definition/behavior.ts";
-import { contactDefinition } from "./definition/contact.ts";
-import { elementDefinition } from "./definition/element.ts";
-import { energyDefinition } from "./definition/energy.ts";
-import { excavationDefinition } from "./definition/excavation.ts";
-import { inputDefinition } from "./definition/input.ts";
-import { interactionDefinition } from "./definition/interaction.ts";
-import { itemDefinition } from "./definition/item.ts";
-import { modifierDefinition } from "./definition/modifier.ts";
-import { networkDefinition } from "./definition/network.ts";
-import { processingDefinition } from "./definition/processing.ts";
-import { projectileDefinition } from "./definition/projectile.ts";
-import { recipeDefinition } from "./definition/recipe.ts";
-import { signalDefinition } from "./definition/signal.ts";
-import { spriteDefinition } from "./definition/sprite.ts";
-import { structureDefinition } from "./definition/structure.ts";
-import { terrainDefinition } from "./definition/terrain.ts";
-import { techDefinition } from "./definition/tech.ts";
-import { triggerDefinition } from "./definition/trigger.ts";
-import { unlockNodeDefinition } from "./definition/unlock-node.ts";
-import { upgradeDefinition } from "./definition/upgrade.ts";
-import { upgradeCategoryDefinition } from "./definition/upgrade-category.ts";
+import { behaviorDefinition } from "./definition/core/behavior.ts";
+import { contactDefinition } from "./definition/core/contact.ts";
+import { elementDefinition } from "./definition/core/element.ts";
+import { energyDefinition } from "./definition/core/energy.ts";
+import { excavationDefinition } from "./definition/core/excavation.ts";
+import { inputDefinition } from "./definition/core/input.ts";
+import { interactionDefinition } from "./definition/core/interaction.ts";
+import { itemDefinition } from "./definition/core/item.ts";
+import { modifierDefinition } from "./definition/core/modifier.ts";
+import { networkDefinition } from "./definition/custom/network.ts";
+import { processingDefinition } from "./definition/core/processing.ts";
+import { projectileDefinition } from "./definition/core/projectile.ts";
+import { recipeDefinition } from "./definition/core/recipe.ts";
+import { signalDefinition } from "./definition/core/signal.ts";
+import { spriteDefinition } from "./definition/core/sprite.ts";
+import { structureDefinition } from "./definition/core/structure.ts";
+import { terrainDefinition } from "./definition/core/terrain.ts";
+import { techDefinition } from "./definition/core/tech.ts";
+import { triggerDefinition } from "./definition/core/trigger.ts";
+import { unlockNodeDefinition } from "./definition/custom/unlock-node.ts";
+import { upgradeDefinition } from "./definition/core/upgrade.ts";
+import { upgradeCategoryDefinition } from "./definition/core/upgrade-category.ts";
 import {
     formatIdList,
     HEX,
@@ -75,7 +75,7 @@ export {
     normalizeShape,
     parseBuildModes,
     shapeToText,
-} from "./definition/structure.ts";
+} from "./definition/core/structure.ts";
 export { autoGraphicsKey, resolveAutoFill } from "./definition/fields.ts";
 export { PASSTHROUGH_KEY, passthroughKeysOf } from "./definition/fields.ts";
 import { type Opt, searchLibraryAssets } from "../catalog.ts";
@@ -413,7 +413,7 @@ export {
     hexListToVariants,
     seedVariantFromMapColor,
     variantsToHexList,
-} from "./definition/element.ts";
+} from "./definition/core/element.ts";
 
 // ── Per-category field lists ────────────────────────────────────────────────
 

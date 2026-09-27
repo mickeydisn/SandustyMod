@@ -15,10 +15,10 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.structureBehaviors.md`.
  */
-import { listStructures } from "../../catalog.ts";
-import { idField } from "./fields.ts";
-import { parseObjectOrUndefined } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listStructures } from "../../../catalog.ts";
+import { idField } from "../fields.ts";
+import { parseObjectOrUndefined } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /** The kinds — there is no third one, which is why this is a two-item list. */
 const KINDS = [

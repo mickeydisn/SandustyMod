@@ -28,10 +28,10 @@ import {
     listStructures,
     listTechBranches,
     listTechIds,
-} from "../../catalog.ts";
-import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "./fields.ts";
-import { formatIdList, parseIdList, putCustomOrSelect } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+} from "../../../catalog.ts";
+import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "../fields.ts";
+import { formatIdList, parseIdList, putCustomOrSelect } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /** A free string in the engine, so a typed id rather than anything. */
 const ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,31}$";

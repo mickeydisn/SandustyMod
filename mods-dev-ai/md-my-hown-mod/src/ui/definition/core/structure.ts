@@ -19,9 +19,9 @@ import {
     listStructureCategories,
     listStructures,
     listUnlockNodes,
-} from "../../catalog.ts";
-import { DEFAULT_UNLOCK_NODE, unlockLine } from "../tech-link.ts";
-import * as S from "../styles.ts";
+} from "../../../catalog.ts";
+import { DEFAULT_UNLOCK_NODE, unlockLine } from "../../tech-link.ts";
+import * as S from "../../styles.ts";
 import {
     advField,
     boolField,
@@ -30,8 +30,8 @@ import {
     NAME_MAX,
     numField,
     textField,
-} from "./fields.ts";
-import { parseObjectOrUndefined, safeJson } from "./values.ts";
+} from "../fields.ts";
+import { parseObjectOrUndefined, safeJson } from "../values.ts";
 import type {
     Definition,
     EntryReader,
@@ -39,7 +39,7 @@ import type {
     FieldContext,
     FieldSpec,
     PanelContext,
-} from "./types.ts";
+} from "../types.ts";
 
 // ── The 4×4 footprint ────────────────────────────────────────────────────────
 // The engine normalises an unknown structure id to a 4×4 block when no shape is
@@ -213,9 +213,13 @@ const FIELDS: FieldSpec[] = [
     }),
     {
         // engine type: Record<string, string | number>
-        key: "descriptionParamsJson", label: "Description parameters", kind: "json",
-        section: "Identity", jsonType: "object", wide: true,
-        hint: "values interpolated into the description, e.g. { \"count\": 3 }",
+        key: "descriptionParamsJson",
+        label: "Description parameters",
+        kind: "json",
+        section: "Identity",
+        jsonType: "object",
+        wide: true,
+        hint: 'values interpolated into the description, e.g. { "count": 3 }',
     },
     {
         // The engine compares this against exactly one string,
@@ -230,11 +234,20 @@ const FIELDS: FieldSpec[] = [
         hint: "how a multi-cell footprint is validated against the cells under it",
     },
     {
-        key: "categoryKey", label: "Build category", kind: "select", section: "Build menu",
-        required: true, options: listStructureCategories, def: "blocks",
+        key: "categoryKey",
+        label: "Build category",
+        kind: "select",
+        section: "Build menu",
+        required: true,
+        options: listStructureCategories,
+        def: "blocks",
         hint: "grouping in the build window",
     },
-    numField("order", "Order", "Build menu", { min: 0, max: 9999, hint: "sort inside the category" }),
+    numField("order", "Order", "Build menu", {
+        min: 0,
+        max: 9999,
+        hint: "sort inside the category",
+    }),
     {
         // engine: `ot(t.buildModes)` → `Array.isArray(e) && e.forEach(rt)`,
         // and `rt` throws `spanTiles` unless `type === "line"`. The engine
@@ -242,9 +255,13 @@ const FIELDS: FieldSpec[] = [
         // line mode for dragging a run, plus a single mode for one node).
         // The form held exactly one, so extra modes were dropped on save
         // without a word. Now it is a real repeating list.
-        key: "buildModesJson", label: "Build modes", kind: "buildModes",
-        section: "Placement", wide: true,
-        hint: "how this is placed in the world. Span is only valid on a line mode — the engine throws otherwise.",
+        key: "buildModesJson",
+        label: "Build modes",
+        kind: "buildModes",
+        section: "Placement",
+        wide: true,
+        hint:
+            "how this is placed in the world. Span is only valid on a line mode — the engine throws otherwise.",
     },
     boolField("dirH", "Horizontal", "Placement", "true", "placement directions"),
     boolField("dirV", "Vertical", "Placement", "true"),
@@ -257,8 +274,13 @@ const FIELDS: FieldSpec[] = [
     // structures. This flag decides whether it is listed — which the build menu
     // does honour, reading `hideFromBuildMenu` off the mod registry as well
     // (bundel.js 7493921).
-    boolField("hideFromBuildMenu", "Hide from build menu", "Flags", "false",
-        "unhide to list it — a structure with no unlock tech is available from the start"),
+    boolField(
+        "hideFromBuildMenu",
+        "Hide from build menu",
+        "Flags",
+        "false",
+        "unhide to list it — a structure with no unlock tech is available from the start",
+    ),
     {
         // Every structure names a node, so the picker never offers an empty
         // "— none —": "available from the start" is a *node you can see and
@@ -284,25 +306,39 @@ const FIELDS: FieldSpec[] = [
     },
     boolField("disallowPick", "Disallow pick", "Flags"),
     {
-        key: "rejectWhenBlocked", label: "Reject when blocked", kind: "bool",
+        key: "rejectWhenBlocked",
+        label: "Reject when blocked",
+        kind: "bool",
         section: "Placement",
         hint: "refuse placement if any footprint cell is occupied",
     },
     {
         // engine type: StructureTooltipHover — { type: "custom", dataFieldMessage }
-        key: "tooltipHoverJson", label: "Hover tooltip", kind: "json",
-        section: "Render", jsonType: "object", wide: true,
+        key: "tooltipHoverJson",
+        label: "Hover tooltip",
+        kind: "json",
+        section: "Render",
+        jsonType: "object",
+        wide: true,
         hint: "custom tooltip driven by structure data fields",
     },
     {
         // engine type: StructureVariant[] — { id: StructureRef; angles: number[] }[]
-        key: "variantsJson", label: "Variants", kind: "json",
-        section: "Render", jsonType: "array", wide: true,
-        hint: "rotation variants, e.g. [ { \"id\": \"…\", \"angles\": [0, 90] } ]",
+        key: "variantsJson",
+        label: "Variants",
+        kind: "json",
+        section: "Render",
+        jsonType: "array",
+        wide: true,
+        hint: 'rotation variants, e.g. [ { "id": "…", "angles": [0, 90] } ]',
     },
     {
-        key: "imageName", label: "Sprite", kind: "select", section: "Render",
-        options: listSpriteIds, hint: "render.imageName (load a sprite first)",
+        key: "imageName",
+        label: "Sprite",
+        kind: "select",
+        section: "Render",
+        options: listSpriteIds,
+        hint: "render.imageName (load a sprite first)",
     },
     {
         // engine: registerStructureType(blockGridType ?? id), then
@@ -346,14 +382,19 @@ const FIELDS: FieldSpec[] = [
         section: "Render",
         options: listDrawFunctions,
         def: "default",
-        hint: "draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game.",
+        hint:
+            "draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game.",
     },
     {
         // engine: !1 === t.copyData && (t.skipCopyData = !0) — setting copyData
         // to false is enough, so this is offered as the clearer spelling
-        key: "skipCopyData", label: "Skip data copy", kind: "bool", section: "Grid",
+        key: "skipCopyData",
+        label: "Skip data copy",
+        kind: "bool",
+        section: "Grid",
         def: "false",
-        hint: "do not copy grid data on placement (the engine also sets this when copyData is false)",
+        hint:
+            "do not copy grid data on placement (the engine also sets this when copyData is false)",
     },
     {
         // engine deep-clones: t.defaultData = JSON.parse(JSON.stringify(...)),
@@ -367,7 +408,8 @@ const FIELDS: FieldSpec[] = [
         section: "Grid",
         jsonType: "object",
         wide: true,
-        hint: "the data object every placed copy starts with; the hover tooltip reads dataField1..4 back out of it. Unrelated to elements.",
+        hint:
+            "the data object every placed copy starts with; the hover tooltip reads dataField1..4 back out of it. Unrelated to elements.",
     },
     advField(),
 ];
@@ -445,7 +487,6 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("defaultDataJson", read.json(e.defaultData));
 }
 
-
 /** Form strings → stored entry, for the whole structure. */
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
@@ -512,8 +553,9 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
         if (!Array.isArray(parsed)) return;
         parsed.forEach((m: Record<string, unknown>, i: number) => {
             if (m?.spanTiles !== undefined && m?.type !== "line") {
-                errors.buildModesJson =
-                    `mode ${i + 1}: span is only valid on a line mode — the engine throws otherwise`;
+                errors.buildModesJson = `mode ${
+                    i + 1
+                }: span is only valid on a line mode — the engine throws otherwise`;
             }
         });
     } catch {
@@ -727,7 +769,6 @@ function renderBuildModes(ctx: FieldContext): unknown {
     );
 }
 
-
 /**
  * The unlock relation, said in words above the fields.
  *
@@ -778,12 +819,31 @@ function renderField(ctx: FieldContext): unknown {
  * so a config carrying either is claimed rather than carried twice.
  */
 const FORM_COVERED = [
-    "name", "description", "categoryKey", "order", "buildModes", "spanTiles",
-    "dirH", "dirV", "dirD", "shape",
-    "hideFromBuildMenu", "disallowPick", "unlockNode", "render", "imageName",
-    "blockGridType", "draw", "skipCopyData", "defaultData",
-    "descriptionKey", "descriptionParams", "linkedClearance",
-    "rejectWhenBlocked", "tooltipHover", "variants",
+    "name",
+    "description",
+    "categoryKey",
+    "order",
+    "buildModes",
+    "spanTiles",
+    "dirH",
+    "dirV",
+    "dirD",
+    "shape",
+    "hideFromBuildMenu",
+    "disallowPick",
+    "unlockNode",
+    "render",
+    "imageName",
+    "blockGridType",
+    "draw",
+    "skipCopyData",
+    "defaultData",
+    "descriptionKey",
+    "descriptionParams",
+    "linkedClearance",
+    "rejectWhenBlocked",
+    "tooltipHover",
+    "variants",
 ];
 
 export const structureDefinition: Definition = {

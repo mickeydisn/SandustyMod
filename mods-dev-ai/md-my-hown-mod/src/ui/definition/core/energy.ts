@@ -17,9 +17,9 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.energy.md`.
  */
-import { listEnergyNetworkOpts, listStructures } from "../../catalog.ts";
-import { advField, idField, numField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listEnergyNetworkOpts, listStructures } from "../../../catalog.ts";
+import { advField, idField, numField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

@@ -15,8 +15,8 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.energy.md`.
  */
-import { advField, DESC_MAX, idField, textField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { advField, DESC_MAX, idField, textField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

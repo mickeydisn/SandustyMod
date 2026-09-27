@@ -12,9 +12,9 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.signals.md`.
  */
-import { listSignalHandlerKeys, listStructures } from "../../catalog.ts";
-import { idField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listSignalHandlerKeys, listStructures } from "../../../catalog.ts";
+import { idField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /** The three signal kinds. `interactables` fires on a click; the others relay. */
 const KINDS = [

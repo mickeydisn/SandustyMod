@@ -14,9 +14,9 @@
  *
  * Ground truth: `doc/doc-tech/08-registering-elements.md` (element + contact).
  */
-import { listContactOrientation, listOutputTargets } from "../../catalog.ts";
-import { elSelect, idField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listContactOrientation, listOutputTargets } from "../../../catalog.ts";
+import { elSelect, idField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /**
  * A select that can hold three distinct answers, not two.

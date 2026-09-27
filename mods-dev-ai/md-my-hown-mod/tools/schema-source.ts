@@ -20,8 +20,22 @@
 
 const ROOT = new URL("../", import.meta.url).pathname;
 
-/** The files a definition may live in, and nothing else — not types, not values. */
-const DEFINITION_DIR = `${ROOT}src/ui/definition`;
+/** The two folders a definition may live in, and nothing else. */
+const DEFINITION_DIRS = [
+    `${ROOT}src/ui/definition/core`,
+    `${ROOT}src/ui/definition/custom`,
+];
+
+/**
+ * Files in a directory that are not definitions themselves.
+ *
+ * These four sit in the *parent* of `core/` and `custom/`, so they are not
+ * candidates in the first place — but they are listed here so that the skip is
+ * a property of the walk rather than an accident of where the shared files
+ * happen to sit. Should one ever move down here, it would otherwise be read as
+ * a definition and reported as a tab with no fields.
+ */
+const NOT_DEFINITIONS = new Set(["types.ts", "values.ts", "fields.ts", "index.ts"]);
 
 /**
  * The body of a `function <name>(` declaration, braces balanced.
@@ -122,15 +136,35 @@ function definitionBlocks(): string[] {
     return out;
 }
 
+/**
+ * Every definition file, in both ownership folders.
+ *
+ * The folders are listed explicitly rather than discovered with `readDirSync`,
+ * because this function's failure mode is *silent*: a directory it fails to read
+ * contributes no paths, every tab in it reports zero fields, and the result is a
+ * generated document that is confidently wrong rather than an error. Naming the
+ * two folders makes a third one ("draft", "deprecated") a change someone has to
+ * make here, where the next reader sees the list, instead of a file that quietly
+ * stops being reported on.
+ *
+ * `core` sorts before `custom`, so a path's position is stable across runs and
+ * the generated output does not churn.
+ */
 function definitionPaths(): string[] {
     const out: string[] = [];
-    for (const entry of Deno.readDirSync(DEFINITION_DIR)) {
-        if (!entry.isFile) continue;
-        if (!entry.name.endsWith(".ts")) continue;
-        if (entry.name === "types.ts" || entry.name === "values.ts") continue;
-        if (entry.name === "fields.ts") continue;
-        if (entry.name === "index.ts") continue;
-        out.push(`${DEFINITION_DIR}/${entry.name}`);
+    for (const dir of DEFINITION_DIRS) {
+        for (const entry of Deno.readDirSync(dir)) {
+            if (!entry.isFile) continue;
+            if (!entry.name.endsWith(".ts")) continue;
+            if (NOT_DEFINITIONS.has(entry.name)) continue;
+            out.push(`${dir}/${entry.name}`);
+        }
+    }
+    if (out.length === 0) {
+        throw new Error(
+            "no definition files found in core/ or custom/ — ui-completeness and " +
+                "gen-reference would report every tab as having no fields, silently.",
+        );
     }
     return out.sort();
 }

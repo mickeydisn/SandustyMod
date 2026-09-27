@@ -31,11 +31,12 @@ export interface GraphNode {
     cat: Tab;
     label: string;
     /**
-     * The menu group this kind sits under. Drives the row it lands in.
+     * The menu group this kind sits under. Drives the column it lands in.
      *
-     * A group is a *row*: it runs across the picture, not down it. (The type is
-     * still called `GraphColumn` and the field `columns` — a leftover from when
-     * groups were columns. Worth saying so nobody redraws it the other way.)
+     * A group is a *column*: it runs down the picture, not across it. The type
+     * and the `columns` field are named for exactly that, and are finally honest
+     * — they were left over from a layout where a group really was a column, then
+     * were transposed to rows, and have since been transposed back.
      */
     group: string;
     groupLabel: string;
@@ -44,10 +45,12 @@ export interface GraphNode {
      * references nothing, 1 for one that only references those, and so on by
      * longest path.
      *
-     * This is the column. Left-to-right is dependency order — what can be built
-     * from nothing, then what needs that, then what needs that — so an arrow
-     * between two columns already says "this one uses that one" without anyone
-     * having to follow the line.
+     * This is what orders things *within* a group. It runs downwards — what can
+     * be built from nothing, then what needs that, then what needs that — so an
+     * arrow between two kinds already says "this one uses that one" without
+     * anyone having to follow the line. Across groups it is the *shallowest*
+     * depth that orders the columns, so the groups that feed the graph are the
+     * ones on the left.
      */
     depth: number;
     /** How many entries of this kind the user currently has. */
@@ -62,14 +65,16 @@ export interface GraphNode {
  * A group of the graph: one menu group, and the kinds under it.
  *
  * Groups are the menu's own groups, so the picture is arranged the way the
- * question already is, and each one is a horizontal **row** stacked below the
- * last. They are ordered by the *shallowest* kind inside each — see
+ * question already is, and each one is a vertical **column** standing beside
+ * the last. They are ordered by the *shallowest* kind inside each — see
  * `buildGraph` — so the groups that feed the graph come first and a group that
- * only consumes sits below what it consumes.
+ * only consumes sits to the right of what it consumes.
  *
- * The type is still called `GraphColumn` and the field is still `columns`. That
- * is a leftover from when groups were columns, and it is worth saying plainly:
- * the field holds rows.
+ * The group name is a heading across the top of the column. That is the whole
+ * reason a column is legible where a row was not: an earlier layout put the
+ * name in a strip at the left of the row, where the longest one had nowhere to
+ * go. A column is at least one node wide, so the name gets the full width of
+ * the top of its own column and nothing to squeeze into.
  */
 export interface GraphColumn {
     key: string;
@@ -126,20 +131,27 @@ export interface Graph {
 
 const NODE_W = 168;
 const NODE_H = 44;
-const COL_GAP = 40;
-/** Space above the first node of a column, for the group heading. */
+/**
+ * Space above the first node of a column, for the group heading.
+ *
+ * The heading is a full-width strip across the top of its column — the same
+ * place the renderer has always drawn it. It used to need a wide strip at the
+ * *left* of a row as well, because a row's name had nowhere else to go; a column
+ * is at least `NODE_W` wide, so the name now has room and that gutter is gone.
+ */
 const HEAD_H = 26;
 /**
- * Space reserved at the left of every row for the group's name.
+ * Margin between a group's dashed boundary and the boxes inside it.
  *
- * Wide enough for the longest label the menu has, and deliberately not a column
- * of its own: the label names the *row* it sits in, so putting the rows side by
- * side would spend the same width on repeating it seven times.
+ * Small, and the same on every side. It exists so the boundary reads as a
+ * container rather than a rule drawn along the edge of its contents — and so a
+ * column that is only one box wide is not just the box with a border on it.
  */
-const HEAD_W = 96;
-/** Vertical gap between one group row and the next. */
-const GROUP_GAP = 26;
+const COL_PAD = 8;
+/** Gap between one box and the next, inside one group. */
 const ROW_GAP = 14;
+/** Horizontal gap between one group column and the next. */
+const GROUP_GAP = 40;
 const PAD = 16;
 
 /**
@@ -527,21 +539,22 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
             minDepth: Math.min(...orphans.map((c) => depth.get(c) ?? 0)),
         });
     }
-    // Shallowest group first. Ties keep the menu's own order, which `Array.sort`
-    // is stable for, so the picture still reads top-to-bottom the way the menu
-    // does rather than shuffling equal-depth groups around.
+    // Shallowest group first, so the groups that only feed the graph are on the
+    // left and a group that purely consumes is to the right of what it consumes.
+    // Ties keep the menu's own order, which `Array.sort` is stable for, so the
+    // picture still reads left-to-right the way the menu does rather than
+    // shuffling equal-depth groups around.
     groups.sort((a, b) => a.minDepth - b.minDepth);
 
-    // Kinds at the same depth share a *slot* along the row rather than landing
-    // on the same spot. Cycles put several kinds at one depth — terrains and
-    // items, which reference each other — and without slots they would be drawn
-    // on top of one another.
+    // Kinds at the same depth share a *slot* rather than landing on the same spot.
+    // Cycles put several kinds at one depth — terrains and items, which reference
+    // each other — and without slots they would be drawn on top of one another.
     //
-    // The slot count is the same in *every* row, not per row. That is what keeps
-    // "deeper means further right" true across the whole picture: if each row
-    // sized its own slots, `recipes` at depth 2 in a sparse row could land to
-    // the *left* of the `items` it points at in a full one, and a rightward
-    // arrow would be pointing at something behind it.
+    // The slot count is the same in *every* column, not per column. That is what
+    // keeps "deeper means further down" true across the whole picture: if each
+    // column sized its own slots, `recipes` at depth 2 in a sparse column could
+    // land *above* the `items` it points at in a full one, and a downward arrow
+    // would be pointing at something behind it.
     const perGroup = groups.map((g) => {
         const byDepth = new Map<number, Tab[]>();
         for (const cat of g.cats) {
@@ -554,25 +567,40 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
         1,
         ...perGroup.flatMap((b) => [...b.values()].map((v) => v.length)),
     );
-    const slotStep = NODE_W + COL_GAP;
-    const rowHeight = slot * (NODE_H + ROW_GAP) - ROW_GAP;
-    const groupHeight = HEAD_H + rowHeight;
+    const slotStepH = NODE_H + ROW_GAP;
+    // How many slot-rows the whole graph actually uses. A column's height is a
+    // function of the *deepest* kind in it, not of the slot count: depth steps
+    // down `slot` rows at a time, so the picture is as tall as its longest
+    // dependency chain.
+    const rows = Math.max(
+        1,
+        ...perGroup.flatMap((byDepth) =>
+            [...byDepth].flatMap(([d, members]) => members.map((_, i) => d * slot + i + 1))
+        ),
+    );
+    // A group is one node wide. Every box in it shares the same `x`, so the slot's
+    // job is only to keep same-depth kinds from landing on each other — which it
+    // does vertically, one row apart. The column is the node plus the margin
+    // either side of it, so the dashed boundary is a visible gap rather than a
+    // line touching the boxes.
+    const groupW = NODE_W + COL_PAD * 2;
+    const groupH = HEAD_H + rows * slotStepH - ROW_GAP;
+    const nodeX = COL_PAD;
 
     const nodes: GraphNode[] = [];
     const columns: GraphColumn[] = [];
-    let widest = 0;
 
     groups.forEach((g, gi) => {
-        const y = PAD + gi * (groupHeight + GROUP_GAP);
+        const x = PAD + gi * (groupW + GROUP_GAP);
         const byDepth = perGroup[gi];
-        let rightmost = 0;
 
         for (const [d, members] of byDepth) {
             for (let i = 0; i < members.length; i++) {
                 const cat = members[i];
-                const col = d * slot + i;
-                widest = Math.max(widest, col);
-                rightmost = Math.max(rightmost, col);
+                // `d` steps down a whole slot's worth and `i` picks the row inside
+                // it, so a cycle's kinds stack one under the next and the next
+                // depth starts a fresh slot below them. Every one of them is at the
+                // same `x`: a group is a single stack of boxes, not a grid.
                 nodes.push({
                     cat,
                     label: CATEGORY_META[cat].label,
@@ -580,8 +608,8 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
                     groupLabel: g.label,
                     depth: d,
                     count: entriesOf(cfg, cat).length,
-                    x: PAD + HEAD_W + col * slotStep,
-                    y: y + HEAD_H + i * (NODE_H + ROW_GAP),
+                    x: x + nodeX,
+                    y: PAD + HEAD_H + (d * slot + i) * slotStepH,
                     w: NODE_W,
                     h: NODE_H,
                 });
@@ -592,12 +620,12 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
             key: g.key,
             label: g.label,
             minDepth: g.minDepth,
-            // A group is a *row*, so it reports its extent as one: a wide, shallow
-            // band rather than a narrow, tall one.
-            x: PAD,
-            y,
-            w: HEAD_W + (rightmost + 1) * slotStep - COL_GAP,
-            h: groupHeight,
+            // A group is a *column*, so it reports its extent as one: a narrow,
+            // tall band rather than a wide, shallow one.
+            x,
+            y: PAD,
+            w: groupW,
+            h: groupH,
             count: g.cats.length,
         });
     });
@@ -628,8 +656,8 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
         nodes,
         edges,
         columns,
-        width: PAD * 2 + HEAD_W + (widest + 1) * slotStep - COL_GAP,
-        height: PAD * 2 + groups.length * groupHeight + Math.max(0, groups.length - 1) * GROUP_GAP,
+        width: PAD * 2 + groups.length * groupW + Math.max(0, groups.length - 1) * GROUP_GAP,
+        height: PAD * 2 + groupH,
         danglingRefs: findDangling(cfg),
     };
 }

@@ -16,11 +16,11 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.recipes.md`.
  */
-import { listElements, listRecipeMachines } from "../../catalog.ts";
-import { type RecipeOutputEntry } from "../../constants.ts";
-import * as S from "../styles.ts";
-import { advField, elSelect, idField, numField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "./types.ts";
+import { listElements, listRecipeMachines } from "../../../catalog.ts";
+import { type RecipeOutputEntry } from "../../../constants.ts";
+import * as S from "../../styles.ts";
+import { advField, elSelect, idField, numField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
 
 /** Machines whose output is a single element, not a list. */
 const SINGLE_OUTPUT_MACHINES = ["planterBox"];

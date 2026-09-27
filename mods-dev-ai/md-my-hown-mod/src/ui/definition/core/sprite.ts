@@ -13,8 +13,8 @@
  *
  * Ground truth: `doc/doc-tech/06-sprites-and-draws.md`.
  */
-import { boolField, spriteIdField } from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { boolField, spriteIdField } from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

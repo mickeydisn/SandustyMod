@@ -16,9 +16,9 @@
  *
  * Ground truth: `doc/doc-tech/07-registering-items.md`.
  */
-import { listItemActionHandlerKeys, listSpriteIds, type Opt } from "../../catalog.ts";
-import { loadConfig } from "../../config/store.ts";
-import type { ModConfig } from "../../constants.ts";
+import { listItemActionHandlerKeys, listSpriteIds, type Opt } from "../../../catalog.ts";
+import { loadConfig } from "../../../config/store.ts";
+import type { ModConfig } from "../../../constants.ts";
 import {
     advField,
     DESC_MAX,
@@ -27,8 +27,8 @@ import {
     numField,
     textField,
     typesHintFor,
-} from "./fields.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+} from "../fields.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /**
  * Config entries of a category, as picker options.

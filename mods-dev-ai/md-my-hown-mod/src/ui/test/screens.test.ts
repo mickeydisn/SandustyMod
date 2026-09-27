@@ -211,20 +211,28 @@ Deno.test("the help screen draws an svg and one arrow per relation", () => {
 });
 
 Deno.test("every arrow leaves by the top or bottom and never through a side", () => {
-    // The rule, and the reason it exists: an arrow always attaches to a box's top
-    // or bottom edge. Depth puts the target to the left, so a link between two
-    // kinds in the same group would otherwise have to run *sideways* along the
-    // row, skimming the boxes between it — and a head pointing at a box's flank is
-    // easy to mistake for belonging to its neighbour.
+    // The rule, and the reason it exists: an arrow attaches to a box's top or
+    // bottom edge. Depth puts the target above, so a link between two kinds in the
+    // same group would otherwise have to run *sideways* along the row, skimming
+    // the boxes between it — and a head pointing at a box's flank is easy to
+    // mistake for belonging to its neighbour.
     //
-    // Deliberately *not* asserting that no arrow crosses a box. With the rows
-    // stacked that is not achievable, and it was never the requirement: a link
-    // from Production up to Content passes over the row in between. The only ways
-    // to stop it are to give up the top/bottom rule, or to route every long link
-    // the long way around the outside of the diagram. The arrows are painted
-    // *under* the boxes, so a crossing hides behind the row it passes rather than
-    // being drawn across a label — a much smaller cost than a diagram where every
-    // arrowhead is ambiguous about which box it belongs to.
+    // There is exactly one exception, and it is checked rather than waved through:
+    // two kinds at the *same height* in *different* groups. Those are the same
+    // slot-row in neighbouring columns — every group's first box sits at the same
+    // y — so the direct line would cut straight through the columns between them.
+    // That one case leaves by a side and comes back in by the other, which is the
+    // transpose of the dip-under-the-row it replaced. `sideways` below is the
+    // count, and it has to stay at zero for everything else.
+    //
+    // Deliberately *not* asserting that no arrow crosses a box. With the columns
+    // side by side that is not achievable, and it was never the requirement: a link
+    // from a shallow group up to a deep one passes over the columns in between.
+    // The only ways to stop it are to give up the edge rule, or to route every long
+    // link the long way around the outside of the diagram. The arrows are painted
+    // *under* the boxes, so a crossing hides behind the column it passes rather
+    // than being drawn across a heading — a much smaller cost than a diagram where
+    // every arrowhead is ambiguous about which box it belongs to.
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     const g = buildGraph({});
@@ -232,9 +240,16 @@ Deno.test("every arrow leaves by the top or bottom and never through a side", ()
     const onHorizontalEdge = (b: typeof boxes[0], x: number, y: number) =>
         x >= b.x && x <= b.x + b.w &&
         (Math.abs(y - b.y) < 1.5 || Math.abs(y - (b.y + b.h)) < 1.5);
+    // The one allowed exception: a same-height link between two groups, which
+    // leaves and arrives on a side edge.
+    const onVerticalEdge = (b: typeof boxes[0], x: number, y: number) =>
+        y >= b.y && y <= b.y + b.h &&
+        (Math.abs(x - b.x) < 1.5 || Math.abs(x - (b.x + b.w)) < 1.5);
+    const sameHeightPair = (p: number[]) => Math.abs(p[1] - p[7]) < 1.5;
 
     let checked = 0;
     let rings = 0;
+    let sideways = 0;
     for (const n of h.seen) {
         if (n.tag !== "path") continue;
         const p = String(n.props?.d ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number);
@@ -255,19 +270,101 @@ Deno.test("every arrow leaves by the top or bottom and never through a side", ()
             rings++;
             continue;
         }
-        // The rule itself: each end sits on a box's top or bottom edge.
-        assert(
-            boxes.some((b) => onHorizontalEdge(b, x1, y1)),
-            `an arrow leaves at ${x1},${y1}, which is not on any box's top or bottom edge`,
-        );
-        assert(
-            boxes.some((b) => onHorizontalEdge(b, x2, y2)),
-            `an arrow arrives at ${x2},${y2}, which is not on any box's top or bottom edge`,
-        );
+        // A same-height link is allowed to leave by a side, but *only* then. Any
+        // other link that arrives sideways is the bug this whole rule exists for.
+        const sidewaysOk = sameHeightPair(p) &&
+            boxes.some((b) => onVerticalEdge(b, x1, y1)) &&
+            boxes.some((b) => onVerticalEdge(b, x2, y2));
+        if (sidewaysOk) sideways++;
+        // The rule itself: each end sits on a box's top or bottom edge, unless it
+        // is the same-height case above.
+        if (!sidewaysOk) {
+            assert(
+                boxes.some((b) => onHorizontalEdge(b, x1, y1)),
+                `an arrow leaves at ${x1},${y1}, which is not on any box's top or bottom edge`,
+            );
+            assert(
+                boxes.some((b) => onHorizontalEdge(b, x2, y2)),
+                `an arrow arrives at ${x2},${y2}, which is not on any box's top or bottom edge`,
+            );
+        }
         checked++;
     }
     assert(checked > 10, `only ${checked} arrows were checked`);
     assert(rings > 0, "no self-reference was drawn as a ring, so the hard case is not being seen");
+    // The exception has to be the rare one, or the rule is not really the rule.
+    assert(
+        sideways < checked / 3,
+        `${sideways} of ${checked} arrows left by a side — the same-height case should be the exception`,
+    );
+});
+
+Deno.test("an arrow joins the two facing edges, never running back through a box", () => {
+    // The rule above only checked that an end sits on *some* horizontal edge, which
+    // is not enough. An end on the edge facing *away* from the other box still
+    // satisfies that check, and the line then leaves backwards through its own
+    // source box and arrives at the target's far side — so the arrowhead points
+    // up through B while the line entered its base. That is what the ends looked
+    // like when the depth axis was transposed and the ternary was left as it was
+    // for the old left-to-right ordering.
+    //
+    // So this asserts the stronger property directly: the source end is on the
+    // edge facing the target, and the target end is on the edge facing the
+    // source. Only the same-height case is exempt, and it is checked separately to
+    // be a genuine side exit.
+    const h = fakeH();
+    renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
+    const g = buildGraph({});
+
+    const horizontalArrows: number[][] = [];
+    for (const n of h.seen) {
+        if (n.tag !== "path") continue;
+        const p = String(n.props?.d ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number);
+        if (!p || p.length !== 8) continue;
+        if (Math.abs(p[1] - p[7]) < 1.5) continue; // same height: a side exit
+        horizontalArrows.push(p);
+    }
+    assert(horizontalArrows.length > 10, `only ${horizontalArrows.length} stacked arrows`);
+
+    let facing = 0;
+    for (const p of horizontalArrows) {
+        const [x1, y1, , , , , x2, y2] = p;
+        // Both ends must belong to a *pair of distinct* boxes, and each must sit on
+        // the edge of its box that faces the other box.
+        const src = g.nodes.find(
+            (b) =>
+                x1 >= b.x && x1 <= b.x + b.w &&
+                (Math.abs(y1 - b.y) < 1.5 || Math.abs(y1 - (b.y + b.h)) < 1.5),
+        );
+        const dst = g.nodes.find(
+            (b) =>
+                x2 >= b.x && x2 <= b.x + b.w &&
+                (Math.abs(y2 - b.y) < 1.5 || Math.abs(y2 - (b.y + b.h)) < 1.5),
+        );
+        if (!src || !dst || src === dst) continue; // ring, or a shared edge
+        const srcOnTop = Math.abs(y1 - src.y) < 1.5;
+        const dstOnTop = Math.abs(y2 - dst.y) < 1.5;
+        // Which of the two is vertically higher. Comparing `y` is enough and is
+        // exact: the only stacked case is two boxes in the same slot, where the
+        // rows are `slotStepH` apart, so there is no near-tie to worry about.
+        const targetAbove = dst.y < src.y;
+        assertEquals(
+            srcOnTop,
+            targetAbove,
+            `an arrow leaves ${src.cat} by its ${srcOnTop ? "top" : "bottom"} edge, ` +
+                `but ${dst.cat} is ${
+                    targetAbove ? "above" : "below"
+                } it — the line runs back through the box`,
+        );
+        assertEquals(
+            dstOnTop,
+            !targetAbove,
+            `an arrow arrives at ${dst.cat} by its ${dstOnTop ? "top" : "bottom"} edge, ` +
+                `but ${src.cat} is ${targetAbove ? "above" : "below"} it`,
+        );
+        facing++;
+    }
+    assert(facing > 10, `only ${facing} stacked arrows were checked between two boxes`);
 });
 
 Deno.test("a self-reference is drawn as a ring above its box", () => {
@@ -282,7 +379,7 @@ Deno.test("a self-reference is drawn as a ring above its box", () => {
     assert(techs.y > 0, "the techs node is at the very top, leaving no room for a ring");
 });
 
-Deno.test("the graph reads left-to-right: a box is never left of what it references", () => {
+Deno.test("the graph reads top-to-bottom: a box is never above what it references", () => {
     // The property the whole layout exists to guarantee. If it ever fails, the
     // arrow points the wrong way and the picture is actively misleading rather
     // than just untidy.
@@ -300,18 +397,18 @@ Deno.test("the graph reads left-to-right: a box is never left of what it referen
         if (!a || !b || a.cat === b.cat) continue; // a self-loop has no order
         assert(
             a.depth >= b.depth,
-            `${e.from} → ${e.to}: the source (depth ${a.depth}) is left of its target (depth ${b.depth})`,
+            `${e.from} → ${e.to}: the source (depth ${a.depth}) is above its target (depth ${b.depth})`,
         );
         if (a.depth === b.depth) continue; // a cycle — no order to assert
         strict++;
         assert(
-            a.x > b.x,
-            `${e.from} → ${e.to}: the source is not drawn to the right of its target`,
+            a.y > b.y,
+            `${e.from} → ${e.to}: the source is not drawn below its target`,
         );
     }
     // The strict case has to be the common one, or this test is barely checking
     // anything. Most relations are not inside a cycle.
-    assert(strict > 10, `only ${strict} edges are strictly right of their target`);
+    assert(strict > 10, `only ${strict} edges are strictly below their target`);
 });
 
 Deno.test("kinds that reference each other share a depth", () => {
@@ -348,33 +445,34 @@ Deno.test("groups are ordered by the shallowest box in each", () => {
     }
 });
 
-Deno.test("the groups are rows, stacked, and do not overlap", () => {
-    // Groups run across the picture, one per horizontal band, rather than
-    // standing as columns beside each other. Stacked is also what keeps the group
-    // names legible: as columns they were squeezed into a strip the height of a
-    // box, and the longest one had nowhere to go.
+Deno.test("the groups are columns, side by side, and do not overlap", () => {
+    // Groups stand as columns beside each other rather than stacking as rows, and
+    // each carries its name as a heading across the top. The heading is the part
+    // worth stating: as rows the name had to fit a strip at the left and the
+    // longest one had nowhere to go, which is why this layout came back to
+    // columns.
     const g = buildGraph({});
     for (let i = 1; i < g.columns.length; i++) {
         const prev = g.columns[i - 1];
         const cur = g.columns[i];
         assert(
-            cur.y >= prev.y + prev.h,
-            `${cur.label} overlaps ${prev.label} — group rows must not overlap`,
+            cur.x >= prev.x + prev.w,
+            `${cur.label} overlaps ${prev.label} — group columns must not overlap`,
         );
-        // And each really is a band, not a column: wider than it is tall.
-        assert(cur.w > cur.h, `${cur.label} is taller than it is wide, so it is a column`);
+        // And each really is a column: taller than it is wide.
+        assert(cur.w < cur.h, `${cur.label} is wider than it is tall, so it is a row`);
     }
-    // Every node sits inside the row it belongs to.
+    // Every node sits inside the column it belongs to.
     for (const n of g.nodes) {
         const c = g.columns.find((x) => x.key === n.group);
-        assert(c, `${n.cat} has no row`);
-        assert(n.x >= c.x && n.x + n.w <= c.x + c.w, `${n.cat} is outside its row`);
-        assert(n.y >= c.y, `${n.cat} is drawn above its own group label`);
+        assert(c, `${n.cat} has no group column`);
+        assert(n.x >= c.x && n.x + n.w <= c.x + c.w, `${n.cat} is outside its column`);
+        assert(n.y >= c.y, `${n.cat} is drawn above its own group heading`);
     }
 });
 
-Deno.test("two kinds in one row never overlap", () => {
-    // Depth is the column now, so two kinds at the same depth in the same row
+Deno.test("two kinds in one group never overlap", () => {
+    // Depth is the row now, so two kinds at the same depth in the same column
     // would land on top of each other. The layout is the one thing not
     // re-checked at render time, so it is checked here.
     const g = buildGraph({});

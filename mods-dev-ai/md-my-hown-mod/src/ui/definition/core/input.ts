@@ -19,10 +19,10 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.input.md`.
  */
-import { listAnyHandlerKeys, listKeyCodes } from "../../catalog.ts";
-import { advField, idField, NAME_MAX, textField, typesHintFor } from "./fields.ts";
-import { parseIdList } from "./values.ts";
-import type { Definition, EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import { listAnyHandlerKeys, listKeyCodes } from "../../../catalog.ts";
+import { advField, idField, NAME_MAX, textField, typesHintFor } from "../fields.ts";
+import { parseIdList } from "../values.ts";
+import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 // ── The schema ───────────────────────────────────────────────────────────────
 

@@ -330,31 +330,103 @@ Deno.test("a kind the menu forgets still appears, in its own column", () => {
     }
 });
 
-Deno.test("group rows stack instead of overlapping", () => {
-    // A group is a row, so the only thing that can go wrong between two of them
-    // is a vertical overlap. (When groups were columns this checked x instead,
-    // and a transpose would have slipped past it unnoticed.)
+Deno.test("group bands never overlap, whichever way they are laid out", () => {
+    // A group must be clear of every other group on *both* axes. Checking one
+    // axis is not enough, and checking only the axis the layout currently uses
+    // is how the last transpose slipped past: this test used to assert `y` while
+    // the groups were rows, so when they became columns it still passed on a
+    // layout where they were all stacked at the same `y` and only the width kept
+    // them apart. The overlap that matters is a *rectangle* overlap.
+    //
+    // So: assert the real invariant (no two group rectangles intersect), and let
+    // the separate orientation test below say which way the bands run.
     const g = buildGraph({});
+    for (let i = 0; i < g.columns.length; i++) {
+        for (let j = i + 1; j < g.columns.length; j++) {
+            const a = g.columns[i];
+            const b = g.columns[j];
+            const apart = a.x + a.w <= b.x || b.x + b.w <= a.x ||
+                a.y + a.h <= b.y || b.y + b.h <= a.y;
+            assert(
+                apart,
+                `${a.label} overlaps ${b.label} — group bands must not overlap`,
+            );
+        }
+    }
+});
+
+Deno.test("groups are columns, side by side, taller than they are wide", () => {
+    // The layout, stated once so a change to it is deliberate. A group is a
+    // *column*: it runs down the picture beside the others, ordered left-to-right
+    // by how shallow its shallowest kind is, and the group's name is a heading
+    // across the top of it.
+    //
+    // The name being a top heading is what makes a column legible here. As rows
+    // the name had to fit in a strip at the left, and the longest one had nowhere
+    // to go — which is the reason this layout was transposed away from columns in
+    // the first place. A column is at least one node wide, so the heading gets
+    // the whole width of the top of its own column.
+    const g = buildGraph({});
+    assert(g.columns.length > 1, "the fixture needs more than one group to be meaningful");
     for (let i = 1; i < g.columns.length; i++) {
         const prev = g.columns[i - 1];
         const cur = g.columns[i];
         assert(
-            cur.y >= prev.y + prev.h,
-            `${cur.label} overlaps ${prev.label} — group rows must not overlap`,
+            cur.x >= prev.x + prev.w,
+            `${cur.label} overlaps ${prev.label} — group columns must sit beside each other`,
         );
+        // And each really is a column: taller than it is wide.
+        assert(cur.h > cur.w, `${cur.label} is wider than it is tall, so it is a row`);
+    }
+    // Every group starts at the same top, so the headings line up.
+    const tops = new Set(g.columns.map((c) => c.y));
+    assertEquals(tops.size, 1, `the columns do not share a top edge: ${[...tops]}`);
+});
+
+Deno.test("every box in a group shares one x, with a margin either side", () => {
+    // A group is a single vertical stack, not a grid: all of its boxes sit in the
+    // same column, left-aligned to one `x`. Same-depth kinds — the ones a cycle
+    // puts at one level — were the reason the layout used to fan them out
+    // sideways, but a slot is a *row*, so they stack vertically instead and the
+    // fan was never needed.
+    //
+    // The margin matters as much as the alignment: without it a one-box-wide
+    // column is just the box with a dashed border drawn along its own edge, and
+    // the boundary stops reading as a container.
+    const g = buildGraph({});
+    for (const c of g.columns) {
+        const members = g.nodes.filter((n) => n.group === c.key);
+        assert(members.length > 0, `${c.label} has no boxes to align`);
+        const xs = new Set(members.map((n) => n.x));
+        assertEquals(
+            xs.size,
+            1,
+            `${c.label} has boxes at ${[...xs].join(", ")} — a group is one column, not a grid`,
+        );
+        const x = members[0].x;
+        const left = x - c.x;
+        const right = c.x + c.w - (x + members[0].w);
+        assert(left > 0 && right > 0, `${c.label} has a box flush against its boundary`);
+        assertEquals(left, right, `${c.label} is not centred: ${left} left, ${right} right`);
+    }
+    // And no two groups can collide by sharing an x, since each is a fixed width.
+    for (let i = 1; i < g.columns.length; i++) {
+        const prev = g.columns[i - 1];
+        const cur = g.columns[i];
+        assert(cur.x >= prev.x + prev.w, `${cur.label} overlaps ${prev.label}`);
     }
 });
 
-Deno.test("a node sits inside its own group row, clear of the label", () => {
+Deno.test("a node sits inside its own group column, clear of the heading", () => {
     // The layout is the one thing not re-checked at render time, so it is
-    // checked here. A node outside its row would be drawn across the dashed
-    // boundary; a node over the label would hide the group's name.
+    // checked here. A node outside its column would be drawn across the dashed
+    // boundary; a node over the heading would hide the group's name.
     const g = buildGraph({});
     for (const n of g.nodes) {
         const c = g.columns.find((x) => x.key === n.group);
-        assert(c, `${n.cat} has no row`);
-        assert(n.x >= c.x && n.x + n.w <= c.x + c.w, `${n.cat} is outside its row`);
-        assert(n.y >= c.y + 20, `${n.cat} is drawn over its own group label`);
+        assert(c, `${n.cat} has no group column`);
+        assert(n.x >= c.x && n.x + n.w <= c.x + c.w, `${n.cat} is outside its column`);
+        assert(n.y >= c.y + 20, `${n.cat} is drawn over its own group heading`);
     }
     // And every node is inside the canvas.
     for (const n of g.nodes) {

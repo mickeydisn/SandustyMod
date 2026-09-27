@@ -36,28 +36,28 @@ const store: Record<string, unknown> = {};
     enums: {},
 };
 
-const { structureDefinition } = await import(`${ROOT}ui/definition/structure.ts`);
-const { elementDefinition } = await import(`${ROOT}ui/definition/element.ts`);
-const { itemDefinition } = await import(`${ROOT}ui/definition/item.ts`);
-const { recipeDefinition } = await import(`${ROOT}ui/definition/recipe.ts`);
-const { contactDefinition } = await import(`${ROOT}ui/definition/contact.ts`);
-const { behaviorDefinition } = await import(`${ROOT}ui/definition/behavior.ts`);
-const { signalDefinition } = await import(`${ROOT}ui/definition/signal.ts`);
-const { projectileDefinition } = await import(`${ROOT}ui/definition/projectile.ts`);
-const { excavationDefinition } = await import(`${ROOT}ui/definition/excavation.ts`);
-const { energyDefinition } = await import(`${ROOT}ui/definition/energy.ts`);
-const { inputDefinition } = await import(`${ROOT}ui/definition/input.ts`);
-const { interactionDefinition } = await import(`${ROOT}ui/definition/interaction.ts`);
-const { modifierDefinition } = await import(`${ROOT}ui/definition/modifier.ts`);
-const { networkDefinition } = await import(`${ROOT}ui/definition/network.ts`);
-const { processingDefinition } = await import(`${ROOT}ui/definition/processing.ts`);
-const { spriteDefinition } = await import(`${ROOT}ui/definition/sprite.ts`);
-const { triggerDefinition } = await import(`${ROOT}ui/definition/trigger.ts`);
-const { unlockNodeDefinition } = await import(`${ROOT}ui/definition/unlock-node.ts`);
-const { techDefinition } = await import(`${ROOT}ui/definition/tech.ts`);
-const { upgradeDefinition } = await import(`${ROOT}ui/definition/upgrade.ts`);
-const { upgradeCategoryDefinition } = await import(`${ROOT}ui/definition/upgrade-category.ts`);
-const { terrainDefinition } = await import(`${ROOT}ui/definition/terrain.ts`);
+const { structureDefinition } = await import(`${ROOT}ui/definition/core/structure.ts`);
+const { elementDefinition } = await import(`${ROOT}ui/definition/core/element.ts`);
+const { itemDefinition } = await import(`${ROOT}ui/definition/core/item.ts`);
+const { recipeDefinition } = await import(`${ROOT}ui/definition/core/recipe.ts`);
+const { contactDefinition } = await import(`${ROOT}ui/definition/core/contact.ts`);
+const { behaviorDefinition } = await import(`${ROOT}ui/definition/core/behavior.ts`);
+const { signalDefinition } = await import(`${ROOT}ui/definition/core/signal.ts`);
+const { projectileDefinition } = await import(`${ROOT}ui/definition/core/projectile.ts`);
+const { excavationDefinition } = await import(`${ROOT}ui/definition/core/excavation.ts`);
+const { energyDefinition } = await import(`${ROOT}ui/definition/core/energy.ts`);
+const { inputDefinition } = await import(`${ROOT}ui/definition/core/input.ts`);
+const { interactionDefinition } = await import(`${ROOT}ui/definition/core/interaction.ts`);
+const { modifierDefinition } = await import(`${ROOT}ui/definition/core/modifier.ts`);
+const { networkDefinition } = await import(`${ROOT}ui/definition/custom/network.ts`);
+const { processingDefinition } = await import(`${ROOT}ui/definition/core/processing.ts`);
+const { spriteDefinition } = await import(`${ROOT}ui/definition/core/sprite.ts`);
+const { triggerDefinition } = await import(`${ROOT}ui/definition/core/trigger.ts`);
+const { unlockNodeDefinition } = await import(`${ROOT}ui/definition/custom/unlock-node.ts`);
+const { techDefinition } = await import(`${ROOT}ui/definition/core/tech.ts`);
+const { upgradeDefinition } = await import(`${ROOT}ui/definition/core/upgrade.ts`);
+const { upgradeCategoryDefinition } = await import(`${ROOT}ui/definition/core/upgrade-category.ts`);
+const { terrainDefinition } = await import(`${ROOT}ui/definition/core/terrain.ts`);
 const { DEFINITIONS, definitionFor } = await import(`${ROOT}ui/definition/index.ts`);
 const S = await import(`${ROOT}ui/schema.ts`);
 
@@ -1046,7 +1046,7 @@ ok(
     `an empty options was written as ${JSON.stringify(enNoOpts.options)}`,
 );
 
-// 39. the trigger round trip — `triggerId` is written but never read
+// 39. the trigger round trip — and `triggerId`, which has no control at all
 const trgStored = {
     id: "md-my-hown-mod:t",
     triggerId: "md-my-hown-mod:clock",
@@ -1066,18 +1066,16 @@ ok(
     JSON.stringify(trgBack.extra) === JSON.stringify(trgStored.extra),
     `trigger extra → ${JSON.stringify(trgBack.extra)}`,
 );
-// `triggerId` is listed in formCovered but no control reads or writes it, so
-// the passthrough skips it and the stored value is lost on save. Verified
-// identical on the pre-refactor tree — long-standing, not a regression. Fixed
-// by giving it a control or dropping it from formCovered; both change what a
-// save writes, so neither is done here.
+// `triggerId` has no control, so it rides the passthrough rather than being
+// claimed by the form. It used to be in `formCovered`, which meant the
+// passthrough skipped it *and* nothing wrote it — so every save deleted it.
 ok(
-    !("triggerId" in trgBack),
-    `triggerId survived as ${JSON.stringify(trgBack.triggerId)}`,
+    trgBack.triggerId === trgStored.triggerId,
+    `triggerId → ${JSON.stringify(trgBack.triggerId)}`,
 );
 ok(
-    S.passthroughKeys("triggers", trgStored).length === 0,
-    "a trigger leaked a passthrough key it claims to own",
+    S.passthroughKeys("triggers", trgStored).includes("triggerId"),
+    "a stored triggerId is not offered as a passthrough, so nothing can carry it",
 );
 
 // 40. the input round trip — an empty key list is not written
@@ -1270,8 +1268,93 @@ ok(
     `a sprite lost an unowned field: ${JSON.stringify(spExtra)}`,
 );
 
+// 46. no definition claims a key that nothing handles
+//
+// `formCovered` is a promise: "this form owns these stored keys". The passthrough
+// skips every claimed key, so a key that is claimed but read by neither
+// `entryToForm` nor written by `formToEntry` is deleted on the next save — and
+// nothing looks wrong, because the entry renders and saves without error.
+//
+// That is the shape of the bugs this check was written for: a trigger's
+// `triggerId` (claimed, no control, silently deleted) and a category's
+// `requirement` (claimed, read into a control that could not save it back).
+//
+// A claimed key counts as handled if any of these holds, because `formCovered`
+// means two slightly different things and a probe can only see one:
+//
+//   - it reaches a control on the way in, or comes back out on the way out;
+//   - it IS a control — a claimed key that is also a declared field is owned by
+//     construction (an unlock node's `cost`);
+//   - it lives inside a composed control — a structure's `dirH` is a checkbox
+//     folded into `buildModes[].directions`, and its `shape` is edited through a
+//     `shapeJson` box, so neither is a top-level entry key nor a field of the
+//     same name. Listed rather than guessed.
+const KEYS_INSIDE_A_COMPOSED_CONTROL = new Set([
+    "buildModes",
+    "spanTiles",
+    "dirH",
+    "dirV",
+    "dirD",
+    "shape",
+]);
+
+/**
+ * Claimed on purpose, with no control, and dropped on purpose.
+ *
+ * A structure's `draw` is the engine's *callback* field: the host sets it to a
+ * function, and `passthroughOf` already refuses to carry functions. `drawKey` is
+ * the serialisable spelling — a picker over the built-in draw functions whose own
+ * hint says a hand-typed value is ignored by the game. So a `draw` that reaches
+ * the JSON store at all is a string the engine does not read, and mapping it
+ * onto `drawKey` would be guessing at an intent. Claiming it keeps a dead key
+ * from also being carried twice.
+ *
+ * Listed rather than fixed: this check is about *accidental* orphans, and this is
+ * the one claim in the panel that is deliberate.
+ */
+const CLAIMED_TO_SUPPRESS = new Set(["draw"]);
+
+// The write probe fills every control, with enums and shapes set to legal
+// values — a form whose `kind` is "7" legitimately takes no conditional branch,
+// which says nothing about whether a key is orphaned.
+const PROBE_ENUMS: Record<string, string> = { kind: "tech", type: "storage" };
+for (const [tab, def] of Object.entries(DEFINITIONS)) {
+    const t = tab as never;
+    const controlKeys = new Set(S.fieldsFor(t).map((f) => f.key));
+    for (const key of def.formCovered) {
+        // read: one distinctive marker, on its own, so attribution is exact
+        const marker = `orphan-probe-${key}`;
+        const readForm = S.entryToForm(t, { id: "md-my-hown-mod:probe", [key]: marker });
+        const isRead = Object.values(readForm).some((v) => String(v).includes(marker));
+
+        // written: a fully-filled form must produce the key in the entry
+        const full = S.newEntryForm(t);
+        for (const f of S.fieldsFor(t)) {
+            if (f.kind === "bool") full[f.key] = "true";
+            else if (f.kind === "json") {
+                full[f.key] = f.jsonType === "array"
+                    ? "[1]"
+                    : f.jsonType === "matrix"
+                    ? "[[1]]"
+                    : "{}";
+            } else if (f.kind === "color") full[f.key] = "#ff8800";
+            else if (f.kind === "shape") full[f.key] = "1,1,0,0";
+            else full[f.key] = PROBE_ENUMS[f.key] ?? "7";
+        }
+        full.idSuffix = "probe";
+        const isWritten = key in (S.formToEntry(t, full) as Record<string, unknown>);
+
+        ok(
+            isRead || isWritten || controlKeys.has(key) ||
+                KEYS_INSIDE_A_COMPOSED_CONTROL.has(key) || CLAIMED_TO_SUPPRESS.has(key),
+            `${tab}.formCovered claims "${key}" but no control owns it and neither ` +
+                "direction reads or writes it — the passthrough skips it, so a save deletes it",
+        );
+    }
+}
+
 if (failures.length === 0) {
-    console.log("definition check: all 45 passed");
+    console.log("definition check: all 46 passed");
 } else {
     console.error(`definition check: ${failures.length} FAILED`);
     for (const f of failures) console.error(` - ${f}`);
