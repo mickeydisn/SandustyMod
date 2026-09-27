@@ -41,8 +41,10 @@ const {
     resolveAutoFill,
     autoGraphicsKey,
     MENU_GROUPS,
+    CATEGORY_META,
     parseBuildModes,
 } = await import("../schema.ts");
+const { ATTACHED } = await import("../panel/attach.ts");
 const { searchLibraryAssets, listLibraryAssets } = await import("../../catalog.ts");
 const { parseActionRefs } = await import("../definition/actions-field.ts");
 
@@ -2560,13 +2562,17 @@ console.log("── schema matches the real engine contracts ──");
     const worldGroup = groups.find((g) => g.key === "world");
     check("World no longer holds techs", !worldGroup?.cats.includes("techs"));
     check("World no longer holds upgrades", !worldGroup?.cats.includes("upgrades"));
-    // every category must still live in exactly one group
+    // every category must be reachable: in exactly one menu group, or attached
+    // under one. A tab that is neither is a screen nobody can open.
     const allCats = groups.flatMap((g) => g.cats);
-    check(
-        "no category is orphaned",
-        new Set(allCats).size === allCats.length,
-        JSON.stringify(allCats),
+    const attached = Object.values(ATTACHED).flat();
+    const orphans = Object.keys(CATEGORY_META).filter(
+        (k) => !allCats.includes(k as never) && !attached.includes(k as never),
     );
+    check("no category is orphaned", orphans.length === 0, JSON.stringify(orphans));
+    // and no tab may be both a menu chip and an attached list, or it renders twice
+    const doubled = allCats.filter((c) => attached.includes(c as never));
+    check("no category is both a chip and an attachment", doubled.length === 0, doubled.join(","));
 }
 
 console.log("── every category exposes fields ──");

@@ -294,10 +294,14 @@ export interface MenuGroup {
 }
 
 /**
- * Top-level menu: 7 groups instead of 19 flat tabs.
+ * Top-level menu: 9 groups instead of 24 flat tabs.
  *
  * `terrains` sits under Content rather than in a group of its own. A "World"
  * group holding nothing else costs a click and explains nothing.
+ *
+ * There is no group for the lists that only qualify a thing — tooltips, behaviours,
+ * signals, excavation profiles, projectiles. They are drawn under the Content list
+ * they belong to, and reached from there. See `./panel/attach.ts`.
  *
  * `Assets`, `Handlers` and `Hooks` are separate. They are unrelated things that
  * happen to all be defined in code: an image
@@ -309,12 +313,6 @@ export const MENU_GROUPS: MenuGroup[] = [
         label: "Content",
         hint: "What the player sees in the world",
         categories: ["terrains", "elements", "structures", "items"],
-    },
-    {
-        key: "extend",
-        label: "Extend",
-        hint: "Add to what the game already does",
-        categories: ["interactions", "behaviors", "excavation", "projectiles", "signals"],
     },
     {
         key: "production",

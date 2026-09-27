@@ -111,6 +111,7 @@ import {
 import { renderActionList } from "./action-list-control.ts";
 import { renderProjectileOption } from "./projectile-option-control.ts";
 import { listFor } from "./panel/index.ts";
+import { attachedTo, parentOf } from "./panel/attach.ts";
 import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
 import * as S from "./styles.ts";
 import { emptyViewState, LIST_DEFAULTS, type ViewMode } from "./viewstate.ts";
@@ -334,6 +335,16 @@ export function createPanelComponent(defaultMinimized = true) {
         );
         /** Per-field search text for `kind: "library"` pickers. */
         const [libQuery, setLibQuery] = useState<Record<string, string>>({});
+        /**
+         * Search text per attached list — tooltips, behaviours, signals, excavation
+         * profiles, projectiles.
+         *
+         * Keyed by tab rather than shared with the main list because these are
+         * separate things being looked for: filtering elements must not silently
+         * narrow the tooltips under them, or a search that looks broken is really
+         * two searches fighting over one box.
+         */
+        const [attachedQuery, setAttachedQuery] = useState<Record<string, string>>({});
         const drag = useRef<{
             ox: number;
             oy: number;
@@ -351,6 +362,13 @@ export function createPanelComponent(defaultMinimized = true) {
 
         const group = MENU_GROUPS.find((g) => g.key === groupKey) ?? MENU_GROUPS[0];
         const meta = CATEGORY_META[cat];
+        // The tab the sub-nav is actually showing. An attached tab is still the
+        // active `cat` while one of its entries is open, but it has no chip of its
+        // own, so the nav reads the list it is drawn under. Resolving through
+        // `parentOf` is what keeps the reader on "Elements" while they edit a
+        // tooltip, rather than dropping them into a group that is not there.
+        const navCat = parentOf(cat) ?? cat;
+        const navGroup = MENU_GROUPS.find((g) => g.categories.includes(navCat)) ?? group;
 
         // Live validation — Save stays disabled while invalid.
         const errors = useMemo<Record<string, string>>(
@@ -531,28 +549,37 @@ export function createPanelComponent(defaultMinimized = true) {
         // forward reference to it; those buttons are gone, so the indirection went
         // with them.
 
-        const startNew = () => {
+        /**
+         * Open a form for `tab`, defaulting to the current one.
+         *
+         * The parameter is what lets a list drawn under another one — a tooltip
+         * under Elements — be edited without a menu chip of its own: the screen it
+         * lives on passes its own tab, and everything downstream (the form, the
+         * validator, the save path) follows it.
+         */
+        const startNew = (tab: Tab = cat) => {
             setEditingId(null);
             setConfirmId(null);
+            setCat(tab);
             // `newEntryForm` applies the field defaults and then the definition's
             // own seed, so a tab whose first save needs a decision the author
             // never made (a structure's unlock node) does not need a special case
             // here to get one.
-            setForm(newEntryForm(cat));
+            setForm(newEntryForm(tab));
             setMode("form");
         };
 
-        const startEdit = (entry: Record<string, unknown>) => {
+        const startEdit = (entry: Record<string, unknown>, tab: Tab = cat) => {
             setConfirmId(null);
             const id = typeof entry.id === "string" ? entry.id : null;
             setEditingId(id);
-            const next = entryToForm(cat, entry);
+            const next = entryToForm(tab, entry);
             // A tech's structure-derived unlocks live on the *structures*, not on
             // the node, so the form would open showing fewer unlocks than the game
             // will actually grant — and saving would then write that smaller list
             // back, quietly dropping the link. Seeded here so the picker shows the
             // truth and an edit is a no-op when nothing was changed.
-            if (cat === "techs" && id) {
+            if (tab === "techs" && id) {
                 const ids = techUnlockStructureIds(id, loadConfig());
                 if (ids.length > 0) {
                     next.unlockStructures = formatIdList(
@@ -560,11 +587,17 @@ export function createPanelComponent(defaultMinimized = true) {
                     );
                 }
             }
+            setCat(tab);
             setForm(next);
             setMode("form");
         };
 
         const cancelForm = () => {
+            // Back from an attached tab lands on the list it is drawn under, not on
+            // a screen of its own: the reader came from there, and the row they
+            // were editing is still visible at the bottom of it.
+            const home = parentOf(cat);
+            if (home) setCat(home);
             setMode("list");
             setForm({});
             setEditingId(null);
@@ -606,12 +639,21 @@ export function createPanelComponent(defaultMinimized = true) {
             cancelForm();
         };
 
-        const requestRemove = (id: string) => {
-            if (confirmId !== id) {
-                setConfirmId(id);
+        /**
+         * Arm a row for deletion, then delete it on the second press.
+         *
+         * The armed id is qualified by the tab. A screen can now hold two lists,
+         * and their ids are unrelated strings — an element and a tooltip may well
+         * share one — so a bare id would let a delete armed in one list be
+         * confirmed by a press in the other.
+         */
+        const requestRemove = (id: string, tab: Tab = cat) => {
+            const key = `${tab}:${id}`;
+            if (confirmId !== key) {
+                setConfirmId(key);
                 return;
             }
-            const remove = REMOVE[cat];
+            const remove = REMOVE[tab];
             if (!remove) return;
             try {
                 remove(id);
@@ -1083,8 +1125,116 @@ export function createPanelComponent(defaultMinimized = true) {
             return name || id;
         };
 
+        /**
+         * A list drawn under another one, boxed and labelled with what it is.
+         *
+         * The same frame as the main list — same rows, same edit and delete, same
+         * engine-side discovery — because it is the same kind of thing. What differs
+         * is that it answers a narrower question ("what tooltips exist?") than the
+         * list above it ("what elements exist?"), so it is titled and counted
+         * rather than promoted to a screen of its own.
+         *
+         * Its search box is its own. Sharing the main list's box would mean typing
+         * `ore` silently empties the elements above while leaving the tooltips
+         * untouched, which reads as a broken filter rather than two filters.
+         */
+        const renderAttachedList = (child: Tab) => {
+            const childMeta = CATEGORY_META[child];
+            const childSpec = listFor(child);
+            // No host discovery for these: a tooltip, a behaviour and a signal are
+            // all mod-authored. `discover` stays wired up anyway, so a list that
+            // grows one is listed rather than silently missing.
+            const childRows = mergeRows(
+                entriesOf(cfg, child),
+                childSpec?.discover?.() ?? [],
+                child,
+            );
+            const q = attachedQuery[child] ?? "";
+            const childShown = filterRows(
+                childRows,
+                q,
+                childSpec?.searchText,
+                "all",
+                false,
+            );
+            // The expansion key is qualified by tab for the same reason the delete
+            // arm is: two lists on one screen, and ids that are not comparable.
+            const openKey = `${child} `;
+
+            return h(
+                "div",
+                { key: child, style: S.sectionBox },
+                h(
+                    "div",
+                    { style: S.sectionTitle },
+                    childMeta.label,
+                    h("span", { style: S.chipCount }, String(childRows.length)),
+                ),
+                h(
+                    "div",
+                    { style: S.listFilterBar },
+                    h("input", {
+                        type: "text",
+                        style: { ...S.input, flex: 1, minWidth: 120 },
+                        value: q,
+                        placeholder: `Filter ${childMeta.label.toLowerCase()}…`,
+                        onChange: (e: { target: { value: string } }) =>
+                            setAttachedQuery((p) => ({ ...p, [child]: e.target.value })),
+                    }),
+                    h(
+                        "button",
+                        { style: S.btnPrimary, onClick: () => startNew(child) },
+                        "+ New",
+                    ),
+                ),
+                h("div", { style: S.hintBelow }, childMeta.blurb),
+                childShown.length === 0
+                    ? h(
+                        "div",
+                        { style: { ...S.emptyState, margin: "8px 0" } },
+                        childRows.length === 0
+                            ? `No ${childMeta.label.toLowerCase()} yet — press “+ New” to add one.`
+                            : `No ${childMeta.label.toLowerCase()} match “${q}”.`,
+                    )
+                    : h(
+                        "div",
+                        { style: { ...S.listScroll, padding: "0" } },
+                        ...childShown.map((row) =>
+                            h(
+                                "div",
+                                { key: row.id },
+                                renderListRow({
+                                    h,
+                                    form,
+                                    cfg,
+                                    setField,
+                                    row,
+                                    expanded: openRow === openKey + row.id,
+                                    toggle: () =>
+                                        setOpenRow(
+                                            openRow === openKey + row.id ? null : openKey + row.id,
+                                        ),
+                                    edit: row.origin === "mod" && row.entry
+                                        ? () =>
+                                            startEdit(row.entry as Record<string, unknown>, child)
+                                        : undefined,
+                                    remove: row.origin === "mod"
+                                        ? () => requestRemove(row.id, child)
+                                        : undefined,
+                                    confirming: row.origin === "mod" &&
+                                        confirmId === `${child}:${row.id}`,
+                                }, childSpec ?? {}),
+                            )
+                        ),
+                    ),
+            );
+        };
+
         const renderList = () => {
             const listSpec = listFor(cat);
+            // The lists drawn under this one, if any. A tab that is itself
+            // attached has none of its own — reaching it is reaching its parent.
+            const attached = attachedTo(cat).filter((c) => parentOf(c) === cat);
             // One list, two sources: the mod's own entries, plus whatever the host
             // already has of this kind. An object with no host registry (a recipe,
             // a trigger) contributes no game rows — that is a fact about the API,
@@ -1264,11 +1414,22 @@ export function createPanelComponent(defaultMinimized = true) {
                                     remove: row.origin === "mod"
                                         ? () => requestRemove(row.id)
                                         : undefined,
-                                    confirming: row.origin === "mod" && confirmId === row.id,
+                                    confirming: row.origin === "mod" &&
+                                        confirmId === `${cat}:${row.id}`,
                                 }, listSpec ?? {}),
                             )
                         ),
                     ),
+                // The lists that qualify this one, below it and inside the same
+                // scroll, so the main list keeps the height it had when it was alone.
+                // A tab with nothing attached renders exactly as before.
+                ...(attached.length === 0 ? [] : [
+                    h(
+                        "div",
+                        { key: "__attached", style: { ...S.listScroll, padding: "0 10px 14px" } },
+                        ...attached.map((child) => renderAttachedList(child)),
+                    ),
+                ]),
             );
         };
 
@@ -1558,14 +1719,14 @@ export function createPanelComponent(defaultMinimized = true) {
                 h(
                     "div",
                     { style: S.subNav },
-                    ...group.categories.map((c) => {
+                    ...navGroup.categories.map((c) => {
                         const m = CATEGORY_META[c];
                         const n = m.configKey ? entriesOf(cfg, c).length : 0;
                         return h(
                             "button",
                             {
                                 key: c,
-                                style: c === cat ? S.chipActive : S.chip,
+                                style: c === navCat ? S.chipActive : S.chip,
                                 onClick: () => goCategory(c),
                             },
                             m.label,

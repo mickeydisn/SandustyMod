@@ -65,11 +65,17 @@ export interface MenuGroup {
 /**
  * Top-level menu, in the order the user asked for.
  *
- * Three earlier groups are gone rather than renamed: `Systems` was a grab-bag
- * of unrelated things (a trigger, a key binding, a processor, a dig profile) and
+ * Four earlier groups are gone rather than renamed: `Systems` was a grab-bag of
+ * unrelated things (a trigger, a key binding, a processor, a dig profile) and
  * `Hooks` held exactly one screen, which is a group that costs a click and
- * explains nothing. Their screens now sit under **Extend** and **Actions**,
- * where each one is next to the things it connects to.
+ * explains nothing.
+ *
+ * **Extend** went last, and for a different reason. Its five screens were not
+ * peers of the others — a tooltip, a behaviour, a signal, a dig profile and a
+ * projectile each only ever qualify something else, so the group asked the reader
+ * to hold a pairing in their head that the menu itself gave no way to see. They
+ * are now drawn under the list of the object they describe, and reached from
+ * there. See `./panel/attach.ts`.
  *
  * **Content** is the only group of things the player *sees* in the world, so it
  * reads first. **Store** is last: Map and JSON are for inspecting what you

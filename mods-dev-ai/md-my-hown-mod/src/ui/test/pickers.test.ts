@@ -76,6 +76,7 @@ const { DRAW_FUNCTIONS, listDrawFunctions, listUpgradeCategoryIds } = await impo
 );
 const { UPSERT, REMOVE } = await import("../panel.ts");
 const { PANEL_NATIVES: natives } = await import("../../catalog.ts");
+const { ATTACHED, attachedTo, parentOf } = await import("../panel/attach.ts");
 
 // ── 1. menu structure ────────────────────────────────────────────────────────
 
@@ -91,12 +92,11 @@ Deno.test("terrains live under Content", () => {
     assertEquals(owners.map((g) => g.key), ["content"]);
 });
 
-Deno.test("the menu is the ten groups, in the order that was asked for", () => {
+Deno.test("the menu is the nine groups, in the order that was asked for", () => {
     assertEquals(
         MENU_GROUPS.map((g) => g.key),
         [
             "content",
-            "extend",
             "production",
             "tech",
             "actions",
@@ -110,32 +110,29 @@ Deno.test("the menu is the ten groups, in the order that was asked for", () => {
 });
 
 Deno.test("the dissolved groups stay dissolved", () => {
-    // `Systems` was a grab-bag and `Hooks` held a single screen. Their screens
-    // moved under Extend and Actions; the group names must not creep back.
-    assert(!MENU_GROUPS.some((g) => g.key === "systems"), "the Systems group is back");
-    assert(!MENU_GROUPS.some((g) => g.key === "hooks"), "the Hooks group is back");
+    // `Systems` was a grab-bag and `Hooks` held a single screen. `Extend` then
+    // held five screens that only ever qualify something else — a tooltip is not a
+    // peer of an element — and they are now drawn under the list they belong to.
+    // None of the three names may creep back.
+    for (const key of ["systems", "hooks", "extend"]) {
+        assert(!MENU_GROUPS.some((g) => g.key === key), `the ${key} group is back`);
+    }
     assert(!MENU_GROUPS.some((g) => g.label === "Assets & hooks"), "the merged group is back");
+    assert(!MENU_GROUPS.some((g) => g.label === "Extend"), "the Extend group is back");
 });
 
 Deno.test("the screens sit in the groups that were asked for, in order", () => {
-    // `behaviors` started under Content, next to the structures it names, because
-    // `api.structureBehaviors` takes structure ids. That was reasoning about what
-    // the feature *references* rather than what it *is* — a menu should be
-    // arranged by the second. A conveyor is an existing structure that now moves
-    // things, which is precisely "Add to what the game already does", so it moved
-    // to Extend. `interactions` also lives there now, and is the Tooltips screen.
+    // `behaviors` once sat under Content, next to the structures it names, then
+    // moved to Extend, and is now under Structures again — as a list beneath the
+    // structures, which is what it always was. The distinction that matters is not
+    // which *group* a screen is in but whether it is a group of its own: a
+    // conveyor behaviour is something a structure has, so it is read with the
+    // structures.
     assertEquals(tabsOf("content"), [
         "terrains",
         "elements",
         "structures",
         "items",
-    ]);
-    assertEquals(tabsOf("extend"), [
-        "interactions",
-        "behaviors",
-        "excavation",
-        "projectiles",
-        "signals",
     ]);
     assertEquals(tabsOf("production"), ["contacts", "recipes"]);
     // `unlockNodes` comes first under Tech: it is what a structure names, and the
@@ -152,6 +149,47 @@ Deno.test("the screens sit in the groups that were asked for, in order", () => {
     assertEquals(tabsOf("data"), ["map", "json"]);
 });
 
+Deno.test("the qualifying lists hang off the thing they qualify", () => {
+    // This is the reorganisation: each of these five used to be a menu chip in a
+    // group called Extend, and is now drawn under the list of the object it
+    // describes. A reader looking for the tooltip of an element should not have
+    // to know that tooltips live somewhere else entirely.
+    assertEquals(attachedTo("elements"), ["interactions"]);
+    assertEquals(attachedTo("structures"), ["behaviors", "signals"]);
+    assertEquals(attachedTo("items"), ["excavation", "projectiles"]);
+    // And nothing hangs off a tab that is not a Content list.
+    for (const cat of ["terrains", "recipes", "techs", "sprites"]) {
+        assertEquals(attachedTo(cat as never), [], `${cat} should have nothing attached`);
+    }
+    // Every attachment names a real screen, and the round trip holds: an attached
+    // tab must be able to name the tab it is drawn under.
+    for (const [parent, children] of Object.entries(ATTACHED)) {
+        for (const child of children) {
+            assert(CATEGORY_META[child], `${child} is attached but is not a screen`);
+            assertEquals(parentOf(child as never), parent as never, `${child} → ${parent}`);
+        }
+    }
+});
+
+Deno.test("every tab is either in one group or attached to one", () => {
+    // A tab in two groups renders twice; a tab in neither and attached to nothing
+    // is unreachable. Attached tabs are the second case done deliberately, so the
+    // check is that they are attached to exactly one parent.
+    const all = MENU_GROUPS.flatMap((g) => g.categories);
+    assertEquals(new Set(all).size, all.length, "a tab is listed in two groups");
+    const attached = Object.values(ATTACHED).flat();
+    for (const key of Object.keys(CATEGORY_META)) {
+        const inGroup = all.includes(key as never);
+        const isAttached = attached.includes(key as never);
+        assert(
+            inGroup !== isAttached,
+            `${key} is ${inGroup ? "in a group" : "not in one"} and ${
+                isAttached ? "attached" : "not attached"
+            } — it must be exactly one or the other`,
+        );
+    }
+});
+
 Deno.test("Sprites and Custom draw are listed apart, not merged", () => {
     // They are different things that happen to both be visual: an image the mod
     // loads, and a function that paints a structure. One screen would hide one
@@ -164,15 +202,6 @@ Deno.test("Sprites and Custom draw are listed apart, not merged", () => {
 Deno.test("Help holds the graph and nothing else", () => {
     assertEquals(tabsOf("help"), ["help"]);
     assertEquals(CATEGORY_META.help.label, "Graph");
-});
-
-Deno.test("every tab appears in exactly one group", () => {
-    // A tab in two groups renders twice; a tab in none is unreachable.
-    const all = MENU_GROUPS.flatMap((g) => g.categories);
-    assertEquals(new Set(all).size, all.length, "a tab is listed in two groups");
-    for (const key of Object.keys(CATEGORY_META)) {
-        assert(all.includes(key as never), `${key} is not in any group`);
-    }
 });
 
 // ── every saveable screen can actually save ──────────────────────────────────
@@ -380,24 +409,18 @@ Deno.test("every draw key the picker offers is one the draws screen explains", (
     }
 });
 
-Deno.test("the Tooltips screen is the interactions screen, under Extend", () => {
+Deno.test("the Tooltips screen is the interactions screen, under Elements", () => {
     // The engine's own word for this feature is "tooltip interactions" —
     // `terrains.d.ts` says "Tooltip interactions shown for this terrain", and
     // `InteractionStructureMetadata` is documented as "optional *tooltip*
     // metadata". The old label, "Element ↔ structure", named one of the seven
     // kinds and so misdescribed the other six.
     assertEquals(CATEGORY_META.interactions.label, "Tooltips");
-    const extend = MENU_GROUPS.find((g) => g.key === "extend");
-    assert(extend, "the Extend group is gone");
-    assert(extend.categories.includes("interactions"), "Tooltips is not under Extend");
-    // And it is not also hiding under Content, which is where it used to be.
-    for (const g of MENU_GROUPS) {
-        if (g.key === "extend") continue;
-        assert(
-            !g.categories.includes("interactions"),
-            `${g.label} also lists Tooltips — it must appear in exactly one group`,
-        );
-    }
+    // It is not a menu chip of its own. It is drawn under Elements, because a
+    // tooltip is something an element has rather than a peer of one.
+    const inMenu = MENU_GROUPS.filter((g) => g.categories.includes("interactions"));
+    assertEquals(inMenu, [], "Tooltips must not be a menu chip again");
+    assertEquals(attachedTo("elements"), ["interactions"], "Tooltips is not under Elements");
 });
 
 Deno.test("there is one screen named Tooltips, not two", () => {
