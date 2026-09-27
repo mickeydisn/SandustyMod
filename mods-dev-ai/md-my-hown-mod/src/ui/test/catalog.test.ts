@@ -62,7 +62,19 @@ globalThis.sandkit = {
             list: () => [],
             getIdByType: (t: number) => (t === 1 ? "dirt" : t === 2 ? "stone" : undefined),
         },
-        structures: { list: () => [] },
+        structures: {
+            list: () => [],
+            // `getAvailableTypes()` returns a **Set** of `StructureRef`, and a
+            // ref is `StructureType | StructureId` — a number *or* a string id.
+            // Both shapes are here because both are real, and the old code
+            // handled neither: it unwrapped Sets only after an `Array.isArray`
+            // test that a Set fails, and it treated every member as a number.
+            getAvailableTypes: () => new Set([7, "mdmy.furnace"]),
+            getDefinitionByType: (t: unknown) =>
+                t === 7
+                    ? { id: "mdmy.furnace", name: "Furnace", category: "production" }
+                    : { id: "mdmy.furnace", name: "Furnace", category: "production" },
+        },
         items: { list: () => [] },
         sprites: { list: () => [] },
     },
@@ -72,10 +84,15 @@ globalThis.sandkit = {
         CellType: { Dirt: 1, Stone: 2, Unregistered: 5 },
         // `ItemId` is string-valued: the *value* is the id.
         ItemId: { Drill: "drill", Saw: "saw", mystery: 7 },
+        // A built-in structure type, so the enum pass in `listStructures` has
+        // something to emit — and therefore something to tag.
+        StructureType: { Furnace: 12, Conveyor: 13 },
     },
 };
 
-const { listElements, listItems, listTerrains } = await import("../../catalog.ts");
+const { listElements, listItems, listTerrains, listStructures } = await import(
+    "../../catalog.ts"
+);
 const values = (o: { value: string }[]) => o.map((x) => x.value);
 
 // ── elements ─────────────────────────────────────────────────────────────────
@@ -184,4 +201,73 @@ Deno.test("no item is offered as a display name or a number", () => {
     const v = values(listItems());
     assert(!v.includes("Drill"), "an enum display name is being offered as an id");
     assert(!v.includes("7"), "a number is being offered as an item id");
+});
+
+// ── origin tagging ───────────────────────────────────────────────────────────
+//
+// Every option must say whose it is, because the list screen's "Yours / Game"
+// filter and its Edit/Del buttons both branch on this. An untagged game option is
+// filed under the mod by a filter that cannot tell the difference — so every
+// built-in reads as the author's own, and a structure row offers to edit the
+// engine's own conveyor.
+
+Deno.test("every option says whose it is", () => {
+    // `listStructures` and `listItems` both shipped without a `source`, so all of
+    // the game's structures and items looked like the mod's own. The stub here
+    // has no StructureType enum, so structures are covered by the other three
+    // lists and by the per-list assertions below.
+    for (
+        const [name, list] of [
+            ["listElements", listElements()],
+            ["listTerrains", listTerrains()],
+            ["listItems", listItems()],
+            ["listStructures", listStructures()],
+        ] as [string, { value: string; source?: string }[]][]
+    ) {
+        const untagged = list.filter((o) => o.source !== "game" && o.source !== "mod");
+        assertEquals(
+            untagged.map((o) => o.value),
+            [],
+            `${name} offers ${untagged.length} option(s) with no source`,
+        );
+    }
+});
+
+Deno.test("a Set of structure refs is unwrapped, numbers and id strings alike", () => {
+    // `getAvailableTypes()` hands back a `Set`, which `Array.isArray` rejects —
+    // so the old `Array.isArray(raw) ? raw : ...` guard dropped the whole thing
+    // and the screen fell back to the enum alone, never seeing a registered
+    // structure. Both member shapes are asserted because both are real: a
+    // `StructureRef` is `StructureType | StructureId`, a number *or* a string.
+    const v = values(listStructures());
+    assert(v.includes("mdmy.furnace"), `Set members were dropped: ${v.join(", ")}`);
+    // The enum's own types must survive alongside them.
+    assert(v.includes("Furnace") || v.includes("Conveyor"), "the enum fallback was lost");
+});
+
+Deno.test("a structure id that is already a string is not resolved as a type number", () => {
+    // Passing a string where the engine wants a numeric type is a call that
+    // throws rather than returning nothing, so the string branch has to skip the
+    // resolve. The id still has to appear exactly once.
+    const v = values(listStructures());
+    assertEquals(v.filter((x) => x === "mdmy.furnace").length, 1);
+    assert(!v.includes("7"), "a raw structure type number is being offered as an id");
+});
+
+Deno.test("an option from the game's own registry is not filed as the mod's", () => {
+    // The mod has one terrain configured; `dirt` and `stone` come from the game.
+    // If the game's own ids were tagged `mod`, the "Yours" filter would show two
+    // terrains the author never wrote and hide the one they did.
+    const byId = new Map(listTerrains().map((o) => [o.value, o]));
+    assertEquals(byId.get("dirt")?.source, "game");
+    assertEquals(byId.get("stone")?.source, "game");
+    assertEquals(byId.get("mdmy.ores")?.source, "mod");
+});
+
+Deno.test("a game element is tagged game even when the mod also declares one", () => {
+    // `mdmy.acid` is in the stored config. The two sources overlap by id and the
+    // mod's entry wins for that id — but `Sand`, which only the registry knows
+    // about, must not be swept in with it.
+    assertEquals(listElements().find((o) => o.value === "Sand")?.source, "game");
+    assertEquals(listElements().find((o) => o.value === "mdmy.acid")?.source, "mod");
 });

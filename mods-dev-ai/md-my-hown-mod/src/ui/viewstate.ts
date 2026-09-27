@@ -27,6 +27,12 @@ export interface VolatileViewState {
     jsonError: string | null;
     libQuery: Record<string, string>;
     handlerTab: HandlersTabState;
+    /** The list screen's text filter. */
+    listQuery: string;
+    /** The list screen's per-mod filter — the only source filter it has. */
+    listOwner: string;
+    /** The list row whose detail is open. */
+    openRow: string | null;
 }
 
 /**
@@ -43,6 +49,9 @@ export const VOLATILE_KEYS = [
     "jsonError",
     "libQuery",
     "handlerTab",
+    "listQuery",
+    "listOwner",
+    "openRow",
 ] as const satisfies readonly (keyof VolatileViewState)[];
 
 /** A clean screen. Used as the single source for every reset. */
@@ -56,6 +65,9 @@ export function emptyViewState(): VolatileViewState {
         jsonError: null,
         libQuery: {},
         handlerTab: initialHandlersState(),
+        listQuery: "",
+        listOwner: "all",
+        openRow: null,
     };
 }
 

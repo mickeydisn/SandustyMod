@@ -7,14 +7,15 @@
  * in that object's own file under `./`. This file is the vocabulary those files
  * share, so they can all be written against it without importing each other.
  *
- * The shape is the union of the four things a definition needs to answer:
+ * The shape is the union of the five things a definition needs to answer:
  *
  *   1. **what fields exist** and how they are constrained   → `fields`
  *   2. **what the form means** in stored-entry terms         → `entryToForm` / `formToEntry`
  *   3. **what cannot be expressed as a field rule**         → `validate`
  *   4. **what it looks like** in the panel                   → `panel`
+ *   5. **what it looks like in the list**                   → `list`
  *
- * Splitting those four across files was the problem this replaces: a form field
+ * Splitting those across files was the problem this replaces: a form field
  * declared in one file, its save path in another and its widget in a third is
  * three places to forget, and forgetting one is a field that renders but never
  * persists. One file per object makes that a single-file question.
@@ -270,6 +271,138 @@ export interface DefinitionPanel {
     renderHeader?: (ctx: PanelContext) => unknown;
 }
 
+// ── The object list ───────────────────────────────────────────────────────────
+
+/**
+ * Where one row in an object list came from.
+ *
+ * `mod` is an entry in this mod's stored config — editable, deletable.
+ * `game` is something the host already has: a real element in the live
+ * registry, a real item id. It is reference-only, because there is no stored
+ * entry behind it to edit and the engine will not let us remove Sand.
+ *
+ * The two are deliberately the *same* row shape. A screen that draws them
+ * differently teaches the user there are two kinds of element, when the only
+ * real difference is which buttons a row carries — and a game row is a fact
+ * about the world, not a lesser kind of thing.
+ */
+export type RowOrigin = "mod" | "game";
+
+/**
+ * Which mod an object came from, when the id says so.
+ *
+ * Ids are namespaced `<modId>.<name>` by convention across the ecosystem —
+ * `myMod.furnace`, `mdmy.ores` — and the game's own built-ins are unnamespaced
+ * (`Sand`, `Furnace`, `dirt`). So the prefix before the first dot *is* the mod,
+ * and reading it is the difference between "somebody else's furnace" and "the
+ * game's furnace", which are different things when two mods both add a furnace.
+ *
+ * `undefined` means the id carries no namespace at all, which is the case for
+ * the game's own objects and for any mod that ignored the convention. Treated as
+ * the game rather than guessed at, because a wrong attribution is worse than
+ * none.
+ */
+export type ModOrigin = {
+    /** The mod's own id, or `undefined` for an unnamespaced (built-in) id. */
+    modId?: string;
+    /** True when the id is namespaced with *this* mod's prefix. */
+    own: boolean;
+};
+
+/**
+ * One object in a list screen, from either origin.
+ *
+ * A `mod` row carries its `entry`; a `game` row carries the host's own
+ * `native` definition where the API could give one. `native` is optional
+ * because the host's enumeration is uneven — `api.structures` has no way to
+ * list what is registered, so a game structure can arrive as an id and nothing
+ * else. A list that *required* `native` would have to hide those rows, and the
+ * honest thing is to show them with less detail.
+ */
+export interface ListRow {
+    /** The object's id. Unique within a list; also the React key. */
+    id: string;
+    /** Display label. Falls back to the id when the object has no name. */
+    label: string;
+    origin: RowOrigin;
+    /** A colour swatch, when the object has one (an element's metaColor). */
+    color?: string;
+    /**
+     * Which mod this object belongs to, when the id says so.
+     *
+     * Separate from `origin` on purpose. `origin` answers "can I edit this?" and
+     * is only ever `mod` or `game`. This answers "who else made this?", which is
+     * the question behind a screen showing a hundred structures when three are
+     * yours and the rest belong to other mods you have installed.
+     */
+    mod?: ModOrigin;
+    /** The stored config entry. Present exactly when `origin === "mod"`. */
+    entry?: Record<string, unknown>;
+    /**
+     * The host's own definition, when the API exposes one.
+     *
+     * This is what makes a game row worth more than a name: the engine has a
+     * registered element's density, matter type and interaction list, which is
+     * the answer to "what is this, actually" that a bare id cannot give.
+     */
+    native?: Record<string, unknown>;
+}
+
+/**
+ * What a definition contributes to its list screen.
+ *
+ * Both renders are optional and both return `null` to say "I have nothing to
+ * add", which is what lets a game row with no readable definition fall back to
+ * the shared renderer instead of drawing a half-empty box.
+ */
+export interface ListRenderCtx extends PanelContext {
+    row: ListRow;
+    /** True while this row's detail is open. */
+    expanded: boolean;
+    /** Open or close this row's detail. */
+    toggle: () => void;
+    /** Begin editing this row. Only offered for a `mod` row. */
+    edit?: () => void;
+    /** Ask to delete this row. Only offered for a `mod` row. */
+    remove?: () => void;
+    /** True while this row is armed for delete confirmation. */
+    confirming?: boolean;
+}
+
+export interface DefinitionList {
+    /**
+     * The objects the *host* already has of this kind, to merge into the list
+     * beside the mod's own.
+     *
+     * Returns `[]` for an object the host cannot enumerate — a recipe has no
+     * "recipes already in the game" to ask for. That is a fact about the API
+     * rather than a gap to paper over, so the list simply shows the mod's rows.
+     */
+    discover?: () => ListRow[];
+    /**
+     * Extra text a row is matched against when the user filters.
+     *
+     * An element row is matched on its id, name and matter type; without this a
+     * user searching "powder" would see nothing even though nine rows say so.
+     */
+    searchText?: (row: ListRow) => string;
+    /**
+     * The row's own line: the swatch, the name, the one fact that matters.
+     *
+     * This is the hot path — it draws once per visible row — so it stays cheap
+     * and is allowed to omit anything already in the row's id.
+     */
+    inlineRender?: (ctx: ListRenderCtx) => unknown;
+    /**
+     * The row's expanded detail.
+     *
+     * Where a game row earns its keep: a registered element can show the
+     * engine's own density and interactions, which is information the mod's
+     * config does not have and cannot invent.
+     */
+    infoRender?: (ctx: ListRenderCtx) => unknown;
+}
+
 // ── The definition itself ────────────────────────────────────────────────────
 
 /**
@@ -325,4 +458,18 @@ export interface Definition {
     onNewEntry?: (form: Record<string, string>) => void;
     /** The parts of the panel this definition owns. */
     panel?: DefinitionPanel;
+    /**
+     * How this object appears in its list screen.
+     *
+     * Separate from `panel` because a list row is a different question from a
+     * form: the form asks "what can you set on this?", the list asks "what is
+     * this, and is it mine or the game's?". Keeping them apart is what lets the
+     * list be identical for every object while still saying something specific
+     * — an element's swatch and density, an item's type and sprite.
+     *
+     * Entirely optional. An object with no `list` still gets the shared list
+     * screen, which is correct for the many objects that are a list of names
+     * and nothing more.
+     */
+    list?: DefinitionList;
 }

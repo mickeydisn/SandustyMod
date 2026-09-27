@@ -99,12 +99,17 @@ import {
 } from "./schema.ts";
 import { definitionFor } from "./definition/index.ts";
 import {
-    handlerDoc,
-    listBuildModeTypes,
-    type Opt,
-    PANEL_NATIVES,
-    searchLibraryAssets,
-} from "../catalog.ts";
+    countByOwner,
+    filterRows,
+    mergeRows,
+    originTag,
+    type OwnerKey,
+    ownerLabel,
+    ownersOf,
+    renderListRow,
+} from "./list-panel.ts";
+import { listFor } from "./panel/index.ts";
+import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
 import * as S from "./styles.ts";
 import { emptyViewState, type ViewMode } from "./viewstate.ts";
 import { clampChip, exceedsSlop } from "./drag.ts";
@@ -227,6 +232,26 @@ export function createPanelComponent(defaultMinimized = true) {
         const [form, setForm] = useState<Record<string, string>>({});
         const [editingId, setEditingId] = useState<string | null>(null);
         const [confirmId, setConfirmId] = useState<string | null>(null);
+        /**
+         * The list screen's own filter state.
+         *
+         * Both are per-category rather than global: narrowing the element list to
+         * "yours" and then opening a recipe should not silently reuse that
+         * narrowing. They live beside `confirmId` and are reset with it, because
+         * all three are "what am I looking at on this screen" rather than config.
+         */
+        const [listQuery, setListQuery] = useState("");
+        /**
+         * Which mod's objects to show: this mod, the game, or one named other.
+         *
+         * The *only* source filter on the list. There was a second one here — All
+         * / Yours / Game — and it was this one said twice: "Yours" is `own`,
+         * "Game" is `game`, and `origin` had no third value to offer. Two pieces
+         * of state for one choice is a way for the chips to disagree.
+         */
+        const [listOwner, setListOwner] = useState<OwnerKey | "all">("all");
+        /** Which row has its detail open. One at a time — two open is noise. */
+        const [openRow, setOpenRow] = useState<string | null>(null);
         /**
          * Which reference fields have their native list expanded.
          *
@@ -377,69 +402,6 @@ export function createPanelComponent(defaultMinimized = true) {
             );
         };
 
-        /**
-         * "What already exists", at the top of the panel.
-         *
-         * The per-field native box answers this one field at a time, and only
-         * once you have scrolled to a picker. This answers it on arrival, which
-         * is when the question is actually in your head: you opened Elements
-         * because you want to make something out of Water, and you want to know
-         * that Water exists before you start filling in fields.
-         *
-         * Collapsed, but never silent: the summary carries the count, and a count
-         * of zero is a real answer. Only the five screens with something to
-         * enumerate get one — see `PANEL_NATIVES`.
-         */
-        const panelNatives = (cat: Tab): unknown => {
-            const list = PANEL_NATIVES[cat];
-            if (!list) return null;
-            const opts = list();
-            if (!opts.length) return null;
-            const game = opts.filter((o) => o.source === "game");
-            const mine = opts.filter((o) => o.source === "mod");
-            return h(
-                "details",
-                { style: { margin: "0 10px 8px 10px" } },
-                h(
-                    "summary",
-                    { style: S.nativeToggle },
-                    `▸ ${opts.length} in the game already${
-                        mine.length ? ` · ${mine.length} from this mod` : ""
-                    }`,
-                ),
-                h(
-                    "div",
-                    { style: { ...S.nativeList, marginTop: 6 } },
-                    // Sorted, because a registry's order is an implementation
-                    // detail and a list you are scanning to find "is there a
-                    // Water?" should not depend on it.
-                    ...[...opts]
-                        .sort((a, b) => a.value.localeCompare(b.value))
-                        .map((o) =>
-                            h(
-                                "button",
-                                {
-                                    key: o.value,
-                                    type: "button",
-                                    style: {
-                                        ...S.nativeItem,
-                                        ...(o.source === "mod" ? S.nativeItemMod : null),
-                                        cursor: "pointer",
-                                    },
-                                    // The id, not the label. The label is what you
-                                    // read to find it; the id is what you paste
-                                    // into a field, and it is the one that is not
-                                    // obvious from the label.
-                                    title: `${o.value} — click to copy`,
-                                    onClick: () => copyRef.current(o.value),
-                                },
-                                o.label,
-                            )
-                        ),
-                ),
-            );
-        };
-
         const refresh = useCallback(() => setCfg(loadConfig()), []);
 
         /**
@@ -466,6 +428,9 @@ export function createPanelComponent(defaultMinimized = true) {
             setJsonError(clean.jsonError);
             setLibQuery(clean.libQuery);
             setHandlerTab(clean.handlerTab);
+            setListQuery(clean.listQuery);
+            setListOwner(clean.listOwner as OwnerKey | "all");
+            setOpenRow(clean.openRow);
         }, []);
 
         const setField = useCallback((key: string, value: string) => {
@@ -502,9 +467,11 @@ export function createPanelComponent(defaultMinimized = true) {
                 skApi.toast("Clipboard unavailable — select the text instead");
             }
         };
-        // `panelNatives` is built above this, and its chips call it. A ref rather
-        // than a reorder, so the two stay independent of which came first.
-        const copyRef = { current: copyText };
+        // Used directly by the Handlers, Help and Map screens (`onCopy`). It used
+        // to be reached indirectly through a `copyRef`, because the deleted
+        // "in the game already" section was built above this line and needed a
+        // forward reference to it; those buttons are gone, so the indirection went
+        // with them.
 
         const startNew = () => {
             setEditingId(null);
@@ -977,54 +944,140 @@ export function createPanelComponent(defaultMinimized = true) {
         };
 
         const renderList = () => {
-            const rows = entriesOf(cfg, cat);
+            const listSpec = listFor(cat);
+            // One list, two sources: the mod's own entries, plus whatever the host
+            // already has of this kind. An object with no host registry (a recipe,
+            // a trigger) contributes no game rows — that is a fact about the API,
+            // not an empty section to apologise for.
+            const rows = mergeRows(entriesOf(cfg, cat), listSpec?.discover?.() ?? []);
+            const shown = filterRows(rows, listQuery, listSpec?.searchText, listOwner);
+            const ownerCounts = countByOwner(rows);
+            const owners = ownersOf(rows);
+
+            const ownerChip = (key: OwnerKey, n: number) =>
+                h(
+                    "button",
+                    {
+                        key: `owner:${key}`,
+                        // Tinted to match the row's own badge, so a chip and the rows
+                        // it selects read as the same category.
+                        style: listOwner === key
+                            ? S.chipActive
+                            : key === "own"
+                            ? S.chipOwn
+                            : key === "game"
+                            ? S.chipGame
+                            : S.chipOther,
+                        title: key === "own"
+                            ? "Objects this mod defines"
+                            : key === "game"
+                            ? "Built into the game"
+                            : `Objects the "${key.slice(4)}" mod adds`,
+                        // Clicking the active chip clears it, so there is no dead
+                        // end where a filter is on and the only way out is the
+                        // separate clear button.
+                        onClick: () => setListOwner(listOwner === key ? "all" : key),
+                    },
+                    ownerLabel(key),
+                    h("span", { style: S.chipCount }, String(n)),
+                );
+
             return h(
                 "div",
-                null,
+                // A flex column, so the list below can claim the leftover height
+                // of the body. Without this the screen is a block, `flex: 1` on
+                // the list resolves against nothing, and the rows sit at their
+                // natural height with the rest of the 90vh window empty.
+                { style: S.screen },
                 h(
                     "div",
                     { style: S.screenHead },
                     h("span", { style: S.screenTitle }, meta.label),
                     h("span", { style: S.screenBlurb }, meta.blurb),
-                    h("span", { style: S.chipCount }, `${rows.length} in config`),
+                    // "N in config" — how many of these are the mod's own. Read
+                    // from the owner counts rather than a second tally: "this
+                    // mod" and "editable" are the same set, and two counters for
+                    // one number is how they drift apart.
+                    h(
+                        "span",
+                        { style: S.chipCount },
+                        `${ownerCounts.get("own") ?? 0} in config`,
+                    ),
                     h("button", { style: S.btnPrimary, onClick: startNew }, "+ New"),
                 ),
+                // The filter bar: a text filter, and nothing else.
+                //
+                // There used to be a second row of All / Yours / Game chips beside
+                // the owner chips. They were the same filter twice — "Yours" is
+                // `owner: "own"`, "Game" is `owner: "game"`, and "All" is the state
+                // the owner row already starts in. Two controls setting one piece of
+                // state can disagree with each other, and the duplicate row is pure
+                // noise on a screen that is mostly list.
                 h(
                     "div",
-                    { style: { padding: "8px 10px 4px 10px" } },
-                    rows.length === 0
-                        ? h(
-                            "div",
-                            { style: S.emptyState },
-                            `Nothing here yet — press “+ New” to create the first ${meta.label.toLowerCase()}.`,
-                        )
-                        : h(
-                            "div",
-                            { style: S.listScroll },
-                            ...rows.map((entry) => {
-                                const id = typeof entry.id === "string" ? entry.id : "";
-                                const confirming = confirmId === id;
-                                return h(
-                                    "div",
-                                    { key: id, style: S.row },
-                                    h("span", { style: S.rowId, title: id }, entryLabel(entry)),
-                                    h(
-                                        "button",
-                                        { style: S.btn, onClick: () => startEdit(entry) },
-                                        "Edit",
-                                    ),
-                                    h(
-                                        "button",
-                                        {
-                                            style: confirming ? S.btnPrimary : S.btnDanger,
-                                            onClick: () => requestRemove(id),
-                                        },
-                                        confirming ? "Sure?" : "Del",
-                                    ),
-                                );
-                            }),
-                        ),
+                    { style: S.listFilterBar },
+                    h("input", {
+                        type: "text",
+                        style: { ...S.input, flex: 1, minWidth: 120 },
+                        value: listQuery,
+                        placeholder: `Filter ${meta.label.toLowerCase()}…`,
+                        onChange: (e: { target: { value: string } }) =>
+                            setListQuery(e.target.value),
+                    }),
                 ),
+                // One chip per mod that actually contributed a row: this mod, the
+                // game, then each other installed mod. Built from the rows, so a
+                // chip is never offered for a mod that has nothing here.
+                owners.length > 1
+                    ? h(
+                        "div",
+                        { style: S.listFilterBar },
+                        ...owners.map((k) => ownerChip(k, ownerCounts.get(k) ?? 0)),
+                        listOwner !== "all"
+                            ? h(
+                                "button",
+                                { style: S.chip, onClick: () => setListOwner("all") },
+                                "✕ clear",
+                            )
+                            : null,
+                    )
+                    : null,
+                shown.length === 0
+                    ? h(
+                        "div",
+                        { style: { ...S.emptyState, margin: "8px 10px" } },
+                        rows.length === 0
+                            ? `Nothing here yet — press “+ New” to create the first ${meta.label.toLowerCase()}.`
+                            : `No ${meta.label.toLowerCase()} match that filter.`,
+                    )
+                    : h(
+                        "div",
+                        { style: { ...S.listScroll, padding: "0 10px" } },
+                        ...shown.map((row) =>
+                            h(
+                                "div",
+                                { key: row.id },
+                                renderListRow({
+                                    h,
+                                    form,
+                                    cfg,
+                                    setField,
+                                    row,
+                                    expanded: openRow === row.id,
+                                    toggle: () => setOpenRow(openRow === row.id ? null : row.id),
+                                    // Only a mod row is editable. Handing a game row an
+                                    // edit button would be offering to edit Sand.
+                                    edit: row.origin === "mod" && row.entry
+                                        ? () => startEdit(row.entry as Record<string, unknown>)
+                                        : undefined,
+                                    remove: row.origin === "mod"
+                                        ? () => requestRemove(row.id)
+                                        : undefined,
+                                    confirming: row.origin === "mod" && confirmId === row.id,
+                                }, listSpec ?? {}),
+                            )
+                        ),
+                    ),
             );
         };
 
@@ -1380,10 +1433,13 @@ export function createPanelComponent(defaultMinimized = true) {
                         // could outlive the form that drew it.
                         key: `${cat}:${mode}`,
                     },
-                    // Above the screen, not inside it, so it is the first thing
-                    // on the panel in both the list and the form — and so it does
-                    // not get remounted with either.
-                    panelNatives(cat),
+                    // The screen fills the body. There used to be an
+                    // "N in the game already" section here, above the screen —
+                    // but the list now *is* that list: the game's objects and the
+                    // mod's own are the same rows, with the same counts and the
+                    // same filter. A collapsed summary promising to list what
+                    // already exists, sitting above a screen that lists it, was
+                    // the same answer twice.
                     cat === "json" ? renderJson() : cat === "handlers"
                         ? renderHandlersTab({
                             h: h as never,

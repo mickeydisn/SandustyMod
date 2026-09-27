@@ -3,6 +3,17 @@
  * Self-contained so the mod does not depend on external CSS.
  */
 
+/**
+ * The one style type this module speaks.
+ *
+ * `React.CSSProperties` is ambient here (the `deno.window` lib supplies the
+ * namespace), which is fine inside this file but not in a module that merely
+ * *imports* these values — an ambient global is not re-exported by importing it.
+ * Naming the type once lets a caller annotate a style without adding its own
+ * React import, and keeps the two from drifting apart.
+ */
+export type Style = React.CSSProperties;
+
 export const panelRoot: React.CSSProperties = {
     position: "fixed",
     right: 16,
@@ -42,6 +53,23 @@ export const panelChrome: React.CSSProperties = {
     boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
     overflow: "hidden",
     minWidth: 280,
+    /**
+     * Fill the 90vh overlay exactly.
+     *
+     * This is the link the whole scroll chain hangs off, and it was missing.
+     * `panelRoot` carries the `90vh`; `panelChrome` is its only child, and
+     * without a height of its own it sizes to its *content*. So the flex column
+     * below had no definite height to divide up: `body`'s `flex: 1` resolved
+     * against an auto-height parent, the list never got a bounded box, and the
+     * list's own `overflowY: auto` had nothing to scroll inside — the bottom of
+     * the list simply fell off the bottom of the panel with no way to reach it.
+     *
+     * `height: 100%` rather than `maxHeight`, so the chrome is exactly as tall as
+     * the overlay and the title bar and nav stay pinned while only the body
+     * scrolls. `overflow: hidden` above then clips nothing, because the content
+     * is now sized to fit.
+     */
+    height: "100%",
     display: "flex",
     flexDirection: "column",
 };
@@ -91,7 +119,24 @@ export const btnPrimary: React.CSSProperties = {
 export const body: React.CSSProperties = {
     padding: 10,
     overflow: "auto",
-    maxHeight: "70vh",
+    /**
+     * The scrolling body, and the *only* one.
+     *
+     * It takes the space the title bar and the two nav rows leave over
+     * (`flex: 1` in the chrome's flex column) and scrolls what does not fit.
+     * `minHeight: 0` is what lets it shrink below its content at all: a flex item
+     * defaults to `min-height: auto`, which refuses to, so without it a long list
+     * pushes the panel past 90vh instead of scrolling.
+     *
+     * Everything below this scrolls *with* it — the screen head, the filter bar
+     * and the rows alike. The alternative (a fixed header and a separately
+     * scrolling list) needs three nested scroll containers to get right, and two
+     * of them would be reachable by the wheel at once.
+     */
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    overflowX: "hidden",
 };
 
 export const tabs: React.CSSProperties = {
@@ -129,6 +174,210 @@ export const rowId: React.CSSProperties = {
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+};
+
+/**
+ * The list row's own line: swatch, title, id, origin tag.
+ *
+ * Separate from `row` (the row's *container*) because a row is now a two-level
+ * thing — a clickable line and, under it, an expandable detail — and the line
+ * has to be the part that grows while the detail hangs off it. `row` stays the
+ * outer box so existing callers that style a flat row are unaffected.
+ */
+export const rowHead: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+    cursor: "pointer",
+};
+
+/** An element's colour, as a small block. No border — it *is* the colour. */
+export const rowSwatch: React.CSSProperties = {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+    flexShrink: 0,
+    boxShadow: "0 0 0 1px rgba(0,0,0,0.35)",
+};
+
+export const rowTitle: React.CSSProperties = {
+    fontSize: 12.5,
+    color: "#d7dded",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: "45%",
+};
+
+/**
+ * "yours" vs "game" — the origin tag on a list row.
+ *
+ * The one piece of information a row cannot get from its name, so it is always
+ * drawn — but quietly, in the row's own corner, because it is context rather
+ * than the content. The mod tag reuses the per-field native list's tint, so
+ * "the blue ones are yours" is a rule the user learns once rather than twice.
+ *
+ * `rowTagMod` / `rowTagGame` are declared beside `nativeItem` /
+ * `nativeItemMod` further down this file, because spreading a `const` declared
+ * later is a use-before-assignment error rather than a style preference.
+ */
+
+/** The expanded detail, indented under its row line. */
+export const rowDetail: React.CSSProperties = {
+    marginTop: 6,
+    paddingTop: 6,
+    // Aligned with the object's *name*, not with the disclosure marker, so the
+    // detail reads as more information about the same thing rather than as a
+    // separate block that happens to be nearby.
+    paddingLeft: 15,
+    borderTop: "1px solid rgba(90, 105, 140, 0.25)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+};
+
+export const detailLine: React.CSSProperties = {
+    display: "flex",
+    gap: 8,
+    fontSize: 11,
+};
+
+export const detailKey: React.CSSProperties = {
+    color: "#7f8ca8",
+    minWidth: 108,
+    flexShrink: 0,
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+};
+
+export const detailVal: React.CSSProperties = {
+    color: "#b8c0d0",
+    wordBreak: "break-word",
+};
+
+/** A one-line note above a row's detail, saying whose values these are. */
+export const detailNote: React.CSSProperties = {
+    fontSize: 10,
+    color: "#79829a",
+    fontStyle: "italic",
+    marginBottom: 2,
+};
+
+/**
+ * The one fact a row leads with after its name — a matter type, a category, a
+ * footprint size.
+ *
+ * A tag rather than free text: it sits inline in the row and must not reflow
+ * the rest of the line, so it is capped and clipped.
+ */
+export const rowFact: React.CSSProperties = {
+    fontSize: 10.5,
+    color: "#9fb0c8",
+    background: "rgba(90,120,190,0.14)",
+    borderRadius: 3,
+    padding: "0 5px",
+    lineHeight: "15px",
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: "22%",
+};
+
+/** A structure's footprint, laid out as a grid of cells. */
+export const rowGrid: React.CSSProperties = {
+    display: "grid",
+    gridAutoFlow: "row",
+    gap: 1,
+    flexShrink: 0,
+    padding: 1,
+    borderRadius: 2,
+    background: "rgba(0,0,0,0.25)",
+};
+
+export const gridCell: React.CSSProperties = {
+    width: 4,
+    height: 4,
+    borderRadius: 1,
+};
+
+/** The filter bar above the rows: a search box and the origin chips. */
+export const listFilterBar: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "6px 0 2px 0",
+    flexWrap: "wrap",
+};
+
+/** A read-only row, dimmed so it never looks actionable. */
+export const rowReadOnly: React.CSSProperties = {
+    ...row,
+    opacity: 0.82,
+};
+
+/** The row's horizontal bar: the object line, then the row's buttons. */
+export const rowBar: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    minWidth: 0,
+};
+
+/**
+ * A list row rendered as `<details>`.
+ *
+ * **`flexDirection: "column"` is the fix for the detail appearing in the wrong
+ * place.** `S.row` is `display: flex` in the *row* direction — it predates the
+ * details row and the handlers panel still uses it as a flat row — so a detail
+ * element placed after the bar was laid out *beside* the bar rather than under
+ * it, appearing as a narrow column to the right of the object's name.
+ *
+ * Overriding the direction here rather than editing `S.row` keeps those flat rows
+ * untouched, and states the requirement where the details row is defined.
+ */
+export const rowDetails: React.CSSProperties = {
+    flexDirection: "column",
+    alignItems: "stretch",
+    gap: 0,
+    // No pseudo-element rules here (`::-webkit-details-marker`, `::marker`): this
+    // file's `Style` is `React.CSSProperties`, which does not model selectors, so
+    // they would not typecheck. `listStyle: "none"` on the summary below removes
+    // the native marker in both engines, which is all they were for.
+};
+
+/**
+ * The clickable line: the object, then the row's buttons.
+ *
+ * `listStyle: none` removes the native marker's box so the custom `▸` sits at
+ * the row's own left padding rather than wherever the browser put it. The `▸` is
+ * kept and rotated rather than dropped, because the whole row being the control
+ * is the point — an affordance is what tells the user that.
+ */
+export const rowSummary: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    minWidth: 0,
+    cursor: "pointer",
+    listStyle: "none",
+    margin: 0,
+    // A real hit area, not just the text's. This is the difference between "the
+    // row opens" and "I have to hit the name exactly".
+    padding: "2px 0",
+    borderRadius: 4,
+    userSelect: "none",
+};
+
+/** The disclosure marker, drawn in place of the native one. */
+export const rowSummaryMark: React.CSSProperties = {
+    fontSize: 9,
+    color: "#7f8ca8",
+    flexShrink: 0,
+    width: 10,
+    lineHeight: "16px",
+    textAlign: "center",
 };
 
 export const form: React.CSSProperties = {
@@ -234,6 +483,35 @@ export const chipCount: React.CSSProperties = {
     fontVariantNumeric: "tabular-nums",
 };
 
+/**
+ * The per-mod filter chips, tinted to match the row badges they select.
+ *
+ * A chip that filters to "otherA's objects" reads the same colour as otherA's row
+ * badges, so the link between "this chip" and "these rows" is visible rather than
+ * something the user learns by clicking. `chipGame` is the quietest of the three
+ * for the same reason its badge is — the game's own objects are the baseline, not
+ * the interesting case.
+ */
+export const chipOwn: React.CSSProperties = {
+    ...chip,
+    color: "#cfe0ff",
+    background: "rgba(120,190,255,0.20)",
+    borderColor: "rgba(120,190,255,0.40)",
+};
+
+export const chipGame: React.CSSProperties = {
+    ...chip,
+    color: "#a9b4c9",
+    background: "rgba(90,120,190,0.10)",
+};
+
+export const chipOther: React.CSSProperties = {
+    ...chip,
+    color: "#c2b6e8",
+    background: "rgba(150,120,220,0.18)",
+    borderColor: "rgba(150,120,220,0.40)",
+};
+
 export const subNav: React.CSSProperties = {
     display: "flex",
     gap: 4,
@@ -247,6 +525,24 @@ export const screenHead: React.CSSProperties = {
     alignItems: "baseline",
     gap: 8,
     padding: "8px 10px 0 10px",
+};
+
+/**
+ * One screen's root: a flex column.
+ *
+ * No `flex`, no `minHeight: 0`, and above all no `overflow`. The screen sits
+ * inside `body`, which is the panel's *one* scroll container, so anything this
+ * style adds here is either redundant or a second scroll area competing with it.
+ *
+ * `minHeight: 100%` is the one non-obvious part: it makes a short screen (three
+ * rows, or a form) fill the body's height, so the empty state and the filter bar
+ * do not collapse to the top of a tall window. It is a *minimum*, not a bound —
+ * a long screen still grows past it, and `body` scrolls.
+ */
+export const screen: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    minHeight: "100%",
 };
 
 export const screenTitle: React.CSSProperties = {
@@ -374,6 +670,50 @@ export const nativeItemMod: React.CSSProperties = {
     background: "rgba(120,190,255,0.22)",
 };
 
+/** The list row's origin tag — yours, or the game's. See `rowTagMod` above. */
+export const rowTagMod: React.CSSProperties = {
+    ...nativeItemMod,
+    fontSize: 9.5,
+    lineHeight: "14px",
+    padding: "0 5px",
+    borderRadius: 7,
+    flexShrink: 0,
+    marginLeft: "auto",
+};
+
+export const rowTagGame: React.CSSProperties = {
+    ...nativeItem,
+    fontSize: 9.5,
+    lineHeight: "14px",
+    padding: "0 5px",
+    borderRadius: 7,
+    flexShrink: 0,
+    marginLeft: "auto",
+    opacity: 0.8,
+};
+
+/**
+ * Another mod's object — neither yours nor the game's.
+ *
+ * A third tint, because that is a third thing. With only two tags, a screen
+ * showing a built-in `Furnace` and `otherA.furnace` showed two identical "game"
+ * badges, and the user had no way to tell the engine's from another mod's
+ * without reading the id. This is deliberately the quietest of the three: it is
+ * reference information, and the eye should land on the object's name.
+ */
+export const rowTagOther: React.CSSProperties = {
+    ...nativeItem,
+    color: "#c2b6e8",
+    background: "rgba(150,120,220,0.18)",
+    fontSize: 9.5,
+    lineHeight: "14px",
+    padding: "0 5px",
+    borderRadius: 7,
+    flexShrink: 0,
+    marginLeft: "auto",
+    opacity: 0.9,
+};
+
 export const footerBar: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -398,9 +738,23 @@ export const emptyState: React.CSSProperties = {
     textAlign: "center",
 };
 
+/**
+ * The list of rows.
+ *
+ * Deliberately **not** a scroll container. `body` is the panel's one scroller, and
+ * a second `overflowY: auto` here would be a nested scroll area: the wheel would
+ * move whichever one the cursor happened to be over, and the list could be
+ * scrolled to its end while the rows below it were still off screen — the exact
+ * "I cannot see the bottom" symptom, just with a scrollbar that appears to work.
+ *
+ * So the list is a plain column that grows to fit its rows and lets `body` do the
+ * scrolling. `flex: 1` is kept so a *short* list still fills the panel rather
+ * than hugging the top; without it, three rows would sit at the top of a tall
+ * window with a large gap under them.
+ */
 export const listScroll: React.CSSProperties = {
-    maxHeight: 150,
-    overflowY: "auto",
+    flex: 1,
+    minHeight: 0,
     display: "flex",
     flexDirection: "column",
     gap: 6,

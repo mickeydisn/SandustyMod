@@ -4,6 +4,7 @@
 import { api, getSandkit, safe } from "./api.ts";
 import { loadConfig } from "./config/store.ts";
 import type { Tab } from "./ui/schema.ts";
+import type { ListRow } from "./ui/definition/types.ts";
 import { allUnlockNodes, DEFAULT_UNLOCK_NODE } from "./ui/tech-link.ts";
 import type { HandlerMeta, HandlerSlot } from "./hooks/handler-registry.ts";
 // Imported as a value, not a type: `handler-registry.ts` has no imports of its
@@ -187,13 +188,21 @@ export const DEFAULT_ENERGY_NETWORK = "power";
  * Only five screens can answer this, because only five have a registry to read.
  * `api.elements`, `api.structures`, `api.items` and the terrain list can be
  * enumerated; a recipe, a trigger or a signal is something the mod defines, and
- * there is nothing in the game to enumerate before you do. Asking "what already
- * exists?" on those screens has the answer "nothing yet", which the empty state
- * already says.
+ * there is nothing in the game to enumerate before you do.
  *
- * This is the whole-list version of the per-field native box, placed where the
- * question actually gets asked — at the top of the panel, before you have picked
- * a field — rather than only under each picker after you have got there.
+ * **What consumes this, now that the panel section is gone.** This used to back a
+ * collapsed "N in the game already" block at the top of every screen — a summary
+ * that promised to list what already existed, sitting above a list screen that
+ * *is* that list. That block is removed; the list screen answers the same
+ * question with the same rows and the same filter, so the block was the answer
+ * twice.
+ *
+ * What still reads this is the **per-field native box** under a reference picker
+ * (`nativeBox` in `panel.ts`), and `pickers.test.ts` asserts every key here has
+ * an enumeration behind it. So this stays a `Opt[]` table rather than being folded
+ * into the definitions' `discover`: a picker needs a flat option list, while
+ * `discover` needs the richer `ListRow` that carries the host's own definition.
+ * Same discovery underneath, two shapes on purpose.
  */
 export const PANEL_NATIVES: Partial<Record<Tab, () => Opt[]>> = {
     elements: () => listElements(),
@@ -223,12 +232,22 @@ export function listEnergyNetworkOpts(): Opt[] {
 export function listStructures(): Opt[] {
     const map = new Map<string, Opt>();
 
-    // Phase 8 checked all four of these against the public api index: **none of
-    // them exist**. The engine exposes no way to enumerate registered
-    // structures, so every probe returns undefined and the result below is the
-    // `StructureType` enum only. The probes are kept because a future build may
-    // add one, and they cannot throw — but nothing here discovers a mod's own
-    // structures at runtime.
+    // `getAvailableTypes()` and `getUnlockedTypes()` both return a
+    // **`Set<StructureRef>`**, and `StructureRef` is `StructureType | StructureId`
+    // — a *number or a string*. Both facts matter:
+    //
+    //  - a `Set` is not an array, so an `Array.isArray` check alone drops it
+    //    entirely and the screen falls back to the enum alone;
+    //  - a member may be the **id string** already, in which case there is
+    //    nothing to resolve: calling `getDefinitionByType("myMod.furnace")` on
+    //    it is at best a wasted call and at worst a throw, and the fallback
+    //    `String(t)` is then the only thing keeping the row alive.
+    //
+    // An earlier note here claimed all four probes were absent from the public
+    // API index. Two of them are not: `doc-bundel/public-api.json` lists
+    // `structures.getAvailableTypes() -> Set<StructureRef>` and
+    // `structures.getUnlockedTypes() -> Set<StructureRef>`. `getRegisteredTypes`
+    // and `getAll` do not exist and stay as forward-looking probes.
     const tryList = [
         () => api.structures?.getRegisteredTypes?.(),
         () => api.structures?.getAvailableTypes?.(),
@@ -238,22 +257,36 @@ export function listStructures(): Opt[] {
     for (const fn of tryList) {
         const raw = safe(fn as any);
         if (!raw) continue;
-        const arr = Array.isArray(raw) ? raw : raw instanceof Set ? [...raw] : [];
+        const arr = raw instanceof Set ? [...raw] : Array.isArray(raw) ? raw : [];
         for (const t of arr) {
+            // A ref that is already a string id needs no resolution.
+            if (typeof t === "string" && t) {
+                if (map.has(t)) continue;
+                const def = safe(() => api.structures?.getDefinitionByType?.(t)) as any;
+                map.set(t, {
+                    value: t,
+                    label: String(def?.name ?? def?.nameKey ?? t),
+                    source: "game",
+                });
+                continue;
+            }
             const def = safe(() => api.structures?.getDefinitionByType?.(t)) as any;
             const id = def?.id ??
                 safe(() => api.structures?.getIdByType?.(t)) ??
                 safe(() => api.structures?.getTypeName?.(t)) ??
                 String(t);
             const name = def?.name ?? def?.nameKey ?? id;
-            map.set(String(id), { value: String(id), label: String(name) });
+            map.set(String(id), { value: String(id), label: String(name), source: "game" });
         }
     }
 
     for (const o of enumOpts("StructureType")) {
         const name = o.label.split(" ")[0];
         if (![...map.keys()].some((k) => k === name || k === o.value)) {
-            map.set(name, { value: name, label: o.label });
+            // Tagged `game`: this is a built-in structure type, and a list that
+            // asks "mod or not" must not file it under the mod. It was untagged
+            // before, which made every game structure look like the user's own.
+            map.set(name, { value: name, label: o.label, source: "game" });
         }
     }
 
@@ -283,7 +316,7 @@ export function listItems(): Opt[] {
         const arr = Array.isArray(raw) ? raw : typeof raw === "object" ? Object.keys(raw) : [];
         for (const entry of arr) {
             if (typeof entry === "string") {
-                map.set(entry, { value: entry, label: entry });
+                map.set(entry, { value: entry, label: entry, source: "game" });
             } else if (entry && typeof entry === "object") {
                 const id = (entry as any).id ?? String(entry);
                 map.set(String(id), { value: String(id), label: (entry as any).name ?? id });
@@ -302,7 +335,10 @@ export function listItems(): Opt[] {
         const v = enumRawValue("ItemId", name);
         if (typeof v !== "string" || !v) continue;
         if (map.has(v)) continue;
-        map.set(v, { value: v, label: v });
+        // Tagged `game`, like the two passes above: these are the host's own
+        // item ids, and a "mod or not" filter that could not tell them apart
+        // would file every built-in tool under the mod.
+        map.set(v, { value: v, label: v, source: "game" });
     }
     for (const it of loadConfig().items ?? []) {
         if (!it?.id) continue;
@@ -968,6 +1004,200 @@ export function listCurrencyTypes(): Opt[] {
         .map((c) => ({ value: c, label: c }))
         .concat([{ value: "__custom__", label: "custom currency (type below)" }]);
 }
+
+// ── Discovery: the game's own objects, as list rows ──────────────────────────
+
+/**
+ * One host object, as the list screen sees it.
+ *
+ * The list functions above answer "which ids can a picker offer". This answers a
+ * different question — "what objects exist, and what does the engine know about
+ * them" — and the extra part is the `native` definition. It is why a game row
+ * is worth opening: the engine holds a registered element's density, matter type
+ * and interaction list, which is not in this mod's config and cannot be derived
+ * from it.
+ *
+ * `native` is genuinely optional rather than "always present". The host's
+ * enumeration is uneven, and a row with an id and no definition is still a true
+ * statement about the world. Hiding those rows would be worse than showing them
+ * thinly.
+ */
+export interface NativeObject extends Omit<ListRow, "origin" | "entry"> {
+    /**
+     * Always `"game"`.
+     *
+     * Stated as a field rather than assumed by the caller so that the value is
+     * visible where the object is built, and so `mergeRows` is handed rows that
+     * already say what they are. A discovery function that could return a mod
+     * row would be a category error — a mod row comes from the config, not from
+     * the host's registry.
+     */
+    origin: "game";
+}
+
+/**
+ * Add one discovered object to a map, stamping `origin: "game"`.
+ *
+ * Every discovery function builds its rows through this, so none of them can
+ * forget the origin. That is not hypothetical: the origin is the one field the
+ * whole screen branches on — it decides whether a row gets Edit and Del — so a
+ * discovery function that omitted it would produce rows that look editable and
+ * are not. A helper is cheaper to read than four repeated literals, and cheaper
+ * still than one test per function.
+ */
+function putNative(
+    map: Map<string, NativeObject>,
+    id: string,
+    rest: Omit<NativeObject, "id" | "origin">,
+): void {
+    map.set(id, { id, origin: "game", ...rest });
+}
+
+/** A string worth showing, or `undefined` for blank/empty/non-string. */
+function labelOf(v: unknown): string | undefined {
+    return typeof v === "string" && v.trim() ? v : undefined;
+}
+
+/**
+ * The game's own elements, each carrying the engine's definition for it.
+ *
+ * Read through the same registry as `listElements`, and in the same order, so the
+ * two cannot disagree about which elements exist. The difference is only the
+ * shape: this keeps the raw definition, which is what the expanded row draws.
+ *
+ * Hidden elements are skipped. They are internal states (resolved pointers,
+ * intermediates) rather than content, and the per-field picker can still ask for
+ * them explicitly with `includeHidden`.
+ */
+export function discoverElements(): NativeObject[] {
+    const out = new Map<string, NativeObject>();
+    const types = (safe(() => api.elements?.getRegisteredTypes?.()) ?? []) as number[];
+    for (const t of types) {
+        const def = safe(() => api.elements?.getDefinitionByType?.(t)) as
+            | Record<string, unknown>
+            | undefined;
+        const id = labelOf(def?.id) ?? String(safe(() => api.elements?.getIdByType?.(t)) ?? "");
+        if (!id) continue;
+        if (def?.hidden === true) continue;
+        putNative(out, id, {
+            label: labelOf(def?.name) ??
+                String(safe(() => api.elements?.getNameByType?.(t)) ?? "") ??
+                labelOf(def?.nameKey) ?? id,
+            color: colorFromMeta(def?.metaColor),
+            native: def,
+        });
+    }
+    return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * The game's own items.
+ *
+ * `getRegisteredIds()` is the documented enumeration and `getDefinitionById` the
+ * documented way to read one, so a game item row can show its real `itemType`
+ * and sprite rather than a bare id.
+ */
+export function discoverItems(): NativeObject[] {
+    const out = new Map<string, NativeObject>();
+    const ids = (safe(() => (api.items as any)?.getRegisteredIds?.()) ?? []) as string[];
+    for (const id of ids) {
+        if (typeof id !== "string" || !id) continue;
+        const def = safe(() => (api.items as any)?.getDefinitionById?.(id)) as
+            | Record<string, unknown>
+            | undefined;
+        out.set(id, { id, origin: "game", label: labelOf(def?.name) ?? id, native: def });
+    }
+    return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * The game's own terrains.
+ *
+ * `terrains` has `getDefinitionByType`, but the `CellType` enum is the only
+ * *enumeration* — and, as `listTerrains` already had to work out, an enum member
+ * name is not the id. So ids come from `getIdByType` and the definition is read
+ * back per id, which is the one order that cannot confuse the two.
+ */
+export function discoverTerrains(): NativeObject[] {
+    const out = new Map<string, NativeObject>();
+    for (const name of enumNames("CellType")) {
+        const type = enumValue("CellType", name);
+        if (type === undefined) continue;
+        const id = String(safe(() => api.terrains?.getIdByType?.(type)) ?? "");
+        if (!id || out.has(id)) continue;
+        const def = safe(() => api.terrains?.getDefinitionByType?.(type)) as
+            | Record<string, unknown>
+            | undefined;
+        out.set(id, { id, origin: "game", label: labelOf(def?.name) ?? name, native: def });
+    }
+    return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * The game's own structures.
+ *
+ * Unlike the other three this one is thin, and the reason is in the API rather
+ * than here: `structures` has no "list everything registered" call. It does have
+ * `getAvailableTypes()`, returning a `Set<StructureRef>` where
+ * `StructureRef = StructureType | StructureId` — so members may be numbers
+ * needing a resolve, or already-resolved id strings.
+ *
+ * A string ref reaches `getDefinitionByType` only behind `safe`, because the
+ * engine wants a *type* there and a string is the kind of argument that throws
+ * rather than returning nothing. Where nothing comes back the row is an id and
+ * no more, which is still true and still worth showing.
+ */
+export function discoverStructures(): NativeObject[] {
+    const out = new Map<string, NativeObject>();
+    const raw = safe(() => api.structures?.getAvailableTypes?.());
+    const refs = raw instanceof Set ? [...raw] : Array.isArray(raw) ? raw : [];
+    for (const ref of refs) {
+        if (typeof ref === "string" && ref) {
+            if (out.has(ref)) continue;
+            const def = safe(() => api.structures?.getDefinitionByType?.(ref)) as
+                | Record<string, unknown>
+                | undefined;
+            out.set(ref, {
+                id: ref,
+                origin: "game",
+                label: labelOf(def?.name) ?? ref,
+                native: def,
+            });
+            continue;
+        }
+        const def = safe(() => api.structures?.getDefinitionByType?.(ref)) as
+            | Record<string, unknown>
+            | undefined;
+        const id = labelOf(def?.id) ?? String(safe(() => api.structures?.getIdByType?.(ref)) ?? "");
+        if (!id || out.has(id)) continue;
+        putNative(out, id, {
+            label: labelOf(def?.name) ?? labelOf(def?.nameKey) ?? id,
+            native: def,
+        });
+    }
+    return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** The game's own sprites, by the ids the sprite registry holds. */
+export function discoverSprites(): NativeObject[] {
+    return listSpriteIds().map((o) => ({ id: o.value, origin: "game" as const, label: o.label }));
+}
+
+/**
+ * Host discovery per panel.
+ *
+ * Keyed like `PANEL_NATIVES`, and for the same reason: a screen whose object has
+ * no host registry simply is not in this table, which is a fact about the API
+ * rather than a missing feature. A recipe or a trigger has no "already in the
+ * game" list to merge, and an empty section header for it would be noise.
+ */
+export const DISCOVERY: Partial<Record<Tab, () => NativeObject[]>> = {
+    elements: discoverElements,
+    items: discoverItems,
+    sprites: discoverSprites,
+    structures: discoverStructures,
+    terrains: discoverTerrains,
+};
 
 /** Hook-modifier handlers, from CODE_HANDLERS (used by the modifiers tab). */
 export function listHandlerKeys(): Opt[] {

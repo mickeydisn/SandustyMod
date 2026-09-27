@@ -8,7 +8,15 @@
  */
 import { assert, assertEquals } from "jsr:@std/assert";
 import { clampChip, DRAG_SLOP, exceedsSlop } from "../drag.ts";
-import { minimizedChip, overlayBox, titleBar } from "../styles.ts";
+import {
+    body,
+    listScroll,
+    minimizedChip,
+    overlayBox,
+    panelChrome,
+    screen,
+    titleBar,
+} from "../styles.ts";
 
 const panel = Deno.readTextFileSync(
     new URL("../panel.ts", import.meta.url).pathname,
@@ -44,6 +52,65 @@ Deno.test("the open panel ignores the stored drag position", () => {
     assert(
         body.includes("panel.x >= 0") && body.includes("panel.minimized"),
         "posStyle does not branch on minimized",
+    );
+});
+
+// ── the scroll chain ─────────────────────────────────────────────────────────
+//
+// Every one of these was wrong at some point, and each one failed the *same*
+// way: the overlay stayed 90vh while the content below it silently ran off the
+// bottom with nothing to scroll. So the whole chain is asserted here rather than
+// left to be eyeballed in the game, where a missing scrollbar looks the same as
+// a list that is simply short.
+
+Deno.test("the panel's height chain is unbroken from the overlay to the body", () => {
+    // Each link is what gives the one below it a definite height to divide up.
+    // `panelChrome` is the link that was missing: with no height of its own it
+    // sized to its content, so `body`'s `flex: 1` had nothing to resolve against.
+    assertEquals(overlayBox.height, "90vh", "the overlay is the root of the chain");
+    assertEquals(panelChrome.height, "100%", "panelChrome must fill the overlay");
+    assertEquals(panelChrome.display, "flex");
+    assertEquals(panelChrome.flexDirection, "column");
+    assertEquals(body.flex, 1, "body must take the space the nav rows leave");
+    assertEquals(body.minHeight, 0, "body must be allowed to shrink below its content");
+});
+
+Deno.test("the body is the panel's only scroll container", () => {
+    // A second scroller inside the body is a nested scroll area: the wheel moves
+    // whichever one the cursor is over, and the list can reach its own end while
+    // rows below it are still off screen.
+    assertEquals(body.overflowY, "auto", "the body is where scrolling happens");
+    for (const name of ["screen", "listScroll"] as const) {
+        const s = name === "screen" ? screen : listScroll;
+        assert(
+            s.overflowY !== "auto" && s.overflow !== "auto",
+            `${name} scrolls as well as the body — two nested scroll areas`,
+        );
+    }
+});
+
+Deno.test("the list is not capped at a fixed pixel height", () => {
+    // It was `maxHeight: 150`, which made a screen-sized overlay show a strip
+    // about 30 rows tall with the rest of the window wasted.
+    assertEquals(listScroll.maxHeight, undefined, "the list must not have a fixed cap");
+});
+
+Deno.test("the list screen adds no scrollbar of its own", () => {
+    // Scoped to the list screen, not the whole file. `panel.ts` legitimately owns
+    // one other scroller — the `multiselect` chip picker, capped at 150px because
+    // a field of two hundred tags must not push the form down — and a blanket
+    // "no overflowY anywhere" rule would forbid a correct thing and be ignored.
+    //
+    // What matters is that the screen wrapping the *rows* is not a scroll area, so
+    // the body's scroll is the only one the wheel can land in.
+    const screenRoot = /return h\(\s*"div",\s*\/\/ A flex column[\s\S]*?\{ style: S\.screen \},/
+        .exec(
+            panel,
+        )?.[0];
+    assert(screenRoot, "could not find the list screen's root in panel.ts");
+    assert(
+        !/overflow/.test(screenRoot),
+        "the list screen root must not scroll — body already does",
     );
 });
 

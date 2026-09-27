@@ -11,6 +11,20 @@ export const MOD_ID = "md-my-hown-mod";
 export const VERSION = "0.1.4";
 export const LOG = `[${MOD_ID}]`;
 
+/**
+ * Prefixes that count as *this* mod's own object ids.
+ *
+ * `MOD_ID` is the package name, but the config's own ids use the shorter `mdmy.`
+ * prefix. Both are listed, because the alternative is a list screen that files
+ * the author's own objects under "another mod" — the one misclassification a mod
+ * author would notice immediately.
+ *
+ * Kept as an explicit list rather than derived from `MOD_ID`, so a future rename
+ * is a visible edit here instead of a silent change in how every id in the panel
+ * is attributed. The list screen's "This mod" filter reads this.
+ */
+export const OWN_ID_PREFIXES: readonly string[] = [MOD_ID, "mdmy"];
+
 export const STORAGE_KEYS: readonly string[] = [
     "config",
     "panel",

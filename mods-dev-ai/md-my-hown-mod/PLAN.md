@@ -1,292 +1,230 @@
-# PLAN
+# Handlers → Process / Action split
 
-Reorganisation of the panel's menu, the reference pickers, and the graph.
-Every item below is unchecked until it is done and verified.
+Split the one thing called a "handler" into the two things it is actually doing today.
 
-## Ground rules that apply to every item
+## The distinction
 
-1. **No free id or type entry, anywhere.** If the config stores a reference, it
-   is a `select` fed by a real list. The only exceptions are fields the engine
-   itself accepts as free text (pass-throughs we deliberately do not model), and
-   those are labelled as pass-through.
-2. **A missing id is a bug in the list, never in the user's typing.** Every list
-   reads the live game registry. If a list cannot be built, the field says so
-   rather than silently falling back to a text box.
-3. **Nothing is deleted without a home.** Moving a screen must not drop a
-   feature; the removed Help sections get folded into the screens that own them.
-4. The engine stays the reference. Any claim about a field's meaning is checked
-   against the bundle or a shipped mod, not assumed.
+| | **HandlerAction** | **HandlerProcess** |
+| --- | --- | --- |
+| what it is | an **atomic** action | a named, ordered **composition** of actions |
+| rule | must call **one `api.*` section** | groups by **which engine call invokes it** |
+| lives | in code, once, forever | in config, per object |
+| selected by | a process | an **object**: item, structure, signal, trigger |
+| cardinality | many processes reuse one | one per object |
 
----
+**They are sorted on two different axes, and that is the whole point.** An action
+belongs to an API namespace; a process belongs to a call site. A process may mix
+actions from different APIs, because the process is what the engine calls and the
+actions are just what it does while handling that call.
 
-## 1. Menu — the requested order
+```
+api.energy.consume ──┐
+api.player.inv.add ─┤
+api.upgrades.setLV ─┴─→  Process  ──→  upgrade.onUpgrade(item)   ← call site
+```
 
-Ten groups, in this order, each with the screens listed in the order given.
+> **Payload vs params is deliberately not settled here** — it is the next topic, and
+> the plan stops short of guessing at it.
 
-- [x] **Content** — Terrain, Element, Structure, Item
-- [x] **Extend** — Tooltips, Excavation profiles, Projectiles, Signals
-- [x] **Production** — Contact reactions, Machine recipes
-- [x] **Tech** — Unlock nodes, Tech nodes, Upgrade categories, Upgrades
-- [x] **Actions** — Triggers, Input bindings, Processors, Hook modifiers
-- [x] **Energy** — Energy networks, Energy interactions
-- [x] **Assets** — Sprites, Custom draw
-- [x] **Handlers** — grouped by what uses them (Any, Items, Processing, Signal…)
+## Evidence the current model is already confused
 
-> **Status: the menu itself is done.** `MENU_GROUPS` is the ten groups above in
-> that order, and `Systems` and `Hooks` are dissolved. The *screens* behind the
-> three new tabs (`tooltips`, `networks`, `draws`) are typed and wired but still
-> need their own bodies — that is the next chunk.
+`HandlerMeta.type` is supposed to group the Handlers tab, but it measures **neither**
+axis cleanly. Reading the 46 entries against what the code actually does:
 
-### Notes on the moves, and the judgement calls in them
+| `type` value | n | which axis is it? | why it does not hold |
+| --- | --- | --- | --- |
+| `processor` | 6 | call site | but 2 of the 6 call `api.energy`, and the rest call no API at all |
+| `projectile` | 7 | call site | consistent — but it is a call site, not an API |
+| `cell` | 11 | API-ish area | spans **three** call sites: itemAction, processing, trigger |
+| `tech` | 6 | API-ish name | slotted on the `upgrade` call site, and 3 of 6 call no API |
+| `message` | 6 | neither | `signalLog`, `triggerLog` and `itemExcavate` share a label and nothing else |
+| `global` / `modifier` | 5 | mixed | `modifier` is a call site, `global` is an absence |
 
-- [x] `interactions` is **renamed to Tooltips and moved to Extend**, and the
-      earlier decision to leave it alone is **reversed** — that was wrong.
+`excavationDefault` (an itemAction returning a profile) and `triggerScan` (a trigger
+logging cells) are filed under the same `type: "cell"`. That is the two axes collapsed
+into one field, and it is why splitting them is a real change and not a rename.
 
-      > **Correction.** A previous pass called these element *behaviours* rather
-      > than tooltips, because `INTERACTION_KINDS` reads `structure | destroyer |
-      > entity | flammable | meltable | freezable | custom`, and refused the move
-      > on that basis. That looked at the *kind names* and stopped there. The
-      > engine's own types say otherwise:
-      >
-      > - `terrains.d.ts`: `/** **Tooltip interactions** shown for this terrain. */`
-      > - `elements.d.ts`: `/** Optional **tooltip metadata** on structure
-      >   interactions. */` — and every field in it (`textKey`, `visibleWhen`,
-      >   `crossedOutWhen`, `onlyWhenTranslated`) is about hover text.
-      >
-      > So the feature *is* the tooltip feature. `destroyer` means "this tooltip
-      > says it eats drills"; `flammable` means "this tooltip says it burns".
-      > They are rows in one hover panel, registered by one call. The old label,
-      > "Element ↔ structure", named one of the seven kinds and so misdescribed
-      > the other six — worse than describing none of them.
+## Measured: the "must call one API" rule is satisfied by 5 of 43
 
-      Done:
-      - `interactions` is labelled **Tooltips** and sits under **Extend**.
-      - The separate view-only **Tooltips** tab is gone. Two screens with one
-        name is worse than neither: whichever you meant, you had a fifty-fifty
-        guess. The editor is the screen now.
-      - **Terrain has the identical array** (`interactions?: readonly
-        elements.Interaction[]`) and this mod still edits it as a raw JSON box.
-        That is the real gap this exposed, and it is the next thing to do.
-      - Energy interactions stays built from the energy config; there was never
-        energy in `interactions`, so that part of the original brief still does
-        not apply.
-      - A **structure's** `tooltipHover` is still a raw JSON box
-        (`tooltipHoverJson`) — a different engine type from the element's, not
-        yet modelled field by field. Recorded in `doc/KNOWN-ISSUES.md`.
+`handlers.ts` references exactly **four** API paths in the whole file:
 
-- [x] `energyTypes` is **split** into networks and interactions. A network is an
-      id shared by several energy types; today it is a bare
-      `options.energyType` string with nothing to validate against. Give it a
-      screen, a list, and a stored default.
-- [x] `behaviors` (conveyor/launcher behaviour) — **decided: Extend**, not beside
-      Structures. The brief left it undecided, offering Handlers or Assets; both
-      are wrong (it is not code a handler calls, and not an image), and the first
-      answer here was Content, next to the structures it names. That answer was
-      wrong in a way worth recording: it reasoned from what the feature
-      *references* — `api.structureBehaviors` takes structure ids, a conveyor
-      against one and a launcher against three — which is not the axis a menu
-      should be arranged on. Arranged by what it *is*, a conveyor is an existing
-      structure that now moves things, which is exactly "Add to what the game
-      already does". Under Content it also cost a screen change: you read the
-      definition, then went somewhere else to find out what it does.
-      The structure ids stay pickers, so the link to the structure is still one
-      click away in either direction.
-- [x] `sprites` and `DRAW_FUNCTIONS` are separate concepts that both live under
-      **Assets**. Custom draw is a *list of functions*; sprites are *images*. Do
-      not merge them into one screen; they are listed separately for that reason.
-- [x] **Handlers** stops being a single flat browser. It groups by *which object
-      consumes the handler* (item actions, processing, signals, triggers, …), so
-      "what can I wire this into?" is answerable by looking at one group. A
-      handler with no consumer still appears, under **Any**.
-- [x] The old **Systems** and **Hooks** groups are dissolved into the list
-      above; no group keeps a name that was not asked for.
+| action | calls |
+| --- | --- |
+| `energyGenerateWhileHeld` | `api.energy.addAtCell` + `api.energy.getNetworkFreeCapacityAtCell` |
+| `energyConsumePerRun` | `api.energy.consume` |
+| `techAppendUnlock` | `api.tech.conservatory.appendUnlock` |
+| `techSetUpgradeLevel` | `api.upgrades.setLevelById` |
+| `techGrantItem` | `api.player.inventory.addById` |
 
----
+The other 38 call no `api.*` at all. They fall into two kinds:
 
-## 2. No free id input — lists everywhere
+- **Context-bound** (4): `processorLift`, `processorConvert`, `processorScan` use
+  `ctx.commit` / `ctx.getResolvedTypeAtCell` — the engine's `StructureProcessingContext`,
+  not an API namespace. Whether that satisfies "calls an API" is an open question.
+- **Pure** (the rest): loggers, `structureReadData` / `structureWriteData` (touch
+  `structure.data` directly), and the value-returning factories.
 
-> **Status: the mechanism is in place.** Every `Opt` now carries a `source`
-> ("game" or "mod"), every reference list sets it, and a native box renders
-> under any `select`/`multiselect` whose options have one. The box is collapsed
-> by default and always shows the count. Two decisions are pinned by tests:
-> an entry we made stays marked "ours" even after it is in the game's registry
-> (it comes back from *both* sources, and the mod's list is the more useful
-> fact), and a hand-written option list gets **no** box rather than a box
-> claiming "0 in the game".
->
-> Also fixed here, and it was a real bug: **upgrade categories and input
-> bindings could list, validate, and then swallow every save.** `saveForm`
-> returns early when the dispatch table has no entry, and neither screen had
-> one — the store functions simply did not exist. Invisible to the type system,
-> because the fault is a *missing* table entry rather than a wrong one. There is
-> now a test asserting every screen with a `configKey` can be both saved and
-> deleted, in both directions.
+So the rule is a **design rule going forward, not a description of what exists**, and
+adopting it forces a decision on 38 handlers rather than 0. That is Phase 2's real work.
 
-- [x] Inventory every `select` whose `options` are hardcoded, ad hoc, or empty,
-      and every field that is still a plain `text` box but names a game object.
-      **Also now an invariant**: one test fails on any picker with an empty list,
-      and another fails on a closed list that has been filled with mod ids —
-      the two ways a picker goes stale. The second has a deliberate sanity
-      floor (`live > 20`, `closed > 0`) so it cannot pass by finding nothing to
-      check.
-- [x] **A read-only "native" box on every reference field**, collapsed by default,
-      showing what the game already has in that list (elements, structures,
-      items, …). Click to expand and see the full list; the value itself is still
-      chosen from the picker. This is the "detail/summary next to the field"
-      requirement, and it is the answer to "how do I know what the ids are?".
-- [x] The native box must show the *count* even when collapsed. A field that says
-      "12 in the game" is useful; one that says nothing until clicked is not.
-- [x] **Upgrade categories** — pick from the game's categories plus ours.
-- [x] **Network ids** — pick from the networks the mod defines, seeded with the
-      game's default network.
-- [x] **Upgrade category ids** — `upgrades.categoryId` was a text box whose own
-      hint said it "must match a category registered with
-      `api.upgrades.registerCategory`", which is an instruction to go and look the
-      id up somewhere else. It is a picker now. It cannot offer the game's
-      categories — `registerCategory` is write-only, there is no list call — so it
-      offers ours plus `tools` (the default) plus a labelled "custom" escape, and
-      the escape hatch is never written into the config.
-- [x] **Structure behaviour ids** — the four structure ids inside a conveyor or
-      launcher's `definition` are pickers, merged in on save and lifted back out
-      on load. The `relations.test.ts` invariant is what forced this: adding the
-      pickers made it complain that four reference fields were missing from the
-      graph.
-- [x] Anything the engine accepts as a genuinely free string is either listed or
-      explicitly labelled as free text with the reason. No silent third option.
-      **This is now an invariant, not a sweep**: `ALLOWED_FREE_TEXT` in
-      `pickers.test.ts` names every `text` field that may stay free and why, and
-      a new unlisted text box fails the build. Verified by adding a fake
-      `someNewRef` field and watching the audit name it.
 
----
+## Measured state (counted — not assumed)
 
-## 3. Help — graph only
+| Fact | Value |
+| --- | --- |
+| `ANY_HANDLERS` (code) | 37 |
+| `PROCESS_HANDLERS` (code) | 6 |
+| `HANDLER_META` (declared) | 46 |
+| config slots that take a `handlerKey` | 7 |
+| actions per object today | **always exactly 1** |
 
-- [x] Delete the non-graph Help sections (how it works, the prose field
-      reference, the wordy relation list). Fold what is still worth keeping into
-      the screen that owns it: field docs stay with the fields, handler docs stay
-      in **Handlers**.
-- [x] No dead navigation links. Help becomes a single destination.
-- [x] The "✓ No broken references" banner went too. A screen whose subject is
-      what is broken should not open with reassurance; the header chip reads
-      "N relations" when clean and "N broken" when not, and says nothing more.
+The 46 declared vs 43 implemented is a pre-existing drift, not part of this plan beyond
+noting it — `unreachableHandlers` is what catches it.
 
----
+## The impact
 
-## 4. Graph — depth, selection, filter
+The whole surface is 1:1 today: one `handlerKey` on an entry, one function resolved at
+registration. The split makes it 1:N, so **the config shape changes on every slot**:
 
-- [x] **Groups are rows, not columns.** One horizontal band per menu group,
-      stacked top to bottom in the menu's own order, with the group name across
-      the top of its band. The transpose also fixed something the column layout
-      could not: a group's name had to fit in a strip one box high, and the
-      longest label had nowhere to go.
-- [x] **Arrows attach only to a box's top or bottom edge**, never its side. Depth
-      puts the target to the left, so a link between two kinds in one group would
-      otherwise have to run sideways along the row, skimming the boxes between it
-      — and a head pointing at a box's flank is easy to mistake for belonging to
-      its neighbour. Two shapes: a link across rows curves directly between the
-      facing edges, bowed by the horizontal gap; a link between two kinds at the
-      same height arcs *under* the whole group row, because no bow can help when
-      both ends are in the same band.
-- [x] **A crossing is hidden, not drawn over a label.** The arrows paint under
-      the boxes, so a link from Production up to Content disappears behind the row
-      it passes rather than over its labels. That is the cost of the top/bottom
-      rule and it is the right trade: an ambiguous arrowhead is worse than a
-      briefly hidden line. Asserted as the rule it is — both ends on a top or
-      bottom edge — rather than as "nothing is crossed", which this layout cannot
-      deliver and was never asked for.
-- [x] **Arrows point both ways, and mean different things.** ↑ at the target —
-      "this box is a *parameter of* that box". ↓ at the source — "that box is
-      *used in* this one". One head would force a single point of view on a
-      relationship that is genuinely asked from both.
-- [x] **The filter re-lays the graph out, it does not just hide boxes.** The keep
-      set goes *into* `buildGraph`, so the shown kinds have their depths
-      re-derived and their rows re-packed. Filtering a finished graph left the
-      gaps, so a five-kind neighbourhood sat in one corner of a diagram sized for
-      sixteen. This does trade away stability — a node moves when you change the
-      filter — which is worth it because the point of filtering is to look at a few
-      kinds properly. Edges are cut to the same set, or the relation table would
-      list links to boxes that are not on the picture.
-- [x] **Groups are ordered by the shallowest box in each.** Sorted top to bottom
-      by minimum depth, so the groups that only feed the graph come first and a
-      group that purely consumes sits below what it consumes, so most arrows are
-      short instead of criss-crossing. Ties keep the menu's own order.
-- [x] **Every link is selectable**, and the relation table states it in words:
-      holds, field, points at, in use, broken. The two counts are the point — a
-      relation the engine declares and nothing uses looks identical to one you
-      rely on unless something says otherwise.
-- [x] **A filter row above the graph**, opening with `all` and `no links`, then
-      every box in the graph by name, in the order the picture lays them out.
-- [x] Choosing a box shows **only that box and its direct neighbours**, in and
-      out. `no links` shows the boxes with no connections at all, which is how
-      you find a kind that exists but is never referenced.
-- [x] The filter is a *view*, not a mutation: `filterGraph` copies, keeps node
-      positions fixed, and leaves the dangling report intact for what is still
-      on screen.
-- [x] Filtering to nothing says so rather than rendering an empty box.
-- [x] Filter state lives in the panel, not the screen, so it survives the
-      remount on every category switch.
+```
+processing: [{ id, structureType, intervalMs, handlerKey }]      // now
+processing: [{ id, structureType, intervalMs, actions: [{key, options}] }]
+```
 
----
+Consequences, in the order they will bite:
 
-## 4b. Unlock nodes — what a structure is gated behind
+1. **Registration is where the two meet.** `apply.ts` and `mysandkit.ts` each call
+   `resolveAnyHandler(key)` and hand the raw function to the engine. They must instead
+   call a compiler that turns a list of action refs into *one* function. That compiler is
+   the only place a process exists at runtime.
+2. **Not every slot can honestly be a list.** 18 of the 43 handlers return a
+   value, but **only `projectile` is a slot where that value survives** — measured
+   in Phase 0, not assumed. `signal`, `trigger`, `processing`, `upgrade` and
+   `itemAction` are all side-effect callbacks, so a process of N actions on those
+   slots has nothing to hand back. That shrinks the return-value question to one
+   slot. See **Open decisions**.
+3. **13 of those 18 are returning into the void.** `energyDefault`…`energyNetwork`
+   sit on `processing`; `excavation*`, `itemDefault`, `itemExcavate` and `itemShoot`
+   sit on `itemAction`. `apply.ts` does `entry.process = fn` and the engine ignores
+   the result; `handleAction` is documented `(state, action) => unknown`, "handles
+   item use actions". These read as **data factories for a different object** — an
+   energy type, an excavation profile — that were wired into a callback slot. They
+   are recorded by `VACUOUS_RETURNS` so the split cannot carry the bug forward
+   silently. **Deciding what they should be is a separate call, and a real one.**
+4. **The UI is a browser for a flat list.** `handlers-panel.ts` shows ~46 rows grouped
+   by `type`. After the split there are two different things to browse: the *action
+   catalogue* (reusable) and the *processes in use* (one per object).
+5. **`itemTypes` reachability moves.** A Consumable has no `ActionType`, so its process
+   is empty. That check currently sits on the handler; after the split it sits on the
+   process' action list, and has to survive the migration.
+6. **Round-trip is a hard requirement.** `schema_roundtrip.test.ts` (590 assertions) must
+   still pass, and a `handlerKey` already on disk has to keep working.
 
-- [x] **Every structure must name a node.** The field is `required`, and the
-      picker never offers an empty option: the built-in **"Unlock by default"**
-      is a real, listed, virtual node that every new structure starts on. An
-      empty field that quietly meant "always" is exactly the ambiguity this
-      removes.
-- [x] **A separate list from `techs`, deliberately.** A *node* is the thing a
-      structure is gated behind; a *tech* is a step in a research tree that may
-      do more than unlock (items, the map, vanilla ids). Merging them meant the
-      question "what is this behind?" was answered on a different screen from
-      "what does my tech tree look like?".
-- [x] **A "tech"-kind node builds a real in-game tech node.** `apply.ts` calls
-      `tech.registerDefinition` / `registerNode` from the node's own fields, so
-      editing the node edits the actual research step. A node may instead
-      *borrow* an existing engine tech by id, and the two modes are exclusive —
-      a borrowed tech keeps its own definition, so a cost typed alongside a
-      borrow would be a second, competing source for the same node.
-- [x] **This retires `alwaysUnlocked`.** The engine reads that flag in exactly
-      one place, iterating a `const` literal of the *vanilla* structures
-      (bundel.js 5251.js, `Ue`), so it was inert on a mod structure. An
-      "always" node says the same thing legibly, is shared between structures,
-      and is editable. The old key stays in the type and in the passthrough so an
-      existing config survives an edit; it just has no checkbox.
-- [x] **A dangling node fails *open*.** A structure naming a deleted node is
-      available from the start, and the picker says so in words. The stricter
-      reading would hide the structure from every fresh game with nothing to
-      indicate why. Deleting a node through the panel moves its structures to
-      the default explicitly, so the common path never dangles at all.
-- [x] **Gating is retractable without a reload.** `player.buildings.removeById`
-      withdraws an unlock a previous apply handed out, so ticking a node off
-      "Unlock by default" takes effect on Apply instead of looking ignored until
-      the game restarts.
-- [ ] **Verified in-game.** A "tech" node has never been rendered by the
-      engine's own React, and no test can show whether `registerNode` places a
-      mod-owned node in the grid where the author expects. The specific worry: a
-      node with **no parent** is never placed in the grid, so it can never be
-      researched and its unlocks never fire. The engine exposes no way to
-      enumerate the vanilla tech tree, so there is no root to default to and
-      none is invented — the field is simply flagged as required in effect.
+## Open decisions
 
-## 5. Definition of done
+- [ ] **Return-value rule for value-returning slots.** Proposed: run all actions in order,
+      shallow-merge returned plain objects, last writer wins; a non-object return replaces
+      the whole value and is terminal. A 1-action process then behaves exactly as it does
+      today, so this is backward-compatible by construction. **Phase 0 narrowed this to
+      `projectile` only** — the other slots discard the return — so the rule is small. Still
+      _wants confirming against the engine's real `getOptions` call site._
+- [ ] **What are the 13 vacuous handlers, really?** They return a descriptor into a slot
+      that throws it away. Either they move to the energy / excavation definitions as
+      **presets** (most likely — that is what a `{capacity: 1000}` or `{power: 10}` shape
+      is), or they are deleted as unreachable. _This is a product call, not a refactor._
+- [ ] **Does an action failure stop the chain?** Proposed: no — each action is isolated and
+      the rest still run, with the error collected. Chosen because today each handler
+      carries its own `try/catch`, and a list makes that boilerplate the process's job.
+      _Confirm this rather than fail-fast._
+- [ ] **Is a process with zero actions legal?** Proposed: yes, a no-op that still satisfies
+      the engine, so an author can save a process before choosing its actions.
+- [ ] **Can the same action appear twice in one process?** Proposed: yes, with different
+      options — "log, then convert" and "convert, then log" are different behaviours.
 
-- [x] `deno task check` clean.
-- [x] Full test suite passes.
-- [x] `deno task build:main` succeeds.
-- [x] `deno run -A tools/gen-reference.ts` re-run; no undocumented field left.
-      (The generator has its own test that fails on any unmapped field, so this
-      cannot silently rot either — adding a field forces the map to be updated.)
-- [x] The outcome of the **behaviours** decision is written down — see section 1
-      and `MENU_GROUPS` in `schema.ts`.
-- [ ] Every moved screen verified in-game. **This cannot be done from here**, and
-      it is the one item left that genuinely matters. The two that worry me most:
-      - the Graph is now 7 columns wide and scrolls; whether that reads at 90vw
-        is a judgement only a person looking at it can make;
-      - the native box and the filter row have never been rendered by the
-        engine's own React, only by a test double.
 
-- [x] **Help** — Graph only
-- [x] **Store** — Map, JSON
 
+## Phase 0 — freeze the current contract (first)
+
+Nothing else is safe until current dispatch behaviour is pinned by a test, because the
+split is a refactor of exactly that behaviour.
+
+- [x] Classify all 43 implemented handlers by slot and by void-vs-value
+- [x] Test: every slot resolves exactly one function today
+- [x] Test: value-returning handlers still return their value
+- [x] Test: a Consumable resolves no item action
+
+**Result — `src/hooks/handler-classification.test.ts`, 8 tests.** Two things came out of
+it, and one of them was a correction to this plan rather than a confirmation:
+
+- Only `projectile` uses a returned value. 7 handlers, all `getOptions` factories.
+- **13 handlers return a value that nothing reads.** The test caught two I had
+  missed on the first pass — `itemExcavate` and `itemShoot` — which is the point of
+  freezing the contract first: the inventory in the plan was wrong and the test is
+  what made it right. Listed by name in `VACUOUS_RETURNS`, with a test that fails if
+  one is re-slotted or if the engine starts honouring the return.
+
+One test is deliberately the invariant this plan removes ("a slot resolves exactly one
+function"). After the split it should be **deleted, not relaxed**.
+
+## Phase 1 — types and naming
+
+The names are part of the problem: `AnyHandler` is a function that is sometimes an action
+and sometimes a process, and nothing says which.
+
+- [ ] `HandlerActionFn` / `HandlerAction` — the code, atomic, one `api.*` section
+- [ ] `HandlerProcessFn` — the compiled function the engine calls
+- [ ] `HandlerActionRef` = `{ key: string; options?: Record<string, unknown> }`
+- [ ] `CallSite` — the engine entry point, named for what invokes a process
+      (`item.handleAction`, `structure.process`, `signal.onClick`, `projectile.getOptions`,
+      `upgrade.onUpgrade`, `trigger.fire`, `behavior.onDownKey`, `modifier.intercept`)
+- [ ] `compileProcess(refs, callSite)` → `HandlerProcessFn`
+- [ ] Deprecate `AnyHandler` / `CodeHandler` / `ProcessHandler`, then delete
+
+## Phase 2 — the action catalogue
+
+- [ ] Replace `type` with the **API axis** — the `api.*` namespace an action calls
+- [ ] `resolveAction(key)` — typed miss instead of silent `undefined`
+- [ ] Reachability checks read the action list, not a single key
+- [ ] **Decide the 38 non-API actions** — the real work of this phase:
+  - [ ] Context-bound (`processorLift`/`Convert`/`Scan`) — does `ctx.commit` count?
+  - [ ] Pure loggers — keep as a `debug` section, or delete?
+  - [ ] `structureReadData`/`WriteData` — can these become an `api.structures` call?
+- [ ] Confirm the 5 API-bound actions against a namespace that actually exists
+
+## Phase 3 — the compiler
+
+- [ ] Ordered run, per-action `try/catch`, errors collected not thrown
+- [ ] Return-value merge per **Open decisions**
+- [ ] Unknown action key: warn once, drop that action, keep the rest
+
+## Phase 4 — config schema
+
+- [ ] `actions: HandlerActionRef[]` on all 7 slots
+- [ ] Read `handlerKey` as a 1-element action list (migration), write `actions`
+- [ ] Round-trip both shapes; `schema_roundtrip` stays green
+- [ ] Keep the Consumable exclusion working across the migration
+
+## Phase 5 — registration
+
+- [ ] `apply.ts`: signals, triggers, behaviours, modifiers
+- [ ] `mysandkit.ts`: `item.handleAction`, projectile `getOptions`
+- [ ] `processing.ts` definition: the picker becomes a list, not a dropdown
+
+## Phase 6 — UI
+
+- [ ] Handlers tab splits: **Actions** (grouped by `api.*`) and **Processes** (grouped by
+      call site) — the two axes, no longer sharing one `type` field
+- [ ] Process editor: ordered list — add, remove, reorder, per-action params
+- [ ] "Copy snippet" emits the list form
+- [ ] Warnings follow the action list, not the single key
+
+## Phase 7 — verify
+
+- [ ] `deno check src/main.ts`
+- [ ] `deno test -A --no-check src/`
+- [ ] `deno test -A --no-check tools/`
+- [ ] `deno run -A src/ui/test/schema_roundtrip.test.ts`
+- [ ] `deno run -A tools/verify-definition.ts`
+- [ ] `deno task build:main`
+- [ ] In-game: a 3-action process on a structure and one on an item — **needs the game**;
+      stated as unverified rather than claimed
