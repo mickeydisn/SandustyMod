@@ -106,6 +106,6 @@ export function projectileOptionField(): FieldSpec {
 }
 
 /** Whether the form's option key names a real option. */
-export function optionKeyKnown(key: string | undefined): boolean {
+function optionKeyKnown(key: string | undefined): boolean {
     return !!key && !!resolveProjectileOption(key);
 }

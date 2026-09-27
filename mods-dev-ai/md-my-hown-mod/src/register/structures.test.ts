@@ -1,12 +1,17 @@
 // @ts-nocheck
 /**
- * What "Apply" can and cannot do.
- *   deno test -A src/register/apply.test.ts
+ * Structure unlocking.
+ *   deno test -A src/register/structures.test.ts
  *
- * The claim under test: re-registering an id *replaces* the engine's definition
- * (so an edited flag takes effect), but deleting an id cannot *remove* it — the
- * engine has no unregister for content kinds — so Apply has to say so rather
- * than report success.
+ * Registered is not the same as reachable. The build menu iterates
+ * `player.buildings` and reads each definition from the vanilla registry *or* the
+ * mod registry, so the only thing between a registered structure and a usable
+ * one is membership of that list — and that push is separate work, with its own
+ * rules (see `unlockStructures`).
+ *
+ * The stale/snapshot behaviour these tests used to sit next to is gone: nothing
+ * applies the config after boot any more, so there is nothing to report as
+ * stale.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
 
@@ -21,15 +26,7 @@ globalThis.sandkit = {
     },
 };
 
-const {
-    snapshotRegistered,
-    staleAfter,
-    clearRegistrationCache,
-    applyConfig,
-    unlockStructures,
-} = await import(
-    "./apply.ts"
-);
+const { unlockStructures } = await import("./structures.ts");
 const { entryToForm, formToEntry, passthroughKeys } = await import("../ui/schema.ts");
 
 const unlocked: string[] = [];
@@ -176,74 +173,4 @@ Deno.test("an 'always' node leaves the structure available from the start", () =
     });
     assertEquals(unlocked, ["a"]);
     assertEquals(removed, []);
-});
-
-Deno.test("a deleted entry is reported as still held by the game", () => {
-    // The honest core of it: the engine cannot unregister, so an id that vanished
-    // from the config is still live and the author has to be told.
-    const prev = { structures: ["gone:one", "here:two"] };
-    const cfg = { structures: [{ id: "here:two" }] };
-    const stale = staleAfter(cfg, prev);
-    assertEquals(stale.length, 1);
-    assertEquals(stale[0].id, "gone:one");
-    assertEquals(stale[0].cat, "structures");
-});
-
-Deno.test("an edited entry is NOT reported as stale", () => {
-    // The distinction that matters most: changing a flag is a replace, and the
-    // engine takes it. Reporting that as stale would cry wolf on every edit.
-    const cfg = { structures: [{ id: "a", alwaysUnlocked: true }] };
-    assertEquals(staleAfter(cfg, { structures: ["a"] }).length, 0);
-});
-
-Deno.test("removals are found across every category, not just structures", () => {
-    const prev = { elements: ["e1"], items: ["i1"], sprites: ["s1"] };
-    const stale = staleAfter({ elements: [], items: [{ id: "i1" }], sprites: [] }, prev);
-    assertEquals(stale.map((s: { id: string }) => s.id).sort(), ["e1", "s1"]);
-});
-
-Deno.test("stale detection survives a missing or malformed category", () => {
-    // Never throw from something that only produces a message.
-    assertEquals(staleAfter({}, { structures: ["a"] }).length, 0, "a missing key misfired");
-    assertEquals(
-        staleAfter({ structures: "nonsense" }, { structures: ["a"] }).length,
-        0,
-        "a non-array category misfired",
-    );
-    // An entry with no id cannot be matched, so it must not make a real removal
-    // look like a non-removal.
-    assertEquals(staleAfter({ structures: [{}] }, { structures: ["a"] }).length, 1);
-});
-
-Deno.test("a snapshot is a copy and survives the cache being cleared", () => {
-    // Apply clears the cache first. If the snapshot were a live reference it would
-    // be emptied by the very step it exists to record, and every removal would be
-    // silently missed — the bug this whole thing guards.
-    const empty = {
-        elements: [],
-        items: [],
-        recipes: [],
-        processing: [],
-        contacts: [],
-        interactions: [],
-        modifiers: [],
-        terrains: [],
-        techs: [],
-        upgradeCategories: [],
-        upgrades: [],
-        projectiles: [],
-        energyTypes: [],
-        energyNetworks: [],
-        excavationProfiles: [],
-        structureBehaviors: [],
-        signals: [],
-        triggers: [],
-        sprites: [],
-        inputBindings: [],
-    };
-    applyConfig({ ...empty, structures: [{ id: "x" }] });
-    const snap = snapshotRegistered();
-    clearRegistrationCache();
-    assertEquals(snap.structures, ["x"], "the snapshot was emptied by clearRegistrationCache");
-    assertEquals(staleAfter({ structures: [] }, snap).map((s: { id: string }) => s.id), ["x"]);
 });

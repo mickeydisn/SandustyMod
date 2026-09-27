@@ -62,14 +62,6 @@ import {
     removeUpgradeCategory,
     savePanelState,
 } from "../config/store.ts";
-import {
-    applyConfig,
-    clearRegistrationCache,
-    reapplyFromStorage,
-    snapshotRegistered,
-    staleAfter,
-    updateEntry,
-} from "../register/apply.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
 import { api, React as HostReact } from "../api.ts";
 import { isToolSelected } from "../select.ts";
@@ -561,12 +553,12 @@ export function createPanelComponent(defaultMinimized = true) {
                 skApi.toast("Save failed — see console");
                 return;
             }
-            applyConfig(loadConfig());
-            // An edit to an already-registered entry is skipped by applyConfig's
-            // cache, so push it through updateDefinition explicitly.
-            if (editingId) updateEntry(cat, editingId, entry);
+            // The config is the source of truth, and saving it is the entire job.
+            // The running game is not touched: the engine syncs mod content to the
+            // simulation worker once, at boot, and cannot be told about a new or
+            // changed definition afterwards. See `../register/registry.ts`.
             refresh();
-            skApi.toast(`${meta.label} saved`);
+            skApi.toast(`${meta.label} saved — reload the game to apply it.`);
             cancelForm();
         };
 
@@ -583,9 +575,8 @@ export function createPanelComponent(defaultMinimized = true) {
                 console.error(`${LOG} remove failed`, e);
             }
             setConfirmId(null);
-            applyConfig(loadConfig());
             refresh();
-            skApi.toast("Removed");
+            skApi.toast("Removed — reload the game to apply it.");
         };
 
         /**
@@ -1244,15 +1235,14 @@ export function createPanelComponent(defaultMinimized = true) {
                                 try {
                                     importConfigJson(jsonText);
                                     refresh();
-                                    reapplyFromStorage();
-                                    skApi.toast("Config imported & applied");
+                                    skApi.toast("Config imported — reload the game to apply it.");
                                 } catch (e) {
                                     console.error(`${LOG} import failed`, e);
                                     setJsonError(`import failed: ${(e as Error).message}`);
                                 }
                             },
                         },
-                        "Import & apply",
+                        "Import",
                     ),
                 ),
                 h("textarea", {
@@ -1267,7 +1257,7 @@ export function createPanelComponent(defaultMinimized = true) {
                 jsonError ? h("div", { style: S.errorText }, jsonError) : h(
                     "div",
                     { style: S.hint },
-                    "A successful import registers everything immediately.",
+                    "Importing replaces the stored config. Reload the game to register it.",
                 ),
             );
 
@@ -1348,43 +1338,6 @@ export function createPanelComponent(defaultMinimized = true) {
 
         const toggleMin = () => persistPanel({ ...panel, minimized: !panel.minimized });
 
-        /**
-         * Re-apply the whole config.
-         *
-         * `applyConfig` skips any id already in its registration cache, so without
-         * clearing it first this button would report success while the game kept
-         * every stale definition. Clearing first makes Apply mean what it says.
-         *
-         * What it still cannot mean is "un-register". The engine has no unregister
-         * for content kinds — only `ui.unregister`, for overlays — so an entry
-         * *deleted* from the config stays live in the game until a reload. That
-         * is reported instead of glossed over, because the alternative is an
-         * author deleting a structure, hitting Apply, and finding it still in the
-         * build menu with nothing anywhere saying why.
-         *
-         * The snapshot has to be taken before the cache is cleared — clearing is
-         * the first thing that happens, and the list of what was registered is
-         * exactly what it destroys.
-         */
-        const applyNow = () => {
-            const cfgNow = loadConfig();
-            const prev = snapshotRegistered();
-            clearRegistrationCache();
-            applyConfig(cfgNow);
-            const stale = staleAfter(cfgNow, prev);
-            if (stale.length > 0) {
-                const names = stale.slice(0, 3).map((s) => s.id).join(", ");
-                const more = stale.length > 3 ? ` +${stale.length - 3} more` : "";
-                skApi.toast(
-                    `Applied, but the game still holds ${stale.length} removed ` +
-                        `entr${stale.length > 1 ? "ies" : "y"} (${names}${more}). ` +
-                        `Reload the game to clear.`,
-                );
-            } else {
-                skApi.toast("Config re-applied to game");
-            }
-        };
-
         const totalEntries = MENU_GROUPS.flatMap((g) => g.categories).reduce(
             (n, c) => n + (CATEGORY_META[c].configKey ? entriesOf(cfg, c).length : 0),
             0,
@@ -1441,7 +1394,6 @@ export function createPanelComponent(defaultMinimized = true) {
                     },
                     h("span", { style: S.titleText }, "My Own Mod — Configurator"),
                     h("span", { style: S.chipCount }, `${totalEntries} entries`),
-                    h("button", { style: S.btn, onClick: applyNow }, "Apply"),
                     h("button", { style: S.btn, onClick: toggleMin }, "–"),
                 ),
                 h(

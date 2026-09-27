@@ -189,17 +189,3 @@ export function canRunAt(key: string, callSite: string): boolean {
 export function slotsFor(key: string): string[] {
     return Object.keys(CALL_SITE_SCOPE).filter((site) => canRunAt(key, site));
 }
-
-/** The distinct need signatures present, most-demanding last. */
-export function scopeGroups(): { needs: readonly ScopeNeed[]; keys: string[] }[] {
-    const bySig = new Map<string, string[]>();
-    for (const [key, needs] of Object.entries(ACTION_SCOPE)) {
-        const sig = needs.join("+");
-        bySig.set(sig, [...(bySig.get(sig) ?? []), key]);
-    }
-    const rank = (s: string) => (s === "" ? 0 : s.split("+").length);
-    return [...bySig].sort((a, b) => rank(a[0]) - rank(b[0])).map(([sig, keys]) => ({
-        needs: sig === "" ? [] : (sig.split("+") as ScopeNeed[]),
-        keys: keys.sort(),
-    }));
-}

@@ -150,18 +150,12 @@ export function describeNode(node: UnlockNodeConfig): string {
     return `Unlocked by ${named} ${via}${cost}${parent}.`;
 }
 
-/** One sentence describing where a structure's unlock comes from. */
-export function unlockSummary(structureId: string, cfg: ModConfig): string {
-    return describeNode(unlockNodeOf(structureId, cfg));
-}
-
 /**
  * The same sentence, for a structure that is not saved yet.
  *
- * {@link unlockSummary} resolves through the structure's id, and a new or
- * half-edited form has none — so the node the *picker* currently holds is
- * described instead. A structure with no node set is the default, so the answer
- * is the real one rather than a placeholder.
+ * A new or half-edited form has no id to resolve through, so the node the
+ * *picker* currently holds is described instead. A structure with no node set is
+ * the default, so the answer is the real one rather than a placeholder.
  */
 export function unlockLine(
     form: Record<string, string>,

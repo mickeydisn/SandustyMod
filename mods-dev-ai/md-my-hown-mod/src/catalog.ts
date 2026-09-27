@@ -515,6 +515,18 @@ export function listMatterTypes(): Opt[] {
     ];
 }
 
+/** The same table, by value — for reading a number back as a name. */
+export const MATTER_NAME_BY_VALUE: Record<number, string> = {
+    1: "solid",
+    2: "liquid",
+    3: "particle",
+    4: "gas",
+    5: "static",
+    6: "slushy",
+    7: "wisp",
+    8: "powder",
+};
+
 /**
  * Engine build-mode types (structures.register → buildModes[].type).
  * Verified in doc/doc-artifacts/doc.api/definitions/api.structures.definition.md
@@ -1203,21 +1215,6 @@ export function discoverSprites(): NativeObject[] {
     return listSpriteIds().map((o) => ({ id: o.value, origin: "game" as const, label: o.label }));
 }
 
-/**
- * Host discovery per panel.
- *
- * Keyed like `PANEL_NATIVES`, and for the same reason: a screen whose object has
- * no host registry simply is not in this table, which is a fact about the API
- * rather than a missing feature. A recipe or a trigger has no "already in the
- * game" list to merge, and an empty section header for it would be noise.
- */
-export const DISCOVERY: Partial<Record<Tab, () => NativeObject[]>> = {
-    elements: discoverElements,
-    items: discoverItems,
-    sprites: discoverSprites,
-    structures: discoverStructures,
-    terrains: discoverTerrains,
-};
 
 /** Hook-modifier handlers, from CODE_HANDLERS (used by the modifiers tab). */
 export function listHandlerKeys(): Opt[] {

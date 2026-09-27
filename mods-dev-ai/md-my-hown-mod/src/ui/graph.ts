@@ -206,11 +206,6 @@ export function categoryColor(cat: Tab): string {
     return PALETTE[i < 0 ? COLOUR_ORDER.length % PALETTE.length : i % PALETTE.length];
 }
 
-/** A muted border for a node, so the fill reads as the identity. */
-export function categoryBorder(cat: Tab): string {
-    return categoryColor(cat);
-}
-
 /** Categories that can appear in the graph at all, in a stable display order. */
 export function graphCategories(): Tab[] {
     const involved = new Set<Tab>();

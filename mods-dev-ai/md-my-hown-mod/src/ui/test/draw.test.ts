@@ -38,7 +38,7 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { resolveDraw } = await import("../../register/apply.ts");
+const { resolveDraw } = await import("../../register/structures.ts");
 const { DRAW_FUNCTIONS, listDrawFunctions, drawDoc } = await import("../../catalog.ts");
 
 /**

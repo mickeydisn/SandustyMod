@@ -327,13 +327,12 @@ Deno.test("registration compiles a process, so options finally arrive", () => {
     // `processorConvert` could never be given the `to` its schema marks `required`.
     // `compileProcess` binds the options at build time instead.
     //
-    // Read the wiring out of `apply.ts` rather than calling the engine: the point is
-    // that the *registration path* compiles a list, not that some function somewhere
-    // could have done it.
-    const applySrc = Deno.readTextFileSync(
-        new URL("../register/apply.ts", import.meta.url).pathname,
-    );
-    const compiles = (applySrc.match(/compileProcess\(/g) ?? []).length;
+    // Read the wiring out of the registration modules rather than calling the
+    // engine: the point is that the *registration path* compiles a list, not that
+    // some function somewhere could have done it.
+    const here = new URL("../register/", import.meta.url).pathname;
+    const src = Deno.readTextFileSync(here + "the-rest.ts");
+    const compiles = (src.match(/compileProcess\(/g) ?? []).length;
     // Was five. The projectile site now calls `compileProjectile` — a different
     // compiler for a different kind of thing — so this count dropping to four is
     // the split, not a lost call site. `compileProjectile(` is asserted separately
@@ -345,12 +344,12 @@ Deno.test("registration compiles a process, so options finally arrive", () => {
         "processing, signal, trigger, behavior (projectile moved to compileProjectile)",
     );
     assert(
-        (applySrc.match(/compileProjectile\(/g) ?? []).length === 1,
+        (src.match(/compileProjectile\(/g) ?? []).length === 1,
         "the projectile site no longer compiles an option",
     );
     // And no site resolves a bare key any more — that is the old 1:1 shape.
     assertEquals(
-        (applySrc.match(/resolveAnyHandler/g) ?? []).length,
+        (src.match(/resolveAnyHandler/g) ?? []).length,
         0,
         "a registration site still resolves a single key",
     );

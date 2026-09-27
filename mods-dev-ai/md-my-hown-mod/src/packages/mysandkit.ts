@@ -375,17 +375,42 @@ const MATTER_MAP: Record<string, number> = {
     powder: 8,
 };
 
+/**
+ * The stored matter type as the number the engine's matter table is keyed by.
+ *
+ * Total, and it never returns a string — that is the whole point of it.
+ *
+ * `sandkit.enums.MatterType` is a TypeScript *numeric* enum, so it is
+ * reverse-mapped and holds both `8 → "Powder"` and `"Powder" → 8`. A lookup like
+ * `enums[v]` therefore returns the **name** for a numeric key, and handing that
+ * on is catastrophic in a way that is invisible: the worker's matter table is
+ * `ce[def.matterType]` (`utils-worker.js/75089.js:393-397`), `ce` has keys
+ * `1..8`, so `ce["Powder"]` is `undefined`, no update function is assigned, and
+ * the element does not move at all. It still renders, still sits in the picker,
+ * still looks fine — it is simply inert, and a real liquid placed next to it
+ * falls while it does not.
+ *
+ * Numbers are passed through rather than validated, so a build that adds a
+ * matter type beyond 8 still works.
+ */
 function resolveMatterType(v: string | number | undefined): number | undefined {
     if (v === undefined || v === null) return undefined;
     if (typeof v === "number" && Number.isFinite(v)) return v;
     if (typeof v === "string") {
-        const lower = v.toLowerCase();
+        const lower = v.trim().toLowerCase();
         if (lower in MATTER_MAP) return MATTER_MAP[lower];
+        // A number written as text — what the form used to store for a
+        // hand-written `matterType: 8`, and what a hand-edited config can hold.
+        // A number written as text — what the form used to store for a
+        // hand-written `matterType: 8`, and what a hand-edited config can hold.
+        if (/^\d+$/.test(lower)) return Number(lower);
         const enums = g()?.enums?.MatterType;
         if (enums) {
-            if (v in enums) return enums[v];
             const cap = v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
-            if (cap in enums) return enums[cap];
+            // Only a *number* is a valid answer. `enums[name]` is the number for
+            // a name, but `enums["8"]` is the string "Powder" — see above.
+            const viaEnum = enums[cap];
+            if (typeof viaEnum === "number") return viaEnum;
         }
     }
     return MATTER_MAP.powder;
@@ -470,6 +495,36 @@ function variantFromMetaColor(metaColor: unknown): [number, number, number, numb
     if (typeof metaColor !== "number" || !Number.isFinite(metaColor)) return NEUTRAL_VARIANT;
     const packed = Math.max(0, Math.min(0xffffff, Math.floor(metaColor)));
     return [(packed >> 16) & 255, (packed >> 8) & 255, packed & 255, 255];
+}
+
+/**
+ * The element fields the engine must read in engine shape, from a stored entry.
+ *
+ * Exported so the `updateDefinition` path normalises exactly like `register`
+ * does. It did not, and the asymmetry was a real bug: a `matterType` saved as
+ * `"powder"` went to the engine as a string, so the worker's matter table —
+ * `ce[def.matterType]` — had no entry for it and the element was left with no
+ * update function at all (`utils-worker.js/75089.js:393-397`).
+ *
+ * `register` needs the whole definition because it assigns `id`, `nameKey` and
+ * the i18n entries; an update is a merge into something that already has those,
+ * so only the fields whose *type* the engine cares about are converted.
+ */
+export function normalizeElementPatch(entry: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...entry };
+    const mt = resolveMatterType(entry.matterType as string | number | undefined);
+    if (mt !== undefined) out.matterType = mt;
+    const rawColors = entry.colors as { variants?: unknown } | number[][] | undefined;
+    const rawVariants = Array.isArray(rawColors) ? rawColors : rawColors?.variants;
+    if (Array.isArray(rawVariants) && rawVariants.length > 0) {
+        out.colors = Array.isArray(rawColors)
+            ? { variants: rawVariants }
+            : { ...rawColors, variants: rawVariants };
+    } else if (entry.metaColor !== undefined) {
+        out.colors = { variants: [variantFromMetaColor(entry.metaColor)] };
+    }
+    if (typeof entry.getExtraProps !== "function") delete out.getExtraProps;
+    return out;
 }
 
 function normalizeElement(def: ElementConfig): Record<string, unknown> {

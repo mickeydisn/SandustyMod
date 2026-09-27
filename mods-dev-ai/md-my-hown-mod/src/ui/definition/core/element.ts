@@ -15,7 +15,7 @@
  *
  * Ground truth: `doc/doc-tech/08-registering-elements.md`.
  */
-import { listMatterTypes } from "../../../catalog.ts";
+import { listMatterTypes, MATTER_NAME_BY_VALUE } from "../../../catalog.ts";
 import * as S from "../../styles.ts";
 import {
     advField,
@@ -192,12 +192,32 @@ const FLAGS = [
 
 // ── Round trip ───────────────────────────────────────────────────────────────
 
+/**
+ * A stored matter type as the text the picker offers.
+ *
+ * The stored value is often a *number* — a hand-written config, or anything that
+ * round-tripped through the engine — but the dropdown only offers lowercase
+ * names. Showing a bare `8` leaves the select with nothing selected, and saving
+ * that form then stores the **text** `"8"`, which is a different value with a
+ * different meaning: `resolveMatterType("8")` used to hand the engine the string
+ * `"Powder"`, which matches no entry in the worker's matter table, and the
+ * element stopped moving entirely. Numbers are therefore read back as names, so
+ * the form is always a valid selection and the round trip is stable.
+ */
+function matterTypeToForm(v: unknown): string | undefined {
+    if (typeof v === "string") return v;
+    if (typeof v === "number" && Number.isFinite(v)) {
+        return MATTER_NAME_BY_VALUE[v] ?? String(v);
+    }
+    return undefined;
+}
+
 /** Stored entry → form strings, for the whole element. */
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
     read.put("description", read.str(e.description));
     read.put("descriptionKey", read.str(e.descriptionKey));
-    read.put("matterType", read.str(e.matterType) ?? read.num(e.matterType));
+    read.put("matterType", matterTypeToForm(e.matterType));
     read.put("density", read.num(e.density));
     read.put("horizontalSpeed", read.num(e.horizontalSpeed));
     read.put("duration", read.num(e.duration));

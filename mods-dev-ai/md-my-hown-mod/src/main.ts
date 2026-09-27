@@ -5,6 +5,7 @@
  * Panel is visible only while the tool is the active hotbar item.
  */
 import { onSettingsChange, readSettings, runDisableCleanup } from "./packages/modkit.ts";
+import { registerAll } from "./register/index.ts";
 import { LOG, MOD_ID, SETTINGS, STORAGE_KEYS, VERSION } from "./constants.ts";
 import { registerTool, unregisterTool } from "./tool.ts";
 import "./hooks/index.ts"; // register handler keys for pickers
@@ -15,13 +16,6 @@ let started = false;
 
 async function startEnabled(): Promise<void> {
     await registerTool();
-    // Apply stored JSON config after tool/overlay are up
-    try {
-        const { applyConfig } = await import("./register/apply.ts");
-        applyConfig();
-    } catch (e) {
-        console.warn(`${LOG} applyConfig skipped`, e);
-    }
 }
 
 function applyEnabled(enabled: boolean, reason: string): void {
@@ -48,8 +42,14 @@ function applyEnabled(enabled: boolean, reason: string): void {
 
 try {
     const cfg = readSettings(MOD_ID, SETTINGS);
-    console.log(`${LOG} settings`, cfg);
-    applyEnabled(cfg.enabled !== false, "boot");
+    const enabled = cfg.enabled !== false;
+
+    // The one and only registration. Synchronous, before anything can await, and
+    // before the engine's one-shot sync to the simulation worker. The comment
+    // inside `registerAll` says why it has to be here and not later.
+    if (enabled) registerAll();
+
+    applyEnabled(enabled, "boot");
     onSettingsChange(MOD_ID, SETTINGS, (next) => {
         applyEnabled(next.enabled !== false, "config-change");
     });

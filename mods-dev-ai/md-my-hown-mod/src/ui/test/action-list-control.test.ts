@@ -7,6 +7,7 @@
  * offers only what this **call site** can run.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { DEFAULT_CONFIG } from "../../constants.ts";
 import { HANDLER_META, handlersForSlot, TAB_TO_CALL_SITE } from "../../hooks/handler-registry.ts";
 import { renderActionList } from "../action-list-control.ts";
 import { formatActionRefs, parseActionRefs } from "../definition/actions-field.ts";
@@ -38,7 +39,7 @@ function render(tab: string, form: Record<string, string>) {
     renderActionList({
         h: h as never,
         form,
-        cfg: {},
+        cfg: DEFAULT_CONFIG,
         setField: (_k: string, v: string) => {
             written = v;
         },
