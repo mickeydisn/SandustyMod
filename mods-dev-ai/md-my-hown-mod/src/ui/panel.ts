@@ -100,6 +100,7 @@ import {
     ownerLabel,
     ownersOf,
     renderListRow,
+    shownBecauseOf,
 } from "./panel/list.ts";
 import {
     isContentField,
@@ -112,7 +113,7 @@ import { renderProjectileOption } from "./projectile-option-control.ts";
 import { listFor } from "./panel/index.ts";
 import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
 import * as S from "./styles.ts";
-import { emptyViewState, type ViewMode } from "./viewstate.ts";
+import { emptyViewState, LIST_DEFAULTS, type ViewMode } from "./viewstate.ts";
 import { clampChip, exceedsSlop } from "./drag.ts";
 import {
     type HandlersTabState,
@@ -261,7 +262,7 @@ export function createPanelComponent(defaultMinimized = true) {
          * narrowing. They live beside `confirmId` and are reset with it, because
          * all three are "what am I looking at on this screen" rather than config.
          */
-        const [listQuery, setListQuery] = useState("");
+        const [listQuery, setListQuery] = useState(LIST_DEFAULTS.listQuery);
         /**
          * Which mod's objects to show: this mod, the game, or one named other.
          *
@@ -269,8 +270,11 @@ export function createPanelComponent(defaultMinimized = true) {
          * / Yours / Game — and it was this one said twice: "Yours" is `own`,
          * "Game" is `game`, and `origin` had no third value to offer. Two pieces
          * of state for one choice is a way for the chips to disagree.
+         *
+         * Starts on `LIST_DEFAULTS.listOwner` ("own") rather than a literal, so
+         * this and the reset in `viewstate.ts` cannot drift apart.
          */
-        const [listOwner, setListOwner] = useState<OwnerKey | "all">("all");
+        const [listOwner, setListOwner] = useState<OwnerKey | "all">(LIST_DEFAULTS.listOwner);
         /**
          * Show the objects that are deliberately out of normal use: an element
          * marked `hidden`, a structure marked `hideFromBuildMenu`.
@@ -284,7 +288,7 @@ export function createPanelComponent(defaultMinimized = true) {
          * not, so carrying "show hidden" into Items would offer a box that can
          * only ever reveal nothing.
          */
-        const [listHidden, setListHidden] = useState(false);
+        const [listHidden, setListHidden] = useState(LIST_DEFAULTS.listHidden);
         /** Which row has its detail open. One at a time — two open is noise. */
         const [openRow, setOpenRow] = useState<string | null>(null);
         /**
@@ -480,7 +484,9 @@ export function createPanelComponent(defaultMinimized = true) {
             setLibQuery(clean.libQuery);
             setHandlerTab(clean.handlerTab);
             setListQuery(clean.listQuery);
-            setListOwner(clean.listOwner as OwnerKey | "all");
+            // No cast needed: `listOwner` is typed `OwnerKey | "all"` in the
+            // state interface, so the value is already right for the setter.
+            setListOwner(clean.listOwner);
             setListHidden(clean.listHidden);
             setOpenRow(clean.openRow);
         }, []);
@@ -1125,25 +1131,25 @@ export function createPanelComponent(defaultMinimized = true) {
                     h("span", { style: S.chipCount }, String(n)),
                 );
 
-            // The hidden-objects tick. One definition, rendered in whichever of the
-            // two filter bars is showing: it is a third filter on this list, not a
-            // mode of its own, and it must not be dropped just because there is
-            // only one owner to filter by.
+            // The hidden-objects tick, sitting with the owner chips rather than
+            // on the search box. It filters the same rows they do, so putting it
+            // apart from them split the screen's only filter controls across two
+            // bars for no reason — the search box is a *lookup*, not a filter,
+            // and this reads better as "the third filter" next to the other two.
+            //
+            // A chip rather than a bare checkbox, for the same reason: it is a
+            // filter, and filters here are pills. Tinted with `chipCheckOn` when
+            // on so it reads as "applied" the same way an active owner chip does,
+            // rather than needing its own visual language.
             const hiddenToggle = () =>
                 h(
                     "label",
                     {
                         key: "list-hidden",
-                        style: {
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            fontSize: 11,
-                            color: "#cfe0ff",
-                            cursor: "pointer",
-                            marginLeft: "auto",
-                        },
-                        title: `Include ${hiddenHere} marked hidden or kept out of the build menu`,
+                        style: listHidden ? S.chipCheckOn : S.chipCheck,
+                        title: hiddenHere
+                            ? `Include ${hiddenHere} marked hidden or kept out of the build menu`
+                            : "No hidden objects in this view",
                     },
                     h("input", {
                         type: "checkbox",
@@ -1152,7 +1158,10 @@ export function createPanelComponent(defaultMinimized = true) {
                         onChange: (e: { target: { checked: boolean } }) =>
                             setListHidden(e.target.checked),
                     }),
-                    `hidden (${hiddenHere})`,
+                    "hidden",
+                    // The count is omitted at zero rather than shown as "(0)": a
+                    // permanent zero beside a tick implies the tick is broken.
+                    hiddenHere ? h("span", { style: S.chipCount }, String(hiddenHere)) : null,
                 );
 
             return h(
@@ -1178,10 +1187,8 @@ export function createPanelComponent(defaultMinimized = true) {
                     ),
                     h("button", { style: S.btnPrimary, onClick: startNew }, "+ New"),
                 ),
-                // The filter bar: a text filter, and nothing else. The owner chips
-                // are the only source filter — "Yours" is `owner: "own"`, "Game" is
-                // `owner: "game"`, and "All" is the state the owner row starts in.
-                // Two controls setting one piece of state can disagree.
+                // The search box, on its own. It is a lookup over the rows rather
+                // than one of the filters, so it does not share a bar with them.
                 h(
                     "div",
                     { style: S.listFilterBar },
@@ -1194,33 +1201,45 @@ export function createPanelComponent(defaultMinimized = true) {
                             setListQuery(e.target.value),
                     }),
                 ),
-                // One chip per mod that actually contributed a row: this mod, the
-                // game, then each other installed mod. Built from the rows, so a
-                // chip is never offered for a mod that has nothing here.
-                owners.length > 1
-                    ? h(
-                        "div",
-                        { style: S.listFilterBar },
-                        ...owners.map((k) => ownerChip(k, ownerCounts.get(k) ?? 0)),
-                        listOwner !== "all"
-                            ? h(
-                                "button",
-                                { style: S.chip, onClick: () => setListOwner("all") },
-                                "✕ clear",
-                            )
-                            : null,
-                        hiddenHere ? hiddenToggle() : null,
-                    )
-                    : hiddenHere
-                    ? h("div", { style: S.listFilterBar }, hiddenToggle())
-                    : null,
+                // The filters, as one row: the owner chips, then the hidden tick.
+                // Always drawn — see the note on `S.listFilterBar`. When only one
+                // owner has rows the chip row is just the hidden tick, which is
+                // the right answer: there is one filter, and it is shown.
+                h(
+                    "div",
+                    { style: S.listFilterBar },
+                    ...owners.map((k) => ownerChip(k, ownerCounts.get(k) ?? 0)),
+                    hiddenToggle(),
+                    listOwner !== "all"
+                        ? h(
+                            "button",
+                            {
+                                key: "list-owner-clear",
+                                style: S.chip,
+                                onClick: () => setListOwner("all"),
+                            },
+                            "✕ clear",
+                        )
+                        : null,
+                ),
                 shown.length === 0
                     ? h(
                         "div",
                         { style: { ...S.emptyState, margin: "8px 10px" } },
+                        // Name the filter that emptied the list, or the empty screen
+                        // is a dead end: with the owner filter and the hidden tick
+                        // both on by default, "no match" now has three possible
+                        // causes and the user can only guess. The counts are what
+                        // turn it from a shrug into a next step.
                         rows.length === 0
                             ? `Nothing here yet — press “+ New” to create the first ${meta.label.toLowerCase()}.`
-                            : `No ${meta.label.toLowerCase()} match that filter.`,
+                            : shownBecauseOf(
+                                rows,
+                                listOwner,
+                                listHidden,
+                                listQuery,
+                                meta.label,
+                            ),
                     )
                     : h(
                         "div",

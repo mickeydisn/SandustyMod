@@ -33,6 +33,12 @@ function main(): void {
     // sandkit.api.ui.overlays.register("global", `${MOD_ID}:overlay`, …);
     // sandkit.api.events.on("game:ready", …);
     // ────────────────────────────────────────────────────────────────────────
+    // TEMP. CODE
+    runDisableCleanup("md-big-brother", "Clean", []);
+    runDisableCleanup("buffer-controls", "Clean", []);
+    runDisableCleanup("md-channel-pads", "Clean", []);
+    runDisableCleanup("md-buffer-process", "Clean", []);
+    // ────────────────────────────────────────────────────────────────────────
 
     safe(() => sandkit.api.ui.toast(`${MOD_ID} enabled`, {}));
     console.log(`${LOG} v${VERSION} enabled`);
@@ -48,9 +54,22 @@ function teardown(): void {
     // ────────────────────────────────────────────────────────────────────────
 }
 
+function openDevTools(): void {
+    try {
+        const electron = (globalThis as { electron?: { openDevTools?: () => void } }).electron;
+        electron?.openDevTools?.();
+        console.log("GAME STATE", sandkit.state);
+    } catch {
+        /* devtools bridge unavailable — non-fatal */
+    }
+}
+
 /** Run the mod, or wipe every trace of it. */
 function applyEnabled(enabled: boolean, reason: string): void {
     if (enabled) {
+        // DEV MOD :
+        openDevTools();
+
         main();
         return;
     }

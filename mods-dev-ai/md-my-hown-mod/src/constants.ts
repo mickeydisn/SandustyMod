@@ -221,6 +221,11 @@ export interface StructureConfig {
     /** The real menu-visibility lever. Read off the mod registry by the menu. */
     hideFromBuildMenu?: boolean;
     /**
+     * Never written — read only so a config saved under the name this mod briefly
+     * used is still recognised as hidden rather than quietly unfiltered.
+     */
+    hiddenFromTheMenu?: boolean;
+    /**
      * Ours, not the engine's: the unlock node that gates this structure.
      *
      * Required — a structure always names a node, and the built-in "Unlock by
@@ -315,7 +320,135 @@ export interface ItemConfig {
      * `ActionType` has no Consumable member, so no use action can be dispatched.
      */
     handlerKey?: string;
+    /**
+     * Keep this item out of the menus.
+     *
+     * Reuses the structure's flag name on purpose — see `HIDDEN_FIELD`. There is
+     * no engine or registry field for item visibility, so this is a mod-layer
+     * contract: the mod records the author's intent and its own list filters on
+     * it. Nothing is written to the engine that would act on it.
+     */
+    hideFromBuildMenu?: boolean;
+    /** Read-only: a config saved under the name this mod briefly used. */
+    hiddenFromTheMenu?: boolean;
     [key: string]: unknown;
+}
+
+/** The category keys that have a hidden flag, in the `Tab` vocabulary. */
+export type HiddenCategory = "elements" | "structures" | "items";
+
+/**
+ * Which config field decides visibility, per category, and in which direction.
+ *
+ * The two are not the same shape of question, which is why this is a table of
+ * predicates rather than a table of names:
+ *
+ *  - **elements** — `visibleInPicker`, read **inverted**. It is the engine's own
+ *    field (12 references in the bundle, and a documented modifier arg in
+ *    `hooks.d.ts:609`), it defaults to `true` in the config, and the engine's
+ *    own default element sets it `false` — so an element is hidden exactly when
+ *    it says `visibleInPicker: false`. A plain `field === true` would call every
+ *    ordinary element hidden, which is the opposite of the intent.
+ *    An element's own `hidden` field is *not* this: it is not an engine field
+ *    and nothing acts on it.
+ *  - **structures** and **items** — `hideFromBuildMenu`, read **direct**. A field
+ *    on the mod registry record (`sandkit.mods.structures[id]`), not on the
+ *    engine's `getDefinitionByType` result. Items reuse the structure's name
+ *    because there is no field for item visibility anywhere; the mod defines
+ *    that contract and its own list filters on it.
+ *
+ * Terrains are absent deliberately. Their `isBuilding` is a *different* idea — a
+ * cell that counts as a built wall — so treating it as hidden would hide every
+ * plain terrain and show every wall.
+ */
+export const HIDDEN_FIELD: Partial<Record<HiddenCategory, string>> = {
+    elements: "visibleInPicker",
+    structures: "hideFromBuildMenu",
+    items: "hideFromBuildMenu",
+};
+
+/** True when the field is set to hide, rather than to show. */
+const HIDDEN_INVERTED: Partial<Record<HiddenCategory, boolean>> = {
+    elements: true,
+};
+
+/**
+ * Retired spellings still present in saved configs, per category.
+ *
+ * Read as a fallback so a config written before a rename keeps filtering the
+ * way its author intended instead of quietly becoming unfiltered. New writes use
+ * the name in `HIDDEN_FIELD`.
+ *
+ * For elements the retired name is `hidden`, and it is read with the *element*
+ * polarity — a plain `hidden: true` means hidden — so `HIDDEN_INVERTED` is
+ * applied per-entry rather than per-category. That is the one asymmetry here,
+ * and it is the honest one: those two fields never meant the same thing, and
+ * pretending otherwise would flip every element the flag was ever set on.
+ */
+export const HIDDEN_ALIASES: Partial<Record<HiddenCategory, string[]>> = {
+    elements: ["hidden"],
+    structures: ["hiddenFromTheMenu"],
+    items: ["hiddenFromTheMenu"],
+};
+
+/**
+ * Whether a config entry of `cat` is hidden, under either spelling.
+ *
+ * The one place the answer is computed. `catalog.ts` uses it for the selector's
+ * options and `ui/panel/list.ts` for the list rows.
+ */
+/**
+ * What an entry *explicitly* says about its own visibility.
+ *
+ * `true` = hidden, `false` = visible, `undefined` = says nothing at all. The
+ * three-way answer is the point: a merge has to tell "the mod turned it off"
+ * apart from "the mod never mentioned it", and a two-way boolean collapses
+ * those two into the same value.
+ *
+ * Inversion lives here rather than at each call site. `visibleInPicker: false`
+ * and `hideFromBuildMenu: false` both mean hidden-by-different-wording, and
+ * getting that wrong in a merge is how an element ends up silently reappearing.
+ */
+export function entryVisibility(
+    e: Record<string, unknown>,
+    cat: string,
+): boolean | undefined {
+    const field = HIDDEN_FIELD[cat as HiddenCategory];
+    // Only an explicit boolean counts. A missing flag, or a junk value, is not a
+    // statement about visibility — it is the absence of one, and the caller then
+    // falls through to the row's previous state.
+    //
+    // This direction is not a guess. The engine builds the picker's mask from the
+    // element's *matter type*, not from any stored field:
+    //
+    //     b = g !== es.Liquid && g !== es.Gas;   // -> y.visibleInPicker = b
+    //
+    // so anything that is not a liquid or a gas is offered by default, and the
+    // only thing that can turn that off is a `vacuum:element:prepare` modifier.
+    // Treating "no flag" as hidden inverted that default and made every solid
+    // element vanish from the list, which is the opposite of the engine.
+    if (field && typeof e[field] === "boolean") {
+        return HIDDEN_INVERTED[cat as HiddenCategory] ? e[field] === false : e[field] === true;
+    }
+    // A retired name, read with its *own* polarity: `hidden: true` on an element
+    // has always meant hidden, whereas `visibleInPicker: false` also means it but
+    // by saying the opposite. Same answer, different question.
+    for (const alias of HIDDEN_ALIASES[cat as HiddenCategory] ?? []) {
+        if (typeof e[alias] === "boolean") return e[alias] === true;
+    }
+    return undefined;
+}
+
+/**
+ * Whether a config entry of `cat` is hidden. The two-way form of
+ * `entryVisibility`, for the callers that only need the answer and do not need
+ * to tell "explicitly visible" apart from "silent".
+ */
+export function configIsHidden(e: Record<string, unknown>, cat: string): boolean {
+    // Only an explicit boolean decides. An absent field is not a statement about
+    // visibility, and for an element the config default of `true` is what "not
+    // mentioned" means — treating absence as hidden would empty the whole list.
+    return entryVisibility(e, cat) === true;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -15,7 +15,7 @@
  *
  * Ground truth: `doc/doc-tech/08-registering-elements.md`.
  */
-import { listMatterTypes, MATTER_NAME_BY_VALUE } from "../../../catalog.ts";
+import { listElements, listMatterTypes, MATTER_NAME_BY_VALUE } from "../../../catalog.ts";
 import * as S from "../../styles.ts";
 import {
     advField,
@@ -93,6 +93,147 @@ export function seedVariantFromMapColor(mapColorHex: string | undefined): string
 
 // ── The schema ───────────────────────────────────────────────────────────────
 
+/** The parent toggles for the two nested objects, as the `when` gates read them. */
+const isFlammableOn = (f: Record<string, string>) => f.flammableOn === "true";
+const isCollectableOn = (f: Record<string, string>) => f.collectableOn === "true";
+
+/**
+ * `flammable`, as the engine actually stores it.
+ *
+ * This used to be a plain checkbox, and that was wrong in a way nothing
+ * reported. The engine's fire pass reads the value like this:
+ *
+ * ```js
+ * p = e => builtin[e]?.flammable || null        // truthiness gate
+ * m = (env, x, y, type, s) => {
+ *   if ("object" == typeof s) { … }             // ← and a shape gate
+ * }
+ * ```
+ *
+ * So `flammable: true` passes the first gate and is then thrown away by the
+ * second: the element burns and never leaves a residue, no matter what the
+ * config asked for. The field has to hold an **object**.
+ *
+ * ## The toggle is the object's presence
+ *
+ * `|| null` means `{}` is truthy, so an empty object *is* flammable — it burns
+ * with no residue, which is a real setting, not an absence. The checkbox
+ * therefore maps to "is the key there", not "are its sub-values set":
+ *
+ *   off            → the key is absent
+ *   on, no sub-set → `{}` — burns, leaves nothing behind
+ *   on, sub-set    → the object, with only the keys that were filled in
+ *
+ * A saved `true` is read back as on. It could never have worked, but it is
+ * visible in a hand-edited config and silently turning it into "off" would be
+ * a second wrong answer to the same question.
+ */
+const FLAMMABLE_FIELDS: FieldSpec[] = [
+    {
+        key: "flammableOn",
+        label: "Flammable",
+        kind: "bool",
+        section: "Flammable",
+        hint: "burns when fire or flame passes over it. Turn on to reveal what it leaves behind",
+    },
+    {
+        key: "flammableOutputId",
+        label: "Leaves behind",
+        kind: "select",
+        section: "Flammable",
+        when: isFlammableOn,
+        options: listElements,
+        // A blank is not the same as no output. The engine guards on
+        // `if (outputElementId)`, so leaving this empty means the cell burns and
+        // nothing is written — the residue is the default, not a zero chance.
+        hint: "the element written over the burnt cell. empty = nothing is left",
+    },
+    {
+        key: "flammableOutputChance",
+        label: "Output chance",
+        kind: "number",
+        section: "Flammable",
+        when: isFlammableOn,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        // Not 1. The engine writes `chance: outputChance ?? 0.25`, so an
+        // omitted chance is a **quarter** of cells, not all of them.
+        hint: "0–1. engine default 0.25, not 1",
+    },
+    {
+        key: "flammableInheritsDuration",
+        label: "Spawned fire inherits duration",
+        kind: "bool",
+        section: "Flammable",
+        when: isFlammableOn,
+        hint: "copies this cell's remaining lifetime onto the fire it spawns",
+    },
+    {
+        key: "flammableDurationMin",
+        label: "Fire lifetime min (s)",
+        kind: "number",
+        section: "Flammable",
+        when: isFlammableOn,
+        min: 0,
+        max: 3600,
+        step: 0.05,
+        hint: "empty = the engine's own fire lifetime",
+    },
+    {
+        key: "flammableDurationMax",
+        label: "Fire lifetime max (s)",
+        kind: "number",
+        section: "Flammable",
+        when: isFlammableOn,
+        min: 0,
+        max: 3600,
+        step: 0.05,
+        hint: "with min, picks a random lifetime in between",
+    },
+];
+
+/**
+ * `collectable`, as the engine actually stores it.
+ *
+ * Also a plain checkbox before, and also silently wrong. Both the main thread
+ * and every worker build the collector's lookup table the same way:
+ *
+ * ```js
+ * const n = mod?.collectable
+ * if (mod?.elementType != null && n?.value != null) table.set(mod.elementType, n.value)
+ * ```
+ *
+ * `n?.value` on a boolean is `undefined`, so the element is never added to the
+ * table and the collector walks straight past it. Vanilla gold is
+ * `collectable: { value: 2 }` — an object holding the number.
+ *
+ * `value` is required, not decorative: the guard is `!= null`, so a bare `{}`
+ * collects nothing. Hence the validation below rather than a silent no-op.
+ */
+const COLLECTABLE_FIELDS: FieldSpec[] = [
+    {
+        key: "collectableOn",
+        label: "Collectable",
+        kind: "bool",
+        section: "Collectable",
+        hint: "the collector will take this. Turn on to set what it is worth",
+    },
+    {
+        key: "collectableValue",
+        label: "Collector value",
+        kind: "number",
+        section: "Collectable",
+        when: isCollectableOn,
+        min: 0,
+        step: 1,
+        int: true,
+        // Vanilla gold is 2, and the table stores the number verbatim, so this is
+        // a weight rather than a "yes". A blank value collects nothing at all.
+        hint: "the number the collector stores. required — gold is 2",
+    },
+];
+
 const FIELDS: FieldSpec[] = [
     idField(),
     textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
@@ -165,7 +306,6 @@ const FIELDS: FieldSpec[] = [
         hint:
             "one tint per cell, picked at random. Add four or five for a natural look. With none set, every cell takes the map colour.",
     },
-    boolField("flammable", "Flammable", "Behaviour"),
     boolField(
         "isTransportable",
         "Transportable",
@@ -174,21 +314,25 @@ const FIELDS: FieldSpec[] = [
         "conveyors / launchers can move it",
     ),
     boolField("isGrabbable", "Grabbable", "Behaviour"),
-    boolField("collectable", "Collectable", "Behaviour", "true", "collector value path"),
     boolField("hidden", "Hidden", "Flags"),
     boolField("visibleInPicker", "Visible in picker", "Flags", "true"),
+    ...FLAMMABLE_FIELDS,
+    ...COLLECTABLE_FIELDS,
     advField(),
 ];
 
-/** The behaviour flags, read and written as a group. */
-const FLAGS = [
-    "flammable",
-    "isTransportable",
-    "isGrabbable",
-    "collectable",
-    "hidden",
-    "visibleInPicker",
-];
+/**
+ * The behaviour flags, read and written as a group.
+ *
+ * `flammable` and `collectable` are **not** here. They used to be, and the
+ * group is booleans end to end — `typeof e[k] === "boolean"` on the way in,
+ * `setBool` on the way out. Both of those are quietly lossy for an object: the
+ * read skipped it entirely, and because both keys are in `FORM_COVERED` the
+ * passthrough that would otherwise have carried them dropped them too, so a
+ * hand-written `collectable: { value: 2 }` did not survive a save. They are
+ * handled by their own round trip now.
+ */
+const FLAGS = ["isTransportable", "isGrabbable", "hidden", "visibleInPicker"];
 
 // ── Round trip ───────────────────────────────────────────────────────────────
 
@@ -232,6 +376,51 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     for (const k of FLAGS) {
         if (typeof e[k] === "boolean") read.put(k, String(e[k]));
     }
+    readFlammable(e.flammable, read);
+    readCollectable(e.collectable, read);
+}
+
+/**
+ * `flammable` → the parent toggle and the four controls behind it.
+ *
+ * Both shapes the field has ever held are read. An object is the real one; a
+ * bare `true` is what the old checkbox wrote, and reading it as "on, nothing
+ * configured" keeps a hand-edited config from flipping to off on load.
+ */
+function readFlammable(raw: unknown, read: EntryReader): void {
+    if (raw === undefined || raw === null) return;
+    // `!!raw` rather than a type test: `{}` is flammable, and so is a legacy
+    // `true`. Both mean "the key is present".
+    read.put("flammableOn", "true");
+    if (typeof raw !== "object") return;
+    const f = raw as {
+        outputElementId?: string;
+        outputChance?: number;
+        fireInheritsDuration?: boolean;
+        duration?: number | number[];
+    };
+    read.put("flammableOutputId", read.str(f.outputElementId));
+    read.put("flammableOutputChance", read.num(f.outputChance));
+    // Read as a flag, not a lifted boolean: the two are not interchangeable
+    // here, and `put` only writes when given a value.
+    if (f.fireInheritsDuration) read.put("flammableInheritsDuration", "true");
+    // The engine reads either a fixed lifetime or a `[min, max]` pair and picks
+    // a random one, so the pair is two controls rather than a JSON box.
+    if (Array.isArray(f.duration)) {
+        read.put("flammableDurationMin", read.num(f.duration[0]));
+        read.put("flammableDurationMax", read.num(f.duration[1]));
+    } else {
+        read.put("flammableDurationMin", read.num(f.duration));
+    }
+}
+
+/** `collectable` → the parent toggle and its value. A legacy `true` reads as on. */
+function readCollectable(raw: unknown, read: EntryReader): void {
+    if (raw === undefined || raw === null) return;
+    read.put("collectableOn", "true");
+    if (typeof raw === "object") {
+        read.put("collectableValue", read.num((raw as { value?: number }).value));
+    }
 }
 
 /**
@@ -264,6 +453,61 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     const colors = w.optJson<number[][]>("colorsJson");
     if (colors) w.setRaw("colors", { variants: colors });
     for (const k of FLAGS) w.setBool(k, w.optBool(k));
+    writeFlammable(w);
+    writeCollectable(w);
+}
+
+/**
+ * The five controls → one `flammable` object, or no key at all.
+ *
+ * Three states, matching the three the engine distinguishes:
+ *
+ *   off            → nothing written. `del`, not `setRaw(undefined)` — a key
+ *                    left behind holding `{}` would still be flammable, because
+ *                    the engine's gate is truthiness.
+ *   on, no sub-set → `{}`. Burns and leaves nothing behind, which is what the
+ *                    checkbox means and is not the same as off.
+ *   on, sub-set    → only the keys that were filled in, so an untouched chance
+ *                    is omitted and the engine's own `?? 0.25` applies.
+ */
+function writeFlammable(w: EntryWriter): void {
+    if (!w.optBool("flammableOn")) {
+        w.del("flammable");
+        return;
+    }
+    const f: Record<string, unknown> = {};
+    const id = w.opt("flammableOutputId");
+    if (id) f.outputElementId = id;
+    const chance = w.optNum("flammableOutputChance");
+    if (chance !== undefined) f.outputChance = chance;
+    if (w.optBool("flammableInheritsDuration")) f.fireInheritsDuration = true;
+    // One number is a fixed lifetime; two are the `[min, max]` the engine
+    // samples. A half-filled pair collapses to the single value it does have,
+    // the same rule `durationRandom` uses, rather than becoming a range with a
+    // missing end.
+    const dMin = w.optNum("flammableDurationMin");
+    const dMax = w.optNum("flammableDurationMax");
+    if (dMin !== undefined && dMax !== undefined) f.duration = [dMin, dMax];
+    else if (dMin !== undefined) f.duration = dMin;
+    else if (dMax !== undefined) f.duration = dMax;
+    w.setRaw("flammable", f);
+}
+
+/**
+ * The two controls → one `collectable` object.
+ *
+ * `value` is written whenever the toggle is on and a number was given, and
+ * `validate` blocks the on-but-blank case, because the collector's guard is
+ * `!= null`: a `{}` that reached the game would look configured and collect
+ * nothing.
+ */
+function writeCollectable(w: EntryWriter): void {
+    if (!w.optBool("collectableOn")) {
+        w.del("collectable");
+        return;
+    }
+    const value = w.optNum("collectableValue");
+    w.setRaw("collectable", value === undefined ? {} : { value });
 }
 
 /**
@@ -274,11 +518,24 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
  * its own, which is why this cannot live on either field.
  */
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
-    if (errors.durationRandomMin || errors.durationRandomMax) return;
-    const min = form.durationRandomMin?.trim();
-    const max = form.durationRandomMax?.trim();
-    if (min && max && Number(min) > Number(max)) {
-        errors.durationRandomMax = "must be ≥ min";
+    if (!errors.durationRandomMax && !errors.flammableDurationMax) {
+        const min = form.durationRandomMin?.trim();
+        const max = form.durationRandomMax?.trim();
+        if (min && max && Number(min) > Number(max)) {
+            errors.durationRandomMax = "must be ≥ min";
+        }
+        const fMin = form.flammableDurationMin?.trim();
+        const fMax = form.flammableDurationMax?.trim();
+        if (fMin && fMax && Number(fMin) > Number(fMax)) {
+            errors.flammableDurationMax = "must be ≥ min";
+        }
+    }
+    // A collectable with no value is the trap the engine sets for us: the
+    // collector's guard is `value != null`, so the element is left out of the
+    // table entirely and the collector walks past it as if it were ordinary
+    // matter. It would save cleanly and do nothing, so it is blocked here.
+    if (form.collectableOn === "true" && !form.collectableValue?.trim()) {
+        errors.collectableValue = "required — without a value the collector skips this element";
     }
 }
 

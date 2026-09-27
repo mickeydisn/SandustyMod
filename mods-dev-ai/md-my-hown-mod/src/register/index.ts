@@ -40,6 +40,7 @@ import { registerElements } from "./core/elements.ts";
 import { registerStructures } from "./core/structures.ts";
 import { registerTerrains } from "./core/terrains.ts";
 import { registerTheRest } from "./the-rest.ts";
+import { installElementPickerVisibility } from "./core/element-picker.ts";
 import { closeBootWindow } from "./registry.ts";
 
 export interface RegisterCounts {
@@ -48,6 +49,14 @@ export interface RegisterCounts {
     terrains: number;
     /** Every other category, keyed by its config key (`items`, `recipes`, …). */
     rest: Record<string, number>;
+    /**
+     * Element types withheld from the vacuum by the picker hook.
+     *
+     * Reported rather than assumed, so a boot that hides nothing says so — the
+     * hook is skipped entirely in that case, and silently installing a no-op one
+     * would invalidate the engine's mask cache for no reason.
+     */
+    hiddenElements: number;
 }
 
 /**
@@ -64,11 +73,16 @@ export function registerAll(cfg?: ModConfig): RegisterCounts {
         structures: registerStructures(config),
         terrains: registerTerrains(config),
         rest: registerTheRest(config),
+        // After the elements, because it works from the types `registerElements`
+        // was just assigned, and before the window closes because the engine
+        // builds the vacuum's mask lazily and caches it — anything that changes
+        // it has to be in place by the time that first happens.
+        hiddenElements: installElementPickerVisibility(),
     };
     closeBootWindow();
     console.log(
         `${LOG} registered: el${counts.elements} st${counts.structures} ` +
-            `te${counts.terrains} ` +
+            `te${counts.terrains} hidden${counts.hiddenElements} ` +
             Object.entries(counts.rest).map(([k, v]) => `${k}${v}`).join(" "),
     );
     return counts;

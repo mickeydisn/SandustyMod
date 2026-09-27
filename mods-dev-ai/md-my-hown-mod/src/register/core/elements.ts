@@ -14,6 +14,7 @@ import { LOG, type ModConfig } from "../../constants.ts";
 import { loadConfig } from "../../config/store.ts";
 import { api, normalizeElementPatch } from "../../packages/mysandkit.ts";
 import { isBootWindowOpen, registered } from "../registry.ts";
+import { noteElementVisibility } from "./element-picker.ts";
 
 export { closeBootWindow } from "../registry.ts";
 export { __resetBootWindowForTests } from "../registry.ts";
@@ -39,6 +40,11 @@ export function registerElements(cfg?: ModConfig): number {
         n++;
         const type = res.elementType;
         if (typeof type === "number") api.elements.addElementToDiscoveries(type);
+        // Hand the assigned type to the picker module. This is the only moment an
+        // id can be tied to a type — the engine hands out the type here and
+        // nowhere else — so a `visibleInPicker: false` recorded any later would
+        // have nothing to match `args.elementType` against.
+        noteElementVisibility(type, el as Record<string, unknown>);
         // The one thing about an element that is invisible when it is wrong: the
         // worker resolves physics by `ce[def.matterType]`, and a `matterType` that
         // is not a number matches nothing, so the cells are created and then never

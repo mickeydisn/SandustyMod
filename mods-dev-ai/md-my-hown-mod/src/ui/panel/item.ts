@@ -18,25 +18,12 @@
  */
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverItems } from "../../catalog.ts";
-import { disclosureMark, originTag } from "./list.ts";
+import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
 /** Read a field from the engine's definition, falling back to the mod's entry. */
 function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
-}
-
-function brief(v: unknown): string {
-    if (v === undefined || v === null || v === "") return "";
-    if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
-    if (typeof v === "object") {
-        const o = v as Record<string, unknown>;
-        for (const k of ["id", "name", "type", "nameKey"]) {
-            if (typeof o[k] === "string" && o[k]) return String(o[k]);
-        }
-        return Array.isArray(v) ? `${(v as unknown[]).length} entries` : "set";
-    }
-    return String(v);
 }
 
 /**
@@ -108,35 +95,23 @@ function inlineRender(ctx: ListRenderCtx): unknown {
  * `itemType` is always shown, even when the type-specific set already implies
  * it, because a row whose type is missing from its own detail is a row the user
  * has to open the form to understand.
+ *
+ * The type-conditional set is kept — a Tool's excavation profile is noise on a
+ * Weapon, and showing it anyway teaches the user nothing — but the *rest* of the
+ * definition is not filtered through it. Anything the engine carries that the
+ * table does not name is listed after the curated rows, so a new field appears
+ * rather than being dropped for want of a table entry.
  */
 function infoRender(ctx: ListRenderCtx): unknown {
-    const { h, row } = ctx;
-    const type = brief(field(ctx, "itemType"));
-    const rows: [string, string][] = [];
-    for (const [label, key] of fieldsFor(type)) {
-        const s = brief(field(ctx, key));
-        if (s) rows.push([label, s]);
-    }
-    if (!rows.length) return null;
-    return h(
-        "div",
-        { style: S.rowDetail },
-        h(
-            "div",
-            { style: S.detailNote },
-            row.origin === "game"
-                ? "The engine's own values for this item."
-                : "The values this mod stores. Saved by editing the row.",
-        ),
-        ...rows.map(([k, v]) =>
-            h(
-                "div",
-                { key: k, style: S.detailLine },
-                h("span", { style: S.detailKey }, k),
-                h("span", { style: S.detailVal }, v),
-            )
-        ),
-    );
+    const src = ctx.row.native ?? ctx.row.entry ?? {};
+    const type = brief(src.itemType);
+    const spec: DetailSpec = {
+        fields: fieldsFor(type).map(([label, key]) => ({ key, label })),
+        // `sprite` is an `{ id, type }` object and the row already shows the
+        // sprite id; `process` is the compiled handler, not a readable fact.
+        skip: ["sprite", "process", "handlerKey", "actions"],
+    };
+    return renderDetail(ctx.h as never, ctx, spec);
 }
 
 /** Type and cooldown are searchable, so "which of mine are weapons" works. */

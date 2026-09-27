@@ -129,7 +129,9 @@ export function runCleanup(modId: string, reason: string): void {
     const items = pruneStaleItems(modId);
     if (buildings.length > 0 || items.length > 0) {
         console.log(
-            `${log(modId)} cleanup (${reason}): prunedBuildings=${buildings.length} prunedItems=${items.length}`,
+            `${
+                log(modId)
+            } cleanup (${reason}): prunedBuildings=${buildings.length} prunedItems=${items.length}`,
             buildings,
         );
     }

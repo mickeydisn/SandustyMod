@@ -82,7 +82,18 @@ roundTrip("elements", {
     duration: 3.5,
     metaColor: 0xff8ad4,
     colors: { variants: [[255, 138, 212, 255]] },
-    flammable: true,
+    // Objects, not booleans. The engine's fire pass gates on
+    // `typeof flammable === "object"`, so the `true` this fixture used to hold
+    // burned the element and silently left no residue.
+    flammable: {
+        outputElementId: "md-my-hown-mod:mdmy.element.ash",
+        outputChance: 0.5,
+        fireInheritsDuration: true,
+        duration: [0.05, 0.3],
+    },
+    // Likewise `{ value }`: the collector's lookup is built from
+    // `collectable?.value`, which is `undefined` on a boolean.
+    collectable: { value: 2 },
 });
 
 roundTrip("structures", {
@@ -514,6 +525,400 @@ console.log("── a behaviour's structure ids live in the definition, edited a
         "launcher keeps the rest of the payload",
         Array.isArray(backLauncher.definition?.velocity),
         JSON.stringify(backLauncher.definition),
+    );
+}
+{
+    // Every option the engine's worker handler reads is transcribed into the
+    // form in `core/behavior.ts`. This is the test that says the transcription
+    // is still complete, by name.
+    const controls = fieldsFor("behaviors").map((f) => f.key);
+    for (
+        const [opt, control] of [
+            ["structureId", "structureId"],
+            ["transportOffset", "transportOffset"],
+            ["velocity", "conveyorVelocity"],
+            ["maxTransportDistance", "maxTransportDistance"],
+            ["transportHeight", "transportHeight"],
+            ["runWith", "runWith"],
+            ["skipQueued", "skipQueued"],
+            ["upType", "upType"],
+            ["leftType", "leftType"],
+            ["rightType", "rightType"],
+            ["softDropVelocity", "softDropVelocity"],
+            ["runTickSharedBufferKey", "runTickSharedBufferKey"],
+        ] as const
+    ) {
+        check(
+            `conveyor/launcher option ${opt} has a control`,
+            controls.includes(control),
+            controls.join(","),
+        );
+    }
+    // The launcher's own velocity is a second control, not a shared one: the
+    // engine reads a launcher's as [x,y] and a conveyor's as {x,y}, so one
+    // control cannot hold both.
+    check(
+        "the launcher velocity has its own control",
+        controls.includes("launcherVelocity"),
+        controls.join(","),
+    );
+    // `runWith` is a closed set in the engine, so a free text box would be a
+    // typo generator: anything but 'left' silently becomes 'right'.
+    check(
+        "runWith is a picker, not a text box",
+        fieldsFor("behaviors").find((f) => f.key === "runWith")?.kind === "select",
+        "runWith is not a select",
+    );
+}
+{
+    const full = entryToForm("behaviors", {
+        id: "md-my-hown-mod:mdmy.behavior.belt",
+        kind: "conveyor",
+        definition: {
+            id: "md-my-hown-mod:mdmy.structure.belt",
+            transportOffset: { x: 0, y: -1 },
+            velocity: { x: 1, y: 0 },
+            maxTransportDistance: 4,
+            transportHeight: 2,
+            runWith: "left",
+            skipQueued: true,
+        },
+    });
+    check("conveyor reads its run direction", full.runWith === "left", String(full.runWith));
+    check(
+        "conveyor reads a max distance",
+        full.maxTransportDistance === "4",
+        String(full.maxTransportDistance),
+    );
+    check("conveyor reads skipQueued", full.skipQueued === "true", String(full.skipQueued));
+    const back = formToEntry("behaviors", full) as { definition?: Record<string, unknown> };
+    // An object, not a tuple. The engine reads a conveyor's `velocity` as
+    // {x,y} and a launcher's as [x,y], so a swap here type-checks and then does
+    // nothing at runtime.
+    check(
+        "a conveyor's velocity stays a {x,y} object",
+        JSON.stringify(back.definition?.velocity) === '{"x":1,"y":0}',
+        JSON.stringify(back.definition),
+    );
+    for (
+        const [k, want] of [
+            ["transportOffset", { x: 0, y: -1 }],
+            ["maxTransportDistance", 4],
+            ["transportHeight", 2],
+            ["runWith", "left"],
+            ["skipQueued", true],
+        ] as const
+    ) {
+        check(
+            `conveyor keeps ${k}`,
+            JSON.stringify(back.definition?.[k]) === JSON.stringify(want),
+            JSON.stringify(back.definition),
+        );
+    }
+
+    const lForm = entryToForm("behaviors", {
+        id: "md-my-hown-mod:mdmy.behavior.aim",
+        kind: "launcher",
+        definition: {
+            upType: "md-my-hown-mod:mdmy.structure.up",
+            leftType: "md-my-hown-mod:mdmy.structure.left",
+            rightType: "md-my-hown-mod:mdmy.structure.right",
+            velocity: [0, -2],
+            softDropVelocity: 0.5,
+            runTickSharedBufferKey: "mdmy.launcher.ticks",
+        },
+    });
+    check(
+        "launcher reads its soft drop velocity",
+        lForm.softDropVelocity === "0.5",
+        String(lForm.softDropVelocity),
+    );
+    const lBack = formToEntry("behaviors", lForm) as {
+        definition?: Record<string, unknown>;
+    };
+    // A tuple — the mirror of the conveyor check above.
+    check(
+        "a launcher's velocity stays a [x,y] tuple",
+        JSON.stringify(lBack.definition?.velocity) === "[0,-2]",
+        JSON.stringify(lBack.definition),
+    );
+    check(
+        "launcher keeps softDropVelocity",
+        lBack.definition?.softDropVelocity === 0.5,
+        JSON.stringify(lBack.definition),
+    );
+    check(
+        "launcher keeps the run-tick buffer key",
+        lBack.definition?.runTickSharedBufferKey === "mdmy.launcher.ticks",
+        JSON.stringify(lBack.definition),
+    );
+}
+{
+    // The three states of a bool, because the engine's test is `=== undefined`
+    // rather than falsiness: one present option is what makes the worker store
+    // the whole options object, so both an invented and a dropped `false` change
+    // how the conveyor runs.
+    const withBool = (skipQueued?: boolean) =>
+        formToEntry("behaviors", {
+            kind: "conveyor",
+            structureId: "md-my-hown-mod:mdmy.structure.belt",
+            ...entryToForm("behaviors", {
+                id: "md-my-hown-mod:mdmy.behavior.belt",
+                kind: "conveyor",
+                definition: {
+                    id: "md-my-hown-mod:mdmy.structure.belt",
+                    ...(skipQueued === undefined ? {} : { skipQueued }),
+                },
+            }),
+        }) as { definition?: Record<string, unknown> };
+
+    const absent = withBool();
+    check(
+        "an absent bool is not invented",
+        absent.definition?.skipQueued === undefined,
+        JSON.stringify(absent.definition),
+    );
+    check(
+        "an absent bool adds no other option either",
+        Object.keys(absent.definition ?? {}).join(",") === "id",
+        JSON.stringify(absent.definition),
+    );
+    const yes = withBool(true);
+    check(
+        "a true bool is written",
+        yes.definition?.skipQueued === true,
+        JSON.stringify(yes.definition),
+    );
+    // The hard one. A Yes/No control cannot tell `false` from blank, so this has
+    // to survive in the raw box or a save would quietly remove it.
+    const no = withBool(false);
+    check(
+        "an explicit false survives a save",
+        no.definition?.skipQueued === false,
+        JSON.stringify(no.definition),
+    );
+}
+{
+    // `0` is a value. A truthiness check would drop it and the engine's `?? 1`
+    // would replace it with 1 — a silently different launcher.
+    const zero = formToEntry("behaviors", {
+        kind: "launcher",
+        upType: "md-my-hown-mod:mdmy.structure.up",
+        leftType: "md-my-hown-mod:mdmy.structure.left",
+        rightType: "md-my-hown-mod:mdmy.structure.right",
+        softDropVelocity: "0",
+    }) as { definition?: Record<string, unknown> };
+    check(
+        "a zero soft-drop velocity is not dropped",
+        zero.definition?.softDropVelocity === 0,
+        JSON.stringify(zero.definition),
+    );
+    // And a kind switch must not leave the other kind's fields behind, or the
+    // engine reads launcher keys off a conveyor.
+    const switched = formToEntry("behaviors", {
+        kind: "conveyor",
+        structureId: "md-my-hown-mod:mdmy.structure.belt",
+        upType: "md-my-hown-mod:mdmy.structure.up",
+        leftType: "md-my-hown-mod:mdmy.structure.left",
+        rightType: "md-my-hown-mod:mdmy.structure.right",
+    }) as { definition?: Record<string, unknown> };
+    check(
+        "a conveyor does not keep launcher fields",
+        switched.definition?.upType === undefined &&
+            switched.definition?.leftType === undefined &&
+            switched.definition?.rightType === undefined,
+        JSON.stringify(switched.definition),
+    );
+}
+{
+    // `flammable` and `collectable` are objects in the engine and were plain
+    // checkboxes here. The engine reads them like this:
+    //
+    //   flammable:   if ("object" == typeof s) { … }   → a boolean is dropped
+    //   collectable: table.set(type, n?.value)          → a boolean has no value
+    //
+    // Both were silent: the element burned, or the collector skipped it, and
+    // nothing anywhere said so.
+    const fields = fieldsFor("elements");
+
+    // The parent toggles must gate the attributes behind them, which is the
+    // whole point: an unrevealed object is a field nobody can find.
+    for (
+        const [on, hidden] of [
+            ["flammableOn", "flammableOutputId"],
+            ["collectableOn", "collectableValue"],
+        ] as const
+    ) {
+        // The parent is the one that must exist; the `when` is on the child.
+        check(`${on} exists`, fields.some((f) => f.key === on), on);
+        const child = fields.find((f) => f.key === hidden);
+        check(`${hidden} is gated on ${on}`, Boolean(child?.when), hidden);
+        check(
+            `${hidden} is hidden while ${on} is off`,
+            child?.when?.({}) === false,
+            `${hidden} shows with the toggle off`,
+        );
+        check(
+            `${hidden} is shown while ${on} is on`,
+            child?.when?.({ [on]: "true" }) === true,
+            `${hidden} stays hidden with the toggle on`,
+        );
+    }
+
+    const store = (definition: Record<string, unknown>) =>
+        entryToForm("elements", { id: "mdmy.element.gel", name: "Gel", ...definition }) as Record<
+            string,
+            string
+        >;
+    const build = (form: Record<string, string>) =>
+        formToEntry("elements", form) as Record<string, unknown>;
+
+    // Off: no key at all. Not `{}` — the engine's gate is truthiness, so an empty
+    // object would still be flammable.
+    check("an off element has no flammable", store({}).flammableOn !== "true", "toggled on");
+    check(
+        "an off element writes no flammable",
+        build({ ...store({}) }).flammable === undefined,
+        JSON.stringify(build({ ...store({}) }).flammable),
+    );
+    // On with nothing filled in: burns and leaves nothing behind. A real state,
+    // and the one the old checkbox was trying to express.
+    const bare = build({ ...store({}), flammableOn: "true" });
+    check(
+        "on with nothing set burns with no residue",
+        JSON.stringify(bare.flammable) === "{}",
+        JSON.stringify(bare.flammable),
+    );
+    // On with the full object: every key survives, and the pair comes back as a
+    // tuple because that is the shape the engine samples.
+    const fullForm = store({
+        flammable: {
+            outputElementId: "mdmy.element.ash",
+            outputChance: 0.5,
+            fireInheritsDuration: true,
+            duration: [0.05, 0.3],
+        },
+    });
+    check(
+        "a stored object reads as on",
+        fullForm.flammableOn === "true",
+        String(fullForm.flammableOn),
+    );
+    check(
+        "the output element is a control",
+        fullForm.flammableOutputId === "mdmy.element.ash",
+        String(fullForm.flammableOutputId),
+    );
+    check(
+        "the duration pair is two controls",
+        fullForm.flammableDurationMin === "0.05" && fullForm.flammableDurationMax === "0.3",
+        `${fullForm.flammableDurationMin}..${fullForm.flammableDurationMax}`,
+    );
+    const full = build(fullForm);
+    check(
+        "the full flammable object survives",
+        JSON.stringify(full.flammable) ===
+            JSON.stringify({
+                outputElementId: "mdmy.element.ash",
+                outputChance: 0.5,
+                fireInheritsDuration: true,
+                duration: [0.05, 0.3],
+            }),
+        JSON.stringify(full.flammable),
+    );
+    // A fixed lifetime is a bare number, not a one-element tuple. The engine
+    // branches on `Array.isArray`.
+    const fixed = build({ ...store({}), flammableOn: "true", flammableDurationMin: "1.2" });
+    check(
+        "a lone lifetime stays a number",
+        fixed.flammable?.duration === 1.2,
+        JSON.stringify(fixed.flammable),
+    );
+    // `0` is a real chance. A truthiness test would drop it and the engine's
+    // `?? 0.25` would replace it.
+    const zero = build({ ...store({}), flammableOn: "true", flammableOutputChance: "0" });
+    check(
+        "a zero output chance is kept",
+        zero.flammable?.outputChance === 0,
+        JSON.stringify(zero.flammable),
+    );
+    // The legacy booleans. They never worked, but they are in hand-edited
+    // configs, and reading them as "off" would be a second wrong answer.
+    check(
+        "a legacy flammable boolean reads as on",
+        store({ flammable: true }).flammableOn === "true",
+        "read as off",
+    );
+    check(
+        "a legacy collectable boolean reads as on",
+        store({ collectable: true }).collectableOn === "true",
+        "read as off",
+    );
+    check(
+        "a legacy collectable boolean carries no value",
+        !store({ collectable: true }).collectableValue,
+        String(store({ collectable: true }).collectableValue),
+    );
+    const gold = store({ collectable: { value: 2 } });
+    check(
+        "a collectable object reads as on",
+        gold.collectableOn === "true",
+        String(gold.collectableOn),
+    );
+    check(
+        "the collector value is a control",
+        gold.collectableValue === "2",
+        String(gold.collectableValue),
+    );
+    check(
+        "the collector value is stored as { value }",
+        JSON.stringify(build(gold).collectable) === '{"value":2}',
+        JSON.stringify(build(gold).collectable),
+    );
+    // On but no value: the collector's guard is `!= null`, so this would be
+    // configured and inert. `validate` blocks it — checked below.
+    // `validateForm` seeds nothing, so the fields the rule does not read are
+    // passed as they would actually arrive: a form the panel built.
+    const blank = validateForm("elements", {
+        ...formDefaults("elements"),
+        collectableOn: "true",
+    });
+    check(
+        "a collectable with no value is blocked",
+        Boolean(blank.collectableValue),
+        JSON.stringify(blank),
+    );
+    // And the save path, called directly, must not paper over it by inventing a
+    // number. `{}` is inert and says so; `{ value: 0 }` would look configured.
+    const blankSave = build({ ...store({}), collectableOn: "true" });
+    check(
+        "a blank collector value is not invented",
+        JSON.stringify(blankSave.collectable) === "{}",
+        JSON.stringify(blankSave.collectable),
+    );
+    const valued = validateForm("elements", {
+        ...formDefaults("elements"),
+        collectableOn: "true",
+        collectableValue: "2",
+    });
+    check(
+        "a collectable with a value is accepted",
+        !valued.collectableValue,
+        JSON.stringify(valued),
+    );
+    const off = validateForm("elements", { ...formDefaults("elements") });
+    check("an element that is not collectable is fine", !off.collectableValue, JSON.stringify(off));
+    // And the min/max rule the new lifetime pair needs.
+    const range = validateForm("elements", {
+        ...formDefaults("elements"),
+        flammableOn: "true",
+        flammableDurationMin: "5",
+        flammableDurationMax: "1",
+    });
+    check(
+        "an inverted fire lifetime is blocked",
+        Boolean(range.flammableDurationMax),
+        JSON.stringify(range),
     );
 }
 {

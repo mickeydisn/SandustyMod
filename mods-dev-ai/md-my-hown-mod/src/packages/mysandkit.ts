@@ -130,6 +130,58 @@ export const api = {
         getTypeFromId(id: string): number | undefined {
             return this.getTypeById(id);
         },
+        // ── Reads ────────────────────────────────────────────────────────────
+        //
+        // These exist in the host API but were missing here, so every caller
+        // reached for them through `?.` and silently got `undefined` — a panel
+        // showing no game objects, with nothing thrown and nothing logged. The
+        // shape matches `md-admin-element`, which is the working reference for
+        // reading back what the engine has registered.
+
+        /**
+         * Every registered element type, as the numbers the registry uses.
+         *
+         * The one enumeration of elements that exists. Returns `[]` rather than
+         * throwing when the host build lacks it, because "no elements" and "this
+         * build cannot tell us" should look the same to a list screen.
+         */
+        getRegisteredTypes(): number[] {
+            try {
+                return g()?.api?.elements?.getRegisteredTypes?.() ?? [];
+            } catch (e) {
+                console.warn(`${LOG} elements.getRegisteredTypes failed`, e);
+                return [];
+            }
+        },
+        /** The engine's own definition for an element type, or undefined. */
+        getDefinitionByType(t: number): Record<string, unknown> | undefined {
+            try {
+                return g()?.api?.elements?.getDefinitionByType?.(t) as
+                    | Record<string, unknown>
+                    | undefined;
+            } catch (e) {
+                console.warn(`${LOG} elements.getDefinitionByType failed`, t, e);
+                return undefined;
+            }
+        },
+        /** The id string for an element type — never a guess, unlike the enum name. */
+        getIdByType(t: number): string | undefined {
+            try {
+                return g()?.api?.elements?.getIdByType?.(t) as string | undefined;
+            } catch (e) {
+                console.warn(`${LOG} elements.getIdByType failed`, t, e);
+                return undefined;
+            }
+        },
+        /** The engine's display name for an element type. */
+        getNameByType(t: number): string | undefined {
+            try {
+                return g()?.api?.elements?.getNameByType?.(t) as string | undefined;
+            } catch (e) {
+                console.warn(`${LOG} elements.getNameByType failed`, t, e);
+                return undefined;
+            }
+        },
     },
     /**
      * The only route from a mod structure into the build menu.
@@ -241,6 +293,48 @@ export const api = {
                 console.error(`${LOG} structures.addVariant failed`, e);
             }
         },
+        /**
+         * Every structure type the engine currently offers, as a set of
+         * `StructureRef` — a number, or an id string.
+         *
+         * There is no "list everything registered" call for structures, so this
+         * is the enumeration, and it is why a structure row may end up as a bare
+         * id when the definition behind it cannot be read.
+         */
+        getAvailableTypes(): Set<number | string> {
+            try {
+                return g()?.api?.structures?.getAvailableTypes?.() ?? new Set();
+            } catch (e) {
+                console.warn(`${LOG} structures.getAvailableTypes failed`, e);
+                return new Set();
+            }
+        },
+        /**
+         * The engine's definition for a structure ref.
+         *
+         * Accepts a string ref as well as a number. The engine wants a *type*
+         * here and a string is the kind of argument that throws rather than
+         * returning nothing, which is why this catches instead of the caller.
+         */
+        getDefinitionByType(ref: number | string): Record<string, unknown> | undefined {
+            try {
+                return (g()?.api?.structures?.getDefinitionByType?.(ref) ?? undefined) as
+                    | Record<string, unknown>
+                    | undefined;
+            } catch (e) {
+                console.warn(`${LOG} structures.getDefinitionByType failed`, ref, e);
+                return undefined;
+            }
+        },
+        /** The id string for a structure type. */
+        getIdByType(t: number): string | undefined {
+            try {
+                return g()?.api?.structures?.getIdByType?.(t) as string | undefined;
+            } catch (e) {
+                console.warn(`${LOG} structures.getIdByType failed`, t, e);
+                return undefined;
+            }
+        },
     },
     items: {
         register(def: ItemConfig): void {
@@ -256,6 +350,32 @@ export const api = {
                 g()?.api?.items?.updateDefinition?.(idOrType, partial);
             } catch (e) {
                 console.error(`${LOG} items.updateDefinition failed`, idOrType, e);
+            }
+        },
+        /**
+         * Every registered item id.
+         *
+         * Not in the published API types, so it may be absent on some builds —
+         * hence `[]` rather than a throw, and hence the mod registry above as the
+         * fallback a list screen should really use first.
+         */
+        getRegisteredIds(): string[] {
+            try {
+                return (g()?.api?.items?.getRegisteredIds?.() ?? []) as string[];
+            } catch (e) {
+                console.warn(`${LOG} items.getRegisteredIds failed`, e);
+                return [];
+            }
+        },
+        /** The engine's definition for an item id. */
+        getDefinitionById(id: string): Record<string, unknown> | undefined {
+            try {
+                return (g()?.api?.items?.getDefinitionById?.(id) ?? undefined) as
+                    | Record<string, unknown>
+                    | undefined;
+            } catch (e) {
+                console.warn(`${LOG} items.getDefinitionById failed`, id, e);
+                return undefined;
             }
         },
     },
@@ -275,6 +395,26 @@ export const api = {
                 g()?.api?.terrains?.updateDefinition?.(idOrType, partial);
             } catch (e) {
                 console.error(`${LOG} terrains.updateDefinition failed`, idOrType, e);
+            }
+        },
+        /** The id string for a terrain type. */
+        getIdByType(t: number): string | undefined {
+            try {
+                return g()?.api?.terrains?.getIdByType?.(t) as string | undefined;
+            } catch (e) {
+                console.warn(`${LOG} terrains.getIdByType failed`, t, e);
+                return undefined;
+            }
+        },
+        /** The engine's definition for a terrain type. */
+        getDefinitionByType(t: number): Record<string, unknown> | undefined {
+            try {
+                return g()?.api?.terrains?.getDefinitionByType?.(t) as
+                    | Record<string, unknown>
+                    | undefined;
+            } catch (e) {
+                console.warn(`${LOG} terrains.getDefinitionByType failed`, t, e);
+                return undefined;
             }
         },
     },
@@ -969,37 +1109,66 @@ export function registerExcavationProfile(
     }
 }
 
+/**
+ * Register one structure behaviour.
+ *
+ * ## The two API layouts
+ *
+ * The published `sandkit` types describe a grouped namespace:
+ *
+ * ```ts
+ * api.structureBehaviors.registerConveyorType(structureId, options?)
+ * api.structureBehaviors.registerLauncherType(definition)
+ * ```
+ *
+ * **This build does not have it.** `structureBehaviors` appears nowhere in the
+ * engine bundle, and the API surface generated from the running engine
+ * (`src/types/engine-api.generated.d.ts`) lists `conveyors.registerType` and
+ * `launchers.registerType` instead. The previous version read only the grouped
+ * name, so it took the "API missing" branch on every entry and no conveyor or
+ * launcher was ever registered — silently, because it only warned.
+ *
+ * Both layouts are probed, grouped first. The grouped one is tried first because
+ * that is the shape the official types document, so a build that grows it gets
+ * the documented path without a code change.
+ *
+ * The worker's own handler is the authority on what `options` contains; the field
+ * list and the defaults below are transcribed from it in `ui/definition/core/
+ * behavior.ts`, which is where the panel models them.
+ */
 export function registerStructureBehavior(
     def: import("../constants.ts").StructureBehaviorConfig,
 ): void {
     try {
-        const api = g()?.api?.structureBehaviors;
+        const api = g()?.api;
         if (!api) {
-            console.warn(`${LOG} structureBehaviors API missing`);
+            console.warn(`${LOG} sandkit api unavailable`);
             return;
         }
         const kind = String(def.kind || "").toLowerCase();
         const payload = def.definition ?? def;
-        // Documented names are `registerConveyorType(structureId, options?)`
-        // and `registerLauncherType(definition)`. Older builds are still probed
-        // so a renamed api degrades to a warning rather than a crash.
+        const grouped = (api as { structureBehaviors?: Record<string, unknown> })
+            .structureBehaviors;
         if (kind === "conveyor") {
             const id = String((payload as { id?: string })?.id ?? def.id);
-            if (typeof api.registerConveyorType === "function") {
-                api.registerConveyorType(
+            // The engine forwards `options` to the workers untouched, so it is
+            // passed through whole rather than picked apart here.
+            const options = (payload as { options?: unknown })?.options ?? payload;
+            if (typeof grouped?.registerConveyorType === "function") {
+                (grouped.registerConveyorType as (a: string, b: unknown) => void)(
                     id,
-                    (payload as { options?: unknown })?.options ?? payload,
+                    options,
                 );
-            } else if (typeof api.registerConveyor === "function") {
-                api.registerConveyor(payload);
+            } else if (typeof api.conveyors?.registerType === "function") {
+                api.conveyors.registerType(id, options);
             } else {
                 console.warn(`${LOG} no conveyor registration method`, def.id);
             }
         } else if (kind === "launcher") {
-            if (typeof api.registerLauncherType === "function") {
-                api.registerLauncherType(payload);
-            } else if (typeof api.registerLauncher === "function") {
-                api.registerLauncher(payload);
+            if (typeof grouped?.registerLauncherType === "function") {
+                (grouped.registerLauncherType as (a: unknown) => void)(payload);
+            } else if (typeof api.launchers?.registerType === "function") {
+                api.launchers.registerType(payload);
             } else {
                 console.warn(`${LOG} no launcher registration method`, def.id);
             }

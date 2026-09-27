@@ -20,7 +20,13 @@
  */
 
 import type { ListRenderCtx, ListRow, ModOrigin, RowOrigin } from "../definition/types.ts";
-import { OWN_ID_PREFIXES } from "../../constants.ts";
+import {
+    configIsHidden,
+    entryVisibility,
+    HIDDEN_FIELD,
+    type HiddenCategory,
+    OWN_ID_PREFIXES,
+} from "../../constants.ts";
 import * as S from "../styles.ts";
 import type { Style } from "../styles.ts";
 
@@ -118,40 +124,197 @@ export function countByOwner(rows: ListRow[]): Map<OwnerKey, number> {
  * merged row less informative than either source alone.
  */
 /**
- * Which config field means "hidden" for each category.
- *
- * Two categories have such a flag and the other two do not, and the difference is
- * the engine's rather than a naming choice:
- *
- *  - **elements** — `hidden`. The engine's own definition carries it.
- *  - **structures** — `hideFromBuildMenu`. Read by the engine off the mod
- *    registry; it is not a literal anywhere in the bundle, so a game's own
- *    structures will not report it.
- *  - **terrains** — nothing. `isBuilding` is a *different* idea: it marks a cell
- *    that counts as a built wall, not one kept out of the build menu. Reading it
- *    as "hidden" would hide every plain terrain and show every wall.
- *  - **items** — nothing. An item has no visibility flag at all.
- *
- * A category absent from this table therefore has no hidden rows, and the
- * screen says so by not offering the checkbox.
+ * Re-exported from `constants.ts` so callers of this module need not know where
+ * the flag table lives. The table and `configIsHidden` are the single source —
+ * see their docs there. This module adds only the list-specific part: merging
+ * the two row sources while respecting the flag.
  */
-const HIDDEN_FIELD: Partial<Record<string, string>> = {
-    elements: "hidden",
-    structures: "hideFromBuildMenu",
-};
+export {
+    configIsHidden,
+    HIDDEN_ALIASES,
+    HIDDEN_FIELD,
+    type HiddenCategory,
+} from "../../constants.ts";
 
 /** The config field that means "hidden" for a category, if it has one. */
 export function hiddenFieldOf(cat: string): string | undefined {
-    return HIDDEN_FIELD[cat];
+    return HIDDEN_FIELD[cat as HiddenCategory];
+}
+
+// ── The expanded detail ───────────────────────────────────────────────────────
+
+/**
+ * A short, human-readable value: numbers trimmed, objects summarised.
+ *
+ * Was copy-pasted into all four object definitions. Identical in every copy, and
+ * a row's detail is the one place a user goes to check a value, so four
+ * implementations of "how do I print this" is four chances to show something
+ * subtly different for the same object.
+ */
+export function brief(v: unknown): string {
+    if (v === undefined || v === null || v === "") return "";
+    if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
+    if (typeof v === "boolean") return v ? "yes" : "no";
+    if (typeof v === "object") {
+        const o = v as Record<string, unknown>;
+        // A nested payload's one identifying key, not its whole shape.
+        for (const k of ["id", "name", "type", "nameKey"]) {
+            if (typeof o[k] === "string" && o[k]) return String(o[k]);
+        }
+        if (Array.isArray(v)) {
+            const arr = v as unknown[];
+            if (arr.length === 0) return "none";
+            // A short array of primitives is worth reading in full — three
+            // directions is a fact, "3 entries" is not.
+            if (
+                arr.length <= 4 &&
+                arr.every((x) => typeof x === "string" || typeof x === "number")
+            ) {
+                return arr.join(", ");
+            }
+            return `${arr.length} entries`;
+        }
+        // A plain record of primitives is the shape of most engine payloads
+        // (`defaultDataFields`, a data bag), and reading it out beats "set".
+        const keys = Object.keys(o);
+        if (keys.length === 0) return "set";
+        if (keys.length <= 6) return keys.map((k) => `${k}: ${brief(o[k])}`).join(", ");
+        return `${keys.length} fields`;
+    }
+    return String(v);
+}
+
+/** One `[label, value]` pair worth showing. */
+export interface DetailField {
+    key: string;
+    label: string;
+    /** Read this instead of `key` when the object nests the value. */
+    pick?: (src: Record<string, unknown>) => unknown;
+}
+
+/**
+ * What a category's expanded row shows.
+ *
+ * `fields` is the curated part — the properties worth reading, in the order a
+ * person asks about them. The catch-all in `detailRows` covers the rest.
+ *
+ * The catch-all is why this gets more useful for free. Now that `discover*`
+ * actually reaches the engine, a game row has a real definition on it, and a
+ * hand-written list of "the fields we know about" is a list that is wrong the
+ * moment the engine adds one. Listing the leftovers means a new engine field
+ * shows up in the row instead of being silently dropped, while the curated part
+ * keeps the interesting properties at the top where they are read first.
+ */
+export interface DetailSpec {
+    fields: DetailField[];
+    /**
+     * Keys held back from the catch-all: plumbing, or pure noise. Without this,
+     * `elementType` and a dozen internal keys would sit under the values a user
+     * actually came to read.
+     */
+    skip: string[];
+}
+
+/** Definition keys that are plumbing rather than content, for every category. */
+const ALWAYS_SKIP = [
+    "id",
+    "name",
+    "nameKey",
+    "description",
+    "descriptionKey",
+    "sprite",
+    "getExtraProps",
+    "interactions",
+    "handlers",
+    "onPlace",
+    "onBreak",
+    "onDamage",
+];
+
+/** `isGrabbable` → "Is grabbable", for the catch-all's labels. */
+function humanise(k: string): string {
+    const spaced = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/**
+ * The rows of an expanded list row: curated fields first, then the rest.
+ *
+ * Exported separately from the render so the *content* is testable without a
+ * renderer — which fields a category shows is a decision, and a decision that
+ * only shows up in a DOM diff is a decision nobody reviews.
+ */
+export function detailRows(
+    src: Record<string, unknown>,
+    spec: DetailSpec,
+): [string, string][] {
+    const rows: [string, string][] = [];
+    const used = new Set<string>();
+
+    for (const f of spec.fields) {
+        used.add(f.key);
+        const s = brief(f.pick ? f.pick(src) : src[f.key]);
+        // An empty value is not a row. A detail block full of blanks reads as
+        // "there is nothing here" rather than "these are the fields that apply".
+        if (s) rows.push([f.label, s]);
+    }
+
+    const skip = new Set([...spec.skip, ...ALWAYS_SKIP, ...used]);
+    for (const k of Object.keys(src).sort()) {
+        if (skip.has(k)) continue;
+        const s = brief(src[k]);
+        if (s) rows.push([humanise(k), s]);
+    }
+    return rows;
+}
+
+/** The `createElement` shape the list renders with. */
+type H = (type: string, props: unknown, ...children: unknown[]) => unknown;
+
+/**
+ * Draw an expanded row's detail block, or `null` when the object has nothing to
+ * say — which is the honest answer for a game row whose definition could not be
+ * read, rather than an empty bordered box.
+ */
+export function renderDetail(h: H, ctx: ListRenderCtx, spec: DetailSpec): unknown {
+    const src = ctx.row.native ?? ctx.row.entry ?? {};
+    const rows = detailRows(src, spec);
+    if (!rows.length) return null;
+    return h(
+        "div",
+        { style: S.rowDetail },
+        h(
+            "div",
+            { style: S.detailNote },
+            ctx.row.origin === "game"
+                ? "The engine's own values for this object."
+                : "The values this mod stores. Saved by editing the row.",
+        ),
+        ...rows.map(([k, v]) =>
+            h(
+                "div",
+                { key: k, style: S.detailLine },
+                h("span", { style: S.detailKey }, k),
+                // The full value on hover: a summarised one — "3 fields" — is
+                // fine to read and useless to check a number against.
+                h("span", { style: S.detailVal, title: v }, v),
+            )
+        ),
+    );
 }
 
 export function mergeRows(
     entries: Record<string, unknown>[],
-    natives: { id: string; label: string; color?: string; native?: Record<string, unknown> }[],
+    natives: {
+        id: string;
+        label: string;
+        color?: string;
+        hidden?: boolean;
+        native?: Record<string, unknown>;
+    }[],
     /** The category, for the hidden flag — see `HIDDEN_FIELD`. */
     cat?: string,
 ): ListRow[] {
-    const hiddenField = cat ? HIDDEN_FIELD[cat] : undefined;
     const byId = new Map<string, ListRow>();
 
     // The host's objects first, so a mod row of the same id overwrites rather
@@ -164,6 +327,11 @@ export function mergeRows(
             origin: "game",
             color: n.color,
             native: n.native,
+            // The discovery pass has already read the engine's own definition and
+            // decided. It was dropped here, which is why ticking "hidden" appeared
+            // to do nothing: every *game* element came back unflagged, so the
+            // only rows the filter could ever reveal were the mod's own.
+            hidden: n.hidden === true,
         });
     }
 
@@ -181,10 +349,14 @@ export function mergeRows(
             // view of this object, and the mod's config does not contain it.
             native: prior?.native,
             entry: e,
-            // The entry's own flag wins over a prior game's: if the mod says
-            // hidden, the merged row is hidden, because the merged row is the
-            // mod's object as far as editing is concerned.
-            hidden: hiddenField ? e[hiddenField] === true : false,
+            // The mod's entry wins when it *says* something about visibility; when
+            // it says nothing, the prior row's own flag stands. "Absent" is not
+            // "visible" — otherwise renaming a hidden object in the panel would
+            // silently reveal it.
+            hidden: (() => {
+                const said = entryVisibility(e, cat!);
+                return said === undefined ? prior?.hidden === true : said;
+            })(),
         });
     }
 
@@ -252,6 +424,76 @@ export function filterRows(
         const hay = `${row.id} ${row.label}${searchText ? ` ${searchText(row)}` : ""}`;
         return hay.toLowerCase().includes(q);
     });
+}
+
+/**
+ * Explain an empty list by naming the filter responsible, with a way out.
+ *
+ * The list no longer starts unfiltered — it starts on "This mod" with hidden
+ * objects off — so "no match" is no longer the honest one-line answer. There are
+ * three ways to reach an empty list, and the user cannot see which filters are
+ * holding rows back from the rows alone.
+ *
+ * The test is in order of how much it would help to name it: a filter that
+ * *alone* empties the list is the whole story, and only when nothing on its own
+ * does is it worth blaming the combination. Otherwise the message names the
+ * widest filter — "show this mod's objects" — which is the one whose removal
+ * most obviously changes the result.
+ *
+ * `label` is the category's display name; this lower-cases it, since every use
+ * is inside a sentence.
+ */
+export function shownBecauseOf(
+    rows: ListRow[],
+    owner: OwnerKey | "all",
+    showHidden: boolean,
+    query: string,
+    label: string,
+): string {
+    const what = label.toLowerCase();
+    const matches = (o: OwnerKey | "all", hid: boolean) =>
+        filterRows(rows, query, undefined, o, hid).length;
+
+    // 1. The text filter, first: it is the one cause the user cannot see for
+    //    themselves, and they have just typed it.
+    if (query.trim() && matches(owner, showHidden) === 0) {
+        return `No ${what} match “${query.trim()}” in this view.`;
+    }
+
+    // 2. The hidden tick, but only when ticking it would actually help — under
+    //    the *current* owner filter. A user narrowed to "This mod" is not
+    //    helped by a box that only reveals another mod's objects, so this must
+    //    not be able to fire on its own strength.
+    if (!showHidden && matches(owner, true) > 0) {
+        return `All ${
+            countHiddenRows(rows, owner)
+        } ${what} in this view are hidden — tick “hidden” to show them.`;
+    }
+
+    // 3. The owner filter. The count is taken with the owner filter off and
+    //    hidden still off, so it answers "what is there if I widen this?" and
+    //    never counts rows the user has not been shown how to reach.
+    if (owner !== "all" && matches("all", showHidden) > 0) {
+        return `You have no ${what} in this view. ${
+            matches("all", showHidden)
+        } exist — switch the filter to “All” to see them.`;
+    }
+
+    // 4. Neither filter alone explains it, but both together would. This was an
+    //    unexplained empty screen: the rows are all another mod's *and* all
+    //    hidden, so "switch to All" still shows nothing and so does "tick
+    //    hidden". Both instructions have to be given, or the user tries one and
+    //    concludes the panel is broken.
+    if (matches("all", true) > 0) {
+        return `All ${rows.length} ${what} here are another mod's and hidden — switch the filter to “All” and tick “hidden”.`;
+    }
+
+    // 5. Defensive: no combination of these two filters can show anything. The
+    //    panel only calls this when `rows` is non-empty and the filtered list is
+    //    not, so reaching here means every row is both another mod's and hidden
+    //    *and* something else went wrong. Say so plainly rather than implying a
+    //    filter the user can change will help.
+    return `No ${what} match that filter.`;
 }
 
 /**

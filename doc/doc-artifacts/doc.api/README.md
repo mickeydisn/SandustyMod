@@ -24,3 +24,8 @@ doc.api/
 
 - [COVERAGE.md](COVERAGE.md)
 - [Examples](../doc.exemple/)
+
+
+You can also find more informatin in : 
+- https://sandustry-modding.github.io/#/types/search 
+- https://github.com/sandustry-modding/SandustryTypes/tree/main/src/sandkit/api

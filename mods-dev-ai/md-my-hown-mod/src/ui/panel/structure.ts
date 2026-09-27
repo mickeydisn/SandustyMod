@@ -21,25 +21,12 @@
  */
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverStructures } from "../../catalog.ts";
-import { disclosureMark, originTag } from "./list.ts";
+import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
 /** Read a field from the engine's definition, falling back to the mod's entry. */
 function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
-}
-
-function brief(v: unknown): string {
-    if (v === undefined || v === null || v === "") return "";
-    if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
-    if (typeof v === "object") {
-        const o = v as Record<string, unknown>;
-        for (const k of ["id", "name", "type", "nameKey"]) {
-            if (typeof o[k] === "string" && o[k]) return String(o[k]);
-        }
-        return Array.isArray(v) ? `${(v as unknown[]).length} entries` : "set";
-    }
-    return String(v);
 }
 
 /** `[[1,0],[0,1]]` → a drawable grid, or `null` when there is no usable shape. */
@@ -135,42 +122,46 @@ function inlineRender(ctx: ListRenderCtx): unknown {
  * says which node gates it, which decides whether a player can ever build the
  * thing at all.
  */
+const DETAILS: DetailSpec = {
+    fields: [
+        {
+            key: "shape",
+            label: "Footprint",
+            // "2×3" reads; `[[1,1],[1,0],[1,1]]` is a payload, and the row above
+            // already draws the grid.
+            pick: (s) => {
+                const g = gridOf(s.shape);
+                return g ? `${g.length}×${g[0].length}` : s.shape;
+            },
+        },
+        { key: "categoryKey", label: "Category" },
+        { key: "unlockNode", label: "Unlock node" },
+        {
+            key: "buildModes",
+            label: "Build modes",
+            // A short list of mode types is a fact; the full objects are not.
+            pick: (s) => {
+                const m = s.buildModes as { type?: unknown }[] | undefined;
+                if (!Array.isArray(m)) return s.buildModes;
+                if (m.length === 0) return "none";
+                return m.map((x) => brief(x?.type ?? x)).join(", ");
+            },
+        },
+        { key: "hideFromBuildMenu", label: "In build menu" },
+        { key: "energyType", label: "Energy type" },
+        { key: "energyCapacity", label: "Energy capacity" },
+        { key: "hitPoints", label: "Hit points" },
+        { key: "mass", label: "Mass" },
+        { key: "rotateToPlace", label: "Rotatable" },
+        { key: "disallowPick", label: "Cannot be picked" },
+        { key: "order", label: "Order" },
+    ],
+    // The shape itself is shown as a size, and the render payload is a blob.
+    skip: ["shape", "buildModes", "registerOptions", "type", "structureType"],
+};
+
 function infoRender(ctx: ListRenderCtx): unknown {
-    const { h, row } = ctx;
-    const rows: [string, string][] = [];
-    const add = (label: string, v: unknown) => {
-        const s = brief(v);
-        if (s) rows.push([label, s]);
-    };
-    const grid = gridOf(field(ctx, "shape"));
-    add("Footprint", grid ? `${grid.length}×${grid[0].length}` : "");
-    add("Category", field(ctx, "category"));
-    add("Unlock node", field(ctx, "unlockNode"));
-    add("Build modes", field(ctx, "buildModes"));
-    add("Energy type", field(ctx, "energyType"));
-    add("Rotatable", field(ctx, "rotateToPlace"));
-    add("Mass", field(ctx, "mass"));
-    add("Hit points", field(ctx, "hitPoints"));
-    if (!rows.length) return null;
-    return h(
-        "div",
-        { style: S.rowDetail },
-        h(
-            "div",
-            { style: S.detailNote },
-            row.origin === "game"
-                ? "The engine's own values for this structure."
-                : "The values this mod stores. Saved by editing the row.",
-        ),
-        ...rows.map(([k, v]) =>
-            h(
-                "div",
-                { key: k, style: S.detailLine },
-                h("span", { style: S.detailKey }, k),
-                h("span", { style: S.detailVal }, v),
-            )
-        ),
-    );
+    return renderDetail(ctx.h as never, ctx, DETAILS);
 }
 
 /** Category and footprint size are searchable, so "which of mine is 4 wide" works. */

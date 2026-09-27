@@ -267,14 +267,24 @@ const FIELDS: FieldSpec[] = [
     boolField("dirV", "Vertical", "Placement", "true"),
     boolField("dirD", "Diagonal", "Placement", "false"),
     shapeField(),
-    // The only menu-visibility lever left. `alwaysUnlocked` is gone: the engine
-    // reads it in exactly one place, iterating a `const` literal of the *vanilla*
-    // structures, which has no assignment site a mod id can enter. The **unlock
-    // node** is the lever instead — an entry the author names and
-    // edits: an "always" node says the same thing, legibly and shared between
-    // structures. This flag decides whether it is listed — which the build menu
-    // does honour, reading `hideFromBuildMenu` off the mod registry as well
-    // (bundel.js 7493921).
+    // The menu-visibility lever. `alwaysUnlocked` is gone: the engine reads it in
+    // exactly one place, iterating a `const` literal of the *vanilla* structures,
+    // which has no assignment site a mod id can enter. The **unlock node** is the
+    // lever instead — an entry the author names and edits: an "always" node says
+    // the same thing, legibly and shared between structures.
+    //
+    // **This flag is mod-layer, not an engine field.** A scan of all 762 bundle
+    // chunks found no menu-visibility option for structures at all — the only
+    // `hidden` in the engine is a CSS property and `isHidden` is React's. An
+    // earlier comment here said the build menu "does honour" it and cited
+    // bundel.js 7493921.js; that file does not exist in this bundle and the name
+    // appears nowhere in it, so both the claim and the citation were wrong. What
+    // the flag actually does is filter the mod's own list — see `HIDDEN_FIELD` in
+    // ../../panel/list.ts, which reads it under this name.
+    //
+    // It used to be spelled `hideFromBuildMenu`. That spelling is still honoured
+    // as a fallback so existing configs keep filtering as their author intended,
+    // but new writes use this one.
     boolField(
         "hideFromBuildMenu",
         "Hide from build menu",
@@ -445,9 +455,16 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // replaced it. Listing it here or reading it into the form would claim
     // ownership the panel no longer has, and the stored value would be dropped
     // on the next edit instead of falling into the passthrough.
-    for (const k of ["hideFromBuildMenu", "disallowPick"]) {
-        if (typeof e[k] === "boolean") read.put(k, String(e[k]));
-    }
+    // The hidden flag, under whichever name the entry happens to use, always into
+    // the live form key. `hiddenFromTheMenu` is a name this mod briefly used; a
+    // config still carrying it shows its author's choice and migrates on save.
+    const hiddenValue = typeof e.hideFromBuildMenu === "boolean"
+        ? e.hideFromBuildMenu
+        : typeof e.hiddenFromTheMenu === "boolean"
+        ? e.hiddenFromTheMenu
+        : undefined;
+    if (hiddenValue !== undefined) read.put("hideFromBuildMenu", String(hiddenValue));
+    if (typeof e.disallowPick === "boolean") read.put("disallowPick", String(e.disallowPick));
     // Read in full, including a link to a node that no longer exists: a
     // dangling node is resolved to "available from the start" at apply time, so
     // dropping it here would silently repair the structure behind the user's

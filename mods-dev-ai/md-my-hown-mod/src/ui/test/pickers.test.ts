@@ -534,6 +534,9 @@ const ALLOWED_FREE_TEXT: Record<string, string> = {
     // Genuinely unknowable.
     "entities": "there is no entity registry to enumerate — the engine has no " +
         "list call for entity types, so a picker would be a guess",
+    "runTickSharedBufferKey": "a shared-buffer key, which the mod invents when " +
+        "it calls api.shared.buffers.ensure(key) — a buffer is created by naming " +
+        "it, so there is no list of existing keys to pick from",
 };
 
 Deno.test("every text field is a picker, or is on the free-text list", () => {

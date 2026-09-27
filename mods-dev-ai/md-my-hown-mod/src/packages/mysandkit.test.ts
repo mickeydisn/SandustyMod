@@ -147,3 +147,53 @@ Deno.test("a registered element is also added to the discovery catalogue", () =>
     // (`src/main/register.ts:15-27`).
     assertEquals(discovered, [101]);
 });
+
+// ── The read/enumerate half ───────────────────────────────────────────────────
+//
+// The registration path above has been exercised all along. The *read* path was
+// written and worked on for hours while returning `undefined` every time: this
+// wrapper re-exported `register` and `updateDefinition` but not
+// `getRegisteredTypes` and friends, and every caller reached them through `?.`.
+// "The host does not have it" and "we forgot to forward it" are then identical —
+// an empty list screen, nothing thrown.
+//
+// The reference mods (`md-admin-element`, `md-admin-structure`) call these same
+// methods on the host `sandkit.api` directly and work, so the host has them.
+
+Deno.test("every read the discovery passes need is forwarded", () => {
+    // One per `discover*` in catalog.ts. A new enumeration call added there
+    // without a counterpart here is exactly the bug that emptied the lists.
+    const shape = api as unknown as Record<string, Record<string, unknown>>;
+    for (
+        const [ns, method] of [
+            ["elements", "getRegisteredTypes"],
+            ["elements", "getDefinitionByType"],
+            ["elements", "getIdByType"],
+            ["elements", "getNameByType"],
+            ["structures", "getAvailableTypes"],
+            ["structures", "getDefinitionByType"],
+            ["structures", "getIdByType"],
+            ["items", "getRegisteredIds"],
+            ["items", "getDefinitionById"],
+            ["terrains", "getIdByType"],
+            ["terrains", "getDefinitionByType"],
+        ]
+    ) {
+        assertEquals(
+            typeof shape[ns]?.[method],
+            "function",
+            `api.${ns}.${method} is not forwarded by the wrapper`,
+        );
+    }
+});
+
+Deno.test("a read the host does not have is empty, not a throw", () => {
+    // This fake host has none of the read methods, which is exactly the shape of
+    // an older build. Every one of these runs on a render path, so they must
+    // degrade to "nothing found" rather than take the panel down.
+    assertEquals(api.elements.getRegisteredTypes(), []);
+    assertEquals(api.structures.getAvailableTypes().size, 0);
+    assertEquals(api.items.getRegisteredIds(), []);
+    assertEquals(api.elements.getDefinitionByType(0), undefined);
+    assertEquals(api.structures.getDefinitionByType("x"), undefined);
+});

@@ -20,7 +20,15 @@ import { listSpriteIds, type Opt } from "../../../catalog.ts";
 import { loadConfig } from "../../../config/store.ts";
 import type { ModConfig } from "../../../constants.ts";
 import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
-import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "../fields.ts";
+import {
+    advField,
+    boolField,
+    DESC_MAX,
+    idField,
+    NAME_MAX,
+    numField,
+    textField,
+} from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /**
@@ -146,6 +154,16 @@ const FIELDS: FieldSpec[] = [
         def: "onehand",
         options: SPRITE_TYPES,
     },
+    // The one flag an item has that is not about what it *does*. Named to match
+    // the structure flag of the same meaning, and read by the list screen's
+    // "hidden" filter — see `HIDDEN_FIELD` in ../../panel/list.ts.
+    boolField(
+        "hideFromBuildMenu",
+        "Hide from menu",
+        "Flags",
+        "false",
+        "keeps this item out of the lists until the “hidden” filter is ticked",
+    ),
     advField(),
 ];
 
@@ -171,6 +189,16 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     const sprite = e.sprite as { id?: string; type?: string } | undefined;
     read.put("spriteId", read.str(sprite?.id));
     read.put("spriteType", read.str(sprite?.type));
+    // The hidden flag, read the same way the element's flags are: only when it
+    // is actually a boolean, so an absent flag shows as unticked rather than as
+    // a stringified `undefined`. It is read here, outside every `when`
+    // predicate, so a value the form cannot currently show is not dropped on
+    // the next save.
+    if (typeof e.hideFromBuildMenu === "boolean") {
+        read.put("hideFromBuildMenu", String(e.hideFromBuildMenu));
+    } else if (typeof e.hiddenFromTheMenu === "boolean") {
+        read.put("hideFromBuildMenu", String(e.hiddenFromTheMenu));
+    }
 }
 
 /**
@@ -195,6 +223,10 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     // process for one — even though the form still holds the previous value so
     // switching back to a Tool restores it. `enabled: false` removes it outright.
     writeActions(w, w.opt("itemType") !== "Consumable");
+    // Written unconditionally, as the element writes its flags: `setBool` drops
+    // an `undefined`, so an item the author never touched stores no flag at all
+    // rather than a `false` that says nothing.
+    w.setBool("hideFromBuildMenu", w.optBool("hideFromBuildMenu"));
     const spriteId = w.opt("spriteId");
     if (spriteId) {
         const sprite: Record<string, unknown> = { id: spriteId };
@@ -227,6 +259,10 @@ const FORM_COVERED = [
     // both behind. The Consumable rule lives in `writeActions`, not here.
     ...ACTIONS_COVERED,
     "sprite",
+    // The hidden flag is written by `formToEntry`, so it must be claimed here or
+    // it falls through the passthrough as a duplicate. It was genuinely dropped
+    // this way once already, which is the same failure this list exists to stop.
+    "hideFromBuildMenu",
 ];
 
 export const itemDefinition: Definition = {

@@ -2,6 +2,7 @@
  * Live catalogues for form pickers: game registries + this mod's stored config.
  */
 import { api, getSandkit, safe } from "./api.ts";
+import { configIsHidden } from "./constants.ts";
 import { loadConfig } from "./config/store.ts";
 import type { Tab } from "./ui/schema.ts";
 import type { ListRow } from "./ui/definition/types.ts";
@@ -283,10 +284,11 @@ export function listStructures(): Opt[] {
                     value: t,
                     label: String(def?.name ?? def?.nameKey ?? t),
                     source: "game",
-                    // `hideFromBuildMenu` is the structure equivalent of an
-                    // element's `hidden`. The engine reads it off the mod registry,
-                    // so it comes back on the definition. Carried, not filtered.
-                    hidden: def?.hideFromBuildMenu === true,
+                    // A structure's equivalent of an element's `hidden`. Read
+                    // through `configIsHidden` rather than testing the field here,
+                    // so this picker and the list screen cannot disagree about
+                    // which objects are hidden.
+                    hidden: configIsHidden(def ?? {}, "structures"),
                 });
                 continue;
             }
@@ -300,7 +302,7 @@ export function listStructures(): Opt[] {
                 value: String(id),
                 label: String(name),
                 source: "game",
-                hidden: def?.hideFromBuildMenu === true,
+                hidden: configIsHidden(def ?? {}, "structures"),
             });
         }
     }
@@ -321,8 +323,9 @@ export function listStructures(): Opt[] {
                 value: st.id,
                 label: `${st.name || st.id} (this mod)`,
                 source: "mod",
-                // Same flag, same rule as an element's `hidden`.
-                hidden: st.hideFromBuildMenu === true,
+                // Same flag, same rule as an element's `hidden`, and the same
+                // helper — including the retired `hideFromBuildMenu` spelling.
+                hidden: configIsHidden(st, "structures"),
             });
         }
     }
@@ -1100,6 +1103,35 @@ export interface NativeObject extends Omit<ListRow, "origin" | "entry"> {
  * are not. A helper is cheaper to read than four repeated literals, and cheaper
  * still than one test per function.
  */
+/**
+ * The live mod registries, keyed by id.
+ *
+ * The engine's `getDefinitionByType` does not return `hideFromBuildMenu` or
+ * `visibleInPicker` — neither is on the published `ElementDefinition`. The
+ * registry record is what the registering mod wrote, so it carries the author's
+ * own flags verbatim, which is the only way this UI can see them.
+ *
+ * Read off `getSandkit()` rather than off `api`, because `api` here is the raw
+ * host handle (`./api.ts`) and has no `mods` on it — a call through it returns
+ * `undefined` and every registry lookup quietly finds nothing. `getSandkit()` is
+ * the resolver that reads both `sandkit.mods` and `sandkit.state.sandkit.mods`,
+ * which is the same two-step `md-admin-element` and `md-admin-structure` use.
+ *
+ * Returns `{}` rather than undefined so a caller cannot mistake "no mods box"
+ * for "no objects".
+ */
+function modRegistry(): Record<string, Record<string, unknown>> {
+    try {
+        const s = getSandkit();
+        return (s?.mods ?? s?.state?.sandkit?.mods ?? {}) as Record<
+            string,
+            Record<string, unknown>
+        >;
+    } catch {
+        return {};
+    }
+}
+
 function putNative(
     map: Map<string, NativeObject>,
     id: string,
@@ -1128,22 +1160,57 @@ function labelOf(v: unknown): string | undefined {
  */
 export function discoverElements(): NativeObject[] {
     const out = new Map<string, NativeObject>();
-    const types = (safe(() => api.elements?.getRegisteredTypes?.()) ?? []) as number[];
-    for (const t of types) {
-        const def = safe(() => api.elements?.getDefinitionByType?.(t)) as
-            | Record<string, unknown>
-            | undefined;
-        const id = labelOf(def?.id) ?? String(safe(() => api.elements?.getIdByType?.(t)) ?? "");
+
+    for (const t of api.elements?.getRegisteredTypes?.() ?? []) {
+        const def = api.elements?.getDefinitionByType?.(t);
+        const id = labelOf(def?.id) ?? api.elements?.getIdByType?.(t);
         if (!id) continue;
         putNative(out, id, {
             label: labelOf(def?.name) ??
-                String(safe(() => api.elements?.getNameByType?.(t)) ?? "") ??
-                labelOf(def?.nameKey) ?? id,
+                api.elements?.getNameByType?.(t) ??
+                labelOf(def?.nameKey) ??
+                id,
             color: colorFromMeta(def?.metaColor),
-            hidden: def?.hidden === true,
+            // `visibleInPicker` is phrased as a positive — an element is hidden
+            // when it says `false`, and the engine's own default is visible, so
+            // absence here is *not* hidden. Routing it through `configIsHidden`
+            // rather than testing it inline keeps this screen and the list
+            // screen from disagreeing, which they did.
+            hidden: configIsHidden(def ?? {}, "elements"),
             native: def,
         });
     }
+
+    // The mod registry, for the flags the engine's own definitions omit.
+    //
+    // `getDefinitionByType` does not return `visibleInPicker` at all — it is not
+    // on the engine's published `ElementDefinition`. The registry record is what
+    // the registering mod wrote, so it carries the author's own flag, the same
+    // way `hideFromBuildMenu` works for structures.
+    //
+    // Note what this is *not*: the engine never reads that field. It derives
+    // picker visibility from matter type (`not Liquid and not Gas`) and only a
+    // `vacuum:element:prepare` modifier can override that, which this mod does
+    // not register. So `visibleInPicker` here is the mod author's local
+    // convention, honoured by this UI and inert in game.
+    for (const [id, entry] of Object.entries(modRegistry().elements ?? {})) {
+        if (!id) continue;
+        const reg = entry as Record<string, unknown>;
+        const prior = out.get(id);
+        out.set(id, {
+            ...(prior ?? { id, origin: "game" as const, label: id }),
+            label: labelOf(reg.name) ?? labelOf(reg.nameKey) ?? prior?.label ?? id,
+            color: prior?.color ?? colorFromMeta(reg.metaColor),
+            // Registry first, and the engine's copy only as a fallback: for an
+            // element the engine's copy is always absent, so order decides
+            // nothing today but keeps the rule sane if it ever appears.
+            hidden: configIsHidden(reg, "elements") ||
+                (configIsHidden(prior?.native ?? {}, "elements") &&
+                    reg.visibleInPicker === undefined),
+            native: { ...(prior?.native ?? {}), ...reg },
+        });
+    }
+
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -1156,12 +1223,9 @@ export function discoverElements(): NativeObject[] {
  */
 export function discoverItems(): NativeObject[] {
     const out = new Map<string, NativeObject>();
-    const ids = (safe(() => (api.items as any)?.getRegisteredIds?.()) ?? []) as string[];
-    for (const id of ids) {
+    for (const id of api.items?.getRegisteredIds?.() ?? []) {
         if (typeof id !== "string" || !id) continue;
-        const def = safe(() => (api.items as any)?.getDefinitionById?.(id)) as
-            | Record<string, unknown>
-            | undefined;
+        const def = api.items?.getDefinitionById?.(id);
         out.set(id, { id, origin: "game", label: labelOf(def?.name) ?? id, native: def });
     }
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -1180,11 +1244,9 @@ export function discoverTerrains(): NativeObject[] {
     for (const name of enumNames("CellType")) {
         const type = enumValue("CellType", name);
         if (type === undefined) continue;
-        const id = String(safe(() => api.terrains?.getIdByType?.(type)) ?? "");
+        const id = api.terrains?.getIdByType?.(type);
         if (!id || out.has(id)) continue;
-        const def = safe(() => api.terrains?.getDefinitionByType?.(type)) as
-            | Record<string, unknown>
-            | undefined;
+        const def = api.terrains?.getDefinitionByType?.(type);
         out.set(id, { id, origin: "game", label: labelOf(def?.name) ?? name, native: def });
     }
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -1203,35 +1265,45 @@ export function discoverTerrains(): NativeObject[] {
  * engine wants a *type* there and a string is the kind of argument that throws
  * rather than returning nothing. Where nothing comes back the row is an id and
  * no more, which is still true and still worth showing.
+ *
+ * **The mod registry is consulted first**, and that is not a preference. It is
+ * the only place `hideFromBuildMenu` is readable: the engine's
+ * `getDefinitionByType` result does not carry it, while
+ * `sandkit.mods.structures[id]` does — the record the registering mod itself
+ * wrote. `md-admin-structure` reads it from there and calls that registry
+ * "authoritative" (`data.ts:53`), so a structure that skipped this step would
+ * report every structure as visible even where the mod asked for the opposite.
  */
 export function discoverStructures(): NativeObject[] {
     const out = new Map<string, NativeObject>();
-    const raw = safe(() => api.structures?.getAvailableTypes?.());
-    const refs = raw instanceof Set ? [...raw] : Array.isArray(raw) ? raw : [];
-    for (const ref of refs) {
-        if (typeof ref === "string" && ref) {
-            if (out.has(ref)) continue;
-            const def = safe(() => api.structures?.getDefinitionByType?.(ref)) as
-                | Record<string, unknown>
-                | undefined;
-            out.set(ref, {
-                id: ref,
-                origin: "game",
-                label: labelOf(def?.name) ?? ref,
-                native: def,
-            });
-            continue;
-        }
-        const def = safe(() => api.structures?.getDefinitionByType?.(ref)) as
-            | Record<string, unknown>
-            | undefined;
-        const id = labelOf(def?.id) ?? String(safe(() => api.structures?.getIdByType?.(ref)) ?? "");
-        if (!id || out.has(id)) continue;
+
+    // 1) The mod registry — carries the author's flags, keyed by id.
+    for (const [id, entry] of Object.entries(modRegistry().structures ?? {})) {
+        if (!id) continue;
+        const def = entry as Record<string, unknown>;
         putNative(out, id, {
             label: labelOf(def?.name) ?? labelOf(def?.nameKey) ?? id,
+            hidden: configIsHidden(def, "structures"),
             native: def,
         });
     }
+
+    // 2) Everything else the engine offers — the base game's structures, which
+    //    no mod registry will ever hold.
+    for (const ref of [...(api.structures?.getAvailableTypes?.() ?? new Set())]) {
+        const def = api.structures?.getDefinitionByType?.(ref);
+        const id = labelOf(def?.id) ??
+            (typeof ref === "string" ? ref : api.structures?.getIdByType?.(ref));
+        if (!id || out.has(id)) continue;
+        putNative(out, id, {
+            label: labelOf(def?.name) ?? labelOf(def?.nameKey) ?? id,
+            // A base-game structure carries no mod flag, so this is normally
+            // false — but reading it keeps one rule for every row.
+            hidden: configIsHidden(def ?? {}, "structures"),
+            native: def,
+        });
+    }
+
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 

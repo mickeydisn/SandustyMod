@@ -15,6 +15,7 @@
  * here without wiring it — is a failing test rather than a bug report.
  */
 import { type HandlersTabState, initialHandlersState } from "./panel/handlers.ts";
+import type { OwnerKey } from "./panel/list.ts";
 
 export type ViewMode = "list" | "form";
 
@@ -29,8 +30,19 @@ export interface VolatileViewState {
     handlerTab: HandlersTabState;
     /** The list screen's text filter. */
     listQuery: string;
-    /** The list screen's per-mod filter — the only source filter it has. */
-    listOwner: string;
+    /**
+     * The list screen's per-mod filter — the only source filter it has.
+     *
+     * `"own"` by default, not `"all"`. This screen is a config editor: what the
+     * user is looking at, on nearly every visit, is the thing they came to edit.
+     * Opening it to three hundred other mods' structures and a scrollbar is not
+     * a neutral default, it is the opposite one. "All" is still one click away,
+     * and still what `✕ clear` goes to — this only changes where a list *starts*.
+     *
+     * Typed `OwnerKey | "all"` rather than `string` so the default can be a real
+     * value and the setter can still accept a different one.
+     */
+    listOwner: OwnerKey | "all";
     /**
      * The list screen's "show objects kept out of normal use" tick: an element
      * marked `hidden`, a structure marked `hideFromBuildMenu`.
@@ -64,6 +76,35 @@ export const VOLATILE_KEYS = [
     "openRow",
 ] as const satisfies readonly (keyof VolatileViewState)[];
 
+/**
+ * The list screen's *starting* filters, as values rather than as two literals.
+ *
+ * The list does not open unfiltered: it opens on the objects the user can edit,
+ * with hidden ones out. Both of those were written twice — once in the
+ * `useState` initializer in `panel.ts` and once in `emptyViewState` here — and
+ * two literals of one default is a silent split. Nothing fails when they drift;
+ * the panel just opens on one view and a category change lands on another, which
+ * the user experiences as "the filter randomly resets itself".
+ *
+ * So they are read from here instead. The test asserts these values and that
+ * both call sites use them, which is a real check — a source-text match on
+ * `useState(...)` was not, and broke on reformatting.
+ *
+ * Not a volatile key: this is what a clean screen *is*, not something to clear.
+ *
+ * `listQuery` is widened to `string` on purpose: `as const` would narrow it to
+ * the literal `""`, and then `useState` infers `string` state whose setter will
+ * not accept a `""` — which is the opposite of what a default is for.
+ */
+export const LIST_DEFAULTS: Pick<
+    VolatileViewState,
+    "listQuery" | "listOwner" | "listHidden"
+> = {
+    listQuery: "",
+    listOwner: "own",
+    listHidden: false,
+};
+
 /** A clean screen. Used as the single source for every reset. */
 export function emptyViewState(): VolatileViewState {
     return {
@@ -75,9 +116,7 @@ export function emptyViewState(): VolatileViewState {
         jsonError: null,
         libQuery: {},
         handlerTab: initialHandlersState(),
-        listQuery: "",
-        listOwner: "all",
-        listHidden: false,
+        ...LIST_DEFAULTS,
         openRow: null,
     };
 }

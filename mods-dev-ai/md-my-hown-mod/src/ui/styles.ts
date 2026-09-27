@@ -302,7 +302,15 @@ export const gridCell: React.CSSProperties = {
     borderRadius: 1,
 };
 
-/** The filter bar above the rows: a search box and the origin chips. */
+/**
+ * The filter bar: the search box, then the owner chips and the hidden tick.
+ *
+ * Always rendered, even when a category has rows from a single owner and no
+ * chips to show. It used to collapse in that case, which is not a cosmetic
+ * saving — the hidden tick lives here, and a control that vanishes when the
+ * list is empty is a control that vanishes exactly when it is needed to explain
+ * an empty list.
+ */
 export const listFilterBar: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -470,6 +478,32 @@ export const chip: React.CSSProperties = {
 
 export const chipActive: React.CSSProperties = {
     ...chip,
+    background: "rgba(64, 96, 160, 0.95)",
+    borderColor: "rgba(150, 185, 240, 0.75)",
+    color: "#eef4ff",
+    fontWeight: 600,
+};
+
+/**
+ * A chip that also holds a checkbox — the "hidden objects" filter.
+ *
+ * Shaped like `chip` so it reads as one more filter beside the owner chips
+ * rather than as a stray checkbox welded onto the search box. When it is on it
+ * takes `chip`'s active tint, because that is the same signal every other chip
+ * uses for "this filter is applied" and a second one would need a legend.
+ */
+export const chipCheck: React.CSSProperties = {
+    ...chip,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    // A label, not a button, so the whole chip is a click target for the
+    // checkbox. Without this only the 10px box is clickable.
+    userSelect: "none",
+};
+
+export const chipCheckOn: React.CSSProperties = {
+    ...chipCheck,
     background: "rgba(64, 96, 160, 0.95)",
     borderColor: "rgba(150, 185, 240, 0.75)",
     color: "#eef4ff",

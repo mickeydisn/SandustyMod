@@ -16,7 +16,7 @@
  */
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverTerrains } from "../../catalog.ts";
-import { disclosureMark, originTag } from "./list.ts";
+import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
 /** Read a field from the engine's definition, falling back to the mod's entry. */
@@ -47,19 +47,6 @@ function swatch(ctx: ListRenderCtx): string | undefined {
     return ctx.row.color;
 }
 
-function brief(v: unknown): string {
-    if (v === undefined || v === null || v === "") return "";
-    if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
-    if (typeof v === "object") {
-        const o = v as Record<string, unknown>;
-        for (const k of ["id", "name", "type", "nameKey"]) {
-            if (typeof o[k] === "string" && o[k]) return String(o[k]);
-        }
-        return Array.isArray(v) ? `${(v as unknown[]).length} entries` : "set";
-    }
-    return String(v);
-}
-
 /** Swatch, name, id, hit points — the four things that identify a terrain. */
 function inlineRender(ctx: ListRenderCtx): unknown {
     const { h, row } = ctx;
@@ -86,38 +73,42 @@ function inlineRender(ctx: ListRenderCtx): unknown {
  * because they are the two that decide *how* a terrain is dug, and a user
  * comparing their ore against the game's is looking for exactly those.
  */
+const DETAILS: DetailSpec = {
+    fields: [
+        // `hp` and `hitPoints` are the same fact under two names, engine-side and
+        // config-side. `hp` wins because that is the engine's spelling, and a row
+        // showing the engine's value is the reason this block exists.
+        { key: "hp", label: "Hit points" },
+        { key: "materialId", label: "Material id" },
+        { key: "isBuilding", label: "Counts as a building" },
+        { key: "flammable", label: "Flammable" },
+        { key: "noShadow", label: "No shadow" },
+        { key: "fog", label: "Fog" },
+        { key: "output", label: "Drops" },
+        { key: "excavationRequirements", label: "Needs tools" },
+        { key: "interactions", label: "Interactions" },
+        {
+            key: "colorHSL",
+            label: "Colour",
+            // A hue is not a colour a person can act on; the packed value is
+            // shown instead, which is what the swatch above is drawn from.
+            pick: (s) => s.colorHSL ?? s.metaColor,
+        },
+    ],
+    // `hitPoints` is the config-side spelling of `hp`; `colorPattern` and
+    // `colorGradient` are render payloads, not facts to read.
+    skip: [
+        "hitPoints",
+        "colorPattern",
+        "colorGradient",
+        "colorHSL",
+        "backgroundElementType",
+        "background",
+    ],
+};
+
 function infoRender(ctx: ListRenderCtx): unknown {
-    const { h, row } = ctx;
-    const rows: [string, string][] = [];
-    const add = (label: string, v: unknown) => {
-        const s = brief(v);
-        if (s) rows.push([label, s]);
-    };
-    add("Hit points", field(ctx, "hp") ?? field(ctx, "hitPoints"));
-    add("Material id", field(ctx, "materialId"));
-    add("Flammable", field(ctx, "flammable"));
-    add("Drops", field(ctx, "output"));
-    add("Needs tools", field(ctx, "excavationRequirements"));
-    if (!rows.length) return null;
-    return h(
-        "div",
-        { style: S.rowDetail },
-        h(
-            "div",
-            { style: S.detailNote },
-            row.origin === "game"
-                ? "The engine's own values for this terrain."
-                : "The values this mod stores. Saved by editing the row.",
-        ),
-        ...rows.map(([k, v]) =>
-            h(
-                "div",
-                { key: k, style: S.detailLine },
-                h("span", { style: S.detailKey }, k),
-                h("span", { style: S.detailVal }, v),
-            )
-        ),
-    );
+    return renderDetail(ctx.h as never, ctx, DETAILS);
 }
 
 function searchText(row: ListRow): string {

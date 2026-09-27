@@ -21,27 +21,12 @@
  */
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverElements } from "../../catalog.ts";
-import { disclosureMark, originTag } from "./list.ts";
+import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
 /** The value to read for a field, from the engine's definition or the entry. */
 function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
-}
-
-/** A short, human-readable value: numbers trimmed, objects summarised. */
-function brief(v: unknown): string {
-    if (v === undefined || v === null || v === "") return "";
-    if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
-    if (typeof v === "object") {
-        const o = v as Record<string, unknown>;
-        // A nested payload's one identifying key, not its whole shape.
-        for (const k of ["id", "name", "type", "nameKey"]) {
-            if (typeof o[k] === "string" && o[k]) return String(o[k]);
-        }
-        return Array.isArray(v) ? `${(v as unknown[]).length} entries` : "set";
-    }
-    return String(v);
 }
 
 /**
@@ -70,47 +55,59 @@ function inlineRender(ctx: ListRenderCtx): unknown {
 /**
  * The expanded detail.
  *
- * Reads the engine's definition first and falls back to the mod's own entry, so
- * the same fields are shown for both origins. `hidden` and `visibleInPicker` are
- * included deliberately: an element that is hidden is invisible in-game but
- * still perfectly editable here, and a user who cannot tell why their element
- * does not appear in a picker will assume the mod is broken.
+ * Curated, in the order a person asks about an element: what it is made of,
+ * how it behaves, how it moves, how long it lives. Everything the engine's own
+ * definition carries beyond this — a field added in a later build — is listed
+ * after it rather than dropped, which is the point of the catch-all.
+ *
+ * `visibleInPicker` is shown because it decides the "hidden" filter, and an
+ * element that is not in the picker looks broken to anyone who has not read the
+ * source. `hidden` is shown for the same reason while it still exists in configs.
  */
+const DETAILS: DetailSpec = {
+    fields: [
+        { key: "matterType", label: "Matter" },
+        { key: "density", label: "Density" },
+        { key: "materialId", label: "Material" },
+        { key: "duration", label: "Lifetime" },
+        {
+            key: "durationRandom",
+            label: "Lifetime variance",
+            pick: (s) =>
+                typeof s.durationRandom === "object" && s.durationRandom
+                    ? Object.entries(s.durationRandom as Record<string, unknown>)
+                        .map(([k, v]) => `${k} ${brief(v)}`)
+                        .join(", ")
+                    : s.durationRandom,
+        },
+        { key: "isGrabbable", label: "Grabbable" },
+        { key: "isTransportable", label: "Transportable" },
+        { key: "collectable", label: "Collectable" },
+        { key: "flammable", label: "Flammable" },
+        { key: "visibleInPicker", label: "In picker" },
+        { key: "hidden", label: "Hidden (legacy flag)" },
+        { key: "defaultDataFields", label: "Data fields" },
+        { key: "metaColor", label: "Map colour" },
+        {
+            key: "colors",
+            label: "Colours",
+            // The variant count, not the raw array: `[142,200,255,255]` four
+            // times over is a payload, not a fact a person reads.
+            pick: (s) => {
+                const c = s.colors as { variants?: unknown[] } | unknown[] | undefined;
+                const n = Array.isArray(c) ? c.length : (c as { variants?: unknown[] })?.variants
+                    ?.length;
+                return typeof n === "number" ? `${n} variant${n === 1 ? "" : "s"}` : c;
+            },
+        },
+    ],
+    // `elementType` is the engine's numeric handle: real, but the id already
+    // names the object and a number here reads as a bug.
+    skip: ["elementType", "matterTypes", "matterTypeNames", "dataFieldCount"],
+};
+
 function infoRender(ctx: ListRenderCtx): unknown {
-    const { h, row } = ctx;
-    const rows: [string, string][] = [];
-    const add = (label: string, v: unknown) => {
-        const s = brief(v);
-        if (s) rows.push([label, s]);
-    };
-    add("Matter", field(ctx, "matterType"));
-    add("Density", field(ctx, "density"));
-    add("Flammable", field(ctx, "flammable"));
-    add("Grabbable", field(ctx, "isGrabbable"));
-    add("Transportable", field(ctx, "isTransportable"));
-    add("Collectable", field(ctx, "collectable"));
-    add("Hidden", field(ctx, "hidden"));
-    add("In picker", field(ctx, "visibleInPicker"));
-    if (!rows.length) return null;
-    return h(
-        "div",
-        { style: S.rowDetail },
-        h(
-            "div",
-            { style: S.detailNote },
-            row.origin === "game"
-                ? "The engine's own values for this element."
-                : "The values this mod stores. Saved by editing the row.",
-        ),
-        ...rows.map(([k, v]) =>
-            h(
-                "div",
-                { key: k, style: S.detailLine },
-                h("span", { style: S.detailKey }, k),
-                h("span", { style: S.detailVal }, v),
-            )
-        ),
-    );
+    return renderDetail(ctx.h as never, ctx, DETAILS);
 }
 
 /**

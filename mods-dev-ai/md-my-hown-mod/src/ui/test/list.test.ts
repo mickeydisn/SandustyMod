@@ -20,9 +20,13 @@
  */
 import { assert, assertEquals } from "jsr:@std/assert";
 import {
+    brief,
+    configIsHidden,
     countByOrigin,
     countByOwner,
     countHiddenRows,
+    detailRows,
+    type DetailSpec,
     filterRows,
     hiddenFieldOf,
     mergeRows,
@@ -31,9 +35,41 @@ import {
     ownerOf,
     ownersOf,
     renderListRow,
+    shownBecauseOf,
 } from "../panel/list.ts";
 import { row, rowDetails, rowSummary } from "../styles.ts";
 import type { ListRenderCtx, ListRow } from "../definition/types.ts";
+
+/**
+ * A host stand-in, installed before `catalog.ts` is pulled in.
+ *
+ * `api.ts` reads `sandkit` at module scope, so a dynamic import is the only way
+ * to give it a host — the same order the wrapper's own test file uses.
+ *
+ * The point of the shape: two elements the engine describes (one offering itself
+ * in the picker, one saying nothing) and two the engine does not describe at
+ * all, which only the mod registry knows about.
+ */
+globalThis.sandkit = {
+    api: {
+        elements: {
+            getRegisteredTypes: () => [1, 2],
+            getDefinitionByType: (t: number) =>
+                t === 1
+                    ? { id: "sand", nameKey: "sand", density: 1600, visibleInPicker: true }
+                    : { id: "void", nameKey: "void", density: 0 },
+            getIdByType: (t: number) => (t === 1 ? "sand" : "void"),
+        },
+    },
+    mods: {
+        elements: {
+            "md:ore": { nameKey: "ore", visibleInPicker: false },
+            "md:torch": { nameKey: "torch", visibleInPicker: true },
+        },
+    },
+} as never;
+
+const { discoverElements } = await import("../../catalog.ts");
 
 // ── Merging ──────────────────────────────────────────────────────────────────
 
@@ -369,14 +405,21 @@ Deno.test("the hidden filter is independent of the owner filter", () => {
     assertEquals(countHiddenRows(rows, "all"), 2);
 });
 
-Deno.test("a category with no hidden flag has no hidden rows", () => {
-    // The gate that decides this, and why terrains and items simply do not offer
-    // the box: `isBuilding` means "counts as a built wall", not "kept out of the
-    // build menu", and an item has no visibility flag at all.
-    assertEquals(hiddenFieldOf("elements"), "hidden");
+Deno.test("the categories that have a hidden flag, and what it is called", () => {
+    // Elements use `visibleInPicker` — the engine's own field, and *phrased as a
+    // positive*, so an element is hidden when it says `false`. Structures and
+    // items use `hideFromBuildMenu`, which lives on the **mod registry entry**
+    // (`sandkit.mods.structures[id]`) rather than on the engine's
+    // `getDefinitionByType` result — that is where `md-admin-structure` reads it,
+    // and this mod reuses the same name for items.
+    //
+    // Terrains have nothing. `isBuilding` means "counts as a built wall", not
+    // "kept out of the build menu", so reading it as hidden would hide every
+    // plain terrain and show every wall.
+    assertEquals(hiddenFieldOf("elements"), "visibleInPicker");
     assertEquals(hiddenFieldOf("structures"), "hideFromBuildMenu");
+    assertEquals(hiddenFieldOf("items"), "hideFromBuildMenu");
     assertEquals(hiddenFieldOf("terrains"), undefined);
-    assertEquals(hiddenFieldOf("items"), undefined);
 
     const rows = mergeRows(
         [{ id: "t1", isBuilding: true }],
@@ -386,9 +429,147 @@ Deno.test("a category with no hidden flag has no hidden rows", () => {
     assertEquals(rows[0].hidden, false);
 });
 
+Deno.test("an element is hidden when it says visibleInPicker: false", () => {
+    // The inversion is the whole point and the easiest thing to get backwards.
+    // Read as a plain `=== true`, this would call every ordinary element hidden
+    // and leave the list showing nothing until the box is ticked.
+    assertEquals(configIsHidden({ visibleInPicker: false }, "elements"), true);
+    assertEquals(configIsHidden({ visibleInPicker: true }, "elements"), false);
+    // Absent is the engine's own default, so it is *visible*. The engine builds
+    // the picker mask from matter type — `visibleInPicker = matterType is not
+    // Liquid and not Gas` — and offers everything else unless a
+    // `vacuum:element:prepare` modifier says otherwise. Reading absence as
+    // hidden inverted that and emptied the list of every solid element.
+    assertEquals(configIsHidden({}, "elements"), false);
+    // A junk value is not a `false`, so it is not a statement about visibility.
+    assertEquals(configIsHidden({ visibleInPicker: "false" }, "elements"), false);
+
+    // The retired `hidden` field still counts, with its own polarity — it was
+    // always a direct "yes it is hidden", and flipping it would un-hide every
+    // element the flag was ever set on.
+    assertEquals(configIsHidden({ hidden: true }, "elements"), true);
+    // The live field wins when both are present, which is what makes the two
+    // coexisting during a migration safe.
+    assertEquals(
+        configIsHidden({ hidden: true, visibleInPicker: true }, "elements"),
+        false,
+    );
+
+    // And it flows through the row, not just the predicate.
+    const rows = mergeRows(
+        [
+            { id: "e1", name: "Ore", visibleInPicker: false },
+            { id: "e2", name: "Sand" },
+            { id: "e3", name: "Glow", visibleInPicker: true },
+        ],
+        [],
+        "elements",
+    );
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    assertEquals(byId.e1.hidden, true);
+    assertEquals(byId.e2.hidden, false);
+    assertEquals(byId.e3.hidden, false);
+});
+
+Deno.test("an empty list names the filter that emptied it", () => {
+    const rows: ListRow[] = [
+        { id: "e1", label: "Ores", origin: "mod" },
+        { id: "e2", label: "Slag", origin: "mod", hidden: true },
+        { id: "g1", label: "Sand", origin: "game" },
+    ];
+
+    // The text filter comes first: it is the only cause the user cannot see.
+    assertEquals(
+        shownBecauseOf(rows, "own", false, "granite", "Elements"),
+        "No elements match “granite” in this view.",
+    );
+
+    // No rows of the user's own, but the game's exist — the message must offer
+    // the way out rather than implying there is nothing to see at all.
+    assertEquals(
+        shownBecauseOf([{ id: "g1", label: "Sand", origin: "game" }], "own", false, "", "Elements"),
+        "You have no elements in this view. 1 exist — switch the filter to “All” to see them.",
+    );
+
+    // The hidden tick is the cause, and it is the one filter that gets a "tick
+    // this" instruction rather than a "switch to All". Reachable, and the case
+    // where naming the owner filter instead would be a lie: ticking the box does
+    // bring the user's own row back.
+    assertEquals(
+        shownBecauseOf(
+            [{ id: "e2", label: "Slag", origin: "mod", hidden: true }],
+            "own",
+            false,
+            "",
+            "Elements",
+        ),
+        "All 1 elements in this view are hidden — tick “hidden” to show them.",
+    );
+});
+
+Deno.test("the hidden filter and the owner filter do not blame each other", () => {
+    // Both can be on and both can contribute. The hidden branch only fires when
+    // ticking the box would actually help under the *current* owner filter, so
+    // a user narrowed to "This mod" is never told to tick a box that only
+    // reveals another mod's objects.
+    const rows: ListRow[] = [
+        { id: "g1", label: "Sand", origin: "game", hidden: true },
+    ];
+    assertEquals(
+        shownBecauseOf(rows, "own", false, "", "Elements"),
+        "All 1 elements here are another mod's and hidden — switch the filter to “All” and tick “hidden”.",
+    );
+
+    // A plain other-mod row, with nothing hidden anywhere: "switch to All" is
+    // the whole story, so the message must not also ask for the hidden tick.
+    assertEquals(
+        shownBecauseOf([{ id: "g1", label: "Sand", origin: "game" }], "own", false, "", "Elements"),
+        "You have no elements in this view. 1 exist — switch the filter to “All” to see them.",
+    );
+});
+
+Deno.test("discoverElements reads the mod registry for the flag the engine omits", () => {
+    // The engine's `getDefinitionByType` does not return `visibleInPicker` — it
+    // is not on the published `ElementDefinition` — so the registry record is
+    // the only place the author's own flag can be seen.
+    //
+    // Tested through the real function against a faked host rather than by
+    // reading the engine's type file: the finding is a comment, but the
+    // *behaviour* is ours and is what can regress. The host is the module-level
+    // stand-in above.
+    const rows = discoverElements();
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+
+    // From the engine pass.
+    assertEquals(byId.sand.hidden, false);
+    // No flag anywhere: the engine's default is visible, so neither does the
+    // filter. Absence is not a statement.
+    assertEquals(byId.void.hidden, false);
+    // Only the registry says so — the whole point of the second pass.
+    assertEquals(byId["md:ore"].hidden, true);
+    assertEquals(byId["md:torch"].hidden, false);
+
+    // And the filter then behaves, which is what the user sees. Hidden is off by
+    // default, so the one flagged element is withheld…
+    assertEquals(
+        filterRows(rows, "", undefined, "all", false).map((r) => r.id).sort(),
+        ["md:torch", "sand", "void"],
+    );
+    // …and ticking it *adds* the hidden row to the list rather than showing only
+    // hidden ones, which is what the chip is for.
+    assertEquals(
+        filterRows(rows, "", undefined, "all", true).map((r) => r.id).sort(),
+        ["md:ore", "md:torch", "sand", "void"],
+    );
+});
+
 Deno.test("mergeRows reads the hidden flag from the entry that owns it", () => {
+    // `e2` says nothing, which is the engine's default, so it stays visible.
     const elements = mergeRows(
-        [{ id: "e1", name: "Ores", hidden: true }, { id: "e2", name: "Sand" }],
+        [
+            { id: "e1", name: "Ores", visibleInPicker: false },
+            { id: "e2", name: "Sand" },
+        ],
         [{ id: "e1", label: "Ores" }],
         "elements",
     );
@@ -396,7 +577,6 @@ Deno.test("mergeRows reads the hidden flag from the entry that owns it", () => {
     assertEquals(byId.e1.hidden, true);
     assertEquals(byId.e2.hidden, false);
 
-    // A structure's flag is named differently but means the same thing.
     const structures = mergeRows(
         [{ id: "s1", hideFromBuildMenu: true }, { id: "s2" }],
         [],
@@ -405,6 +585,174 @@ Deno.test("mergeRows reads the hidden flag from the entry that owns it", () => {
     const sById = Object.fromEntries(structures.map((r) => [r.id, r]));
     assertEquals(sById.s1.hidden, true);
     assertEquals(sById.s2.hidden, false);
+
+    // Items carry the same flag as structures, so the box works there too.
+    const items = mergeRows(
+        [{ id: "i1", hideFromBuildMenu: true }, { id: "i2" }],
+        [],
+        "items",
+    );
+    const iById = Object.fromEntries(items.map((r) => [r.id, r]));
+    assertEquals(iById.i1.hidden, true);
+    assertEquals(iById.i2.hidden, false);
+});
+
+Deno.test("the briefly-used hiddenFromTheMenu spelling still filters", () => {
+    // This mod renamed the flag to `hideFromBuildMenu` and then back again in the
+    // same session. A config saved under the interim name must keep behaving as
+    // its author intended, rather than quietly becoming unfiltered — that is what
+    // HIDDEN_ALIASES is for, and it is only worth having because the mistake
+    // happened.
+    const rows = mergeRows(
+        [{ id: "s1", hiddenFromTheMenu: true }, { id: "s2", hiddenFromTheMenu: false }],
+        [],
+        "structures",
+    );
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    assertEquals(byId.s1.hidden, true);
+    assertEquals(byId.s2.hidden, false);
+});
+
+Deno.test("a detail block shows the curated fields, then everything else", () => {
+    // The catch-all is the whole reason this is worth having: a game row now
+    // carries the engine's real definition, and a hand-written list of "the
+    // fields we know about" is wrong the moment the engine adds one. An unknown
+    // field has to appear rather than be dropped for want of a table entry.
+    const spec: DetailSpec = {
+        fields: [
+            { key: "matterType", label: "Matter" },
+            { key: "density", label: "Density" },
+        ],
+        skip: ["elementType"],
+    };
+    const rows = detailRows(
+        { matterType: "Powder", density: 900, elementType: 42, acidDamage: 3 },
+        spec,
+    );
+    // Curated first, in the order asked for, then the leftover alphabetically
+    // and humanised — `acidDamage` reads as "Acid Damage", not "acidDamage".
+    assertEquals(rows, [
+        ["Matter", "Powder"],
+        ["Density", "900"],
+        ["Acid Damage", "3"],
+    ]);
+});
+
+Deno.test("a detail block skips a field that has no value", () => {
+    // A block of blank rows reads as "there is nothing here", not "these are the
+    // fields that apply". A field the object does not have is not a row.
+    const spec: DetailSpec = {
+        fields: [{ key: "matterType", label: "Matter" }, { key: "density", label: "Density" }],
+        skip: [],
+    };
+    assertEquals(detailRows({ matterType: "Liquid" }, spec), [["Matter", "Liquid"]]);
+    assertEquals(detailRows({}, spec), []);
+    // `false` is a value, not an absence — a flag that is off is worth showing.
+    assertEquals(detailRows({ density: 0 }, spec), [["Density", "0"]]);
+});
+
+Deno.test("brief says what a value is, rather than 'set'", () => {
+    // The detail is the one place a user checks a value, so a payload printed as
+    // "set" is a field they cannot read at all.
+    assertEquals(brief(true), "yes");
+    assertEquals(brief(false), "no");
+    assertEquals(brief(3), "3");
+    assertEquals(brief(1.5), "1.50");
+    // A short list of primitives is a fact: "horizontal, vertical" beats
+    // "2 entries" for a build mode list.
+    assertEquals(brief(["horizontal", "vertical"]), "horizontal, vertical");
+    assertEquals(brief([]), "none");
+    // A long one is a count, because reading it out helps nobody.
+    assertEquals(brief([1, 2, 3, 4, 5]), "5 entries");
+    // A small record reads out; that is the shape of most engine payloads.
+    assertEquals(brief({ field1: 20, field2: 4 }), "field1: 20, field2: 4");
+    assertEquals(brief({}), "set");
+    // An identifying key wins over the container's shape.
+    assertEquals(brief({ id: "md:ore", weight: 3 }), "md:ore");
+});
+
+Deno.test("the list and the per-field selector agree about what is hidden", () => {
+    // They used to compute this separately — the selector testing the field
+    // inline, the list going through `HIDDEN_FIELD` — and drifted, so an object
+    // the list called hidden was offered as ordinary in a picker. Both now call
+    // `configIsHidden`, and this asserts they still answer the same for a
+    // structure saved under either spelling.
+    assertEquals(configIsHidden({ hideFromBuildMenu: true }, "structures"), true);
+    assertEquals(configIsHidden({ hiddenFromTheMenu: true }, "structures"), true);
+    assertEquals(configIsHidden({}, "structures"), false);
+    // Elements keep the engine's own field, which the selector also reads
+    // directly off a registered definition.
+    assertEquals(configIsHidden({ hidden: true }, "elements"), true);
+    // And items share the structure spelling.
+    assertEquals(configIsHidden({ hideFromBuildMenu: true }, "items"), true);
+    // Terrains have no such concept at all.
+    assertEquals(configIsHidden({ hidden: true }, "terrains"), false);
+});
+
+Deno.test("a game row's hidden flag survives the merge", () => {
+    // THE BUG. `discoverElements` reads `def.hidden` off the engine and sets it
+    // on the native object, and `mergeRows` then dropped it — so every *game*
+    // element came back unflagged and ticking "hidden" revealed nothing. The
+    // only rows the filter could ever affect were the mod's own.
+    const rows = mergeRows(
+        [],
+        [
+            { id: "g1", label: "Hidden one", hidden: true },
+            { id: "g2", label: "Normal one" },
+        ],
+        "elements",
+    );
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    assertEquals(byId.g1.hidden, true);
+    assertEquals(byId.g2.hidden, false);
+    assertEquals(
+        filterRows(rows, "", undefined, "all", false).map((r) => r.id),
+        ["g2"],
+    );
+});
+
+Deno.test("a mod entry that omits the flag does not unhide a game object", () => {
+    // "Absent" is not a decision. A mod that redeclares an engine object without
+    // mentioning the flag has not opted it out of being hidden.
+    //
+    // Structures, where the field is direct: omitting `hideFromBuildMenu` leaves
+    // the registry's own `true` standing.
+    const structures = mergeRows(
+        [{ id: "s1", name: "Renamed by the mod" }],
+        [{ id: "s1", label: "Hidden one", hidden: true }],
+        "structures",
+    );
+    assertEquals(structures[0].hidden, true);
+
+    // An explicit false is a decision, and wins.
+    const cleared = mergeRows(
+        [{ id: "s1", name: "Renamed", hideFromBuildMenu: false }],
+        [{ id: "s1", label: "Hidden one", hidden: true }],
+        "structures",
+    );
+    assertEquals(cleared[0].hidden, false);
+
+    // Elements, where the field is inverted: hiding is `visibleInPicker: false`,
+    // so *unhiding* is the one that says `true`. Omitting it leaves the engine's
+    // `false` in place, and saying `true` is how a mod makes it visible again.
+    //
+    // The natives here carry `hidden` rather than a raw `visibleInPicker`,
+    // because that is what `discoverElements` hands over: it reads the engine's
+    // definition and sets the flag through the same `configIsHidden` the list
+    // uses, so a raw definition never reaches `mergeRows`.
+    const elements = mergeRows(
+        [{ id: "e1", name: "Renamed by the mod" }],
+        [{ id: "e1", label: "Hidden one", hidden: true }],
+        "elements",
+    );
+    assertEquals(elements[0].hidden, true);
+
+    const shown = mergeRows(
+        [{ id: "e1", name: "Renamed", visibleInPicker: true }],
+        [{ id: "e1", label: "Hidden one", hidden: true }],
+        "elements",
+    );
+    assertEquals(shown[0].hidden, false);
 });
 
 Deno.test("the owner filter still answers what the origin filter used to", () => {
