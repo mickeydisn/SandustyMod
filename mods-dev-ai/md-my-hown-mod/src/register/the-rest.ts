@@ -36,7 +36,6 @@ import { engineTechOf, techUnlockStructureIds } from "../ui/tech-link.ts";
 import { actionRefsOf, applyAllModifiers, compileProcess } from "../hooks/index.ts";
 import {
     compileProjectile,
-    PROJECTILE_OPTION_LEGACY_KEYS,
     PROJECTILE_OPTION_STORE_KEY,
     projectileOptionOf,
 } from "../hooks/projectile-option/index.ts";
@@ -161,9 +160,10 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
             if (compiled.problem) {
                 console.warn(`[md-my-hown-mod] projectile ${entry.id}: ${compiled.problem}`);
             }
-            // The legacy keys are dropped whether or not they were understood, so
-            // saving from the panel cannot leave two competing option references.
-            for (const k of PROJECTILE_OPTION_LEGACY_KEYS) delete entry[k];
+            // Only the current key is written. The pre-split spellings are left
+            // where they are: nothing reads them, and deleting an author's key on
+            // the way to the engine is how a config loses data it never showed
+            // anyone.
             if (ref) {
                 entry[PROJECTILE_OPTION_STORE_KEY] = ref;
             }
@@ -197,8 +197,6 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
     }
     for (const sg of config.signals ?? []) {
         if (!sg?.id || registered.signals.has(sg.id)) continue;
-        // `actionRefsOf` migrates a pre-split `handlerKey` to a one-action process,
-        // so an existing config still registers the way it always did.
         registerSignal(
             sg,
             compileProcess(actionRefsOf(sg as Record<string, unknown>), "signal").fn as never,
@@ -229,8 +227,16 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
             if (!key) continue;
             // Input bindings still store a bare key rather than a list — they are a
             // function *pair* on one entry, not one process, and there is no place
-            // to put a list. A one-action process is the whole of it.
-            const { fn, skipped } = compileProcess(actionRefsOf({ handlerKey: key }), "behavior");
+            // to put a list. So the ref is built here rather than read off the
+            // entry: `actionRefsOf` reads a stored `actions` array, and these slots
+            // hold a string.
+            //
+            // It used to pass a synthetic `{ handlerKey: key }` to `actionRefsOf`,
+            // which worked only while that function still consulted the pre-split
+            // key. Now that it reads only `actions`, that call returns nothing, the
+            // `skipped` branch is taken, and every input binding is dropped with a
+            // warning. The single-action shape is spelled out instead.
+            const { fn, skipped } = compileProcess([{ key, options: undefined }], "behavior");
             if (typeof fn === "function" && !skipped.length) entry[slot] = fn as never;
             else console.warn(`${LOG} input binding ${b.id}: unknown ${slot} "${key}"`);
         }

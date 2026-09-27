@@ -53,11 +53,7 @@ export function emptyShape(fill: 0 | 1 = 0): number[][] {
     return Array.from({ length: SHAPE_SIZE }, () => Array<number>(SHAPE_SIZE).fill(fill));
 }
 
-/**
- * Coerce any stored shape into a valid 4×4 0/1 matrix.
- * Non-numeric, ragged or oversized input is clamped rather than rejected,
- * because entries can be hand-edited through the JSON escape hatch.
- */
+/** Coerce any stored shape into a valid 4×4 0/1 matrix. Bad input is clamped, not rejected. */
 export function normalizeShape(raw: unknown): number[][] {
     const grid = emptyShape(0);
     if (!Array.isArray(raw)) return grid;
@@ -149,14 +145,7 @@ export function parseBuildModes(
 
 // ── Hover tooltip ────────────────────────────────────────────────────────────
 
-/**
- * Build a `StructureTooltipHover` from the form controls.
- *
- * Returns `undefined` when no message key is set, so an untouched form does not
- * register a tooltip. The `field` is only included when it is a real data field
- * (1–4): `Number("")` is `0`, which would register a tooltip bound to a field
- * that does not exist and therefore never render.
- */
+/** Build a `StructureTooltipHover` from the controls, or `undefined` when no key is set. */
 export function composeTooltipHover(
     f: Record<string, string>,
 ): Record<string, unknown> | undefined {
@@ -173,14 +162,7 @@ export function composeTooltipHover(
     };
 }
 
-/**
- * Can the `tooltipHover` controls express this stored object on their own?
- *
- * If not, the raw box is shown so nothing is lost. A descriptor using
- * `valueLabels` / `valueKeys`, or a literal `message` instead of a key, cannot be
- * rebuilt from a key plus one field row, so hiding the box would silently drop
- * those on the next save.
- */
+/** Can the `tooltipHover` controls express this object? If not, the raw box is shown. */
 export function tooltipHoverIsComplete(raw: string | undefined): boolean {
     const obj = parseObjectOrUndefined(raw);
     if (!obj) return true; // nothing stored, nothing to warn about
@@ -455,15 +437,14 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // replaced it. Listing it here or reading it into the form would claim
     // ownership the panel no longer has, and the stored value would be dropped
     // on the next edit instead of falling into the passthrough.
-    // The hidden flag, under whichever name the entry happens to use, always into
-    // the live form key. `hiddenFromTheMenu` is a name this mod briefly used; a
-    // config still carrying it shows its author's choice and migrates on save.
-    const hiddenValue = typeof e.hideFromBuildMenu === "boolean"
-        ? e.hideFromBuildMenu
-        : typeof e.hiddenFromTheMenu === "boolean"
-        ? e.hiddenFromTheMenu
-        : undefined;
-    if (hiddenValue !== undefined) read.put("hideFromBuildMenu", String(hiddenValue));
+    // The hidden flag, under the one name the entry uses, always into the live
+    // form key. A config still carrying the brief `hiddenFromTheMenu` spelling
+    // is not honoured: that name existed for one build of this mod, and reading
+    // it here meant an entry that had not been touched in a long time reported
+    // a visibility choice the current form would then rewrite.
+    if (typeof e.hideFromBuildMenu === "boolean") {
+        read.put("hideFromBuildMenu", String(e.hideFromBuildMenu));
+    }
     if (typeof e.disallowPick === "boolean") read.put("disallowPick", String(e.disallowPick));
     // Read in full, including a link to a node that no longer exists: a
     // dangling node is resolved to "available from the start" at apply time, so
@@ -553,14 +534,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     if (defaultData) w.setRaw("defaultData", defaultData);
 }
 
-/**
- * Rules no single field can express.
- *
- * The engine throws `TypeError("Structure build mode spanTiles is only valid
- * for line modes.")` when `spanTiles` is set on any other mode type, so the form
- * must not be able to produce that combination. It is checked per row, because
- * the list is per row.
- */
+/** Rules no single field can express: the engine throws on `spanTiles` off a line mode. */
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
     if (errors.buildModesJson) return; // its own error already explains it
     const raw = form.buildModesJson?.trim();
@@ -596,14 +570,7 @@ function parseShape(text: string): number[][] | null {
     return parsed as number[][];
 }
 
-/**
- * Validate one structure-only field kind.
- *
- * The 4×4 rule lives here rather than in the generic validator because only a
- * structure has a shape: the engine rejects anything that is not exactly four
- * rows of four zeros and ones, so "a rectangular 0/1 matrix" — which is what the
- * generic `matrix` rule checks — is not the same guarantee.
- */
+/** Validate one structure-only field kind. The 4×4 rule lives here: only a structure has a shape. */
 function validateField(field: FieldSpec, value: string): string | undefined {
     if (field.kind !== "shape") return undefined;
     return parseShape(value) === null
@@ -613,11 +580,7 @@ function validateField(field: FieldSpec, value: string): string | undefined {
 
 // ── The section panel ────────────────────────────────────────────────────────
 
-/**
- * 4×4 footprint editor. The engine only accepts a 4×4 matrix of 0/1, so this
- * replaces a raw JSON textarea with a clickable grid: click a cell to toggle it,
- * or use the fill buttons for the common solid/empty cases.
- */
+/** 4×4 footprint editor, since the engine only accepts a 4×4 matrix of 0/1. */
 function renderShape(ctx: FieldContext): unknown {
     const { h, field, value, error } = ctx;
     const grid = normalizeShape(safeJson(value) ?? emptyShape(1));
@@ -784,17 +747,7 @@ function renderBuildModes(ctx: FieldContext): unknown {
     );
 }
 
-/**
- * The unlock relation, said in words above the fields.
- *
- * The picker names the node; it cannot answer the question the author actually
- * has, which is "which node is this behind, and does it need research?". That
- * needs the node's kind and cost, not just its id — so the answer is spelled out
- * here rather than left to a dropdown label. It answers on arrival, which is when
- * the question is in your head: you opened Structures because you want to make a
- * thing, and you want to know whether it will be reachable before you fill in
- * fields.
- */
+/** The unlock relation, said in words. The picker names the node but not its kind or cost. */
 function renderHeader(ctx: PanelContext): unknown {
     return ctx.h(
         "div",
@@ -803,13 +756,7 @@ function renderHeader(ctx: PanelContext): unknown {
     );
 }
 
-/**
- * The control for whichever structure-only kind this field is, or `null` for the
- * generic ones the panel already knows how to draw.
- *
- * Returning `null` rather than owning every field is what lets the structure
- * screen use the same text box, number box and dropdown as every other screen.
- */
+/** The control for a structure-only field kind, or `null` for the generic ones the panel already draws. */
 function renderField(ctx: FieldContext): unknown {
     switch (ctx.field.kind) {
         case "shape":

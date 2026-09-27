@@ -88,9 +88,9 @@ const FIELDS: FieldSpec[] = [
     },
     boolField("oneOff", "One-off", "Upgrade", "false", "can only be bought once"),
     {
-        // Was a `select` over `listUpgradeHandlerKeys`. The stored key was
-        // `onUpgradeKey` rather than `handlerKey`; `ACTIONS_COVERED` carries every
-        // legacy name so the migration does not need to know that.
+        // The stored key for this is `actions`, the same list every other process
+        // uses. A config written under the old `onUpgradeKey` spelling is read as
+        // no process at all.
         ...actionListField("runs when a level is bought", { section: "Upgrade" }),
     },
     advField(),

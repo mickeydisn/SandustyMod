@@ -105,9 +105,9 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
  * `sprite` and `options` are the stored key names, listed as themselves;
  * `spriteId` and `optionsJson` are the *controls* for them and are deliberately
  * absent, so the real keys do not also fall through the passthrough as duplicates.
- * `OPTION_COVERED` brings the option's own key plus every legacy spelling
- * (`getOptionsKey`, and the short-lived `actions` list) so none of them survive a
- * save as a second, competing reference.
+ * `OPTION_COVERED` brings the option's own key. The pre-split spellings are
+ * deliberately absent: nothing reads them, so claiming them would delete an
+ * author's key on a save that never looked at it.
  */
 const FORM_COVERED = ["sprite", "options", ...OPTION_COVERED];
 

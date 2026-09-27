@@ -29,14 +29,7 @@ function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
 }
 
-/**
- * The row line: swatch, name, and the matter type as the one fact worth showing
- * before the user clicks.
- *
- * Matter type rather than density because it is the only element property that
- * is always a short closed word. Density is a number whose interesting range
- * depends on the unit, and a four-digit number in a list row is noise.
- */
+/** The row line: swatch, name, and the matter type — a closed word, where density is noise. */
 function inlineRender(ctx: ListRenderCtx): unknown {
     const { h, row } = ctx;
     const matter = brief(field(ctx, "matterType"));
@@ -62,7 +55,9 @@ function inlineRender(ctx: ListRenderCtx): unknown {
  *
  * `visibleInPicker` is shown because it decides the "hidden" filter, and an
  * element that is not in the picker looks broken to anyone who has not read the
- * source. `hidden` is shown for the same reason while it still exists in configs.
+ * source. The engine's own `hidden` flag is not shown: `HIDDEN_FIELD` points the
+ * elements filter at `visibleInPicker`, so it was a second switch for one
+ * decision and nothing acted on it.
  */
 const DETAILS: DetailSpec = {
     fields: [
@@ -85,7 +80,6 @@ const DETAILS: DetailSpec = {
         { key: "collectable", label: "Collectable" },
         { key: "flammable", label: "Flammable" },
         { key: "visibleInPicker", label: "In picker" },
-        { key: "hidden", label: "Hidden (legacy flag)" },
         { key: "defaultDataFields", label: "Data fields" },
         { key: "metaColor", label: "Map colour" },
         {
@@ -110,18 +104,11 @@ function infoRender(ctx: ListRenderCtx): unknown {
     return renderDetail(ctx.h as never, ctx, DETAILS);
 }
 
-/**
- * Search text beyond the id and name.
- *
- * The matter type and the flags are in here so that searching "powder" or
- * "flammable" finds the elements that have them. Without it the filter only
- * matches names, and a user looking for "which of mine are flammable?" gets
- * nothing — the one question the list is best placed to answer.
- */
+/** Search text beyond id and name. The key name is searched too, not just its value. */
 function searchText(row: ListRow): string {
     const src = row.native ?? row.entry ?? {};
-    return ["matterType", "density", "flammable", "isGrabbable", "collectable", "hidden"]
-        .map((k) => brief(src[k]))
+    return ["matterType", "density", "flammable", "isGrabbable", "collectable"]
+        .map((k) => `${k} ${brief(src[k])}`)
         .join(" ");
 }
 

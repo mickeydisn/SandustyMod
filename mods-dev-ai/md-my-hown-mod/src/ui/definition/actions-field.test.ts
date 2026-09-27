@@ -1,12 +1,13 @@
 /**
  * The `actions` field: a process as a form field.
  *
- * The two things worth pinning are the **migration** (a `handlerKey` already on
- * disk must keep working) and the **round trip** (a process must survive an edit
- * byte for byte, order and options included).
+ * The thing worth pinning is the **round trip**: a process must survive an edit
+ * byte for byte, order and options included. There is no longer a second stored
+ * shape to migrate from — a pre-split `handlerKey` is read as no process, and
+ * `a pre-split key is not a process` below says so.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { ACTIONS_LEGACY_KEYS } from "../../hooks/process.ts";
+import { actionRefsOf } from "../../hooks/process.ts";
 import {
     actionListField,
     actionRefsToForm,
@@ -29,10 +30,12 @@ Deno.test("a process round-trips through the form, order and options intact", ()
     assertEquals(parseActionRefs(text), refs, "order and options survive");
 });
 
-Deno.test("a pre-split `handlerKey` loads as a one-action process", () => {
-    // The migration, read side. A config already on disk has no `actions`.
+Deno.test("a pre-split `handlerKey` loads as no process", () => {
+    // A config written before the split has no `actions`. It reads as an empty
+    // process: the engine never saw that key, so an author shown a one-action
+    // list would see a handler that does not run.
     const entry = { id: "p1", structureType: "machine", handlerKey: "processorConvert" };
-    assertEquals(parseActionRefs(actionRefsToForm(entry)), [{ key: "processorConvert" }]);
+    assertEquals(parseActionRefs(actionRefsToForm(entry)), []);
 });
 
 Deno.test("the new form wins when a config somehow has both shapes", () => {
@@ -73,19 +76,34 @@ Deno.test("the forgiving shapes a hand-written config may use", () => {
     assertEquals(parseActionRefs('[{"key":"a","options":7}]'), [{ key: "a" }]);
 });
 
-Deno.test("the field owns both the new key and the legacy one it replaces", () => {
-    // `formCovered` is what stops the passthrough re-adding `handlerKey` on save.
-    // Missing `handlerKey` from this list is how a migrated process would end up
-    // holding both shapes at once.
-    assertEquals(
-        [...ACTIONS_COVERED].sort(),
-        [ACTIONS_STORE_KEY, ...ACTIONS_LEGACY_KEYS].sort(),
-    );
+Deno.test("the field owns only the key it writes", () => {
+    // `formCovered` is what keeps the passthrough from re-adding a key the form
+    // has already written. The pre-split `handlerKey` / `onUpgradeKey` are
+    // deliberately *not* claimed: nothing reads them any more, so stripping
+    // them would delete an author's key over an edit that never looked at it.
+    assertEquals([...ACTIONS_COVERED], [ACTIONS_STORE_KEY]);
     const f = actionListField("Structure process");
     assertEquals(f.key, ACTIONS_FORM_KEY);
     assertEquals(f.kind, "actionList");
     assert(f.hint?.includes("ordered list of actions"), "the hint must say what it is");
     assert(f.hint?.includes("Structure process"), "the hint must name the call site");
+});
+
+Deno.test("a pre-split key is not a process", () => {
+    // The engine never read `handlerKey`, so honouring it would show a process
+    // in the panel that does not run. An empty list is the honest answer, and the
+    // raw key is left for the passthrough to carry rather than deleted.
+    assertEquals(actionRefsOf({ handlerKey: "onHit" }), []);
+    assertEquals(actionRefsOf({ onUpgradeKey: "onLevelUp" }), []);
+    // And the split shape is still read.
+    assertEquals(actionRefsOf({ actions: [{ key: "onHit", options: { a: 1 } }] }), [
+        { key: "onHit", options: { a: 1 } },
+    ]);
+    // An `actions` array wins over a stale sibling rather than being ignored.
+    assertEquals(
+        actionRefsOf({ handlerKey: "onHit", actions: [{ key: "onTick" }] }),
+        [{ key: "onTick", options: undefined }],
+    );
 });
 
 Deno.test("a definition can add its own `when` without this knowing about it", () => {

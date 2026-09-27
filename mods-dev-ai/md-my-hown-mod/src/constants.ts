@@ -209,6 +209,13 @@ export interface StructureConfig {
     /** Sort order within category. */
     order?: number;
     /**
+     * Hide this structure from the build menu. Ours, not the engine's: there is no
+     * engine or registry field for structure visibility, so the mod records the
+     * author's intent and its own list filters on it. Nothing is written to the
+     * engine that would act on it.
+     */
+    hideFromBuildMenu?: boolean;
+    /**
      * Inert on a mod structure — the engine only reads it for vanilla ids.
      *
      * Kept in the type because it may already be in someone's config, and the
@@ -218,13 +225,6 @@ export interface StructureConfig {
      * @see https://github.com/.../bundel.js 5251.js — the single read site
      */
     alwaysUnlocked?: boolean;
-    /** The real menu-visibility lever. Read off the mod registry by the menu. */
-    hideFromBuildMenu?: boolean;
-    /**
-     * Never written — read only so a config saved under the name this mod briefly
-     * used is still recognised as hidden rather than quietly unfiltered.
-     */
-    hiddenFromTheMenu?: boolean;
     /**
      * Ours, not the engine's: the unlock node that gates this structure.
      *
@@ -329,8 +329,6 @@ export interface ItemConfig {
      * it. Nothing is written to the engine that would act on it.
      */
     hideFromBuildMenu?: boolean;
-    /** Read-only: a config saved under the name this mod briefly used. */
-    hiddenFromTheMenu?: boolean;
     [key: string]: unknown;
 }
 
@@ -372,43 +370,7 @@ const HIDDEN_INVERTED: Partial<Record<HiddenCategory, boolean>> = {
     elements: true,
 };
 
-/**
- * Retired spellings still present in saved configs, per category.
- *
- * Read as a fallback so a config written before a rename keeps filtering the
- * way its author intended instead of quietly becoming unfiltered. New writes use
- * the name in `HIDDEN_FIELD`.
- *
- * For elements the retired name is `hidden`, and it is read with the *element*
- * polarity — a plain `hidden: true` means hidden — so `HIDDEN_INVERTED` is
- * applied per-entry rather than per-category. That is the one asymmetry here,
- * and it is the honest one: those two fields never meant the same thing, and
- * pretending otherwise would flip every element the flag was ever set on.
- */
-export const HIDDEN_ALIASES: Partial<Record<HiddenCategory, string[]>> = {
-    elements: ["hidden"],
-    structures: ["hiddenFromTheMenu"],
-    items: ["hiddenFromTheMenu"],
-};
-
-/**
- * Whether a config entry of `cat` is hidden, under either spelling.
- *
- * The one place the answer is computed. `catalog.ts` uses it for the selector's
- * options and `ui/panel/list.ts` for the list rows.
- */
-/**
- * What an entry *explicitly* says about its own visibility.
- *
- * `true` = hidden, `false` = visible, `undefined` = says nothing at all. The
- * three-way answer is the point: a merge has to tell "the mod turned it off"
- * apart from "the mod never mentioned it", and a two-way boolean collapses
- * those two into the same value.
- *
- * Inversion lives here rather than at each call site. `visibleInPicker: false`
- * and `hideFromBuildMenu: false` both mean hidden-by-different-wording, and
- * getting that wrong in a merge is how an element ends up silently reappearing.
- */
+/** What an entry says about its visibility: hidden, visible, or silent. Only `HIDDEN_FIELD`, inverted per category. */
 export function entryVisibility(
     e: Record<string, unknown>,
     cat: string,
@@ -430,20 +392,10 @@ export function entryVisibility(
     if (field && typeof e[field] === "boolean") {
         return HIDDEN_INVERTED[cat as HiddenCategory] ? e[field] === false : e[field] === true;
     }
-    // A retired name, read with its *own* polarity: `hidden: true` on an element
-    // has always meant hidden, whereas `visibleInPicker: false` also means it but
-    // by saying the opposite. Same answer, different question.
-    for (const alias of HIDDEN_ALIASES[cat as HiddenCategory] ?? []) {
-        if (typeof e[alias] === "boolean") return e[alias] === true;
-    }
     return undefined;
 }
 
-/**
- * Whether a config entry of `cat` is hidden. The two-way form of
- * `entryVisibility`, for the callers that only need the answer and do not need
- * to tell "explicitly visible" apart from "silent".
- */
+/** Whether an entry of `cat` is hidden. The two-way form of `entryVisibility`. */
 export function configIsHidden(e: Record<string, unknown>, cat: string): boolean {
     // Only an explicit boolean decides. An absent field is not a statement about
     // visibility, and for an element the config default of `true` is what "not
@@ -476,7 +428,7 @@ export interface RecipeOutputEntry {
 
 /**
  * Recipe body shared by processing.* and structures.recipes.register.
- * Element refs may be string ids (resolved via elements.getTypeFromId) or numbers.
+ * Element refs may be string ids (resolved via elements.getTypeById) or numbers.
  */
 export interface RecipeConfig {
     id: string;
@@ -520,8 +472,6 @@ export interface ProcessingConfig {
      * `{ structureType, intervalMs, process }` — there is no per-instance mode.
      */
     structureType?: string | number;
-    /** Legacy alias for {@link structureType}; still read when the above is absent. */
-    structureId?: string | number;
     /** Interval between process ticks (ms). Must be finite > 0. */
     intervalMs?: number;
     /**
@@ -529,8 +479,6 @@ export interface ProcessingConfig {
      * Leave undefined in stored config; attach via code if needed.
      */
     process?: (ctx: unknown, api: unknown) => void;
-    /** @deprecated The engine has no instance mode; ignored. */
-    mode?: "type" | "instance";
     [key: string]: unknown;
 }
 
@@ -1054,8 +1002,7 @@ export const FIELD_HELP = {
         "id (required)",
         "hookId — engine hook point name (string)",
         "kind: intercept | modify",
-        "handlerKey — key in src/hooks/handlers.ts CODE_HANDLERS (required for live attach)",
-        "options — plain object passed to hooks.*",
+        "actions: [{key, options}] — the process, ordered",
         "enabled — default true",
         "notes — free text",
         "NOTE: real callbacks live in code (handlers.ts), not in JSON",
@@ -1068,13 +1015,13 @@ export const FIELD_HELP = {
         "id, cost, currencyType, branch, requires, unlocks:{structures,items,map}",
         "parentId / preferredPosition for registerNode placement",
     ],
-    upgradeCategories: ["categoryId, itemId, itemNameKey, onUpgradeKey"],
-    upgrades: ["itemId, categoryId, upgrade:{id,maxLevel,costs,oneOff}, onUpgradeKey"],
-    projectiles: ["id, sprite:{id,tint}, options or getOptionsKey"],
+    upgradeCategories: ["categoryId, itemId, itemNameKey, requirement:{techId}"],
+    upgrades: ["itemId, categoryId, upgrade:{id,maxLevel,costs,oneOff}, actions: [{key, options}]"],
+    projectiles: ["id, sprite:{id,tint}, options, option:{key, params}"],
     energyTypes: ["id, structureId, type (e.g. storage), options:{priority,excludeFromNetwork}"],
     excavationProfiles: ["id, power, pattern (square number[][]), options flags"],
     structureBehaviors: ["id, kind (conveyor|launcher), definition{}"],
-    signals: ["kind: targets|interactables|senderType, target, handlerKey"],
-    triggers: ["triggerId, interval, sequentialRuns, extra, handlerKey"],
+    signals: ["kind: targets|interactables|senderType, target, actions: [{key, options}]"],
+    triggers: ["triggerId, interval, sequentialRuns, extra, actions: [{key, options}]"],
     sprites: ["id, path (loadFromMod) or source (load), options, fromMod"],
 } as const;

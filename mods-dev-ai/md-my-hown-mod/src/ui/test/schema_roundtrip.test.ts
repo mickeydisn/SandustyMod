@@ -44,6 +44,7 @@ const {
     parseBuildModes,
 } = await import("../schema.ts");
 const { searchLibraryAssets, listLibraryAssets } = await import("../../catalog.ts");
+const { parseActionRefs } = await import("../definition/actions-field.ts");
 
 let pass = 0;
 let fail = 0;
@@ -391,11 +392,11 @@ roundTrip("projectiles", {
     options: { damage: 10 },
 });
 
-console.log("── a pre-split handlerKey migrates to a one-action process ──");
+console.log("── a pre-split handlerKey is no longer a process ──");
 {
-    // The migration, end to end, on a real tab. An entry already on disk holds
-    // `handlerKey`; saving it must produce `actions` **and remove** the old key.
-    // Leaving both would make "which shape wins" a question of lookup order.
+    // End to end on a real tab. An entry written before the split holds
+    // `handlerKey`; it now loads as *no* process, and saving leaves the key
+    // alone rather than translating it.
     const before = {
         id: "md-my-hown-mod:mdmy.signal.legacy",
         kind: "interactables",
@@ -403,25 +404,28 @@ console.log("── a pre-split handlerKey migrates to a one-action process ─�
         handlerKey: "structureWriteData",
     };
     const form = entryToForm("signals", before);
-    // It *loads* as a process, so the author sees their handler rather than a blank.
+    // It loads as *empty*, so the author is not shown a handler that never runs.
     check(
-        "a legacy handlerKey reads as a one-action process",
-        JSON.parse(form.actionsJson ?? "[]")[0]?.key === "structureWriteData",
+        "a pre-split handlerKey reads as no process",
+        parseActionRefs(form.actionsJson).length === 0,
         form.actionsJson ?? "(absent)",
     );
     const back = formToEntry("signals", form);
+    // No `actions` is written — there is nothing to write.
     check(
-        "the legacy key is removed on save",
-        back.handlerKey === undefined,
-        String(back.handlerKey),
-    );
-    check(
-        "and replaced by the process",
-        JSON.stringify(back.actions) ===
-            JSON.stringify([{ key: "structureWriteData" }]),
+        "and no process is created",
+        back.actions === undefined,
         JSON.stringify(back.actions),
     );
-    // Everything else is untouched by the migration.
+    // The stale key is left where it was. The form does not claim it, so the
+    // passthrough carries it: removing it would destroy data over an edit that
+    // never looked at that field.
+    check(
+        "the stale key is left untouched",
+        back.handlerKey === "structureWriteData",
+        String(back.handlerKey),
+    );
+    // Everything else is untouched.
     check(
         "the rest of the entry survives",
         back.kind === "interactables" && back.target === "mdmy.structure.button",
@@ -842,22 +846,27 @@ console.log("── a behaviour's structure ids live in the definition, edited a
         zero.flammable?.outputChance === 0,
         JSON.stringify(zero.flammable),
     );
-    // The legacy booleans. They never worked, but they are in hand-edited
-    // configs, and reading them as "off" would be a second wrong answer.
+    // The pre-split booleans are read as *off*, and the key is dropped on save.
+    // They never reached the engine — the fire pass gates on
+    // `typeof flammable === "object"` and the collector's lookup on
+    // `collectable?.value` — so honouring them would put the panel in a state
+    // that looks configured and is not. The form now owns both keys, so a stale
+    // boolean is removed rather than left to sit in the entry beside a key that
+    // means the same thing and is the only one the engine reads.
     check(
-        "a legacy flammable boolean reads as on",
-        store({ flammable: true }).flammableOn === "true",
-        "read as off",
+        "a bare flammable boolean is not read as on",
+        store({ flammable: true }).flammableOn !== "true",
+        "read as on",
     );
     check(
-        "a legacy collectable boolean reads as on",
-        store({ collectable: true }).collectableOn === "true",
-        "read as off",
+        "a bare collectable boolean is not read as on",
+        store({ collectable: true }).collectableOn !== "true",
+        "read as on",
     );
     check(
-        "a legacy collectable boolean carries no value",
-        !store({ collectable: true }).collectableValue,
-        String(store({ collectable: true }).collectableValue),
+        "a stale boolean is dropped on save",
+        build(store({ flammable: true })).flammable === undefined,
+        JSON.stringify(build(store({ flammable: true })).flammable),
     );
     const gold = store({ collectable: { value: 2 } });
     check(
@@ -1730,11 +1739,14 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         Object.keys(reg.buildHandlerOptions(drill, { power: "" })).length === 0,
     );
 
-    // 9.5 — reachability scan over a stored config.
+    // 9.5 — reachability scan over a stored config. The fixtures use the split
+    // `actions` shape, which is the only one the scan reads: a pre-split
+    // `handlerKey` is not a process and contributes no usage, so building a
+    // reachability fixture out of one would test nothing.
     const cfg = {
-        signals: [{ id: "s1", handlerKey: "structureWriteData" }],
-        triggers: [{ id: "t1", handlerKey: "techGrantItem" }], // tech handler in a trigger slot
-        items: [{ id: "i1", handlerKey: "itemShoot" }],
+        signals: [{ id: "s1", actions: [{ key: "structureWriteData" }] }],
+        triggers: [{ id: "t1", actions: [{ key: "techGrantItem" }] }], // tech handler in a trigger slot
+        items: [{ id: "i1", actions: [{ key: "itemShoot" }] }],
     };
     const bad = reg.unreachableHandlers(cfg);
     check("mismatched slot is flagged unreachable", bad.length === 1, JSON.stringify(bad));
@@ -1815,8 +1827,8 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
     const node = hp.renderActions({
         h: el as never,
         cfg: {
-            signals: [{ id: "s1", handlerKey: "structureWriteData" }],
-            triggers: [{ id: "t1", handlerKey: "techGrantItem" }],
+            signals: [{ id: "s1", actions: [{ key: "structureWriteData" }] }],
+            triggers: [{ id: "t1", actions: [{ key: "techGrantItem" }] }],
         },
         state: hp.initialHandlersState(),
         setState: () => {},

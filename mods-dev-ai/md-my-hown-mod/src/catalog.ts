@@ -61,13 +61,7 @@ function enumOpts(name: string): Opt[] {
     return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * The enum member *names* for an enum, with no numeric value in the label.
- *
- * Separated from `enumOpts` because its "does this exist already?" guard was
- * the bug: `enumOpts` returns a `value` that is the *number*, and callers compare
- * it against a map keyed by *id*, so the guard never fired.
- */
+/** Enum member *names* only. Split from `enumOpts`, whose guard compared a *number* against a map keyed by *id*. */
 function enumNames(name: string): string[] {
     const e = sk()?.enums?.[name];
     if (!e || typeof e !== "object") return [];
@@ -98,27 +92,7 @@ function colorFromMeta(meta: unknown): string | undefined {
     return undefined;
 }
 
-/**
- * Element ids for a picker: the game's own elements, then this mod's config.
- *
- * Read from the live registry, not from the enum. The enum only maps
- * `Name -> number`, and the *id* is a separate string the engine only hands out
- * through `getIdByType` / `getDefinitionByType`. Guessing the id from the enum
- * name is wrong in two ways at once:
- *
- *  - it adds a **second, lowercased** entry for every element already found
- *    through the registry, because the "already have it?" guard compares the
- *    enum's *number* against a map keyed by *id*, so it never matches;
- *  - elements whose definition cannot be read fall back to `String(type)`,
- *    i.e. the bare number, which is not a valid element id at all.
- *
- * `hidden` elements are excluded. The game keeps a number of internal element
- * types around (resolved pointers, intermediate states) that are not things a
- * recipe should name, and offering them in a contact-reaction picker invites a
- * reference that quietly never fires. Pass `includeHidden` when you genuinely
- * need one — the Help screen's orphan check does, so a mod that already points
- * at a hidden element can still see that it resolves.
- */
+/** Element ids from the live registry: the enum maps name→number, never id. Hidden types excluded unless asked. */
 export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
     const map = new Map<string, Opt>();
     const includeHidden = !!opts?.includeHidden;
@@ -323,8 +297,9 @@ export function listStructures(): Opt[] {
                 value: st.id,
                 label: `${st.name || st.id} (this mod)`,
                 source: "mod",
-                // Same flag, same rule as an element's `hidden`, and the same
-                // helper — including the retired `hideFromBuildMenu` spelling.
+                // Same flag, same rule as an element's `visibleInPicker`, and the
+                // same helper — so a structure the list calls hidden is not
+                // offered as ordinary here.
                 hidden: configIsHidden(st, "structures"),
             });
         }
@@ -377,17 +352,7 @@ export function listItems(): Opt[] {
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * Terrain ids for a picker: the game's own terrains, then this mod's config.
- *
- * Same discipline as `listElements`, and for the same reason. The `CellType`
- * enum maps a *name* to a *number*; neither is the terrain **id**, and
- * `resolveTerrainRef` looks ids up with `terrains.getTypeById`. So the enum is
- * walked to get the numbers, and the numbers are turned back into real ids with
- * `terrains.getIdByType` — a member whose id cannot be resolved is dropped
- * rather than offered as a number, because a bare cell type is not something
- * the config layer round-trips.
- */
+/** Terrain ids from the registry: `CellType` is name→number, never id. Unresolvable members are dropped. */
 export function listTerrains(): Opt[] {
     const map = new Map<string, Opt>();
 
@@ -406,14 +371,7 @@ export function listTerrains(): Opt[] {
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * `structure.linkedClearance` — clearance mode for linked placement.
- *
- * The engine minifies this to `structureConfig.n`, and the *only* comparison
- * anywhere in the bundle is `=== "allOrNothing"`. Any other value — including a
- * typo, and including absent — skips the all-or-nothing check, so the field
- * behaved like a switch wearing a text box's clothes. There are two real states.
- */
+/** `structure.linkedClearance` — the only test anywhere is `=== "allOrNothing"`, so any other value skips it. */
 export function listLinkedClearance(): Opt[] {
     return [
         {
@@ -427,20 +385,7 @@ export function listLinkedClearance(): Opt[] {
     ];
 }
 
-/**
- * Legal `terrain.materialId` values.
- *
- * The engine throws unless the id is a number `> obstacleBreakpoint` and `< 150`,
- * and `obstacleBreakpoint` is `100` (`utils-worker.js/90823.js`) — so the legal
- * range is exactly 101–149. Every value in that range is an obstacle
- * (`materialId >= obstacleBreakpoint` is the only test anywhere), so there are
- * no named tiers to offer and naming any would be invention.
- *
- * What *is* useful is the id to pick. The engine computes its own next-free
- * value — `max(<highest builtin>, ...our terrain cellTypes) + 1` — so that is
- * what leads the list. Two terrains sharing a material id sort against each
- * other unpredictably, and a free-typed number is how that happens.
- */
+/** Legal `terrain.materialId` values: 101–149, the engine's only obstacle range. Leads with the computed next-free id. */
 export function listMaterialIds(): Opt[] {
     const used = (loadConfig().terrains ?? [])
         .map((t) => Number((t as { materialId?: unknown } | undefined)?.materialId))
@@ -872,15 +817,7 @@ function describedOptions(
         });
 }
 
-/**
- * Slot-scoped handler options, driven by the typed registry
- * (`src/hooks/handler-registry.ts`) instead of a hand-kept array.
- *
- * The old hardcoded lists could only ever be as correct as the last time
- * somebody edited them. The registry is the single source of truth: adding a
- * handler there automatically makes it appear in every slot that can use it,
- * and nowhere else.
- */
+/** Slot-scoped handler options from `HANDLER_META`, so a handler cannot appear in a slot that cannot use it. */
 function slotHandlerKeys(slot: HandlerSlot, registry: "any" | "process" = "any"): Opt[] {
     const r = handlerRegistry();
     const metas = HANDLER_META.filter((m) => m.slots.includes(slot));
@@ -893,17 +830,7 @@ function slotHandlerKeys(slot: HandlerSlot, registry: "any" | "process" = "any")
     return describedOptions(reg ?? fallback, docs, metas.map((m) => m.key));
 }
 
-/**
- * The projectile presets, as picker options.
- *
- * **No longer a handler slot.** A projectile holds one `ProjectileOption`, not a
- * process, so it has no `HandlerSlot` and does not come from `HANDLER_META`. The
- * list is built from `PROJECTILE_OPTIONS` instead — the same registry the compiler
- * uses, so the dropdown cannot offer a key that will not resolve.
- *
- * Kept under its old name because the catalog is the shared vocabulary the field
- * builders import from, and this is still the question a projectile field asks.
- */
+/** Projectile presets from `PROJECTILE_OPTIONS`, the compiler's own registry. A projectile is not a handler slot. */
 export function listProjectileHandlerKeys(): Opt[] {
     const docs = PROJECTILE_OPTION_DOCS;
     return Object.keys(PROJECTILE_OPTIONS).sort().map((key) => ({
@@ -925,13 +852,7 @@ export function listUpgradeHandlerKeys(): Opt[] {
     return slotHandlerKeys("upgrade");
 }
 
-/**
- * `ItemDefinition.handleAction` callbacks, narrowed to one `ItemType`.
- *
- * A Consumable yields nothing: `ItemType` has such a member but the `ActionType`
- * that `handleAction` receives does not, so there is no action a consumable use
- * could be dispatched through.
- */
+/** `handleAction` callbacks for one `ItemType`. A Consumable yields none: `ActionType` has no such member. */
 export function listItemActionHandlerKeys(itemType?: string): Opt[] {
     const metas = itemActionHandlersFor(itemType);
     const r = handlerRegistry();
@@ -945,12 +866,7 @@ export function listDescribedProcessorKeys(): Opt[] {
     return slotHandlerKeys("processing", "process");
 }
 
-/**
- * Description for one handler key, or undefined when unknown.
- *
- * Reads all three registries, so a hook-modifier key (which lives in
- * CODE_HANDLERS, not ANY_HANDLERS) still gets its description.
- */
+/** Description for one handler key, reading all three registries. */
 export function handlerDoc(key: string): string | undefined {
     const r = handlerRegistry();
     return r.anyDocs?.[key] ?? r.processDocs?.[key] ?? r.codeDocs?.[key];
@@ -963,13 +879,7 @@ export function handlerDoc(key: string): string | undefined {
  * `excludeSuffix` drops the node being edited: the form only holds the id
  * *suffix*, so a tech can never list itself as its own prerequisite.
  */
-/**
- * Unlock nodes, for the structure picker.
- *
- * The built-in "Unlock by default" is first and is *not* in the config — it is
- * the meaning of "available from the start", so it is offered as a real,
- * selectable option rather than as an absent field. See `src/ui/tech-link.ts`.
- */
+/** Unlock nodes, with the built-in "Unlock by default" first — it means available-from-start, not absent. */
 export function listUnlockNodes(): Opt[] {
     return allUnlockNodes(loadConfig()).map((n) => ({
         value: n.id,
@@ -998,21 +908,7 @@ export function listTechIds(excludeSuffix?: string): Opt[] {
  * `TechDefinition.branch` is a plain string in the engine — there is no branch
  * enum to read — so this is derived from our own techs plus a custom escape.
  */
-/**
- * Upgrade category ids.
- *
- * Unlike almost every other list here, this one **cannot** read the game's
- * categories. `api.upgrades.registerCategory` is write-only — there is no
- * `listCategories` to call — so the game may well have categories we have never
- * heard of and there is no way to find out from inside the mod.
- *
- * That is a real limit and it is worth being explicit about rather than papering
- * over with a free-text box: the picker offers what we *do* know, which is the
- * categories this mod registers plus `tools`, the id the field has always
- * defaulted to. A value the game has and we do not still has to be typed, and
- * the hint says so — an unlabelled escape hatch reads as an oversight, whereas
- * a labelled one is a documented boundary.
- */
+/** Upgrade category ids. `registerCategory` is write-only, so game categories we never registered cannot be listed. */
 export function listUpgradeCategoryIds(): Opt[] {
     const map = new Map<string, Opt>();
     // `tools` is the documented default and the field's own `def`. It is the
@@ -1047,10 +943,7 @@ export function listTechBranches(): Opt[] {
         .concat([{ value: "__custom__", label: "custom branch (type below)" }]);
 }
 
-/**
- * Currency ids already in use. Like `branch` this is a free string in the
- * engine; `gold` is the example named in the TechDefinition docs.
- */
+/** Currency ids in use. A free string in the engine; `gold` is the documented example. */
 export function listCurrencyTypes(): Opt[] {
     const seen = new Set<string>(["gold"]);
     for (const t of loadConfig().techs ?? []) {
@@ -1103,23 +996,7 @@ export interface NativeObject extends Omit<ListRow, "origin" | "entry"> {
  * are not. A helper is cheaper to read than four repeated literals, and cheaper
  * still than one test per function.
  */
-/**
- * The live mod registries, keyed by id.
- *
- * The engine's `getDefinitionByType` does not return `hideFromBuildMenu` or
- * `visibleInPicker` — neither is on the published `ElementDefinition`. The
- * registry record is what the registering mod wrote, so it carries the author's
- * own flags verbatim, which is the only way this UI can see them.
- *
- * Read off `getSandkit()` rather than off `api`, because `api` here is the raw
- * host handle (`./api.ts`) and has no `mods` on it — a call through it returns
- * `undefined` and every registry lookup quietly finds nothing. `getSandkit()` is
- * the resolver that reads both `sandkit.mods` and `sandkit.state.sandkit.mods`,
- * which is the same two-step `md-admin-element` and `md-admin-structure` use.
- *
- * Returns `{}` rather than undefined so a caller cannot mistake "no mods box"
- * for "no objects".
- */
+/** Live mod registries, read off `getSandkit()` — `api` is the raw host handle and has no `mods` on it. */
 function modRegistry(): Record<string, Record<string, unknown>> {
     try {
         const s = getSandkit();
@@ -1145,19 +1022,7 @@ function labelOf(v: unknown): string | undefined {
     return typeof v === "string" && v.trim() ? v : undefined;
 }
 
-/**
- * The game's own elements, each carrying the engine's definition for it.
- *
- * Read through the same registry as `listElements`, and in the same order, so the
- * two cannot disagree about which elements exist. The difference is only the
- * shape: this keeps the raw definition, which is what the expanded row draws.
- *
- * Hidden elements are **carried, not skipped**. They are internal states
- * (resolved pointers, intermediates) rather than content, and the list screen
- * filters them behind a checkbox — see the note on `ListRow.hidden`. Skipping
- * them here would make "this mod has no elements" and "all three are hidden"
- * look identical, and the object the user knows exists would be unfindable.
- */
+/** Game elements with their raw definitions, hidden ones carried — the list screen filters them. */
 export function discoverElements(): NativeObject[] {
     const out = new Map<string, NativeObject>();
 
@@ -1214,13 +1079,7 @@ export function discoverElements(): NativeObject[] {
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * The game's own items.
- *
- * `getRegisteredIds()` is the documented enumeration and `getDefinitionById` the
- * documented way to read one, so a game item row can show its real `itemType`
- * and sprite rather than a bare id.
- */
+/** Game items, read via the documented `getRegisteredIds` + `getDefinitionById` pair. */
 export function discoverItems(): NativeObject[] {
     const out = new Map<string, NativeObject>();
     for (const id of api.items?.getRegisteredIds?.() ?? []) {
@@ -1231,14 +1090,7 @@ export function discoverItems(): NativeObject[] {
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * The game's own terrains.
- *
- * `terrains` has `getDefinitionByType`, but the `CellType` enum is the only
- * *enumeration* — and, as `listTerrains` already had to work out, an enum member
- * name is not the id. So ids come from `getIdByType` and the definition is read
- * back per id, which is the one order that cannot confuse the two.
- */
+/** Game terrains. A `CellType` member name is not the id, so ids come from `getIdByType`. */
 export function discoverTerrains(): NativeObject[] {
     const out = new Map<string, NativeObject>();
     for (const name of enumNames("CellType")) {
@@ -1252,28 +1104,7 @@ export function discoverTerrains(): NativeObject[] {
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * The game's own structures.
- *
- * Unlike the other three this one is thin, and the reason is in the API rather
- * than here: `structures` has no "list everything registered" call. It does have
- * `getAvailableTypes()`, returning a `Set<StructureRef>` where
- * `StructureRef = StructureType | StructureId` — so members may be numbers
- * needing a resolve, or already-resolved id strings.
- *
- * A string ref reaches `getDefinitionByType` only behind `safe`, because the
- * engine wants a *type* there and a string is the kind of argument that throws
- * rather than returning nothing. Where nothing comes back the row is an id and
- * no more, which is still true and still worth showing.
- *
- * **The mod registry is consulted first**, and that is not a preference. It is
- * the only place `hideFromBuildMenu` is readable: the engine's
- * `getDefinitionByType` result does not carry it, while
- * `sandkit.mods.structures[id]` does — the record the registering mod itself
- * wrote. `md-admin-structure` reads it from there and calls that registry
- * "authoritative" (`data.ts:53`), so a structure that skipped this step would
- * report every structure as visible even where the mod asked for the opposite.
- */
+/** Game structures. The mod registry is read first: it is the only place `hideFromBuildMenu` is visible. */
 export function discoverStructures(): NativeObject[] {
     const out = new Map<string, NativeObject>();
 

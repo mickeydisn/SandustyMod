@@ -387,14 +387,18 @@ Deno.test("the upgrade slot is wired, which it never was", () => {
 
 Deno.test("an item's use action is a compiled process, or nothing at all", () => {
     // A Consumable has no `ActionType`, so it must reach the game holding neither
-    // a process nor any of the legacy keys. The `else` branch deletes all of them;
-    // if that loop is narrowed to one key, a Consumable ships a dead process.
+    // a process nor any key that names one. The `else` branch deletes all of them;
+    // if that list is narrowed, a Consumable ships a dead process — and the
+    // pre-split spellings in particular would sail through the passthrough and be
+    // handed to the engine as fields it has no meaning for.
     const kit = Deno.readTextFileSync(
         new URL("../packages/mysandkit.ts", import.meta.url).pathname,
     );
     assert(
-        /for \(const k of \["actions", \.\.\.ACTIONS_LEGACY_KEYS\]\) delete out\[k\]/.test(kit),
-        "the item path no longer clears every legacy key",
+        /for \(const k of \["actions", "handlerKey", "onUpgradeKey"\]\) delete out\[k\]/.test(
+            kit,
+        ),
+        "the item path no longer clears every key that names a process",
     );
 });
 

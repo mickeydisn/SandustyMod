@@ -1,16 +1,11 @@
 /**
  * The contract every object definition is written against.
  *
- * An "object definition" is one register() shape the panel can author: a
- * structure, an element, a recipe. Everything belonging to exactly one of them
- * lives in that object's own file under `./`; this file is the vocabulary they
- * share, so none of them has to import another.
+ * An "object definition" is one register() shape the panel can author. What
+ * belongs to one of them lives in its own file; this is the shared vocabulary.
  *
- * A definition answers five questions: what fields exist (`fields`), what the form
- * means in stored-entry terms (`entryToForm`/`formToEntry`), what cannot be a
- * field rule (`validate`), its panel, and its list row. Keeping those in one file
- * per object is the point — spread across three, a field renders but never
- * persists, and nothing says so.
+ * A definition answers five questions: its fields, its round trip, its
+ * cross-field rules, its panel, its list row.
  */
 import type { ModConfig } from "../../constants.ts";
 import type { Opt } from "../../catalog.ts";
@@ -41,13 +36,7 @@ export type Tab =
     | "modifiers"
     | "inputs"
     | "draws"
-    /**
-     * The HandlerAction catalogue, and the ProjectileOption catalogue beside it.
-     *
-     * **Must match `Tab` in `../schema.ts` exactly.** A hand-copied duplicate is a
-     * hazard: they drift, and the drift only surfaces as a type error somewhere
-     * unrelated. `schema.ts` is the one to edit.
-     */
+    /** The HandlerAction catalogue. **Must match `Tab` in `../schema.ts`** — edit that one. */
     | "action"
     | "projectileOption"
     | "upgradeAction"
@@ -96,11 +85,7 @@ export type FieldKind =
      * text in the form. See `./actions-field.ts`.
      */
     | "actionList"
-    /**
-     * A single `{ key, params }` — one ProjectileOption, and the value the engine
-     * reads at spawn. Not a list: a projectile takes exactly one, and it is not a
-     * process. See `./projectile-option-field.ts`.
-     */
+    /** One `{ key, params }` — a single ProjectileOption, not a list. */
     | "projectileOption";
 
 export interface FieldSpec {
@@ -120,11 +105,7 @@ export interface FieldSpec {
     maxLength?: number;
     pattern?: string;
     patternMsg?: string;
-    /**
-     * select options: a plain array, or a resolver. The resolver receives the
-     * current form values so a picker can narrow by another field's value
-     * (e.g. the item handler list follows the chosen `itemType`).
-     */
+    /** select options: an array, or a resolver taking the form so a picker can narrow by another field. */
     options?: Opt[] | ((form: Record<string, string>) => Opt[]);
     /** json: "object" | "array" | "matrix" (matrix = rectangular 0/1 grid). */
     jsonType?: "object" | "array" | "matrix";
@@ -134,18 +115,9 @@ export interface FieldSpec {
     def?: string;
     /** Full-width control (textarea / outputs editor). */
     wide?: boolean;
-    /**
-     * multiselect only: what to say when there is nothing to pick from yet.
-     * The user is told what to create rather than being handed a text box,
-     * because a reference field must not accept a typed id.
-     */
+    /** multiselect only: what to say when there is nothing to pick from yet. */
     emptyHint?: string;
-    /**
-     * library only: when an asset is picked, also fill this other field with a
-     * derived value (e.g. the graphics key `sprites:<name>`). The derived value
-     * is only written when the target is empty or still holds a previous
-     * auto-generated value, so it never clobbers a hand-typed key.
-     */
+    /** library only: also fill this field with a value derived from the picked asset. */
     autoKey?: string;
     /** library only: value previously auto-written, so it can be replaced safely. */
     autoValue?: string;
@@ -158,15 +130,7 @@ export interface Section {
 
 // ── The mapping context ──────────────────────────────────────────────────────
 
-/**
- * Writes stored values into the form, coercing to the form's string vocabulary.
- *
- * Handed to a definition instead of letting it build its own, so "a stored `42`
- * becomes `"42"`" and "a stored `true` becomes `"true"`" are decided in exactly
- * one place. A definition that re-derived these would drift on the edges — the
- * non-finite number, the `null` that must read as absent — and the drift would
- * only show up on an entry nobody hand-wrote.
- */
+/** Writes stored values into the form, coercing to its string vocabulary. */
 export interface EntryReader {
     /** Write a form value. `undefined` leaves the field's default in place. */
     put(key: string, value: string | undefined): void;
@@ -176,47 +140,18 @@ export interface EntryReader {
     num(v: unknown): string | undefined;
     /** A stored value as indented JSON, or undefined for `null`/`undefined`. */
     json(v: unknown): string | undefined;
-    /**
-     * A stored `string[]` as the comma-separated form text a `multiselect` uses.
-     *
-     * On the reader rather than left to each definition because the separator
-     * and the empty-list case have to agree with `parseIdList` on the writer
-     * side: one joining with ", " and the other splitting on commas is how a
-     * round trip quietly inserts spaces into every id.
-     */
+    /** A stored `string[]` as the comma-separated text a `multiselect` uses. */
     jsonList(v: unknown): string | undefined;
 }
 
-/**
- * The other direction: reads the form and writes the stored entry.
- *
- * The `opt*` reads treat an empty control as "not set" rather than writing
- * `""`, which is what lets a cleared field actually remove the key on save
- * instead of persisting a blank that the engine then reads as a value.
- */
+/** The other direction: reads the form, writes the stored entry. An empty control means "not set". */
 export interface EntryWriter {
     setStr(key: string, v: string | undefined): void;
     setNum(key: string, v: number | undefined): void;
     setBool(key: string, v: boolean | undefined): void;
-    /**
-     * Write a value of any shape straight to the entry.
-     *
-     * The three setters above cover what a form field can produce on its own.
-     * A JSON control produces whatever the user typed — an object, an array, a
-     * nested tuple — and that has to reach the entry verbatim. Round-tripping it
-     * through a string is how `[[1,2],[3]]` becomes `"1,2,3"`.
-     */
+    /** Write a value of any shape straight to the entry. A JSON control reaches it verbatim. */
     setRaw(key: string, v: unknown): void;
-    /**
-     * Remove a key from the entry.
-     *
-     * The three setters only ever *write*: passing `undefined` skips the write and
-     * leaves whatever was already there. That is the right rule for a control the
-     * author left blank, but the Process/Action migration needs the opposite — an
-     * entry holding `handlerKey` must **lose** it once `actions` is written, or
-     * the process ends up holding both shapes and which one wins becomes a
-     * question of which key a reader happens to check first.
-     */
+    /** Remove a key. The setters only ever write, so this is the only way to lose one. */
     del(key: string): void;
     /** Trimmed form string; `""` → undefined. */
     opt(key: string): string | undefined;
@@ -230,14 +165,7 @@ export interface EntryWriter {
 
 // ── The panel context ────────────────────────────────────────────────────────
 
-/**
- * What a definition's own widgets are given to draw with.
- *
- * The panel owns React and the form state; a definition owns its widgets. This
- * is the seam — a definition never imports `panel.ts`, and `panel.ts` never
- * imports a definition's widgets, so a structure widget cannot reach into the
- * list screen and a list screen cannot grow a special case for shapes.
- */
+/** What a definition's own widgets are given to draw with. The panel owns React, a definition owns its widgets. */
 export interface PanelContext {
     /** `React.createElement`, bound. */
     h: (...args: unknown[]) => unknown;
@@ -258,71 +186,24 @@ export interface FieldContext extends PanelContext {
     error?: string;
     /** The id field is locked while editing an existing entry. */
     locked: boolean;
-    /**
-     * The tab this field is on.
-     *
-     * Added for the `actionList` control, whose dropdown has to offer only the
-     * actions **this call site** can run — and the call site is a property of the
-     * object, not of the field. Threaded through the one place a control is called
-     * rather than inferred: a widget that guesses which screen it is on is a widget
-     * that is wrong on a screen it did not know about.
-     */
+    /** The tab this field is on, so a call site's `actionList` offers only what it can run. */
     tab: Tab;
 }
 
 /** The parts of the panel a definition may own. */
 export interface DefinitionPanel {
-    /**
-     * The control for one of this definition's field kinds.
-     *
-     * Return `null` for a kind it does not own, so the panel falls through to
-     * the generic renderer. A definition claims a kind rather than the panel
-     * knowing about it, which is the point: adding a structure-only widget must
-     * not add a `kind === "shape"` branch to the generic form renderer.
-     */
+    /** The control for one of this definition's field kinds. `null` falls through to the generic renderer. */
     renderField?: (ctx: FieldContext) => unknown;
-    /**
-     * A block drawn under the form's title, above the sections.
-     *
-     * For a relation that is real but has no field — the structure's unlock node
-     * is chosen in a picker, and the question the author actually has is "what
-     * does that grant, and does it cost anything", which the picker's options
-     * cannot answer.
-     */
+    /** A block above the sections, for a relation that is real but has no field. */
     renderHeader?: (ctx: PanelContext) => unknown;
 }
 
 // ── The object list ───────────────────────────────────────────────────────────
 
-/**
- * Where one row in an object list came from.
- *
- * `mod` is an entry in this mod's stored config — editable, deletable.
- * `game` is something the host already has: a real element in the live
- * registry, a real item id. It is reference-only, because there is no stored
- * entry behind it to edit and the engine will not let us remove Sand.
- *
- * The two are deliberately the *same* row shape. A screen that draws them
- * differently teaches the user there are two kinds of element, when the only
- * real difference is which buttons a row carries — and a game row is a fact
- * about the world, not a lesser kind of thing.
- */
+/** Where a list row came from. Both are the same row shape; `game` is reference-only. */
 export type RowOrigin = "mod" | "game";
 
-/**
- * Which mod an object came from, when the id says so.
- *
- * Ids are namespaced `<modId>.<name>` by convention across the ecosystem —
- * `myMod.furnace`, `mdmy.ores` — and the game's own built-ins are unnamespaced
- * (`Sand`, `Furnace`, `dirt`). So the prefix before the first dot *is* the mod,
- * and reading it is the difference between "somebody else's furnace" and "the
- * game's furnace", which are different things when two mods both add a furnace.
- *
- * `undefined` means the id carries no namespace at all, which is the case for
- * the game's own objects and for any mod that ignored the convention. Treated as
- * the game rather than guessed at, because a wrong attribution is worse than
- * none.
- */
+/** Which mod an object came from, from the prefix before the first dot. Dotless = the game. */
 export type ModOrigin = {
     /** The mod's own id, or `undefined` for an unnamespaced (built-in) id. */
     modId?: string;
@@ -330,16 +211,7 @@ export type ModOrigin = {
     own: boolean;
 };
 
-/**
- * One object in a list screen, from either origin.
- *
- * A `mod` row carries its `entry`; a `game` row carries the host's own
- * `native` definition where the API could give one. `native` is optional
- * because the host's enumeration is uneven — `api.structures` has no way to
- * list what is registered, so a game structure can arrive as an id and nothing
- * else. A list that *required* `native` would have to hide those rows, and the
- * honest thing is to show them with less detail.
- */
+/** One object in a list screen. `native` is optional — the host's enumeration is uneven. */
 export interface ListRow {
     /** The object's id. Unique within a list; also the React key. */
     id: string;
@@ -348,50 +220,17 @@ export interface ListRow {
     origin: RowOrigin;
     /** A colour swatch, when the object has one (an element's metaColor). */
     color?: string;
-    /**
-     * Which mod this object belongs to, when the id says so.
-     *
-     * Separate from `origin` on purpose. `origin` answers "can I edit this?" and
-     * is only ever `mod` or `game`. This answers "who else made this?", which is
-     * the question behind a screen showing a hundred structures when three are
-     * yours and the rest belong to other mods you have installed.
-     */
+    /** Which mod this object belongs to. Separate from `origin`, which answers "can I edit it?". */
     mod?: ModOrigin;
     /** The stored config entry. Present exactly when `origin === "mod"`. */
     entry?: Record<string, unknown>;
-    /**
-     * The host's own definition, when the API exposes one.
-     *
-     * This is what makes a game row worth more than a name: the engine has a
-     * registered element's density, matter type and interaction list, which is
-     * the answer to "what is this, actually" that a bare id cannot give.
-     */
+    /** The host's own definition, when the API exposes one. */
     native?: Record<string, unknown>;
-    /**
-     * The object is deliberately kept out of normal use: an element marked
-     * `hidden`, a structure marked `hideFromBuildMenu`.
-     *
-     * **Carried, not filtered.** A list that simply omits these cannot say
-     * whether a category is empty or merely all-hidden, and the object the user
-     * knows exists becomes unfindable. The list screen filters them behind a
-     * checkbox instead — the same rule the content selector uses, so the two
-     * never disagree about what "hidden" means.
-     *
-     * Only two categories have such a flag. Terrain's `isBuilding` means
-     * something else entirely (this cell counts as a built wall), and an item
-     * has no equivalent — so for those the field is simply always false, and the
-     * checkbox does not appear rather than appearing with a permanent zero.
-     */
+    /** Kept out of normal use: `hidden` / `hideFromBuildMenu`. Carried, not filtered. */
     hidden?: boolean;
 }
 
-/**
- * What a definition contributes to its list screen.
- *
- * Both renders are optional and both return `null` to say "I have nothing to
- * add", which is what lets a game row with no readable definition fall back to
- * the shared renderer instead of drawing a half-empty box.
- */
+/** What a definition contributes to its list screen. Both renders are optional and may return `null`. */
 export interface ListRenderCtx extends PanelContext {
     row: ListRow;
     /** True while this row's detail is open. */
@@ -407,106 +246,38 @@ export interface ListRenderCtx extends PanelContext {
 }
 
 export interface DefinitionList {
-    /**
-     * The objects the *host* already has of this kind, to merge into the list
-     * beside the mod's own.
-     *
-     * Returns `[]` for an object the host cannot enumerate — a recipe has no
-     * "recipes already in the game" to ask for. That is a fact about the API
-     * rather than a gap to paper over, so the list simply shows the mod's rows.
-     */
+    /** The objects the host already has of this kind. `[]` for a kind it cannot enumerate. */
     discover?: () => ListRow[];
-    /**
-     * Extra text a row is matched against when the user filters.
-     *
-     * An element row is matched on its id, name and matter type; without this a
-     * user searching "powder" would see nothing even though nine rows say so.
-     */
+    /** Extra text a row is matched against when the user filters. */
     searchText?: (row: ListRow) => string;
-    /**
-     * The row's own line: the swatch, the name, the one fact that matters.
-     *
-     * This is the hot path — it draws once per visible row — so it stays cheap
-     * and is allowed to omit anything already in the row's id.
-     */
+    /** The row's own line. Hot path, so it may omit anything already in the id. */
     inlineRender?: (ctx: ListRenderCtx) => unknown;
-    /**
-     * The row's expanded detail.
-     *
-     * Where a game row earns its keep: a registered element can show the
-     * engine's own density and interactions, which is information the mod's
-     * config does not have and cannot invent.
-     */
+    /** The row's expanded detail — where a game row shows the engine's own values. */
     infoRender?: (ctx: ListRenderCtx) => unknown;
 }
 
 // ── The definition itself ────────────────────────────────────────────────────
 
-/**
- * One object the panel can author.
- *
- * Every member is optional except `fields`, because a definition should not have
- * to invent hooks it has nothing to say about: a category with no cross-field
- * rule writes no `validate`, and one with no odd control writes no `renderField`.
- */
+/** One object the panel can author. Every member but `fields` is optional. */
 export interface Definition {
     /** The tab this definition is reached through. */
     tab: Tab;
-    /**
-     * The schema: every field, in the order the form draws them.
-     *
-     * Order is the section order, because `sectionsFor` groups by consecutive
-     * equality — a field list is also a layout.
-     */
+    /** The schema, in draw order — also the layout, since sections group by consecutive equality. */
     fields: FieldSpec[];
-    /**
-     * Stored keys this form owns; everything else round-trips via the
-     * passthrough so an edit never drops a field the engine understands.
-     */
+    /** Stored keys this form owns; the rest round-trip via the passthrough. */
     formCovered: string[];
     /** Stored entry → form strings. */
     entryToForm?: (entry: Record<string, unknown>, read: EntryReader) => void;
     /** Form strings → stored entry. */
     formToEntry?: (form: Record<string, string>, write: EntryWriter) => void;
-    /**
-     * Validate one of this definition's own field kinds.
-     *
-     * The generic rules in `validateField` are per-kind and shared; this is for a
-     * kind only this object uses, so only this object can say what a legal one
-     * looks like. Returning `undefined` means "no opinion", which is what keeps
-     * the generic loop from having to know that `shape` exists.
-     */
+    /** Validate one of this definition's own field kinds. `undefined` means "no opinion". */
     validateField?: (field: FieldSpec, value: string) => string | undefined;
-    /**
-     * Rules a single field cannot express, added to the per-field results.
-     *
-     * This is the escape hatch that stays an escape hatch: a rule that only
-     * makes sense across two fields (a min that must not exceed its max) does
-     * not belong on either field, and inventing a field for it would be worse.
-     */
+    /** Rules a single field cannot express, added to the per-field results. */
     validate?: (form: Record<string, string>, errors: Record<string, string>) => void;
-    /**
-     * Seed a *new* entry's form, after the field defaults are applied.
-     *
-     * For a decision the author should not have to make to get a first save —
-     * a structure must name an unlock node, so a new one starts on the built-in
-     * default rather than on nothing.
-     */
+    /** Seed a *new* entry's form, after field defaults — so it can save without the author choosing. */
     onNewEntry?: (form: Record<string, string>) => void;
     /** The parts of the panel this definition owns. */
     panel?: DefinitionPanel;
-    /**
-     * How this object appears in its list screen.
-     *
-     * Separate from `panel` because a list row is a different question from a
-     * form: the form asks "what can you set on this?", the list asks "what is
-     * this, and is it mine or the game's?". Keeping them apart is what lets the
-     * list be identical for every object while still saying something specific
-     * — an element's swatch and density, an item's type and sprite.
-     *
-     * Entirely optional. An object with no `list` still gets the shared list
-     * screen, which is correct for the many objects that are a list of names
-     * and nothing more.
-     */
+    /** How this object appears in its list screen. Entirely optional — the shared list is a fine default. */
     list?: DefinitionList;
 }

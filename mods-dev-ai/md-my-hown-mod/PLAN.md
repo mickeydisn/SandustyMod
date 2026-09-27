@@ -90,4 +90,62 @@ being written in a shape the engine throws away.
       round trip, the legacy booleans, a `0` chance that must not be dropped, the
       lone-lifetime-is-a-number rule, and both validation rules. Mutation-tested — writing `{}` when
       off, a truthiness test on the chance, inventing a `0` value, dropping the legacy read, and a
+
+---
+
+## Phase 9 — the legacy layer, removed
+
+Every saved-config migration in the mod, plus the dead engine-version probes, gone. The author
+accepted that existing installs lose their handlers.
+
+- [x] **9.1** `handlerKey` / `onUpgradeKey` → `actions`. `actionRefsOf` now reads the `actions`
+      array alone, so a config on the old spelling is **no process** — an empty list, not a
+      one-action process. The engine never saw that key, so showing the author a populated list
+      would have shown a handler that does not run.
+- [x] **9.2** `ACTIONS_COVERED` is `[ACTIONS_STORE_KEY]` and the `del(legacy)` loop is gone. The old
+      spellings are deliberately **not** claimed, so the passthrough carries them through untouched:
+      stripping a key nothing reads would delete an author's data over an edit that never looked at
+      that field.
+- [x] **9.3** `getOptionsKey` and the short-lived `actions` list → `option` for projectiles, the
+      same way. `projectileOptionOf` reads one shape.
+- [x] **9.4** `hiddenFromTheMenu` and the element `hidden` alias are gone, and with them the whole
+      `HIDDEN_ALIASES` table. Those aliases had a **different polarity** from the live field, so
+      honouring them was a second rule that could disagree with the first on one entry. Only
+      `HIDDEN_FIELD` is read now.
+- [x] **9.5** The engine-version probes: `getTypeFromId` is no longer called as a fallback for
+      `getTypeById`, and the `@deprecated` `mode` field is gone from `ProcessingConfig`.
+      `structureId` is no longer an alias for `structureType` in either the processing register or
+      the recipe machine lookup.
+- [x] **9.6** **A real bug fell out of this.** The input-binding path built its single-action ref by
+      faking an entry — `actionRefsOf({ handlerKey: key })` — which only worked while that reader
+      still consulted the pre-split key. With 9.1 done, every input binding resolved to nothing,
+      `skipped` came back non-empty, and **every binding was dropped with a warning**. No test
+      reached that path. The ref is now spelled out, and a new `the-rest.test.ts` drives the real
+      register entry with a stub host and asserts the compiled pair arrives. Reverting the fix is
+      caught.
+- [x] **9.7** The item guard in `mysandkit` still strips `handlerKey` / `onUpgradeKey` before the
+      engine sees them — but by name, not via the removed export. Without it a stale key would pass
+      the passthrough and be handed to the engine as a field it has no meaning for. That regex is
+      pinned by a test.
+- [x] **9.8** The panel's own shape hints stopped naming keys nothing reads: `signals`, `triggers`,
+      `upgrades`, `modifiers` and `upgradeCategories` now say `actions: [{key, options}]`, and
+      `projectiles` says `option: {key, params}`. A hint that names a dead key is the same
+      silent-failure trap as the field itself.
+- [x] **9.9** `SLOT_LOCATION` lost its second tuple half. Nothing read it — the scan goes through
+      `actionRefsOf` precisely so there is one reader — but a field name sitting there invited
+      exactly the second path it was meant to prevent.
+- [x] **9.10** Two things called legacy that were **live**, and were left alone: -
+      `requirementTechId` is a working control, not a migration. It backs the upgrade-category tech
+      picker and `relations.ts`. - `HandlerMeta.type` is what the Handlers tab filters on, pending
+      the Phase 6 regroup. Removing either would break a working screen.
+- [x] **9.11** `ModifierConfig.handlerKey` is **code-side** — a pointer into `CODE_HANDLERS` in
+      `handlers.ts` — not a saved-config migration, so it stays. Note the gap it leaves: the panel
+      writes a modifier's process as `actions`, while `applyModifier` reads `handlerKey`, so a
+      modifier configured in the panel still cannot attach. That gap predates this phase and fixing
+      it is a feature, not a removal.
+- [x] **9.12** One thing fixed in passing, not part of the removal: the element list's `searchText`
+      joined only the _values_ of its keys. `flammable` and `collectable` became objects in Phase 8,
+      and `brief` on an object returns the one identifying value inside it — an element id, a number
+      — so the words "flammable" and "collectable" stopped appearing in the searched text and "which
+      of mine are flammable?" became unanswerable. The key name is now searched alongside its value.
       one-element tuple are all caught.

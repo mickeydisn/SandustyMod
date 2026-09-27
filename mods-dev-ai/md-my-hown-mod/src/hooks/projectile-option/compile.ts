@@ -50,14 +50,7 @@ export interface CompiledProjectileOption {
 
 const EMPTY: Record<string, unknown> = {};
 
-/**
- * Build the `getOptions` for one stored projectile entry.
- *
- * `onFailure` receives anything that went wrong, so registration can log it. It is
- * optional because the *return* already carries `problem` — the panel needs to show
- * the reason without a logger, and the two must not disagree, so there is one
- * source and it is read twice rather than computed twice.
- */
+/** Build `getOptions` for one projectile entry. `onFailure` is optional; `problem` is the same fact for the panel. */
 export function compileProjectile(
     ref: ProjectileOptionRef | undefined,
     onFailure?: (f: ProjectileOptionFailure) => void,
@@ -98,25 +91,16 @@ export function compileProjectile(
 }
 
 /**
- * Read a stored projectile entry into an option ref, migrating the old shapes.
+ * Read a stored projectile entry into an option ref.
  *
- * Three historical spellings, all meaning the same thing, and they are consulted in
- * one place so a caller never has to know which is which:
- *
- *  - `option` — the new object form, `{ key, params }`.
- *  - `getOptionsKey` — the pre-split bare key, with no params.
- *  - `actions` — the short-lived list form, which this refactor removes. Read as a
- *    **single** ref so a config written during that window still loads; a list of
- *    more than one is reported rather than half-applied, because the merge that
- *    combined them is exactly what is being taken away.
- *
- * The empty list is the only ambiguous case — `actions: []` means "no option", not
- * "the option `undefined`" — so it is checked before the list is read.
+ * Only the `option` object, `{ key, params }`. Two older spellings are not read:
+ * `getOptionsKey`, the pre-split bare key with no params, and `actions`, the
+ * short-lived list form. An entry holding either is treated as having no option,
+ * so a projectile falls back to its static options rather than being handed a
+ * preset the engine may not resolve. Neither is claimed by `OPTION_COVERED`, so
+ * the raw key stays in the entry instead of being deleted by an unrelated save.
  */
 export const PROJECTILE_OPTION_STORE_KEY = "option";
-
-/** Legacy stored keys that named a projectile option, newest first. */
-export const PROJECTILE_OPTION_LEGACY_KEYS = ["getOptionsKey", "actions"] as const;
 
 export function projectileOptionOf(
     entry: Record<string, unknown> | undefined,
@@ -134,30 +118,6 @@ export function projectileOptionOf(
                 params: (stored as ProjectileOptionRef).params ?? undefined,
             },
         };
-    }
-
-    const legacyKey = entry.getOptionsKey;
-    if (typeof legacyKey === "string" && legacyKey) {
-        return { ref: { key: legacyKey, params: undefined } };
-    }
-
-    const list = entry.actions;
-    if (Array.isArray(list) && list.length > 0) {
-        const first = list[0] as ProjectileOptionRef;
-        const key = typeof first === "string" ? first : first?.key;
-        if (typeof key === "string" && key) {
-            return {
-                ref: { key, params: (first as ProjectileOptionRef)?.params ?? undefined },
-                // Say so. The old compiler merged these; the new one does not, and
-                // an author whose config has two presets deserves to know one lost.
-                ...(list.length > 1
-                    ? {
-                        problem: `${list.length} options were stored; only "${key}" is used. ` +
-                            "A projectile takes one option — remove the rest.",
-                    }
-                    : {}),
-            };
-        }
     }
 
     return {};

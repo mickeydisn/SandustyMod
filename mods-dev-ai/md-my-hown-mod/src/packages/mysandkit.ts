@@ -12,7 +12,7 @@ import {
     type RecipeConfig,
     type StructureConfig,
 } from "../constants.ts";
-import { actionRefsOf, ACTIONS_LEGACY_KEYS, compileProcess } from "../hooks/process.ts";
+import { actionRefsOf, compileProcess } from "../hooks/process.ts";
 
 declare const sandkit: any;
 const g = () => {
@@ -87,21 +87,7 @@ export const api = {
                 console.error(`${LOG} elements.addInteractionInfo failed`, e);
             }
         },
-        /**
-         * Reveal a freshly registered element in the "?" discovery catalogue.
-         *
-         * Separate from `register`, and every shipping mod that registers an
-         * element calls it right after — the Astro Seeds mod pairs the two on
-         * each element (`src/main/register.ts:26`). Without it the element still
-         * simulates and is still in the element picker, it is simply never
-         * *discovered*, so it never joins the catalogue the player unlocks
-         * through. The engine stores it in `store.discoveries.elements` and
-         * de-duplicates on the way in (bundel.js/46781.js:4453-4460).
-         *
-         * `addElementByType` is the name the docs use; the method the engine
-         * actually exposes on the mod-facing facade is `addElement`. Both are
-         * tried, current name first, for the same reason `getTypeById` is.
-         */
+        /** Reveal a registered element in the discovery catalogue. Without it the element simulates but is never discovered. */
         addElementToDiscoveries(elementType: number) {
             try {
                 const d = g()?.api?.discoveries;
@@ -114,21 +100,17 @@ export const api = {
         /**
          * Resolve an element id to its numeric type.
          *
-         * The engine spells this `getTypeById`; `getTypeFromId` is the
-         * `@deprecated` spelling kept for older builds. The current name is
-         * tried first, so a build that drops the old one still works.
+         * The engine spells this `getTypeById`. `getTypeFromId` was the older
+         * `@deprecated` name; it is no longer probed, so a build that has only
+         * the old spelling resolves nothing and says so by returning undefined
+         * rather than silently working against a name the engine will drop.
          */
         getTypeById(id: string): number | undefined {
             try {
-                return g()?.api?.elements?.getTypeById?.(id) ??
-                    g()?.api?.elements?.getTypeFromId?.(id);
+                return g()?.api?.elements?.getTypeById?.(id);
             } catch {
                 return undefined;
             }
-        },
-        /** @deprecated kept for callers written against the old name. */
-        getTypeFromId(id: string): number | undefined {
-            return this.getTypeById(id);
         },
         // ── Reads ────────────────────────────────────────────────────────────
         //
@@ -515,24 +497,7 @@ const MATTER_MAP: Record<string, number> = {
     powder: 8,
 };
 
-/**
- * The stored matter type as the number the engine's matter table is keyed by.
- *
- * Total, and it never returns a string — that is the whole point of it.
- *
- * `sandkit.enums.MatterType` is a TypeScript *numeric* enum, so it is
- * reverse-mapped and holds both `8 → "Powder"` and `"Powder" → 8`. A lookup like
- * `enums[v]` therefore returns the **name** for a numeric key, and handing that
- * on is catastrophic in a way that is invisible: the worker's matter table is
- * `ce[def.matterType]` (`utils-worker.js/75089.js:393-397`), `ce` has keys
- * `1..8`, so `ce["Powder"]` is `undefined`, no update function is assigned, and
- * the element does not move at all. It still renders, still sits in the picker,
- * still looks fine — it is simply inert, and a real liquid placed next to it
- * falls while it does not.
- *
- * Numbers are passed through rather than validated, so a build that adds a
- * matter type beyond 8 still works.
- */
+/** The matter type as a number. Never a string: `enums[v]` reverse-maps to the name, which the worker's table cannot find. */
 function resolveMatterType(v: string | number | undefined): number | undefined {
     if (v === undefined || v === null) return undefined;
     if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -560,10 +525,10 @@ function resolveElementRef(
     if (v === undefined) return undefined;
     if (typeof v === "number") return v;
     if (typeof v === "string") {
-        // `getTypeFromId` is marked `@deprecated` in favour of `getTypeById`, and
-        // this was a *direct* call — not optional-chained — so a rename would
-        // have thrown here. The facade tries the current name first and keeps
-        // the old one as a fallback for older builds.
+        // This was a *direct* call, not optional-chained, so probing a name the
+        // engine has since dropped would have thrown here rather than degrading.
+        // Only the current spelling is called, and an unresolved id is passed
+        // through unchanged so the engine gets whatever the author wrote.
         const t = api.elements.getTypeById?.(v);
         return t !== undefined ? t : v;
     }
@@ -577,13 +542,7 @@ function resolveStructureType(v: string | number): string | number {
     return v;
 }
 
-/**
- * Resolve a stored terrain id to its numeric cell type when the runtime knows it.
- *
- * `terrainRules[].cellType` is a `TerrainRef = TerrainType | TerrainId`, so a plain
- * string id is already accepted — we only upgrade it to a numeric handle when we
- * can, and otherwise pass the id through unchanged.
- */
+/** Resolve a terrain id to its cell type when the runtime knows it, else pass it through. */
 function resolveTerrainRef(
     v: string | number | null | undefined,
 ): string | number | null | undefined {
@@ -618,16 +577,7 @@ function registerI18n(map: Record<string, string>) {
 /** Stands in for a definition that carries no colour at all. */
 const NEUTRAL_VARIANT: [number, number, number, number] = [204, 204, 204, 255];
 
-/**
- * The one variant to use when the definition declares none.
- *
- * `metaColor` is the map colour, and it is the only other colour the definition
- * carries, so an element with a map colour and no variants is not missing
- * information — it is stating that every cell is the same colour, and this is
- * how that is spelled. With no `metaColor` either there is genuinely nothing to
- * go on, and a neutral grey says "unconfigured" where the engine's own default
- * would say "error".
- */
+/** The single variant to use when the definition declares none: the map colour, or neutral grey. */
 function variantFromMetaColor(metaColor: unknown): [number, number, number, number] {
     if (typeof metaColor !== "number" || !Number.isFinite(metaColor)) return NEUTRAL_VARIANT;
     const packed = Math.max(0, Math.min(0xffffff, Math.floor(metaColor)));
@@ -635,17 +585,8 @@ function variantFromMetaColor(metaColor: unknown): [number, number, number, numb
 }
 
 /**
- * The element fields the engine must read in engine shape, from a stored entry.
- *
- * Exported so the `updateDefinition` path normalises exactly like `register`
- * does. It did not, and the asymmetry was a real bug: a `matterType` saved as
- * `"powder"` went to the engine as a string, so the worker's matter table —
- * `ce[def.matterType]` — had no entry for it and the element was left with no
- * update function at all (`utils-worker.js/75089.js:393-397`).
- *
- * `register` needs the whole definition because it assigns `id`, `nameKey` and
- * the i18n entries; an update is a merge into something that already has those,
- * so only the fields whose *type* the engine cares about are converted.
+ * Engine-shaped element fields from a stored entry, shared with the
+ * `updateDefinition` path so both normalise identically.
  */
 export function normalizeElementPatch(entry: Record<string, unknown>): Record<string, unknown> {
     const out: Record<string, unknown> = { ...entry };
@@ -777,7 +718,13 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
     } else {
         // No process, or one the engine can never dispatch. Drop the keys that
         // name one so a `Consumable` does not reach the game holding one.
-        for (const k of ["actions", ...ACTIONS_LEGACY_KEYS]) delete out[k];
+        //
+        // The pre-split spellings are listed by name rather than read from
+        // `actionRefsOf`, because they are not interpreted any more — they are
+        // only refused. An entry that still carries one is not a process, but it
+        // would otherwise pass through the passthrough and be handed to the
+        // engine as a field it has no meaning for.
+        for (const k of ["actions", "handlerKey", "onUpgradeKey"]) delete out[k];
         delete out.options;
     }
 
@@ -801,12 +748,9 @@ const RECIPE_MACHINES = new Set([
 ]);
 
 /**
- * Shape the recipe body exactly like the machine expects
- * (doc/doc-artifacts/doc.api/shared/api.recipes.md):
- *   planterBox   → { input, output, chance? }
- *   shaker       → { input, outputsAbove[], outputsBelow[] }
- *   kineticPress → { input, minimumDownwardVelocity, outputs[] }
- *   others       → { input, outputs[] }
+ * Recipe body per machine. See `doc/doc-artifacts/doc.api/shared/api.recipes.md`:
+ *   planterBox → { input, output, chance? }   shaker → { input, outputsAbove[], outputsBelow[] }
+ *   kineticPress → { input, minimumDownwardVelocity, outputs[] }   others → { input, outputs[] }
  */
 function resolveRecipeBody(r: RecipeConfig, machine: string): Record<string, unknown> {
     const body: Record<string, unknown> = { ...r };
@@ -864,7 +808,7 @@ export function registerRecipe(r: RecipeConfig): void {
     let machine = String(r.kind || "structure");
     if (machine === "grower" || machine === "planter") machine = "planterBox";
     if (!RECIPE_MACHINES.has(machine)) {
-        machine = String(r.structureType ?? r.structureId ?? machine);
+        machine = String(r.structureType ?? machine);
     }
     if (!RECIPE_MACHINES.has(machine)) {
         console.warn(
@@ -882,12 +826,10 @@ export function registerProcessing(p: ProcessingConfig): void {
     // The engine definition is `{ structureType, intervalMs, process }`; there is
     // no per-instance registration, so `structures.addProcessor` is not a real API
     // and is no longer called.
-    const { id: _id, structureType, structureId, mode: _m, handlerKey: _hk, ...rest } = p as
+    const { id: _id, structureType, handlerKey: _hk, ...rest } = p as
         & Record<string, unknown>
         & ProcessingConfig;
-    // `structureId` is accepted as a legacy alias for `structureType`.
-    const target = structureType ?? structureId;
-    if (target === undefined) {
+    if (structureType === undefined) {
         console.warn(`${LOG} processing ${p.id}: missing structureType`);
         return;
     }
@@ -897,7 +839,7 @@ export function registerProcessing(p: ProcessingConfig): void {
         );
         return;
     }
-    api.structures.processing.register(target, rest);
+    api.structures.processing.register(structureType, rest);
 }
 
 export function registerContact(c: ContactReactionConfig): void {
@@ -981,9 +923,10 @@ export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): v
         const { id: _id, ...rest } = def as Record<string, unknown>;
         // `onUpgrade` is a real top-level field of `upgrades.register` and the
         // engine reads it — a callback, like `ItemDefinition.handleAction`. The mod
-        // `actionRefsOf` migrates the legacy `onUpgradeKey`; without it the whole
-        // upgrade slot would run nothing and all 7 upgrade actions would be
-        // unreachable in-game.
+        // stores its process as `actions`; a config still on the old `onUpgradeKey`
+        // spelling holds no process at all, and all 7 upgrade actions are then
+        // unreachable in-game. That is the author's entry to fix, not a silent gap
+        // this layer should paper over.
         const { fn, skipped } = compileProcess(actionRefsOf(rest), "upgrade");
         if (skipped.length) {
             console.warn(`${LOG} upgrade ${def.id}: unknown action ${skipped.join(", ")}`);
@@ -995,15 +938,9 @@ export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): v
 }
 
 /**
- * input.registerBinding(bindingId, defaultKeys, definition) — the last of the
- * 36 config-reachable api members the mod had not wrapped.
- *
- * The engine's `handlers` is a `{ down?, up? }` pair of functions, which JSON
- * cannot express, so the mod stores handler *keys* and resolves them at apply
- * time — the same substitution already used for `getOptionsKey` on projectiles.
- *
- * `displayName` and `category` are required by the typings and are both passed
- * through verbatim; nothing is inferred.
+ * `input.registerBinding(bindingId, defaultKeys, definition)`. The engine's
+ * `handlers` is a function pair JSON cannot hold, so keys are stored and
+ * compiled here.
  */
 export function registerInputBinding(
     def: import("../constants.ts").InputBindingConfig,
@@ -1109,33 +1046,7 @@ export function registerExcavationProfile(
     }
 }
 
-/**
- * Register one structure behaviour.
- *
- * ## The two API layouts
- *
- * The published `sandkit` types describe a grouped namespace:
- *
- * ```ts
- * api.structureBehaviors.registerConveyorType(structureId, options?)
- * api.structureBehaviors.registerLauncherType(definition)
- * ```
- *
- * **This build does not have it.** `structureBehaviors` appears nowhere in the
- * engine bundle, and the API surface generated from the running engine
- * (`src/types/engine-api.generated.d.ts`) lists `conveyors.registerType` and
- * `launchers.registerType` instead. The previous version read only the grouped
- * name, so it took the "API missing" branch on every entry and no conveyor or
- * launcher was ever registered — silently, because it only warned.
- *
- * Both layouts are probed, grouped first. The grouped one is tried first because
- * that is the shape the official types document, so a build that grows it gets
- * the documented path without a code change.
- *
- * The worker's own handler is the authority on what `options` contains; the field
- * list and the defaults below are transcribed from it in `ui/definition/core/
- * behavior.ts`, which is where the panel models them.
- */
+/** Register one structure behaviour. This build exposes the split API; the grouped name is probed first. */
 export function registerStructureBehavior(
     def: import("../constants.ts").StructureBehaviorConfig,
 ): void {

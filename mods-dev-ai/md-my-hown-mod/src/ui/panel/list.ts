@@ -32,24 +32,7 @@ import type { Style } from "../styles.ts";
 
 // ── Which mod an object came from ────────────────────────────────────────────
 
-/**
- * The mod that owns an object, read from its id.
- *
- * The convention across the ecosystem is `<modId>.<name>` — `myMod.furnace`,
- * `mdmy.ores` — and the game's own objects are unnamespaced (`Sand`, `dirt`). So
- * the text before the first dot is the mod.
- *
- * Two things this deliberately does *not* do:
- *
- *  - **Guess.** An id with no dot (`Sand`) is the game's, not a mod called
- *    "Sand". It is reported as unnamespaced rather than attributed.
- *  - **Trust the label.** The mod is read from the *id* only. A label is
- *    author-supplied free text, and making the filter depend on how someone
- *    punctuated their display name would be nonsense.
- *
- * `own` is checked against `OWN_ID_PREFIXES`, which holds both this mod's package
- * name and the shorter prefix its own config uses.
- */
+/** The mod that owns an object, from the text before the first dot. A dotless id is the game's. */
 export function modOf(row: ListRow): ModOrigin {
     const dot = row.id.indexOf(".");
     if (dot <= 0) return { own: false };
@@ -77,14 +60,7 @@ export function ownerLabel(key: OwnerKey): string {
     return key.slice(4);
 }
 
-/**
- * Every owner present in the rows: this mod, then the game, then other mods
- * alphabetically.
- *
- * Built from the rows rather than a fixed list, because the set of installed mods
- * is not knowable ahead of time — a chip for a mod that has contributed nothing
- * would be a filter that always returns nothing.
- */
+/** Every owner in the rows: this mod, then the game, then other mods alphabetically. */
 export function ownersOf(rows: ListRow[]): OwnerKey[] {
     const seen = new Set<OwnerKey>();
     for (const r of rows) seen.add(ownerOf(r));
@@ -129,12 +105,7 @@ export function countByOwner(rows: ListRow[]): Map<OwnerKey, number> {
  * see their docs there. This module adds only the list-specific part: merging
  * the two row sources while respecting the flag.
  */
-export {
-    configIsHidden,
-    HIDDEN_ALIASES,
-    HIDDEN_FIELD,
-    type HiddenCategory,
-} from "../../constants.ts";
+export { configIsHidden, HIDDEN_FIELD, type HiddenCategory } from "../../constants.ts";
 
 /** The config field that means "hidden" for a category, if it has one. */
 export function hiddenFieldOf(cat: string): string | undefined {
@@ -143,14 +114,7 @@ export function hiddenFieldOf(cat: string): string | undefined {
 
 // ── The expanded detail ───────────────────────────────────────────────────────
 
-/**
- * A short, human-readable value: numbers trimmed, objects summarised.
- *
- * Was copy-pasted into all four object definitions. Identical in every copy, and
- * a row's detail is the one place a user goes to check a value, so four
- * implementations of "how do I print this" is four chances to show something
- * subtly different for the same object.
- */
+/** A short, human-readable value: numbers trimmed, objects summarised. One copy, shared by every list. */
 export function brief(v: unknown): string {
     if (v === undefined || v === null || v === "") return "";
     if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
@@ -237,13 +201,7 @@ function humanise(k: string): string {
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
-/**
- * The rows of an expanded list row: curated fields first, then the rest.
- *
- * Exported separately from the render so the *content* is testable without a
- * renderer — which fields a category shows is a decision, and a decision that
- * only shows up in a DOM diff is a decision nobody reviews.
- */
+/** An expanded row's detail rows: curated fields first, then the rest. Exported so it is testable. */
 export function detailRows(
     src: Record<string, unknown>,
     spec: DetailSpec,
@@ -271,11 +229,7 @@ export function detailRows(
 /** The `createElement` shape the list renders with. */
 type H = (type: string, props: unknown, ...children: unknown[]) => unknown;
 
-/**
- * Draw an expanded row's detail block, or `null` when the object has nothing to
- * say — which is the honest answer for a game row whose definition could not be
- * read, rather than an empty bordered box.
- */
+/** Draw an expanded row's detail block, or `null` when the object has nothing to say. */
 export function renderDetail(h: H, ctx: ListRenderCtx, spec: DetailSpec): unknown {
     const src = ctx.row.native ?? ctx.row.entry ?? {};
     const rows = detailRows(src, spec);
@@ -363,15 +317,7 @@ export function mergeRows(
     return [...byId.values()].sort(byOwnerThenLabel);
 }
 
-/**
- * Your rows first, then the game's, then other mods' — each group alphabetical.
- *
- * The grouping is the point. "What did I make?", "what already exists?" and "what
- * did *that* mod add?" are three different questions, and answering them in one
- * undifferentiated wall forces the user to read every row to work out which one
- * they asked. Keeping them adjacent rather than split by headers also means a
- * filtered list stays a single scroll with no jump when a group empties out.
- */
+/** Your rows, then the game's, then other mods' — each group alphabetical. */
 function byOwnerThenLabel(a: ListRow, b: ListRow): number {
     const ka = ownerOf(a);
     const kb = ownerOf(b);
@@ -389,24 +335,8 @@ function ownerRank(key: OwnerKey): number {
 // ── Filtering ────────────────────────────────────────────────────────────────
 
 /**
- * Narrow the rows to what the user is looking for.
- *
- * Two things narrow, and they compose because they answer different questions:
- *
- *  - `text` — "which one is called gravel?". Matched against the id, the label
- *    and whatever the definition adds via `searchText`, because a user searching
- *    "powder" means the matter type, not a name.
- *  - `owner` — "show me only mine" / "only the game's" / "only otherA's".
- *
- * There is deliberately **no separate `origin` filter**. There was one — All /
- * Yours / Game, beside these owner chips — and it was the same filter twice:
- * "Yours" is `owner: "own"` and "Game" is `owner: "game"`, while `origin` only
- * ever had two values to say, both of which `owner` already says more precisely.
- * Two arguments setting one piece of state is how they end up disagreeing.
- *
- * Matching is case-insensitive substring, not prefix and not regex. Substring is
- * the forgiving middle: a prefix match hides `mdmy.ores` from a search for
- * `ores`, and a regex turns a stray `(` into a silent empty list.
+ * Narrow the rows. `text` matches id, label and `searchText`; `owner` is the
+ * mod filter. Case-insensitive substring, deliberately.
  */
 export function filterRows(
     rows: ListRow[],
@@ -426,23 +356,7 @@ export function filterRows(
     });
 }
 
-/**
- * Explain an empty list by naming the filter responsible, with a way out.
- *
- * The list no longer starts unfiltered — it starts on "This mod" with hidden
- * objects off — so "no match" is no longer the honest one-line answer. There are
- * three ways to reach an empty list, and the user cannot see which filters are
- * holding rows back from the rows alone.
- *
- * The test is in order of how much it would help to name it: a filter that
- * *alone* empties the list is the whole story, and only when nothing on its own
- * does is it worth blaming the combination. Otherwise the message names the
- * widest filter — "show this mod's objects" — which is the one whose removal
- * most obviously changes the result.
- *
- * `label` is the category's display name; this lower-cases it, since every use
- * is inside a sentence.
- */
+/** Explain an empty list by naming the widest filter responsible, with a way out. */
 export function shownBecauseOf(
     rows: ListRow[],
     owner: OwnerKey | "all",
@@ -496,13 +410,7 @@ export function shownBecauseOf(
     return `No ${what} match that filter.`;
 }
 
-/**
- * How many rows are hidden, for the checkbox's label.
- *
- * Counted over the *owner-filtered* rows, not all of them: the box reveals what
- * the current view is holding back, and a number that included other mods'
- * hidden rows would not match what ticking it does.
- */
+/** How many rows are hidden. Counted over the owner-filtered rows, so the number matches what ticking it does. */
 export function countHiddenRows(
     rows: ListRow[],
     owner: OwnerKey | "all" = "all",
@@ -525,15 +433,7 @@ export function countByOrigin(rows: ListRow[]): Record<RowOrigin, number> {
 
 // ── The shared row renderer ──────────────────────────────────────────────────
 
-/**
- * A row, drawn by whichever renderer can say the most about it.
- *
- * The definition's own `inlineRender` *replaces* the shared one rather than
- * composing with it. Composition is the tempting choice and the wrong one: an
- * element that renders its own swatch and label would then also get the shared
- * swatch and label, so the row shows everything twice. A definition that
- * renders a row is claiming that row.
- */
+/** A row, drawn by whichever renderer says the most about it. `inlineRender` replaces the shared one, not composes. */
 export function renderRowInline(
     ctx: ListRenderCtx,
     def: { inlineRender?: (c: ListRenderCtx) => unknown },
@@ -551,13 +451,7 @@ export function renderRowInfo(
     return def.infoRender ? def.infoRender(ctx) : shared();
 }
 
-/**
- * The default row line: swatch, label, id, and a marker for whose it is.
- *
- * This is what an object with no `inlineRender` gets, and it is enough on its
- * own: the origin marker is the one piece of information that is true of every
- * row and cannot be read off the name.
- */
+/** The default row line: swatch, label, id, and an origin marker. */
 export function sharedInline(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx): unknown {
     const { row } = ctx;
     return h(
@@ -598,15 +492,7 @@ export function originHint(row: ListRow): string {
     return `Added by the "${key.slice(4)}" mod — reference only.`;
 }
 
-/**
- * The row's disclosure marker: a quiet `▸` that rotates when the row is open.
- *
- * The browser's own marker is suppressed by `listStyle: "none"` on the summary,
- * and this replaces it. It is drawn by the *object's* renderer rather than by the
- * shared row so it can sit first in the line — before the swatch or the footprint
- * — which is what keeps every row's name at the same x. A marker appended after
- * those would be indented by them, and the columns would be ragged again.
- */
+/** A quiet `▸` that rotates when the row is open, drawn first so every name sits at the same x. */
 export function disclosureMark(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx): unknown {
     return h(
         "span",
@@ -621,14 +507,7 @@ export function disclosureMark(h: (...a: unknown[]) => unknown, ctx: ListRenderC
     );
 }
 
-/**
- * The origin badge itself.
- *
- * Exported because every per-object panel draws the same badge, and four copies
- * of a two-way `origin === "mod" ? … : …` is how the list ended up with a third
- * state (another mod's object) that nothing knew how to draw. A panel that wants
- * its own badge can still build one; this is the one that stays correct.
- */
+/** The origin badge. One copy, shared by every per-object panel. */
 export function originTag(h: (...a: unknown[]) => unknown, row: ListRow): unknown {
     return h(
         "span",

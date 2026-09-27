@@ -78,15 +78,7 @@ export function hexListToVariants(list: string[]): [number, number, number, numb
         });
 }
 
-/**
- * The variant that should be offered first.
- *
- * An element with a map colour and no variants is a perfectly good element —
- * the colour is just what every cell gets. So the first swatch is seeded from
- * the map colour rather than left to a default, which means setting `metaColor`
- * alone already looks right and the variants are a refinement on top of it
- * rather than a second thing you have to remember to set.
- */
+/** The variant offered first: the map colour, so `metaColor` alone already looks right. */
 export function seedVariantFromMapColor(mapColorHex: string | undefined): string {
     return mapColorHex && HEX.test(mapColorHex) ? `${mapColorHex}ff` : "#ccccccff";
 }
@@ -314,7 +306,6 @@ const FIELDS: FieldSpec[] = [
         "conveyors / launchers can move it",
     ),
     boolField("isGrabbable", "Grabbable", "Behaviour"),
-    boolField("hidden", "Hidden", "Flags"),
     boolField("visibleInPicker", "Visible in picker", "Flags", "true"),
     ...FLAMMABLE_FIELDS,
     ...COLLECTABLE_FIELDS,
@@ -324,30 +315,26 @@ const FIELDS: FieldSpec[] = [
 /**
  * The behaviour flags, read and written as a group.
  *
- * `flammable` and `collectable` are **not** here. They used to be, and the
- * group is booleans end to end — `typeof e[k] === "boolean"` on the way in,
- * `setBool` on the way out. Both of those are quietly lossy for an object: the
- * read skipped it entirely, and because both keys are in `FORM_COVERED` the
- * passthrough that would otherwise have carried them dropped them too, so a
- * hand-written `collectable: { value: 2 }` did not survive a save. They are
- * handled by their own round trip now.
+ * Two keys used to be here and are not any more.
+ *
+ * `flammable` and `collectable` are objects, not booleans, so the booleans-only
+ * round trip could not carry them in either direction. They have their own
+ * read/write now, and the pre-split booleans — `flammable: true`,
+ * `collectable: true` — are not read back: they never reached the engine, which
+ * gates on `typeof === "object"` and on `.value` respectively, so honouring them
+ * would only report a setting as live that silently did nothing.
+ *
+ * `hidden` is the engine's "hide from some picker and lexicon lists" flag. This
+ * mod uses `visibleInPicker` for the picker and `hideFromBuildMenu` for the
+ * build menu, and `HIDDEN_FIELD` points both at those, so nothing filtered on
+ * `hidden`. It is no longer a field here; a config that still carries it passes
+ * it through the advanced-JSON box rather than being silently dropped.
  */
-const FLAGS = ["isTransportable", "isGrabbable", "hidden", "visibleInPicker"];
+const FLAGS = ["isTransportable", "isGrabbable", "visibleInPicker"];
 
 // ── Round trip ───────────────────────────────────────────────────────────────
 
-/**
- * A stored matter type as the text the picker offers.
- *
- * The stored value is often a *number* — a hand-written config, or anything that
- * round-tripped through the engine — but the dropdown only offers lowercase
- * names. Showing a bare `8` leaves the select with nothing selected, and saving
- * that form then stores the **text** `"8"`, which is a different value with a
- * different meaning: `resolveMatterType("8")` must not hand the engine the string
- * `"Powder"`, which matches no entry in the worker's matter table, or the
- * element stops moving entirely. Numbers are therefore read back as names, so
- * the form is always a valid selection and the round trip is stable.
- */
+/** A stored matter type as picker text. A number reads back as its name, never as `"8"`. */
 function matterTypeToForm(v: unknown): string | undefined {
     if (typeof v === "string") return v;
     if (typeof v === "number" && Number.isFinite(v)) {
@@ -380,19 +367,12 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     readCollectable(e.collectable, read);
 }
 
-/**
- * `flammable` → the parent toggle and the four controls behind it.
- *
- * Both shapes the field has ever held are read. An object is the real one; a
- * bare `true` is what the old checkbox wrote, and reading it as "on, nothing
- * configured" keeps a hand-edited config from flipping to off on load.
- */
+/** `flammable` → its toggle and controls. Object shape only: the engine gates on `typeof === "object"`. */
 function readFlammable(raw: unknown, read: EntryReader): void {
-    if (raw === undefined || raw === null) return;
-    // `!!raw` rather than a type test: `{}` is flammable, and so is a legacy
-    // `true`. Both mean "the key is present".
+    if (typeof raw !== "object" || raw === null) return;
+    // `{}` is flammable — the engine gates on truthiness, so an empty object
+    // burns and leaves nothing behind, which is a real setting.
     read.put("flammableOn", "true");
-    if (typeof raw !== "object") return;
     const f = raw as {
         outputElementId?: string;
         outputChance?: number;
@@ -414,24 +394,14 @@ function readFlammable(raw: unknown, read: EntryReader): void {
     }
 }
 
-/** `collectable` → the parent toggle and its value. A legacy `true` reads as on. */
+/** `collectable` → its toggle and value. Object shape only: the collector reads `.value`. */
 function readCollectable(raw: unknown, read: EntryReader): void {
-    if (raw === undefined || raw === null) return;
+    if (typeof raw !== "object" || raw === null) return;
     read.put("collectableOn", "true");
-    if (typeof raw === "object") {
-        read.put("collectableValue", read.num((raw as { value?: number }).value));
-    }
+    read.put("collectableValue", read.num((raw as { value?: number }).value));
 }
 
-/**
- * Form strings → stored entry, for the whole element.
- *
- * `_form` is unused: every read goes through the writer, which already carries
- * the form. The parameter stays because the `Definition` contract has one
- * signature — a definition that needs a raw form value the writer does not
- * expose (`structure` reads `form.tooltipHoverJson` for that) has to be able to
- * ask for it. An element simply does not.
- */
+/** Form strings → stored entry. `_form` is unused; the `Definition` contract has one signature. */
 function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
     w.setStr("description", w.opt("description"));
@@ -457,19 +427,7 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     writeCollectable(w);
 }
 
-/**
- * The five controls → one `flammable` object, or no key at all.
- *
- * Three states, matching the three the engine distinguishes:
- *
- *   off            → nothing written. `del`, not `setRaw(undefined)` — a key
- *                    left behind holding `{}` would still be flammable, because
- *                    the engine's gate is truthiness.
- *   on, no sub-set → `{}`. Burns and leaves nothing behind, which is what the
- *                    checkbox means and is not the same as off.
- *   on, sub-set    → only the keys that were filled in, so an untouched chance
- *                    is omitted and the engine's own `?? 0.25` applies.
- */
+/** Off deletes the key; on with nothing set writes `{}`, which still burns. The engine gates on truthiness. */
 function writeFlammable(w: EntryWriter): void {
     if (!w.optBool("flammableOn")) {
         w.del("flammable");
@@ -493,14 +451,7 @@ function writeFlammable(w: EntryWriter): void {
     w.setRaw("flammable", f);
 }
 
-/**
- * The two controls → one `collectable` object.
- *
- * `value` is written whenever the toggle is on and a number was given, and
- * `validate` blocks the on-but-blank case, because the collector's guard is
- * `!= null`: a `{}` that reached the game would look configured and collect
- * nothing.
- */
+/** A blank value writes `{}`, which the collector's `!= null` guard skips. `validate` blocks that. */
 function writeCollectable(w: EntryWriter): void {
     if (!w.optBool("collectableOn")) {
         w.del("collectable");
@@ -510,13 +461,7 @@ function writeCollectable(w: EntryWriter): void {
     w.setRaw("collectable", value === undefined ? {} : { value });
 }
 
-/**
- * Rules no single field can express.
- *
- * The lifetime is stored as `{ min, max }` and the engine picks per cell, so a
- * max below the min is a range with nothing in it. Neither number is wrong on
- * its own, which is why this cannot live on either field.
- */
+/** Rules no single field can express: a lifetime range with max below min is empty. */
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
     if (!errors.durationRandomMax && !errors.flammableDurationMax) {
         const min = form.durationRandomMin?.trim();
@@ -541,15 +486,7 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
 
 // ── The section panel ────────────────────────────────────────────────────────
 
-/**
- * Colour-variant swatches — one row per `colors.variants` entry.
- *
- * The engine shape is a nested array of RGBA tuples, which as a raw textarea
- * meant hand-counting brackets and remembering that alpha is a fourth number.
- * Every workshop mod that uses this ships four or five variants
- * (`__scraped-mods/workshop/3790149867`), so the common case is a list, and a
- * list deserves a list control.
- */
+/** Colour-variant swatches, one row per `colors.variants` entry. RGBA tuples as a list, not a textarea. */
 function renderColorVariants(ctx: FieldContext): unknown {
     const { h, field, value, locked, form, setField } = ctx;
     const swatches = variantsToHexList(value);
@@ -622,13 +559,7 @@ function renderColorVariants(ctx: FieldContext): unknown {
     );
 }
 
-/**
- * The control for whichever element-only kind this field is, or `null` for the
- * generic ones the panel already knows how to draw.
- *
- * Returning `null` rather than owning every field is what lets the element
- * screen use the same text box, number box and dropdown as every other screen.
- */
+/** The control for an element-only field kind, or `null` for the generic ones the panel already draws. */
 function renderField(ctx: FieldContext): unknown {
     if (ctx.field.kind !== "colorVariants") return null;
     return renderColorVariants(ctx);
@@ -660,7 +591,6 @@ const FORM_COVERED = [
     "isTransportable",
     "isGrabbable",
     "collectable",
-    "hidden",
     "visibleInPicker",
 ];
 

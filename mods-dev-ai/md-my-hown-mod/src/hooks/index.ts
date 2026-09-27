@@ -32,7 +32,6 @@ export {
     type CompiledProjectileOption,
     compileProjectile,
     PROJECTILE_OPTION_DOCS,
-    PROJECTILE_OPTION_LEGACY_KEYS,
     PROJECTILE_OPTION_STORE_KEY,
     PROJECTILE_OPTIONS,
     type ProjectileGetOptions,

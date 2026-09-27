@@ -444,12 +444,11 @@ Deno.test("an element is hidden when it says visibleInPicker: false", () => {
     // A junk value is not a `false`, so it is not a statement about visibility.
     assertEquals(configIsHidden({ visibleInPicker: "false" }, "elements"), false);
 
-    // The retired `hidden` field still counts, with its own polarity — it was
-    // always a direct "yes it is hidden", and flipping it would un-hide every
-    // element the flag was ever set on.
-    assertEquals(configIsHidden({ hidden: true }, "elements"), true);
-    // The live field wins when both are present, which is what makes the two
-    // coexisting during a migration safe.
+    // The retired `hidden` field is not consulted any more. It had its own
+    // polarity, so honouring it was a second rule to keep in step with the
+    // inverted one above — and the two could disagree on one entry.
+    assertEquals(configIsHidden({ hidden: true }, "elements"), false);
+    // And with the live field present, only the live field is read.
     assertEquals(
         configIsHidden({ hidden: true, visibleInPicker: true }, "elements"),
         false,
@@ -597,20 +596,22 @@ Deno.test("mergeRows reads the hidden flag from the entry that owns it", () => {
     assertEquals(iById.i2.hidden, false);
 });
 
-Deno.test("the briefly-used hiddenFromTheMenu spelling still filters", () => {
+Deno.test("the briefly-used hiddenFromTheMenu spelling no longer filters", () => {
     // This mod renamed the flag to `hideFromBuildMenu` and then back again in the
-    // same session. A config saved under the interim name must keep behaving as
-    // its author intended, rather than quietly becoming unfiltered — that is what
-    // HIDDEN_ALIASES is for, and it is only worth having because the mistake
-    // happened.
+    // same session. That is what `HIDDEN_ALIASES` existed to paper over, and it is
+    // gone: a second spelling with its own lookup meant the two could disagree
+    // about one entry. A config still on the interim name is simply not filtered
+    // by it — visibly, rather than by a flag that half-worked.
     const rows = mergeRows(
         [{ id: "s1", hiddenFromTheMenu: true }, { id: "s2", hiddenFromTheMenu: false }],
         [],
         "structures",
     );
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
-    assertEquals(byId.s1.hidden, true);
-    assertEquals(byId.s2.hidden, false);
+    assertEquals(byId.s1.hidden, false, "a retired spelling is not a visibility flag");
+    // And the live one still works on the same shape.
+    const live = mergeRows([{ id: "s1", hideFromBuildMenu: true }], [], "structures");
+    assertEquals(live[0].hidden, true);
 });
 
 Deno.test("a detail block shows the curated fields, then everything else", () => {
@@ -675,14 +676,13 @@ Deno.test("the list and the per-field selector agree about what is hidden", () =
     // They used to compute this separately — the selector testing the field
     // inline, the list going through `HIDDEN_FIELD` — and drifted, so an object
     // the list called hidden was offered as ordinary in a picker. Both now call
-    // `configIsHidden`, and this asserts they still answer the same for a
-    // structure saved under either spelling.
+    // `configIsHidden`, and this asserts they still answer the same for the live
+    // field of each category.
     assertEquals(configIsHidden({ hideFromBuildMenu: true }, "structures"), true);
-    assertEquals(configIsHidden({ hiddenFromTheMenu: true }, "structures"), true);
     assertEquals(configIsHidden({}, "structures"), false);
-    // Elements keep the engine's own field, which the selector also reads
-    // directly off a registered definition.
-    assertEquals(configIsHidden({ hidden: true }, "elements"), true);
+    // Elements use the engine's own field, which is inverted, and the selector
+    // also reads it directly off a registered definition.
+    assertEquals(configIsHidden({ visibleInPicker: false }, "elements"), true);
     // And items share the structure spelling.
     assertEquals(configIsHidden({ hideFromBuildMenu: true }, "items"), true);
     // Terrains have no such concept at all.

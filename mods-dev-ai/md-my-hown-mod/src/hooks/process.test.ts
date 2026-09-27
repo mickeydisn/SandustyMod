@@ -3,7 +3,7 @@
  *
  * The behaviours under test are the ones that were guesses until they were
  * written down: ordering, per-action param binding, failure isolation, the merge
- * rule, and the `handlerKey` → `actions` migration.
+ * rule, and that a pre-split single key is *not* a process.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { ACTION_APIS, ACTION_CLASSES } from "./action-class.ts";
@@ -197,13 +197,13 @@ Deno.test("the same action may appear twice with different options", () => {
     ]);
 });
 
-Deno.test("`handlerKey` migrates to a one-action process", () => {
-    // A config already on disk has `handlerKey`, not `actions`. It must still
-    // produce a working process, with no options — because it never had any.
-    assertEquals(actionRefsOf({ handlerKey: "processorLog" }), [
-        { key: "processorLog", options: undefined },
-    ]);
-    // The new form wins when both are present.
+Deno.test("a pre-split `handlerKey` is not a process", () => {
+    // A config written before the split has `handlerKey`, not `actions`. It is
+    // read as no process: the engine never saw that key, so honouring it would
+    // show the author a handler that silently does nothing.
+    assertEquals(actionRefsOf({ handlerKey: "processorLog" }), []);
+    assertEquals(actionRefsOf({ onUpgradeKey: "onLevelUp" }), []);
+    // The split form is still read, and wins over a stale sibling.
     assertEquals(
         actionRefsOf({ handlerKey: "old", actions: [{ key: "new", options: { a: 1 } }] }),
         [{ key: "new", options: { a: 1 } }],
@@ -240,35 +240,75 @@ Deno.test("a usage scan reads a process' action list, not one key", () => {
     assert(uses.every((u) => u.id === "p1"), "all three belong to the same entry");
 });
 
-Deno.test("a pre-split `handlerKey` scans as exactly one usage", () => {
-    // A regression guard for a real double-count: `actionRefsOf` already reads
-    // `handlerKey`, so the scan's own fallback must not read it a second time.
-    // When it did, every unreachable warning appeared twice.
-    const uses = scanHandlerUsage({ triggers: [{ id: "t1", handlerKey: "triggerLog" }] });
+Deno.test("a process scans as exactly one usage per action", () => {
+    // A regression guard for a real double-count: the scan must go through
+    // `actionRefsOf` alone, with no second path reading the same entry. When two
+    // did, every unreachable warning appeared twice.
+    const uses = scanHandlerUsage({
+        signals: [{ id: "s1", actions: [{ key: "signalLog" }] }],
+    });
     assertEquals(uses.length, 1, "not twice");
+    assertEquals(uses[0].key, "signalLog");
     assertEquals(
-        unreachableHandlers({ triggers: [{ id: "t1", handlerKey: "techGrantItem" }] }).length,
+        unreachableHandlers({
+            signals: [{ id: "s1", actions: [{ key: "techGrantItem" }] }],
+        }).length,
         1,
     );
+    // And a pre-split key is not a process, so it contributes no usage at all —
+    // one reader, and it no longer looks at that name.
+    assertEquals(scanHandlerUsage({ triggers: [{ id: "t1", handlerKey: "triggerLog" }] }), []);
 });
 
 Deno.test("a projectile's option is scanned separately from handler usage", () => {
-    // `getOptionsKey` used to be the one slot not naming its key `handlerKey`, and
-    // the scan had a fallback branch for it. That branch is gone: a projectile holds
-    // an option, not a process, so it is read by `scanProjectileOptionUsage` instead
-    // — and `scanHandlerUsage` must report *nothing* for it, because folding it back
-    // in would mean re-adding the `projectile` slot this split removed.
+    // A projectile holds an option, not a process, so it is read by
+    // `scanProjectileOptionUsage` — and `scanHandlerUsage` must report *nothing*
+    // for it, because folding it back in would mean re-adding the `projectile`
+    // slot this split removed. The fixture uses the current `option` object: the
+    // pre-split `getOptionsKey` is not read any more, so a fixture built on it
+    // would pass by asserting emptiness twice.
     assertEquals(
-        scanHandlerUsage({ projectiles: [{ id: "b1", getOptionsKey: "projectileHeavy" }] }),
+        scanHandlerUsage({ projectiles: [{ id: "b1", option: { key: "projectileHeavy" } }] }),
         [],
         "a projectile is being scanned as a handler usage again",
     );
     const uses = scanProjectileOptionUsage({
-        projectiles: [{ id: "b1", getOptionsKey: "projectileHeavy" }],
+        projectiles: [{ id: "b1", option: { key: "projectileHeavy" } }],
     });
     assertEquals(uses.map((u) => u.key), ["projectileHeavy"]);
     assertEquals(uses[0].id, "b1");
     assertEquals(uses[0].problem, undefined, "a single option is not a problem");
+    // A pre-split spelling is not an option. The row still appears, because the
+    // tab lists every projectile, but it names no option — the same as any
+    // projectile that never had one. What matters is that the key is not read.
+    const stale = scanProjectileOptionUsage({
+        projectiles: [{ id: "b1", getOptionsKey: "projectileHeavy" }],
+    });
+    assertEquals(stale.length, 1);
+    assertEquals(
+        stale[0].key,
+        undefined,
+        "a pre-split getOptionsKey is still being read as an option",
+    );
+});
+
+Deno.test("a bare key compiles to a one-action process", () => {
+    // Input bindings store a bare key in a string slot, not a list, so the
+    // register path builds the ref itself rather than reading one off the entry.
+    // It used to fake an entry — `actionRefsOf({ handlerKey: key })` — which only
+    // worked while that reader still consulted the pre-split key. Once it read
+    // `actions` alone the fake entry resolved to nothing, `skipped` was non-empty,
+    // and every input binding was dropped with a warning. No test covered that
+    // path, so this pins the shape directly.
+    const good = compileProcess([{ key: "processorLog", options: undefined }], "behavior");
+    assertEquals(good.skipped, [], "a bare key must not be reported as unknown");
+    assertEquals(typeof good.fn, "function");
+
+    // And the ref really is read from an entry when there is one.
+    assertEquals(
+        actionRefsOf({ actions: [{ key: "processorLog" }] }),
+        [{ key: "processorLog", options: undefined }],
+    );
 });
 
 Deno.test("the `usageIndex` groups a multi-action process under each action", () => {

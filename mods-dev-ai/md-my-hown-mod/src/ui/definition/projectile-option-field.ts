@@ -2,10 +2,10 @@
  * The projectile's option, as a form field.
  *
  * The sibling of `actions-field.ts`, and much smaller on purpose. A process is an
- * ordered list and needs an ordered editor, migration for three legacy spellings,
- * and a per-row parameter set. A projectile's option is **one key and one
- * parameter bag** — there is nothing to order and nothing to repeat — so this
- * module is the whole of it.
+ * ordered list and needs an ordered editor, migration for several spellings, and a
+ * per-row parameter set. A projectile's option is **one key and one parameter
+ * bag** — there is nothing to order and nothing to repeat — so this module is
+ * the whole of it.
  *
  * ## What it stores
  *
@@ -40,21 +40,10 @@ export const PARAMS_FORM_KEY = "optionParamsJson";
 /** The stored key. */
 export const OPTION_STORE_KEY = "option";
 
-/** Stored keys this form owns: the new one, plus every legacy spelling. */
-export const OPTION_COVERED = [
-    OPTION_STORE_KEY,
-    "getOptionsKey",
-    "actions",
-];
+/** Stored keys this form owns: only the one it writes. */
+export const OPTION_COVERED = [OPTION_STORE_KEY];
 
-/**
- * Read a stored projectile's option into the form, migrating the old shapes.
- *
- * `projectileOptionOf` decides which shape is on disk; this only puts the answer in
- * two boxes. It is kept as its own function so the read and the write cannot drift
- * — the pair is the round trip, and a schema half that read one shape while the
- * other wrote another is how a field quietly empties itself.
- */
+/** Read a stored projectile's option into the form. Split from the write so the pair cannot drift. */
 export function readProjectileOption(read: EntryReader, entry: Record<string, unknown>): void {
     const { ref } = projectileOptionOf(entry);
     read.put(OPTIONS_FORM_KEY, ref?.key ?? "");
@@ -64,16 +53,7 @@ export function readProjectileOption(read: EntryReader, entry: Record<string, un
     );
 }
 
-/**
- * Write the form's option onto the entry, dropping every legacy key.
- *
- * The `del` calls are what make the migration real. Without them an entry would
- * keep the `getOptionsKey` or `actions` it was migrated from *and* gain an `option`,
- * and which one a reader honoured would come down to lookup order.
- *
- * An empty option writes nothing, so clearing the dropdown returns the projectile
- * to its static options instead of storing an empty object.
- */
+/** Write the form's option onto the entry. Empty writes nothing, returning the projectile to its static options. */
 export function writeProjectileOption(w: EntryWriter): void {
     const key = w.opt(OPTIONS_FORM_KEY);
     if (key) {
@@ -82,17 +62,9 @@ export function writeProjectileOption(w: EntryWriter): void {
     } else {
         w.del(OPTION_STORE_KEY);
     }
-    for (const legacy of OPTION_COVERED) if (legacy !== OPTION_STORE_KEY) w.del(legacy);
 }
 
-/**
- * The field spec for a projectile's option.
- *
- * `kind: "projectileOption"` rather than `actionList`, so the shared renderer picks
- * the single-option widget. The two are different controls on purpose: a
- * projectile cannot hold a list, and reusing the list widget would put a "+" and two
- * reorder arrows on a field where they can only ever produce a broken config.
- */
+/** The field spec for a projectile's option. `projectileOption`, not `actionList`: one option, not a list. */
 export function projectileOptionField(): FieldSpec {
     return {
         key: OPTIONS_FORM_KEY,

@@ -537,15 +537,8 @@ export interface Section {
 }
 
 /**
- * The form's sections, with the ones that have nothing to say left out.
- *
- * A section survives only while it holds at least one field that is currently
- * active, so passing the form matters: without it every section is returned as
- * declared, which is what the docs and the reference generator want (they
- * describe the form, not one instance of it).
- *
- * The panel passes the live form so an entry carrying nothing hidden shows no
- * "Advanced" heading at all — see {@link PASSTHROUGH_KEY}.
+ * The form's sections, empty ones left out. Passing the live form drops a
+ * section whose fields are all currently inactive.
  */
 export function sectionsFor(cat: Tab, form?: Record<string, string>): Section[] {
     const out: Section[] = [];
@@ -558,11 +551,7 @@ export function sectionsFor(cat: Tab, form?: Record<string, string>): Section[] 
     return out;
 }
 
-/**
- * Form id → stored id.
- * Sprite entries use engine graphics keys, which are stored verbatim; every
- * other category is namespaced with the mod id.
- */
+/** Form id → stored id. Sprites use engine graphics keys verbatim; everything else is namespaced. */
 function fullIdOf(form: Record<string, string>, cat?: Tab): string {
     const suffix = (form.idSuffix ?? "").trim();
     if (!suffix) return "";
@@ -760,15 +749,7 @@ function optJson<T>(form: Record<string, string>, key: string): T | undefined {
 export { putCustomOrSelect } from "./definition/values.ts";
 
 /** Default form values for a fresh entry. */
-/**
- * Default form values for a fresh entry.
- *
- * The two rules here are the only ones that are not just `f.def`: a checkbox with
- * no stated default is "off", and everything else is "empty". Anything richer —
- * the solid 4×4 a structure starts as — is a `def` on its own field, so a
- * "what does a new structure look like" question is answered next to the field
- * rather than in a switch keyed on its kind.
- */
+/** Defaults for a fresh entry: an unstated checkbox is "off", everything else empty. */
 export function formDefaults(cat: Tab): Record<string, string> {
     const form: Record<string, string> = {};
     for (const f of fieldsFor(cat)) {
@@ -778,14 +759,7 @@ export function formDefaults(cat: Tab): Record<string, string> {
     return form;
 }
 
-/**
- * The form a "+ New" opens with: field defaults, then the definition's own seed.
- *
- * A definition's seed is for a decision the author should not have to make to get
- * a first save — a structure must name an unlock node, so a new one starts on the
- * built-in default. Without it the required field opens empty and blocks the
- * first save on a rule nobody chose.
- */
+/** Field defaults, then the definition's own seed — so a new entry can save without the author choosing. */
 export function newEntryForm(cat: Tab): Record<string, string> {
     const form = formDefaults(cat);
     definitionFor(cat)?.onNewEntry?.(form);
@@ -793,18 +767,7 @@ export function newEntryForm(cat: Tab): Record<string, string> {
 }
 
 /** Config keys each form owns; everything else round-trips via advancedJson. */
-/**
- * The stored keys this form does *not* own, for one entry.
- *
- * Exported so the UI can name them. `advancedJson` is a round-trip escape hatch,
- * not a place to author data: anything the form does not own is carried through
- * an edit verbatim so that opening an entry can never silently delete a field
- * the engine understands but this panel does not have a control for.
- *
- * The user-facing consequence is that a form is not a complete picture of an
- * entry. Showing the count and the names makes that visible instead of leaving
- * it to be discovered after a field goes missing.
- */
+/** The stored keys this form does not own. Exported so the UI can name them. */
 export function passthroughKeys(
     cat: Tab,
     entry: Record<string, unknown>,
@@ -912,8 +875,8 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             // Owned by ./definition/upgrade.ts — see the note in formToEntry.
             //
             // This was the last tab still reading itself in the old inline switch,
-            // which is how a migrated `onUpgradeKey` came back as an empty process:
-            // the write side read `actionsJson` that nothing had ever put there.
+            // which is how the round trip broke: the read and the write were two
+            // hand-written halves, and only one of them knew the stored shape.
             // One definition, one round trip, both directions — which is the whole
             // point of moving the read out of this switch.
             upgradeDefinition.entryToForm?.(e, readerFor(form));

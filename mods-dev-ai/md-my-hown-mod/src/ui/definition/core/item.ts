@@ -31,14 +31,7 @@ import {
 } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-/**
- * Config entries of a category, as picker options.
- *
- * The ids of this mod's own `excavationProfiles` and `projectiles` — categories
- * with no host registry to enumerate, so the only source of options is what is
- * already stored. Wrapped in a try/catch because `options` runs on every render
- * and storage can throw; a picker that throws takes the whole panel with it.
- */
+/** Config entries of a category, as picker options. Wrapped in try/catch: it runs on every render. */
 function listConfigured(key: keyof ModConfig): Opt[] {
     try {
         const arr = (loadConfig()[key] ?? []) as unknown[];
@@ -196,20 +189,10 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // the next save.
     if (typeof e.hideFromBuildMenu === "boolean") {
         read.put("hideFromBuildMenu", String(e.hideFromBuildMenu));
-    } else if (typeof e.hiddenFromTheMenu === "boolean") {
-        read.put("hideFromBuildMenu", String(e.hiddenFromTheMenu));
     }
 }
 
-/**
- * Form strings → stored entry, for the whole item.
- *
- * `_form` is unused: every read goes through the writer, which already carries
- * the form. The parameter stays because the `Definition` contract has one
- * signature — a definition that needs a raw form value the writer does not
- * expose (`structure` reads `form.tooltipHoverJson` for that) has to be able to
- * ask for it. An item simply does not.
- */
+/** Form strings → stored entry. `_form` is unused; the `Definition` contract has one signature. */
 function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
     w.setStr("description", w.opt("description"));

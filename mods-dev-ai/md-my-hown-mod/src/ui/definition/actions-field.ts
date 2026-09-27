@@ -25,14 +25,15 @@
  * replace the text box with a real ordered-list widget without touching the
  * schema.
  *
- * ## The migration
+ * ## No migration
  *
- * A config already on disk holds `handlerKey: "x"`. That is read as a one-action
- * process by `actionRefsOf`, so it loads, it displays, and it keeps working. The
- * next save writes the `actions` form and drops the old key — so the migration
- * happens on the author's own edit rather than needing a separate step.
+ * A config written before the split holds `handlerKey: "x"` and no `actions`.
+ * That is read as *no process*: the author sees an empty list rather than a
+ * process that is listed but does not run. The pre-split key is left in the
+ * entry by the passthrough — this field does not claim it — so nothing is
+ * destroyed, but it is no longer honoured.
  */
-import { actionRefsOf, ACTIONS_LEGACY_KEYS, type HandlerActionRef } from "../../hooks/process.ts";
+import { actionRefsOf, type HandlerActionRef } from "../../hooks/process.ts";
 import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
 
 /** The form key. The `Json` suffix follows `buildModesJson` and friends. */
@@ -41,16 +42,16 @@ export const ACTIONS_FORM_KEY = "actionsJson";
 /** The stored key. */
 export const ACTIONS_STORE_KEY = "actions";
 
-/** Keys this field owns: the new one, and the old one it replaces. */
-export const ACTIONS_COVERED = [ACTIONS_STORE_KEY, ...ACTIONS_LEGACY_KEYS];
-
 /**
- * Parse the form's JSON text into action refs.
+ * Keys this field owns: only the one it writes.
  *
- * Unparseable text yields `[]` and leaves the text alone, so a typo produces a
- * field error rather than silently emptying the author's process. That matches
- * `parseBuildModes`: guessing here would overwrite the text with something else.
+ * The pre-split spellings are deliberately absent. Listing them would make the
+ * passthrough strip a `handlerKey` the form never reads, so an author who had
+ * not opened the entry would lose it without ever seeing why.
  */
+export const ACTIONS_COVERED = [ACTIONS_STORE_KEY];
+
+/** Parse the form's JSON into action refs. Unparseable text yields `[]` and is left alone. */
 export function parseActionRefs(raw: string | undefined): HandlerActionRef[] {
     if (!raw || !raw.trim()) return [];
     let parsed: unknown;
@@ -100,17 +101,12 @@ export function formatActionRefs(refs: readonly HandlerActionRef[]): string {
     );
 }
 
-/** Read a stored entry's process into the form, migrating `handlerKey`. */
+/** Read a stored entry's process into the form. */
 export function actionRefsToForm(entry: Record<string, unknown> | undefined): string {
     return formatActionRefs(actionRefsOf(entry));
 }
 
-/**
- * Read a stored entry's process into the form, migrating `handlerKey`.
- *
- * Shared by all seven definitions so the migration is decided once. A definition
- * that re-derived this would be seven chances to read only one of the two shapes.
- */
+/** Read a stored entry's process into the form. Shared by all seven definitions so the shape is decided once. */
 export function readActions(
     read: EntryReader,
     entry: Record<string, unknown> | undefined,
@@ -118,24 +114,7 @@ export function readActions(
     read.put(ACTIONS_FORM_KEY, actionRefsToForm(entry));
 }
 
-/**
- * Write the form's process onto the entry, dropping every legacy key.
- *
- * The `del` calls are the half that makes the migration real. Without them an
- * entry would keep the `getOptionsKey` / `onUpgradeKey` / `handlerKey` it was
- * migrated from *and* gain an `actions`, and which one a reader honours would
- * come down to lookup order.
- *
- * An empty process writes neither key, so clearing the control removes the
- * process rather than leaving an empty array the engine would have to interpret.
- *
- * `enabled: false` **removes** the process without writing one, which is the one
- * case where an action list is not legal at all: the item tab's Consumable. The
- * engine's `ActionType` has no Consumable, so a Consumable has nothing to
- * dispatch a use through. The form still *shows* the control's value — hiding it
- * would lose a Tool's process the moment the author switched type and back — so
- * the rule has to be applied here, on the way to the entry, not in the field.
- */
+/** Write the form's process onto the entry. Empty writes no key; `enabled: false` removes it. */
 export function writeActions(w: EntryWriter, enabled = true): void {
     const refs = enabled ? parseActionRefs(w.opt(ACTIONS_FORM_KEY)) : [];
     if (refs.length > 0) {
@@ -143,17 +122,9 @@ export function writeActions(w: EntryWriter, enabled = true): void {
     } else {
         w.del(ACTIONS_STORE_KEY);
     }
-    for (const legacy of ACTIONS_LEGACY_KEYS) w.del(legacy);
 }
 
-/**
- * The field spec, for any of the seven definitions that store a process.
- *
- * `slot` is the call site, which is what the ordered list is grouped by — so it
- * belongs in the label and the hint rather than being inferred from the tab.
- * `extra` lets a definition add its own `when` (item's is the Consumable rule)
- * without this having to know about it.
- */
+/** The field spec for the seven definitions that store a process. `extra` adds a definition's own `when`. */
 export function actionListField(
     slotLabel: string,
     extra: Partial<FieldSpec> = {},

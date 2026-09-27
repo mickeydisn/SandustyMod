@@ -505,24 +505,7 @@ export function handlersForSlot(slot: HandlerSlot): HandlerMeta[] {
     return HANDLER_META.filter((m) => m.slots.includes(slot));
 }
 
-/**
- * True when an action's **only** call site is the one named.
- *
- * This is the isolation criterion the Handlers menu is built on, and it is derived
- * from `slots` rather than kept as a list, so it cannot drift: a new action that
- * declares one slot is in that slot's tab by construction, and one that declares
- * two is in neither.
- *
- * The alternative was a hand-written "these 7 are the upgrade ones" array, which is
- * the shape of bug this codebase keeps hitting — a second table that looks like a
- * fact and is only a copy. `slots` is already the truth about where an action can
- * run, so the question is asked of it directly.
- *
- * `noop` is the case that makes the distinction matter. It can run at an upgrade,
- * but it runs at all six call sites, so it is **not** upgrade-specific and stays in
- * the general Actions list — it is not an upgrade action that happens to be
- * reusable, it is a wiring test.
- */
+/** True when an action's only call site is this one. Derived from `slots`, so it cannot drift. */
 export function isOnlyAtSlot(meta: HandlerMeta, slot: HandlerSlot): boolean {
     return meta.slots.length === 1 && meta.slots[0] === slot;
 }
@@ -546,13 +529,7 @@ export function isHandlerKey(key: string | undefined): boolean {
     return !!key && key in META_BY_KEY;
 }
 
-/**
- * `itemAction` handlers valid for one `ItemType`.
- *
- * Returns an empty list for `Consumable` — see the note on `itemTypes`:
- * `ActionType` has no Consumable member, so a consumable has no use action to
- * dispatch and must stay metadata-only.
- */
+/** `itemAction` handlers legal for one `ItemType`. A `Consumable` yields none. */
 export function itemActionHandlersFor(itemType: string | undefined): HandlerMeta[] {
     const t = itemType ?? "";
     // Consumable is rejected outright rather than filtered: there is no
@@ -615,14 +592,7 @@ export function validateHandlerParams(
 }
 
 /** Turn a validated form bag into a typed `options` object (numbers → numbers). */
-/**
- * The handler types a set of keys actually covers.
- *
- * Every slot picker already filters to the handlers that are legal for it, but
- * a filtered dropdown does not say *why* it is short. Naming the types turns
- * "there is nothing to pick" from a puzzle into an answer, which is the whole
- * point of the Handlers screen.
- */
+/** Handler types a set of keys covers, so a short dropdown says why it is short. */
 export function handlerTypesForKeys(keys: string[]): HandlerType[] {
     const byKey = new Map(HANDLER_META.map((m) => [m.key, m.type]));
     const seen = new Set<HandlerType>();
@@ -675,14 +645,22 @@ export const TAB_TO_CALL_SITE: Record<string, HandlerSlot> = {
     // option without pretending the two are the same kind of reference.
 };
 
-/** slot → (config array key, field holding the handler key). */
-const SLOT_LOCATION: Record<HandlerSlot, [string, string]> = {
-    signal: ["signals", "handlerKey"],
-    trigger: ["triggers", "handlerKey"],
-    processing: ["processing", "handlerKey"],
-    upgrade: ["upgrades", "handlerKey"],
-    modifier: ["modifiers", "handlerKey"],
-    itemAction: ["items", "handlerKey"],
+/**
+ * slot → the config array that holds it.
+ *
+ * Only the array. This used to be a `[array, field]` pair naming the key that
+ * held the handler key, but nothing read the second half: the scan goes through
+ * `actionRefsOf`, which is the single reader of a process, precisely so there
+ * could not be a second path counting the same slot twice. A field name sitting
+ * here invited exactly that.
+ */
+const SLOT_LOCATION: Record<HandlerSlot, string> = {
+    signal: "signals",
+    trigger: "triggers",
+    processing: "processing",
+    upgrade: "upgrades",
+    modifier: "modifiers",
+    itemAction: "items",
 };
 
 /** Where a stored `handlerKey` was found. */
@@ -698,30 +676,15 @@ export interface HandlerUsage {
     key?: string;
 }
 
-/**
- * Walk the stored config and find every handler reference, tagging each with the
- * slot it was found in. Drives both the reachability warnings in the editor and
- * the "used by" column in the handler tab.
- *
- * Reads the action **list**, not a single key, so a process built from three
- * actions reports three usages and each is checked on its own. A bare
- * `handlerKey` — the pre-split shape still on disk — is read as a one-action
- * process, so old configs warn identically to new ones.
- */
+/** Every handler reference in the config, tagged with its slot. One usage per action. */
 export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
     const out: HandlerUsage[] = [];
-    for (
-        const [slot, [cfgKey]] of Object.entries(SLOT_LOCATION) as [
-            HandlerSlot,
-            [string, string],
-        ][]
-    ) {
+    for (const [slot, cfgKey] of Object.entries(SLOT_LOCATION) as [HandlerSlot, string][]) {
         const list = cfg[cfgKey];
         if (!Array.isArray(list)) continue;
         for (const e of list as Record<string, unknown>[]) {
-            // `actionRefsOf` reads `actions` **and** every pre-split single-key
-            // name — `handlerKey`, `getOptionsKey`, `onUpgradeKey`. One reader, so
-            // there is no second path that could double-count a slot.
+            // `actionRefsOf` is the one reader of a process, so there is no
+            // second path that could count the same slot twice.
             for (const key of actionRefsOf(e as Record<string, unknown>).map((r) => r.key)) {
                 out.push({ category: cfgKey, id: String(e.id ?? "?"), slot, key });
             }
@@ -730,15 +693,7 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
     return out;
 }
 
-/**
- * Every stored projectile and the option it names.
- *
- * Separate from `scanHandlerUsage` because a projectile reference is **not** a
- * handler usage: the option is not in `HANDLER_META` and has no slot, so folding
- * it into that table would have meant re-adding a `projectile` slot — the exact
- * conflation this split removes. Having its own reader means the Handlers tab can
- * still answer "who uses this preset" honestly.
- */
+/** Every stored projectile and the option it names. A projectile has no handler slot, so it is scanned apart. */
 export function scanProjectileOptionUsage(
     cfg: Record<string, unknown>,
 ): { category: string; id: string; key?: string; problem?: string }[] {
@@ -756,7 +711,7 @@ export function scanProjectileOptionUsage(
 }
 
 function findKeyForUsage(cfg: Record<string, unknown>, u: HandlerUsage): string {
-    const [cfgKey] = SLOT_LOCATION[u.slot];
+    const cfgKey = SLOT_LOCATION[u.slot];
     const list = (cfg[cfgKey] ?? []) as Record<string, unknown>[];
     const e = list.find((x) => String(x?.id) === u.id);
     if (!e) return "";
