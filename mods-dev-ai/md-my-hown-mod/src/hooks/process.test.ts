@@ -10,6 +10,7 @@ import { ACTION_APIS, ACTION_CLASSES } from "./action-class.ts";
 import {
     HANDLER_META,
     scanHandlerUsage,
+    scanProjectileOptionUsage,
     unreachableHandlers,
     usageIndex,
 } from "./handler-registry.ts";
@@ -20,7 +21,6 @@ import {
     CALL_SITE_USES_RETURN,
     type CallSite,
     compileProcess,
-    mergeProcessValue,
     type ProcessFailure,
     resolveAction,
 } from "./process.ts";
@@ -123,44 +123,58 @@ Deno.test("a compiled process reports failures rather than throwing", () => {
     assert(failures.length >= 1, "and reported it");
 });
 
-Deno.test("the return value only exists where the engine reads it", () => {
-    // `projectile.getOptions()` consumes the return; nothing else does. So a
-    // process on a void slot returns undefined even when its actions return things.
-    const returning = [{ key: "defaultProjectileOptions" }, { key: "projectileHeavy" }];
-    const asProjectile = compileProcess(returning, "projectile").fn(null);
-    assertEquals(typeof asProjectile, "object", "projectile gets merged options");
-    assertEquals(compileProcess(returning, "signal").fn(null), undefined);
+Deno.test("a process returns nothing, on every call site there is", () => {
+    // The return-value rule is gone, and this is what replaced it. `projectile` used
+    // to be the one site reading a process' return — which is what made several
+    // handlers' returns mergeable into one options object. A projectile now holds a
+    // single `ProjectileOption` instead, so *no* call site reads a return and a
+    // process is purely a sequence of side effects.
+    //
+    // Asserted behaviourally rather than by reading the table, because a table that
+    // says `false` and a compiler that merges anyway is the exact bug this guards.
+    for (const site of Object.keys(CALL_SITE_LABELS) as CallSite[]) {
+        const { fn } = compileProcess(
+            [{ key: "energyBank" }, { key: "itemShoot" }],
+            site,
+        );
+        assertEquals(
+            fn(null, null),
+            undefined,
+            `${site} returned something — only a projectile option may build a value`,
+        );
+    }
 });
 
-Deno.test("the merge rule: objects merge, anything else replaces", () => {
-    assertEquals(mergeProcessValue(undefined, undefined), undefined);
-    assertEquals(mergeProcessValue({ a: 1 }, { b: 2 }), { a: 1, b: 2 });
-    // Last writer wins per key.
-    assertEquals(mergeProcessValue({ a: 1 }, { a: 2 }), { a: 2 });
-    // A non-object replaces the whole value rather than half-applying.
-    assertEquals(mergeProcessValue({ a: 1 }, 5), 5);
-    assertEquals(mergeProcessValue({ a: 1 }, [1, 2]), [1, 2]);
-    assertEquals(mergeProcessValue({ a: 1 }, null), null);
-    // And once it is a non-object, a later object does not merge back into it.
-    assertEquals(mergeProcessValue(5, { a: 1 }), { a: 1 });
+Deno.test("no call site is marked as reading a return", () => {
+    // The measurement, pinned. Every entry is `false` because the one `true` —
+    // `projectile` — is not a call site. If a future engine version starts reading
+    // one, this is where it should fail rather than in a spawn that returns nothing.
+    assertEquals(
+        (Object.keys(CALL_SITE_USES_RETURN) as CallSite[]).filter((s) => CALL_SITE_USES_RETURN[s]),
+        [],
+    );
+    // And `projectile` is not in the axis at all, so nothing can offer it as a slot.
+    assertEquals(
+        (Object.keys(CALL_SITE_LABELS) as CallSite[]).includes("projectile" as never),
+        false,
+        "projectile is a call site again",
+    );
 });
 
-Deno.test("a projectile process really merges its actions' options", () => {
-    const merged = compileProcess(
-        [{ key: "defaultProjectileOptions" }, { key: "projectileHeavy" }],
-        "projectile",
-    ).fn(null) as Record<string, unknown>;
-    // `defaultProjectileOptions` gives speed 10 / rotateWithVelocity;
-    // `projectileHeavy` gives its own speed. Last writer wins on `speed`.
-    assertEquals(merged.rotateWithVelocity, true, "the first action's keys survive");
-    assert(typeof merged.speed === "number", "the second action's speed won");
-});
-
-Deno.test("one-action processes behave exactly as before the split", () => {
-    // The compatibility claim, tested: whatever a single action returned is what
-    // the process returns, because merging `undefined` with it is the identity.
-    const direct = resolveAction("projectileFast")?.(null, null, undefined);
-    assertEquals(compileProcess([{ key: "projectileFast" }], "projectile").fn(null), direct);
+Deno.test("a projectile option is not an action a process can run", () => {
+    // The behavioural half of the split. Before it, these two keys were ordinary
+    // actions and a projectile could hold a *list* of them. Now `compileProcess`
+    // cannot resolve either, so the merged-monster configuration is not merely
+    // discouraged — it is unbuildable, and shows up as a skipped key instead.
+    for (const key of ["defaultProjectileOptions", "projectileHeavy", "projectileFast"]) {
+        assertEquals(
+            resolveAction(key),
+            undefined,
+            `${key} resolves as an action again`,
+        );
+        const { skipped } = compileProcess([{ key }], "signal");
+        assertEquals(skipped, [key], `${key} compiled into a process`);
+    }
 });
 
 Deno.test("the same action may appear twice with different options", () => {
@@ -238,14 +252,23 @@ Deno.test("a pre-split `handlerKey` scans as exactly one usage", () => {
     );
 });
 
-Deno.test("projectile's `getOptionsKey` is still scanned", () => {
-    // The one slot that does not name its key `handlerKey`, so it is the only
-    // thing the scan's fallback branch is for.
-    const uses = scanHandlerUsage({
+Deno.test("a projectile's option is scanned separately from handler usage", () => {
+    // `getOptionsKey` used to be the one slot not naming its key `handlerKey`, and
+    // the scan had a fallback branch for it. That branch is gone: a projectile holds
+    // an option, not a process, so it is read by `scanProjectileOptionUsage` instead
+    // — and `scanHandlerUsage` must report *nothing* for it, because folding it back
+    // in would mean re-adding the `projectile` slot this split removed.
+    assertEquals(
+        scanHandlerUsage({ projectiles: [{ id: "b1", getOptionsKey: "projectileHeavy" }] }),
+        [],
+        "a projectile is being scanned as a handler usage again",
+    );
+    const uses = scanProjectileOptionUsage({
         projectiles: [{ id: "b1", getOptionsKey: "projectileHeavy" }],
     });
     assertEquals(uses.map((u) => u.key), ["projectileHeavy"]);
-    assertEquals(uses[0].slot, "projectile");
+    assertEquals(uses[0].id, "b1");
+    assertEquals(uses[0].problem, undefined, "a single option is not a problem");
 });
 
 Deno.test("the `usageIndex` groups a multi-action process under each action", () => {
@@ -284,9 +307,6 @@ Deno.test("every call site is named, signed and marked for its return", () => {
             `${site} has no return flag`,
         );
     }
-    // Measured, not assumed: projectile is the only site that reads the return.
-    assertEquals(
-        (Object.keys(CALL_SITE_USES_RETURN) as CallSite[]).filter((s) => CALL_SITE_USES_RETURN[s]),
-        ["projectile"],
-    );
+    // The "no site reads a return" claim is asserted on its own above, where it is
+    // also checked behaviourally against the compiler — not just against the table.
 });

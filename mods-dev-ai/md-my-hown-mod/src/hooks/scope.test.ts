@@ -115,7 +115,11 @@ Deno.test("an action may run only where its needs are delivered", () => {
     assert(!canRunAt("processorConvert", "itemAction"), "nor does an item use");
     assert(canRunAt("structureReadData", "signal"), "a structure has .data");
     assert(!canRunAt("structureReadData", "trigger"), "a trigger gets nothing at all");
-    assert(canRunAt("noop", "projectile"), "needs nothing, so it fits anywhere");
+    // "Needs nothing, so it fits anywhere" is no longer assertable against
+    // `projectile`, because `projectile` is not a call site any more. A needless
+    // action fits every site that *is* one, and that is the whole rule.
+    assert(canRunAt("noop", "signal"), "needs nothing, so it fits any call site");
+    assert(!canRunAt("noop", "projectile"), "projectile is not a call site at all");
 });
 
 Deno.test("only the three cell actions are offered where the grid is reachable", () => {
@@ -221,16 +225,25 @@ Deno.test("only actions that change the grid are filed as committing", () => {
 });
 
 Deno.test("a value returned where the engine ignores it is flagged, not hidden", () => {
-    // The 13 vacuous handlers, as a rule rather than a list. `projectile` is the
-    // one slot whose return is read, so exactly there is `returns` meaningful.
-    assert(!isVacuousReturn("projectileHeavy", true), "projectile reads it");
+    // The 13 vacuous handlers, as a rule rather than a list. This used to be 20
+    // with 7 exceptions on the `projectile` slot — the one place the return was
+    // read. Those 7 are now `ProjectileOptionFn`s rather than actions, so the
+    // `returns` effect has **no** site that reads it and every one of the 13 is
+    // vacuous. The count dropping from 20 to 13 is the removal, not a fix.
     assert(isVacuousReturn("energyBank", false), "processing discards it");
     assert(isVacuousReturn("excavationCrusher", false), "itemAction discards it");
     assert(!isVacuousReturn("processorConvert", false), "not a returns action at all");
     // The 13 themselves, so the count in the plan stays honest.
     assertEquals(
         Object.keys(ACTION_EFFECTS).filter((k) => isVacuousReturn(k, false)).length,
-        20,
-        "20 return a value; only the 7 projectile ones have it read",
+        13,
+        "13 return a value and no slot reads it",
+    );
+    // And a projectile option is not in that table at all — its return is its
+    // whole purpose, so calling it vacuous would be exactly backwards.
+    assertEquals(
+        Object.keys(ACTION_EFFECTS).filter((k) => k.startsWith("projectile")),
+        [],
+        "a projectile option was filed as an action effect",
     );
 });

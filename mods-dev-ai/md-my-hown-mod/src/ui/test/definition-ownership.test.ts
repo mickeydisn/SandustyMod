@@ -136,7 +136,21 @@ Deno.test("every definition is filed by who owns the object", async () => {
     // `actions` field all seven process-storing objects share, and it defines no
     // object of its own. Putting it in `core/` would be a lie — `custom/` owns two
     // of the seven.
-    const SHARED_HELPERS = ["types", "fields", "values", "index", "actions-field"];
+    //
+    // `projectile-option-field` is the same idea one level down. It is not shared by
+    // seven objects but by **one** — the projectile — and it is in the parent folder
+    // anyway because it is a *field*, not a definition: it exports no `Definition`,
+    // and `core/projectile.ts` is the only file that uses it. Putting it inside
+    // `core/` would suggest it defines an object, which is exactly the confusion the
+    // `actions-field` exception exists to avoid.
+    const SHARED_HELPERS = [
+        "types",
+        "fields",
+        "values",
+        "index",
+        "actions-field",
+        "projectile-option-field",
+    ];
     for (const entry of [...Deno.readDirSync(DEF_ROOT.pathname)]) {
         const stem = entry.name.replace(/\.ts$/, "");
         // A test is not a definition, and a shared helper's test sits beside it.

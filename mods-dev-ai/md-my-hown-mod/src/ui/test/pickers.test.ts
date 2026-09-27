@@ -145,7 +145,9 @@ Deno.test("the screens sit in the groups that were asked for, in order", () => {
     assertEquals(tabsOf("actions"), ["triggers", "inputs", "processing", "modifiers"]);
     assertEquals(tabsOf("energy"), ["networks", "energy"]);
     assertEquals(tabsOf("assets"), ["sprites", "draws"]);
-    assertEquals(tabsOf("handlers"), ["handlers"]);
+    // The three catalogues, as siblings. A single `handlers` tab holding them all
+    // would put a switcher below the sub-nav that already lists them.
+    assertEquals(tabsOf("handlers"), ["action", "projectileOption", "upgradeAction"]);
     assertEquals(tabsOf("help"), ["help"], "Help must be the graph, and only the graph");
     assertEquals(tabsOf("data"), ["map", "json"]);
 });

@@ -64,23 +64,29 @@ Deno.test("the recorded class still matches what the action actually does", () =
 Deno.test("the four classes partition the catalogue with the measured counts", () => {
     // A number per class, so a change in the shape of the catalogue is visible
     // rather than inferred from a diff.
+    //
+    // `pure` was 23 and is now 16: the seven projectile presets left the action
+    // catalogue entirely. They measured as `pure` — they call nothing — but they
+    // are `ProjectileOptionFn`s now and are not classified as actions at all. A
+    // number that drops because something was *removed* is exactly what this test
+    // is for, so the count is updated with the reason rather than quietly.
     const counts: Record<string, number> = {};
     for (const c of Object.values(ACTION_CLASSES)) counts[c] = (counts[c] ?? 0) + 1;
     assertEquals(counts, {
         api: 5,
         "context-bound": 3,
         "self-sufficient": 15,
-        pure: 23,
+        pure: 16,
     });
     assertEquals(Object.values(ACTION_CLASSES).length, ALL_KEYS.length, "total");
 });
 
 Deno.test("only `api` satisfies the rule, and the rest are the work to do", () => {
-    // "An action must call one api.* section." Five do. The other 38 are the
+    // "An action must call one api.* section." Five do. The other 34 are the
     // decision Phase 2 exists for, broken out by class so each can be ruled on
-    // separately.
+    // separately. (41 before the seven projectile options left the catalogue.)
     assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 5);
-    assertEquals(offRuleActions().length, 41);
+    assertEquals(offRuleActions().length, 34);
     const off = offRuleActions();
     assertEquals(
         off.filter((a) => a.cls === "context-bound").map((a) => a.key).sort(),

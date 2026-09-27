@@ -31,8 +31,17 @@ export type Tab =
     | "modifiers"
     | "inputs"
     | "draws"
-    /** Registry browser — no configKey, renders its own body. */
-    | "handlers"
+    /**
+     * The HandlerAction catalogue, and the ProjectileOption catalogue beside it.
+     *
+     * Synced with the two other `Tab` lists (`../schema.ts` and
+     * `../definition/types.ts`). **Nothing imports this file** — it is a
+     * hand-copied third of the same vocabulary, kept in step so it cannot go stale
+     * and mislead the next reader. The authoritative list is `../schema.ts`.
+     */
+    | "action"
+    | "projectileOption"
+    | "upgradeAction"
     /** Explains the objects and their relations — no configKey. */
     | "help"
     /** Instance-level map of the stored config — no configKey. */

@@ -21,10 +21,29 @@ export {
     type CompiledProcess,
     compileProcess,
     type HandlerActionRef,
-    mergeProcessValue,
     type ProcessFailure,
     resolveAction,
 } from "./process.ts";
+
+// The projectile options — a separate system, not a seventh call site. A projectile
+// holds one `ProjectileOption` and its return is the configuration; it is compiled
+// by `compileProjectile`, not by `compileProcess` above.
+export {
+    type CompiledProjectileOption,
+    compileProjectile,
+    PROJECTILE_OPTION_DOCS,
+    PROJECTILE_OPTION_LEGACY_KEYS,
+    PROJECTILE_OPTION_STORE_KEY,
+    PROJECTILE_OPTIONS,
+    type ProjectileGetOptions,
+    type ProjectileOptionFailure,
+    type ProjectileOptionFn,
+    projectileOptionKeys,
+    projectileOptionOf,
+    projectileOptionParams,
+    type ProjectileOptionRef,
+    resolveProjectileOption,
+} from "./projectile-option/index.ts";
 
 // What an action depends on: `api` (the rule) or one of the three ways an action
 // falls short of it. See action-class.ts for why it is a ladder.

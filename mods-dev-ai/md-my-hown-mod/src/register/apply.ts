@@ -29,6 +29,12 @@ import {
     compileProcess,
     detachAllModifiers,
 } from "../hooks/index.ts";
+import {
+    compileProjectile,
+    PROJECTILE_OPTION_LEGACY_KEYS,
+    PROJECTILE_OPTION_STORE_KEY,
+    projectileOptionOf,
+} from "../hooks/projectile-option/index.ts";
 
 /**
  * The built-in `draw` functions, keyed as they are in the config.
@@ -408,6 +414,14 @@ export function applyConfig(cfg?: ModConfig): void {
         if (res !== undefined) {
             registered.elements.add(el.id);
             nEl++;
+            // Registering an element is not the same as discovering it. The
+            // element simulates either way, but it only joins the "?" catalogue
+            // once its type is in `store.discoveries.elements` — which is a
+            // separate list, filled by a separate call, and one every shipping
+            // element mod makes immediately after `register` (astro-seeds,
+            // `src/main/register.ts:26`).
+            const type = res.elementType;
+            if (typeof type === "number") api.elements.addElementToDiscoveries(type);
         }
     }
     for (const st of config.structures) {
@@ -516,12 +530,35 @@ export function applyConfig(cfg?: ModConfig): void {
     }
     for (const p of config.projectiles ?? []) {
         if (!p?.id || (registered as any).projectiles?.has(p.id)) continue;
-        // The one slot where the process' *return* reaches the engine: these actions
-        // are `getOptions` factories, and `mergeProcessValue` combines what they
-        // return. `mysandkit` synthesises a `getOptions` only if we left it unset.
+        // The one slot that is **not** a process. `getOptions()` is called with no
+        // arguments and the engine reads its return as the projectile's config, so
+        // this is a single `ProjectileOption` — not an ordered list whose returns
+        // are merged. `compileProjectile` refuses a non-option key and reports an
+        // old multi-option config rather than silently picking one; `mysandkit`
+        // synthesises a `getOptions` from the static options only if we leave it
+        // unset, which is the all-static projectile case.
         const entry = p as Record<string, unknown>;
+        const { ref, problem } = projectileOptionOf(entry);
+        if (problem) console.warn(`[md-my-hown-mod] projectile ${entry.id}: ${problem}`);
         if (typeof entry.getOptions !== "function") {
-            entry.getOptions = compileProcess(actionRefsOf(entry), "projectile").fn as never;
+            const compiled = compileProjectile(
+                ref,
+                (f) =>
+                    console.warn(
+                        `[md-my-hown-mod] projectile ${entry.id} option ${f.key} failed`,
+                        f.error,
+                    ),
+            );
+            if (compiled.problem) {
+                console.warn(`[md-my-hown-mod] projectile ${entry.id}: ${compiled.problem}`);
+            }
+            // The legacy keys are dropped whether or not they were understood, so
+            // saving from the panel cannot leave two competing option references.
+            for (const k of PROJECTILE_OPTION_LEGACY_KEYS) delete entry[k];
+            if (ref) {
+                entry[PROJECTILE_OPTION_STORE_KEY] = ref;
+            }
+            entry.getOptions = compiled.getOptions as never;
         }
         registerProjectile(p);
         (registered as any).projectiles = (registered as any).projectiles || new Set();

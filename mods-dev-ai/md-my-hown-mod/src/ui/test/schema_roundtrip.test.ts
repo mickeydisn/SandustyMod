@@ -373,9 +373,10 @@ roundTrip("behaviors", {
 roundTrip("projectiles", {
     id: "md-my-hown-mod:mdmy.proj.bolt",
     sprite: { id: "sprites:bolt" },
-    // The one slot where a process' *return* reaches the engine: these actions are
-    // `getOptions` factories and their merged options are the projectile.
-    actions: [{ key: "projectileHeavy" }, { key: "defaultProjectileOptions" }],
+    // A projectile holds **one** option, not a process. This used to be a two-entry
+    // `actions` list whose returns were merged into the projectile's config — a
+    // configuration no one designed, and the reason the split exists.
+    option: { key: "projectileHeavy" },
     options: { damage: 10 },
 });
 
@@ -1033,7 +1034,6 @@ console.log("── handler pickers are domain-scoped and described ──");
     const pickers = [
         ["signal", cat.listSignalHandlerKeys, "signalLog"],
         ["trigger", cat.listTriggerHandlerKeys, "triggerLog"],
-        ["projectile", cat.listProjectileHandlerKeys, "projectileFast"],
         ["upgrade", cat.listUpgradeHandlerKeys, "upgradeScale"],
     ];
     for (const [name, fn, expectSome] of pickers) {
@@ -1053,6 +1053,30 @@ console.log("── handler pickers are domain-scoped and described ──");
             `${name} picker labels carry a description`,
             opts.every((o) => o.label.includes("—")),
             opts[0]?.label,
+        );
+    }
+    // The projectile picker is listed **separately** because its keys are not in
+    // `ANY_HANDLERS` — they are `ProjectileOptionFn`s, and asserting they resolve
+    // as actions is precisely the confusion this split removed. So the check is the
+    // opposite one: they must exist as options, and not as actions.
+    {
+        const PROJ = await import("../../hooks/projectile-option/index.ts");
+        const pj = cat.listProjectileHandlerKeys();
+        check("projectile picker is non-empty", pj.length > 0, `${pj.length}`);
+        check(
+            "projectile picker offers projectileFast",
+            pj.some((o) => o.value === "projectileFast"),
+            JSON.stringify(pj.map((o) => o.value)),
+        );
+        check(
+            "projectile picker keys are all real options",
+            pj.every((o) => o.value in PROJ.PROJECTILE_OPTIONS),
+            JSON.stringify(pj.map((o) => o.value)),
+        );
+        check(
+            "projectile picker keys are not actions",
+            pj.every((o) => !(o.value in H.ANY_HANDLERS)),
+            JSON.stringify(pj.map((o) => o.value).filter((v) => v in H.ANY_HANDLERS)),
         );
     }
     const proc = cat.listDescribedProcessorKeys();
@@ -1082,12 +1106,22 @@ console.log("── handler pickers are domain-scoped and described ──");
         );
     }
     check(
-        "projectiles declare an actions process",
-        !!fieldsFor("projectiles").find((f) => f.key === "actionsJson" && f.kind === "actionList"),
+        // The one tab that does **not** store a process. It stores a single
+        // `option`, and that is asserted positively below: a projectile quietly
+        // growing back an `actionList` field is the regression this guards.
+        "projectiles declare a single option, not a process",
+        !!fieldsFor("projectiles").find((f) =>
+            f.key === "optionKey" && f.kind === "projectileOption"
+        ) &&
+            !fieldsFor("projectiles").some((f) => f.kind === "actionList"),
     );
     check(
         "projectiles no longer declare getOptionsKey",
         !fieldsFor("projectiles").some((f) => f.key === "getOptionsKey"),
+    );
+    check(
+        "projectiles no longer declare an actionsJson",
+        !fieldsFor("projectiles").some((f) => f.key === "actionsJson"),
     );
 }
 
@@ -1162,7 +1196,6 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         "signal",
         "trigger",
         "processing",
-        "projectile",
         "upgrade",
         "modifier",
         "itemAction",
@@ -1184,19 +1217,20 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         ]),
         keys("signal").join(" "),
     );
+    // The `projectile` slot is **gone**, and that is the point of the split rather
+    // than a gap in the list above. It used to hold the seven presets plus `noop`.
+    // Those are `ProjectileOptionFn`s now, chosen from a `projectileOption` field
+    // and served by `compileProjectile`. Asserted as an absence on purpose: the
+    // failure this guards is a `projectile` `HandlerSlot` quietly returning, which
+    // would let a projectile hold a list of options again.
     check(
-        "projectile slot matches the old hardcoded list",
-        sameSet(keys("projectile"), [
-            "defaultProjectileOptions",
-            "projectileHeavy",
-            "projectileFast",
-            "projectileHoming",
-            "projectileShotgun",
-            "projectileExcavate",
-            "projectileTerrain",
-            "noop",
-        ]),
-        keys("projectile").join(" "),
+        "no projectile HandlerSlot exists",
+        !("projectile" in reg.HANDLER_SLOT_LABELS),
+        Object.keys(reg.HANDLER_SLOT_LABELS).join(" "),
+    );
+    check(
+        "no action may claim a projectile slot",
+        reg.HANDLER_META.every((m: { slots: string[] }) => !m.slots.includes("projectile")),
     );
     // `triggerScan` used to be asserted here as a trigger handler. It is now on
     // `processing` and the assertion is gone, because keeping it would have meant
@@ -1323,22 +1357,36 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     );
 }
 
-console.log("── handlers tab is reachable and wired (9.2) ──");
+console.log("── the two handler tabs are reachable and wired (9.2) ──");
 {
     const sch = await import("../schema.ts");
     const hp = await import("../panel/handlers.ts");
     const reg = await import("../../hooks/handler-registry.ts");
 
-    check("handlers is a known tab", "handlers" in sch.CATEGORY_META);
+    // Two tabs, one menu group. This is the point of the restructure: they are
+    // siblings in the sub-nav rather than a mode behind a switcher drawn *below* it.
+    for (const t of ["action", "projectileOption", "upgradeAction"] as const) {
+        check(`${t} is a known tab`, t in sch.CATEGORY_META);
+        check(
+            `${t} is in the Handlers menu group`,
+            sch.MENU_GROUPS.find((g) => g.key === "handlers")?.categories.includes(t) === true,
+        );
+        check(
+            `${t} has no config key (it is a browser)`,
+            sch.CATEGORY_META[t].configKey === undefined,
+        );
+        check(`${t} has no entry form`, sch.fieldsFor(t).length === 0);
+    }
+    // And the group holds exactly those three — a fourth would be a different feature.
     check(
-        "handlers is in a menu group",
-        sch.MENU_GROUPS.some((g) => g.categories.includes("handlers")),
+        "the Handlers group holds exactly the three catalogues",
+        sch.MENU_GROUPS.find((g) => g.key === "handlers")?.categories.join() ===
+            "action,projectileOption,upgradeAction",
     );
     check(
-        "handlers has no config key (it is a browser)",
-        sch.CATEGORY_META.handlers.configKey === undefined,
+        "there is no `handlers` tab any more",
+        !("handlers" in sch.CATEGORY_META),
     );
-    check("handlers has no entry form", sch.fieldsFor("handlers").length === 0);
     check(
         "every group category has metadata",
         sch.MENU_GROUPS.every((g) => g.categories.every((c) => !!sch.CATEGORY_META[c])),
@@ -1357,9 +1405,9 @@ console.log("── handlers tab is reachable and wired (9.2) ──");
         hp.defaultParams(reg.handlerMeta("structureWriteData")!).field === undefined,
     );
 
-    // The tab renders against a config, groups by type, and shows a warning.
+    // The screen renders against a config, and shows a reachability warning.
     const el = (t: string, p: unknown, ...c: unknown[]) => ({ t, p, c });
-    const node = hp.renderHandlersTab({
+    const node = hp.renderActions({
         h: el as never,
         cfg: {
             signals: [{ id: "s1", handlerKey: "structureWriteData" }],
@@ -1371,22 +1419,51 @@ console.log("── handlers tab is reachable and wired (9.2) ──");
         onCopy: () => {},
     }) as { t: string; c: unknown[] };
     const flat = JSON.stringify(node);
-    check("handlers tab renders its title", flat.includes("Handlers"));
+    // **No screen title.** This asserted `flat.includes("Handlers")` and used to
+    // pass. The sub-nav chip above already reads "Actions", so a "Handlers" heading
+    // under it named the menu *group* while the chip named the *screen* — two labels
+    // for one thing, stacked. Asserted as an absence because the regression is
+    // someone re-adding it: a duplicate label is invisible in a smoke test and
+    // obvious on screen.
+    check(
+        "the actions screen has no duplicate title",
+        !flat.includes('"Handlers"'),
+        flat.slice(0, 200),
+    );
 
     // The tab no longer groups on the **API axis**. That axis could not group
     // anything useful: `api` lives on `globalThis`, so every call site has it and
-    // it says nothing about where an action can run — and 33 of the 46 call none,
-    // which put four fifths of the catalogue under one heading. It is a flat
-    // alphabetical list now, filtered on three axes that each answer a real
-    // question, so that is what gets asserted: every domain and every effect is
-    // offered as a filter, and the scope filter is the one wired to `canRunAt`.
+    // it says nothing about where an action can run — and most call none, which
+    // put four fifths of the catalogue under one heading. It is a flat
+    // alphabetical list now, filtered on axes that each answer a real question.
     {
-        const { ACTION_DOMAIN_LABELS, ACTION_EFFECT_LABELS } = await import(
-            "../../hooks/action-class.ts"
-        );
+        const {
+            ACTION_DOMAIN_LABELS,
+            ACTION_DOMAINS,
+            ACTION_EFFECT_LABELS,
+        } = await import("../../hooks/action-class.ts");
         const { CALL_SITE_SCOPE, SCOPE_NEED_LABELS } = await import("../../hooks/scope.ts");
-        for (const label of Object.values(ACTION_DOMAIN_LABELS)) {
-            check(`handlers tab offers a ${label} filter`, flat.includes(label));
+        // **Every domain an action actually has** is offered — not every domain
+        // that happens to be declared.
+        //
+        // This used to iterate `Object.values(ACTION_DOMAIN_LABELS)`, which is a
+        // list of *possible* values being read as a list of *present* ones. It
+        // passed for as long as the two coincided, and then asserted two chips
+        // that filter to nothing: `projectiles` (dead since the options became
+        // their own type) and `tech` (dead the moment the upgrade-only actions
+        // took 6 of its 7 rows into their own tab). A chip that yields an empty
+        // list reads as "your search found nothing", so the test was protecting
+        // the bug.
+        const { HANDLER_META, isOnlyAtSlot } = await import("../../hooks/handler-registry.ts");
+        const general = HANDLER_META.filter((m) => !isOnlyAtSlot(m, "upgrade"));
+        const present = new Set(general.map((m) => ACTION_DOMAINS[m.key]).filter(Boolean));
+        for (const [domain, label] of Object.entries(ACTION_DOMAIN_LABELS)) {
+            check(
+                present.has(domain as never)
+                    ? `handlers tab offers a ${label} filter`
+                    : `handlers tab omits the unused ${label} filter`,
+                flat.includes(label) === present.has(domain as never),
+            );
         }
         for (const label of Object.values(ACTION_EFFECT_LABELS)) {
             check(`handlers tab offers a "${label}" filter`, flat.includes(label));

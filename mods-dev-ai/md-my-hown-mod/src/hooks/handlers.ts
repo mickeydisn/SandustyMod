@@ -71,11 +71,13 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
     triggerLog: (payload, _ctx, extra) => {
         console.log("[md-my-hown-mod:trigger]", payload, extra);
     },
-    /** Default projectile options factory. */
-    defaultProjectileOptions: () => ({
-        speed: 10,
-        rotateWithVelocity: true,
-    }),
+    /**
+     * The seven projectile presets — including `defaultProjectileOptions` — used to
+     * sit here, typed as `HandlerActionFn`s and called with none of the three
+     * arguments. They are `ProjectileOptionFn`s now, in
+     * `./projectile-option/registry.ts`: they take parameters and their *return* is
+     * the projectile's config. A test asserts none of the seven resolve from here.
+     */
     noop: () => undefined,
 
     // ── Structure interactions (signals) ─────────────────────────────────────
@@ -120,14 +122,11 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
     },
 
     // ── Projectiles ──────────────────────────────────────────────────────────
-    /** Slow, heavy shot. */
-    projectileHeavy: () => ({ speed: 6, radius: 14, lifetime: 90, damage: 40 }),
-    /** Fast, light shot. */
-    projectileFast: () => ({ speed: 24, radius: 6, lifetime: 45, damage: 12 }),
-    /** Homing shot — follows the nearest target. */
-    projectileHoming: () => ({ speed: 12, radius: 8, lifetime: 120, homing: true }),
-    /** Short-range burst. */
-    projectileShotgun: () => ({ speed: 18, radius: 4, lifetime: 20, spread: 0.35 }),
+    // The seven projectile presets that lived here have moved to
+    // `./projectile-option/registry.ts`. They are **options**, not actions: the
+    // engine calls `getOptions()` with nothing and reads the return, so they are
+    // `ProjectileOptionFn`s and are compiled by `compileProjectile`, not by
+    // `compileProcess`. Nothing in this registry serves a projectile any more.
 
     // ── Excavation profiles (api.excavation) ──────────────────────────────────
     // `api.excavation.registerProfile(id, { pattern?, power, options?, terrainRules? })`
@@ -367,10 +366,8 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
             console.warn("[md-my-hown-mod:energy] consume failed", e);
         }
     },
-    /** Projectile tuned for excavation (a digging shot) rather than damage. */
-    projectileExcavate: () => ({ speed: 14, radius: 10, lifetime: 60, damage: 15, dig: true }),
-    /** Projectile that behaves like a thrown block of terrain. */
-    projectileTerrain: () => ({ speed: 8, radius: 16, lifetime: 30, carryTerrain: true }),
+    // `projectileExcavate` and `projectileTerrain` also moved to
+    // `./projectile-option/registry.ts`, with the other five.
 };
 
 /**
@@ -378,21 +375,17 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
  * can tell what a handlerKey actually does without reading the source.
  */
 export const ANY_HANDLER_DOCS: Record<string, string> = {
+    // The seven projectile presets' docs moved with them, to
+    // `PROJECTILE_OPTION_DOCS` in `./projectile-option/registry.ts`. They are no
+    // longer actions, so they are no longer described here.
     signalLog: "Prints the clicked structure's signal payload to the console.",
     triggerLog: "Prints the trigger payload each time the interval fires.",
-    defaultProjectileOptions: "Returns { speed: 10, rotateWithVelocity: true }.",
     noop: "Does nothing — useful to keep a slot inert while testing.",
     structureInspect: "Logs the structure type and its per-instance data.",
     structureReadData: "Reads one per-instance data field (set it in the entry options).",
     structureWriteData: "Writes one per-instance data field on click (needs a value option).",
     triggerScan: "Logs the cells surrounding the trigger position.",
     triggerTick: "Logs the tick counter — use to confirm the interval is correct.",
-    projectileHeavy: "Slow heavy shot: speed 6, radius 14, damage 40.",
-    projectileFast: "Fast light shot: speed 24, radius 6, damage 12.",
-    projectileHoming: "Homing shot that tracks the nearest target.",
-    projectileShotgun: "Short-range burst with a 0.35 spread.",
-    projectileExcavate: "Tuned for digging rather than damage: speed 14, dig flag set.",
-    projectileTerrain: "Slow heavy shot flagged to carry terrain.",
     excavationDefault: "Dig options: power 10. The plain 'tool digs terrain' profile.",
     excavationCrusher:
         "Blast dig: power 24, treated as a rocket explosion (wide, terrain-breaking).",

@@ -148,15 +148,21 @@ Deno.test("a row's own dropdown is also slot-scoped", () => {
     assertEquals(selects.length, 1, "the row has its own dropdown");
     const opts = nodes.filter((n) => n.tag === "option").map((o) => o.props.value as string);
     assert(opts.includes("processorLog"));
-    assert(!opts.includes("projectileHeavy"), "a projectile factory is not offered");
+    assert(!opts.includes("triggerLog"), "a trigger action is not offered to a processor");
 });
 
 Deno.test("an action the slot cannot serve is kept and marked, not dropped", () => {
     // The regression this guards: silently deleting a row is how a process loses a
     // step with nobody noticing. It must still be shown, and still be in the JSON.
-    render("processing", { actionsJson: formatActionRefs([{ key: "projectileHeavy" }]) });
+    //
+    // `triggerLog` is a *real* action that `processing` cannot run — it needs a
+    // position and a process's first argument is not one. It used to be
+    // `projectileHeavy` here, which no longer works as an example: a projectile
+    // option is not an action at all, so it would now be an *unknown* key rather
+    // than a slot mismatch, and the two failures need different messages.
+    render("processing", { actionsJson: formatActionRefs([{ key: "triggerLog" }]) });
     assert(
-        nodes.some((n) => n.tag === "option" && n.props.value === "projectileHeavy"),
+        nodes.some((n) => n.tag === "option" && n.props.value === "triggerLog"),
         "the unusable action is not shown at all",
     );
     // `style` is an object, so this has to read the property — `String(style)`
@@ -196,9 +202,14 @@ Deno.test("the widget and the validator agree about what a slot is", () => {
         );
     }
     // Every tab that stores a process is in the table, and the table has no extras.
+    //
+    // `projectiles` used to be the seventh. It is not a process tab any more: a
+    // projectile holds one `ProjectileOption`, edited by a different control
+    // (`projectileOption`), so it has no call site to map to. Its absence here is
+    // what stops the action list offering a row for a slot that cannot serve one.
     assertEquals(
         Object.keys(TAB_TO_CALL_SITE).sort(),
-        ["items", "modifiers", "processing", "projectiles", "signals", "triggers", "upgrades"],
+        ["items", "modifiers", "processing", "signals", "triggers", "upgrades"],
         "the table and the tabs that store a process disagree",
     );
 });

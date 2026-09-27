@@ -31,12 +31,14 @@
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { ANY_HANDLERS, PROCESS_HANDLERS, resolveAnyHandler } from "./handlers.ts";
 import { HANDLER_META, type HandlerSlot, itemActionHandlersFor } from "./handler-registry.ts";
+import { PROJECTILE_OPTIONS, resolveProjectileOption } from "./projectile-option/index.ts";
+import { resolveAction } from "./process.ts";
 
 // ── The inventory ────────────────────────────────────────────────────────────
 
 /** Implemented handler → the slots it is offered in. */
 const IMPLEMENTED: Record<string, HandlerSlot[]> = {
-    noop: ["signal", "trigger", "processing", "projectile", "upgrade", "modifier", "itemAction"],
+    noop: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
     itemDefault: ["itemAction"],
     processorNoop: ["processing"],
     excavationDefault: ["itemAction"],
@@ -70,13 +72,11 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     // sends nothing, so that entry could only ever return early.
     energyGenerateWhileHeld: ["processing"],
     energyConsumePerRun: ["processing", "trigger"],
-    defaultProjectileOptions: ["projectile"],
-    projectileHeavy: ["projectile"],
-    projectileFast: ["projectile"],
-    projectileHoming: ["projectile"],
-    projectileShotgun: ["projectile"],
-    projectileExcavate: ["projectile"],
-    projectileTerrain: ["projectile"],
+    // The seven `projectile*` presets are **deliberately absent**. They were
+    // `["projectile"]` and are now `ProjectileOptionFn`s in
+    // `./projectile-option/registry.ts` — a different registry, a different
+    // signature, and no slot at all. `PROJECTILE_OPTION_KEYS` below asserts they
+    // stay absent, so re-adding one here fails rather than quietly restoring it.
     techAppendUnlock: ["upgrade"],
     techSetUpgradeLevel: ["upgrade"],
     techGrantItem: ["upgrade"],
@@ -109,10 +109,13 @@ Deno.test("the action catalogue's API binding, measured", () => {
     // section. Measured by installing a fake `sandkit` and recording which
     // namespaces an action reaches for while running.
     //
-    // Today **5 of 43** satisfy it. That is the point of the test: the rule is a
+    // Today **5 of 39** satisfy it. That is the point of the test: the rule is a
     // design rule, not a description, and adopting it means deciding what to do
-    // with the other 38. If this number moves, the plan's Phase 2 scope moved
+    // with the other 34. If this number moves, the plan's Phase 2 scope moved
     // with it.
+    //
+    // (It was 5 of 43. The seven projectile presets were 4 of the 38 that do not
+    // satisfy the rule, and they have left the action catalogue altogether.)
     const API_CALLING: Record<string, string> = {
         energyGenerateWhileHeld: "energy",
         energyConsumePerRun: "energy",
@@ -152,9 +155,15 @@ Deno.test("the action catalogue's API binding, measured", () => {
         Object.values(API_CALLING).filter((v, i, a) => a.indexOf(v) === i).sort(),
         "the set of API namespaces reached for changed",
     );
-    // And the honest headline: 5 of 43 actions call an API at all.
+    // And the honest headline: 5 of 36 actions call an API at all.
+    //
+    // (Was 5 of 43. The seven projectile presets were among the 38 that do *not*
+    // call an API, and they are no longer actions at all. 36 is the live size of
+    // `ANY_HANDLERS` + `PROCESS_HANDLERS`; the three modifier actions in
+    // `CODE_HANDLERS` are counted by `HANDLER_META` and are not in this table,
+    // which is why 36 and 39 are both correct numbers for different things.)
     assertEquals(Object.keys(API_CALLING).length, 5);
-    assertEquals(Object.keys(IMPLEMENTED).length, 43);
+    assertEquals(Object.keys(IMPLEMENTED).length, 36);
 });
 
 Deno.test("`type` measures neither axis — that is why the split is real", () => {
@@ -256,6 +265,47 @@ Deno.test("the inventory is complete — no handler escaped classification", () 
     );
 });
 
+Deno.test("the projectile presets are options, and stay out of the action system", () => {
+    // The negative half of the split, pinned. Each of the seven used to be an
+    // `ANY_HANDLERS` entry with `slots: ["projectile"]`; all three of those facts
+    // are asserted here, because each one on its own is a silent regression:
+    //
+    //   - a registry entry means the Handlers tab lists it as an action
+    //   - a `resolveAction` hit means a config could still name it as a process action
+    //   - a `projectile` slot means a projectile could hold a *list* of them again
+    for (const key of Object.keys(PROJECTILE_OPTIONS)) {
+        // `Object.hasOwn`, not `key in obj`: `in` walks the prototype chain, so it
+        // answers `true` for any key an `Object.prototype` member happens to share
+        // — and this registry is a bare object literal, so it has all of them. The
+        // check has to be about *own* entries or it silently passes for the wrong
+        // reason.
+        assert(
+            !Object.hasOwn(ANY_HANDLERS, key),
+            `${key} is back in the action registry`,
+        );
+        assert(
+            !Object.hasOwn(PROCESS_HANDLERS, key),
+            `${key} is back in the process registry`,
+        );
+        assertEquals(
+            resolveAction(key),
+            undefined,
+            `${key} still resolves as an action — a projectile could name it as one`,
+        );
+        assertEquals(
+            HANDLER_META.find((m) => m.key === key),
+            undefined,
+            `${key} is advertised as a handler`,
+        );
+        // And it must still exist as what it actually is.
+        assertEquals(typeof resolveProjectileOption(key), "function", `${key} is not an option`);
+    }
+    // The reverse direction too: no action may claim the (now removed) slot.
+    for (const m of HANDLER_META) {
+        assert(!m.slots.includes("projectile" as never), `${m.key} claims the projectile slot`);
+    }
+});
+
 Deno.test("the inventory's slots match what the registry declares", () => {
     // The two must not drift: the registry decides what the UI offers, the
     // inventory records what the code does.
@@ -284,7 +334,20 @@ Deno.test("registration compiles a process, so options finally arrive", () => {
         new URL("../register/apply.ts", import.meta.url).pathname,
     );
     const compiles = (applySrc.match(/compileProcess\(/g) ?? []).length;
-    assertEquals(compiles, 5, "processing, projectile, signal, trigger, behavior");
+    // Was five. The projectile site now calls `compileProjectile` — a different
+    // compiler for a different kind of thing — so this count dropping to four is
+    // the split, not a lost call site. `compileProjectile(` is asserted separately
+    // below for the same reason: a silently-absent projectile compile would leave a
+    // projectile with no `getOptions` at all.
+    assertEquals(
+        compiles,
+        4,
+        "processing, signal, trigger, behavior (projectile moved to compileProjectile)",
+    );
+    assert(
+        (applySrc.match(/compileProjectile\(/g) ?? []).length === 1,
+        "the projectile site no longer compiles an option",
+    );
     // And no site resolves a bare key any more — that is the old 1:1 shape.
     assertEquals(
         (applySrc.match(/resolveAnyHandler/g) ?? []).length,
@@ -367,30 +430,38 @@ Deno.test("a slot resolves exactly one function — the 1:1 the split removes", 
     }
 });
 
-Deno.test("only the projectile slot is where a returned value survives", () => {
-    // The merge rule in Phase 3 is only load-bearing for slots that use the
-    // return — which, measured, is `projectile` and nothing else. Counted here
-    // rather than assumed, so the plan's claim is falsifiable.
-    const returnsInVoidSlot = Object.keys(IMPLEMENTED).filter((key) => {
+Deno.test("no call site is left where a returned value survives", () => {
+    // This test used to assert the opposite: that `projectile` was the one slot
+    // reading a return, which is what made the merge rule load-bearing. That slot
+    // is gone — a projectile holds a single `ProjectileOption` whose return *is*
+    // its configuration, compiled by `compileProjectile` and not by a process.
+    //
+    // So the claim is inverted and made stronger: no action returns a value into
+    // any slot, and the seven options are outside this system entirely. The
+    // vacuous-return list in the file header is therefore the whole of them.
+    const returnsIntoVoidSlot = Object.keys(IMPLEMENTED).filter((key) => {
         const fn = fnFor(key);
         if (!fn) return false;
         return VOID_SLOTS.includes(IMPLEMENTED[key][0]) && probe(fn) === "value";
     });
     // These are the mis-slotted data factories named in the file header.
     assertEquals(
-        returnsInVoidSlot.filter((k) => !VACUOUS_RETURNS.includes(k)),
+        returnsIntoVoidSlot.filter((k) => !VACUOUS_RETURNS.includes(k)),
         [],
         "an unlisted handler returns a value into a void slot",
     );
-    // And the converse: the projectile slot does return something, so the merge
-    // rule is real rather than theoretical.
-    const projectileReturning = Object.keys(IMPLEMENTED).filter((key) => {
-        const fn = fnFor(key);
-        return key.startsWith("projectile") || key === "defaultProjectileOptions"
-            ? !!fn && probe(fn) === "value"
-            : false;
-    });
-    assertEquals(projectileReturning.length, 7, "projectile options stopped returning");
+    // And the options are still value-returning — they are just not actions, so
+    // `fnFor` does not find them and the count is taken from their own registry.
+    const optionReturning = Object.keys(PROJECTILE_OPTIONS).filter(
+        (key) => typeof resolveProjectileOption(key) === "function",
+    );
+    assertEquals(optionReturning.length, 7, "projectile options stopped existing");
+    // The two systems must not share a key, which is the split's whole point.
+    assertEquals(
+        Object.keys(PROJECTILE_OPTIONS).filter((k) => k in IMPLEMENTED),
+        [],
+        "a projectile option is also an action",
+    );
 });
 
 Deno.test("the vacuous returns are still vacuous", () => {

@@ -15,6 +15,10 @@
 import { ACTION_APIS, ACTION_CLASSES, type HandlerActionClass } from "./action-class.ts";
 // `process.ts` imports only `handlers.ts`, so this is not a cycle.
 import { actionRefsOf } from "./process.ts";
+// The projectile options. A value import, not a type one: the usage scanner below
+// reads stored entries through `projectileOptionOf`, and `projectile-option/` does
+// not import this file, so there is still no cycle.
+import { projectileOptionOf } from "./projectile-option/index.ts";
 
 /** What a handler fundamentally does. Drives grouping in the handler tab. */
 export type HandlerType =
@@ -23,15 +27,22 @@ export type HandlerType =
     | "message"
     | "tech"
     | "processor"
-    | "projectile"
     | "modifier";
 
-/** A config slot that can select a handler. */
+/**
+ * A config slot that can select a handler.
+ *
+ * There is **no `projectile` slot**, and its absence is the point of the
+ * projectile-option split. A projectile is not a process and runs no action: the
+ * engine calls `getOptions()` with no arguments and reads the returned config. The
+ * seven presets that used to be listed here are `ProjectileOptionFn`s now, in
+ * `./projectile-option/`, and they are chosen from a different control. Adding the
+ * slot back would reintroduce exactly the confusion this type exists to prevent.
+ */
 export type HandlerSlot =
     | "signal"
     | "trigger"
     | "processing"
-    | "projectile"
     | "upgrade"
     | "modifier"
     | "itemAction";
@@ -94,7 +105,6 @@ export const HANDLER_TYPE_LABELS: Record<HandlerType, string> = {
     message: "Message",
     tech: "Tech",
     processor: "Processor",
-    projectile: "Projectile",
     modifier: "Modifier",
 };
 
@@ -104,7 +114,6 @@ export const HANDLER_TYPE_BLURBS: Record<HandlerType, string> = {
     message: "React to an engine event: a click, a tick, an item use.",
     tech: "Run when research completes or an item is upgraded.",
     processor: "One step of a structure's process() run.",
-    projectile: "Builds a projectile's spawn-time options.",
     modifier: "Intercept or rewrite an engine hook.",
 };
 
@@ -130,7 +139,6 @@ const ALL_SLOTS = [
     "signal",
     "trigger",
     "processing",
-    "projectile",
     "upgrade",
     "modifier",
     "itemAction",
@@ -398,55 +406,15 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         ],
     },
     // ── projectile ───────────────────────────────────────────────────────────
-    {
-        key: "defaultProjectileOptions",
-        type: "projectile",
-        slots: ["projectile"],
-        scope: "global",
-        params: [],
-    },
-    {
-        key: "projectileHeavy",
-        type: "projectile",
-        slots: ["projectile"],
-        scope: "global",
-        params: [],
-    },
-    {
-        key: "projectileFast",
-        type: "projectile",
-        slots: ["projectile"],
-        scope: "global",
-        params: [],
-    },
-    {
-        key: "projectileHoming",
-        type: "projectile",
-        slots: ["projectile"],
-        scope: "global",
-        params: [],
-    },
-    {
-        key: "projectileShotgun",
-        type: "projectile",
-        slots: ["projectile"],
-        scope: "global",
-        params: [],
-    },
-    {
-        key: "projectileExcavate",
-        type: "projectile",
-        slots: ["projectile"],
-        scope: "global",
-        params: [],
-    },
-    {
-        key: "projectileTerrain",
-        type: "projectile",
-        slots: ["projectile"],
-        scope: "global",
-        params: [],
-    },
+    // **No rows.** The seven projectile presets are no longer actions. They are
+    // `ProjectileOptionFn`s in `./projectile-option/registry.ts`, browsed by the
+    // Handlers tab's ProjectileOption panel and compiled by `compileProjectile`.
+    //
+    // They used to sit here with `slots: ["projectile"]` and empty `params`, which
+    // was three bugs in one declaration: they resolved to nothing once they were
+    // typed correctly, a projectile could hold a *list* of them, and there was
+    // nowhere to put a parameter. The `projectile` HandlerSlot is gone for the
+    // same reason — no action can run on that call site.
 
     // ── tech ─────────────────────────────────────────────────────────────────
     {
@@ -538,6 +506,33 @@ export function handlersForSlot(slot: HandlerSlot): HandlerMeta[] {
     return HANDLER_META.filter((m) => m.slots.includes(slot));
 }
 
+/**
+ * True when an action's **only** call site is the one named.
+ *
+ * This is the isolation criterion the Handlers menu is built on, and it is derived
+ * from `slots` rather than kept as a list, so it cannot drift: a new action that
+ * declares one slot is in that slot's tab by construction, and one that declares
+ * two is in neither.
+ *
+ * The alternative was a hand-written "these 7 are the upgrade ones" array, which is
+ * the shape of bug this codebase keeps hitting — a second table that looks like a
+ * fact and is only a copy. `slots` is already the truth about where an action can
+ * run, so the question is asked of it directly.
+ *
+ * `noop` is the case that makes the distinction matter. It can run at an upgrade,
+ * but it runs at all six call sites, so it is **not** upgrade-specific and stays in
+ * the general Actions list — it is not an upgrade action that happens to be
+ * reusable, it is a wiring test.
+ */
+export function isOnlyAtSlot(meta: HandlerMeta, slot: HandlerSlot): boolean {
+    return meta.slots.length === 1 && meta.slots[0] === slot;
+}
+
+/** The actions exclusive to one call site — the "Upgrade actions" tab's contents. */
+export function handlersOnlyAtSlot(slot: HandlerSlot): HandlerMeta[] {
+    return HANDLER_META.filter((m) => isOnlyAtSlot(m, slot));
+}
+
 export function handlersOfType(type: HandlerType): HandlerMeta[] {
     return HANDLER_META.filter((m) => m.type === type);
 }
@@ -572,7 +567,6 @@ export const HANDLER_SLOT_LABELS: Record<HandlerSlot, string> = {
     signal: "Signals (structure click)",
     trigger: "Triggers (timed)",
     processing: "Processing (process step)",
-    projectile: "Projectiles (getOptions)",
     upgrade: "Upgrades / research",
     modifier: "Hook modifiers",
     itemAction: "Items (handleAction)",
@@ -674,9 +668,12 @@ export const TAB_TO_CALL_SITE: Record<string, HandlerSlot> = {
     triggers: "trigger",
     processing: "processing",
     items: "itemAction",
-    projectiles: "projectile",
     upgrades: "upgrade",
     modifiers: "modifier",
+    // `projectiles` is deliberately **absent**: it is not a HandlerSlot, because a
+    // projectile holds an option, not a process. `scanHandlerUsage` walks it
+    // separately so the Handlers tab can still show which projectiles use which
+    // option without pretending the two are the same kind of reference.
 };
 
 /** slot → (config array key, field holding the handler key). */
@@ -684,7 +681,6 @@ const SLOT_LOCATION: Record<HandlerSlot, [string, string]> = {
     signal: ["signals", "handlerKey"],
     trigger: ["triggers", "handlerKey"],
     processing: ["processing", "handlerKey"],
-    projectile: ["projectiles", "getOptionsKey"],
     upgrade: ["upgrades", "handlerKey"],
     modifier: ["modifiers", "handlerKey"],
     itemAction: ["items", "handlerKey"],
@@ -734,6 +730,31 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
         }
     }
     return out;
+}
+
+/**
+ * Every stored projectile and the option it names.
+ *
+ * Separate from `scanHandlerUsage` because a projectile reference is **not** a
+ * handler usage: the option is not in `HANDLER_META` and has no slot, so folding
+ * it into that table would have meant re-adding a `projectile` slot — the exact
+ * conflation this split removes. Having its own reader means the Handlers tab can
+ * still answer "who uses this preset" honestly.
+ */
+export function scanProjectileOptionUsage(
+    cfg: Record<string, unknown>,
+): { category: string; id: string; key?: string; problem?: string }[] {
+    const list = cfg.projectiles;
+    if (!Array.isArray(list)) return [];
+    return (list as Record<string, unknown>[]).map((e) => {
+        const { ref, problem } = projectileOptionOf(e);
+        return {
+            category: "projectiles",
+            id: String(e?.id ?? "?"),
+            key: ref?.key,
+            problem,
+        };
+    });
 }
 
 function findKeyForUsage(cfg: Record<string, unknown>, u: HandlerUsage): string {

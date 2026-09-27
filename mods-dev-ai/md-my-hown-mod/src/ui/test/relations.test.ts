@@ -116,8 +116,11 @@ const REFERENCE_LISTS = new Map<string, string>([
     ["listOutputTargets", "elements"],
     ["listProcessorKeys", "processing"],
     ["listDescribedProcessorKeys", "processing"],
-    ["listAnyHandlerKeys", "handlers"],
-    ["listHandlerKeys", "handlers"],
+    // `listAnyHandlerKeys` / `listHandlerKeys` used to be filed here, pointing at
+    // the `handlers` tab. They name handlers, which are **code** — not ids owned by
+    // any category — so the rows never qualified and were skipped by the
+    // `ENTRY_TABS` guard below. They are gone rather than repointed: a table entry
+    // that can never match is worse than no entry, because it reads as coverage.
 ]);
 
 /** Category tabs that own entries, so a reference into one makes sense. */

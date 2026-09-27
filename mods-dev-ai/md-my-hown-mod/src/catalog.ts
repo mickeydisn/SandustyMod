@@ -11,6 +11,10 @@ import type { HandlerMeta, HandlerSlot } from "./hooks/handler-registry.ts";
 // own, so this cannot cycle, and the pickers must work even when the hook
 // module has not yet published its `__mdHandlers` global.
 import { allHandlerTypes, HANDLER_META, itemActionHandlersFor } from "./hooks/handler-registry.ts";
+// The projectile presets. A value import, and deliberately *not* through
+// `handler-registry.ts`: these are `ProjectileOptionFn`s, not actions, so they
+// live in their own registry and are compiled by `compileProjectile`.
+import { PROJECTILE_OPTION_DOCS, PROJECTILE_OPTIONS } from "./hooks/projectile-option/index.ts";
 
 /**
  * One choice for a reference field.
@@ -851,8 +855,24 @@ function slotHandlerKeys(slot: HandlerSlot, registry: "any" | "process" = "any")
     return describedOptions(reg ?? fallback, docs, metas.map((m) => m.key));
 }
 
+/**
+ * The projectile presets, as picker options.
+ *
+ * **No longer a handler slot.** A projectile holds one `ProjectileOption`, not a
+ * process, so it has no `HandlerSlot` and does not come from `HANDLER_META`. The
+ * list is built from `PROJECTILE_OPTIONS` instead — the same registry the compiler
+ * uses, so the dropdown cannot offer a key that will not resolve.
+ *
+ * Kept under its old name because the catalog is the shared vocabulary the field
+ * builders import from, and this is still the question a projectile field asks.
+ */
 export function listProjectileHandlerKeys(): Opt[] {
-    return slotHandlerKeys("projectile");
+    const docs = PROJECTILE_OPTION_DOCS;
+    return Object.keys(PROJECTILE_OPTIONS).sort().map((key) => ({
+        value: key,
+        label: key,
+        desc: docs[key] ?? "Projectile options.",
+    }));
 }
 
 export function listSignalHandlerKeys(): Opt[] {

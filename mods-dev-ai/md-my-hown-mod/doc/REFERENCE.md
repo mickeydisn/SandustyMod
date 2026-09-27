@@ -65,7 +65,7 @@ Stored under `elements`, applied through ``elements.register``.
 | `durationRandomMin` | Lifetime min (s) | `durationRandom.min` | not read | min 0, max 3600 | — |
 | `durationRandomMax` | Lifetime max (s) | `durationRandom.max` | not read | min 0, max 3600 | — |
 | `metaColor` | Map colour | `metaColor` | read | — | packed 0xRRGGBB (minimap / inspector) |
-| `colorsJson` | Colour variants | `colors.variants` | not read | — | one tint per cell, picked at random. With none set, every cell uses the map colour. Add four or five for a natural look. |
+| `colorsJson` | Colour variants | `colors.variants` | read | — | one tint per cell, picked at random. Add four or five for a natural look. With none set, every cell takes the map colour. |
 | `flammable` | Flammable | `flammable` | not read | — | — |
 | `isTransportable` | Transportable | `isTransportable` | not read | — | conveyors / launchers can move it |
 | `isGrabbable` | Grabbable | `isGrabbable` | not read | — | — |

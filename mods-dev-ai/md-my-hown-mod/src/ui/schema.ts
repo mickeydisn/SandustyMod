@@ -16,6 +16,7 @@
  */
 import { handlerMeta, TAB_TO_CALL_SITE } from "../hooks/handler-registry.ts";
 import { resolveAction } from "../hooks/process.ts";
+import { resolveProjectileOption } from "../hooks/projectile-option/index.ts";
 import { parseActionRefs } from "./definition/actions-field.ts";
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
@@ -110,8 +111,39 @@ export type Tab =
     | "inputs"
     /** Catalogue of the engine's draw functions — no configKey, no storage. */
     | "draws"
-    /** Registry browser — no configKey, renders its own body. */
-    | "handlers"
+    /**
+     * The HandlerAction catalogue — no configKey, renders its own body.
+     *
+     * **A first-class tab, not a mode of another screen.** It used to be `handlers`,
+     * a single tab holding both this and `projectileOption` with a switcher inside
+     * it. That put a switcher *below* the sub-nav, so choosing what you were
+     * looking at took two clicks in two places. Two tabs in the same menu group
+     * makes the sub-nav the switcher and removes the layer.
+     */
+    | "action"
+    /**
+     * The ProjectileOption catalogue — no configKey, renders its own body.
+     *
+     * A separate tab because an option is not an action: it is called with nothing
+     * and its *return* is the projectile's configuration. The two share a menu
+     * group because they belong to the same feature, and nothing else.
+     */
+    | "projectileOption"
+    /**
+     * The actions that can run at **one call site only** — today the seven upgrade
+     * ones.
+     *
+     * A tab, rather than a filter on Actions, because these are *the whole answer*
+     * to "what can this upgrade do?", and a filter makes the reader assemble that
+     * answer themselves while the general list goes on offering the same 7 among 32
+     * others. Isolating them means the question has one place to be asked.
+     *
+     * **These remain ordinary `HandlerAction`s.** Unlike a projectile option, an
+     * upgrade holds an ordered *list* of them and the engine runs them in sequence,
+     * so there is no new function type here — only a view split. See
+     * `isOnlyAtSlot`, which decides membership rather than a hand-kept list.
+     */
+    | "upgradeAction"
     /** Explains the objects and their relations — no configKey. */
     | "help"
     /** Instance-level map of the stored config — no configKey. */
@@ -228,9 +260,17 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         blurb: "Intercept / modify engine hooks (code handlers).",
         configKey: "modifiers",
     },
-    handlers: {
-        label: "Handlers",
-        blurb: "Every callable this mod can run — grouped by type, with scope and parameters.",
+    action: {
+        label: "Actions",
+        blurb: "Every callable this mod can run as part of a process.",
+    },
+    projectileOption: {
+        label: "Projectile options",
+        blurb: "Functions that build a projectile's spawn-time options.",
+    },
+    upgradeAction: {
+        label: "Upgrade actions",
+        blurb: "The actions an upgrade can run — and nothing else can.",
     },
     /** Draw functions the engine ships, and which structures use them. */
     draws: {
@@ -312,8 +352,11 @@ export const MENU_GROUPS: MenuGroup[] = [
     {
         key: "handlers",
         label: "Handlers",
-        hint: "Every function this mod can call",
-        categories: ["handlers"],
+        // The group's own hint, not a restatement of the two tabs under it. The
+        // sub-nav reads "Actions · Projectile options" and the group chip reads
+        // "Handlers", so the split is visible before you click anything.
+        hint: "What this mod can run, and what it can build",
+        categories: ["action", "projectileOption", "upgradeAction"],
     },
     { key: "help", label: "Graph", hint: "What points at what", categories: ["help"] },
     {
@@ -360,7 +403,13 @@ export type FieldKind =
      * `[{ key: "processorConvert", options: { to: "Water" } }]`. The form holds
      * JSON text; the entry holds the real array. See `./actions-field.ts`.
      */
-    | "actionList";
+    | "actionList"
+    /**
+     * A single `{ key, params }` — one ProjectileOption, and the value it builds
+     * is what the engine uses at spawn. Not a list: a projectile takes exactly one,
+     * and it is not a process. See `./projectile-option-field.ts`.
+     */
+    | "projectileOption";
 
 export interface FieldSpec {
     key: string;
@@ -585,6 +634,18 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
             if (bad.length) {
                 return `cannot run here: ${[...new Set(bad.map((r) => r.key))].join(", ")}`;
             }
+            return null;
+        }
+        case "projectileOption": {
+            // Only the key is checked. The parameters are a JSON bag whose keys are
+            // the chosen option's own fields, and `withParams` silently drops
+            // anything it does not recognise — so validating them here would mean
+            // re-deriving the option's field list, which `projectileOptionParams`
+            // already does by calling the option. An unknown parameter is dropped
+            // rather than fatal, by design: it is a value the author cannot see an
+            // effect from, not a broken config.
+            if (!raw.trim()) return null; // static options only
+            if (!resolveProjectileOption(raw)) return `unknown projectile option: ${raw}`;
             return null;
         }
         case "text":

@@ -8,8 +8,8 @@
  *   - **`api` is ambient.** The five api-calling actions read
  *     `globalThis.sandkit.api`, a module global — not an argument. Every call site
  *     provides it, so it cannot say where an action can run, which is the only
- *     question a grouping axis has to answer. It also left 41 of 46 actions in one
- *     bucket, which is not a category.
+ *     question a grouping axis has to answer. It also left all but a handful of the
+ *     catalogue in one bucket, which is not a category.
  *   - **What does discriminate is the payload.** Measured, an action needs at most
  *     three things — a position, an instance's `data`, and the cell context — and
  *     each call site delivers a known subset of them.
@@ -32,11 +32,14 @@ export type ProcessScope = Record<ScopeNeed, boolean> & {
     /**
      * Whether the engine *reads* what the process returns.
      *
-     * Deliberately **not** part of the subset rule. Returning a value is only
-     * meaningful where it is consumed, but that is a question about the action
-     * being useful, not about the call site being able to reach it — so it does
-     * not affect legality, only the vacuous-return triage. Measured: one slot of
-     * eight, `projectile`.
+     * **Always `false` now.** The one slot that did — `projectile` — is no longer
+     * a call site: it holds a single `ProjectileOption` and returns the
+     * configuration directly, outside the process system. See
+     * `./projectile-option/`.
+     *
+     * Kept as a field rather than deleted because it records a measured property
+     * of the engine's callbacks, and a test asserts no call site ever sets it. The
+     * alternative is re-deriving the question the next time someone adds a slot.
      */
     ret: boolean;
 };
@@ -76,8 +79,6 @@ export const CALL_SITE_SCOPE: Record<string, ProcessScope> = {
     modifier: { pos: true, data: true, cell: true, ret: true },
     // callback() — NOTHING. See registerTrigger.
     trigger: { pos: false, data: false, cell: false, ret: false },
-    // getOptions() — nothing in; the *return* is the whole point
-    projectile: { pos: false, data: false, cell: false, ret: true },
     // onDownKey(key)
     behavior: { pos: false, data: false, cell: false, ret: false },
 };
@@ -153,13 +154,12 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     excavationDrill: [],
     excavationGun: [],
     excavationShatter: [],
-    defaultProjectileOptions: [],
-    projectileHeavy: [],
-    projectileFast: [],
-    projectileHoming: [],
-    projectileShotgun: [],
-    projectileExcavate: [],
-    projectileTerrain: [],
+    // The seven `projectile*` presets used to be listed here as `[]`. They are
+    // `ProjectileOptionFn`s now and are not actions at all — see
+    // `./projectile-option/registry.ts`. They are deliberately absent rather than
+    // defaulted: `needsOf` returns `[]` for an unknown key, so a stray row here
+    // would have been the only thing distinguishing "needs nothing" from "is not
+    // an action", and that distinction is exactly what the split is about.
     techAppendUnlock: [],
     techSetUpgradeLevel: [],
     techGrantItem: [],

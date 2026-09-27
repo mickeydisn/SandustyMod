@@ -33,6 +33,7 @@ import {
 import { ACTIONS_FORM_KEY, formatActionRefs, parseActionRefs } from "./definition/actions-field.ts";
 import type { FieldContext, Tab } from "./definition/types.ts";
 import * as S from "./styles.ts";
+import { paramInput, paramText, paramValue } from "./param-controls.ts";
 
 type H = FieldContext["h"];
 
@@ -44,75 +45,6 @@ function allowedFor(tab: Tab): HandlerMeta[] {
     if (!slot) return HANDLER_META;
     const allowed = HANDLER_META.filter((m) => m.slots.includes(slot as never));
     return allowed;
-}
-
-/** A parameter's current text, from the action's stored options. */
-function paramText(options: Record<string, unknown> | undefined, p: HandlerParam): string {
-    const v = options?.[p.key];
-    if (v === undefined || v === null) return "";
-    if (typeof v === "string") return v;
-    if (typeof v === "boolean") return v ? "true" : "false";
-    return String(v);
-}
-
-/** A parameter's text back into the stored value's type. */
-function paramValue(p: HandlerParam, text: string): unknown {
-    const t = text.trim();
-    if (t === "") return undefined;
-    if (p.kind === "number") {
-        const n = Number(t);
-        return Number.isFinite(n) ? (p.int ? Math.trunc(n) : n) : undefined;
-    }
-    if (p.kind === "bool") return t === "true";
-    return t;
-}
-
-/** One parameter input. The same four kinds the Handlers tab's picker uses. */
-function paramInput(
-    h: H,
-    p: HandlerParam,
-    value: string,
-    onChange: (v: string) => void,
-): unknown {
-    const on = (e: { target: { value: string } }) => onChange(e.target.value);
-    if (p.kind === "number") {
-        return h("input", {
-            key: p.key,
-            type: "number",
-            style: { ...S.input, width: 120 },
-            value,
-            min: p.min,
-            max: p.max,
-            step: 1,
-            placeholder: p.def ?? "",
-            title: p.hint ?? "number",
-            onChange: on,
-        });
-    }
-    if (p.kind === "bool") {
-        return h(
-            "select",
-            { key: p.key, style: { ...S.input, width: 90 }, value, onChange: on },
-            h("option", { value: "true" }, "Yes"),
-            h("option", { value: "false" }, "No"),
-        );
-    }
-    if (p.kind === "select" && p.options?.length) {
-        return h(
-            "select",
-            { key: p.key, style: { ...S.input, width: 170 }, value, onChange: on },
-            h("option", { value: "" }, "— none —"),
-            ...p.options.map((o) => h("option", { key: o.value, value: o.value }, o.label)),
-        );
-    }
-    return h("input", {
-        key: p.key,
-        style: { ...S.input, width: 140 },
-        value,
-        placeholder: p.def ?? "",
-        title: p.hint ?? p.kind,
-        onChange: on,
-    });
 }
 
 /** Swap a row with its neighbour. Out of range is a no-op, not a hole. */

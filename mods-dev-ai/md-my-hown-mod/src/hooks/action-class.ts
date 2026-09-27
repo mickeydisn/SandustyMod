@@ -11,7 +11,10 @@
  * | `api` | one `api.*` namespace | 5 |
  * | `self-sufficient` | only the payload and params it was handed | 15 |
  * | `context-bound` | the engine's processing context (`ctx`) | 3 |
- * | `pure` | nothing at all — a constant, or a logger | 20 |
+ * | `pure` | nothing at all — a constant, or a logger | 16 |
+ *
+ * The 7 `projectile*` presets that used to be counted here are not actions and are
+ * not in this table: they are `ProjectileOptionFn`s, in `./projectile-option/`.
  *
  * The three below `api` are the ones that break the rule, and each needs a
  * decision rather than a mechanism:
@@ -98,19 +101,12 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     triggerTick: "pure",
     upgradeLog: "pure",
     processorLog: "pure",
-    defaultProjectileOptions: "pure",
     itemDefault: "pure",
     excavationDefault: "pure",
     excavationCrusher: "pure",
     excavationDrill: "pure",
     excavationGun: "pure",
     excavationShatter: "pure",
-    projectileHeavy: "pure",
-    projectileFast: "pure",
-    projectileHoming: "pure",
-    projectileShotgun: "pure",
-    projectileExcavate: "pure",
-    projectileTerrain: "pure",
     // The three modifier-slot actions, in `CODE_HANDLERS`. `identity` measures as
     // pure because returning its argument is not a *read* of it — it is a constant
     // function in all but name, which is a fair description.
@@ -347,13 +343,6 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     techGrantItem: "api",
 
     // returns — factories and presets
-    defaultProjectileOptions: "returns",
-    projectileHeavy: "returns",
-    projectileFast: "returns",
-    projectileHoming: "returns",
-    projectileShotgun: "returns",
-    projectileExcavate: "returns",
-    projectileTerrain: "returns",
     excavationDefault: "returns",
     excavationCrusher: "returns",
     excavationDrill: "returns",
@@ -399,13 +388,20 @@ export function effectOf(key: string): ActionEffect | undefined {
 }
 
 /**
- * The 13 actions that return a descriptor into a slot which discards it.
+ * Whether a `returns` action's value is thrown away.
  *
- * `returns` is a real effect, but it only *does* something where the engine reads
- * the return — and measured, that is one slot of eight. Everywhere else a
- * `returns` action produces a value that is computed and then dropped, which is
- * why the panel flags them rather than presenting them as if they were peers of
- * `commits`.
+ * **Every one of them, now.** This used to be a question about the call site:
+ * `returns` only *did* something where the engine read the return, and the one
+ * slot that did was `projectile`. That slot is no longer a call site — a projectile
+ * holds a single `ProjectileOption` whose return *is* the configuration — so no
+ * action's return is read anywhere.
+ *
+ * The parameter is kept rather than deleted for two reasons. It keeps the call
+ * sites honest: a caller still has to say what it knows about its slot, so if a
+ * future engine version starts reading a return somewhere, the answer here changes
+ * with it rather than silently claiming a value is wasted. And the 13 flagged
+ * actions are unchanged by this refactor — they were already vacuous everywhere
+ * except projectile, and they are not projectile options.
  *
  * Kept here rather than in the panel so the flag and the triage cannot disagree.
  */
@@ -495,13 +491,11 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     upgradeAdd: "tech",
 
     // projectiles
-    defaultProjectileOptions: "projectiles",
-    projectileHeavy: "projectiles",
-    projectileFast: "projectiles",
-    projectileHoming: "projectiles",
-    projectileShotgun: "projectiles",
-    projectileExcavate: "projectiles",
-    projectileTerrain: "projectiles",
+    // No rows: the projectile presets are `ProjectileOptionFn`s, not actions, so
+    // they carry no domain. They are browsed in their own panel, under
+    // `./projectile-option/`. The `projectiles` domain below still exists as a
+    // label so a stored config that references one can be named in a message —
+    // but no action is filed under it.
 
     // excavation
     excavationDefault: "excavation",

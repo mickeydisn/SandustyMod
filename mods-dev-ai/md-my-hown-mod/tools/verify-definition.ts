@@ -805,11 +805,14 @@ ok(
     `an empty required pattern gave ${S.validateForm("excavation", exForm).patternJson}`,
 );
 
-// 32. the projectile round trip, and the process-wins rule
+// 32. the projectile round trip, and the option-wins rule
+// A projectile holds **one** option, not a process. The stored shape is an
+// object — `{ key, params }` — and the legacy keys that used to carry it
+// (`getOptionsKey`, and the short-lived `actions` list) must not survive a save.
 const pjStored = {
     id: "md-my-hown-mod:bolt",
     sprite: { id: "sprites:bolt" },
-    actions: [{ key: "someHandler" }],
+    getOptionsKey: "projectileFast",
     options: { speed: 10 },
 };
 const pjBack = S.formToEntry("projectiles", S.entryToForm("projectiles", pjStored)) as Record<
@@ -821,28 +824,34 @@ ok(
     `projectile sprite → ${JSON.stringify(pjBack.sprite)}`,
 );
 ok(
-    JSON.stringify(pjBack.actions) === JSON.stringify([{ key: "someHandler" }]),
-    `projectile process → ${JSON.stringify(pjBack.actions)}`,
+    JSON.stringify(pjBack.option) === JSON.stringify({ key: "projectileFast" }),
+    `projectile option → ${JSON.stringify(pjBack.option)}`,
 );
+// Both legacy spellings are migrated *and* removed, so a saved entry can never
+// hold two competing references whose resolution would come down to lookup order.
 ok(
     pjBack.getOptionsKey === undefined,
     `projectile getOptionsKey left behind → ${pjBack.getOptionsKey}`,
 );
 ok(
+    pjBack.actions === undefined,
+    `projectile actions list left behind → ${JSON.stringify(pjBack.actions)}`,
+);
+ok(
     JSON.stringify(pjBack.options) === JSON.stringify(pjStored.options),
     `projectile options → ${JSON.stringify(pjBack.options)}`,
 );
-// the static options are *hidden* behind a handler but still carried, so
-// clearing the handler restores them instead of leaving a projectile bare
+// the static options are *hidden* behind an option but still carried, so
+// clearing the option restores them instead of leaving a projectile bare
 const pjFields = S.fieldsFor("projectiles");
 const pjWhen = pjFields.find((f: { key: string }) => f.key === "optionsJson")!.when!;
 ok(
-    pjWhen({ actionsJson: String.raw`[{"key":"someHandler"}]` }) === false,
-    "static options show behind a process",
+    pjWhen({ optionKey: "projectileFast" }) === false,
+    "static options show behind an option",
 );
 ok(
-    pjWhen({ actionsJson: "" }) === true,
-    "static options are hidden with no process",
+    pjWhen({ optionKey: "" }) === true,
+    "static options are hidden with no option",
 );
 const pjCleared = S.formToEntry("projectiles", {
     ...S.entryToForm("projectiles", pjStored),

@@ -88,6 +88,30 @@ export const api = {
             }
         },
         /**
+         * Reveal a freshly registered element in the "?" discovery catalogue.
+         *
+         * Separate from `register`, and every shipping mod that registers an
+         * element calls it right after — the Astro Seeds mod pairs the two on
+         * each element (`src/main/register.ts:26`). Without it the element still
+         * simulates and is still in the element picker, it is simply never
+         * *discovered*, so it never joins the catalogue the player unlocks
+         * through. The engine stores it in `store.discoveries.elements` and
+         * de-duplicates on the way in (bundel.js/46781.js:4453-4460).
+         *
+         * `addElementByType` is the name the docs use; the method the engine
+         * actually exposes on the mod-facing facade is `addElement`. Both are
+         * tried, current name first, for the same reason `getTypeById` is.
+         */
+        addElementToDiscoveries(elementType: number) {
+            try {
+                const d = g()?.api?.discoveries;
+                if (d?.addElement) d.addElement(elementType);
+                else d?.addElementByType?.(elementType);
+            } catch (e) {
+                console.error(`${LOG} discoveries.addElement failed`, e);
+            }
+        },
+        /**
          * Resolve an element id to its numeric type.
          *
          * The engine spells this `getTypeById`; `getTypeFromId` is the
@@ -429,6 +453,25 @@ function registerI18n(map: Record<string, string>) {
     if (Object.keys(map).length) api.i18n.register("en", map);
 }
 
+/** Stands in for a definition that carries no colour at all. */
+const NEUTRAL_VARIANT: [number, number, number, number] = [204, 204, 204, 255];
+
+/**
+ * The one variant to use when the definition declares none.
+ *
+ * `metaColor` is the map colour, and it is the only other colour the definition
+ * carries, so an element with a map colour and no variants is not missing
+ * information — it is stating that every cell is the same colour, and this is
+ * how that is spelled. With no `metaColor` either there is genuinely nothing to
+ * go on, and a neutral grey says "unconfigured" where the engine's own default
+ * would say "error".
+ */
+function variantFromMetaColor(metaColor: unknown): [number, number, number, number] {
+    if (typeof metaColor !== "number" || !Number.isFinite(metaColor)) return NEUTRAL_VARIANT;
+    const packed = Math.max(0, Math.min(0xffffff, Math.floor(metaColor)));
+    return [(packed >> 16) & 255, (packed >> 8) & 255, packed & 255, 255];
+}
+
 function normalizeElement(def: ElementConfig): Record<string, unknown> {
     const id = String(def.id);
     const name = def.name ?? id;
@@ -436,10 +479,29 @@ function normalizeElement(def: ElementConfig): Record<string, unknown> {
     const out: Record<string, unknown> = { ...def, id, name, nameKey };
     const mt = resolveMatterType(def.matterType as string | number | undefined);
     if (mt !== undefined) out.matterType = mt;
-    if (Array.isArray(def.colors)) {
-        out.colors = { variants: def.colors };
-    } else if (def.colors && typeof def.colors === "object") {
-        out.colors = def.colors;
+    // An element with no colour variants must still be given one, and the
+    // variant to use is the map colour — the two are the same information, so
+    // reading one and writing the other is not a second thing to remember.
+    //
+    // The engine does *not* do this fallback for us. `register` is guarded —
+    // `t.colors && scheme.colors.add(type, t.colors)` (bundel.js/46781.js:1290) —
+    // so a definition without `colors` never gets a colour-scheme entry at all,
+    // and the renderer then hits its own default: `[255, 0, 0, 255]`
+    // (bundel.js/26508.js:114-117). The element comes out bright red.
+    const rawColors = def.colors as { variants?: unknown } | number[][] | undefined;
+    const rawVariants = Array.isArray(rawColors) ? rawColors : rawColors?.variants;
+    if (Array.isArray(rawVariants) && rawVariants.length > 0) {
+        out.colors = Array.isArray(rawColors)
+            ? { variants: rawVariants }
+            : { ...rawColors, variants: rawVariants };
+    } else {
+        // A bare array has no other keys to keep; an object may carry scheme
+        // options the renderer reads alongside the variants
+        // (`variantFromDataField1`, `variantFromVelocity`), and seeding the
+        // variants must not cost the author those.
+        out.colors = Array.isArray(rawColors) || !rawColors
+            ? { variants: [variantFromMetaColor(def.metaColor)] }
+            : { ...rawColors, variants: [variantFromMetaColor(def.metaColor)] };
     }
     if (typeof def.getExtraProps !== "function") delete out.getExtraProps;
     if (def.description && !def.descriptionKey) {

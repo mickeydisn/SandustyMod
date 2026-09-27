@@ -109,6 +109,7 @@ import {
     renderListRow,
 } from "./panel/list.ts";
 import { renderActionList } from "./action-list-control.ts";
+import { renderProjectileOption } from "./projectile-option-control.ts";
 import { listFor } from "./panel/index.ts";
 import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
 import * as S from "./styles.ts";
@@ -117,12 +118,32 @@ import { clampChip, exceedsSlop } from "./drag.ts";
 import {
     type HandlersTabState,
     initialHandlersState,
-    renderHandlersTab,
+    renderActions,
+    renderProjectileOptions,
+    renderUpgradeActions,
 } from "./panel/handlers.ts";
 import { renderHelp } from "./panel/help.ts";
 import { renderConfigMap } from "./config-map.ts";
 import { DEFAULT_UNLOCK_NODE, techUnlockStructureIds, unlockLine } from "./tech-link.ts";
 import { renderDraws } from "./panel/draws.ts";
+
+/**
+ * Tab → screen, for the Handlers menu group.
+ *
+ * A table rather than a chain of ternaries. The chain version was already two
+ * deep by the time a third screen arrived, and each addition put another
+ * `cat === "…"` beside the others where a typo is a silent blank screen rather
+ * than a type error. Here a missing key is a type error, and adding a screen is
+ * one line.
+ *
+ * Deliberately keyed by tab and not derived from `MENU_GROUPS`: which renderer
+ * answers a tab is a decision about the screen, not something the menu can infer.
+ */
+const HANDLER_SCREENS = {
+    action: renderActions,
+    projectileOption: renderProjectileOptions,
+    upgradeAction: renderUpgradeActions,
+} as const;
 
 /** Parse JSON text, returning undefined instead of throwing. */
 function safeJson(text: string): unknown {
@@ -725,9 +746,25 @@ export function createPanelComponent(defaultMinimized = true) {
             // build-modes editor both silently rendered as an empty text box.
             if (control === null && f.kind === "actionList") {
                 // The ordered-process editor. Handled here rather than in each of the
-                // seven definitions because `actionList` is a *shared* kind, like
-                // `json` — one widget for every object that stores a process.
+                // six definitions that store one, because `actionList` is a *shared*
+                // kind, like `json` — one widget for every object with a process.
                 control = renderActionList({
+                    h,
+                    form,
+                    cfg,
+                    setField,
+                    field: f,
+                    value: val,
+                    error: err,
+                    locked,
+                    tab: cat,
+                });
+            }
+            if (control === null && f.kind === "projectileOption") {
+                // The single-option editor. Its own kind rather than an `actionList`
+                // special case, because a projectile is not a process: there is no
+                // list, so there is nothing to add, reorder or repeat.
+                control = renderProjectileOption({
                     h,
                     form,
                     cfg,
@@ -1460,8 +1497,10 @@ export function createPanelComponent(defaultMinimized = true) {
                     // same filter. A collapsed summary promising to list what
                     // already exists, sitting above a screen that lists it, was
                     // the same answer twice.
-                    cat === "json" ? renderJson() : cat === "handlers"
-                        ? renderHandlersTab({
+                    cat === "json"
+                        ? renderJson()
+                        : HANDLER_SCREENS[cat as keyof typeof HANDLER_SCREENS]
+                        ? HANDLER_SCREENS[cat as keyof typeof HANDLER_SCREENS]({
                             h: h as never,
                             cfg: cfg as unknown as Record<string, unknown>,
                             state: handlerTab,

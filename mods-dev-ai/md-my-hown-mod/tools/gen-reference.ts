@@ -189,7 +189,12 @@ export const COMPOSITE: Record<string, [string, string][]> = {
     // `interactions` is assembled from the `kind` plus that kind's fields, so
     // the old single `interactionJson → interaction` row no longer applies.
     projectiles: [
-        ["actionsJson", "actions[]"],
+        // A projectile holds **one** option, not a process. It used to be
+        // `actionsJson → actions[]`; that row is gone, and the two fields below
+        // together are the whole thing — which is why they are documented as the
+        // single `option` object they write rather than as separate keys.
+        ["optionKey", "option.key"],
+        ["optionParamsJson", "option.params"],
         ["spriteId", "sprite.id"],
         ["optionsJson", "options"],
     ],

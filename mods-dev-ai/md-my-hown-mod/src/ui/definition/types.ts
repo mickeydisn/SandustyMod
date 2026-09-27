@@ -49,8 +49,18 @@ export type Tab =
     | "modifiers"
     | "inputs"
     | "draws"
-    /** Registry browser — no configKey, renders its own body. */
-    | "handlers"
+    /**
+     * The HandlerAction catalogue, and the ProjectileOption catalogue beside it.
+     *
+     * **This list must match `Tab` in `../schema.ts` exactly.** It is a hand-copied
+     * duplicate, which is not a design so much as a hazard: the two drift, and the
+     * drift only shows up as a type error at some unrelated call site. `schema.ts`
+     * is the one to edit; change this in the same commit, or better, collapse the
+     * two into one when convenient.
+     */
+    | "action"
+    | "projectileOption"
+    | "upgradeAction"
     /** Explains the objects and their relations — no configKey. */
     | "help"
     /** Instance-level map of the stored config — no configKey. */
@@ -107,7 +117,13 @@ export type FieldKind =
      * `[{ key: "processorConvert", options: { to: "Water" } }]`. The form holds
      * JSON text; the entry holds the real array. See `./actions-field.ts`.
      */
-    | "actionList";
+    | "actionList"
+    /**
+     * A single `{ key, params }` — one ProjectileOption, and the value it builds
+     * is what the engine uses at spawn. Not a list: a projectile takes exactly one,
+     * and it is not a process. See `./projectile-option-field.ts`.
+     */
+    | "projectileOption";
 
 export interface FieldSpec {
     key: string;

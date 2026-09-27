@@ -341,33 +341,33 @@ Deno.test("the excavation rule editor survives the chain", () => {
     assertEquals(controlOf("patternJson")?.tag, "textarea");
 });
 
-Deno.test("a projectile's static options hide behind its process", () => {
-    // The process' actions are factories, and their returned options are the ones
-    // that reach the engine, so the static box is hidden rather than inviting
-    // values the engine ignores. The condition is now on the *process* — an empty
-    // list and an absent one mean the same thing, which a single key could not say.
+Deno.test("a projectile's static options hide behind its option", () => {
+    // A projectile's options come from exactly one function, and its return is what
+    // the engine uses — so the static box is hidden rather than inviting values the
+    // engine ignores. The condition is on the *option key* now: it used to be on the
+    // process list, and before that on `getOptionsKey`.
     renderFormFor("projectiles", CFG.projectiles[0], "p1");
     assert(controlOf("optionsJson"), "the static options box is missing");
     assertEquals(controlOf("spriteId")?.tag, "select");
 
-    hooks[5] = { ...hooks[5], actionsJson: '[{"key":"projectileHeavy"}]' };
+    hooks[5] = { ...hooks[5], optionKey: "projectileHeavy" };
     hookIdx = 0;
     nodes = [];
     Panel();
     assertEquals(
         controlOf("optionsJson"),
         undefined,
-        "the static options box is showing behind a process",
+        "the static options box is showing behind an option",
     );
 
-    // An empty process is the same as none, so the static box comes back. Asserted
+    // No option is the same as none, so the static box comes back. Asserted
     // because the old check was `getOptionsKey === ""` — a test that only covered
-    // the non-empty case would not notice the rule had moved to the list.
-    hooks[5] = { ...hooks[5], actionsJson: "[]" };
+    // the non-empty case would not notice the rule had moved twice.
+    hooks[5] = { ...hooks[5], optionKey: "" };
     hookIdx = 0;
     nodes = [];
     Panel();
-    assert(controlOf("optionsJson"), "an empty process should not hide the static box");
+    assert(controlOf("optionsJson"), "no option should not hide the static box");
 });
 
 Deno.test("a signal renders its two dropdowns and no third handler dropdown", () => {

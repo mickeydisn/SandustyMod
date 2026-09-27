@@ -163,7 +163,7 @@ const FIELDS: FieldSpec[] = [
         section: "Appearance",
         wide: true,
         hint:
-            "one tint per cell, picked at random. With none set, every cell uses the map colour. Add four or five for a natural look.",
+            "one tint per cell, picked at random. Add four or five for a natural look. With none set, every cell takes the map colour.",
     },
     boolField("flammable", "Flammable", "Behaviour"),
     boolField(
@@ -285,7 +285,7 @@ function renderColorVariants(ctx: FieldContext): unknown {
             ? h(
                 "div",
                 { style: S.hintBelow },
-                "No variants — every cell uses the map colour, which is fine for most elements.",
+                "No variants — every cell will take the map colour, which is fine for most elements.",
             )
             : null,
         ...swatches.map((hexValue, i) =>

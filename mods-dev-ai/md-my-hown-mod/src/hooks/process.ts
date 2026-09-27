@@ -21,13 +21,22 @@
  * | `trigger` | `callback()` | `(payload, extra)` | **no** — no args at all |
  * | `behavior` | `onDownKey(key)` | `(payload, extra)` | **no** |
  * | `itemAction` | `handleAction(state, action)` | `(item, extra)` | yes — `mysandkit` sets `out.options` |
- * | `projectile` | `getOptions()` | `() => options` | n/a |
  *
  * So payload and params come from **two different places and never meet**: the
  * engine supplies the payload, the config supplies the params, and until now
  * nothing joined them. Binding each action's options at compile time is what
  * makes the pair work — and it is the bug this module exists to fix, not a
  * convenience.
+ *
+ * ## The one slot that is *not* a process
+ *
+ * `projectile.getOptions()` used to appear in that table and in `CallSite`. It is
+ * gone from both, because it is a different kind of call: the engine passes it
+ * nothing and **reads its return** as the projectile's configuration. Modelling it
+ * as a process meant a projectile could hold a *list* of handlers whose returns
+ * were merged field-by-field into a configuration nobody designed. A projectile
+ * now holds exactly one `ProjectileOption` — see `./projectile-option/`, which has
+ * its own signature, its own compiler and its own panel.
  *
  * `processorConvert` is the clearest casualty: its `to` option is declared
  * `required: true`, the panel forces the author to fill it in, and the engine
@@ -37,10 +46,11 @@
  * ## How the two meet
  *
  * `compileProcess` is the only place a process exists at runtime. Registration calls
- * it at all seven slots, and the 15 `ANY_HANDLERS` that used to read their options
- * from argument 2 were re-signed to `(payload, ctx, options)` **in the same change** —
- * either half alone breaks the other, which is why they were sequenced as one.
- * `resolveAnyHandler` survives only for the catalog's benefit; see the note on it.
+ * it at the six effect slots, and the 15 `ANY_HANDLERS` that used to read their
+ * options from argument 2 were re-signed to `(payload, ctx, options)` **in the
+ * same change** — either half alone breaks the other, which is why they were
+ * sequenced as one. `resolveAnyHandler` survives only for the catalog's benefit;
+ * see the note on it.
  */
 import { ANY_HANDLERS, CODE_HANDLERS, PROCESS_HANDLERS } from "./handlers.ts";
 
@@ -49,13 +59,18 @@ import { ANY_HANDLERS, CODE_HANDLERS, PROCESS_HANDLERS } from "./handlers.ts";
 /**
  * The engine entry point that invokes a process. A process is grouped by this;
  * its actions are grouped by API. The two axes are independent on purpose.
+ *
+ * **`projectile` is not a call site.** It used to be listed here, which is what let
+ * a projectile hold an ordered *list* of handlers whose returns were merged into
+ * one options object. `getOptions()` is called with no arguments and its return is
+ * the configuration itself, so a projectile holds one `ProjectileOption` — see
+ * `./projectile-option/`. Every site below is a genuine side-effect callback.
  */
 export type CallSite =
     | "signal"
     | "trigger"
     | "processing"
     | "itemAction"
-    | "projectile"
     | "upgrade"
     | "behavior"
     | "modifier";
@@ -65,7 +80,6 @@ export const CALL_SITE_LABELS: Record<CallSite, string> = {
     trigger: "Timed tick",
     processing: "Process step",
     itemAction: "Item use",
-    projectile: "Projectile spawn",
     upgrade: "Upgrade applied",
     behavior: "Key press",
     modifier: "Engine hook",
@@ -77,25 +91,31 @@ export const CALL_SITE_SIGNATURES: Record<CallSite, string> = {
     trigger: "callback()",
     processing: "process(structure, context)",
     itemAction: "handleAction(state, action)",
-    projectile: "getOptions()",
     upgrade: "onUpgrade(item)",
     behavior: "onDownKey(key) / onUpKey(key)",
     modifier: "intercept(args, ctx) / modify(args)",
 };
 
 /**
- * Whether the engine reads what the process returns.
+ * Whether the engine reads what a process returns.
  *
- * Measured: only `projectile` does. Everything else is a side-effect callback,
- * so a process there composes actions and returns nothing — which is why the
- * merge rule below is a small question rather than a general one.
+ * **Every entry is now `false`, and that is the point.** The one `true` this table
+ * used to hold — `projectile` — is the reason the flag exists at all, and it is
+ * gone: `getOptions()` is no longer a call site, it takes a single
+ * `ProjectileOption` and returns the configuration directly (see
+ * `./projectile-option/`). With no site left that reads a return, a process
+ * composes actions purely for their side effects.
+ *
+ * The flag is kept rather than deleted because it is a **measured** fact about the
+ * engine's seven callbacks, and a test asserts the table stays all-`false`. If a
+ * future engine version starts reading a return from one of these, that test is
+ * where it should fail — not in a spawn that quietly returns nothing.
  */
 export const CALL_SITE_USES_RETURN: Record<CallSite, boolean> = {
     signal: false,
     trigger: false,
     processing: false,
     itemAction: false,
-    projectile: true,
     upgrade: false,
     behavior: false,
     modifier: false,
@@ -144,30 +164,6 @@ export function resolveAction(key: string): HandlerActionFn | undefined {
     return any ?? proc ?? code?.fn;
 }
 
-// ── The return-value rule ────────────────────────────────────────────────────
-
-/** A plain object — the only thing two action returns may be merged across. */
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-    return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-/**
- * Combine what two actions returned.
- *
- * Plain objects merge, last writer wins per key. Anything else — an array, a
- * number, `null` — **replaces** the accumulated value outright and is terminal:
- * there is no sensible way to merge a projectile's options with a number, and
- * silently half-applying one would be worse than picking one.
- *
- * A one-action process therefore behaves exactly as that action did before the
- * split, which is what makes the whole thing backward-compatible.
- */
-export function mergeProcessValue(prev: unknown, next: unknown): unknown {
-    if (next === undefined) return prev;
-    if (isPlainObject(prev) && isPlainObject(next)) return { ...prev, ...next };
-    return next;
-}
-
 // ── The compiler ─────────────────────────────────────────────────────────────
 
 /** What went wrong while a process ran. Surfaced rather than swallowed. */
@@ -202,13 +198,16 @@ export interface CompiledProcess {
  *    remaining actions survive.
  *  - **An empty process is legal.** It compiles to a no-op that still satisfies
  *    the engine, so a process can be saved before its actions are chosen.
+ *  - **Return values are ignored.** Every remaining call site is a side-effect
+ *    callback, so nothing reads what an action returns. A projectile is *not* one
+ *    of them any more: it holds a single `ProjectileOption` and is compiled by
+ *    `./projectile-option/compile.ts`, not here.
  */
 export function compileProcess(
     refs: readonly HandlerActionRef[],
     callSite: CallSite,
     onFailure?: (f: ProcessFailure) => void,
 ): CompiledProcess {
-    const usesReturn = CALL_SITE_USES_RETURN[callSite];
     const steps: { key: string; fn: HandlerActionFn; options: unknown }[] = [];
     const skipped: string[] = [];
 
@@ -223,17 +222,14 @@ export function compileProcess(
 
     const fn: HandlerProcessFn = (...args: unknown[]) => {
         const [payload, ctx] = args;
-        let result: unknown;
         for (const step of steps) {
             try {
-                const value = step.fn(payload, ctx, step.options);
-                if (usesReturn) result = mergeProcessValue(result, value);
+                step.fn(payload, ctx, step.options);
             } catch (error) {
                 // Isolated on purpose — see the doc comment.
                 onFailure?.({ key: step.key, error });
             }
         }
-        return usesReturn ? result : undefined;
     };
 
     return { fn, callSite, skipped };
@@ -247,13 +243,19 @@ export function compileProcess(
  * A bare legacy key is read as a one-action process so an existing mod keeps
  * working, and the next save writes the new form.
  *
- * All three legacy names are consulted rather than one per call site, because
+ * Both remaining legacy names are consulted rather than one per call site, because
  * they are just spelling: `handlerKey` on signal/trigger/processing/modifier/item,
- * `getOptionsKey` on projectile, `onUpgradeKey` on upgrade. A caller that has to
- * know which is which is a caller that will eventually get it wrong, and the
- * result would be a process that silently vanishes.
+ * `onUpgradeKey` on upgrade. A caller that has to know which is which is a caller
+ * that will eventually get it wrong, and the result would be a process that
+ * silently vanishes.
+ *
+ * `getOptionsKey` used to be the third name here. It is **not** an action key any
+ * more — a projectile holds one `ProjectileOption`, and that migration lives in
+ * `./projectile-option/compile.ts`. Reading it as an action would have kept
+ * `projectileHeavy` resolvable through `resolveAction` and quietly preserved the
+ * exact conflation the split removes.
  */
-export const ACTIONS_LEGACY_KEYS = ["handlerKey", "getOptionsKey", "onUpgradeKey"] as const;
+export const ACTIONS_LEGACY_KEYS = ["handlerKey", "onUpgradeKey"] as const;
 
 export function actionRefsOf(entry: Record<string, unknown> | undefined): HandlerActionRef[] {
     if (!entry) return [];
