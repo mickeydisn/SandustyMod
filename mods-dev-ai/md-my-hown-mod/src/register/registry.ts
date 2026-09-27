@@ -32,8 +32,6 @@
 /** Categories whose definitions the simulation worker needs in order to run. */
 const WORKER_SCOPED = ["elements", "terrains", "structures", "recipes"] as const;
 
-
-
 const WORKER_SCOPED_SET: ReadonlySet<string> = new Set<string>(WORKER_SCOPED);
 
 /** True when this category is meaningless to the worker without its definition. */

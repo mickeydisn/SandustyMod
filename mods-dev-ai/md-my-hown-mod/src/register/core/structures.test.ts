@@ -27,7 +27,7 @@ globalThis.sandkit = {
 };
 
 const { unlockStructures } = await import("./structures.ts");
-const { entryToForm, formToEntry, passthroughKeys } = await import("../ui/schema.ts");
+const { entryToForm, formToEntry, passthroughKeys } = await import("../../ui/schema.ts");
 
 const unlocked: string[] = [];
 const removed: string[] = [];

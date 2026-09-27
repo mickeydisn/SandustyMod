@@ -117,10 +117,41 @@ export function countByOwner(rows: ListRow[]): Map<OwnerKey, number> {
  * the engine actually registered. Losing that would be the one way to make a
  * merged row less informative than either source alone.
  */
+/**
+ * Which config field means "hidden" for each category.
+ *
+ * Two categories have such a flag and the other two do not, and the difference is
+ * the engine's rather than a naming choice:
+ *
+ *  - **elements** — `hidden`. The engine's own definition carries it.
+ *  - **structures** — `hideFromBuildMenu`. Read by the engine off the mod
+ *    registry; it is not a literal anywhere in the bundle, so a game's own
+ *    structures will not report it.
+ *  - **terrains** — nothing. `isBuilding` is a *different* idea: it marks a cell
+ *    that counts as a built wall, not one kept out of the build menu. Reading it
+ *    as "hidden" would hide every plain terrain and show every wall.
+ *  - **items** — nothing. An item has no visibility flag at all.
+ *
+ * A category absent from this table therefore has no hidden rows, and the
+ * screen says so by not offering the checkbox.
+ */
+const HIDDEN_FIELD: Partial<Record<string, string>> = {
+    elements: "hidden",
+    structures: "hideFromBuildMenu",
+};
+
+/** The config field that means "hidden" for a category, if it has one. */
+export function hiddenFieldOf(cat: string): string | undefined {
+    return HIDDEN_FIELD[cat];
+}
+
 export function mergeRows(
     entries: Record<string, unknown>[],
     natives: { id: string; label: string; color?: string; native?: Record<string, unknown> }[],
+    /** The category, for the hidden flag — see `HIDDEN_FIELD`. */
+    cat?: string,
 ): ListRow[] {
+    const hiddenField = cat ? HIDDEN_FIELD[cat] : undefined;
     const byId = new Map<string, ListRow>();
 
     // The host's objects first, so a mod row of the same id overwrites rather
@@ -150,6 +181,10 @@ export function mergeRows(
             // view of this object, and the mod's config does not contain it.
             native: prior?.native,
             entry: e,
+            // The entry's own flag wins over a prior game's: if the mod says
+            // hidden, the merged row is hidden, because the merged row is the
+            // mod's object as far as editing is concerned.
+            hidden: hiddenField ? e[hiddenField] === true : false,
         });
     }
 
@@ -206,14 +241,37 @@ export function filterRows(
     text: string,
     searchText?: (row: ListRow) => string,
     owner: OwnerKey | "all" = "all",
+    /** Show rows that are deliberately out of normal use. Off by default. */
+    showHidden = false,
 ): ListRow[] {
     const q = text.trim().toLowerCase();
     return rows.filter((row) => {
+        if (!showHidden && row.hidden) return false;
         if (owner !== "all" && ownerOf(row) !== owner) return false;
         if (!q) return true;
         const hay = `${row.id} ${row.label}${searchText ? ` ${searchText(row)}` : ""}`;
         return hay.toLowerCase().includes(q);
     });
+}
+
+/**
+ * How many rows are hidden, for the checkbox's label.
+ *
+ * Counted over the *owner-filtered* rows, not all of them: the box reveals what
+ * the current view is holding back, and a number that included other mods'
+ * hidden rows would not match what ticking it does.
+ */
+export function countHiddenRows(
+    rows: ListRow[],
+    owner: OwnerKey | "all" = "all",
+): number {
+    let n = 0;
+    for (const r of rows) {
+        if (!r.hidden) continue;
+        if (owner !== "all" && ownerOf(r) !== owner) continue;
+        n++;
+    }
+    return n;
 }
 
 /** How many rows each origin has, for the filter chips. */

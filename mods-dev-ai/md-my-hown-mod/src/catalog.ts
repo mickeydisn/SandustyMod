@@ -31,6 +31,17 @@ export type Opt = {
     label: string;
     color?: string;
     source?: "game" | "mod";
+    /**
+     * The object is deliberately kept out of normal use: an element the author
+     * marked `hidden`, a structure marked `hideFromBuildMenu`.
+     *
+     * **Set, not filtered.** A picker that simply omits these cannot tell the
+     * difference between "this mod has no such object" and "there are three and
+     * they are hidden", so the user cannot find the one they know exists. The
+     * selector hides these rows behind a checkbox instead — see
+     * `ui/panel/component/selector/`.
+     */
+    hidden?: boolean;
 };
 
 function sk(): any {
@@ -133,6 +144,9 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
         if (!id) continue;
         if (def?.hidden === true) {
             hidden.add(String(id));
+            // Only the *legacy* caller opts out. By default the row is carried
+            // with `hidden: true` so the selector can offer it behind a checkbox —
+            // see the note on `Opt.hidden`.
             if (!includeHidden) continue;
         }
         const name = def?.name ?? safe(() => api.elements?.getNameByType?.(t)) ?? def?.nameKey ??
@@ -142,6 +156,8 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
             label: String(name),
             color: colorFromMeta(def?.metaColor),
             source: "game",
+            // Carried, not filtered: the selector decides whether to show these.
+            hidden: def?.hidden === true,
         });
     }
 
@@ -165,6 +181,9 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
             label: `${el.name || el.id} (this mod)`,
             source: "mod",
             color: typeof el.metaColor === "string" ? el.metaColor : colorFromMeta(el.metaColor),
+            // The mod's own `hidden` flag, so a hidden element the user just made
+            // is filtered by the same rule as one the game ships.
+            hidden: el.hidden === true,
         });
     }
 
@@ -264,6 +283,10 @@ export function listStructures(): Opt[] {
                     value: t,
                     label: String(def?.name ?? def?.nameKey ?? t),
                     source: "game",
+                    // `hideFromBuildMenu` is the structure equivalent of an
+                    // element's `hidden`. The engine reads it off the mod registry,
+                    // so it comes back on the definition. Carried, not filtered.
+                    hidden: def?.hideFromBuildMenu === true,
                 });
                 continue;
             }
@@ -273,7 +296,12 @@ export function listStructures(): Opt[] {
                 safe(() => api.structures?.getTypeName?.(t)) ??
                 String(t);
             const name = def?.name ?? def?.nameKey ?? id;
-            map.set(String(id), { value: String(id), label: String(name), source: "game" });
+            map.set(String(id), {
+                value: String(id),
+                label: String(name),
+                source: "game",
+                hidden: def?.hideFromBuildMenu === true,
+            });
         }
     }
 
@@ -293,6 +321,8 @@ export function listStructures(): Opt[] {
                 value: st.id,
                 label: `${st.name || st.id} (this mod)`,
                 source: "mod",
+                // Same flag, same rule as an element's `hidden`.
+                hidden: st.hideFromBuildMenu === true,
             });
         }
     }
@@ -1090,9 +1120,11 @@ function labelOf(v: unknown): string | undefined {
  * two cannot disagree about which elements exist. The difference is only the
  * shape: this keeps the raw definition, which is what the expanded row draws.
  *
- * Hidden elements are skipped. They are internal states (resolved pointers,
- * intermediates) rather than content, and the per-field picker can still ask for
- * them explicitly with `includeHidden`.
+ * Hidden elements are **carried, not skipped**. They are internal states
+ * (resolved pointers, intermediates) rather than content, and the list screen
+ * filters them behind a checkbox — see the note on `ListRow.hidden`. Skipping
+ * them here would make "this mod has no elements" and "all three are hidden"
+ * look identical, and the object the user knows exists would be unfindable.
  */
 export function discoverElements(): NativeObject[] {
     const out = new Map<string, NativeObject>();
@@ -1103,12 +1135,12 @@ export function discoverElements(): NativeObject[] {
             | undefined;
         const id = labelOf(def?.id) ?? String(safe(() => api.elements?.getIdByType?.(t)) ?? "");
         if (!id) continue;
-        if (def?.hidden === true) continue;
         putNative(out, id, {
             label: labelOf(def?.name) ??
                 String(safe(() => api.elements?.getNameByType?.(t)) ?? "") ??
                 labelOf(def?.nameKey) ?? id,
             color: colorFromMeta(def?.metaColor),
+            hidden: def?.hidden === true,
             native: def,
         });
     }
@@ -1207,7 +1239,6 @@ export function discoverStructures(): NativeObject[] {
 export function discoverSprites(): NativeObject[] {
     return listSpriteIds().map((o) => ({ id: o.value, origin: "game" as const, label: o.label }));
 }
-
 
 /** Hook-modifier handlers, from CODE_HANDLERS (used by the modifiers tab). */
 export function listHandlerKeys(): Opt[] {

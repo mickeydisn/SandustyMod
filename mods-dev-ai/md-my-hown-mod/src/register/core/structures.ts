@@ -16,11 +16,11 @@
  * that is registered but not unlocked is a control that does nothing — the exact
  * failure `alwaysUnlocked` already turned out to be.
  */
-import { LOG, type ModConfig, type StructureConfig } from "../constants.ts";
-import { loadConfig } from "../config/store.ts";
-import { api } from "../packages/mysandkit.ts";
-import { isAlwaysUnlocked } from "../ui/tech-link.ts";
-import { mayRegister, registered } from "./registry.ts";
+import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
+import { loadConfig } from "../../config/store.ts";
+import { api } from "../../packages/mysandkit.ts";
+import { isAlwaysUnlocked } from "../../ui/tech-link.ts";
+import { mayRegister, registered } from "../registry.ts";
 
 /**
  * The built-in `draw` functions, keyed as they are in the config.

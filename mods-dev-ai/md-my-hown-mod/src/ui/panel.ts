@@ -92,6 +92,7 @@ import {
 import { definitionFor } from "./definition/index.ts";
 import {
     countByOwner,
+    countHiddenRows,
     filterRows,
     mergeRows,
     originTag,
@@ -100,6 +101,12 @@ import {
     ownersOf,
     renderListRow,
 } from "./panel/list.ts";
+import {
+    isContentField,
+    renderSelector,
+    selectorKey,
+    type SelectorState,
+} from "./panel/component/selector/selector.ts";
 import { renderActionList } from "./action-list-control.ts";
 import { renderProjectileOption } from "./projectile-option-control.ts";
 import { listFor } from "./panel/index.ts";
@@ -264,6 +271,20 @@ export function createPanelComponent(defaultMinimized = true) {
          * of state for one choice is a way for the chips to disagree.
          */
         const [listOwner, setListOwner] = useState<OwnerKey | "all">("all");
+        /**
+         * Show the objects that are deliberately out of normal use: an element
+         * marked `hidden`, a structure marked `hideFromBuildMenu`.
+         *
+         * Off by default, and the same rule the content selector applies, so a
+         * user is not told an element is hidden in one screen and offered it as
+         * ordinary in another.
+         *
+         * Cleared on a category change (below, with `listOwner`'s neighbours) —
+         * the flag is the same for elements and structures but the *rows* are
+         * not, so carrying "show hidden" into Items would offer a box that can
+         * only ever reveal nothing.
+         */
+        const [listHidden, setListHidden] = useState(false);
         /** Which row has its detail open. One at a time — two open is noise. */
         const [openRow, setOpenRow] = useState<string | null>(null);
         /**
@@ -275,6 +296,23 @@ export function createPanelComponent(defaultMinimized = true) {
          * list is real before you spend a click finding out.
          */
         const [nativeOpen, setNativeOpen] = useState<Record<string, boolean>>({});
+        /**
+         * Per-field state for the content selector: is the menu open, which
+         * owner bucket, what the search box says.
+         *
+         * Held here, and not in a `useState` inside `renderSelector`, because
+         * **that crashes the panel** — React #310, "Rendered more hooks than
+         * during the previous render". Every control here is a plain function
+         * called inside `sec.fields.map(...)`, not a component React mounts, so a
+         * hook in one registers against the *panel's* hook slots. A form's field
+         * list changes with the tab and with each field's `when`, so the hook
+         * count changes between renders and React throws. `nativeOpen` above is
+         * the same idea for the same reason.
+         *
+         * Keyed by field *and* entry id, so a given field's menu is its own and
+         * opening one entry's picker does not open the next one's.
+         */
+        const [selectorState, setSelectorState] = useState<Record<string, SelectorState>>({});
         /**
          * Which kind the Graph screen is narrowed to.
          *
@@ -443,6 +481,7 @@ export function createPanelComponent(defaultMinimized = true) {
             setHandlerTab(clean.handlerTab);
             setListQuery(clean.listQuery);
             setListOwner(clean.listOwner as OwnerKey | "all");
+            setListHidden(clean.listHidden);
             setOpenRow(clean.openRow);
         }, []);
 
@@ -768,22 +807,70 @@ export function createPanelComponent(defaultMinimized = true) {
             }
             if (control === null && f.kind === "select") {
                 const opts = resolveOptions(f, form);
-                const placeholder = f.required ? "— select —" : "— none —";
-                control = h(
-                    "select",
-                    {
-                        style: { ...inputStyle, cursor: "pointer" },
+                if (isContentField(f.options)) {
+                    // A content reference: the shared selector, with a swatch, a
+                    // search box, and a mod filter that defaults to this mod's own
+                    // objects. The native `<select>` below stays for the fixed
+                    // enums ("conductor"/"storage"), where none of that applies.
+                    control = renderSelector({
+                        react: { h },
                         value: val,
-                        disabled: locked,
-                        onChange: (e: { target: { value: string } }) => set(e.target.value),
-                    },
-                    h("option", { value: "" }, placeholder),
-                    ...opts.map((o) => h("option", { key: o.value, value: o.value }, o.label)),
-                );
+                        options: opts,
+                        multiple: false,
+                        locked,
+                        emptyHint: f.emptyHint,
+                        placeholder: f.required ? "— select —" : "— none —",
+                        onChange: set,
+                        state: selectorState[selectorKey(f.key, editingId)],
+                        onState: (patch) =>
+                            setSelectorState((prev) => ({
+                                ...prev,
+                                [selectorKey(f.key, editingId)]: {
+                                    ...prev[selectorKey(f.key, editingId)],
+                                    ...patch,
+                                },
+                            })),
+                    });
+                } else {
+                    control = h(
+                        "select",
+                        {
+                            style: { ...inputStyle, cursor: "pointer" },
+                            value: val,
+                            disabled: locked,
+                            onChange: (e: { target: { value: string } }) => set(e.target.value),
+                        },
+                        h("option", { value: "" }, f.required ? "— select —" : "— none —"),
+                        ...opts.map((o) => h("option", { key: o.value, value: o.value }, o.label)),
+                    );
+                }
             } else if (control === null && f.kind === "multiselect") {
                 const opts = resolveOptions(f, form);
                 const chosen = parseIdList(val);
-                if (opts.length === 0) {
+                if (isContentField(f.options)) {
+                    // The same selector, in its multiple form. Same widget, same
+                    // filters, same swatches — only the commit differs, and that is
+                    // the caller's `formatIdList` rather than a branch here.
+                    control = renderSelector({
+                        react: { h },
+                        value: val,
+                        options: opts,
+                        multiple: true,
+                        locked,
+                        emptyHint: f.emptyHint,
+                        placeholder: "— none —",
+                        onChange: set,
+                        state: selectorState[selectorKey(f.key, editingId)],
+                        onState: (patch) =>
+                            setSelectorState((prev) => ({
+                                ...prev,
+                                [selectorKey(f.key, editingId)]: {
+                                    ...prev[selectorKey(f.key, editingId)],
+                                    ...patch,
+                                },
+                            })),
+                    });
+                } else if (opts.length === 0) {
                     // No free-text fallback, on purpose.
                     //
                     // An empty option list means the thing being referenced does
@@ -996,10 +1083,19 @@ export function createPanelComponent(defaultMinimized = true) {
             // already has of this kind. An object with no host registry (a recipe,
             // a trigger) contributes no game rows — that is a fact about the API,
             // not an empty section to apologise for.
-            const rows = mergeRows(entriesOf(cfg, cat), listSpec?.discover?.() ?? []);
-            const shown = filterRows(rows, listQuery, listSpec?.searchText, listOwner);
+            const rows = mergeRows(entriesOf(cfg, cat), listSpec?.discover?.() ?? [], cat);
+            const shown = filterRows(
+                rows,
+                listQuery,
+                listSpec?.searchText,
+                listOwner,
+                listHidden,
+            );
             const ownerCounts = countByOwner(rows);
             const owners = ownersOf(rows);
+            // Counted under the current owner filter, so the number on the box is
+            // what ticking it would actually add.
+            const hiddenHere = countHiddenRows(rows, listOwner);
 
             const ownerChip = (key: OwnerKey, n: number) =>
                 h(
@@ -1027,6 +1123,36 @@ export function createPanelComponent(defaultMinimized = true) {
                     },
                     ownerLabel(key),
                     h("span", { style: S.chipCount }, String(n)),
+                );
+
+            // The hidden-objects tick. One definition, rendered in whichever of the
+            // two filter bars is showing: it is a third filter on this list, not a
+            // mode of its own, and it must not be dropped just because there is
+            // only one owner to filter by.
+            const hiddenToggle = () =>
+                h(
+                    "label",
+                    {
+                        key: "list-hidden",
+                        style: {
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 11,
+                            color: "#cfe0ff",
+                            cursor: "pointer",
+                            marginLeft: "auto",
+                        },
+                        title: `Include ${hiddenHere} marked hidden or kept out of the build menu`,
+                    },
+                    h("input", {
+                        type: "checkbox",
+                        checked: listHidden,
+                        style: { margin: 0 },
+                        onChange: (e: { target: { checked: boolean } }) =>
+                            setListHidden(e.target.checked),
+                    }),
+                    `hidden (${hiddenHere})`,
                 );
 
             return h(
@@ -1083,7 +1209,10 @@ export function createPanelComponent(defaultMinimized = true) {
                                 "✕ clear",
                             )
                             : null,
+                        hiddenHere ? hiddenToggle() : null,
                     )
+                    : hiddenHere
+                    ? h("div", { style: S.listFilterBar }, hiddenToggle())
                     : null,
                 shown.length === 0
                     ? h(

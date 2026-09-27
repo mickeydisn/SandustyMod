@@ -31,6 +31,15 @@ export interface VolatileViewState {
     listQuery: string;
     /** The list screen's per-mod filter — the only source filter it has. */
     listOwner: string;
+    /**
+     * The list screen's "show objects kept out of normal use" tick: an element
+     * marked `hidden`, a structure marked `hideFromBuildMenu`.
+     *
+     * Reset with the rest of the list state because it describes *this* screen's
+     * filters. Carried into Items or Terrains it would be a box that can only
+     * ever reveal nothing — those categories have no such flag.
+     */
+    listHidden: boolean;
     /** The list row whose detail is open. */
     openRow: string | null;
 }
@@ -51,6 +60,7 @@ export const VOLATILE_KEYS = [
     "handlerTab",
     "listQuery",
     "listOwner",
+    "listHidden",
     "openRow",
 ] as const satisfies readonly (keyof VolatileViewState)[];
 
@@ -67,6 +77,7 @@ export function emptyViewState(): VolatileViewState {
         handlerTab: initialHandlersState(),
         listQuery: "",
         listOwner: "all",
+        listHidden: false,
         openRow: null,
     };
 }

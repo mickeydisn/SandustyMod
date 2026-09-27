@@ -150,6 +150,27 @@ function controlOf(key: string): { tag: string; type?: string } | undefined {
     return control ? { tag: control.tag, type: control.props?.type as string } : undefined;
 }
 
+/**
+ * True when a field rendered *a picker*, without insisting on the tag.
+ *
+ * A content reference now renders the shared selector, which is a `div` holding a
+ * `button` rather than a bare `<select>`. The distinction that matters for these
+ * tests is "the user got a choice they can open" versus "a text box appeared
+ * because the dispatch chain dropped the field on the floor" — which is the bug
+ * this whole file exists to catch. Asserting `tag === "select"` would now fail on
+ * a *correct* control, so a test guarding a real regression would be turned off
+ * by an unrelated improvement. The inner tag is checked instead, so a `div` with
+ * no button in it still fails.
+ */
+function isPicker(key: string): boolean {
+    const cell = nodes.find((n) => n.props && n.props.key === key);
+    const control = cell?.children?.[1] as Node | undefined;
+    if (!control) return false;
+    if (control.tag === "select") return true;
+    if (control.tag !== "div") return false;
+    return (control.children ?? []).some((c) => (c as Node)?.tag === "button");
+}
+
 // ── the guard ────────────────────────────────────────────────────────────────
 
 Deno.test("a definition's shape widget is not overwritten by the generic chain", () => {
@@ -203,7 +224,7 @@ Deno.test("a definition with no widget of its own still renders every control", 
     renderFormFor("items", CFG.items[0], "i1");
     assertEquals(controlOf("itemType")?.tag, "select", "itemType is not a dropdown");
     assertEquals(controlOf("cooldownMs")?.tag, "input", "cooldownMs is not a number box");
-    assertEquals(controlOf("spriteId")?.tag, "select", "spriteId is not a dropdown");
+    assert(isPicker("spriteId"), "spriteId is not a picker");
     assertEquals(controlOf("spriteType")?.tag, "select", "spriteType is not a dropdown");
     assertEquals(controlOf("excavationProfileId")?.tag, "select");
     // The passthrough box is deliberately *conditional* — it appears only when it
@@ -348,7 +369,7 @@ Deno.test("a projectile's static options hide behind its option", () => {
     // process list, and before that on `getOptionsKey`.
     renderFormFor("projectiles", CFG.projectiles[0], "p1");
     assert(controlOf("optionsJson"), "the static options box is missing");
-    assertEquals(controlOf("spriteId")?.tag, "select");
+    assert(isPicker("spriteId"), "spriteId is not a picker");
 
     hooks[5] = { ...hooks[5], optionKey: "projectileHeavy" };
     hookIdx = 0;
@@ -383,6 +404,6 @@ Deno.test("a signal renders its two dropdowns and no third handler dropdown", ()
     // installs one.
     renderFormFor("signals", { id: "s2", kind: "targets" }, "s2");
     assertEquals(controlOf("kind")?.tag, "select");
-    assertEquals(controlOf("target")?.tag, "select");
+    assert(isPicker("target"), "target is not a picker");
     assertEquals(controlOf("handlerKey"), undefined, "the single handler control is gone");
 });

@@ -2001,7 +2001,6 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
     );
 }
 
-
 console.log("── handler registry is documented and API-verified ──");
 {
     const {

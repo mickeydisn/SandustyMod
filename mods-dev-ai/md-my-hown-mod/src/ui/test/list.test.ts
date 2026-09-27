@@ -22,7 +22,9 @@ import { assert, assertEquals } from "jsr:@std/assert";
 import {
     countByOrigin,
     countByOwner,
+    countHiddenRows,
     filterRows,
+    hiddenFieldOf,
     mergeRows,
     modOf,
     ownerLabel,
@@ -31,7 +33,7 @@ import {
     renderListRow,
 } from "../panel/list.ts";
 import { row, rowDetails, rowSummary } from "../styles.ts";
-import type { ListRenderCtx } from "../definition/types.ts";
+import type { ListRenderCtx, ListRow } from "../definition/types.ts";
 
 // ── Merging ──────────────────────────────────────────────────────────────────
 
@@ -325,15 +327,84 @@ Deno.test("the list has one source filter, not two", () => {
     // Matched one-per-line, because a flat `\w+:` also picks up the `row:` inside
     // the `searchText` function *type* and would report a fifth parameter that
     // does not exist.
+    // The parameter *name* is the thing that must not return. The list has since
+    // grown a fifth — `showHidden` — which is not a second *source* filter (it
+    // does not ask who owns the row) but an independent third axis: it says
+    // whether the object is one you are meant to use at all. So the assertion is
+    // that no `origin` returned, and that the parameters are exactly the known
+    // set, rather than the old four verbatim.
     const src = Deno.readTextFileSync(new URL("../panel/list.ts", import.meta.url).pathname);
     assert(!/export type OriginFilter/.test(src), "the OriginFilter type came back");
     assert(!/origin: OriginFilter/.test(src), "filterRows takes an origin again");
     const params = /export function filterRows\(([\s\S]*?)\n\):/.exec(src)?.[1] ?? "";
     assertEquals(
-        params.split("\n").map((l) => l.trim().split(/[?:]/)[0]).filter(Boolean),
-        ["rows", "text", "searchText", "owner"],
+        // Comment lines are dropped: a doc comment above a parameter parses as
+        // `/** … */` and would read as an extra argument named "Show".
+        params
+            .split("\n")
+            .filter((l) => !l.trim().startsWith("/"))
+            // `owner: … = "all"` and `showHidden = false` keep their default; the
+            // name is the part under test, so the value is cut at the `=`.
+            .map((l) => l.trim().split(/[?:=]/)[0].trim())
+            .filter(Boolean),
+        ["rows", "text", "searchText", "owner", "showHidden"],
         "filterRows' parameters changed",
     );
+});
+
+Deno.test("the hidden filter is independent of the owner filter", () => {
+    // A row that is both another mod's *and* hidden needs one rule, not two: it
+    // is revealed by the hidden tick alone, and still filtered out by "This mod".
+    // The reverse error — treating hidden as an owner — is what the two-parameter
+    // shape above exists to prevent.
+    const rows: ListRow[] = [
+        { id: "a", label: "A", origin: "mod" },
+        { id: "b", label: "B", origin: "mod", hidden: true },
+        { id: "c", label: "C", origin: "game", hidden: true },
+    ];
+    assertEquals(filterRows(rows, "", undefined, "all", false).map((r) => r.id), ["a"]);
+    assertEquals(filterRows(rows, "", undefined, "all", true).map((r) => r.id), ["a", "b", "c"]);
+    assertEquals(filterRows(rows, "", undefined, "own", true).map((r) => r.id), ["a", "b"]);
+    assertEquals(countHiddenRows(rows, "own"), 1);
+    assertEquals(countHiddenRows(rows, "all"), 2);
+});
+
+Deno.test("a category with no hidden flag has no hidden rows", () => {
+    // The gate that decides this, and why terrains and items simply do not offer
+    // the box: `isBuilding` means "counts as a built wall", not "kept out of the
+    // build menu", and an item has no visibility flag at all.
+    assertEquals(hiddenFieldOf("elements"), "hidden");
+    assertEquals(hiddenFieldOf("structures"), "hideFromBuildMenu");
+    assertEquals(hiddenFieldOf("terrains"), undefined);
+    assertEquals(hiddenFieldOf("items"), undefined);
+
+    const rows = mergeRows(
+        [{ id: "t1", isBuilding: true }],
+        [],
+        "terrains",
+    );
+    assertEquals(rows[0].hidden, false);
+});
+
+Deno.test("mergeRows reads the hidden flag from the entry that owns it", () => {
+    const elements = mergeRows(
+        [{ id: "e1", name: "Ores", hidden: true }, { id: "e2", name: "Sand" }],
+        [{ id: "e1", label: "Ores" }],
+        "elements",
+    );
+    const byId = Object.fromEntries(elements.map((r) => [r.id, r]));
+    assertEquals(byId.e1.hidden, true);
+    assertEquals(byId.e2.hidden, false);
+
+    // A structure's flag is named differently but means the same thing.
+    const structures = mergeRows(
+        [{ id: "s1", hideFromBuildMenu: true }, { id: "s2" }],
+        [],
+        "structures",
+    );
+    const sById = Object.fromEntries(structures.map((r) => [r.id, r]));
+    assertEquals(sById.s1.hidden, true);
+    assertEquals(sById.s2.hidden, false);
 });
 
 Deno.test("the owner filter still answers what the origin filter used to", () => {

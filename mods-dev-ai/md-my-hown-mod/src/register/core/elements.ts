@@ -10,13 +10,13 @@
  * then never move. Nothing throws, and nothing is logged by the engine, so
  * `registerElements` logs the resolved value on every registration.
  */
-import { LOG, type ModConfig } from "../constants.ts";
-import { loadConfig } from "../config/store.ts";
-import { api, normalizeElementPatch } from "../packages/mysandkit.ts";
-import { isBootWindowOpen, registered } from "./registry.ts";
+import { LOG, type ModConfig } from "../../constants.ts";
+import { loadConfig } from "../../config/store.ts";
+import { api, normalizeElementPatch } from "../../packages/mysandkit.ts";
+import { isBootWindowOpen, registered } from "../registry.ts";
 
-export { closeBootWindow } from "./registry.ts";
-export { __resetBootWindowForTests } from "./registry.ts";
+export { closeBootWindow } from "../registry.ts";
+export { __resetBootWindowForTests } from "../registry.ts";
 
 /**
  * Register every element in `cfg` (default: the stored config).

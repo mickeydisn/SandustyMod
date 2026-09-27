@@ -367,6 +367,22 @@ export interface ListRow {
      * the answer to "what is this, actually" that a bare id cannot give.
      */
     native?: Record<string, unknown>;
+    /**
+     * The object is deliberately kept out of normal use: an element marked
+     * `hidden`, a structure marked `hideFromBuildMenu`.
+     *
+     * **Carried, not filtered.** A list that simply omits these cannot say
+     * whether a category is empty or merely all-hidden, and the object the user
+     * knows exists becomes unfindable. The list screen filters them behind a
+     * checkbox instead — the same rule the content selector uses, so the two
+     * never disagree about what "hidden" means.
+     *
+     * Only two categories have such a flag. Terrain's `isBuilding` means
+     * something else entirely (this cell counts as a built wall), and an item
+     * has no equivalent — so for those the field is simply always false, and the
+     * checkbox does not appear rather than appearing with a permanent zero.
+     */
+    hidden?: boolean;
 }
 
 /**

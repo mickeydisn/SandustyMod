@@ -29,8 +29,9 @@ import {
     registerUpgrade,
     registerUpgradeCategory,
 } from "../packages/mysandkit.ts";
-import { registerItems } from "./items.ts";
+import { registerItems } from "./core/items.ts";
 import { mayRegister, registered } from "./registry.ts";
+import { joinedNetworkNames, reportEnergyNetworks } from "./custom/energy-network.ts";
 import { engineTechOf, techUnlockStructureIds } from "../ui/tech-link.ts";
 import { actionRefsOf, applyAllModifiers, compileProcess } from "../hooks/index.ts";
 import {
@@ -178,6 +179,10 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         registered.energyTypes.add(e.id);
         counts.energyTypes = (counts.energyTypes ?? 0) + 1;
     }
+    // The one place a network name becomes something the engine acts on, so it is
+    // also the only place the set of *joined* networks can be read off the config.
+    reportEnergyNetworks(config, joinedNetworkNames(config));
+
     for (const e of config.excavationProfiles ?? []) {
         if (!e?.id || registered.excavationProfiles.has(e.id)) continue;
         registerExcavationProfile(e);

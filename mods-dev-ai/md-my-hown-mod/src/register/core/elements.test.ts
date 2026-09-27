@@ -49,8 +49,14 @@ const MatterType: Record<string, string | number> = {};
 
 /** The worker's matter table, keyed by the numbers 1..8 — nothing else. */
 const WORKER_MATTER: Record<number, string> = {
-    1: "solid", 2: "liquid", 3: "particle", 4: "gas",
-    5: "static", 6: "slushy", 7: "wisp", 8: "powder",
+    1: "solid",
+    2: "liquid",
+    3: "particle",
+    4: "gas",
+    5: "static",
+    6: "slushy",
+    7: "wisp",
+    8: "powder",
 };
 
 /** What the worker would assign for a definition's `matterType`. */
@@ -95,7 +101,7 @@ const {
     closeBootWindow,
     __resetBootWindowForTests,
 } = await import("./elements.ts");
-const { registered, isBootWindowOpen, mayRegister } = await import("./registry.ts");
+const { registered, isBootWindowOpen, mayRegister } = await import("../registry.ts");
 
 /** An element entry shaped like the ones the panel stores. */
 const el = (id: string) => ({
@@ -124,18 +130,20 @@ Deno.test("every spelling of a matter type reaches the worker as a number", () =
     // The worker's matter table is keyed `1..8`, so it matched nothing, no update
     // function was assigned, and the element stood completely still while looking
     // entirely normal: right colour, in the picker, just inert.
-    for (const [stored, expected] of [
-        ["powder", 8],
-        ["Powder", 8],
-        ["POWDER", 8],
-        ["8", 8],
-        [8, 8],
-        ["liquid", 2],
-        ["2", 2],
-        [2, 2],
-        ["Solid", 1],
-        [5, 5],
-    ] as const) {
+    for (
+        const [stored, expected] of [
+            ["powder", 8],
+            ["Powder", 8],
+            ["POWDER", 8],
+            ["8", 8],
+            [8, 8],
+            ["liquid", 2],
+            ["2", 2],
+            [2, 2],
+            ["Solid", 1],
+            [5, 5],
+        ] as const
+    ) {
         fresh();
         registerElements({
             elements: [{ ...el("m"), matterType: stored }],

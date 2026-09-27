@@ -54,8 +54,8 @@ globalThis.sandkit = {
     },
 };
 
-const registry = await import("./registry.ts");
-const { registerAll } = await import("./index.ts");
+const registry = await import("../registry.ts");
+const { registerAll } = await import("../index.ts");
 
 function fresh(): void {
     for (const s of Object.values(registry.registered)) s.clear();

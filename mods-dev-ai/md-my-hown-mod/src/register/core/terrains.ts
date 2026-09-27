@@ -8,10 +8,10 @@
  * `registered` map — a missing key returns `undefined` and silently skips the
  * double-registration guard, which is the crash.
  */
-import type { ModConfig } from "../constants.ts";
-import { loadConfig } from "../config/store.ts";
-import { registerTerrain } from "../packages/mysandkit.ts";
-import { mayRegister, registered } from "./registry.ts";
+import type { ModConfig } from "../../constants.ts";
+import { loadConfig } from "../../config/store.ts";
+import { registerTerrain } from "../../packages/mysandkit.ts";
+import { mayRegister, registered } from "../registry.ts";
 
 /**
  * Register every terrain in `cfg`.

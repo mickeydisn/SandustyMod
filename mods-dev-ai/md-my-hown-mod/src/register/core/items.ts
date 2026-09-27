@@ -7,10 +7,10 @@
  * registered at boot is genuinely live. That is invisible at a call site, which
  * is why it is written down here.
  */
-import type { ModConfig } from "../constants.ts";
-import { loadConfig } from "../config/store.ts";
-import { api } from "../packages/mysandkit.ts";
-import { mayRegister, registered } from "./registry.ts";
+import type { ModConfig } from "../../constants.ts";
+import { loadConfig } from "../../config/store.ts";
+import { api } from "../../packages/mysandkit.ts";
+import { mayRegister, registered } from "../registry.ts";
 
 /**
  * Register every item in `cfg`.

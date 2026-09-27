@@ -10,12 +10,35 @@
  *
  * It closes the boot window itself, so no caller can forget to, and a second
  * call is a no-op rather than the re-registration crash.
+ *
+ * ## Two kinds of stored entry
+ *
+ * The directory is split because the categories in it are not the same kind of
+ * thing, and the difference decides what a missing registration *means*.
+ *
+ *   - **`core/`** — real engine objects. Each one ends in a `register*` call, and
+ *     each one is missed by the engine if this code does not run. Elements,
+ *     structures, terrains, items, and everything in `the-rest.ts` that the
+ *     engine has an API for.
+ *
+ *   - **`custom/`** — mod-owned. Real tabs, real ids, real config, and the engine
+ *     never receives them. Nothing here is *missing* from the engine, because
+ *     there is nothing there to miss. A loop that tried to register one would be
+ *     inventing an API call that does not exist.
+ *
+ * `energyNetworks` is the clearest case, and the reason this split exists. A scan
+ * of the engine bundle finds no `registerNetwork` and no `"power"` / `"network"`
+ * string literal: the engine resolves a network by flood-filling connected tiles
+ * from a coordinate. So a network name is a vocabulary this mod owns, not a
+ * declaration the engine holds — see `custom/energy-network.ts` for the full
+ * argument and what is reported at boot.
  */
+
 import { LOG, type ModConfig } from "../constants.ts";
 import { loadConfig } from "../config/store.ts";
-import { registerElements } from "./elements.ts";
-import { registerStructures } from "./structures.ts";
-import { registerTerrains } from "./terrains.ts";
+import { registerElements } from "./core/elements.ts";
+import { registerStructures } from "./core/structures.ts";
+import { registerTerrains } from "./core/terrains.ts";
 import { registerTheRest } from "./the-rest.ts";
 import { closeBootWindow } from "./registry.ts";
 
