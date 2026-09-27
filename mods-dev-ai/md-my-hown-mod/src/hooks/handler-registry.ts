@@ -35,9 +35,9 @@ export type HandlerType =
  * There is **no `projectile` slot**, and its absence is the point of the
  * projectile-option split. A projectile is not a process and runs no action: the
  * engine calls `getOptions()` with no arguments and reads the returned config. The
- * seven presets that used to be listed here are `ProjectileOptionFn`s now, in
- * `./projectile-option/`, and they are chosen from a different control. Adding the
- * slot back would reintroduce exactly the confusion this type exists to prevent.
+ * seven presets are `ProjectileOptionFn`s in `./projectile-option/`, chosen from a
+ * different control. Adding the slot back would reintroduce exactly the confusion
+ * this type exists to prevent.
  */
 export type HandlerSlot =
     | "signal"
@@ -377,11 +377,11 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         scope: "structure",
         params: [],
     },
-    // `processing` only. This used to also list `trigger`, but it reads
-    // `structure.x`/`structure.y` to locate the energy network, and a trigger
-    // hands its callback no arguments at all — so on that slot it returned before
-    // touching the API. The `trigger` entry was the same silent-nothing bug
-    // `triggerScan` had, in a different family.
+    // `processing` only — not `trigger`. It reads `structure.x`/`structure.y` to
+    // locate the energy network, and a trigger hands its callback no arguments at
+    // all — so on that slot it returned before touching the API. The `trigger`
+    // entry was the same silent-nothing bug `triggerScan` had, in a different
+    // family.
     {
         key: "energyGenerateWhileHeld",
         type: "processor",
@@ -406,15 +406,14 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         ],
     },
     // ── projectile ───────────────────────────────────────────────────────────
-    // **No rows.** The seven projectile presets are no longer actions. They are
+    // **No rows.** The seven projectile presets are not actions. They are
     // `ProjectileOptionFn`s in `./projectile-option/registry.ts`, browsed by the
     // Handlers tab's ProjectileOption panel and compiled by `compileProjectile`.
     //
-    // They used to sit here with `slots: ["projectile"]` and empty `params`, which
-    // was three bugs in one declaration: they resolved to nothing once they were
-    // typed correctly, a projectile could hold a *list* of them, and there was
-    // nowhere to put a parameter. The `projectile` HandlerSlot is gone for the
-    // same reason — no action can run on that call site.
+    // They resolved to nothing once typed correctly, a projectile could hold a
+    // *list* of them, and there was nowhere to put a parameter. The `projectile`
+    // HandlerSlot is gone for the same reason — no action can run on that call
+    // site.
 
     // ── tech ─────────────────────────────────────────────────────────────────
     {
@@ -720,10 +719,9 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
         const list = cfg[cfgKey];
         if (!Array.isArray(list)) continue;
         for (const e of list as Record<string, unknown>[]) {
-            // `actionRefsOf` now reads `actions` **and** every pre-split single-key
-            // name — `handlerKey`, `getOptionsKey`, `onUpgradeKey`. This function
-            // used to have a fallback for projectile's `getOptionsKey` alongside
-            // it, which double-counted that one slot. One reader, no fallback.
+            // `actionRefsOf` reads `actions` **and** every pre-split single-key
+            // name — `handlerKey`, `getOptionsKey`, `onUpgradeKey`. One reader, so
+            // there is no second path that could double-count a slot.
             for (const key of actionRefsOf(e as Record<string, unknown>).map((r) => r.key)) {
                 out.push({ category: cfgKey, id: String(e.id ?? "?"), slot, key });
             }

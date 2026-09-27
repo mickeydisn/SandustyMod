@@ -12,9 +12,8 @@
  *
  * ## The parameters are new capability
  *
- * The seven presets used to be bare keys with nowhere to put a value, so the only
- * way to get a faster shot was to add an eighth preset. Each now takes numbers and
- * booleans, and `projectileOptionParams` derives the list **by calling the option** —
+ * The seven presets take numbers and booleans, and `projectileOptionParams`
+ * derives the list **by calling the option** —
  * so a field added to a preset appears here automatically. A hand-kept table beside
  * the registry would drift, and the drift would be silent: the parameter would be
  * offered, typed in, and then discarded by `withParams`.

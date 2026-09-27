@@ -30,9 +30,9 @@
  *
  * ## The one slot that is *not* a process
  *
- * `projectile.getOptions()` used to appear in that table and in `CallSite`. It is
- * gone from both, because it is a different kind of call: the engine passes it
- * nothing and **reads its return** as the projectile's configuration. Modelling it
+ * `projectile.getOptions()` is not in that table, and not in `CallSite`, because
+ * it is a different kind of call: the engine passes it nothing and **reads its
+ * return** as the projectile's configuration. Modelling it
  * as a process meant a projectile could hold a *list* of handlers whose returns
  * were merged field-by-field into a configuration nobody designed. A projectile
  * now holds exactly one `ProjectileOption` — see `./projectile-option/`, which has
@@ -46,11 +46,10 @@
  * ## How the two meet
  *
  * `compileProcess` is the only place a process exists at runtime. Registration calls
- * it at the six effect slots, and the 15 `ANY_HANDLERS` that used to read their
- * options from argument 2 were re-signed to `(payload, ctx, options)` **in the
- * same change** — either half alone breaks the other, which is why they were
- * sequenced as one. `resolveAnyHandler` survives only for the catalog's benefit;
- * see the note on it.
+ * it at the six effect slots, and the 15 `ANY_HANDLERS` are re-signed
+ * `(payload, ctx, options)` alongside it — either half alone breaks the other,
+ * which is why they are sequenced as one. `resolveAnyHandler` survives only for the
+ * catalog's benefit; see the note on it.
  */
 import { ANY_HANDLERS, CODE_HANDLERS, PROCESS_HANDLERS } from "./handlers.ts";
 
@@ -60,8 +59,8 @@ import { ANY_HANDLERS, CODE_HANDLERS, PROCESS_HANDLERS } from "./handlers.ts";
  * The engine entry point that invokes a process. A process is grouped by this;
  * its actions are grouped by API. The two axes are independent on purpose.
  *
- * **`projectile` is not a call site.** It used to be listed here, which is what let
- * a projectile hold an ordered *list* of handlers whose returns were merged into
+ * **`projectile` is not a call site.** It is absent, and that is what stops a
+ * projectile holding an ordered *list* of handlers whose returns were merged into
  * one options object. `getOptions()` is called with no arguments and its return is
  * the configuration itself, so a projectile holds one `ProjectileOption` — see
  * `./projectile-option/`. Every site below is a genuine side-effect callback.
@@ -99,9 +98,9 @@ export const CALL_SITE_SIGNATURES: Record<CallSite, string> = {
 /**
  * Whether the engine reads what a process returns.
  *
- * **Every entry is now `false`, and that is the point.** The one `true` this table
- * used to hold — `projectile` — is the reason the flag exists at all, and it is
- * gone: `getOptions()` is no longer a call site, it takes a single
+ * **Every entry is `false`, and that is the point.** The flag exists so a site
+ * that *reads* a return can never be added without noticing: `getOptions()` is
+ * not a call site, it takes a single
  * `ProjectileOption` and returns the configuration directly (see
  * `./projectile-option/`). With no site left that reads a return, a process
  * composes actions purely for their side effects.
@@ -249,11 +248,10 @@ export function compileProcess(
  * that will eventually get it wrong, and the result would be a process that
  * silently vanishes.
  *
- * `getOptionsKey` used to be the third name here. It is **not** an action key any
- * more — a projectile holds one `ProjectileOption`, and that migration lives in
- * `./projectile-option/compile.ts`. Reading it as an action would have kept
- * `projectileHeavy` resolvable through `resolveAction` and quietly preserved the
- * exact conflation the split removes.
+ * `getOptionsKey` is **not** an action key — a projectile holds one
+ * `ProjectileOption`, and that lives in `./projectile-option/compile.ts`. Reading
+ * it as an action would have kept `projectileHeavy` resolvable through
+ * `resolveAction` and quietly preserved the conflation the split removes.
  */
 export const ACTIONS_LEGACY_KEYS = ["handlerKey", "onUpgradeKey"] as const;
 

@@ -267,9 +267,10 @@ const FIELDS: FieldSpec[] = [
     boolField("dirV", "Vertical", "Placement", "true"),
     boolField("dirD", "Diagonal", "Placement", "false"),
     shapeField(),
-    // The only menu-visibility lever left. `alwaysUnlocked` used to sit next to
-    // this and is gone: the engine reads it in exactly one place, iterating a
-    // the **unlock node**, which is not a flag but an entry the author names and
+    // The only menu-visibility lever left. `alwaysUnlocked` is gone: the engine
+    // reads it in exactly one place, iterating a `const` literal of the *vanilla*
+    // structures, which has no assignment site a mod id can enter. The **unlock
+    // node** is the lever instead — an entry the author names and
     // edits: an "always" node says the same thing, legibly and shared between
     // structures. This flag decides whether it is listed — which the build menu
     // does honour, reading `hideFromBuildMenu` off the mod registry as well
@@ -425,9 +426,8 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("linkedClearance", read.str(e.linkedClearance));
     read.put("categoryKey", read.str(e.categoryKey));
     read.put("order", read.num(e.order));
-    // The whole list round-trips. It used to collapse to `buildModes[0]` plus
-    // loose dirH/dirV/dirD booleans, which is what lost every mode after the
-    // first.
+    // The whole list round-trips. A single-mode form, plus loose dirH/dirV/dirD
+    // booleans, loses every mode after the first.
     const modes = (Array.isArray(e.buildModes) ? e.buildModes : []) as Record<
         string,
         unknown
@@ -656,10 +656,8 @@ function renderShape(ctx: FieldContext): unknown {
  *
  * The engine takes a **list** (`Array.isArray(e) && e.forEach(rt)`) and a
  * structure may have several: a line mode for dragging out a pipe run plus a
- * single mode for dropping one node. The form used to hold exactly one
- * (`buildModeType` + `spanTiles`), so a structure with two modes had the second
- * dropped on save — silently, leaving a structure that behaved in a way the form
- * never described.
+ * single mode for dropping one node. A single-mode form drops the rest on save —
+ * silently, leaving a structure that behaves in a way the form never describes.
  *
  * `spanTiles` is per-row because the engine validates it per mode and throws:
  * `rt` rejects `spanTiles` on any `type` other than `"line"`.

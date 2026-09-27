@@ -12,9 +12,10 @@
  *     `{ cellType, damage, outputElementType }` — a shape no textarea should
  *     ever ask a person to hand-write.
  *
- * The `terrainRules` widget used to be completely unreachable: the register
- * layer dropped `terrainRules` on the floor and the form had no field for it.
- * Both halves now live here, in the one file that has to be read to change
+ * The `terrainRules` widget and the field that carries it must both live in the
+ * same file. A register layer that drops `terrainRules` on the floor, with a form
+ * that has no field for it, makes the control unreachable from both ends.
+ * Both halves live here, in the one file that has to be read to change
  * either.
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.excavation.md`.

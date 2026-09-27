@@ -89,9 +89,8 @@ export type FieldKind =
     /** Repeating row editor: [{ cellType, damage, outputElementType }] (excavation). */
     | "terrainRules"
     /**
-     * Repeating row editor: `[{ type, spanTiles? }]` (structure build modes).
-     * The form used to hold a single mode, so a structure with more than one
-     * silently lost the rest.
+     * Repeating row editor: `[{ type, spanTiles? }]` (structure build modes). A
+     * single-mode form silently loses every mode after the first.
      */
     | "buildModes"
     /**

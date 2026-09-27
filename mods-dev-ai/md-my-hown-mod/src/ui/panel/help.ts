@@ -1,9 +1,8 @@
 /**
  * The Graph screen: what the mod's objects point at, and what does not resolve.
  *
- * The screen is the graph and nothing else. It used to open with three
- * paragraphs of explanation and close with a per-kind field table; both are
- * gone, for the same reason. The paragraphs restated the picture, and the field
+ * The screen is the graph and nothing else: no paragraphs of explanation, no
+ * per-kind field table. The paragraphs restated the picture, and the field
  * table was a hand-transcribed copy of the engine docs that read as
  * authoritative while drifting out of date. Every form field carries its own
  * hint and `doc/REFERENCE.md` carries the rest, so there was nothing left here
@@ -91,11 +90,11 @@ export function renderHelp(props: HelpProps): unknown {
                 broken ? `${broken} broken` : `${shown.edges.length} relations`,
             ),
         ),
-        // The prose and the field tables used to live here. Both are gone: the
-        // field tables were a second, worse copy of the engine docs — frozen at
+        // No prose and no field tables: the tables were a second, worse copy of
+        // the engine docs — frozen at
         // build time, drifting from the real schema, and reading as
-        // authoritative while being wrong — and the opening paragraphs only
-        // restated what the picture already shows. Every form field carries its
+        // authoritative while being wrong — and opening paragraphs only
+        // restate what the picture already shows. Every form field carries its
         // own hint, and `doc/REFERENCE.md` carries the rest.
         //
         // What is left is the part that cannot be looked up anywhere: which of

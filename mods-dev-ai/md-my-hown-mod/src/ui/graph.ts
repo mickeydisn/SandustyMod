@@ -134,10 +134,9 @@ const NODE_H = 44;
 /**
  * Space above the first node of a column, for the group heading.
  *
- * The heading is a full-width strip across the top of its column — the same
- * place the renderer has always drawn it. It used to need a wide strip at the
- * *left* of a row as well, because a row's name had nowhere else to go; a column
- * is at least `NODE_W` wide, so the name now has room and that gutter is gone.
+ * The heading is a full-width strip across the top of its column. It needs no
+ * wide strip at the *left* of a row: a column is at least `NODE_W` wide, so the
+ * name has room.
  */
 const HEAD_H = 26;
 /**

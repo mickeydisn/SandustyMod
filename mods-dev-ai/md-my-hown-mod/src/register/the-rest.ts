@@ -70,7 +70,7 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
             // A process, not a key: an ordered list of actions, each with its own
             // options. This is the call that finally delivers them — the engine
             // passes only `(structure, context)`, so `processorConvert`'s required
-            // `to` used to arrive as `undefined` and the action could never fire.
+            // `to` must be bound at compile time or the action can never fire.
             const { fn, skipped } = compileProcess(actionRefsOf(entry), "processing");
             if (skipped.length) {
                 console.warn(`${LOG} processing ${p.id}: unknown action ${skipped.join(", ")}`);
@@ -193,7 +193,7 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
     for (const sg of config.signals ?? []) {
         if (!sg?.id || registered.signals.has(sg.id)) continue;
         // `actionRefsOf` migrates a pre-split `handlerKey` to a one-action process,
-        // so an existing config registers exactly as it did before the split.
+        // so an existing config still registers the way it always did.
         registerSignal(
             sg,
             compileProcess(actionRefsOf(sg as Record<string, unknown>), "signal").fn as never,

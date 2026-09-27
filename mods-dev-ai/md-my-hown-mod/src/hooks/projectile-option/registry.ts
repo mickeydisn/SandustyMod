@@ -1,9 +1,9 @@
 /**
  * The projectile-option registry: seven presets, each a function of its parameters.
  *
- * These seven used to live in `ANY_HANDLERS` alongside the effect actions, where
- * they were typed `(payload, ctx, options) => unknown` and called with none of the
- * three arguments. Moving them here is what lets the compiler stop treating a
+ * The seven presets live here rather than in `ANY_HANDLERS` because they are a
+ * different shape: they take parameters and their *return* is the projectile's
+ * config, so typing them as effect actions is what forced the compiler to
  * projectile as a process.
  *
  * Each one takes **params** — the numbers an author actually wants to change — and

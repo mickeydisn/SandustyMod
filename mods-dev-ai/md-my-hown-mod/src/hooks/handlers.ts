@@ -15,12 +15,10 @@ import type { HandlerActionFn } from "./process.ts";
 /**
  * What the `CODE_HANDLERS` wrapper is for.
  *
- * There used to be three types for one idea — `AnyHandler` (`…args: unknown[]`),
- * this one, and `ProcessHandler` (a named three-arg signature) — and nothing said
- * which a given entry was. `CODE_HANDLERS` values stay `{ kind, fn }` because the
- * **modifier** slot genuinely needs to know whether it intercepts or rewrites: that
- * is not an action detail, it is the engine's own two modes. The `fn` inside is an
- * action like any other.
+ * `CODE_HANDLERS` values stay `{ kind, fn }` because the **modifier** slot
+ * genuinely needs to know whether it intercepts or rewrites: that is not an
+ * action detail, it is the engine's own two modes. The `fn` inside is an action
+ * like any other.
  */
 export type CodeHandler =
     | { kind: "intercept"; fn: HandlerActionFn }
@@ -72,9 +70,8 @@ export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
         console.log("[md-my-hown-mod:trigger]", payload, extra);
     },
     /**
-     * The seven projectile presets — including `defaultProjectileOptions` — used to
-     * sit here, typed as `HandlerActionFn`s and called with none of the three
-     * arguments. They are `ProjectileOptionFn`s now, in
+     * The seven projectile presets — including `defaultProjectileOptions` — are
+     * **not** here. They are `ProjectileOptionFn`s in
      * `./projectile-option/registry.ts`: they take parameters and their *return* is
      * the projectile's config. A test asserts none of the seven resolve from here.
      */

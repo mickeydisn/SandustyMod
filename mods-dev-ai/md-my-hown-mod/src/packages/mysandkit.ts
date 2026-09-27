@@ -399,10 +399,7 @@ function resolveMatterType(v: string | number | undefined): number | undefined {
     if (typeof v === "string") {
         const lower = v.trim().toLowerCase();
         if (lower in MATTER_MAP) return MATTER_MAP[lower];
-        // A number written as text — what the form used to store for a
-        // hand-written `matterType: 8`, and what a hand-edited config can hold.
-        // A number written as text — what the form used to store for a
-        // hand-written `matterType: 8`, and what a hand-edited config can hold.
+        // A number written as text, which a hand-edited config can hold.
         if (/^\d+$/.test(lower)) return Number(lower);
         const enums = g()?.enums?.MatterType;
         if (enums) {
@@ -844,9 +841,9 @@ export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): v
         const { id: _id, ...rest } = def as Record<string, unknown>;
         // `onUpgrade` is a real top-level field of `upgrades.register` and the
         // engine reads it — a callback, like `ItemDefinition.handleAction`. The mod
-        // used to store `onUpgradeKey` and strip it here without ever setting
-        // `onUpgrade`, so **the whole upgrade slot never ran**: all 7 upgrade
-        // actions were unreachable in-game. `actionRefsOf` migrates the old key.
+        // `actionRefsOf` migrates the legacy `onUpgradeKey`; without it the whole
+        // upgrade slot would run nothing and all 7 upgrade actions would be
+        // unreachable in-game.
         const { fn, skipped } = compileProcess(actionRefsOf(rest), "upgrade");
         if (skipped.length) {
             console.warn(`${LOG} upgrade ${def.id}: unknown action ${skipped.join(", ")}`);

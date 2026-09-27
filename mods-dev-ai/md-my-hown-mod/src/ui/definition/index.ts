@@ -1,8 +1,9 @@
 /**
  * The definition registry — the one place the panel asks "what is this tab?".
  *
- * `schema.ts` and `panel.ts` both used to hold a piece of every object: the
- * field list here, a widget there, a save case in a switch. A definition is
+ * `schema.ts` and `panel.ts` each hold a piece of every object, and holding them
+ * apart is the problem this replaces: the field list here, a widget there, a save
+ * case in a switch. A definition is
  * those three things together, so this is where the assembled list lives and
  * where a new object gets added.
  *

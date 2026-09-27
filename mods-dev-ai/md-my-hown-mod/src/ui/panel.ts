@@ -421,11 +421,10 @@ export function createPanelComponent(defaultMinimized = true) {
         /**
          * Return the view to a clean screen.
          *
-         * Both `goGroup` and `goCategory` used to clear only `mode`, `form`,
-         * `editingId` and `confirmId`, so the raw-JSON buffer, the open handler
-         * and its parameter values, and every library-picker search string all
-         * survived a category change. That is what made a switch look like it
-         * half-worked: the next screen inherited the last one's scratch state.
+         * Every volatile field is cleared, so the raw-JSON buffer, the open handler
+         * and its parameter values, and every library-picker search string cannot
+         * survive a category change. A switch that inherits the last screen's
+         * scratch state is what makes a switch look like it half-worked.
          *
          * One function, called from both paths — a second reset path is a
          * second bug waiting to happen.
@@ -1053,14 +1052,10 @@ export function createPanelComponent(defaultMinimized = true) {
                     ),
                     h("button", { style: S.btnPrimary, onClick: startNew }, "+ New"),
                 ),
-                // The filter bar: a text filter, and nothing else.
-                //
-                // There used to be a second row of All / Yours / Game chips beside
-                // the owner chips. They were the same filter twice — "Yours" is
-                // `owner: "own"`, "Game" is `owner: "game"`, and "All" is the state
-                // the owner row already starts in. Two controls setting one piece of
-                // state can disagree with each other, and the duplicate row is pure
-                // noise on a screen that is mostly list.
+                // The filter bar: a text filter, and nothing else. The owner chips
+                // are the only source filter — "Yours" is `owner: "own"`, "Game" is
+                // `owner: "game"`, and "All" is the state the owner row starts in.
+                // Two controls setting one piece of state can disagree.
                 h(
                     "div",
                     { style: S.listFilterBar },
@@ -1442,13 +1437,12 @@ export function createPanelComponent(defaultMinimized = true) {
                         // could outlive the form that drew it.
                         key: `${cat}:${mode}`,
                     },
-                    // The screen fills the body. There used to be an
-                    // "N in the game already" section here, above the screen —
-                    // but the list now *is* that list: the game's objects and the
+                    // The screen fills the body, and no "N in the game already"
+                    // summary sits above it: the game's objects and the
                     // mod's own are the same rows, with the same counts and the
                     // same filter. A collapsed summary promising to list what
-                    // already exists, sitting above a screen that lists it, was
-                    // the same answer twice.
+                    // already exists, above a screen that lists it, is the same
+                    // answer twice.
                     cat === "json"
                         ? renderJson()
                         : HANDLER_SCREENS[cat as keyof typeof HANDLER_SCREENS]

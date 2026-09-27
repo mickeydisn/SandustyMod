@@ -13,8 +13,8 @@
  * | `context-bound` | the engine's processing context (`ctx`) | 3 |
  * | `pure` | nothing at all — a constant, or a logger | 16 |
  *
- * The 7 `projectile*` presets that used to be counted here are not actions and are
- * not in this table: they are `ProjectileOptionFn`s, in `./projectile-option/`.
+ * The 7 `projectile*` presets are not actions and are not in this table: they are
+ * `ProjectileOptionFn`s, in `./projectile-option/`.
  *
  * The three below `api` are the ones that break the rule, and each needs a
  * decision rather than a mechanism:
@@ -390,9 +390,8 @@ export function effectOf(key: string): ActionEffect | undefined {
 /**
  * Whether a `returns` action's value is thrown away.
  *
- * **Every one of them, now.** This used to be a question about the call site:
- * `returns` only *did* something where the engine read the return, and the one
- * slot that did was `projectile`. That slot is no longer a call site — a projectile
+ * **Every one of them.** `returns` only *does* something where the engine reads
+ * the return, and no slot does: `projectile` is not a call site — a projectile
  * holds a single `ProjectileOption` whose return *is* the configuration — so no
  * action's return is read anywhere.
  *

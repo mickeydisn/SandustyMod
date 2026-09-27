@@ -50,9 +50,9 @@ const comparesField = (f: Record<string, string>) =>
 const FIELDS: FieldSpec[] = [
     idField(),
     elSelect("elementId", "Element", "Target", true),
-    // The panel used to be one free JSON box under a label that gave no clue
-    // what it was for. Now it is the `kind` union from `elements.d.ts`, with
-    // only the fields the chosen kind actually has.
+    // The `kind` union from `elements.d.ts`, with only the fields the chosen kind
+    // actually has — not a free JSON box under a label that gave no clue what it
+    // was for.
     {
         key: "interactionKind",
         label: "What kind of interaction",

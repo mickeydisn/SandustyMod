@@ -2,23 +2,15 @@
  * The contract every object definition is written against.
  *
  * An "object definition" is one register() shape the panel can author: a
- * structure, an element, a recipe. Everything that belongs to exactly one of
- * them — its schema, its section panel, the shape helpers only it uses — lives
- * in that object's own file under `./`. This file is the vocabulary those files
- * share, so they can all be written against it without importing each other.
+ * structure, an element, a recipe. Everything belonging to exactly one of them
+ * lives in that object's own file under `./`; this file is the vocabulary they
+ * share, so none of them has to import another.
  *
- * The shape is the union of the five things a definition needs to answer:
- *
- *   1. **what fields exist** and how they are constrained   → `fields`
- *   2. **what the form means** in stored-entry terms         → `entryToForm` / `formToEntry`
- *   3. **what cannot be expressed as a field rule**         → `validate`
- *   4. **what it looks like** in the panel                   → `panel`
- *   5. **what it looks like in the list**                   → `list`
- *
- * Splitting those across files was the problem this replaces: a form field
- * declared in one file, its save path in another and its widget in a third is
- * three places to forget, and forgetting one is a field that renders but never
- * persists. One file per object makes that a single-file question.
+ * A definition answers five questions: what fields exist (`fields`), what the form
+ * means in stored-entry terms (`entryToForm`/`formToEntry`), what cannot be a
+ * field rule (`validate`), its panel, and its list row. Keeping those in one file
+ * per object is the point — spread across three, a field renders but never
+ * persists, and nothing says so.
  */
 import type { ModConfig } from "../../constants.ts";
 import type { Opt } from "../../catalog.ts";
@@ -52,11 +44,9 @@ export type Tab =
     /**
      * The HandlerAction catalogue, and the ProjectileOption catalogue beside it.
      *
-     * **This list must match `Tab` in `../schema.ts` exactly.** It is a hand-copied
-     * duplicate, which is not a design so much as a hazard: the two drift, and the
-     * drift only shows up as a type error at some unrelated call site. `schema.ts`
-     * is the one to edit; change this in the same commit, or better, collapse the
-     * two into one when convenient.
+     * **Must match `Tab` in `../schema.ts` exactly.** A hand-copied duplicate is a
+     * hazard: they drift, and the drift only surfaces as a type error somewhere
+     * unrelated. `schema.ts` is the one to edit.
      */
     | "action"
     | "projectileOption"
@@ -95,33 +85,21 @@ export type FieldKind =
     | "library"
     /** Repeating row editor: [{ cellType, damage, outputElementType }] (excavation). */
     | "terrainRules"
-    /**
-     * Repeating row editor: `[{ type, spanTiles? }]` (structure build modes).
-     * The form used to hold a single mode, so a structure with more than one
-     * silently lost the rest.
-     */
+    /** Repeating row editor: `[{ type, spanTiles? }]` (structure build modes). */
     | "buildModes"
-    /**
-     * Swatch list: `colors.variants`, the engine's `[[r,g,b,a], …]`. Kept as its
-     * own kind because the nested tuple is exactly the shape that is painful to
-     * hand-write and easy to get subtly wrong.
-     */
+    /** Swatch list: `colors.variants`, the engine's `[[r,g,b,a], …]`. */
     | "colorVariants"
-    /**
-     * Multiple values in one control. The form holds a comma-separated string;
-     * the entry always holds a real `string[]` (or is absent when empty).
-     */
+    /** Comma-separated in the form, a real `string[]` in the entry. */
     | "multiselect"
     /**
-     * Ordered, repeating list of `{ key, options }` — a HandlerProcess.
-     * `[{ key: "processorConvert", options: { to: "Water" } }]`. The form holds
-     * JSON text; the entry holds the real array. See `./actions-field.ts`.
+     * Ordered, repeating `{ key, options }` list — a HandlerProcess, held as JSON
+     * text in the form. See `./actions-field.ts`.
      */
     | "actionList"
     /**
-     * A single `{ key, params }` — one ProjectileOption, and the value it builds
-     * is what the engine uses at spawn. Not a list: a projectile takes exactly one,
-     * and it is not a process. See `./projectile-option-field.ts`.
+     * A single `{ key, params }` — one ProjectileOption, and the value the engine
+     * reads at spawn. Not a list: a projectile takes exactly one, and it is not a
+     * process. See `./projectile-option-field.ts`.
      */
     | "projectileOption";
 

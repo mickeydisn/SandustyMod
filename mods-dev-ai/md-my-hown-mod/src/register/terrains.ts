@@ -4,9 +4,9 @@
  * Worker-scoped, like elements — a terrain the worker has never heard of is an
  * unknown type that does not move. See `registry.ts`.
  *
- * Terrain used to register inline in `apply.ts`, and there was no `terrains` key
- * in the registry's `registered` map, so every use site lazily created its own
- * set with an `any` cast. The key is declared now, so the casts are gone.
+ * Terrain registers from this module, and `terrains` is declared in the registry's
+ * `registered` map — a missing key returns `undefined` and silently skips the
+ * double-registration guard, which is the crash.
  */
 import type { ModConfig } from "../constants.ts";
 import { loadConfig } from "../config/store.ts";

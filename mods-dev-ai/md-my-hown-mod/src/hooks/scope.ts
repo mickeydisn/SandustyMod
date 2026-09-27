@@ -154,8 +154,8 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     excavationDrill: [],
     excavationGun: [],
     excavationShatter: [],
-    // The seven `projectile*` presets used to be listed here as `[]`. They are
-    // `ProjectileOptionFn`s now and are not actions at all — see
+    // The seven `projectile*` presets are deliberately absent: they are
+    // `ProjectileOptionFn`s, not actions — see
     // `./projectile-option/registry.ts`. They are deliberately absent rather than
     // defaulted: `needsOf` returns `[]` for an unknown key, so a stray row here
     // would have been the only thing distinguishing "needs nothing" from "is not
@@ -173,9 +173,9 @@ export function needsOf(key: string): readonly ScopeNeed[] {
 /**
  * Can this action run in a process on this call site?
  *
- * The whole rule, and the thing that was missing: the registry used to *declare*
- * slots, so an action could be offered somewhere the engine hands it nothing it
- * reads. Nothing errors in that case — the action just quietly does nothing, which
+ * The whole rule: a registry that merely *declares* slots can offer an action
+ * somewhere the engine hands it nothing it reads. Nothing errors in that case —
+ * the action just quietly does nothing, which
  * is the failure mode that cost `triggerScan` and `energyGenerateWhileHeld` their
  * `trigger` slot.
  */

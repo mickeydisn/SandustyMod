@@ -114,11 +114,9 @@ export type Tab =
     /**
      * The HandlerAction catalogue — no configKey, renders its own body.
      *
-     * **A first-class tab, not a mode of another screen.** It used to be `handlers`,
-     * a single tab holding both this and `projectileOption` with a switcher inside
-     * it. That put a switcher *below* the sub-nav, so choosing what you were
-     * looking at took two clicks in two places. Two tabs in the same menu group
-     * makes the sub-nav the switcher and removes the layer.
+     * **A first-class tab, not a mode of another screen.** Two tabs in one menu
+     * group make the sub-nav the switcher, so choosing what you are looking at
+     * takes one click in one place.
      */
     | "action"
     /**
@@ -298,12 +296,11 @@ export interface MenuGroup {
 /**
  * Top-level menu: 7 groups instead of 19 flat tabs.
  *
- * `terrains` sits under Content rather than in a group of its own. It used to
- * have a "World" group that held nothing else, which is a group that costs a
- * click and explains nothing.
+ * `terrains` sits under Content rather than in a group of its own. A "World"
+ * group holding nothing else costs a click and explains nothing.
  *
- * `Assets`, `Handlers` and `Hooks` used to share one "Assets & hooks" bucket.
- * They are unrelated things that happen to all be defined in code: an image
+ * `Assets`, `Handlers` and `Hooks` are separate. They are unrelated things that
+ * happen to all be defined in code: an image
  * you load, a function you call, and a hook you intercept.
  */
 export const MENU_GROUPS: MenuGroup[] = [
@@ -382,9 +379,8 @@ export type FieldKind =
     /** Repeating row editor: [{ cellType, damage, outputElementType }] (excavation). */
     | "terrainRules"
     /**
-     * Repeating row editor: `[{ type, spanTiles? }]` (structure build modes).
-     * The form used to hold a single mode, so a structure with more than one
-     * silently lost the rest.
+     * Repeating row editor: `[{ type, spanTiles? }]` (structure build modes). A
+     * single-mode form silently lost the rest, so this holds a list.
      */
     | "buildModes"
     /**
@@ -462,7 +458,7 @@ export interface FieldSpec {
 /**
  * Colour variants, re-exported from the element definition.
  *
- * These used to live here, and are still exported from here because the tests
+ * Still exported from here because the tests
  * and the tools import them from `schema.ts`. They are element-only — the
  * `colors.variants` list belongs to exactly one object — so the implementation
  * moved with the rest of the element into `./definition/element.ts`.
@@ -487,9 +483,9 @@ export {
 /**
  * Field lists for every tab that has not been split into its own definition.
  *
- * Empty now, and that is the end state rather than a leftover. The five tabs that
- * used to be listed here render their own body rather than a form: a handler or
- * a draw function is code the engine calls, not an entry anything creates, and
+ * Empty, and that is the end state rather than a leftover. These five tabs render
+ * their own body rather than a form: a handler or a
+ * draw function is code the engine calls, not an entry anything creates, and
  * `json`, `map` and `help` are raw views over stored config.
  *
  * They are absent rather than explicitly empty because a tab with no definition
@@ -726,12 +722,9 @@ export function validateForm(cat: Tab, form: Record<string, string>): Record<str
 
 // ── Form ⇄ entry mapping ─────────────────────────────────────────────────────
 //
-// The coercion helpers below used to live here and were called from each `case`
-// in `formToEntry`. Every tab is a definition now, and each is handed an
-// `EntryWriter` built in `./definition/values.ts` that does the same coercing —
-// so these are gone rather than duplicated. Keeping a second copy would be two
-// places to disagree about what an empty control means, and the writer is the
-// one the definitions actually use.
+// Every tab is a definition, and each is handed an
+// `EntryWriter` built in `./definition/values.ts` that owns the coercing. A second
+// copy here would be two places to disagree about what an empty control means.
 
 /**
  * Select values carry sentinels:

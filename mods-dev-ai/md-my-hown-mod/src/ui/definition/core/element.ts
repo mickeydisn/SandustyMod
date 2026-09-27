@@ -199,9 +199,9 @@ const FLAGS = [
  * round-tripped through the engine — but the dropdown only offers lowercase
  * names. Showing a bare `8` leaves the select with nothing selected, and saving
  * that form then stores the **text** `"8"`, which is a different value with a
- * different meaning: `resolveMatterType("8")` used to hand the engine the string
- * `"Powder"`, which matches no entry in the worker's matter table, and the
- * element stopped moving entirely. Numbers are therefore read back as names, so
+ * different meaning: `resolveMatterType("8")` must not hand the engine the string
+ * `"Powder"`, which matches no entry in the worker's matter table, or the
+ * element stops moving entirely. Numbers are therefore read back as names, so
  * the form is always a valid selection and the round trip is stable.
  */
 function matterTypeToForm(v: unknown): string | undefined {

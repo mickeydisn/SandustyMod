@@ -3,10 +3,7 @@
  * catalogue.
  *
  * Both live here because they are one feature with two halves, and each is its own
- * tab in the Handlers menu group. They used to be a single `handlers` tab holding
- * both with a switcher drawn inside it — a second navigation row underneath the
- * sub-nav that already listed them, so picking a screen took two clicks in two
- * places. The sub-nav is the switcher now.
+ * tab in the Handlers menu group. The sub-nav is the switcher.
  *
  * Handlers live in code, not JSON, so this is not a CRUD list of stored entries.
  * The action screen answers the four questions an author actually has:
@@ -70,9 +67,7 @@ type Click = (key: string) => void;
 /**
  * State for **both** handler screens.
  *
- * One object, two tabs. They used to be one tab with a `panel` field and a
- * switcher drawn inside it — a second navigation row sitting *below* the sub-nav
- * that already lists them. `action` and `projectileOption` are now two tabs in the
+ * One object, two tabs. `action` and `projectileOption` are two tabs in the
  * same menu group, so the sub-nav is the switcher and this state has no notion of
  * which one is showing.
  *
@@ -488,11 +483,10 @@ export function renderActions(props: HandlersTabProps): unknown {
 
     // ── the list, filtered on three independent axes ─────────────────────────
     //
-    // It used to be collapsible blocks, grouped by `api.*` then by `cls`. That
-    // grouping is gone for a measured reason: `api` is ambient (it lives on
-    // `globalThis`, so every call site has it) and most actions call none, so it put
-    // four fifths of the catalogue under one heading. A flat alphabetical list with
-    // real filters is more honest than a hierarchy built on a fiction.
+    // A flat alphabetical list with real filters, not a hierarchy. Grouping by
+    // `api.*` then by `cls` is a fiction: `api` is ambient (it lives on
+    // `globalThis`, so every call site has it) and most actions call none, which put
+    // four fifths of the catalogue under one heading.
     //
     // **The upgrade-only actions are excluded here.** They have their own tab, and
     // an action that can run in exactly one place does not belong in a list about
@@ -1066,9 +1060,9 @@ function renderExpanded(
 
     // Validate as the user types so bad params are caught before they reach config.
     const errs = validateHandlerParams(m, values);
-    // The snippet is the **process** form, not the pre-split one. It used to emit
-    // `{ handlerKey, scope, options }` — a shape none of the seven tabs reads any
-    // more, so a snippet that pasted cleanly and then did nothing was worse than no
+    // The snippet is the **process** form, not the pre-split one. It must not emit
+    // `{ handlerKey, scope, options }` — a shape none of the seven tabs reads, so a
+    // snippet that pasted cleanly and then did nothing is worse than no
     // snippet at all. `scope` goes too: it was a field on a *handler*, and a process
     // has no scope of its own.
     const snippet = JSON.stringify(

@@ -6,11 +6,11 @@
  * `ProjectileOption` chosen in the `Option` field, whose return the engine reads
  * directly as the spawn-time configuration.
  *
- * It used to be a `Process` like the other six, holding a *list* of `getOptions`
- * handlers whose returns were merged field-by-field. That was the one call site
- * where the return mattered, and modelling it as a list let an author store two
- * presets whose union was a configuration nobody designed. So this definition gets
- * its own field and its own widget — see `./projectile-option-field.ts` and
+ * Modelling the option as a `Process` like the other six — a *list* of
+ * `getOptions` handlers whose returns were merged field-by-field — let an author
+ * store two presets whose union was a configuration nobody designed. So this
+ * definition gets its own field and its own widget — see
+ * `./projectile-option-field.ts` and
  * `../../projectile-option-control.ts`.
  *
  * The static `optionsJson` box is still here, and still round-trips, because a
@@ -43,7 +43,7 @@ const FIELDS: FieldSpec[] = [
         required: true,
         options: listSpriteIds,
     },
-    // The one option, replacing what used to be an `actionList` field. It carries
+    // The one option, and not an `actionList`. It carries
     // its own key *and* its parameters, so the two live together here.
     projectileOptionField(),
     {

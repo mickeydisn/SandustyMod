@@ -92,12 +92,12 @@ function colorFromMeta(meta: unknown): string | undefined {
  * Read from the live registry, not from the enum. The enum only maps
  * `Name -> number`, and the *id* is a separate string the engine only hands out
  * through `getIdByType` / `getDefinitionByType`. Guessing the id from the enum
- * name is how this list used to be wrong in two ways at once:
+ * name is wrong in two ways at once:
  *
- *  - it added a **second, lowercased** entry for every element already found
- *    through the registry, because the "already have it?" guard compared the
- *    enum's *number* against a map keyed by *id*, so it never matched;
- *  - elements whose definition could not be read fell back to `String(type)`,
+ *  - it adds a **second, lowercased** entry for every element already found
+ *    through the registry, because the "already have it?" guard compares the
+ *    enum's *number* against a map keyed by *id*, so it never matches;
+ *  - elements whose definition cannot be read fall back to `String(type)`,
  *    i.e. the bare number, which is not a valid element id at all.
  *
  * `hidden` elements are excluded. The game keeps a number of internal element
@@ -194,14 +194,7 @@ export const DEFAULT_ENERGY_NETWORK = "power";
  * enumerated; a recipe, a trigger or a signal is something the mod defines, and
  * there is nothing in the game to enumerate before you do.
  *
- * **What consumes this, now that the panel section is gone.** This used to back a
- * collapsed "N in the game already" block at the top of every screen — a summary
- * that promised to list what already existed, sitting above a list screen that
- * *is* that list. That block is removed; the list screen answers the same
- * question with the same rows and the same filter, so the block was the answer
- * twice.
- *
- * What still reads this is the **per-field native box** under a reference picker
+ * **What consumes this.** The per-field native box under a reference picker
  * (`nativeBox` in `panel.ts`), and `pickers.test.ts` asserts every key here has
  * an enumeration behind it. So this stays a `Opt[]` table rather than being folded
  * into the definitions' `discover`: a picker needs a flat option list, while
@@ -332,8 +325,8 @@ export function listItems(): Opt[] {
     // `ItemId` is the one reference list with **no** enumeration API and **no**
     // `getIdByType` to reverse-map it, so the enum is the only source of the
     // game's item ids. Its *value* is the id; its *member name* is a display
-    // name and is not an id. This used to store `o.label.split(" ")[0]` — the
-    // display name — as the value, which offered ids the engine cannot resolve.
+    // name and is not an id. Storing `o.label.split(" ")[0]` — the
+    // display name — as the value would offer ids the engine cannot resolve.
     // Only a string-valued member is taken, because only that can be an id.
     for (const name of enumNames("ItemId")) {
         const v = enumRawValue("ItemId", name);

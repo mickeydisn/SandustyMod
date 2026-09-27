@@ -108,7 +108,7 @@ export function compileProjectile(
  *  - `actions` — the short-lived list form, which this refactor removes. Read as a
  *    **single** ref so a config written during that window still loads; a list of
  *    more than one is reported rather than half-applied, because the merge that
- *    used to combine them is exactly what is being taken away.
+ *    combined them is exactly what is being taken away.
  *
  * The empty list is the only ambiguous case — `actions: []` means "no option", not
  * "the option `undefined`" — so it is checked before the list is read.
