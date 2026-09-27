@@ -16,7 +16,8 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.structures.md`.
  */
-import { listDescribedProcessorKeys, listStructures } from "../../../catalog.ts";
+import { listStructures } from "../../../catalog.ts";
+import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
 import { advField, idField, numField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
@@ -44,13 +45,13 @@ const FIELDS: FieldSpec[] = [
         hint: "must be > 0 — how often the callback fires per instance",
     }),
     {
-        key: "handlerKey",
-        label: "Process handler",
-        kind: "select",
+        // Was a `select` over `listDescribedProcessorKeys` picking exactly one
+        // handlerKey. `processorConvert`'s `to` was the casualty of that: a
+        // `required` field the engine was never given, so it silently did
+        // nothing. A process binds each action's options itself.
+        ...actionListField("runs on the interval, for every instance of the structure type"),
         section: "Timing",
         required: true,
-        options: listDescribedProcessorKeys,
-        hint: "process(structure, context) is code — JSON can't store callbacks, pick a preset",
     },
     advField(),
 ];
@@ -63,20 +64,20 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // config reads as a number — accept both rather than blanking the picker.
     read.put("structureType", read.str(e.structureType) ?? read.num(e.structureType));
     read.put("intervalMs", read.num(e.intervalMs));
-    read.put("handlerKey", read.str(e.handlerKey));
+    readActions(read, e);
 }
 
 /** Form strings → stored entry, for the whole processor. */
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("structureType", w.opt("structureType"));
     w.setNum("intervalMs", w.optNum("intervalMs"));
-    w.setStr("handlerKey", w.opt("handlerKey"));
+    writeActions(w);
 }
 
 // ── The definition ───────────────────────────────────────────────────────────
 
 /** Stored keys this form owns — the control names happen to match all of them. */
-const FORM_COVERED = ["structureType", "intervalMs", "handlerKey"];
+const FORM_COVERED = ["structureType", "intervalMs", ...ACTIONS_COVERED];
 
 export const processingDefinition: Definition = {
     tab: "processing",

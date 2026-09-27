@@ -23,7 +23,12 @@ import {
 } from "../packages/mysandkit.ts";
 import { loadConfig } from "../config/store.ts";
 import { engineTechOf, isAlwaysUnlocked, techUnlockStructureIds } from "../ui/tech-link.ts";
-import { applyAllModifiers, detachAllModifiers, resolveAnyHandler } from "../hooks/index.ts";
+import {
+    actionRefsOf,
+    applyAllModifiers,
+    compileProcess,
+    detachAllModifiers,
+} from "../hooks/index.ts";
 
 /**
  * The built-in `draw` functions, keyed as they are in the config.
@@ -426,13 +431,18 @@ export function applyConfig(cfg?: ModConfig): void {
     }
     for (const p of config.processing) {
         if (!p?.id || registered.processing.has(p.id)) continue;
-        // process() cannot live in JSON — resolve the code preset first.
+        // process() cannot live in JSON — compile the process first.
         const entry = p as Record<string, unknown>;
-        const key = typeof entry.handlerKey === "string" ? entry.handlerKey : undefined;
-        if (typeof entry.process !== "function" && key) {
-            const fn = resolveAnyHandler(key);
-            if (typeof fn === "function") entry.process = fn;
-            else console.warn(`${LOG} processing ${p.id}: unknown handlerKey "${key}"`);
+        if (typeof entry.process !== "function") {
+            // A process, not a key: an ordered list of actions, each with its own
+            // options. This is the call that finally delivers them — the engine
+            // passes only `(structure, context)`, so `processorConvert`'s required
+            // `to` used to arrive as `undefined` and the action could never fire.
+            const { fn, skipped } = compileProcess(actionRefsOf(entry), "processing");
+            if (skipped.length) {
+                console.warn(`${LOG} processing ${p.id}: unknown action ${skipped.join(", ")}`);
+            }
+            entry.process = fn;
         }
         registerProcessing(p);
         registered.processing.add(p.id);
@@ -506,10 +516,13 @@ export function applyConfig(cfg?: ModConfig): void {
     }
     for (const p of config.projectiles ?? []) {
         if (!p?.id || (registered as any).projectiles?.has(p.id)) continue;
-        // wire getOptions from handler if present
-        const key = (p as any).getOptionsKey;
-        const h = resolveAnyHandler(key);
-        if (h) (p as any).getOptions = h;
+        // The one slot where the process' *return* reaches the engine: these actions
+        // are `getOptions` factories, and `mergeProcessValue` combines what they
+        // return. `mysandkit` synthesises a `getOptions` only if we left it unset.
+        const entry = p as Record<string, unknown>;
+        if (typeof entry.getOptions !== "function") {
+            entry.getOptions = compileProcess(actionRefsOf(entry), "projectile").fn as never;
+        }
         registerProjectile(p);
         (registered as any).projectiles = (registered as any).projectiles || new Set();
         (registered as any).projectiles.add(p.id);
@@ -540,14 +553,25 @@ export function applyConfig(cfg?: ModConfig): void {
     }
     for (const sg of config.signals ?? []) {
         if (!sg?.id || (registered as any).signals?.has(sg.id)) continue;
-        registerSignal(sg, resolveAnyHandler(sg.handlerKey) as any);
+        // `actionRefsOf` migrates a pre-split `handlerKey` to a one-action process,
+        // so an existing config registers exactly as it did before the split.
+        registerSignal(
+            sg,
+            compileProcess(actionRefsOf(sg as Record<string, unknown>), "signal").fn as never,
+        );
         (registered as any).signals = (registered as any).signals || new Set();
         (registered as any).signals.add(sg.id);
         nSg++;
     }
     for (const tr of config.triggers ?? []) {
         if (!tr?.id || (registered as any).triggers?.has(tr.id)) continue;
-        registerTrigger(tr, resolveAnyHandler(tr.handlerKey) as any);
+        // The engine calls a trigger's callback with **no arguments** — `extra` goes
+        // in the registration, not the call — so the process is what finally hands
+        // the options to the action.
+        registerTrigger(
+            tr,
+            compileProcess(actionRefsOf(tr as Record<string, unknown>), "trigger").fn as never,
+        );
         (registered as any).triggers = (registered as any).triggers || new Set();
         (registered as any).triggers.add(tr.id);
         nTr++;
@@ -558,15 +582,15 @@ export function applyConfig(cfg?: ModConfig): void {
     for (const b of config.inputBindings ?? []) {
         if (!b?.id || (registered as any).inputBindings?.has(b.id)) continue;
         const entry = { ...b } as Record<string, unknown>;
-        if (b.onDownKey) {
-            const fn = resolveAnyHandler(b.onDownKey);
-            if (typeof fn === "function") entry.onDownKey = fn;
-            else console.warn(`${LOG} input binding ${b.id}: unknown onDownKey "${b.onDownKey}"`);
-        }
-        if (b.onUpKey) {
-            const fn = resolveAnyHandler(b.onUpKey);
-            if (typeof fn === "function") entry.onUpKey = fn;
-            else console.warn(`${LOG} input binding ${b.id}: unknown onUpKey "${b.onUpKey}"`);
+        for (const slot of ["onDownKey", "onUpKey"] as const) {
+            const key = b[slot];
+            if (!key) continue;
+            // Input bindings still store a bare key rather than a list — they are a
+            // function *pair* on one entry, not one process, and there is no place
+            // to put a list. A one-action process is the whole of it.
+            const { fn, skipped } = compileProcess(actionRefsOf({ handlerKey: key }), "behavior");
+            if (typeof fn === "function" && !skipped.length) entry[slot] = fn as never;
+            else console.warn(`${LOG} input binding ${b.id}: unknown ${slot} "${key}"`);
         }
         registerInputBinding(entry as never);
         (registered as any).inputBindings = (registered as any).inputBindings || new Set();

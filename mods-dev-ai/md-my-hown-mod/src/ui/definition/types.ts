@@ -101,7 +101,13 @@ export type FieldKind =
      * Multiple values in one control. The form holds a comma-separated string;
      * the entry always holds a real `string[]` (or is absent when empty).
      */
-    | "multiselect";
+    | "multiselect"
+    /**
+     * Ordered, repeating list of `{ key, options }` — a HandlerProcess.
+     * `[{ key: "processorConvert", options: { to: "Water" } }]`. The form holds
+     * JSON text; the entry holds the real array. See `./actions-field.ts`.
+     */
+    | "actionList";
 
 export interface FieldSpec {
     key: string;
@@ -207,6 +213,17 @@ export interface EntryWriter {
      * through a string is how `[[1,2],[3]]` becomes `"1,2,3"`.
      */
     setRaw(key: string, v: unknown): void;
+    /**
+     * Remove a key from the entry.
+     *
+     * The three setters only ever *write*: passing `undefined` skips the write and
+     * leaves whatever was already there. That is the right rule for a control the
+     * author left blank, but the Process/Action migration needs the opposite — an
+     * entry holding `handlerKey` must **lose** it once `actions` is written, or
+     * the process ends up holding both shapes and which one wins becomes a
+     * question of which key a reader happens to check first.
+     */
+    del(key: string): void;
     /** Trimmed form string; `""` → undefined. */
     opt(key: string): string | undefined;
     /** Numeric form string; blank or non-numeric → undefined. */
@@ -247,6 +264,16 @@ export interface FieldContext extends PanelContext {
     error?: string;
     /** The id field is locked while editing an existing entry. */
     locked: boolean;
+    /**
+     * The tab this field is on.
+     *
+     * Added for the `actionList` control, whose dropdown has to offer only the
+     * actions **this call site** can run — and the call site is a property of the
+     * object, not of the field. Threaded through the one place a control is called
+     * rather than inferred: a widget that guesses which screen it is on is a widget
+     * that is wrong on a screen it did not know about.
+     */
+    tab: Tab;
 }
 
 /** The parts of the panel a definition may own. */

@@ -12,6 +12,10 @@
  * drifted out of sync with the real registries.
  */
 
+import { ACTION_APIS, ACTION_CLASSES, type HandlerActionClass } from "./action-class.ts";
+// `process.ts` imports only `handlers.ts`, so this is not a cycle.
+import { actionRefsOf } from "./process.ts";
+
 /** What a handler fundamentally does. Drives grouping in the handler tab. */
 export type HandlerType =
     | "global"
@@ -51,7 +55,22 @@ export interface HandlerParam {
 
 export interface HandlerMeta {
     key: string;
+    /**
+     * @deprecated Blends both axes and matches neither — `cell` spans three call
+     * sites, `tech` is an API name on a call site. Kept only so the Handlers tab
+     * keeps working until Phase 6 regroups on `api` and `cls`. See PLAN.md.
+     */
     type: HandlerType;
+    /**
+     * The `api.*` namespace this action calls — **derived**, so it cannot drift
+     * from what the code does. Undefined for the 38 actions that call no API.
+     */
+    api?: string;
+    /**
+     * What the action depends on — **derived** from the same probe. `api` is the
+     * rule; the other three record how far short of it the action falls.
+     */
+    cls: HandlerActionClass;
     /** Slots allowed to select this handler. */
     slots: HandlerSlot[];
     /** Default scope; a handler may be rebound per use. */
@@ -118,7 +137,18 @@ const ALL_SLOTS = [
 ] as const satisfies readonly HandlerSlot[];
 
 /** The registry. One row per callable reachable from JSON config. */
-export const HANDLER_META: HandlerMeta[] = [
+/**
+ * The declared catalogue, with the two derived axes filled in.
+ *
+ * `api` and `cls` are computed from `ACTION_CLASSES` / `ACTION_APIS` rather than
+ * written out per entry, because 46 hand-maintained copies of a measured fact is
+ * 46 chances to be wrong — and the measurement already has a test that checks it
+ * against behaviour.
+ *
+ * The raw list stays separate so the entries above read as a plain table; only
+ * this export carries the derived fields, and it is the one everything imports.
+ */
+const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     // ── global ───────────────────────────────────────────────────────────────
     { key: "noop", type: "global", slots: [...ALL_SLOTS], scope: "global", params: [] },
     {
@@ -463,6 +493,15 @@ export const HANDLER_META: HandlerMeta[] = [
     },
 ];
 
+export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => ({
+    ...m,
+    api: ACTION_APIS[m.key],
+    // An action with no measurement is `pure` by default rather than a hole: it
+    // reaches for nothing, which is the weakest claim and the safe default. The
+    // inventory test in action-class.test.ts is what catches a real omission.
+    cls: ACTION_CLASSES[m.key] ?? "pure",
+}));
+
 const META_BY_KEY: Record<string, HandlerMeta> = Object.fromEntries(
     HANDLER_META.map((m) => [m.key, m]),
 );
@@ -599,6 +638,23 @@ export function buildHandlerOptions(
 
 // ── Reachability (9.5) ───────────────────────────────────────────────────────
 
+/**
+ * Tab → the call site its processes run on.
+ *
+ * Exported so the validator and the widget agree about what a slot is, rather than
+ * each keeping its own nine-line copy. The one thing this table must not do is
+ * drift from `HANDLER_META.slots`, so a test checks the two against each other.
+ */
+export const TAB_TO_CALL_SITE: Record<string, HandlerSlot> = {
+    signals: "signal",
+    triggers: "trigger",
+    processing: "processing",
+    items: "itemAction",
+    projectiles: "projectile",
+    upgrades: "upgrade",
+    modifiers: "modifier",
+};
+
 /** slot → (config array key, field holding the handler key). */
 const SLOT_LOCATION: Record<HandlerSlot, [string, string]> = {
     signal: ["signals", "handlerKey"],
@@ -615,17 +671,28 @@ export interface HandlerUsage {
     category: string;
     id: string;
     slot: HandlerSlot;
+    /**
+     * The action this usage is about. A process may hold several, so one entry
+     * in the config can produce several usages — one per action — and each is
+     * checked on its own.
+     */
+    key?: string;
 }
 
 /**
  * Walk the stored config and find every handler reference, tagging each with the
  * slot it was found in. Drives both the reachability warnings in the editor and
  * the "used by" column in the handler tab.
+ *
+ * Reads the action **list**, not a single key, so a process built from three
+ * actions reports three usages and each is checked on its own. A bare
+ * `handlerKey` — the pre-split shape still on disk — is read as a one-action
+ * process, so old configs warn identically to new ones.
  */
 export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
     const out: HandlerUsage[] = [];
     for (
-        const [slot, [cfgKey, field]] of Object.entries(SLOT_LOCATION) as [
+        const [slot, [cfgKey]] of Object.entries(SLOT_LOCATION) as [
             HandlerSlot,
             [string, string],
         ][]
@@ -633,9 +700,12 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
         const list = cfg[cfgKey];
         if (!Array.isArray(list)) continue;
         for (const e of list as Record<string, unknown>[]) {
-            const k = e?.[field];
-            if (typeof k === "string" && k) {
-                out.push({ category: cfgKey, id: String(e.id ?? "?"), slot });
+            // `actionRefsOf` now reads `actions` **and** every pre-split single-key
+            // name — `handlerKey`, `getOptionsKey`, `onUpgradeKey`. This function
+            // used to have a fallback for projectile's `getOptionsKey` alongside
+            // it, which double-counted that one slot. One reader, no fallback.
+            for (const key of actionRefsOf(e as Record<string, unknown>).map((r) => r.key)) {
+                out.push({ category: cfgKey, id: String(e.id ?? "?"), slot, key });
             }
         }
     }
@@ -643,10 +713,14 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
 }
 
 function findKeyForUsage(cfg: Record<string, unknown>, u: HandlerUsage): string {
-    const [cfgKey, field] = SLOT_LOCATION[u.slot];
+    const [cfgKey] = SLOT_LOCATION[u.slot];
     const list = (cfg[cfgKey] ?? []) as Record<string, unknown>[];
     const e = list.find((x) => String(x?.id) === u.id);
-    return String(e?.[field] ?? "");
+    if (!e) return "";
+    // Prefer the stored key on the usage itself: with a multi-action process the
+    // same entry can appear several times, once per action, and re-deriving the
+    // key from the entry would report the first action for all of them.
+    return u.key ?? actionRefsOf(e)[0]?.key ?? "";
 }
 
 /** Keys used in a slot that the handler cannot legally serve. */

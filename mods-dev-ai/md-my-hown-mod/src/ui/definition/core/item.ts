@@ -16,18 +16,11 @@
  *
  * Ground truth: `doc/doc-tech/07-registering-items.md`.
  */
-import { listItemActionHandlerKeys, listSpriteIds, type Opt } from "../../../catalog.ts";
+import { listSpriteIds, type Opt } from "../../../catalog.ts";
 import { loadConfig } from "../../../config/store.ts";
 import type { ModConfig } from "../../../constants.ts";
-import {
-    advField,
-    DESC_MAX,
-    idField,
-    NAME_MAX,
-    numField,
-    textField,
-    typesHintFor,
-} from "../fields.ts";
+import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
+import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
 /**
@@ -112,19 +105,15 @@ const FIELDS: FieldSpec[] = [
     },
     // `itemType` only labels the slot; the *behaviour* is
     // ItemDefinition.handleAction, which the engine calls with an ActionType.
-    // ActionType has no Consumable, so a Consumable deliberately gets no handler.
+    // ActionType has no Consumable, so a Consumable deliberately gets no process.
     {
-        key: "handlerKey",
-        label: "Use action",
-        kind: "select",
-        section: "Item",
-        when: (f) => !!f.itemType && f.itemType !== "Consumable",
-        options: (f) => listItemActionHandlerKeys(f.itemType),
-        // The dropdown is already filtered to the item type, so saying so
-        // explains a short list instead of leaving it looking broken.
-        hint: `becomes ItemDefinition.handleAction. ${
-            typesHintFor(() => listItemActionHandlerKeys())
-        } A Consumable gets none, because ActionType has no Consumable.`,
+        // Was a `select` over `listItemActionHandlerKeys`. The `when` is carried
+        // over unchanged: the field still hides itself for a Consumable, so the
+        // author is not offered something the engine cannot dispatch.
+        ...actionListField("ItemDefinition.handleAction runs when the item is used", {
+            section: "Item",
+            when: (f) => !!f.itemType && f.itemType !== "Consumable",
+        }),
     },
     // Cooldown + energy apply to anything the player actively uses.
     numField("cooldownMs", "Cooldown (ms)", "Item", {
@@ -177,7 +166,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // dropped on the next save — a switch back to "Tool" would silently lose
     // the handler the author had chosen. The *save* path is where the
     // Consumable rule belongs; hiding is not the same as forgetting.
-    read.put("handlerKey", read.str(e.handlerKey));
+    readActions(read, e);
     // One stored `sprite` object, two controls.
     const sprite = e.sprite as { id?: string; type?: string } | undefined;
     read.put("spriteId", read.str(sprite?.id));
@@ -202,12 +191,10 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setNum("energyCost", w.optNum("energyCost"));
     w.setStr("excavationProfileId", w.opt("excavationProfileId"));
     w.setStr("projectileId", w.opt("projectileId"));
-    // A Consumable has no ActionType to dispatch a use through, so never persist
-    // a handler for one — even though the form still holds the previous value so
-    // switching back to a Tool restores it.
-    if (w.opt("itemType") !== "Consumable") {
-        w.setStr("handlerKey", w.opt("handlerKey"));
-    }
+    // A Consumable has no ActionType to dispatch a use through, so never persist a
+    // process for one — even though the form still holds the previous value so
+    // switching back to a Tool restores it. `enabled: false` removes it outright.
+    writeActions(w, w.opt("itemType") !== "Consumable");
     const spriteId = w.opt("spriteId");
     if (spriteId) {
         const sprite: Record<string, unknown> = { id: spriteId };
@@ -236,7 +223,9 @@ const FORM_COVERED = [
     "energyCost",
     "excavationProfileId",
     "projectileId",
-    "handlerKey",
+    // Replaces `handlerKey`, which it also owns so the passthrough cannot leave
+    // both behind. The Consumable rule lives in `writeActions`, not here.
+    ...ACTIONS_COVERED,
     "sprite",
 ];
 

@@ -14,6 +14,9 @@
  *   doc/doc-tech/13-struct-interaction-and-categories.md (build categories)
  *   doc/doc-tech/03-hooks-reference.md                (hook ids)
  */
+import { handlerMeta, TAB_TO_CALL_SITE } from "../hooks/handler-registry.ts";
+import { resolveAction } from "../hooks/process.ts";
+import { parseActionRefs } from "./definition/actions-field.ts";
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
 import {} from "./definition/fields.ts";
@@ -351,7 +354,13 @@ export type FieldKind =
      * Multiple values in one control. The form holds a comma-separated string;
      * the entry always holds a real `string[]` (or is absent when empty).
      */
-    | "multiselect";
+    | "multiselect"
+    /**
+     * Ordered, repeating list of `{ key, options }` — a HandlerProcess.
+     * `[{ key: "processorConvert", options: { to: "Water" } }]`. The form holds
+     * JSON text; the entry holds the real array. See `./actions-field.ts`.
+     */
+    | "actionList";
 
 export interface FieldSpec {
     key: string;
@@ -554,6 +563,30 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
     if (own !== undefined) return own;
 
     switch (f.kind) {
+        case "actionList": {
+            // A process must name actions that exist, and that the **call site** can
+            // actually run. Two different failures, so two different messages: an
+            // unknown key is a typo or a removed action, and a real action in the
+            // wrong slot is a process that would never fire. The editor outlines the
+            // bad row, but an outline is a hint — this is the thing that blocks the
+            // save, which is the difference between "look at this" and "this is
+            // broken".
+            const refs = parseActionRefs(raw);
+            const unknown = refs.filter((r) => !resolveAction(r.key));
+            if (unknown.length) {
+                return `unknown action: ${[...new Set(unknown.map((r) => r.key))].join(", ")}`;
+            }
+            const slot = TAB_TO_CALL_SITE[cat ?? ""];
+            if (!slot) return null; // an unknown tab: nothing to check against
+            const bad = refs.filter((r) => {
+                const meta = handlerMeta(r.key);
+                return !!meta && !meta.slots.includes(slot);
+            });
+            if (bad.length) {
+                return `cannot run here: ${[...new Set(bad.map((r) => r.key))].join(", ")}`;
+            }
+            return null;
+        }
         case "text":
             if (f.maxLength && raw.length > f.maxLength) return `max ${f.maxLength} characters`;
             if (f.pattern && !new RegExp(f.pattern).test(raw)) {
@@ -822,25 +855,14 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             break;
         }
         case "upgrades": {
-            put("itemId", str(e.itemId) ?? num(e.itemId));
-            put("itemNameKey", str(e.itemNameKey));
-            put("categoryId", str(e.categoryId));
-            // UpgradeDefinition.upgrade is a nested object.
-            const u = e.upgrade as
-                | {
-                    id?: string;
-                    maxLevel?: number;
-                    costs?: number[];
-                    oneOff?: boolean;
-                    nameKey?: string;
-                }
-                | undefined;
-            put("upgradeId", str(u?.id));
-            put("upgradeNameKey", str(u?.nameKey));
-            put("maxLevel", num(u?.maxLevel));
-            put("costsJson", json(u?.costs));
-            if (typeof u?.oneOff === "boolean") put("oneOff", String(u.oneOff));
-            put("onUpgradeKey", str(e.onUpgradeKey));
+            // Owned by ./definition/upgrade.ts — see the note in formToEntry.
+            //
+            // This was the last tab still reading itself in the old inline switch,
+            // which is how a migrated `onUpgradeKey` came back as an empty process:
+            // the write side read `actionsJson` that nothing had ever put there.
+            // One definition, one round trip, both directions — which is the whole
+            // point of moving the read out of this switch.
+            upgradeDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
         case "signals": {

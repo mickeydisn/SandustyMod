@@ -44,28 +44,49 @@ axis cleanly. Reading the 46 entries against what the code actually does:
 logging cells) are filed under the same `type: "cell"`. That is the two axes collapsed
 into one field, and it is why splitting them is a real change and not a rename.
 
+## The action class — what an action depends on
+
+An action is supposed to call one `api.*` section. That is a **ladder**, and this is
+where each action sits on it — measured by running it against recording proxies, not
+read off the source:
+
+| class | needs | n | status |
+| --- | --- | --- | --- |
+| `api` | one `api.*` namespace | 5 | **the rule** |
+| `self-sufficient` | only the payload and params it was handed | 15 | legitimate, but reaches into engine objects |
+| `context-bound` | the engine's `ctx.commit` / `ctx.getResolvedTypeAtCell` | 3 | a per-call capability, not a namespace |
+| `pure` | nothing — a constant, or a `console.log` | 23 | debug scaffolding; should it exist? |
+
+So `api` is what the rule *wants*, and the other three record how far short of it each
+action falls. An action that both reads the payload and calls `api.energy`
+(`energyGenerateWhileHeld`) is filed under `api`, because that is the stronger claim.
+
+**The catalogue is 46, not 43.** The three `CODE_HANDLERS` (the `modifier` slot) are
+actions too, and they were missed because their values are `{ kind, fn }` *objects* —
+which is also why `resolveAnyHandler`, the pre-split lookup, never found them. `resolveAction`
+now unwraps all three registries, which is what makes this one catalogue rather than three.
+
+**Code: `src/hooks/action-class.ts`.** `ACTION_CLASSES` is recorded, not computed at
+runtime, and `action-class.test.ts` proves the record still matches behaviour — so an
+action that starts or stops calling an API fails a test instead of drifting.
+
+One trap worth keeping: the two registries have **different signatures** —
+`ANY_HANDLERS` is `(payload, extra)`, `PROCESS_HANDLERS` is `(structure, context, options)`.
+Labelling argument 2 as "ctx" for both manufactures context-bound actions out of
+handlers that only read options. There is a test pinning that.
+
 ## Measured: the "must call one API" rule is satisfied by 5 of 43
 
-`handlers.ts` references exactly **four** API paths in the whole file:
+The 38 that fall short, by class, are Phase 2's actual work:
 
-| action | calls |
-| --- | --- |
-| `energyGenerateWhileHeld` | `api.energy.addAtCell` + `api.energy.getNetworkFreeCapacityAtCell` |
-| `energyConsumePerRun` | `api.energy.consume` |
-| `techAppendUnlock` | `api.tech.conservatory.appendUnlock` |
-| `techSetUpgradeLevel` | `api.upgrades.setLevelById` |
-| `techGrantItem` | `api.player.inventory.addById` |
+- [ ] **`pure` (23)** — `projectileFast` is a literal; `signalLog` is a `console.log`.
+      Keep as a `debug` section, or delete?
+- [ ] **`self-sufficient` (15)** — legitimate, but `structureReadData`/`structureWriteData`
+      and the `upgrade*` family touch `structure.data` / `item.data` directly. Can they
+      become `api.structures` / `api.upgrades` calls?
+- [ ] **`context-bound` (3)** — `processorScan`, `processorLift`, `processorConvert`.
+      Does `ctx.commit` count as an API, or is it a capability the process should own?
 
-The other 38 call no `api.*` at all. They fall into two kinds:
-
-- **Context-bound** (4): `processorLift`, `processorConvert`, `processorScan` use
-  `ctx.commit` / `ctx.getResolvedTypeAtCell` — the engine's `StructureProcessingContext`,
-  not an API namespace. Whether that satisfies "calls an API" is an open question.
-- **Pure** (the rest): loggers, `structureReadData` / `structureWriteData` (touch
-  `structure.data` directly), and the value-returning factories.
-
-So the rule is a **design rule going forward, not a description of what exists**, and
-adopting it forces a decision on 38 handlers rather than 0. That is Phase 2's real work.
 
 
 ## Measured state (counted — not assumed)
@@ -120,26 +141,39 @@ Consequences, in the order they will bite:
 6. **Round-trip is a hard requirement.** `schema_roundtrip.test.ts` (590 assertions) must
    still pass, and a `handlerKey` already on disk has to keep working.
 
-## Open decisions
+## Decisions
 
-- [ ] **Return-value rule for value-returning slots.** Proposed: run all actions in order,
-      shallow-merge returned plain objects, last writer wins; a non-object return replaces
-      the whole value and is terminal. A 1-action process then behaves exactly as it does
-      today, so this is backward-compatible by construction. **Phase 0 narrowed this to
-      `projectile` only** — the other slots discard the return — so the rule is small. Still
-      _wants confirming against the engine's real `getOptions` call site._
+### Resolved by the implementation
+
+These were questions when the plan was written. The code now answers them, and each is
+pinned by a test — so they are recorded, not open.
+
+- [x] **Return-value rule.** Run in order; plain objects shallow-merge with last writer
+      winning; a non-object return replaces the value outright. Phase 0 narrowed the
+      question to **`projectile` alone** — the other six slots discard the return — so
+      the rule is one small function, `mergeProcessValue`. A 1-action process behaves
+      exactly as that action did before, which is what makes it backward-compatible.
+- [x] **A failure does not stop the chain.** Each action is isolated and the rest still
+      run; the error is reported through `onFailure` rather than thrown. Fail-fast would
+      let one bad action silently disable everything after it. Only `projectile` *reads*
+      a return, and a throw there reaches the panel rather than the game.
+- [x] **A zero-action process is legal.** It compiles to a no-op that still satisfies
+      the engine, so a process can be saved before its actions are chosen.
+- [x] **The same action may appear twice**, with different options — "log, then convert"
+      and "convert, then log" are different behaviours. Nothing sorts or deduplicates.
+
+### Still open — these need a person, not a refactor
+
 - [ ] **What are the 13 vacuous handlers, really?** They return a descriptor into a slot
       that throws it away. Either they move to the energy / excavation definitions as
-      **presets** (most likely — that is what a `{capacity: 1000}` or `{power: 10}` shape
-      is), or they are deleted as unreachable. _This is a product call, not a refactor._
-- [ ] **Does an action failure stop the chain?** Proposed: no — each action is isolated and
-      the rest still run, with the error collected. Chosen because today each handler
-      carries its own `try/catch`, and a list makes that boilerplate the process's job.
-      _Confirm this rather than fail-fast._
-- [ ] **Is a process with zero actions legal?** Proposed: yes, a no-op that still satisfies
-      the engine, so an author can save a process before choosing its actions.
-- [ ] **Can the same action appear twice in one process?** Proposed: yes, with different
-      options — "log, then convert" and "convert, then log" are different behaviours.
+      **presets** — most likely, since that is what a `{capacity: 1000}` or
+      `{power: 10}` shape *is* — or they are deleted as unreachable. _Product call._
+- [ ] **Rule on the 41 off-rule actions**, by class — see the action class section.
+- [ ] **Confirm the 5 API-bound actions** against a namespace the engine really has.
+- [ ] **Should `behavior` become a process too?** It is the last slot whose stored shape
+      is not `actions`, and that asymmetry is the one thing left a reader would trip over.
+- [ ] **In-game verification** — see Phase 7.
+
 
 
 
@@ -166,65 +200,222 @@ it, and one of them was a correction to this plan rather than a confirmation:
 One test is deliberately the invariant this plan removes ("a slot resolves exactly one
 function"). After the split it should be **deleted, not relaxed**.
 
+## Payload vs params — the bug this exposed
+
+Measured across all six `resolveAnyHandler` sites in `apply.ts`, **the engine never
+delivers parameters.** Every site hands the raw function over and binds nothing:
+
+| call site | engine calls | action signature | params delivered? |
+| --- | --- | --- | --- |
+| `processing` | `process(structure, context)` | `(structure, context, options)` | **no** — 3rd arg never arrives |
+| `signal` | `handler(structure)` | `(payload, extra)` | **no** |
+| `trigger` | `callback()` | `(payload, extra)` | **no** — no args at all |
+| `behavior` | `onDownKey(key)` | `(payload, extra)` | **no** |
+| `itemAction` | `handleAction(state, action)` | `(item, extra)` | yes — `mysandkit` sets `out.options` |
+| `projectile` | `getOptions()` | `() => options` | n/a |
+| `upgrade` | — | — | **never wired at all** |
+
+So the payload and the params come from **two different places and never met**. The
+engine supplies the payload; the config supplies the params; nothing joined them.
+
+Three live consequences:
+
+- **`processorConvert` is a dead path.** Its `to` option is declared `required: true`,
+  the panel forces the author to fill it in, and the engine never passes it — so it
+  always takes its "nothing to convert to" branch and only logs. A required field,
+  silently ignored. There is a test for both halves of this.
+- **The `upgrade` slot resolves no handler at all.** `registerUpgrade` destructures
+  `onUpgradeKey` out and never sets `onUpgrade`; a `handlerKey` passes through to the
+  engine as a bare string. So 7 of the 43 actions are unreachable in-game.
+- **Trigger callbacks receive nothing.** `registerTrigger` puts `extra` in the
+  *registration* object, not the call — and several actions are written `(payload, extra)`.
+
+`compileProcess` is the fix, and it is the only place a process exists at runtime: it
+captures each action's options in a closure and passes them as the third argument.
+
 ## Phase 1 — types and naming
 
-The names are part of the problem: `AnyHandler` is a function that is sometimes an action
-and sometimes a process, and nothing says which.
+- [x] `HandlerActionFn` — the canonical `(payload, ctx, options)`
+- [x] `HandlerProcessFn` — the compiled function the engine calls
+- [x] `HandlerActionRef` = `{ key, options? }`
+- [x] `CallSite` + labels + the engine's own signature for each
+- [x] `resolveAction(key)` — typed miss instead of silent `undefined`
+- [x] `compileProcess(refs, callSite)` — ordered, isolated, params bound
+- [x] `actionRefsOf(entry)` — migrates `handlerKey` to a one-action process
+- [x] `mergeProcessValue` folded into the runtime failure reporter (cosmetic)
+- [x] Deprecate `AnyHandler` / `CodeHandler` / `ProcessHandler`, then delete — **done in
+      Phase 5/6**: the three registries are typed `HandlerActionFn`, and
+      `AnyHandler` / `ProcessHandler` / `InterceptHandler` / `ModifyHandler` are gone.
+      `CodeHandler` remains, for the reason in its own doc comment.
 
-- [ ] `HandlerActionFn` / `HandlerAction` — the code, atomic, one `api.*` section
-- [ ] `HandlerProcessFn` — the compiled function the engine calls
-- [ ] `HandlerActionRef` = `{ key: string; options?: Record<string, unknown> }`
-- [ ] `CallSite` — the engine entry point, named for what invokes a process
-      (`item.handleAction`, `structure.process`, `signal.onClick`, `projectile.getOptions`,
-      `upgrade.onUpgrade`, `trigger.fire`, `behavior.onDownKey`, `modifier.intercept`)
-- [ ] `compileProcess(refs, callSite)` → `HandlerProcessFn`
-- [ ] Deprecate `AnyHandler` / `CodeHandler` / `ProcessHandler`, then delete
 
 ## Phase 2 — the action catalogue
 
-- [ ] Replace `type` with the **API axis** — the `api.*` namespace an action calls
-- [ ] `resolveAction(key)` — typed miss instead of silent `undefined`
-- [ ] Reachability checks read the action list, not a single key
-- [ ] **Decide the 38 non-API actions** — the real work of this phase:
-  - [ ] Context-bound (`processorLift`/`Convert`/`Scan`) — does `ctx.commit` count?
-  - [ ] Pure loggers — keep as a `debug` section, or delete?
-  - [ ] `structureReadData`/`WriteData` — can these become an `api.structures` call?
+- [x] `api` on every entry — the **API axis**, derived from `ACTION_APIS`
+- [x] `cls` on every entry — derived from `ACTION_CLASSES`, so it cannot drift
+- [x] `type` marked `@deprecated`; kept only so the Handlers tab keeps working
+      until Phase 6 regroups on `api` + `cls`
+- [x] `resolveAction(key)` — reads all three registries, unwraps `CODE_HANDLERS`
+- [x] `scanHandlerUsage` / `unreachableHandlers` / `usageIndex` read the action
+      **list**, so a 3-action process yields 3 independently-checked usages
+- [ ] **Rule on the 41 off-rule actions**, by class — see the action class section
 - [ ] Confirm the 5 API-bound actions against a namespace that actually exists
 
 ## Phase 3 — the compiler
 
-- [ ] Ordered run, per-action `try/catch`, errors collected not thrown
-- [ ] Return-value merge per **Open decisions**
-- [ ] Unknown action key: warn once, drop that action, keep the rest
+- [x] Ordered run, per-action `try/catch`, errors collected not thrown
+- [x] Return-value merge per **Open decisions** — `mergeProcessValue`, and Phase 0
+      narrowed it to `projectile`, the one slot that reads a return
+- [x] Unknown action key: warns once, drops that action, keeps the rest
 
 ## Phase 4 — config schema
 
-- [ ] `actions: HandlerActionRef[]` on all 7 slots
-- [ ] Read `handlerKey` as a 1-element action list (migration), write `actions`
-- [ ] Round-trip both shapes; `schema_roundtrip` stays green
-- [ ] Keep the Consumable exclusion working across the migration
+- [x] `actionList` field kind on both `FieldSpec` unions
+      (`definition/types.ts` and `schema.ts` — they are **duplicated**, and a new
+      kind in one is a type error in the other. Worth collapsing to one later.)
+- [x] `actions-field.ts` — the one `actions` field all seven objects share:
+      `parseActionRefs` / `formatActionRefs` / `actionRefsToForm` / `actionListField`
+- [x] Read `handlerKey` as a one-action process (`actionRefsOf`), write `actions`
+- [x] `ACTIONS_COVERED` owns **both** keys, so the passthrough cannot re-add
+      `handlerKey` and leave a process holding both shapes at once
+- [x] Round trip is exact: order, repeated actions, and per-action options
+- [x] `definition-ownership.test.ts` — `actions-field` joins the shared-helper
+      allowlist (it defines no object; `custom/` owns 2 of the 7 users) and
+      `.test.ts` files are excluded
+- [x] Wire the field into **all 7** definitions — signal, trigger, processing,
+      projectile, upgrade, modifier, item
+- [x] Consumable rule preserved: `writeActions(w, enabled)` **removes** the process
+      for a Consumable rather than writing it, and switching back to a Tool restores it
+- [x] Validation: an unknown action key, or an action the slot cannot serve, shown as a
+      field error rather than only as a red outline
+
+**All 7 tabs migrated.** No `handlerKey` / `getOptionsKey` / `onUpgradeKey` field is left
+anywhere in `definition/core/`. Each tab declares an `actionList`, reads its process
+(migrating whichever legacy key it used), and on save writes `actions` and deletes all
+three legacy names.
+
+Three things the last four tabs turned up:
+
+- **Projectile's rule moved to the list.** `optionsJson` used to hide behind
+  `getOptionsKey === ""`; it now hides behind `parseActionRefs(actionsJson).length === 0`,
+  because an empty process and an absent one mean the same thing and a single key could
+  not say that. Tested both ways.
+- **Item's `when` moved with it, but its *save* rule could not.** The field still hides
+  itself for a Consumable, yet the form keeps the value so switching back to a Tool
+  restores it — so the rule is applied in `writeActions`, not in the field. That is the
+  `enabled: false` parameter.
+- **`upgrades` was still reading itself in `schema.ts`'s inline switch**, the last tab
+  that had not been delegated. The write side read `actionsJson` that nothing had ever
+  put there, so a migrated `onUpgradeKey` came back as an empty process. It now
+  delegates like every other tab.
+
+`actionRefsOf` and `writeActions` now handle all three legacy names uniformly, so no
+caller needs to know which tab used which spelling. That let `scanHandlerUsage`'s
+`getOptionsKey` fallback go — it had been double-counting projectile.
+
+Tooling: `gen-reference`'s `COMPOSITE` maps `actionsJson → actions[]` on all 7 tabs;
+`verify-definition`'s `KEYS_INSIDE_A_COMPOSED_CONTROL` learns `actions` and
+`CLAIMED_TO_SUPPRESS` learns the three legacy names (claimed, no control, dropped on
+purpose — exactly that set's meaning). Its signal, trigger, projectile, upgrade, modifier
+and item probes now assert the migration rather than a passthrough.
+
+**Runtime is still Phase 5.** `apply.ts` calls `resolveAnyHandler` at 7 sites and
+`mysandkit.ts` at 1; the panel now stores `actions` and nothing reads it yet. Existing
+configs keep working because `actionRefsOf` migrates on read.
+
+
+
 
 ## Phase 5 — registration
 
-- [ ] `apply.ts`: signals, triggers, behaviours, modifiers
-- [ ] `mysandkit.ts`: `item.handleAction`, projectile `getOptions`
-- [ ] `processing.ts` definition: the picker becomes a list, not a dropdown
+This is the step that makes the split real, and it had to land as **one change** with the
+handler re-signing below — either half alone breaks the other.
+
+- [x] `apply.ts`: processing, projectile, signal, trigger, behavior — all five now
+      `compileProcess(actionRefsOf(entry), callSite)`
+- [x] `mysandkit.ts`: **item** `handleAction`, **upgrade** `onUpgrade`
+- [x] `resolveAnyHandler` count in both runtime files: **0**
+- [x] The 15 `ANY_HANDLERS` that read options from argument 2 re-signed to
+      `(payload, ctx, options)` — argument 3, where the compiler passes them
+- [x] The 7 call sites each use the **call site** as the grouping axis
+- [x] `processing.ts` definition: the picker became a list (Phase 4)
+
+### What this actually fixed
+
+- **`processorConvert` can convert.** The engine calls `process(structure, context)` —
+  two arguments — so the old registration's third parameter was always `undefined`, and a
+  field its own schema marks `required` was silently ignored. The compiler binds the
+  options at build time.
+- **The upgrade slot runs at all.** `registerUpgrade` destructured `onUpgradeKey` out and
+  never set `onUpgrade`. `onUpgrade` is a real top-level field of `upgrades.register` and
+  the engine reads it, so all 7 upgrade actions were unreachable while looking perfectly
+  configured.
+- **Trigger callbacks get their options.** The engine calls `callback()` with *no*
+  arguments; `extra` was in the registration, not the call.
+- **Signals and behaviors likewise** — one argument, and the second was always empty.
+
+`resolveAnyHandler` survives, documented, because the catalog still publishes it. It
+differs from `resolveAction` in one real way: it looks in `CODE_HANDLERS` **before**
+`PROCESS_HANDLERS`, so a key in both would resolve to the modifier action.
 
 ## Phase 6 — UI
 
-- [ ] Handlers tab splits: **Actions** (grouped by `api.*`) and **Processes** (grouped by
-      call site) — the two axes, no longer sharing one `type` field
-- [ ] Process editor: ordered list — add, remove, reorder, per-action params
-- [ ] "Copy snippet" emits the list form
-- [ ] Warnings follow the action list, not the single key
+- [x] `actionList` widget — `src/ui/action-list-control.ts`, in the **generic chain**, not
+      in each of the 7 definitions. `actionList` is a shared kind like `json`, so giving
+      any object a process is one line rather than seven widgets.
+- [x] `FieldContext.tab` — the call site is a property of the *object*, not the field, so
+      the dropdown can offer only what that slot can run. Threaded through the one place a
+      control is called rather than inferred.
+- [x] Per row: slot-scoped dropdown, ↑ / ↓ / ✕, and the action's **own** parameters built
+      from `HandlerMeta.params` — typed, so a number stays a number
+- [x] An action the slot cannot serve is **kept and outlined red**, never dropped:
+      silently deleting a row is how a process loses a step with nobody noticing
+- [x] "Add" is a **select of the slot's vocabulary**, not a button that appends the first
+      action — with no rows there are no per-row dropdowns, so a button would make
+      availability invisible and the author would add a row to find out what they may add
+- [x] Handlers tab now shows **both axes**, and stops grouping on `type`:
+  - [x] **Actions** — one collapsible section per `api.*` namespace, then the
+        no-api classes in ladder order (`context-bound`, `self-sufficient`, `pure` last,
+        because it is nearly half the catalogue and is mostly scaffolding)
+  - [x] **Processes in use** — grouped by call site, each entry's actions **numbered**,
+        because order is the point. Entries with no process are left out
+  - [x] `TYPE_ORDER` deleted; `HANDLER_TYPE_*` no longer imported by the tab
+- [x] "Copy snippet" emits the **list** form — `{ actions: [{ key, options }] }`. It used to
+      emit `{ handlerKey, scope, options }`, which none of the seven tabs reads any more:
+      a snippet that pasted cleanly and then did nothing was worse than no snippet.
+      Button renamed to "Copy as a process" so the shape is not a surprise.
+- [x] Validation: `validateField` gained an `actionList` case, with **two different
+      messages** — `unknown action: x` (a typo, or an action that was removed) and
+      `cannot run here: x` (a real action in a slot it cannot serve). An outline is a
+      hint; this is what blocks the save.
+- [x] `TAB_TO_CALL_SITE` is **one exported table** in `handler-registry.ts`, used by the
+      widget's dropdown *and* the validator. They must agree: if they did not, the
+      picker would offer an action the save then rejected, which reads as the panel
+      being broken rather than the config being wrong. A test pins both directions.
+- [ ] `type` itself: **still load-bearing**, and now for a real reason rather than by
+      oversight — the `behavior` / input-binding slot is the one that kept a bare key
+      (a key binding is a function *pair* on one entry, with nowhere to put a list), and
+      `input.ts`'s hints still describe it with `typesHintFor`. Deprecating it means
+      rewriting that wording as well as 46 entries. Its own change, not this one's.
+- [ ] Decide whether `behavior` should become a process too — it is the last slot
+      whose stored shape is not `actions`, and the asymmetry is now the only thing left
+      that a reader would trip over.
+
+
+
+
 
 ## Phase 7 — verify
 
-- [ ] `deno check src/main.ts`
-- [ ] `deno test -A --no-check src/`
-- [ ] `deno test -A --no-check tools/`
-- [ ] `deno run -A src/ui/test/schema_roundtrip.test.ts`
-- [ ] `deno run -A tools/verify-definition.ts`
-- [ ] `deno task build:main`
+Run on every change; last run all green.
+
+- [x] `deno check src/main.ts`
+- [x] `deno test -A --no-check src/` — 350
+- [x] `deno test -A --no-check tools/` — 102
+- [x] `deno run -A src/ui/test/schema_roundtrip.test.ts` — 606
+- [x] `deno run -A tools/verify-definition.ts` — all 46
+- [x] `deno task build:main`
 - [ ] In-game: a 3-action process on a structure and one on an item — **needs the game**;
-      stated as unverified rather than claimed
+      stated as unverified rather than claimed. Specifically: does `processorConvert`
+      actually commit now that its options arrive, and does an upgrade's `onUpgrade`
+      fire at all? Those are the two bugs Phase 5 fixed and only the game can confirm.

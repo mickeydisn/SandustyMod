@@ -108,6 +108,7 @@ import {
     ownersOf,
     renderListRow,
 } from "./list-panel.ts";
+import { renderActionList } from "./action-list-control.ts";
 import { listFor } from "./panel/index.ts";
 import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
 import * as S from "./styles.ts";
@@ -708,6 +709,9 @@ export function createPanelComponent(defaultMinimized = true) {
                 value: val,
                 error: err,
                 locked,
+                // The `actionList` control needs the call site, which is a property
+                // of the object rather than the field.
+                tab: cat,
             });
             let control: unknown = own ?? null;
             // The generic chain below is a fallback, so it must be *guarded* by
@@ -719,6 +723,22 @@ export function createPanelComponent(defaultMinimized = true) {
             // down, and lands in the final `else` — which assigns a plain text
             // input over the widget that was just built. The 4×4 grid and the
             // build-modes editor both silently rendered as an empty text box.
+            if (control === null && f.kind === "actionList") {
+                // The ordered-process editor. Handled here rather than in each of the
+                // seven definitions because `actionList` is a *shared* kind, like
+                // `json` — one widget for every object that stores a process.
+                control = renderActionList({
+                    h,
+                    form,
+                    cfg,
+                    setField,
+                    field: f,
+                    value: val,
+                    error: err,
+                    locked,
+                    tab: cat,
+                });
+            }
             if (control === null && f.kind === "select") {
                 const opts = resolveOptions(f, form);
                 const placeholder = f.required ? "— select —" : "— none —";

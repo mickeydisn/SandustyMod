@@ -12,7 +12,7 @@ import {
     type RecipeConfig,
     type StructureConfig,
 } from "../constants.ts";
-import { resolveAnyHandler } from "../hooks/handlers.ts";
+import { actionRefsOf, ACTIONS_LEGACY_KEYS, compileProcess } from "../hooks/process.ts";
 
 declare const sandkit: any;
 const g = () => {
@@ -500,29 +500,30 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
     }
 
     // `handleAction` is a real slot on ItemDefinition ("Handles item use
-    // actions"), but it is a *function* — JSON can only name one, so resolve the
-    // stored handlerKey here. A Consumable is skipped on purpose: ItemType has a
-    // Consumable member but ActionType does not, so the engine can never
+    // actions"), but it is a *function* — JSON can only name a process, so the
+    // stored list is compiled here. A Consumable is skipped on purpose: ItemType
+    // has a Consumable member but ActionType does not, so the engine can never
     // dispatch a use action to one.
-    const handlerKey = typeof def.handlerKey === "string" ? def.handlerKey : "";
-    if (handlerKey && !isConsumable) {
-        const fn = resolveAnyHandler(handlerKey);
-        if (typeof fn === "function") {
-            out.handleAction = fn;
-            // Keep the name in the payload for the panel's "used by" scan.
-            out.handlerKey = handlerKey;
-            out.options = {
-                ...(typeof def.options === "object" ? def.options : {}),
-                itemId: id,
-                itemType: def.itemType ?? "Mod",
-            };
-        } else {
+    const refs = actionRefsOf(def as Record<string, unknown>);
+    if (refs.length > 0 && !isConsumable) {
+        const { fn, skipped } = compileProcess(refs, "itemAction");
+        if (skipped.length) {
             console.warn(
-                `[md-my-hown-mod] item ${id}: unknown handlerKey "${handlerKey}" — registering without a use action`,
+                `[md-my-hown-mod] item ${id}: unknown action ${skipped.join(", ")}`,
             );
         }
-    } else if (handlerKey) {
-        delete out.handlerKey;
+        out.handleAction = fn as never;
+        // Keep the process in the payload for the panel's "used by" scan.
+        out.actions = refs;
+        out.options = {
+            ...(typeof def.options === "object" ? def.options : {}),
+            itemId: id,
+            itemType: def.itemType ?? "Mod",
+        };
+    } else {
+        // No process, or one the engine can never dispatch. Drop the keys that
+        // name one so a `Consumable` does not reach the game holding one.
+        for (const k of ["actions", ...ACTIONS_LEGACY_KEYS]) delete out[k];
         delete out.options;
     }
 
@@ -723,8 +724,17 @@ export function registerUpgradeCategory(
 
 export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): void {
     try {
-        const { onUpgradeKey, id: _id, ...rest } = def as any;
-        g()?.api?.upgrades?.register?.(rest);
+        const { id: _id, ...rest } = def as Record<string, unknown>;
+        // `onUpgrade` is a real top-level field of `upgrades.register` and the
+        // engine reads it — a callback, like `ItemDefinition.handleAction`. The mod
+        // used to store `onUpgradeKey` and strip it here without ever setting
+        // `onUpgrade`, so **the whole upgrade slot never ran**: all 7 upgrade
+        // actions were unreachable in-game. `actionRefsOf` migrates the old key.
+        const { fn, skipped } = compileProcess(actionRefsOf(rest), "upgrade");
+        if (skipped.length) {
+            console.warn(`${LOG} upgrade ${def.id}: unknown action ${skipped.join(", ")}`);
+        }
+        g()?.api?.upgrades?.register?.({ ...rest, onUpgrade: fn });
     } catch (e) {
         console.error(`${LOG} upgrades.register failed`, def.id, e);
     }

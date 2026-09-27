@@ -12,7 +12,8 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.signals.md`.
  */
-import { listSignalHandlerKeys, listStructures } from "../../../catalog.ts";
+import { listStructures } from "../../../catalog.ts";
+import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
 import { idField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
@@ -45,13 +46,11 @@ const FIELDS: FieldSpec[] = [
         options: listStructures,
     },
     {
-        key: "handlerKey",
-        label: "Handler",
-        kind: "select",
+        // Was a `select` over `listSignalHandlerKeys` picking exactly one
+        // handlerKey. A signal is a process now: an ordered list of actions.
+        ...actionListField("runs when the structure is clicked"),
         section: "Signal",
         required: true,
-        options: listSignalHandlerKeys,
-        hint: "code callback — without it the entry is stored but never attached",
     },
 ];
 
@@ -61,20 +60,20 @@ const FIELDS: FieldSpec[] = [
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("kind", read.str(e.kind));
     read.put("target", read.str(e.target) ?? read.num(e.target));
-    read.put("handlerKey", read.str(e.handlerKey));
+    readActions(read, e);
 }
 
 /** Form strings → stored entry, for the whole signal. */
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("kind", w.opt("kind"));
     w.setStr("target", w.opt("target"));
-    w.setStr("handlerKey", w.opt("handlerKey"));
+    writeActions(w);
 }
 
 // ── The definition ───────────────────────────────────────────────────────────
 
 /** Stored keys this form owns — the control names happen to match all of them. */
-const FORM_COVERED = ["kind", "target", "handlerKey"];
+const FORM_COVERED = ["kind", "target", ...ACTIONS_COVERED];
 
 export const signalDefinition: Definition = {
     tab: "signals",

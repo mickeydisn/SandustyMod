@@ -11,7 +11,7 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.input.md`.
  */
-import { listTriggerHandlerKeys } from "../../../catalog.ts";
+import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
 import { idField, numField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
@@ -27,12 +27,11 @@ const FIELDS: FieldSpec[] = [
     }),
     numField("sequentialRuns", "Runs per fire", "Timing", { min: 1, max: 1000, def: "1" }),
     {
-        key: "handlerKey",
-        label: "Handler",
-        kind: "select",
+        // Was a `select` over `listTriggerHandlerKeys` picking exactly one
+        // handlerKey. A trigger is a process now.
+        ...actionListField("runs on the interval"),
         section: "Timing",
         required: true,
-        options: listTriggerHandlerKeys,
     },
     {
         key: "extraJson",
@@ -51,7 +50,7 @@ const FIELDS: FieldSpec[] = [
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("interval", read.num(e.interval));
     read.put("sequentialRuns", read.num(e.sequentialRuns));
-    read.put("handlerKey", read.str(e.handlerKey));
+    readActions(read, e);
     read.put("extraJson", read.json(e.extra));
 }
 
@@ -59,7 +58,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setNum("interval", w.optNum("interval"));
     w.setNum("sequentialRuns", w.optNum("sequentialRuns"));
-    w.setStr("handlerKey", w.opt("handlerKey"));
+    writeActions(w);
     const extra = w.optJson<Record<string, unknown>>("extraJson");
     if (extra) w.setRaw("extra", extra);
     // `triggerId` is not written here. It has no control, so there is nothing
@@ -83,7 +82,7 @@ export const triggerDefinition: Definition = {
     // "Fields this panel does not show" box. That is the honest place for a
     // stored key the form genuinely cannot edit, and it is the first time it
     // has been visible at all.
-    formCovered: ["interval", "sequentialRuns", "extra", "handlerKey"],
+    formCovered: ["interval", "sequentialRuns", "extra", ...ACTIONS_COVERED],
     entryToForm,
     formToEntry,
 };

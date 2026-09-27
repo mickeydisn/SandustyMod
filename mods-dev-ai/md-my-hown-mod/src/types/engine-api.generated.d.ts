@@ -18,7 +18,14 @@ export namespace cooldown {
 
 export namespace drones {
     /** arity 6 */
-    export function spawn(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function spawn(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
     /** arity 2 */
     export function kill(a0: unknown, a1: unknown): unknown;
 }
@@ -37,7 +44,12 @@ export namespace sound {
     /** arity 3 */
     export function playLayers(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4 */
-    export function calculateDistanceOptions(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
+    export function calculateDistanceOptions(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+    ): unknown;
 }
 
 export namespace action {
@@ -66,14 +78,42 @@ export namespace matters {
     /** arity 2; takes the engine context; throws */
     export function getMatterTypeFromId(a0: unknown, a1: unknown): unknown;
     /** arity 7 */
-    export function runSolidUpdate(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown, a6: unknown): unknown;
+    export function runSolidUpdate(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+        a6: unknown,
+    ): unknown;
 }
 
 export namespace elements {
     /** arity 1; takes the engine context */
     export function getRegisteredTypes(a0: unknown): unknown;
     /** `id`: string; `nameKey`: string; `defaultDataFields`: { [key: string]: number }; `colors`: { variantFromDataField1?: { rangeMin?: number, rangeMax?: number, invert?: boolean, useGradient?: boolean, }, variants: [number, number, number][], }; `colors.variantFromDataField1`: { rangeMin?: number, rangeMax?: number, invert?: boolean, useGradient?: boolean,; `density`: number; `matterType`: MatterType; `isGrabbable`: boolean; `isTransportable`: boolean; `getExtraProps`: () => { data: Record<PropertyKey, any> } */
-    export function register(definition: { id: string; nameKey: string; defaultDataFields: { [key: string]: number }; colors: { variantFromDataField1?: { rangeMin?: number, rangeMax?: number, invert?: boolean, useGradient?: boolean, }, variants: [number, number, number][], }; density: number; matterType: unknown; isGrabbable: boolean; isTransportable: boolean; getExtraProps: unknown }): unknown;
+    export function register(
+        definition: {
+            id: string;
+            nameKey: string;
+            defaultDataFields: { [key: string]: number };
+            colors: {
+                variantFromDataField1?: {
+                    rangeMin?: number;
+                    rangeMax?: number;
+                    invert?: boolean;
+                    useGradient?: boolean;
+                };
+                variants: [number, number, number][];
+            };
+            density: number;
+            matterType: unknown;
+            isGrabbable: boolean;
+            isTransportable: boolean;
+            getExtraProps: unknown;
+        },
+    ): unknown;
     /** arity 3; takes the engine context */
     export function updateDefinition(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 3 */
@@ -89,9 +129,21 @@ export namespace elements {
     /** arity 4; takes the engine context */
     export function removeAtDeferred(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 5; takes the engine context */
-    export function createAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function createAt(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 5; takes the engine context */
-    export function replaceAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function replaceAt(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 3 */
     export function getElementTypeAtPos(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 3; takes the engine context */
@@ -107,19 +159,43 @@ export namespace elements {
     /** arity 3; takes the engine context */
     export function isFreeFalling(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4; takes the engine context */
-    export function findFreePositionInStructure(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
+    export function findFreePositionInStructure(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+    ): unknown;
     /** arity 5; takes the engine context */
     export function move(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
     /** arity 6; takes the engine context */
-    export function moveAtSimulationIdle(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function moveAtSimulationIdle(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
     /** arity 5; takes the engine context */
-    export function teleport(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function teleport(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 3; takes the engine context */
     export function getVelocity(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4; takes the engine context */
     export function setVelocity(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 5; takes the engine context */
-    export function addParticleVelocity(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function addParticleVelocity(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 4; takes the engine context */
     export function convertToParticle(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 3; takes the engine context */
@@ -129,7 +205,13 @@ export namespace elements {
     /** arity 4; takes the engine context */
     export function getDataField(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 5; takes the engine context */
-    export function setDataField(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function setDataField(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 3 */
     export function getDataField1(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4 */
@@ -155,7 +237,13 @@ export namespace elements {
     /** arity 4; takes the engine context */
     export function setPhysics(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 5; takes the engine context */
-    export function setDuration(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function setDuration(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
 }
 
 export namespace fire {
@@ -185,11 +273,23 @@ export namespace world {
     /** arity 3; takes the engine context */
     export function reportActivityToChunk(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 6 */
-    export function excavate(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function excavate(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
     /** arity 3; takes the engine context */
     export function revealFogAtCell(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4 */
-    export function redrawSurroundingCells(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
+    export function redrawSurroundingCells(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+    ): unknown;
     /** arity 4; takes the engine context */
     export function createLightSource(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 3 */
@@ -199,7 +299,14 @@ export namespace world {
     /** arity 4; takes the engine context */
     export function fadeLightSourceAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 6 */
-    export function spawn(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function spawn(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
     /** arity 2 */
     export function destroy(a0: unknown, a1: unknown): unknown;
     /** arity 2 */
@@ -231,13 +338,37 @@ export namespace terrains {
     /** arity 2; takes the engine context */
     export function getIdByType(a0: unknown, a1: unknown): unknown;
     /** `id`: string; `nameKey`: string; `hp`: number; `materialId`: number; `metaColor`: number; `colorHSL`: [number, number, number]; `excavationRequirements`: readonly string[]; `interactions`: readonly { kind: string; [key: string]: unknown }[]; `output`: { elementType: elements.ElementType; chance: number; }; `output.elementType`: elements.ElementType; `output.chance`: number */
-    export function register(definition: { id: string; nameKey: string; hp: number; materialId: number; metaColor: number; colorHSL: [number, number, number]; excavationRequirements: readonly string[]; interactions: unknown; output: unknown }): unknown;
+    export function register(
+        definition: {
+            id: string;
+            nameKey: string;
+            hp: number;
+            materialId: number;
+            metaColor: number;
+            colorHSL: [number, number, number];
+            excavationRequirements: readonly string[];
+            interactions: unknown;
+            output: unknown;
+        },
+    ): unknown;
     /** arity 3; takes the engine context */
     export function updateDefinition(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 5 */
-    export function createAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function createAt(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 5; takes the engine context */
-    export function replaceAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function replaceAt(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 4; takes the engine context */
     export function removeAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 3 */
@@ -275,7 +406,14 @@ export namespace shadows {
     /** arity 4; takes the engine context */
     export function refreshRadius(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 6; takes the engine context */
-    export function refreshRect(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function refreshRect(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
 }
 
 export namespace collector {
@@ -310,7 +448,14 @@ export namespace items {
 
 export namespace projectiles {
     /** `id`: string; `sprite`: { id: string; tint?: number; }; `sprite.id`: string; `sprite.tint`: number; `getOptions`: () => Record<string, unknown>; `getModData`: (state: unknown, projectile: Projectile) => Record<string, unknown> */
-    export function register(definition: { id: string; sprite: { id: string; tint?: number; }; getOptions: unknown; getModData: unknown }): unknown;
+    export function register(
+        definition: {
+            id: string;
+            sprite: { id: string; tint?: number };
+            getOptions: unknown;
+            getModData: unknown;
+        },
+    ): unknown;
     /** arity 2; takes the engine context */
     export function createBlueprint(a0: unknown, a1: unknown): unknown;
     /** arity 2 */
@@ -341,7 +486,19 @@ export namespace excavation {
     /** arity 3 */
     export function registerProfile(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 11 */
-    export function prepare(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown, a6: unknown, a7: unknown, a8: unknown, a9: unknown, a10: unknown): unknown;
+    export function prepare(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+        a6: unknown,
+        a7: unknown,
+        a8: unknown,
+        a9: unknown,
+        a10: unknown,
+    ): unknown;
 }
 
 export namespace processing {
@@ -383,7 +540,9 @@ export namespace structures {
     /** arity 3; takes the engine context */
     export function forEachOfType(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** `structureId`: StructureId; `fields`: PlacementConfigField[] */
-    export function registerPlacementConfig(definition: { structureId: unknown; fields: unknown }): unknown;
+    export function registerPlacementConfig(
+        definition: { structureId: unknown; fields: unknown },
+    ): unknown;
     /** arity 2 */
     export function isType(a0: unknown, a1: unknown): unknown;
     /** arity 1 */
@@ -401,13 +560,29 @@ export namespace structures {
     /** arity 3 */
     export function setSpritesheetIndex(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4 */
-    export function setSpritesheetIndexAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
+    export function setSpritesheetIndexAt(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+    ): unknown;
     /** arity 2 */
     export function mapValueToSpritesheetIndex(a0: unknown, a1: unknown): unknown;
     /** arity 4 */
-    export function setSpritesheetIndexByValue(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
+    export function setSpritesheetIndexByValue(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+    ): unknown;
     /** arity 5 */
-    export function setSpritesheetIndexByValueAt(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function setSpritesheetIndexByValueAt(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 4 */
     export function build(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 4 */
@@ -446,9 +621,22 @@ export namespace misc {
 
 export namespace grid {
     /** arity 6 */
-    export function iterateRect(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function iterateRect(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
     /** arity 5 */
-    export function iterateCircle(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function iterateCircle(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
 }
 
 export namespace energy {
@@ -463,7 +651,12 @@ export namespace energy {
     /** arity 3; takes the engine context */
     export function getNetworkFreeCapacity(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4; takes the engine context */
-    export function consumeExcludingNetwork(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
+    export function consumeExcludingNetwork(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+    ): unknown;
     /** arity 3 */
     export function consume(a0: unknown, a1: unknown, a2: unknown): unknown;
 }
@@ -475,9 +668,21 @@ export namespace raycast {
 
 export namespace effects {
     /** arity 4; takes the engine context */
-    export function createDistortionWave(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
+    export function createDistortionWave(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+    ): unknown;
     /** arity 6; takes the engine context */
-    export function createLaser(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function createLaser(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
     /** arity 4 */
     export function createLight(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 2 */
@@ -485,7 +690,13 @@ export namespace effects {
     /** arity 4 */
     export function createParticles(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 5 */
-    export function createEffect(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function createEffect(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
 }
 
 export namespace schedule {
@@ -497,9 +708,21 @@ export namespace queue {
     /** arity 2 */
     export function registerHandler(a0: unknown, a1: unknown): unknown;
     /** arity 5; takes the engine context */
-    export function enqueue(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function enqueue(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 5; takes the engine context */
-    export function enqueueInTicks(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown): unknown;
+    export function enqueueInTicks(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+    ): unknown;
     /** arity 4 */
     export function enqueueSkipTick(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 2; takes the engine context */
@@ -522,7 +745,14 @@ export namespace ui {
     /** arity 3; takes the engine context */
     export function confirm(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 6; takes the engine context */
-    export function prompt(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown): unknown;
+    export function prompt(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+    ): unknown;
     /** arity 3; takes the engine context */
     export function select(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 4 */
@@ -550,14 +780,27 @@ export namespace patterns {
     /** arity 1 */
     export function createCircle(a0: unknown): unknown;
     /** arity 8 */
-    export function excavate(a0: unknown, a1: unknown, a2: unknown, a3: unknown, a4: unknown, a5: unknown, a6: unknown, a7: unknown): unknown;
+    export function excavate(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+        a3: unknown,
+        a4: unknown,
+        a5: unknown,
+        a6: unknown,
+        a7: unknown,
+    ): unknown;
 }
 
 export namespace workers {
     /** arity 1; throws */
     export function getIdByName(a0: unknown): unknown;
     /** arity 3 */
-    export function postToEachThreadColumnSequentiallyAwait(a0: unknown, a1: unknown, a2: unknown): unknown;
+    export function postToEachThreadColumnSequentiallyAwait(
+        a0: unknown,
+        a1: unknown,
+        a2: unknown,
+    ): unknown;
     /** arity 3 */
     export function register(a0: unknown, a1: unknown, a2: unknown): unknown;
     /** arity 3; takes the engine context; throws */
@@ -776,7 +1019,21 @@ export namespace upgrades {
     /** `id`: string; `nameKey`: string */
     export function registerCategory(definition: { id: string; nameKey: string }): unknown;
     /** `itemId`: string; `itemNameKey`: string; `categoryId`: string; `upgrade`: { id: string; nameKey?: string; descriptionKey?: string; maxLevel: number; costs: number[]; oneOff?: boolean; }; `upgrade.id`: string; `upgrade.nameKey`: string; `upgrade.descriptionKey`: string; `upgrade.maxLevel`: number; `upgrade.costs`: number[]; `upgrade.oneOff`: boolean */
-    export function register(definition: { itemId: string; itemNameKey: string; categoryId: string; upgrade: { id: string; nameKey?: string; descriptionKey?: string; maxLevel: number; costs: number[]; oneOff?: boolean; } }): unknown;
+    export function register(
+        definition: {
+            itemId: string;
+            itemNameKey: string;
+            categoryId: string;
+            upgrade: {
+                id: string;
+                nameKey?: string;
+                descriptionKey?: string;
+                maxLevel: number;
+                costs: number[];
+                oneOff?: boolean;
+            };
+        },
+    ): unknown;
     /** arity 4; takes the engine context */
     export function updateDefinition(a0: unknown, a1: unknown, a2: unknown, a3: unknown): unknown;
     /** arity 4; takes the engine context */

@@ -14,14 +14,14 @@
  * changed since). Those are listed at the top in red rather than failing
  * silently in-game.
  */
-import type { HandlerMeta, HandlerType, HandlerUsage } from "../hooks/handler-registry.ts";
+import type { HandlerMeta, HandlerUsage } from "../hooks/handler-registry.ts";
+import { ACTION_CLASS_BLURBS } from "../hooks/action-class.ts";
+import { actionRefsOf } from "../hooks/process.ts";
 import {
     buildHandlerOptions,
     HANDLER_META,
     HANDLER_SCOPE_LABELS,
     HANDLER_SLOT_LABELS,
-    HANDLER_TYPE_BLURBS,
-    HANDLER_TYPE_LABELS,
     unreachableHandlers,
     usageIndex,
     validateHandlerParams,
@@ -31,16 +31,6 @@ import * as S from "./styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
 type Click = (key: string) => void;
-
-const TYPE_ORDER: HandlerType[] = [
-    "global",
-    "cell",
-    "message",
-    "tech",
-    "processor",
-    "projectile",
-    "modifier",
-];
 
 export interface HandlersTabState {
     /** Handler key whose parameter form is open, or null. */
@@ -78,6 +68,62 @@ export interface HandlersTabProps {
     onGoTo: Click;
     /** Copy a ready-to-paste JSON snippet to the clipboard. */
     onCopy: (text: string) => void;
+}
+
+/**
+ * The call sites a process can be attached to, and where each one's config lives.
+ *
+ * One row per slot rather than a `HandlerType` list: the second half of this screen
+ * is about **where a process is used**, and a call site is a place, not a kind of
+ * action. `behavior` has no config array of its own — a key binding is a function
+ * *pair* on one entry, not a list — so it is not here.
+ */
+const PROCESS_SLOTS: { slot: string; category: string; label: string }[] = [
+    { slot: "signal", category: "signals", label: "Signals — structure click" },
+    { slot: "trigger", category: "triggers", label: "Triggers — timed tick" },
+    { slot: "processing", category: "processing", label: "Processing — process step" },
+    { slot: "projectile", category: "projectiles", label: "Projectiles — spawn options" },
+    { slot: "upgrade", category: "upgrades", label: "Upgrades — level bought" },
+    { slot: "modifier", category: "modifiers", label: "Modifiers — engine hook" },
+    { slot: "itemAction", category: "items", label: "Items — used" },
+];
+
+const API_SECTION_KEY = "(no api — the action reaches for nothing)";
+
+/**
+ * Sections for the action half, built from the real data rather than a fixed list.
+ *
+ * The `api.*` namespaces come first, because that is the shape the split wants: an
+ * action that calls one namespace *is* the rule, and everything after it is measuring
+ * how far short of the rule the rest fall. Then the classes that call none, in the
+ * ladder's order — `pure` last, because it is nearly half the catalogue and is mostly
+ * scaffolding, and leading with it would bury the five that follow the rule.
+ */
+function actionSections(): { title: string; blurb: string; rows: HandlerMeta[] }[] {
+    const byApi = new Map<string, HandlerMeta[]>();
+    for (const m of HANDLER_META) {
+        const k = m.api ?? API_SECTION_KEY;
+        byApi.set(k, [...(byApi.get(k) ?? []), m]);
+    }
+    const sections: { title: string; blurb: string; rows: HandlerMeta[] }[] = [];
+    for (const ns of [...byApi.keys()].sort()) {
+        if (ns === API_SECTION_KEY) continue;
+        sections.push({
+            title: `api.${ns}`,
+            blurb: `Calls api.${ns} — the shape the split wants.`,
+            rows: byApi.get(ns)!,
+        });
+    }
+    for (const cls of ["context-bound", "self-sufficient", "pure"] as const) {
+        const rows = HANDLER_META.filter((m) => m.cls === cls);
+        if (!rows.length) continue;
+        sections.push({
+            title: `no api · ${cls}`,
+            blurb: ACTION_CLASS_BLURBS[cls],
+            rows,
+        });
+    }
+    return sections;
 }
 
 export function renderHandlersTab(props: HandlersTabProps): unknown {
@@ -146,17 +192,20 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
         ),
     );
 
-    // ── one collapsible block per handler type ─────────────────────────────
-    const blocks = TYPE_ORDER.map((type) => {
-        const rows = HANDLER_META.filter((m) => m.type === type);
-        if (rows.length === 0) return null;
-        const isOpen = state.expanded.includes(type);
-        // how many of this type are actually referenced right now
-        const usedCount = rows.filter((m) => (used[m.key] ?? []).length > 0)
-            .length;
+    // ── one collapsible block per section, on the API axis ──────────────────
+    //
+    // It used to be one block per `type`, and `type` measured **neither** axis:
+    // `cell` spanned three call sites, `tech` was an API name sitting on the
+    // `upgrade` call site, and `message` put a signal, a trigger and an item action
+    // under one label with nothing in common. The section titles are now the axis
+    // that means something — the `api.*` an action calls, then the class for the
+    // ones that call none.
+    const blocks = actionSections().map(({ title, blurb, rows }) => {
+        const isOpen = state.expanded.includes(title);
+        const usedCount = rows.filter((m) => (used[m.key] ?? []).length > 0).length;
         return h(
             "div",
-            { key: type, style: { ...S.card, marginBottom: 8 } },
+            { key: title, style: { ...S.card, marginBottom: 8 } },
             h(
                 "div",
                 {
@@ -168,13 +217,13 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
                         gap: 6,
                         userSelect: "none",
                     },
-                    onClick: () => toggleType(type),
+                    onClick: () => toggleType(title),
                 },
                 h("span", { style: { opacity: 0.7, fontSize: "10px" } }, isOpen ? "▼" : "▶"),
-                `${HANDLER_TYPE_LABELS[type]} (${rows.length})`,
+                `${title} (${rows.length})`,
                 usedCount > 0 ? h("span", { style: S.tagChip }, `${usedCount} in use`) : null,
             ),
-            h("div", { style: S.hint }, HANDLER_TYPE_BLURBS[type]),
+            h("div", { style: S.hint }, blurb),
             isOpen
                 ? h(
                     "div",
@@ -187,6 +236,10 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
         );
     });
 
+    // The other axis, in full below. Grouped by call site, because that is what a
+    // process *is*: an ordered list of actions an object runs.
+    const processGroups = processGroupsFor(h, cfg, onGoTo);
+
     return h(
         "div",
         { style: { padding: "0 10px 8px 10px" } },
@@ -194,13 +247,71 @@ export function renderHandlersTab(props: HandlersTabProps): unknown {
         h(
             "div",
             { style: S.hint },
-            `${HANDLER_META.length} callables. A handler is code, so config entries reference it by name — `,
-            "pick one from the slot you are editing.",
+            `${HANDLER_META.length} actions, grouped by the api.* each one calls. A process is an `,
+            "ordered list of them — the second half of this screen lists yours.",
         ),
         howToUse(h, onGoTo),
         warnings,
+        h("div", { style: { ...S.sectionTitle, marginTop: 4 } }, "Actions"),
         ...blocks,
+        h("div", { style: { ...S.sectionTitle, marginTop: 12 } }, "Processes in use"),
+        processGroups.length ? h("div", null, ...processGroups) : h(
+            "div",
+            { style: S.hint },
+            "None. A process is created on its own object's screen — a trigger, a processor, ",
+            "a signal, a projectile, an upgrade, a modifier or an item.",
+        ),
     );
+}
+
+/**
+ * The **other** axis: the processes actually in use, grouped by call site.
+ *
+ * A process is an ordered list of actions an object runs, so "where" is the honest
+ * question about one — and the action half above cannot answer it, being grouped by
+ * what an action *does* rather than where it is *used*. An entry with no process is
+ * left out: this list is of things that will actually run.
+ */
+function processGroupsFor(
+    h: H,
+    cfg: Record<string, unknown>,
+    onGoTo: Click,
+): unknown[] {
+    return PROCESS_SLOTS.map(({ slot, category, label }) => {
+        const entries = (cfg[category] as Record<string, unknown>[] | undefined) ?? [];
+        const live = entries.filter((e) => actionRefsOf(e).length > 0);
+        if (!live.length) return null;
+        return h(
+            "div",
+            { key: `proc:${slot}`, style: { ...S.card, marginBottom: 8 } },
+            h("div", { style: S.sectionTitle }, `${label} (${live.length})`),
+            h(
+                "div",
+                { style: S.hint },
+                "Ordered actions, run when the engine calls this. Edit one on its own screen.",
+            ),
+            ...live.map((e) => {
+                const refs = actionRefsOf(e);
+                const id = String(e.id ?? "?");
+                return h(
+                    "div",
+                    {
+                        key: id,
+                        style: { ...S.row, borderTop: "1px solid rgba(255,255,255,0.06)" },
+                    },
+                    h("span", {
+                        style: { ...S.chip, cursor: "pointer" },
+                        onClick: () => onGoTo(category),
+                    }, id),
+                    // Numbered, because the order is the point: "log, then convert"
+                    // and "convert, then log" are different behaviours.
+                    ...refs.map((r, i) =>
+                        h("span", { key: `${id}:${i}`, style: S.codeKey }, `${i + 1}. ${r.key}`)
+                    ),
+                );
+            }),
+        );
+    }).filter((n) => n !== null);
 }
 
 /**
@@ -404,8 +515,13 @@ function renderExpanded(
 
     // Validate as the user types so bad params are caught before they reach config.
     const errs = validateHandlerParams(m, values);
+    // The snippet is the **process** form, not the pre-split one. It used to emit
+    // `{ handlerKey, scope, options }` — a shape none of the seven tabs reads any
+    // more, so a snippet that pasted cleanly and then did nothing was worse than no
+    // snippet at all. `scope` goes too: it was a field on a *handler*, and a process
+    // has no scope of its own.
     const snippet = JSON.stringify(
-        { handlerKey: m.key, scope: m.scope, options: buildHandlerOptions(m, values) },
+        { actions: [{ key: m.key, options: buildHandlerOptions(m, values) }] },
         null,
         2,
     );
@@ -420,7 +536,10 @@ function renderExpanded(
         h(
             "div",
             { style: { marginTop: 6 } },
-            h("button", { style: S.chip, onClick: () => onCopy(snippet) }, "Copy snippet"),
+            h("button", { style: S.chip, onClick: () => onCopy(snippet) }, "Copy as a process"),
+            // Spelled out, because a one-action `actions` array is not what a reader
+            // expects from a "snippet" and the shape is the whole point of it.
+            h("span", { style: S.hint }, "paste into the entry's Process field"),
         ),
         h("pre", { style: S.codeBlock }, snippet),
     );

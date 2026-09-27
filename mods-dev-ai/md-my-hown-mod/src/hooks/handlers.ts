@@ -1,20 +1,30 @@
 /**
- * Code-side handlers for hooks.intercept / hooks.modify.
+ * The handler/action registries.
  *
- * JSON config references these by `handlerKey`. Add new handlers here — they
- * become available to any ModifierConfig entry with matching handlerKey.
+ * Every callable in here is a **HandlerAction** — an atomic unit of behaviour with
+ * the canonical `(payload, ctx, options)` signature. A *process* is the ordered list
+ * of them that an object runs, and it is compiled in `./process.ts`; nothing in this
+ * file is a process.
  *
- * Signatures:
- *   intercept: (args: unknown, ctx: unknown) => void
- *   modify:    (args: unknown) => unknown   // return value replaces/transforms
+ * The `import type` below is worth a note: `process.ts` imports this file, so a
+ * *value* import would be a real cycle. A type import is erased at compile time, so
+ * the one type this file needs from its own dependent costs nothing at runtime.
  */
+import type { HandlerActionFn } from "./process.ts";
 
-export type InterceptHandler = (args: unknown, ctx: unknown) => void;
-export type ModifyHandler = (args: unknown) => unknown;
-
+/**
+ * What the `CODE_HANDLERS` wrapper is for.
+ *
+ * There used to be three types for one idea — `AnyHandler` (`…args: unknown[]`),
+ * this one, and `ProcessHandler` (a named three-arg signature) — and nothing said
+ * which a given entry was. `CODE_HANDLERS` values stay `{ kind, fn }` because the
+ * **modifier** slot genuinely needs to know whether it intercepts or rewrites: that
+ * is not an action detail, it is the engine's own two modes. The `fn` inside is an
+ * action like any other.
+ */
 export type CodeHandler =
-    | { kind: "intercept"; fn: InterceptHandler }
-    | { kind: "modify"; fn: ModifyHandler };
+    | { kind: "intercept"; fn: HandlerActionFn }
+    | { kind: "modify"; fn: HandlerActionFn };
 
 /**
  * Registry of live callbacks. Keys are stable strings used in JSON config.
@@ -54,13 +64,11 @@ export const CODE_HANDLERS: Record<string, CodeHandler> = {
 };
 
 /** Generic callbacks for signals / triggers / projectile getOptions / upgrade onUpgrade. */
-export type AnyHandler = (...args: unknown[]) => unknown;
-
-export const ANY_HANDLERS: Record<string, AnyHandler> = {
-    signalLog: (payload, extra) => {
+export const ANY_HANDLERS: Record<string, HandlerActionFn> = {
+    signalLog: (payload, _ctx, extra) => {
         console.log("[md-my-hown-mod:signal]", payload, extra);
     },
-    triggerLog: (payload, extra) => {
+    triggerLog: (payload, _ctx, extra) => {
         console.log("[md-my-hown-mod:trigger]", payload, extra);
     },
     /** Default projectile options factory. */
@@ -84,14 +92,14 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
      * Reads a per-instance data field off the clicked structure.
      * `extra` is the signal entry's stored options, e.g. { field: "charge" }.
      */
-    structureReadData: (structure, extra) => {
+    structureReadData: (structure, _ctx, extra) => {
         const s = structure as { data?: Record<string, unknown> } | null;
         const field = (extra as { field?: string } | null)?.field;
         if (!s?.data || !field) return;
         console.log(`[md-my-hown-mod:signal] data.${field} =`, s.data[field]);
     },
     /** Writes a per-instance data field on the clicked structure. */
-    structureWriteData: (structure, extra) => {
+    structureWriteData: (structure, _ctx, extra) => {
         const s = structure as { data?: Record<string, unknown> } | null;
         const o = extra as { field?: string; value?: unknown } | null;
         if (!s || !o?.field) return;
@@ -101,7 +109,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
 
     // ── Timed effects (triggers) ─────────────────────────────────────────────
     /** Walks the cells around the tick position and reports element types. */
-    triggerScan: (payload, extra) => {
+    triggerScan: (payload, _ctx, extra) => {
         const p = payload as { x?: number; y?: number } | null;
         if (!p) return;
         console.log(`[md-my-hown-mod:trigger] scan near ${p.x},${p.y}`, extra);
@@ -143,7 +151,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
     // `rate` — producing/consuming is done by a *processor* calling
     // `api.energy.addAtCell` / `api.energy.consume`, not by the type itself.
     // So these handlers only shape the storage/registration options.
-    energyDefault: (structure, extra) => {
+    energyDefault: (structure, _ctx, extra) => {
         const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
         return {
             capacity: o.capacity ?? 1000,
@@ -151,7 +159,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
         };
     },
     /** Large buffer — a bank. Storage node, big capacity. */
-    energyBank: (structure, extra) => {
+    energyBank: (structure, _ctx, extra) => {
         const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
         return {
             capacity: o.capacity ?? 100000,
@@ -159,7 +167,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
         };
     },
     /** Small buffer — a wire between machines. Storage node, low capacity. */
-    energyWire: (structure, extra) => {
+    energyWire: (structure, _ctx, extra) => {
         const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
         return {
             capacity: o.capacity ?? 200,
@@ -167,12 +175,12 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
         };
     },
     /** Conductor only — forwards energy, holds nothing (capacity 0). */
-    energyConductor: (structure, extra) => {
+    energyConductor: (structure, _ctx, extra) => {
         const o = (extra as { energyType?: string } | null) ?? {};
         return { capacity: 0, ...(o.energyType ? { energyType: o.energyType } : {}) };
     },
     /** Join a specific named network (`options.energyType`). */
-    energyNetwork: (structure, extra) => {
+    energyNetwork: (structure, _ctx, extra) => {
         const o = (extra as { energyType?: string } | null) ?? {};
         return o.energyType ? { energyType: o.energyType } : {};
     },
@@ -184,7 +192,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
 
     // ── Tech nodes / upgrades (api.tech, api.upgrades) ────────────────────────
     /** onUpgrade callback: bumps the tracked level on the item. */
-    upgradeCountLevel: (item, extra) => {
+    upgradeCountLevel: (item, _ctx, extra) => {
         try {
             const o = (extra as { field?: string } | null) ?? {};
             const it = item as { data?: Record<string, unknown> } | null;
@@ -197,7 +205,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
         }
     },
     /** onUpgrade callback: logs the level reached. Safe while testing. */
-    upgradeLog: (item, extra) => {
+    upgradeLog: (item, _ctx, extra) => {
         console.log("[md-my-hown-mod:upgrade]", item, extra);
     },
 
@@ -205,12 +213,12 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
     // `itemType` only labels the hotbar slot. These supply the *behaviour*:
     // what the engine asks for when the player clicks with the item.
     /** Tool: digs the targeted terrain using the linked excavation profile. */
-    itemExcavate: (item, extra) => {
+    itemExcavate: (item, _ctx, extra) => {
         const o = (extra as { power?: number } | null) ?? {};
         return { power: o.power ?? 10 };
     },
     /** Weapon: fires a projectile. Pair with Projectiles → getOptionsKey. */
-    itemShoot: (item, extra) => {
+    itemShoot: (item, _ctx, extra) => {
         const o = (extra as { power?: number; speed?: number } | null) ?? {};
         return { power: o.power ?? 5, speed: o.speed ?? 20 };
     },
@@ -288,7 +296,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
     // ── Upgrade levels (api.upgrades) — what each level changes ─────────────
     // Read `field` from the entry options so one handler serves many upgrades.
     /** Multiplies a numeric field on the item (power, speed, range…). */
-    upgradeScale: (item, extra) => {
+    upgradeScale: (item, _ctx, extra) => {
         const o = (extra as { field?: string; factor?: number } | null) ?? {};
         try {
             const it = item as { data?: Record<string, unknown> } | null;
@@ -301,7 +309,7 @@ export const ANY_HANDLERS: Record<string, AnyHandler> = {
         }
     },
     /** Adds a flat amount to a numeric field (range in tiles, speed, etc.). */
-    upgradeAdd: (item, extra) => {
+    upgradeAdd: (item, _ctx, extra) => {
         const o = (extra as { field?: string; amount?: number } | null) ?? {};
         try {
             const it = item as { data?: Record<string, unknown> } | null;
@@ -427,12 +435,22 @@ export function allHandlerDocs(): Record<string, string> {
     return { ...ANY_HANDLER_DOCS, ...PROCESS_HANDLER_DOCS, ...CODE_HANDLER_DOCS };
 }
 
-export function resolveAnyHandler(key: string | undefined): AnyHandler | undefined {
+/**
+ * Look up one handler across every registry.
+ *
+ * Superseded by `resolveAction` in `./process.ts`, which is what registration now
+ * calls. Kept only because it is still the name the catalog and the hooks index
+ * publish; the two differ in one real way — this one takes `undefined` and returns
+ * `undefined`, and it looks in `CODE_HANDLERS` **before** `PROCESS_HANDLERS`, so a
+ * key present in both would resolve to the modifier action. `resolveAction` has one
+ * lookup order and unwraps `CODE_HANDLERS`' `{ kind, fn }` shape explicitly.
+ */
+export function resolveAnyHandler(key: string | undefined): HandlerActionFn | undefined {
     if (!key) return undefined;
     if (key in ANY_HANDLERS) return ANY_HANDLERS[key];
     // Also allow CODE_HANDLERS intercept/modify fns for reuse
     const ch = CODE_HANDLERS[key];
-    if (ch) return ch.fn as AnyHandler;
+    if (ch) return ch.fn;
     if (key in PROCESS_HANDLERS) return PROCESS_HANDLERS[key];
     return undefined;
 }
@@ -460,14 +478,7 @@ export function listProcessorKeys(): string[] {
 // entries reference one of these keys instead (schema: processing → handler).
 // context: getResolvedTypeAtCell / isCellEmptyAtCell / commit / isEnabledAtCell.
 
-export type ProcessHandler = (
-    structure: unknown,
-    context: unknown,
-    /** Per-entry `options` bag (JSON) — lets one handler serve many configs. */
-    options?: unknown,
-) => void;
-
-export const PROCESS_HANDLERS: Record<string, ProcessHandler> = {
+export const PROCESS_HANDLERS: Record<string, HandlerActionFn> = {
     /** Logs the tick — safest way to confirm a processor is wired. */
     processorLog: (structure, context) => {
         console.log("[md-my-hown-mod:process]", structure, context);

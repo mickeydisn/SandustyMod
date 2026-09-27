@@ -325,7 +325,13 @@ roundTrip("triggers", {
     id: "md-my-hown-mod:mdmy.trigger.tick",
     interval: 60,
     sequentialRuns: 1,
-    handlerKey: "onTick",
+    // A process is an ordered list. Two actions, and the same one twice, so the
+    // fixture proves order and repetition survive rather than just the happy path.
+    actions: [
+        { key: "triggerLog" },
+        { key: "triggerScan" },
+        { key: "triggerLog", options: { mode: "fast" } },
+    ],
     extra: { mode: "fast" },
 });
 
@@ -345,14 +351,17 @@ roundTrip("processing", {
     id: "md-my-hown-mod:mdmy.process.crusher",
     structureType: "mdmy.structure.crusher",
     intervalMs: 100,
-    handlerKey: "processorLog",
+    // `processorConvert`'s `to` is the case that used to be unreachable: the
+    // engine never delivered the options, so a required field was ignored. With
+    // the process binding them, the options round-trip with the action.
+    actions: [{ key: "processorConvert", options: { to: "mdmy.element.glass" } }],
 });
 
 roundTrip("signals", {
     id: "md-my-hown-mod:mdmy.signal.button",
     kind: "interactables",
     target: "mdmy.structure.button",
-    handlerKey: "logArgs",
+    actions: [{ key: "structureInspect" }],
 });
 
 roundTrip("behaviors", {
@@ -364,20 +373,59 @@ roundTrip("behaviors", {
 roundTrip("projectiles", {
     id: "md-my-hown-mod:mdmy.proj.bolt",
     sprite: { id: "sprites:bolt" },
-    getOptionsKey: "boltOptions",
+    // The one slot where a process' *return* reaches the engine: these actions are
+    // `getOptions` factories and their merged options are the projectile.
+    actions: [{ key: "projectileHeavy" }, { key: "defaultProjectileOptions" }],
     options: { damage: 10 },
 });
 
+console.log("── a pre-split handlerKey migrates to a one-action process ──");
+{
+    // The migration, end to end, on a real tab. An entry already on disk holds
+    // `handlerKey`; saving it must produce `actions` **and remove** the old key.
+    // Leaving both would make "which shape wins" a question of lookup order.
+    const before = {
+        id: "md-my-hown-mod:mdmy.signal.legacy",
+        kind: "interactables",
+        target: "mdmy.structure.button",
+        handlerKey: "structureWriteData",
+    };
+    const form = entryToForm("signals", before);
+    // It *loads* as a process, so the author sees their handler rather than a blank.
+    check(
+        "a legacy handlerKey reads as a one-action process",
+        JSON.parse(form.actionsJson ?? "[]")[0]?.key === "structureWriteData",
+        form.actionsJson ?? "(absent)",
+    );
+    const back = formToEntry("signals", form);
+    check(
+        "the legacy key is removed on save",
+        back.handlerKey === undefined,
+        String(back.handlerKey),
+    );
+    check(
+        "and replaced by the process",
+        JSON.stringify(back.actions) ===
+            JSON.stringify([{ key: "structureWriteData" }]),
+        JSON.stringify(back.actions),
+    );
+    // Everything else is untouched by the migration.
+    check(
+        "the rest of the entry survives",
+        back.kind === "interactables" && back.target === "mdmy.structure.button",
+    );
+}
+
 console.log("── unknown fields are preserved ──");
 {
-    const { back } = roundTrip("modifiers", {
+    const rt = roundTrip("modifiers", {
         id: "md-my-hown-mod:mdmy.mod.speed",
         hookId: "onTick",
         kind: "modify",
-        handlerKey: "logArgs",
+        // The modifier slot's actions live in `CODE_HANDLERS`, the third registry.
+        actions: [{ key: "logArgs" }],
         notes: "test",
     });
-    check("modifiers.hookId", back.hookId === "onTick", String(back.hookId));
 }
 {
     // A field the form does not know must survive Edit→Save untouched.
@@ -1023,11 +1071,23 @@ console.log("── handler pickers are domain-scoped and described ──");
     check("handlerDoc unknown is undefined", cat.handlerDoc("nope") === undefined);
 
     for (const c of ["signals", "triggers", "processing"]) {
-        check(`${c} has a handlerKey`, !!fieldsFor(c).find((f) => f.key === "handlerKey"));
+        // The single `handlerKey` select is gone; these tabs declare a process.
+        check(
+            `${c} declares an actions field`,
+            !!fieldsFor(c).find((f) => f.key === "actionsJson" && f.kind === "actionList"),
+        );
+        check(
+            `${c} no longer declares handlerKey`,
+            !fieldsFor(c).some((f) => f.key === "handlerKey"),
+        );
     }
     check(
-        "projectiles expose getOptionsKey",
-        !!fieldsFor("projectiles").find((f) => f.key === "getOptionsKey"),
+        "projectiles declare an actions process",
+        !!fieldsFor("projectiles").find((f) => f.key === "actionsJson" && f.kind === "actionList"),
+    );
+    check(
+        "projectiles no longer declare getOptionsKey",
+        !fieldsFor("projectiles").some((f) => f.key === "getOptionsKey"),
     );
 }
 
@@ -1068,6 +1128,8 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
 {
     const reg = await import("../../hooks/handler-registry.ts");
     const hooks = await import("../../hooks/handlers.ts");
+    // `resolveAction` lives in process.ts — it is the resolver registration uses, and
+    // it is the one that also unwraps `CODE_HANDLERS`; see the note on it.
 
     // Every callable reachable from JSON must be described exactly once.
     const real = [
@@ -1137,9 +1199,12 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         keys("projectile").join(" "),
     );
     check("triggerScan stays a trigger handler", keys("trigger").includes("triggerScan"));
-    // processing resolves through resolveAnyHandler, which spans ANY + PROCESS +
-    // CODE handlers, so the real invariant is "every offered key resolves".
-    const unresolved = keys("processing").filter((k) => !hooks.resolveAnyHandler(k));
+    // Every slot resolves through `resolveAction`, which spans all three
+    // registries. The real invariant is "every offered key resolves".
+    // Imported dynamically like everything else here: this file sets the
+    // `sandkit` stub at module top level, before anything is loaded.
+    const { resolveAction } = await import("../../hooks/process.ts");
+    const unresolved = keys("processing").filter((k) => !resolveAction(k));
     check(
         "every processing-slot handler resolves to a function",
         unresolved.length === 0,
@@ -1282,10 +1347,17 @@ console.log("── handlers tab is reachable and wired (9.2) ──");
     }) as { t: string; c: unknown[] };
     const flat = JSON.stringify(node);
     check("handlers tab renders its title", flat.includes("Handlers"));
-    check(
-        "handlers tab renders every type group",
-        reg.allHandlerTypes().every((ty) => flat.includes(reg.HANDLER_TYPE_LABELS[ty])),
-    );
+    // The tab is grouped on the **API axis** now, not on `type` — which measured
+    // neither axis. Asserted against the real data: every `api.*` namespace with at
+    // least one action has a section, and both halves are labelled.
+    for (const m of reg.HANDLER_META) {
+        if (m.api) {
+            check(`handlers tab has a section for api.${m.api}`, flat.includes(`api.${m.api}`));
+        }
+    }
+    // …and the two halves are both there, because the whole point is two axes.
+    check("the action half is labelled", flat.includes("Actions"));
+    check("the process half is labelled", flat.includes("Processes in use"));
     check(
         "handlers tab surfaces the unreachable reference",
         flat.includes("unusable handler reference"),
@@ -1297,7 +1369,9 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
 {
     const reg = await import("../../hooks/handler-registry.ts");
     const cat = await import("../../catalog.ts");
-    const hooks = await import("../../hooks/handlers.ts");
+    // `resolveAction` is the resolver registration uses, and the one that unwraps
+    // `CODE_HANDLERS` — `resolveAnyHandler` misses that third registry's shape.
+    const { resolveAction } = await import("../../hooks/process.ts");
     const sch = await import("../schema.ts");
 
     // ActionType has no Consumable, so no handler may be offered for one.
@@ -1337,35 +1411,46 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     );
     check(
         "every offered key resolves to a function",
-        [...toolKeys, ...weaponKeys, ...modKeys].every((k) => !!hooks.resolveAnyHandler(k)),
+        [...toolKeys, ...weaponKeys, ...modKeys].every((k) => !!resolveAction(k)),
     );
 
-    // The picker is form-aware: options follow the itemType field.
-    const field = sch.fieldsFor("items").find((f) => f.key === "handlerKey")!;
-    check("item handlerKey field exists", !!field);
+    // The process field is form-aware the way the old picker was: it hides itself
+    // for a Consumable, because `ActionType` has no Consumable to dispatch through.
+    //
+    // It declares **no `options`**, and that is the real change: a list of actions
+    // cannot be narrowed by `itemType` through a select. Asserting `resolveOptions`
+    // here would compare two empty lists and pass for the wrong reason. The
+    // per-type narrowing now lives in `itemActionHandlersFor`, checked below.
+    const field = sch.fieldsFor("items").find((f) => f.key === "actionsJson")!;
+    check("item declares an actions process", field?.kind === "actionList");
+    check("the process field offers no dropdown options", !field.options);
     check("field is hidden for Consumable", field.when?.({ itemType: "Consumable" }) === false);
     check("field is shown for Tool", field.when?.({ itemType: "Tool" }) === true);
     check("field is hidden when no type chosen", field.when?.({}) === false);
-    const toolOpts = sch.resolveOptions(field, { itemType: "Tool" }).map((o) => o.value);
-    const weaponOpts = sch.resolveOptions(field, { itemType: "Weapon" }).map((o) => o.value);
-    check("options differ by item type", toolOpts.join() !== weaponOpts.join());
-    check(
-        "options follow the form's itemType",
-        !toolOpts.includes("itemShoot") && weaponOpts.includes("itemShoot"),
-    );
 
-    // Round-trip: the key survives entry → form → entry.
+    // The narrowing itself, where it moved to.
+    const { itemActionHandlersFor } = await import("../../hooks/handler-registry.ts");
+    const toolKeys2 = itemActionHandlersFor("Tool").map((m) => m.key);
+    const weaponKeys2 = itemActionHandlersFor("Weapon").map((m) => m.key);
+    check("actions differ by item type", toolKeys2.join() !== weaponKeys2.join());
+    check(
+        "actions follow the itemType",
+        !toolKeys2.includes("itemShoot") && weaponKeys2.includes("itemShoot"),
+    );
+    check("a Consumable gets no action at all", itemActionHandlersFor("Consumable").length === 0);
+
+    // Round-trip: the process survives entry → form → entry.
     const rt = roundTrip("items", {
         id: "md-my-hown-mod:mdmy.item.pick",
         name: "Pick",
         itemType: "Tool",
-        handlerKey: "itemExcavate",
+        actions: [{ key: "itemExcavate" }],
         sprite: { id: "sprites:pick", type: "onehand" },
     });
     check(
-        "item handlerKey round-trips",
-        rt.back.handlerKey === "itemExcavate",
-        JSON.stringify(rt.back.handlerKey),
+        "item process round-trips",
+        JSON.stringify(rt.back.actions) === JSON.stringify([{ key: "itemExcavate" }]),
+        JSON.stringify(rt.back.actions),
     );
 
     // A Consumable must never persist one, even if the form hands us one.
@@ -1373,13 +1458,25 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         idSuffix: "juice",
         name: "Juice",
         itemType: "Consumable",
-        handlerKey: "itemShoot",
+        actionsJson: '[{"key":"itemShoot"}]',
         spriteId: "sprites:juice",
     });
     check(
-        "consumable never stores a handler",
-        consumed.handlerKey === undefined,
-        JSON.stringify(consumed.handlerKey),
+        "consumable never stores a process",
+        consumed.actions === undefined,
+        JSON.stringify(consumed.actions),
+    );
+    // …and switching back to a Tool restores it, which is why the rule is applied
+    // on the way to the entry rather than by blanking the control.
+    const backToTool = formToEntry("items", {
+        ...{ idSuffix: "juice", name: "Juice", spriteId: "sprites:juice" },
+        itemType: "Tool",
+        actionsJson: '[{"key":"itemShoot"}]',
+    });
+    check(
+        "switching Consumable → Tool restores the process",
+        JSON.stringify(backToTool.actions) === JSON.stringify([{ key: "itemShoot" }]),
+        JSON.stringify(backToTool.actions),
     );
 }
 
@@ -1966,7 +2063,7 @@ console.log("── schema matches the real engine contracts ──");
     check("processing has no structureId field", !p.includes("structureId"));
     check("processing keys on structureType", p.includes("structureType"));
     check("processing has intervalMs", p.includes("intervalMs"));
-    check("processing has handlerKey", p.includes("handlerKey"));
+    check("processing declares an actions process", p.includes("actionsJson"));
 
     // sprites: the path is a library field, and there is no hand-typed pattern.
     const spritePath = fieldsFor("sprites").find((f) => f.key === "path");

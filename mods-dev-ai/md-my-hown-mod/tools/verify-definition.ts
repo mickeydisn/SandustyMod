@@ -364,7 +364,7 @@ const itStored = {
     cooldown: 250,
     energyCost: 3,
     excavationProfileId: "md-my-hown-mod:dig",
-    handlerKey: "someToolHandler",
+    actions: [{ key: "someToolHandler" }],
     sprite: { id: "sprites:pick", type: "onehand" },
 };
 const itBack = S.formToEntry("items", S.entryToForm("items", itStored)) as Record<
@@ -391,8 +391,8 @@ const consumable = S.formToEntry("items", {
     ...S.entryToForm("items", { ...itStored, itemType: "Consumable" }),
 }) as Record<string, unknown>;
 ok(
-    consumable.handlerKey === undefined,
-    `a Consumable persisted a handler: ${consumable.handlerKey}`,
+    consumable.actions === undefined,
+    `a Consumable persisted a process: ${JSON.stringify(consumable.actions)}`,
 );
 // …and the rest of the item is untouched by that rule
 ok(
@@ -407,8 +407,8 @@ const backToTool = S.formToEntry("items", {
     itemType: "Tool",
 }) as Record<string, unknown>;
 ok(
-    backToTool.handlerKey === "someToolHandler",
-    `switching Consumable → Tool lost the handler: ${backToTool.handlerKey}`,
+    JSON.stringify(backToTool.actions) === JSON.stringify([{ key: "someToolHandler" }]),
+    `switching Consumable → Tool lost the process: ${JSON.stringify(backToTool.actions)}`,
 );
 
 // 18. the item's `when` predicates: each control belongs to one item type only
@@ -422,7 +422,7 @@ ok(
 );
 ok(whenOf("projectileId", { ...newItem, itemType: "Weapon" }), "no projectile on a Weapon");
 ok(
-    !whenOf("handlerKey", { ...newItem, itemType: "Consumable" }),
+    !whenOf("actionsJson", { ...newItem, itemType: "Consumable" }),
     "a Consumable is offered a use action",
 );
 ok(whenOf("cooldownMs", { ...newItem, itemType: "Tool" }), "no cooldown on a Tool");
@@ -805,11 +805,11 @@ ok(
     `an empty required pattern gave ${S.validateForm("excavation", exForm).patternJson}`,
 );
 
-// 32. the projectile round trip, and the handler-wins rule
+// 32. the projectile round trip, and the process-wins rule
 const pjStored = {
     id: "md-my-hown-mod:bolt",
     sprite: { id: "sprites:bolt" },
-    getOptionsKey: "someHandler",
+    actions: [{ key: "someHandler" }],
     options: { speed: 10 },
 };
 const pjBack = S.formToEntry("projectiles", S.entryToForm("projectiles", pjStored)) as Record<
@@ -820,7 +820,14 @@ ok(
     JSON.stringify(pjBack.sprite) === JSON.stringify(pjStored.sprite),
     `projectile sprite → ${JSON.stringify(pjBack.sprite)}`,
 );
-ok(pjBack.getOptionsKey === "someHandler", `projectile handler → ${pjBack.getOptionsKey}`);
+ok(
+    JSON.stringify(pjBack.actions) === JSON.stringify([{ key: "someHandler" }]),
+    `projectile process → ${JSON.stringify(pjBack.actions)}`,
+);
+ok(
+    pjBack.getOptionsKey === undefined,
+    `projectile getOptionsKey left behind → ${pjBack.getOptionsKey}`,
+);
 ok(
     JSON.stringify(pjBack.options) === JSON.stringify(pjStored.options),
     `projectile options → ${JSON.stringify(pjBack.options)}`,
@@ -829,11 +836,17 @@ ok(
 // clearing the handler restores them instead of leaving a projectile bare
 const pjFields = S.fieldsFor("projectiles");
 const pjWhen = pjFields.find((f: { key: string }) => f.key === "optionsJson")!.when!;
-ok(pjWhen({ getOptionsKey: "someHandler" }) === false, "static options show behind a handler");
-ok(pjWhen({ getOptionsKey: "" }) === true, "static options are hidden with no handler");
+ok(
+    pjWhen({ actionsJson: String.raw`[{"key":"someHandler"}]` }) === false,
+    "static options show behind a process",
+);
+ok(
+    pjWhen({ actionsJson: "" }) === true,
+    "static options are hidden with no process",
+);
 const pjCleared = S.formToEntry("projectiles", {
     ...S.entryToForm("projectiles", pjStored),
-    getOptionsKey: "",
+    actionsJson: "",
 }) as Record<string, unknown>;
 ok(
     JSON.stringify(pjCleared.options) === JSON.stringify(pjStored.options),
@@ -854,7 +867,13 @@ const sgBack = S.formToEntry("signals", S.entryToForm("signals", sgStored)) as R
 ok(sgBack.id === sgStored.id, `signal id → ${sgBack.id}`);
 ok(sgBack.kind === "interactables", `signal kind → ${sgBack.kind}`);
 ok(sgBack.target === sgStored.target, `signal target → ${sgBack.target}`);
-ok(sgBack.handlerKey === "onClick", `signal handlerKey → ${sgBack.handlerKey}`);
+ok(
+    JSON.stringify(sgBack.actions) === JSON.stringify([{ key: "onClick" }]),
+    `signal process → ${JSON.stringify(sgBack.actions)}`,
+);
+// The migration, asserted where the probe already stands: a pre-split entry comes
+// back as a one-action process, and the key it came from is gone.
+ok(sgBack.handlerKey === undefined, `signal handlerKey left behind → ${sgBack.handlerKey}`);
 
 // 34. the tech round trip, and the two picker/text pairs
 const tStored = {
@@ -972,6 +991,8 @@ const upStored = {
     itemId: "md-my-hown-mod:drill",
     categoryId: "tools",
     upgrade: { id: "lvl2", nameKey: "up.name", maxLevel: 4, costs: [10, 20, 30, 40] },
+    // Pre-split shape on purpose: the upgrade tab stored its handler under
+    // `onUpgradeKey`, and this probe is the migration.
     onUpgradeKey: "onUp",
 };
 const upBack = S.formToEntry("upgrades", S.entryToForm("upgrades", upStored)) as Record<
@@ -980,7 +1001,13 @@ const upBack = S.formToEntry("upgrades", S.entryToForm("upgrades", upStored)) as
 >;
 ok(upBack.itemId === upStored.itemId, `upgrade itemId → ${upBack.itemId}`);
 ok(upBack.categoryId === "tools", `upgrade categoryId → ${upBack.categoryId}`);
-ok(upBack.onUpgradeKey === "onUp", `upgrade onUpgradeKey → ${upBack.onUpgradeKey}`);
+// The upgrade tab stored its handler under `onUpgradeKey`. It is now a process,
+// and the migration is asserted here rather than a passthrough of the old key.
+ok(
+    JSON.stringify(upBack.actions) === JSON.stringify([{ key: "onUp" }]),
+    `upgrade process → ${JSON.stringify(upBack.actions)}`,
+);
+ok(upBack.onUpgradeKey === undefined, `upgrade onUpgradeKey left behind → ${upBack.onUpgradeKey}`);
 // `oneOff` is *added* to the payload: the field's default is "false" and the
 // save writes whatever the form holds. Also pre-existing and unchanged — asserted
 // so that any future change to it is deliberate.
@@ -1061,7 +1088,11 @@ const trgBack = S.formToEntry("triggers", S.entryToForm("triggers", trgStored)) 
 >;
 ok(trgBack.interval === 60, `trigger interval → ${trgBack.interval}`);
 ok(trgBack.sequentialRuns === 2, `trigger sequentialRuns → ${trgBack.sequentialRuns}`);
-ok(trgBack.handlerKey === "onTick", `trigger handlerKey → ${trgBack.handlerKey}`);
+ok(
+    JSON.stringify(trgBack.actions) === JSON.stringify([{ key: "onTick" }]),
+    `trigger process → ${JSON.stringify(trgBack.actions)}`,
+);
+ok(trgBack.handlerKey === undefined, `trigger handlerKey left behind → ${trgBack.handlerKey}`);
 ok(
     JSON.stringify(trgBack.extra) === JSON.stringify(trgStored.extra),
     `trigger extra → ${JSON.stringify(trgBack.extra)}`,
@@ -1296,6 +1327,12 @@ const KEYS_INSIDE_A_COMPOSED_CONTROL = new Set([
     "dirV",
     "dirD",
     "shape",
+    // A HandlerProcess. `actions` is the stored key, `actionsJson` is the one
+    // control, and `writeActions` builds the whole array — so no probe looking for
+    // a field named `actions`, or for a literal mention of it, can see the pairing.
+    // The same shape as `shape` / `shapeJson` above, which is why it lives here
+    // rather than in a new exemption.
+    "actions",
 ]);
 
 /**
@@ -1312,7 +1349,19 @@ const KEYS_INSIDE_A_COMPOSED_CONTROL = new Set([
  * Listed rather than fixed: this check is about *accidental* orphans, and this is
  * the one claim in the panel that is deliberate.
  */
-const CLAIMED_TO_SUPPRESS = new Set(["draw"]);
+const CLAIMED_TO_SUPPRESS = new Set([
+    "draw",
+    // The three pre-split process keys. `ACTIONS_COVERED` claims all of them on
+    // every one of the seven tabs, and `writeActions` deletes all of them on save —
+    // deliberately, so a tab cannot be left holding a legacy key it no longer reads.
+    //
+    // So these are "claimed, with no control, and dropped on purpose", which is
+    // exactly what this set is for. Without them here the check reads the *family*
+    // as seven unrelated orphans and fails on the two names a given tab never used.
+    "handlerKey",
+    "getOptionsKey",
+    "onUpgradeKey",
+]);
 
 // The write probe fills every control, with enums and shapes set to legal
 // values — a form whose `kind` is "7" legitimately takes no conditional branch,

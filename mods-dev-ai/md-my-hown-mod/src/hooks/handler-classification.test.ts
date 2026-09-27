@@ -217,10 +217,10 @@ const fnFor = (key: string): ((...a: unknown[]) => unknown) | undefined =>
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 Deno.test("every declared handler key is reachable through resolveAnyHandler", () => {
-    // `resolveAnyHandler` is what both registration paths call, so this is the one
-    // lookup that must not miss. The three `CODE_HANDLERS` keys are expected to
-    // miss here — they live in a different table — so they are excluded by name
-    // rather than by loosening the assertion.
+    // The pre-split resolver is no longer what registration calls — `resolveAction`
+    // is, and it also unwraps `CODE_HANDLERS`. This test still matters: the two must
+    // not disagree about what exists, or a config accepted by one would be silently
+    // dropped by the other.
     const codeOnly = new Set(["logArgs", "identity", "logBuildingPayload"]);
     const missing = HANDLER_META
         .map((m) => m.key)
@@ -257,6 +257,90 @@ Deno.test("the inventory's slots match what the registry declares", () => {
             `${key} is slotted differently in the registry`,
         );
     }
+});
+
+Deno.test("registration compiles a process, so options finally arrive", () => {
+    // **The bug this whole split exists to fix.** The engine calls
+    // `process(structure, context)` — two arguments. The old registration handed it
+    // the raw action, whose third parameter was therefore always `undefined`, so
+    // `processorConvert` could never be given the `to` its schema marks `required`.
+    // `compileProcess` binds the options at build time instead.
+    //
+    // Read the wiring out of `apply.ts` rather than calling the engine: the point is
+    // that the *registration path* compiles a list, not that some function somewhere
+    // could have done it.
+    const applySrc = Deno.readTextFileSync(
+        new URL("../register/apply.ts", import.meta.url).pathname,
+    );
+    const compiles = (applySrc.match(/compileProcess\(/g) ?? []).length;
+    assertEquals(compiles, 5, "processing, projectile, signal, trigger, behavior");
+    // And no site resolves a bare key any more — that is the old 1:1 shape.
+    assertEquals(
+        (applySrc.match(/resolveAnyHandler/g) ?? []).length,
+        0,
+        "a registration site still resolves a single key",
+    );
+});
+
+Deno.test("the upgrade slot is wired, which it never was", () => {
+    // `registerUpgrade` destructured `onUpgradeKey` out and never set `onUpgrade`,
+    // so all 7 upgrade actions were unreachable in-game while looking perfectly
+    // configured. Asserted at the source level for the same reason as above.
+    const kit = Deno.readTextFileSync(
+        new URL("../packages/mysandkit.ts", import.meta.url).pathname,
+    );
+    assert(
+        /onUpgrade: fn/.test(kit),
+        "registerUpgrade no longer passes onUpgrade to the engine",
+    );
+    // Scoped to `registerUpgrade`, not the whole file: `registerUpgradeCategory`
+    // *also* strips `onUpgradeKey`, and correctly — the engine's
+    // `upgrades.registerCategory` takes `{ id, nameKey }` and has no callback slot,
+    // so a category genuinely has no process. Asserting on the file would forbid
+    // the right thing.
+    //
+    // Comments are stripped first, because the comment above that very strip
+    // *names* `onUpgradeKey` — a raw match would fail on the note recording the fix.
+    const at = kit.indexOf("export function registerUpgrade(");
+    const fn = kit.slice(at, kit.indexOf("export function", at + 1))
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("//"))
+        .join("\n");
+    assert(
+        !/onUpgradeKey/.test(fn),
+        "registerUpgrade strips onUpgradeKey again — the callback would never be set",
+    );
+});
+
+Deno.test("an item's use action is a compiled process, or nothing at all", () => {
+    // A Consumable has no `ActionType`, so it must reach the game holding neither
+    // a process nor any of the legacy keys. The `else` branch deletes all of them;
+    // if that loop is narrowed to one key, a Consumable ships a dead process.
+    const kit = Deno.readTextFileSync(
+        new URL("../packages/mysandkit.ts", import.meta.url).pathname,
+    );
+    assert(
+        /for \(const k of \["actions", \.\.\.ACTIONS_LEGACY_KEYS\]\) delete out\[k\]/.test(kit),
+        "the item path no longer clears every legacy key",
+    );
+});
+
+Deno.test("the 15 re-signed actions all take options in argument 3", () => {
+    // The paired half of the migration. The `ANY` actions used to be
+    // `(payload, extra)` and read their options from argument 2 — which the engine
+    // never filled. The compiler passes `(payload, ctx, options)`, so every one of
+    // them had to move to argument 3 *in the same change* that switched the call
+    // sites. One of the two halves alone breaks the other.
+    const src = Deno.readTextFileSync(new URL("./handlers.ts", import.meta.url).pathname);
+    const stale = [...src.matchAll(/^ {4}(\w+): \((?:payload|structure|item), extra\)/gm)]
+        .map((m) => m[1]);
+    assertEquals(stale, [], "actions still reading options from argument 2");
+    // And the canonical shape is what `compileProcess` actually calls.
+    const proc = Deno.readTextFileSync(new URL("./process.ts", import.meta.url).pathname);
+    assert(
+        proc.includes("step.fn(payload, ctx, step.options)"),
+        "the compiler no longer passes options third",
+    );
 });
 
 Deno.test("a slot resolves exactly one function — the 1:1 the split removes", () => {

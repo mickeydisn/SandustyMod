@@ -172,6 +172,13 @@ export function writerFor(
         setRaw(key, v) {
             if (v !== undefined) entry[key] = v;
         },
+        // Distinct from the setters above, which skip an `undefined` write and
+        // leave the old value in place. Removing is the migration's job: a
+        // process that has been rewritten as `actions` must not also keep the
+        // `handlerKey` it replaced.
+        del(key) {
+            delete entry[key];
+        },
         // An empty control is "not set", not `""`. This is what makes clearing a
         // field remove the key on save instead of writing a blank the engine
         // would then read as a real value.

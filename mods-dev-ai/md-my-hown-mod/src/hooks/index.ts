@@ -1,11 +1,4 @@
-export {
-    CODE_HANDLERS,
-    type CodeHandler,
-    type InterceptHandler,
-    listHandlerKeys,
-    type ModifyHandler,
-    resolveHandler,
-} from "./handlers.ts";
+export { CODE_HANDLERS, type CodeHandler, listHandlerKeys, resolveHandler } from "./handlers.ts";
 
 export {
     activeModifierIds,
@@ -15,8 +8,34 @@ export {
     detachModifier,
 } from "./apply.ts";
 
-export { ANY_HANDLERS, type AnyHandler, resolveAnyHandler } from "./handlers.ts";
-export { PROCESS_HANDLERS, type ProcessHandler } from "./handlers.ts";
+export { ANY_HANDLERS, resolveAnyHandler } from "./handlers.ts";
+export { PROCESS_HANDLERS } from "./handlers.ts";
+
+// The other axis: what an object links to, compiled from a list of actions.
+export {
+    actionRefsOf,
+    CALL_SITE_LABELS,
+    CALL_SITE_SIGNATURES,
+    CALL_SITE_USES_RETURN,
+    type CallSite,
+    type CompiledProcess,
+    compileProcess,
+    type HandlerActionRef,
+    mergeProcessValue,
+    type ProcessFailure,
+    resolveAction,
+} from "./process.ts";
+
+// What an action depends on: `api` (the rule) or one of the three ways an action
+// falls short of it. See action-class.ts for why it is a ladder.
+export {
+    ACTION_CLASS_BLURBS,
+    ACTION_CLASS_LABELS,
+    ACTION_CLASSES,
+    actionClassOf,
+    type HandlerActionClass,
+    offRuleActions,
+} from "./action-class.ts";
 import {
     ANY_HANDLER_DOCS,
     ANY_HANDLERS,

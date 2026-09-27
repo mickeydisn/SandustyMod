@@ -129,11 +129,21 @@ Deno.test("every definition is filed by who owns the object", async () => {
 
     // Nothing may be left in the parent: a definition sitting beside `index.ts`
     // is outside the split, and the tools' folder walk would not see it.
+    //
+    // The allowlist is for **shared helpers**, not for definitions. `types` is the
+    // contract, `fields`/`values` are the field builders every object uses, `index`
+    // is the registry. `actions-field` joins them for the same reason: it is the one
+    // `actions` field all seven process-storing objects share, and it defines no
+    // object of its own. Putting it in `core/` would be a lie — `custom/` owns two
+    // of the seven.
+    const SHARED_HELPERS = ["types", "fields", "values", "index", "actions-field"];
     for (const entry of [...Deno.readDirSync(DEF_ROOT.pathname)]) {
         const stem = entry.name.replace(/\.ts$/, "");
+        // A test is not a definition, and a shared helper's test sits beside it.
+        const isTest = entry.name.endsWith(".test.ts");
         assert(
-            entry.name === "core" || entry.name === "custom" || !entry.isFile ||
-                ["types", "fields", "values", "index"].includes(stem),
+            entry.name === "core" || entry.name === "custom" || !entry.isFile || isTest ||
+                SHARED_HELPERS.includes(stem),
             `${entry.name} sits outside core/ and custom/ — every definition belongs to one of them`,
         );
     }

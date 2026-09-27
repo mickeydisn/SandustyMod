@@ -68,6 +68,13 @@ function ruleOf(f: Record<string, unknown>): string {
  * over the source can name the destination. Everything else is derived.
  */
 export const COMPOSITE: Record<string, [string, string][]> = {
+    // A HandlerProcess is a composite: one form control builds the whole
+    // `actions` array, and it was a single key string before the split —
+    // `handlerKey` on most tabs, `getOptionsKey` on projectile, `onUpgradeKey` on
+    // upgrade. Merged into each tab's own list below rather than declared here,
+    // because a duplicate key in this object literal silently keeps the last one —
+    // which is how two of these went missing the first time.
+    signals: [["actionsJson", "actions[]"]],
     structures: [
         // The whole list is one control now. It used to be `buildModes[0].type`
         // plus a `spanTiles` box, which is what silently dropped modes 2..n.
@@ -90,6 +97,7 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["metaColor", "metaColor"],
     ],
     upgrades: [
+        ["actionsJson", "actions[]"],
         // `itemId` is a select over the live item list and is documented
         // elsewhere; `categoryId` is a select over the categories this mod
         // registers plus `tools`.
@@ -141,6 +149,7 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["metaColor", "metaColor"],
     ],
     items: [
+        ["actionsJson", "actions[]"],
         ["cooldownMs", "cooldown"],
         ["spriteId", "sprite.id"],
         ["spriteType", "sprite.type"],
@@ -180,6 +189,7 @@ export const COMPOSITE: Record<string, [string, string][]> = {
     // `interactions` is assembled from the `kind` plus that kind's fields, so
     // the old single `interactionJson → interaction` row no longer applies.
     projectiles: [
+        ["actionsJson", "actions[]"],
         ["spriteId", "sprite.id"],
         ["optionsJson", "options"],
     ],
@@ -200,7 +210,10 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["idSuffix", "id"],
         ["name", "name (panel only — the engine never reads it)"],
     ],
-    triggers: [["extraJson", "extra"]],
+    triggers: [
+        ["actionsJson", "actions[]"],
+        ["extraJson", "extra"],
+    ],
     // `requirement` is stored verbatim and never read, so it is filed as a
     // pass-through rather than a working constraint.
     categories: [
@@ -211,8 +224,8 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["subsectionJson", "subsection"],
         ["defaultKeys", "defaultKeys"],
     ],
-    processing: [],
-    modifiers: [["hookId", "hookId"]],
+    processing: [["actionsJson", "actions[]"]],
+    modifiers: [["actionsJson", "actions[]"], ["hookId", "hookId"]],
 };
 
 /**

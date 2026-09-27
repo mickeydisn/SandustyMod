@@ -46,7 +46,6 @@ export interface CategoryMeta {
     configKey?: keyof ModConfig;
 }
 
-
 export interface MenuGroup {
     key: string;
     label: string;

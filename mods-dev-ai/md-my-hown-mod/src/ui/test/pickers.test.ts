@@ -71,7 +71,9 @@ const values = (o: { value: string }[]) => o.map((x) => x.value);
 
 const { usageOf, unknownDrawKeys } = await import("../draws-panel.ts");
 const { renderDraws } = await import("../draws-panel.ts");
-const { DRAW_FUNCTIONS, listDrawFunctions, listUpgradeCategoryIds } = await import("../../catalog.ts");
+const { DRAW_FUNCTIONS, listDrawFunctions, listUpgradeCategoryIds } = await import(
+    "../../catalog.ts"
+);
 const { UPSERT, REMOVE } = await import("../panel.ts");
 const { PANEL_NATIVES: natives } = await import("../../catalog.ts");
 

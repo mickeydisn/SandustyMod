@@ -15,7 +15,8 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.upgrades.md`.
  */
-import { listItems, listUpgradeCategoryIds, listUpgradeHandlerKeys } from "../../../catalog.ts";
+import { listItems, listUpgradeCategoryIds } from "../../../catalog.ts";
+import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
 import { advField, boolField, idField, numField, textField } from "../fields.ts";
 import { CUSTOM } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
@@ -87,12 +88,10 @@ const FIELDS: FieldSpec[] = [
     },
     boolField("oneOff", "One-off", "Upgrade", "false", "can only be bought once"),
     {
-        key: "onUpgradeKey",
-        label: "On upgrade handler",
-        kind: "select",
-        section: "Upgrade",
-        options: listUpgradeHandlerKeys,
-        hint: "optional code callback run when a level is bought",
+        // Was a `select` over `listUpgradeHandlerKeys`. The stored key was
+        // `onUpgradeKey` rather than `handlerKey`; `ACTIONS_COVERED` carries every
+        // legacy name so the migration does not need to know that.
+        ...actionListField("runs when a level is bought", { section: "Upgrade" }),
     },
     advField(),
 ];
@@ -113,7 +112,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("maxLevel", read.num(u?.maxLevel));
     read.put("costsJson", read.json(u?.costs));
     if (typeof u?.oneOff === "boolean") read.put("oneOff", String(u.oneOff));
-    read.put("onUpgradeKey", read.str(e.onUpgradeKey));
+    readActions(read, e);
 }
 
 /** Form strings → stored entry, for the whole upgrade. */
@@ -139,7 +138,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     const oneOff = w.optBool("oneOff");
     if (oneOff !== undefined) upgrade.oneOff = oneOff;
     if (Object.keys(upgrade).length > 0) w.setRaw("upgrade", upgrade);
-    w.setStr("onUpgradeKey", w.opt("onUpgradeKey"));
+    writeActions(w);
 }
 
 // ── The definition ───────────────────────────────────────────────────────────
@@ -151,7 +150,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
  * `costsJson` are the *controls* for it and are deliberately absent, so the real
  * key does not also fall through the passthrough as a duplicate.
  */
-const FORM_COVERED = ["itemId", "itemNameKey", "categoryId", "upgrade", "onUpgradeKey"];
+const FORM_COVERED = ["itemId", "itemNameKey", "categoryId", "upgrade", ...ACTIONS_COVERED];
 
 export const upgradeDefinition: Definition = {
     tab: "upgrades",

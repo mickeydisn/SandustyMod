@@ -341,30 +341,48 @@ Deno.test("the excavation rule editor survives the chain", () => {
     assertEquals(controlOf("patternJson")?.tag, "textarea");
 });
 
-Deno.test("a projectile's static options hide behind an options handler", () => {
-    // The handler's options are the ones that reach the engine, so the static
-    // box is hidden rather than inviting values the engine ignores.
+Deno.test("a projectile's static options hide behind its process", () => {
+    // The process' actions are factories, and their returned options are the ones
+    // that reach the engine, so the static box is hidden rather than inviting
+    // values the engine ignores. The condition is now on the *process* — an empty
+    // list and an absent one mean the same thing, which a single key could not say.
     renderFormFor("projectiles", CFG.projectiles[0], "p1");
     assert(controlOf("optionsJson"), "the static options box is missing");
     assertEquals(controlOf("spriteId")?.tag, "select");
 
-    hooks[5] = { ...hooks[5], getOptionsKey: "someHandler" };
+    hooks[5] = { ...hooks[5], actionsJson: '[{"key":"projectileHeavy"}]' };
     hookIdx = 0;
     nodes = [];
     Panel();
-    assert(controlOf("getOptionsKey"), "the handler picker disappeared");
     assertEquals(
         controlOf("optionsJson"),
         undefined,
-        "the static options box is showing behind an options handler",
+        "the static options box is showing behind a process",
     );
+
+    // An empty process is the same as none, so the static box comes back. Asserted
+    // because the old check was `getOptionsKey === ""` — a test that only covered
+    // the non-empty case would not notice the rule had moved to the list.
+    hooks[5] = { ...hooks[5], actionsJson: "[]" };
+    hookIdx = 0;
+    nodes = [];
+    Panel();
+    assert(controlOf("optionsJson"), "an empty process should not hide the static box");
 });
 
-Deno.test("a signal renders its three dropdowns", () => {
+Deno.test("a signal renders its two dropdowns and no third handler dropdown", () => {
     // A definition with no widget of its own is the case that fails silently, so
     // its controls are asserted to be present and of the right kind.
+    //
+    // The third control is gone: a signal is a **process** now — an ordered list
+    // of actions — rather than a single handler picked from a dropdown. That it
+    // has no rendered widget yet is Phase 6's job; the schema assertion that it
+    // *is* an `actionList` lives in schema_roundtrip.test.ts, which can import the
+    // registry. This file deliberately cannot: pulling it in reaches `api.ts`,
+    // which reads the `sandkit` global at module load and this stand-in never
+    // installs one.
     renderFormFor("signals", { id: "s2", kind: "targets" }, "s2");
     assertEquals(controlOf("kind")?.tag, "select");
     assertEquals(controlOf("target")?.tag, "select");
-    assertEquals(controlOf("handlerKey")?.tag, "select");
+    assertEquals(controlOf("handlerKey"), undefined, "the single handler control is gone");
 });
