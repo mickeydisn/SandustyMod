@@ -1,19 +1,6 @@
 /**
  * The two handler screens: the **Actions** catalogue and the **Projectile options**
  * catalogue, and the menu structure that puts them side by side.
- *
- * Two things are pinned here.
- *
- * The **filter** property: the three action axes are independent, and the failure
- * mode for independent axes is a filter that quietly matches everything — a chip
- * that looks selected and changes nothing. That is invisible by clicking around and
- * obvious in a test, so what is asserted is simply "each axis, alone, changes the
- * result".
- *
- * The **structure**: they are two tabs in one menu group, not one tab with a
- * switcher inside it. That is a navigation decision, and navigation decisions rot
- * quietly — a third catalogue arrives, someone adds it to the in-panel switcher, and
- * the sub-nav is one step behind the screen again.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { allHandlerDocs } from "../../hooks/handlers.ts";

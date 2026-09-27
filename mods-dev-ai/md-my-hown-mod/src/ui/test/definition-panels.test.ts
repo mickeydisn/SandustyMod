@@ -1,19 +1,6 @@
 // @ts-nocheck
 /**
  * A definition's own widget must survive the panel's generic dispatch chain.
- *
- * This exists because it did not. The chain is an if/else-if ladder whose
- * branches were only guarded on the *first* test, so a field a definition had
- * claimed (`shape`, `buildModes`) failed that test on `f.kind`, fell to the end
- * of the ladder, and had a plain text input assigned over the widget that had
- * just been built. The 4×4 grid and the build-modes editor both rendered as an
- * empty text box, while every other test still passed — nothing asserted on
- * what the control actually *was*.
- *
- * So this renders the real panel and inspects the produced element tree. A
- * source-text assertion would pass against the old code, because the old code
- * did call the definition's `renderField`; the widget was simply thrown away
- * afterwards.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
 

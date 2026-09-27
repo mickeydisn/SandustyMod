@@ -1,32 +1,5 @@
 /**
  * Phase 0 of PLAN.md: freeze the current dispatch contract.
- *
- * The Process/Action split is a refactor of handler dispatch, so before any of it
- * happens, "what does a slot resolve to, and does that function return anything"
- * has to be pinned by a test. Otherwise the refactor and a real behaviour change
- * look identical, and the only way to tell them apart is to run the game.
- *
- * The inventory below is **measured, not assumed** — every key was called with
- * nulls and classified by what came back. Two things it turned up that the split
- * depends on:
- *
- *  - **Only ONE slot uses a returned value.** Measured: 7 of the 43 handlers
- *    return something, and all 7 are projectile `getOptions` factories. Every
- *    other slot — signal, trigger, processing, upgrade, itemAction — is a
- *    side-effect callback whose result nothing reads. So a process made of N
- *    actions almost never has a return, which makes the merge rule a question
- *    about one slot instead of a general one.
- *
- *  - **13 of the 18 value-returning handlers are wired to a slot that DISCARDS
- *    the return.** `energyDefault`…`energyNetwork` are slotted on `processing`,
- *    where `apply.ts` does `entry.process = fn` and the engine ignores what
- *    comes back. The `excavation*`, `itemDefault`, `itemExcavate` and `itemShoot`
- *    family is slotted on `itemAction`, whose `handleAction` is documented
- *    `(state, action) => unknown`, "handles item use actions". These look like
- *    **data factories for a different object** (an energy type, an excavation
- *    profile) that were wired into a callback slot. Phase 0 does not fix that —
- *    it *records* it, so the split cannot quietly carry the bug forward. See
- *    `VACUOUS_RETURNS`.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { ANY_HANDLERS, PROCESS_HANDLERS, resolveAnyHandler } from "./handlers.ts";

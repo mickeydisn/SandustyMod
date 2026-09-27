@@ -4,37 +4,7 @@
  *
  * ## What this is
  *
- * A field the form has no control for is carried through every edit untouched,
- * so a config written against a newer engine than the panel knows about does not
- * quietly lose settings the moment you rename an element.
- *
- * `entryToForm` folds every unmodelled key into one string; `formToEntry`
- * merges that string back **first**, so real fields always win over it. Neither
- * step goes through `fieldsFor`.
- *
- * ## The box, and why it is conditional
- *
- * The box was on every screen unconditionally, and that was wrong in both
- * directions at once. An empty box looks like a field you are meant to fill in
- * — and anything typed there is merged *on top of* the stored entry, so a
- * misspelled key looks saved and the game silently ignores it. Twelve copies of
- * a box whose own hint said "you do not need to touch this" is twelve
- * invitations to touch it.
- *
- * Removing it entirely was also wrong, and that was the first attempt here: with
- * no box at all you cannot tell "nothing is hidden" from "my fields are gone",
- * which is exactly the moment you need to know.
- *
- * So it is shown **only when it has something in it**, and the names it carries
- * are listed under it. An entry with nothing hidden shows no box and no
- * "Advanced" heading; an entry carrying something says so, by name.
- *
- * ## What these tests are for
- *
- * The invariant that actually matters, now that a box is not the thing holding
- * it up: **an entry with a field the panel cannot edit must survive an edit
- * intact.** If that regresses the loss is silent, and it is the user's data.
- */
+ * ## The box, and why it is conditional */
 import { assert, assertEquals } from "jsr:@std/assert";
 
 // The host global has to exist before schema.ts is pulled in, so this import is

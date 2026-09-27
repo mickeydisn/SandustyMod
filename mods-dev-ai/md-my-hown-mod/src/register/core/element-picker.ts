@@ -3,43 +3,35 @@
  *
  * ## Why a hook and not a field
  *
- * The engine does not read `visibleInPicker` off an element definition. It
- * *derives* picker visibility from the matter type when it builds the mask:
+ * The engine does not read `visibleInPicker` off a definition. It *derives* picker
+ * visibility from the matter type when it builds the mask:
  *
  * ```js
  * const b = g !== es.Liquid && g !== es.Gas;   // -> args.visibleInPicker
  * ```
  *
  * so everything that is not a liquid or a gas is offered, and the only thing that
- * can turn that off is a `vacuum:element:prepare` modifier. The field on our
- * config entry is a local convention the engine ignores — it is not on the
- * engine's published `ElementDefinition` at all.
- *
- * This module is what makes the two agree, so the panel's "hidden" filter stops
- * being a claim about the game and starts being a fact about it.
+ * can turn that off is a `vacuum:element:prepare` modifier. The field on our config
+ * entry is a local convention the engine ignores — it is not on the engine's
+ * published `ElementDefinition` at all. This module is what makes the two agree, so
+ * the panel's "hidden" filter stops being a claim about the game.
  *
  * ## Caching, and why registration order matters
  *
  * The engine computes the whole mask once and caches it on
- * `(modifierRevision, elementConfigRevision)`, recomputing only when a modifier
- * is added or an element definition changes. Two consequences:
+ * `(modifierRevision, elementConfigRevision)`. Two consequences:
  *
- *   - The hook must be installed at boot. It is not consulted per frame, so a
- *     value captured after the cache was filled would never be seen.
- *   - Installing *any* modifier bumps the revision and invalidates the cache.
- *     That is what makes late installation safe, and it is also a reason not to
- *     install a no-op hook: a mod that hides nothing should cost nothing.
+ *   - The hook must be installed at boot: it is not consulted per frame, so a value
+ *     captured after the cache was filled would never be seen.
+ *   - Installing *any* modifier bumps the revision. That makes late installation
+ *     safe, and is why a mod that hides nothing should install nothing.
  *
  * ## Priority
  *
- * The engine sorts modifier handlers by `priority` ascending and applies them in
- * that order, so a *higher* number runs later and its write is the one that
- * survives. This runs above the default of `0` on purpose: config is the source
- * of truth here, and an element the author marked hidden should stay hidden even
- * if another mod's default-weight handler would have offered it.
- *
- * Deliberately *not* boot-window scoped, unlike the `register*` functions: this
- * is not a registration, and the engine accepts a hook at any time.
+ * The engine sorts modifier handlers by `priority` ascending, so a higher number
+ * runs later and its write survives. This runs above the default of `0` on purpose:
+ * config is the source of truth, and an element the author marked hidden should stay
+ * hidden even if another mod's default-weight handler would have offered it.
  */
 import { configIsHidden, LOG } from "../../constants.ts";
 

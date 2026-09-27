@@ -3,34 +3,27 @@
  *
  * `schema.ts` and `panel.ts` each hold a piece of every object, and holding them
  * apart is the problem this replaces: the field list here, a widget there, a save
- * case in a switch. A definition is
- * those three things together, so this is where the assembled list lives and
- * where a new object gets added.
+ * case in a switch. A definition is those three things together, so this is where
+ * the assembled list lives and where a new object gets added.
  *
  * A tab with no entry here is not an error — several tabs are views rather than
  * forms (`json`, `map`, `help`, `handlers`, `draws`) and own nothing. So the
- * lookups return `undefined` and each caller decides what that means, rather
- * than the registry inventing an empty definition that would look like a real
- * one with no fields.
+ * lookups return `undefined` and each caller decides what that means, rather than
+ * the registry inventing an empty definition that would look like a real one.
  *
  * Definitions are split by *who owns the object*, and the two folders answer
  * different questions:
  *
- *   - `./core/` — the engine has a first-class object for it. `api.elements`,
- *     `api.structures`, `api.tech` and the rest each have a `register()` and a
- *     documented shape, and the definition is that shape. Renaming one of these
- *     would be renaming something the game already knows.
+ *   - `./core/` — the engine has a first-class object for it, with a `register()`
+ *     and a documented shape. Renaming one would be renaming something the game
+ *     already knows.
+ *   - `./custom/` — the mod invented the object and the engine only ever sees the
+ *     *strings* it resolves to. Neither is a thing `register()` receives, which is
+ *     why they cannot be documented by an engine API.
  *
- *   - `./custom/` — the mod invented the object, and the engine only ever sees
- *     the *strings* it resolves to. `networks` is a list of names that produce
- *     ids for `energy` types to spell identically; `unlockNodes` is the mod's
- *     own gate in front of a structure. Neither is a thing `register()` ever
- *     receives, which is why they cannot be documented by an engine API and why
- *     their definitions say so in their own words.
- *
- * The test is not "is this useful" or "is this complex" — `network` is two
- * fields and lives in `custom`, `structure` is the widest tab in the panel and
- * lives in `core`. It is whether the game has heard of the object itself.
+ * The test is not "is this useful" or "is this complex" — `network` is two fields
+ * and lives in `custom`, `structure` is the widest tab and lives in `core`. It is
+ * whether the game has heard of the object itself.
  */
 import { behaviorDefinition } from "./core/behavior.ts";
 import { contactDefinition } from "./core/contact.ts";

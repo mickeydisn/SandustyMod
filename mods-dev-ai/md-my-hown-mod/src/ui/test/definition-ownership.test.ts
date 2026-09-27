@@ -1,18 +1,6 @@
 // @ts-nocheck
 /**
  * Which folder a definition lives in is a claim about *who owns the object*.
- *
- * `core/` holds objects the engine has a first-class `register()` for;
- * `custom/` holds objects the mod invented, which the engine only ever sees as
- * the strings they resolve to. That distinction is worth a folder boundary
- * because it is the one question the file list cannot answer on its own, and it
- * is easy to lose: a new definition lands wherever the author was editing, and
- * a wrong folder is invisible to every other test in the suite.
- *
- * The two mod-owned objects are named explicitly below rather than derived,
- * because the rule is a judgement about intent and a derived rule would happily
- * re-classify `network` if its shape ever changed. `network` is the case that
- * proves the rule is not about size — it is two fields, and it is still custom.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
 

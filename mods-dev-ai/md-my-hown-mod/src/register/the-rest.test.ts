@@ -3,21 +3,6 @@
 // whole engine surface. Same trade as the other headless round-trip tests.
 /**
  * The input-binding path in `registerTheRest`.
- *
- * Input bindings are the one process that is **not** stored as a list: both
- * `onDownKey` and `onUpKey` hold a bare handler-key string, because a binding is
- * a function *pair* on one entry and there is nowhere to put a list. So the
- * register path cannot read a process off the entry the way every other
- * category does — it has to build the single-action ref itself.
- *
- * It used to fake an entry for `actionRefsOf` to read: `actionRefsOf({ handlerKey:
- * key })`. That worked only while that reader still consulted the pre-split key.
- * Once it read the `actions` array alone, the fake entry resolved to nothing,
- * `skipped` came back non-empty, and **every input binding was dropped with a
- * warning** — a binding that was configured, listed, and saved, and did nothing.
- *
- * No test reached this path, so nothing caught it. This one calls the real
- * register entry with a stub host and checks the binding arrived.
  */
 import { assertEquals } from "jsr:@std/assert";
 

@@ -1,27 +1,24 @@
 /**
  * What a **process** hands its actions, and what each **action** needs from it.
  *
- * This is the model that replaces "group the actions by which `api.*` they call".
- * That axis did not survive contact with the code, and the reason is worth keeping
- * in view, because it is easy to walk back into:
+ * This replaces "group the actions by which `api.*` they call", and the reason
+ * that axis did not survive the code is worth keeping in view:
  *
  *   - **`api` is ambient.** The five api-calling actions read
  *     `globalThis.sandkit.api`, a module global — not an argument. Every call site
  *     provides it, so it cannot say where an action can run, which is the only
- *     question a grouping axis has to answer. It also left all but a handful of the
- *     catalogue in one bucket, which is not a category.
+ *     question a grouping axis has to answer.
  *   - **What does discriminate is the payload.** Measured, an action needs at most
  *     three things — a position, an instance's `data`, and the cell context — and
- *     each call site delivers a known subset of them.
+ *     each call site delivers a known subset.
  *
  * So the rule is one line:
  *
  *     an action may sit in a process  **iff**  its needs ⊆ what the call site delivers
  *
- * That is "the process context defines the scope of actions it can use", made
- * checkable. And because both halves are *measured*, `HANDLER_META.slots` can be
- * derived rather than hand-written 46 times — which is how two actions ended up
- * offered in a slot the engine cannot serve (see `analyze-scopes.ts`).
+ * Because both halves are *measured*, `HANDLER_META.slots` is derived rather than
+ * hand-written 46 times — which is how two actions ended up offered in a slot the
+ * engine cannot serve (see `analyze-scopes.ts`).
  */
 
 /** The three things an action can need from the call it is running in. */
@@ -30,16 +27,9 @@ export type ScopeNeed = "pos" | "data" | "cell";
 /** One call site's delivery, as a set of needs satisfied. */
 export type ProcessScope = Record<ScopeNeed, boolean> & {
     /**
-     * Whether the engine *reads* what the process returns.
-     *
-     * **Always `false` now.** The one slot that did — `projectile` — is no longer
-     * a call site: it holds a single `ProjectileOption` and returns the
-     * configuration directly, outside the process system. See
-     * `./projectile-option/`.
-     *
-     * Kept as a field rather than deleted because it records a measured property
-     * of the engine's callbacks, and a test asserts no call site ever sets it. The
-     * alternative is re-deriving the question the next time someone adds a slot.
+     * Whether the engine *reads* what the process returns. Always `false` — the one
+     * slot that did is no longer a call site. Kept as a field because it records a
+     * measured property, and a test asserts no call site ever sets it.
      */
     ret: boolean;
 };

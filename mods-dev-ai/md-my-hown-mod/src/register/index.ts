@@ -3,35 +3,29 @@
  *
  * `registerAll` is the only function in this project allowed to call a
  * `register*`. The panel reads and writes the config and cannot reach the engine;
- * nothing re-applies after boot. That is not a style preference — the engine
- * syncs mod content to the simulation worker exactly once, so a later
- * registration is a definition the worker never hears of. `registry.ts` has the
- * evidence and the guard.
+ * nothing re-applies after boot. That is not a style preference — the engine syncs
+ * mod content to the simulation worker exactly once, so a later registration is a
+ * definition the worker never hears of. `registry.ts` has the evidence and the
+ * guard.
  *
- * It closes the boot window itself, so no caller can forget to, and a second
- * call is a no-op rather than the re-registration crash.
+ * It closes the boot window itself, so no caller can forget to, and a second call
+ * is a no-op rather than the re-registration crash.
  *
  * ## Two kinds of stored entry
  *
  * The directory is split because the categories in it are not the same kind of
  * thing, and the difference decides what a missing registration *means*.
  *
- *   - **`core/`** — real engine objects. Each one ends in a `register*` call, and
- *     each one is missed by the engine if this code does not run. Elements,
- *     structures, terrains, items, and everything in `the-rest.ts` that the
- *     engine has an API for.
- *
+ *   - **`core/`** — real engine objects. Each ends in a `register*` call and is
+ *     missed by the engine if this code does not run.
  *   - **`custom/`** — mod-owned. Real tabs, real ids, real config, and the engine
- *     never receives them. Nothing here is *missing* from the engine, because
- *     there is nothing there to miss. A loop that tried to register one would be
- *     inventing an API call that does not exist.
+ *     never receives them. Nothing here is *missing* from the engine, because there
+ *     is nothing there to miss.
  *
- * `energyNetworks` is the clearest case, and the reason this split exists. A scan
- * of the engine bundle finds no `registerNetwork` and no `"power"` / `"network"`
- * string literal: the engine resolves a network by flood-filling connected tiles
- * from a coordinate. So a network name is a vocabulary this mod owns, not a
- * declaration the engine holds — see `custom/energy-network.ts` for the full
- * argument and what is reported at boot.
+ * `energyNetworks` is the clearest case: a scan of the engine bundle finds no
+ * `registerNetwork` and no `"power"` / `"network"` string literal — the engine
+ * resolves a network by flood-filling connected tiles from a coordinate. A network
+ * name is a vocabulary this mod owns, not a declaration the engine holds.
  */
 
 import { LOG, type ModConfig } from "../constants.ts";

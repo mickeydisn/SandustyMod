@@ -1,22 +1,6 @@
 // @ts-nocheck
 /**
  * The list screen's two rules, tested where they can actually fail.
- *
- * The screen's premise is that the mod's objects and the host's objects are
- * **one list** that differs only in which buttons a row gets. Two things break
- * that premise silently:
- *
- *  1. **A merge that shows one object twice.** A mod that has registered its own
- *     element appears in both sources. Two rows for one object means the user
- *     cannot tell which is the editable one, and the screen stops being a list
- *     of objects and becomes a list of *sources*.
- *  2. **An origin that is wrong.** If a game row is filed as a mod row it gets
- *     an Edit button, and clicking it offers to edit Sand. Nothing throws; the
- *     screen just quietly lies.
- *
- * So these assert the merge and the filter directly rather than walking a
- * rendered tree — the bug is in the data, and testing the data is both cheaper
- * and more precise than looking for it in React output.
  */
 import { assert, assertEquals } from "jsr:@std/assert";
 import {

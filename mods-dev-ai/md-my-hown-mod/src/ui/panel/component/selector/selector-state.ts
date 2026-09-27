@@ -1,45 +1,17 @@
 /**
  * Picking a content object: one id, or several, from everything that exists.
  *
- * The panel had three answers to the same question and none of them were good.
- * A `select` drew a native `<select>` — a flat alphabetical list with no colour,
- * no search, and no way to tell the game's `Sand` from your own `mdmy.ores`
- * except by reading the id. A `multiselect` drew a grid of chips with the same
- * two gaps. The list screens, meanwhile, *did* have colours, badges and a mod
- * filter, and none of that was reachable from a field. The same "which element?"
- * question therefore had two different answers depending on which tab you were
- * standing on.
+ * The one answer for every field whose options name a content object, whether the
+ * field takes one or many. Over a native `<select>` it adds a swatch, a mod filter
+ * defaulting to yours, and substring search.
  *
- * This is the one answer. It applies to every field whose options name a content
- * object, and it is the same component whether the field takes one or many.
+ * **It does not accept a typed id** — a reference field must never invent a value,
+ * and an entry naming something no longer present stays visible as an orphan chip.
  *
- * ## What it adds over a native `<select>`
+ * **It does not change the stored shape**: single stays a string, multiple stays a
+ * comma-separated list, so existing config needs no migration.
  *
- *  - **A swatch.** `Opt.color` already carried a colour and nothing read it in a
- *    field. An element's swatch is the single most useful thing about it when
- *    you are trying to tell `mdmy.ores` from `mdmy.sand` at a glance.
- *  - **A mod filter, defaulting to yours.** Fifty elements from the game bury the
- *    three you just made. The default is "This mod"; the game's own objects and
- *    other installed mods are one click away, and nothing is ever hidden without
- *    saying so.
- *  - **Search.** Substring over id and label, so `ores` finds `mdmy.ores` without
- *    a prefix match or a regex to trip over.
- *
- * ## What it deliberately does not do
- *
- * **It does not accept a typed id.** The rule the old pickers already followed:
- * a reference field must never invent a value. Every option here is a real id
- * from the catalogue, and an entry that names something no longer present stays
- * visible as an orphan chip rather than quietly disappearing from the form.
- *
- * **It does not change the stored shape.** Single stays a string, multiple stays
- * a comma-separated list — the same encoding `parseIdList` / `formatIdList` and
- * every definition's `formToEntry` already assume. A selector is a better way to
- * *choose* a value, never a different value, so existing config needs no
- * migration and stays valid.
- *
- * This file is the pure logic, deliberately free of React so it can be tested
- * directly; `selector.tsx` is the rendering on top of it.
+ * The pure logic, deliberately free of React; `selector.tsx` renders on top.
  */
 
 import type { Opt } from "../../../../catalog.ts";

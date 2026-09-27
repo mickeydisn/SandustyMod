@@ -1,10 +1,10 @@
 /**
  * What a handler action **depends on** to do its job.
  *
- * An action is supposed to call one `api.*` section — that is the rule the whole
- * Process/Action split rests on. Measured, only 5 of the 43 actions do. The rest
- * get by on something weaker, and the three ways they manage that are what this
- * class records:
+ * An action is supposed to call one `api.*` section — the rule the Process/Action
+ * split rests on. Measured, only 5 of 43 do. This is a **ladder**, not a taxonomy:
+ * an action that both reads the payload and calls `api.energy` is filed under
+ * `api`, because that is the stronger claim.
  *
  * | class | needs | n |
  * | --- | --- | --- |
@@ -13,28 +13,12 @@
  * | `context-bound` | the engine's processing context (`ctx`) | 3 |
  * | `pure` | nothing at all — a constant, or a logger | 16 |
  *
- * The 7 `projectile*` presets are not actions and are not in this table: they are
+ * `context-bound` is the closest thing here to a real capability boundary: it gets
+ * `ctx.commit` handed in rather than reaching for a namespace. `pure` is a third of
+ * the catalogue and is mostly debug scaffolding.
+ *
+ * The 7 `projectile*` presets are not actions and are not in this table — they are
  * `ProjectileOptionFn`s, in `./projectile-option/`.
- *
- * The three below `api` are the ones that break the rule, and each needs a
- * decision rather than a mechanism:
- *
- *  - **`self-sufficient`** reads only what it was passed — `structure.data`,
- *    `item.data`, its own options. That is legitimate and is most of the
- *    catalogue. It is not *atomic against an API*, though: it reaches into
- *    engine objects directly.
- *  - **`context-bound`** needs `ctx.commit` / `ctx.getResolvedTypeAtCell`, which
- *    is the engine's `StructureProcessingContext` — a per-call capability handed
- *    in, not a namespace. The closest thing here to a real capability boundary.
- *  - **`pure`** needs nothing. A third of the catalogue is constants
- *    (`projectileFast` is a literal) or `console.log`. These are debug
- *    scaffolding, not behaviour, and the honest question is whether they should
- *    exist at all.
- *
- * So `api` is the class the rule *wants*; the other three record how far short of
- * it each action falls. That ordering is the point — this is a **ladder**, not a
- * taxonomy. An action that both reads the payload and calls `api.energy` is filed
- * under `api`, because that is the stronger claim.
  */
 import { ANY_HANDLERS, CODE_HANDLERS, PROCESS_HANDLERS } from "./handlers.ts";
 

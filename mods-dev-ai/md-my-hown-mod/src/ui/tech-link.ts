@@ -1,32 +1,27 @@
 /**
  * Structures and their unlock node, and how that becomes an in-game tech node.
  *
- * **Why a separate kind of node.** The engine reads a structure's unlock from
- * one place only: the *tech* side, `tech.unlocks.structures`, granted when the
- * node is researched (bundel.js 77135.js — `fe` pushes into `player.buildings`,
- * the list the build menu reads). That works, but it leaves a mod with two
- * questions — "what is this structure gated behind?" and "what does my tech tree
- * look like?" — answered on two different screens, and the only way to say
- * "available from the start" was to leave the field empty and hope.
+ * **Why a separate kind of node.** The engine reads a structure's unlock from one
+ * place only: the *tech* side, `tech.unlocks.structures`, granted when the node is
+ * researched (bundel.js 77135.js — `fe` pushes into `player.buildings`, the list
+ * the build menu reads). That leaves a mod with two questions — "what is this
+ * structure gated behind?" and "what does my tech tree look like?" — answered on
+ * two different screens, and the only way to say "available from the start" was to
+ * leave the field empty and hope.
  *
- * An **unlock node** collapses that. It is a mod-owned entry that every
- * structure must name, and it is the *only* required owner of the link. It then
- * either
+ * An **unlock node** collapses that. It is a mod-owned entry every structure must
+ * name, and it is the *only* required owner of the link. It then either stays
+ * mod-owned — "Unlock by default", force-unlocked at apply — or **builds an in-game
+ * tech node**, so research is what grants the structure.
  *
- *   - stays mod-owned — "Unlock by default", no research needed, the structure
- *     is force-unlocked at apply; or
- *   - **builds an in-game tech node** — the panel registers a real engine tech
- *     from it, and research is what grants the structure.
- *
- * The second mode is the point. A mod does not need a hand-written tech entry
- * per structure: a node *is* the research step, and editing it edits the real
- * tech. A node may also borrow an existing tech by id instead of defining its
- * own, so several nodes can share one research step.
+ * The second mode is the point: a node *is* the research step, so a mod needs no
+ * hand-written tech per structure, and editing the node edits the real tech. A node
+ * may also borrow an existing tech by id, so several nodes can share one step.
  *
  * **Failure direction.** A structure with no node, or one naming a node that no
- * longer exists, is treated as *available from the start* — never the reverse.
- * The stricter alternative hides a structure from every fresh game with nothing
- * to say why, and that is the worse bug by a long way.
+ * longer exists, is treated as *available from the start* — never the reverse. The
+ * stricter alternative hides a structure from every fresh game with nothing to say
+ * why.
  */
 
 import { MOD_ID, type ModConfig, type TechConfig, type UnlockNodeConfig } from "../constants.ts";
