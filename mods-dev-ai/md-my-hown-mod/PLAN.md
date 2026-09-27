@@ -132,7 +132,7 @@ Consequences, in the order they will bite:
    energy type, an excavation profile — that were wired into a callback slot. They
    are recorded by `VACUOUS_RETURNS` so the split cannot carry the bug forward
    silently. **Deciding what they should be is a separate call, and a real one.**
-4. **The UI is a browser for a flat list.** `handlers-panel.ts` shows ~46 rows grouped
+4. **The UI is a browser for a flat list.** `panel/handlers.ts` shows ~46 rows grouped
    by `type`. After the split there are two different things to browse: the *action
    catalogue* (reusable) and the *processes in use* (one per object).
 5. **`itemTypes` reachability moves.** A Consumable has no `ActionType`, so its process

@@ -14,7 +14,7 @@
  * changed since). Those are listed at the top in red rather than failing
  * silently in-game.
  */
-import type { HandlerMeta, HandlerUsage } from "../hooks/handler-registry.ts";
+import type { HandlerMeta, HandlerUsage } from "../../hooks/handler-registry.ts";
 import {
     ACTION_DOMAIN_BLURBS,
     ACTION_DOMAIN_LABELS,
@@ -24,7 +24,7 @@ import {
     type ActionEffect,
     domainOf,
     effectOf,
-} from "../hooks/action-class.ts";
+} from "../../hooks/action-class.ts";
 import {
     CALL_SITE_SCOPE,
     canRunAt,
@@ -34,8 +34,8 @@ import {
     SCOPE_NEED_LABELS,
     SCOPE_NEEDS,
     type ScopeNeed,
-} from "../hooks/scope.ts";
-import { actionRefsOf, CALL_SITE_LABELS } from "../hooks/process.ts";
+} from "../../hooks/scope.ts";
+import { actionRefsOf, CALL_SITE_LABELS } from "../../hooks/process.ts";
 import {
     buildHandlerOptions,
     HANDLER_META,
@@ -44,9 +44,9 @@ import {
     unreachableHandlers,
     usageIndex,
     validateHandlerParams,
-} from "../hooks/handler-registry.ts";
-import { allHandlerDocs } from "../hooks/handlers.ts";
-import * as S from "./styles.ts";
+} from "../../hooks/handler-registry.ts";
+import { allHandlerDocs } from "../../hooks/handlers.ts";
+import * as S from "../styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
 type Click = (key: string) => void;

@@ -21,7 +21,7 @@
  */
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverElements } from "../../catalog.ts";
-import { disclosureMark, originTag } from "../list-panel.ts";
+import { disclosureMark, originTag } from "./list.ts";
 import * as S from "../styles.ts";
 
 /** The value to read for a field, from the engine's definition or the entry. */

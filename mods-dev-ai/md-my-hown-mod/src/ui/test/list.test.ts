@@ -29,7 +29,7 @@ import {
     ownerOf,
     ownersOf,
     renderListRow,
-} from "../list-panel.ts";
+} from "../panel/list.ts";
 import { row, rowDetails, rowSummary } from "../styles.ts";
 import type { ListRenderCtx } from "../definition/types.ts";
 
@@ -325,7 +325,7 @@ Deno.test("the list has one source filter, not two", () => {
     // Matched one-per-line, because a flat `\w+:` also picks up the `row:` inside
     // the `searchText` function *type* and would report a fifth parameter that
     // does not exist.
-    const src = Deno.readTextFileSync(new URL("../list-panel.ts", import.meta.url).pathname);
+    const src = Deno.readTextFileSync(new URL("../panel/list.ts", import.meta.url).pathname);
     assert(!/export type OriginFilter/.test(src), "the OriginFilter type came back");
     assert(!/origin: OriginFilter/.test(src), "filterRows takes an origin again");
     const params = /export function filterRows\(([\s\S]*?)\n\):/.exec(src)?.[1] ?? "";

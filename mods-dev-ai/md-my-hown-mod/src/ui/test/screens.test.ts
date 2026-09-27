@@ -32,7 +32,7 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { renderHelp } = await import("../help-panel.ts");
+const { renderHelp } = await import("../panel/help.ts");
 const { RELATIONS } = await import("../relations.ts");
 const { MENU_GROUPS } = await import("../schema.ts");
 const { graphCategories, buildGraph } = await import("../graph.ts");

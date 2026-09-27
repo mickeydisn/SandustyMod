@@ -1326,7 +1326,7 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
 console.log("── handlers tab is reachable and wired (9.2) ──");
 {
     const sch = await import("../schema.ts");
-    const hp = await import("../handlers-panel.ts");
+    const hp = await import("../panel/handlers.ts");
     const reg = await import("../../hooks/handler-registry.ts");
 
     check("handlers is a known tab", "handlers" in sch.CATEGORY_META);

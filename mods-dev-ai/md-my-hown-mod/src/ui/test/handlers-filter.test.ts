@@ -10,7 +10,7 @@ import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.t
 import { allHandlerDocs } from "../../hooks/handlers.ts";
 import { HANDLER_META, type HandlerUsage } from "../../hooks/handler-registry.ts";
 import { needsOf } from "../../hooks/scope.ts";
-import { filterActions, initialHandlersState } from "../handlers-panel.ts";
+import { filterActions, initialHandlersState } from "../panel/handlers.ts";
 
 const DOCS = allHandlerDocs();
 const NONE: Record<string, HandlerUsage[]> = {};

@@ -19,10 +19,10 @@
  * separate, it is testable without mounting a panel.
  */
 
-import type { ListRenderCtx, ListRow, ModOrigin, RowOrigin } from "./definition/types.ts";
-import { OWN_ID_PREFIXES } from "../constants.ts";
-import * as S from "./styles.ts";
-import type { Style } from "./styles.ts";
+import type { ListRenderCtx, ListRow, ModOrigin, RowOrigin } from "../definition/types.ts";
+import { OWN_ID_PREFIXES } from "../../constants.ts";
+import * as S from "../styles.ts";
+import type { Style } from "../styles.ts";
 
 // ── Which mod an object came from ────────────────────────────────────────────
 

@@ -12,8 +12,8 @@
  * which am I using?* So the list is the catalogue with a live count against
  * each, and a "not used yet" note where the count is zero.
  */
-import { DRAW_FUNCTIONS } from "../catalog.ts";
-import * as S from "./styles.ts";
+import { DRAW_FUNCTIONS } from "../../catalog.ts";
+import * as S from "../styles.ts";
 
 export interface DrawsProps {
     h: (...args: unknown[]) => unknown;

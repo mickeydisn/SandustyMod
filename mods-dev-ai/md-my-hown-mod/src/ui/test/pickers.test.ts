@@ -69,8 +69,8 @@ const field = (tab: string, key: string): FieldSpec | undefined =>
     fieldsFor(tab as never).find((f) => f.key === key);
 const values = (o: { value: string }[]) => o.map((x) => x.value);
 
-const { usageOf, unknownDrawKeys } = await import("../draws-panel.ts");
-const { renderDraws } = await import("../draws-panel.ts");
+const { usageOf, unknownDrawKeys } = await import("../panel/draws.ts");
+const { renderDraws } = await import("../panel/draws.ts");
 const { DRAW_FUNCTIONS, listDrawFunctions, listUpgradeCategoryIds } = await import(
     "../../catalog.ts"
 );

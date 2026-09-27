@@ -15,10 +15,10 @@
  * Everything is generated from `schema.ts` and `relations.ts`, the same sources
  * the editing forms use, so it cannot drift from them.
  */
-import type { Tab } from "./schema.ts";
-import { CATEGORY_META } from "./schema.ts";
-import { buildGraph, categoryColor, type Graph, graphAsText, neighboursOf } from "./graph.ts";
-import * as S from "./styles.ts";
+import type { Tab } from "../schema.ts";
+import { CATEGORY_META } from "../schema.ts";
+import { buildGraph, categoryColor, type Graph, graphAsText, neighboursOf } from "../graph.ts";
+import * as S from "../styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
 type Click = (key: string) => void;

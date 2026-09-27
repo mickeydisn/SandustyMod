@@ -16,7 +16,7 @@
  */
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverTerrains } from "../../catalog.ts";
-import { disclosureMark, originTag } from "../list-panel.ts";
+import { disclosureMark, originTag } from "./list.ts";
 import * as S from "../styles.ts";
 
 /** Read a field from the engine's definition, falling back to the mod's entry. */

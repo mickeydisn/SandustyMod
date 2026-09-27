@@ -107,7 +107,7 @@ import {
     ownerLabel,
     ownersOf,
     renderListRow,
-} from "./list-panel.ts";
+} from "./panel/list.ts";
 import { renderActionList } from "./action-list-control.ts";
 import { listFor } from "./panel/index.ts";
 import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
@@ -118,11 +118,11 @@ import {
     type HandlersTabState,
     initialHandlersState,
     renderHandlersTab,
-} from "./handlers-panel.ts";
-import { renderHelp } from "./help-panel.ts";
+} from "./panel/handlers.ts";
+import { renderHelp } from "./panel/help.ts";
 import { renderConfigMap } from "./config-map.ts";
 import { DEFAULT_UNLOCK_NODE, techUnlockStructureIds, unlockLine } from "./tech-link.ts";
-import { renderDraws } from "./draws-panel.ts";
+import { renderDraws } from "./panel/draws.ts";
 
 /** Parse JSON text, returning undefined instead of throwing. */
 function safeJson(text: string): unknown {
