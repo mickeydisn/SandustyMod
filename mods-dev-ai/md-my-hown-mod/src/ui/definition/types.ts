@@ -9,6 +9,11 @@
  */
 import type { ModConfig } from "../../constants.ts";
 import type { Opt } from "../../catalog.ts";
+// Type-only, and `selector.ts` imports `FieldSpec` from this file — so the two form a
+// type-level cycle. That is fine and erased: nothing here reaches the panel at runtime, and
+// the values the selector actually needs are imported by `param-controls.ts` instead.
+import type { SelectorState } from "../panel/component/selector/selector.ts";
+import type { ContentKind } from "../../handler/core/handler-registry.ts";
 
 // ── Categories & groups ──────────────────────────────────────────────────────
 
@@ -200,6 +205,62 @@ export interface PanelContext {
     cfg: ModConfig;
     /** Write one form field. */
     setField: (key: string, value: string) => void;
+    /**
+     * The shared selector's UI state, for a control that renders one.
+     *
+     * This exists because the selector keeps its open/filter/search state **outside**
+     * React — in a `useState` the panel owns, keyed per field. A definition field reads
+     * it directly; a *handler parameter* sits one level deeper (inside an action list or
+     * the program grid) and cannot, so it arrives here. Without this the two paths would
+     * each need their own state, and a selector inside an action row would close every
+     * time the row re-rendered.
+     *
+     * Optional: absent means "defaults" — closed, filtered to this mod, no search text.
+     */
+    selector?: SelectorHandle;
+}
+
+/** How a nested control reaches the panel's shared selector. */
+export interface SelectorHandle {
+    /** Read this key's state, or `undefined` for the defaults. */
+    read: (key: string) => SelectorState | undefined;
+    /** Merge a patch into this key's state. */
+    write: (key: string, patch: Partial<SelectorState>) => void;
+    /**
+     * Render the shared selector for one parameter, or return `null` when these options
+     * are **not** content and the caller should fall back to a native control.
+     *
+     * The handle carries the renderer rather than having the caller import it, and that
+     * is not tidiness — it is load-bearing. `selector.ts` imports `catalog.ts`, which
+     * imports `api.ts`, which reads the global `sandkit` **at module load**. A parameter
+     * renderer that reached the selector directly would therefore fail to import
+     * anywhere the host is absent, including its own tests, and a widget that only draws
+     * a text box would have acquired a dependency on the whole engine.
+     *
+     * So the dependency points one way: the panel imports the selector, and hands it down.
+     */
+    renderParam?: (req: ParamSelectorRequest) => unknown;
+}
+
+/** One parameter's worth of a selector render. */
+export interface ParamSelectorRequest {
+    /** `React.createElement`, bound. */
+    h: (...args: unknown[]) => unknown;
+    /**
+     * What kind of content to list, or `undefined` for a fixed option list.
+     *
+     * A **kind**, not the catalogue's own `list*` function: the panel owns that mapping
+     * (`CONTENT_LISTERS`), because this module and everything above it must not depend on
+     * the catalogue, which reads the global `sandkit` at module load.
+     */
+    content?: ContentKind;
+    /** The parameter's fixed options; empty when `content` is set. */
+    options: Opt[];
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    state?: SelectorState;
+    onState: (patch: SelectorState) => void;
 }
 
 /** One field's worth of that context, for a control renderer. */

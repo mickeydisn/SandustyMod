@@ -61,7 +61,7 @@ function moved(
 }
 
 export function renderActionList(ctx: FieldContext): unknown {
-    const { h, form, setField, tab } = ctx;
+    const { h, form, setField, tab, selector } = ctx;
     const refs = parseActionRefs(form[ACTIONS_FORM_KEY]);
     const allowed = allowedFor(tab);
     const write = (next: { key: string; options?: Record<string, unknown> }[]) =>
@@ -154,7 +154,13 @@ export function renderActionList(ctx: FieldContext): unknown {
                                 { style: { ...S.label, minWidth: 96, fontSize: 11 } },
                                 p.label + (p.required ? " *" : ""),
                             ),
-                            paramInput(h, p, paramText(ref.options, p), (v) => setParam(p, v)),
+                            paramInput(
+                                h,
+                                p,
+                                paramText(ref.options, p),
+                                (v) => setParam(p, v),
+                                selector,
+                            ),
                         )
                     ),
                 )

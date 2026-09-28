@@ -90,6 +90,29 @@ import {
     type Tab,
     validateForm,
 } from "./schema.ts";
+// `SelectorHandle` is not re-exported by `schema.ts`, which re-exports the *field* types
+// only. Imported straight from the definition types, beside the selector values above.
+import type { SelectorHandle } from "./definition/types.ts";
+import type { ContentKind } from "../handler/core/handler-registry.ts";
+
+/**
+ * The `ContentKind` → catalogue lister map.
+ *
+ * This is the one place that knows both sides, and it is here because it is the only
+ * module that may know both: `handler-registry.ts` declares the *kind* as data precisely
+ * so it never has to name a function from the catalogue, which reads the global
+ * `sandkit` at module load and would make the compiler unloadable without a host.
+ *
+ * Typed as a total `Record` rather than a `Map`, so adding a `ContentKind` without
+ * adding a lister here is a **type error** — the failure mode it prevents is a content
+ * parameter that quietly renders as a text box, which is exactly the bug this change
+ * exists to remove.
+ */
+const CONTENT_LISTERS: Record<ContentKind, () => Opt[]> = {
+    element: () => listElements(),
+    structure: () => listStructures(),
+    terrain: () => listTerrains(),
+};
 import { definitionFor } from "./definition/index.ts";
 import {
     countByOwner,
@@ -107,6 +130,7 @@ import {
     isContentField,
     renderSelector,
     selectorKey,
+    type SelectorReact,
     type SelectorState,
 } from "./panel/component/selector/selector.ts";
 import { renderActionList } from "./action-list-control.ts";
@@ -114,7 +138,15 @@ import { renderProjectileOption } from "./projectile-option-control.ts";
 import { renderProcessRef } from "./process-ref-control.ts";
 import { listFor } from "./panel/index.ts";
 import { attachedTo, parentOf } from "./panel/attach.ts";
-import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
+import {
+    handlerDoc,
+    listBuildModeTypes,
+    listElements,
+    listStructures,
+    listTerrains,
+    type Opt,
+    searchLibraryAssets,
+} from "../catalog.ts";
 import * as S from "./styles.ts";
 import { emptyViewState, LIST_DEFAULTS, type ViewMode } from "./viewstate.ts";
 import { clampChip, exceedsSlop } from "./drag.ts";
@@ -378,6 +410,59 @@ export function createPanelComponent(defaultMinimized = true) {
          * opening one entry's picker does not open the next one's.
          */
         const [selectorState, setSelectorState] = useState<Record<string, SelectorState>>({});
+
+        /**
+         * The same selector, handed down to controls that are **not** definition fields.
+         *
+         * A field reaches the selector directly, but a *handler parameter* is one level
+         * deeper — inside an action list, the program grid, a projectile option — and
+         * none of those can see this state. Before this, a `terrain` or `element`
+         * parameter was a bare text box, because the only route to the picker ran through
+         * `renderField`, and those controls are reached by their own branches.
+         *
+         * The handle also carries the **renderer**, so the dependency points one way: the
+         * panel imports the selector, the parameter widgets do not. That is not a style
+         * choice — `selector.ts` pulls in `catalog.ts`, which reads the global `sandkit`
+         * at module load, so a widget that imported it directly would fail to load
+         * anywhere the host is absent.
+         *
+         * Keys carry a `param:` prefix so a handler parameter can never collide with a
+         * definition field of the same name — `element` is both.
+         */
+        const selectorHandle = useMemo<SelectorHandle>(
+            () => ({
+                read: (key) => selectorState[`param:${key}`],
+                write: (key, patch) =>
+                    setSelectorState((prev) => ({
+                        ...prev,
+                        [`param:${key}`]: { ...prev[`param:${key}`], ...patch },
+                    })),
+                renderParam: (req) => {
+                    if (!req.content) return null;
+                    const list = CONTENT_LISTERS[req.content];
+                    // A kind with no lister is a programming error, not a rendering
+                    // problem, so it is loud. Returning `null` here would drop the field to
+                    // a text box and hide the mistake behind something that appears to
+                    // work — the exact bug this change exists to remove. The `Record` type
+                    // on `CONTENT_LISTERS` should make this unreachable; the throw is for a
+                    // value that arrived from outside the type.
+                    if (!list) throw new Error(`no content lister for "${req.content}"`);
+                    return renderSelector({
+                        react: { h: req.h as SelectorReact["h"] },
+                        value: req.value,
+                        // Read **now**, not at import: the catalogue is whatever other mods
+                        // registered this session.
+                        options: list(),
+                        multiple: false,
+                        onChange: req.onChange,
+                        placeholder: req.placeholder,
+                        state: req.state,
+                        onState: req.onState,
+                    });
+                },
+            }),
+            [selectorState],
+        );
         /**
          * Which kind the Graph screen is narrowed to.
          *
@@ -853,6 +938,7 @@ export function createPanelComponent(defaultMinimized = true) {
                 form,
                 cfg,
                 setField,
+                selector: selectorHandle,
                 field: f,
                 value: val,
                 error: err,
@@ -880,6 +966,7 @@ export function createPanelComponent(defaultMinimized = true) {
                     form,
                     cfg,
                     setField,
+                    selector: selectorHandle,
                     field: f,
                     value: val,
                     error: err,
@@ -896,6 +983,7 @@ export function createPanelComponent(defaultMinimized = true) {
                     form,
                     cfg,
                     setField,
+                    selector: selectorHandle,
                     field: f,
                     value: val,
                     error: err,
@@ -912,6 +1000,7 @@ export function createPanelComponent(defaultMinimized = true) {
                     form,
                     cfg,
                     setField,
+                    selector: selectorHandle,
                     field: f,
                     value: val,
                     error: err,

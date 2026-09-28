@@ -30,6 +30,7 @@ import { paramInput, paramText, paramValue } from "./param-controls.ts";
 import { OPTIONS_FORM_KEY, PARAMS_FORM_KEY } from "./definition/excavation-option-field.ts";
 import * as S from "./styles.ts";
 import type { FieldContext } from "./definition/types.ts";
+import type { SelectorHandle } from "./definition/types.ts";
 
 type H = FieldContext["h"];
 
@@ -57,7 +58,7 @@ function readParams(text: string | undefined): Record<string, unknown> {
 }
 
 export function renderExcavationOption(ctx: FieldContext): unknown {
-    const { h, form, setField } = ctx;
+    const { h, form, setField, selector } = ctx;
     const key = form[OPTIONS_FORM_KEY] ?? "";
     const known = !key || EXCAVATION_OPTIONS[key] !== undefined;
     const specs = key && known ? paramSpecs(key) : [];
@@ -114,7 +115,7 @@ export function renderExcavationOption(ctx: FieldContext): unknown {
         key && known && specs.length === 0
             ? h("div", { style: S.hint }, "This option takes no parameters.")
             : null,
-        ...(specs.length > 0 ? [paramRows(h, specs, stored, setParam)] : []),
+        ...(specs.length > 0 ? [paramRows(h, specs, stored, setParam, selector)] : []),
         preview
             ? h(
                 "div",
@@ -138,6 +139,8 @@ function paramRows(
     specs: HandlerParam[],
     stored: Record<string, unknown>,
     setParam: (spec: HandlerParam, text: string) => void,
+    /** The panel shared selector, so an element parameter is a picker. See stepRow. */
+    selector?: SelectorHandle,
 ): unknown {
     return h(
         "div",
@@ -148,7 +151,7 @@ function paramRows(
                 "div",
                 { key: spec.key, style: { display: "flex", alignItems: "center", gap: 6 } },
                 h("span", { style: { ...S.label, minWidth: 120, fontSize: 11 } }, spec.key),
-                paramInput(h, spec, paramText(stored, spec), (v) => setParam(spec, v)),
+                paramInput(h, spec, paramText(stored, spec), (v) => setParam(spec, v), selector),
             )
         ),
         h(

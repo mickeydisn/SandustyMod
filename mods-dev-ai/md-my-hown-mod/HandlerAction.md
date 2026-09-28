@@ -304,6 +304,45 @@ still `["pos"]`, because `cell` means "needs the grid" and these never read one.
 probe caught that when I recorded them as `["pos", "cell"]` by copying the element family,
 and it was right.
 
+### Content parameters are pickers, not text boxes
+
+Ten parameters across the four cell families name a registered content object — `element`
+(four), `structure` (three), `terrain` (three). All ten were `text` fields, and all ten now
+render the **shared content selector**: a swatch, a search box, an owner filter that
+defaults to this mod, and a toggle that reveals hidden objects with a count of what it
+revealed.
+
+A text box was wrong in three ways at once: `dirtt` saves and validates fine and then fails
+in a processor tick far from the field; the author cannot see the game's fifty elements or
+another mod's; and an element the engine marked `hidden` was not merely de-emphasised but
+**invisible**, which is the opposite of what `hidden` should mean.
+
+The wiring took three pieces, and each can fail alone:
+
+| | where | what |
+| --- | --- | --- |
+| the parameter | `HandlerParam.content` | names a **kind**, not a lister |
+| the widget | `paramInput` | asks the panel; falls back to a text box |
+| the panel | `CONTENT_LISTERS` | kind → catalogue lister |
+
+**Why a kind and not `options: listTerrains`.** That spelling is a **cycle**, and the
+codebase says so where it would form: `catalog.ts` imports `handler-registry.ts` as a value
+("no imports of its own, so this cannot cycle"). Worse than the cycle, `catalog.ts` reaches
+`api.ts`, which reads the global `sandkit` **at module load** — so naming the function in
+the registry would make the compiler, the scope tables and every test fail to load without
+a host. Declaring the dependency as **data** keeps that invariant, survives serialisation,
+and is typed as a total `Record`, so a new kind without a lister is a type error rather
+than a field that quietly reverts to a text box.
+
+The same reasoning keeps the **renderer** in the panel rather than in the widgets:
+`param-controls.ts` asks for it and never imports `selector.ts`. A widget that only draws a
+text box should not depend on the whole engine, and this is the seam where it would have.
+
+A fixed enum — "conductor" / "storage" — still renders as a native `<select>`, and
+`selector` is optional on `PanelContext`, so a context with no panel degrades to a text box
+rather than losing the field.
+
+
 ### The type-handle trap
 
 `Structure` declares only `x`, `y`, `trapped?` and `data?` — there is **no declared `type`

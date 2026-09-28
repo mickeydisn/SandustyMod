@@ -13,6 +13,10 @@
  */
 
 import { ACTION_APIS, ACTION_CLASSES, type HandlerActionClass } from "./action-class.ts";
+// Type-only, so this costs no runtime edge. `Opt` is a plain shape, but importing the
+// type from `catalog.ts` keeps one definition of "a thing you can pick" rather than the
+// two the `{value,label}[]` this replaced had already drifted into.
+import type { Opt } from "../../catalog.ts";
 // `process.ts` imports only `handlers.ts`, so this is not a cycle.
 import { actionRefsOf } from "./process.ts";
 // The projectile options. A value import, not a type one: the usage scanner below
@@ -60,8 +64,36 @@ export interface HandlerParam {
     min?: number;
     max?: number;
     int?: boolean;
-    /** `select` only. */
-    options?: { value: string; label: string }[];
+    /**
+     * `select` only. A **fixed** list — an enum, a handler key, a machine type.
+     *
+     * A plain array, deliberately and only. Anything that names real content declares
+     * `content` instead (below), because content is a different thing: a literal array
+     * cannot name the game's fifty elements or another mod's, and this module may not
+     * import the catalogue that could.
+     */
+    options?: Opt[];
+    /**
+     * `select` only. Pick a **content object** rather than a fixed option.
+     *
+     * The panel renders the shared content selector for this, which is how a `terrain`
+     * or `element` parameter became a picker instead of a text box. `options` is ignored
+     * when this is set.
+     *
+     * ## Why a `ContentKind` and not the catalogue's own `list*` function
+     *
+     * The obvious spelling — `options: listTerrains` — is a **cycle**, and the codebase
+     * says so where the cycle would form: `catalog.ts` imports this module as a value
+     * ("no imports of its own, so this cannot cycle"). Worse than the cycle, `catalog.ts`
+     * reaches `api.ts`, which reads the global `sandkit` **at module load** — so naming
+     * the function here would make this module, imported by the compiler, the scope
+     * tables and every test, fail to load anywhere the host is absent.
+     *
+     * So the dependency is declared as **data**: "this select wants terrain", with the
+     * panel owning the catalogue → lister mapping. It also survives serialisation, which a
+     * function reference would not, and it reads as intent in the param table.
+     */
+    content?: ContentKind;
 }
 
 export interface HandlerMeta {
@@ -344,6 +376,51 @@ const CREATE_PARAMS: HandlerParam[] = [
     p("vy", "Velocity Y", "number", { def: "0", hint: "negative is up" }),
 ];
 
+/**
+ * What kind of content a parameter points at.
+ *
+ * The panel maps each of these to the catalogue's own lister (`CONTENT_LISTERS` in
+ * `ui/panel.ts`). Kept short and closed on purpose: a new kind should mean a new *kind of
+ * object the engine registers*, not a new list function, and a closed union means
+ * forgetting to add the mapping is a type error rather than a field that silently renders
+ * as a text box.
+ */
+export type ContentKind = "element" | "structure" | "terrain";
+
+/**
+ * The content-reference parameters, as **pickers**.
+ *
+ * ## Why these are not text boxes
+ *
+ * Every one of these names a registered content object, and every one was a `text` field
+ * until the shared selector was made reachable from a handler parameter (`param-controls.ts`,
+ * via `PanelContext.selector`). A text box for this is wrong in three separate ways, and
+ * the picker fixes all three at once:
+ *
+ * 1. **Typos are silent.** `dirt` vs `dirtt` saves fine, validates fine, and fails at
+ *    runtime in a processor tick — far from the field that caused it.
+ * 2. **The author cannot see what exists.** The game's fifty-odd built-in elements are
+ *    not guessable, and neither are another mod's.
+ * 3. **Hidden objects are invisible.** The engine's `hidden` flag marks an element the
+ *    author deliberately kept out of the normal list; a text box cannot show that one
+ *    exists at all, which is the opposite of what "hidden" should mean.
+ *
+ * The picker answers all three: a swatch, a search box, an owner filter that defaults to
+ * this mod, and a toggle that reveals what is hidden with a count of what it revealed.
+ *
+ * And because it reads the catalogue **when the panel opens**, the list is whatever other
+ * mods registered this session — never a snapshot frozen at import time, which is the
+ * whole reason `content` names a kind rather than holding a captured array.
+ */
+const elementRef = (hint: string): HandlerParam =>
+    p("element", "Element", "select", { required: true, content: "element", hint });
+
+const structureRef = (hint: string): HandlerParam =>
+    p("structure", "Structure", "select", { required: true, content: "structure", hint });
+
+const terrainRef = (hint: string): HandlerParam =>
+    p("terrain", "Terrain", "select", { required: true, content: "terrain", hint });
+
 const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     {
         key: "readElement",
@@ -358,10 +435,7 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         slots: ["processing"],
         scope: "cell",
         params: [
-            p("element", "Element", "text", {
-                required: true,
-                hint: "the element id to count",
-            }),
+            elementRef("the element to count"),
             ...REGION_PARAMS,
         ],
     },
@@ -380,10 +454,7 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         slots: ["processing"],
         scope: "cell",
         params: [
-            p("element", "Element", "text", {
-                required: true,
-                hint: "the element id to write",
-            }),
+            elementRef("the element to write"),
             ...CREATE_PARAMS,
             ...REGION_PARAMS,
         ],
@@ -394,7 +465,7 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         slots: ["processing"],
         scope: "cell",
         params: [
-            p("element", "Element", "text", { required: true, hint: "the element id to place" }),
+            elementRef("the element to place"),
             ...CREATE_PARAMS,
             ...REGION_PARAMS,
         ],
@@ -441,10 +512,7 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
  * cannot offer a region for it and the engine call is unambiguous.
  */
 const STRUCTURE_REF_PARAMS: HandlerParam[] = [
-    p("structure", "Structure", "text", {
-        required: true,
-        hint: "the structure id, or a handle from Structure type",
-    }),
+    structureRef("the structure, or a handle from Structure type"),
 ];
 
 const DATA_PARAMS: HandlerParam[] = [
@@ -647,10 +715,7 @@ const STRUCTURE_ENTRIES: Omit<HandlerMeta, "cls">[] = [
  * because the registry's `params` have nowhere to record it.
  */
 const TERRAIN_REF_PARAMS: HandlerParam[] = [
-    p("terrain", "Terrain", "text", {
-        required: true,
-        hint: "the terrain id, or a handle from Terrain type",
-    }),
+    terrainRef("the terrain, or a handle from Terrain type"),
 ];
 
 const TERRAIN_SHAPE_PARAMS: HandlerParam[] = [
@@ -841,10 +906,7 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         slots: ["processing"],
         scope: "cell",
         params: [
-            p("element", "Element", "text", {
-                required: true,
-                hint: "the element id to test for",
-            }),
+            elementRef("the element to test for"),
             p("dx", "Offset X", "number", { def: "0", int: true }),
             p("dy", "Offset Y", "number", { def: "0", int: true }),
         ],
@@ -1215,10 +1277,27 @@ export function validateHandlerParams(
                 errs.push(`${spec.label} must be ≤ ${spec.max}`);
             }
         }
-        if (spec.kind === "select" && spec.options && !spec.options.some((o) => o.value === raw)) {
-            errs.push(
-                `${spec.label} must be one of: ${spec.options.map((o) => o.value).join(", ")}`,
-            );
+        if (spec.kind === "select") {
+            if (spec.content) {
+                // Content membership is **not** checked here, and deliberately. The list
+                // is whatever every mod registered this session; this module cannot see
+                // it, and a check against a stale or partial list would reject a value
+                // that is perfectly valid. The picker is the check — it can only produce
+                // a value from the list, and it shows orphans rather than hiding them.
+                //
+                // What *is* enforced is emptiness, but the `required` check above already
+                // covers it: an empty string is `raw === ""`, and that branch runs first
+                // and `continue`s. So there is nothing left to say here, and saying
+                // something would double-report.
+            } else if (spec.options) {
+                if (!spec.options.some((o) => o.value === raw)) {
+                    errs.push(
+                        `${spec.label} must be one of: ${
+                            spec.options.map((o) => o.value).join(", ")
+                        }`,
+                    );
+                }
+            }
         }
     }
     return errs;

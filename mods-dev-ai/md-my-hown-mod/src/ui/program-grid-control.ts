@@ -36,6 +36,7 @@ import { currentProcessRegistry, type ProcessStep } from "../handler/custom-proc
 import { paramInput } from "./param-controls.ts";
 import * as S from "./styles.ts";
 import type { FieldContext } from "./definition/types.ts";
+import type { SelectorHandle } from "./definition/types.ts";
 
 /** The form key the grid owns. The steps also live in a hidden json field. */
 export const STEPS_FORM_KEY = "program";
@@ -202,6 +203,13 @@ function stepRow(
         nestable: string[];
         known: string[];
         locked: boolean;
+        /**
+         * The panel's shared selector, forwarded to every parameter below. Present so a
+         * `terrain` or `element` step parameter is a picker rather than a text box — the
+         * program grid is where most authored programs are built, so this is the screen
+         * where the text box was most worth fixing.
+         */
+        selector?: SelectorHandle;
         replace: (step: ProcessStep) => void;
         move: (by: number) => void;
         remove: () => void;
@@ -287,7 +295,7 @@ function stepRow(
                     if (v === undefined) delete next[spec.key];
                     else next[spec.key] = v;
                     args.replace(withOptions(step, next));
-                }),
+                }, args.selector),
             )
         ),
         // The `as` box. Shown whenever the program already shares something, or this
@@ -454,6 +462,7 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                         nestable,
                         known,
                         locked,
+                        selector: ctx.selector,
                         replace: (s) => replace(i, s),
                         move: (by) => move(i, by),
                         remove: () => commit(steps.filter((_, n) => n !== i)),
