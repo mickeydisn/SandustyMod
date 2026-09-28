@@ -25,7 +25,32 @@
 
 const FIELDS: FieldSpec[] = [
     idField(),
-    numField("power", "Power", "Profile", { required: true, min: 0, max: 1000, def: "10" }),
+    // The one option, and not an `actionList`. These five presets used to be
+    // actions, and could not work as one — they returned a value into a slot that
+    // discards it. See `./excavation-option-field.ts`.
+    excavationOptionField(),
+    numField("power", "Power", "Profile", {
+        required: true,
+        min: 0,
+        max: 1000,
+        def: "10",
+        // Hidden while an option is chosen, because that is exactly when the engine
+        // reads the option's power instead. Still read and written either way, so
+        // clearing the option restores it.
+        when: (f) => !(f[OPTIONS_FORM_KEY] ?? "").trim(),
+    }),
+    {
+        key: PARAMS_FORM_KEY,
+        label: "Option parameters",
+        kind: "json",
+        section: "Profile",
+        jsonType: "object",
+        // Hidden rather than absent: the control renders these as real inputs, and
+        // `isActive` is checked before a field is drawn *and* before it is
+        // validated, so this is the supported way to have a validated but
+        // unrendered field.
+        when: () => false,
+    },
     {
         key: "patternJson",
         label: "Pattern",
@@ -52,6 +77,9 @@ const FIELDS: FieldSpec[] = [
         section: "Profile",
         jsonType: "object",
         wide: true,
+        // Hidden for the same reason `power` is: the chosen option's `options` is
+        // what reaches the engine.
+        when: (f) => !(f[OPTIONS_FORM_KEY] ?? "").trim(),
         hint: "{ fromGun?, fromDrill?, drillTierDamage? (0–1000), forceRemoveAll?, … }",
         placeholder: '{ "fromDrill": true }',
     },
@@ -62,6 +90,7 @@ const FIELDS: FieldSpec[] = [
 /** Stored entry → form strings, for the whole profile. */
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("power", read.num(e.power));
+    readExcavationOption(read, e);
     read.put("patternJson", read.json(e.pattern));
     read.put("terrainRulesJson", read.json(e.terrainRules));
     read.put("optionsJson", read.json(e.options));
@@ -69,6 +98,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
 
 /** Form strings → stored entry, for the whole profile. */
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
+    writeExcavationOption(w);
     w.setNum("power", w.optNum("power"));
     const pattern = w.optJson<number[][]>("patternJson");
     if (pattern) w.setRaw("pattern", pattern);
@@ -276,8 +306,9 @@ function validateField(field: FieldSpec, value: string): string | undefined {
  * the generic ones the panel already knows how to draw.
  */
 function renderField(ctx: FieldContext): unknown {
-    if (ctx.field.kind !== "terrainRules") return null;
-    return renderTerrainRules(ctx);
+    if (ctx.field.kind === "terrainRules") return renderTerrainRules(ctx);
+    if (ctx.field.kind === "excavationOption") return renderExcavationOption(ctx);
+    return null;
 }
 
 // ── The definition ───────────────────────────────────────────────────────────
@@ -288,9 +319,10 @@ function renderField(ctx: FieldContext): unknown {
  * `pattern`, `terrainRules` and `options` are the stored key names, listed as
  * themselves; `patternJson`, `terrainRulesJson` and `optionsJson` are the
  * *controls* for them and are deliberately absent, so the real keys do not also
- * fall through the passthrough as duplicates.
+ * fall through the passthrough as duplicates. `OPTION_COVERED` brings the option's
+ * own key.
  */
-const FORM_COVERED = ["power", "pattern", "terrainRules", "options"];
+const FORM_COVERED = ["power", "pattern", "terrainRules", "options", ...OPTION_COVERED];
 
 export const excavationDefinition: Definition = {
     tab: "excavation",
@@ -303,6 +335,15 @@ export const excavationDefinition: Definition = {
     // and terrainRules shapes above) or a `required` flag.
     panel: { renderField },
 };
+import {
+    excavationOptionField,
+    OPTION_COVERED,
+    OPTIONS_FORM_KEY,
+    PARAMS_FORM_KEY,
+    readExcavationOption,
+    writeExcavationOption,
+} from "../excavation-option-field.ts";
+import { renderExcavationOption } from "../../excavation-option-control.ts";
 import { listElements, listTerrains } from "../../../catalog.ts";
 import * as S from "../../styles.ts";
 import { idField, numField } from "../fields.ts";

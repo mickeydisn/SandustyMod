@@ -18,8 +18,8 @@ import { actionRefsOf } from "./process.ts";
 // The projectile options. A value import, not a type one: the usage scanner below
 // reads stored entries through `projectileOptionOf`, and `projectile-option/` does
 // not import this file, so there is still no cycle.
-import { projectileOptionOf } from "./projectile-option/index.ts";
-
+import { projectileOptionOf } from "../projectile-option/index.ts";
+import { excavationOptionOf } from "../excavation-option/index.ts";
 /** What a handler fundamentally does. Drives grouping in the handler tab. */
 export type HandlerType =
     | "global"
@@ -134,7 +134,6 @@ const p = (
     extra: Partial<HandlerParam> = {},
 ): HandlerParam => ({ key, label, kind, ...extra });
 
-const MSG_SLOTS = ["signal", "trigger", "itemAction"] as const satisfies readonly HandlerSlot[];
 const ALL_SLOTS = [
     "signal",
     "trigger",
@@ -156,6 +155,489 @@ const ALL_SLOTS = [
  * The raw list stays separate so the entries above read as a plain table; only
  * this export carries the derived fields, and it is the one everything imports.
  */
+
+// The region options every element action shares. One array, spread into each
+// entry, because an option that exists for `replaceElement` but not for
+// `countElements` is either a mistake or an accident of copy-paste — and the
+// panel would then show a field the action ignores, which is the worst outcome
+// a form can have.
+const REGION_PARAMS: HandlerParam[] = [
+    p("dx", "Offset X", "number", { def: "0", int: true, hint: "from my own cell" }),
+    p("dy", "Offset Y", "number", { def: "0", int: true }),
+    p(
+        "size",
+        "Region size",
+        "number",
+        {
+            def: "1",
+            int: true,
+            min: 0,
+            max: 64,
+            hint: "1 = just the offset cell. 3 = the 3×3 around it. 0 means the " +
+                "same as 1.",
+        },
+    ),
+    p("footprint", "My whole footprint", "bool", {
+        def: "false",
+        hint: "work over every occupied cell of my shape matrix, ignoring the " +
+            "offsets above",
+    }),
+    p("mx", "Matrix X", "number", {
+        int: true,
+        hint: "one cell of the matrix, by column. Overrides the offsets.",
+    }),
+    p("my", "Matrix Y", "number", { int: true, hint: "one cell of the matrix, by row." }),
+];
+
+/**
+ * The region options the motion family shares with the element family.
+ *
+ * The **same array**, not a copy: `regionFor` is one function, so a cell means the same
+ * thing in both families, and the panel must not be able to drift from it either. A
+ * second array that happened to be equal today would be a second thing to keep equal.
+ */
+const MOTION_REGION_PARAMS: HandlerParam[] = REGION_PARAMS;
+
+/** Velocity, as the panel's two components. Not integers — velocity is not cells. */
+const VELOCITY_PARAMS: HandlerParam[] = [
+    p("vx", "Velocity X", "number", { def: "0" }),
+    p("vy", "Velocity Y", "number", { def: "0", hint: "negative is up" }),
+];
+
+/**
+ * The seven motion actions.
+ *
+ * Written out rather than generated, for the same reason the element entries are: two
+ * of them need options no sibling has — `setDuration` wants ticks and a rearm flag,
+ * `teleportElement` wants a destination rather than a region — and a generated list
+ * would hide exactly that difference.
+ *
+ * The hints are the important part. `setVelocity` and `addVelocity` say **particles
+ * only**, because that is the misreading this family invites: setting a velocity on a
+ * falling grain of sand does nothing at all, and the author would have no way to tell
+ * that from a typo in the coordinates.
+ */
+const MOTION_ENTRIES: Omit<HandlerMeta, "cls">[] = [
+    {
+        key: "getVelocity",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            ...MOTION_REGION_PARAMS,
+        ],
+    },
+    {
+        key: "findFreeCell",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        // `size` is here twice on purpose and only one wins: the region resolver reads
+        // it when no footprint is set, and `findFreeCell` reads it as the search square.
+        // One name, one meaning per action, and the hint says which.
+        params: [
+            p("size", "Search size", "number", {
+                def: "0",
+                min: 1,
+                hint: "cells to search from me. 0 = my own footprint size.",
+            }),
+        ],
+    },
+    {
+        key: "setVelocity",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...VELOCITY_PARAMS, ...MOTION_REGION_PARAMS],
+    },
+    {
+        key: "addVelocity",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            ...VELOCITY_PARAMS,
+            p("maxSpeed", "Max speed", "number", {
+                def: "0",
+                min: 0,
+                hint: "cells/second. 0 = no clamp.",
+            }),
+            ...MOTION_REGION_PARAMS,
+        ],
+    },
+    {
+        key: "setDuration",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("ticks", "Ticks", "number", { def: "60", min: 0, int: true }),
+            p("rearm", "Rearm", "bool", {
+                def: "false",
+                hint: "also raise the maximum, so it fires again next cycle",
+            }),
+            ...MOTION_REGION_PARAMS,
+        ],
+    },
+    {
+        key: "teleportElement",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("tx", "Move X", "number", { def: "0", int: true }),
+            p("ty", "Move Y", "number", { def: "1", int: true, hint: "1 = one cell down" }),
+            ...MOTION_REGION_PARAMS,
+        ],
+    },
+    {
+        key: "toParticle",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...VELOCITY_PARAMS, ...MOTION_REGION_PARAMS],
+    },
+];
+
+/**
+ * The seven atomic element actions, one registry entry each.
+ *
+ * Every entry is `type: "cell"`, `slots: ["processing"]`, `scope: "cell"` — the same
+ * shape as `isElementAtCell`, and for the same reasons: `processing` is the only slot
+ * that delivers a `StructureProcessingContext`, and therefore the only one where
+ * "ask a cell what it holds, then change it" can be asked at all.
+ *
+ * The seven entries are written out rather than generated in a loop, so the file still
+ * reads as a catalogue. A `for` over a name list would be shorter and would hide the
+ * two that need *different* params — `transformElement` has a second element id, and
+ * `countEmpty` has none — which is exactly the detail a generated list hides.
+ */
+/**
+ * The `ElementCreateOptions` the panel exposes, for the three element actions that write.
+ *
+ * Shared by `createAtCell` and `replaceAtCell` on the writer, which take the **same**
+ * options bag — the engine types both as `ElementCreateOptions` (`grid.d.ts:166,178`).
+ * One array, so the two actions cannot drift into offering different capabilities.
+ *
+ * `durationTicks` is the reason this array exists. It sets **both** max and remaining
+ * duration *at creation*, so the element is never briefly untimed — which the motion
+ * family's `setDuration` cannot promise, because that is a separate per-cell write
+ * applied at the flush. A timed spawn is atomic; a set-then-time is not.
+ */
+const CREATE_PARAMS: HandlerParam[] = [
+    p("durationTicks", "Lifetime", "number", {
+        def: "0",
+        min: 0,
+        int: true,
+        hint: "ticks before it expires. 0 = permanent.",
+    }),
+    p("density", "Density", "number", {
+        def: "0",
+        min: 0,
+        hint: "overrides the element's density. 0 = its own.",
+    }),
+    p("freeFalling", "Free-falling", "bool", {
+        def: "false",
+        hint: "spawn already falling rather than resting",
+    }),
+    p("vx", "Velocity X", "number", { def: "0", hint: "spawn as a particle, already moving" }),
+    p("vy", "Velocity Y", "number", { def: "0", hint: "negative is up" }),
+];
+
+const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
+    {
+        key: "readElement",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "countElements",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("element", "Element", "text", {
+                required: true,
+                hint: "the element id to count",
+            }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        // No `element` param: it counts the *absence* of one, and an id here would be
+        // an option the action ignores — a field that looks meaningful and is not.
+        key: "countEmpty",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "replaceElement",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("element", "Element", "text", {
+                required: true,
+                hint: "the element id to write",
+            }),
+            ...CREATE_PARAMS,
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "createElement",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("element", "Element", "text", { required: true, hint: "the element id to place" }),
+            ...CREATE_PARAMS,
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "emptyCells",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        // The only one with a **second** element id. `from` is deliberately not
+        // `required` — blank means "whatever is there", which is what makes this a
+        // normaliser as well as a mapping.
+        key: "transformElement",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("from", "From element", "text", {
+                hint: "only cells holding this are changed. Leave blank for any.",
+            }),
+            p("to", "To element", "text", { required: true, hint: "what they become" }),
+            // `transformElement` also writes, so it takes the same create options. A
+            // transformation that can retime the result is a materially different
+            // machine from one that cannot: "dirt becomes timed sand" is a process step
+            // a furnace wants, and there is no way to express it by chaining two actions
+            // without opening a window where the cell holds untimed sand.
+            ...CREATE_PARAMS,
+            ...REGION_PARAMS,
+        ],
+    },
+];
+
+/**
+ * The structure family, after the motion entries for the same ordering reason: a program
+ * places a machine before it fills it.
+ *
+ * `type: "cell"` throughout — including the two instance actions (`isMyType`,
+ * `pushStructure`), because both are reached from a processor tick and both are wired from
+ * the panel. The distinction between "about a cell" and "about me" is carried by the
+ * **absence** of region params: an instance action takes no `dx`/`dy`/`size`, so the panel
+ * cannot offer a region for it and the engine call is unambiguous.
+ */
+const STRUCTURE_REF_PARAMS: HandlerParam[] = [
+    p("structure", "Structure", "text", {
+        required: true,
+        hint: "the structure id, or a handle from Structure type",
+    }),
+];
+
+const DATA_PARAMS: HandlerParam[] = [
+    p("key", "Key", "text", { required: true, hint: "the data-bag key" }),
+    p("value", "Value", "text", { hint: "written as text" }),
+    p("numberValue", "Number value", "number", {
+        def: "",
+        hint: "written as a number. Leave blank to use Value.",
+    }),
+    p("propagateToWorkers", "Send to workers", "bool", {
+        def: "false",
+        hint: "instance data lives on Main; set this if a worker must see it now",
+    }),
+];
+
+const REMOVAL_PARAMS: HandlerParam[] = [
+    p("removeCells", "Remove cells too", "bool", {
+        def: "false",
+        hint: "also remove the terrain under it",
+    }),
+    p("skipVisuals", "Skip visuals", "bool", { def: "false", hint: "no teardown effect" }),
+];
+
+const STRUCTURE_ENTRIES: Omit<HandlerMeta, "cls">[] = [
+    {
+        key: "structureType",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "hasStructure",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "isStructureType",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...STRUCTURE_REF_PARAMS, ...REGION_PARAMS],
+    },
+    {
+        key: "isMyType",
+        type: "cell",
+        slots: ["processing"],
+        scope: "structure",
+        // No region params: this asks about **my** instance, so there is nothing for an
+        // offset or a size to mean. Offering them would be offering a lie.
+        params: [...STRUCTURE_REF_PARAMS],
+    },
+    {
+        key: "isBlockedByPlayer",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "isLauncher",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "isStructureEnabled",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "countStructures",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "structureData",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("key", "Key", "text", { required: true, hint: "the data-bag key" }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "mapSpritesheetValue",
+        type: "cell",
+        slots: ["processing"],
+        scope: "global",
+        params: [
+            p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
+            p("thresholds", "Thresholds", "text", {
+                def: "",
+                hint: "comma-separated, ascending. e.g. 25,50,75",
+            }),
+        ],
+    },
+    {
+        key: "buildStructure",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...STRUCTURE_REF_PARAMS, ...REGION_PARAMS],
+    },
+    {
+        key: "removeStructure",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REMOVAL_PARAMS, ...REGION_PARAMS],
+    },
+    {
+        key: "removeStructures",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            ...REMOVAL_PARAMS,
+            p("preserveUnselectable", "Only unselectable", "bool", {
+                def: "false",
+                hint: "skip structures a player can currently select",
+            }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "setStructureEnabled",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("enabled", "Enabled", "bool", { def: "true", hint: "the state to switch to" }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "setSpritesheetIndex",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("index", "Frame", "number", {
+                def: "0",
+                int: true,
+                min: 0,
+                hint: "the frame to show",
+            }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "setSpritesheetByValue",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
+            p("thresholds", "Thresholds", "text", {
+                def: "",
+                hint: "comma-separated, ascending. e.g. 25,50,75",
+            }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "setStructureData",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...DATA_PARAMS, ...REGION_PARAMS],
+    },
+    {
+        key: "pushStructure",
+        type: "cell",
+        slots: ["processing"],
+        scope: "structure",
+        params: [
+            p("propagateToWorkers", "Send to workers", "bool", {
+                def: "false",
+                hint: "instance data lives on Main; set this if a worker must see it now",
+            }),
+        ],
+    },
+];
+
 const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     // ── global ───────────────────────────────────────────────────────────────
     { key: "noop", type: "global", slots: [...ALL_SLOTS], scope: "global", params: [] },
@@ -169,51 +651,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     },
     { key: "processorNoop", type: "global", slots: ["processing"], scope: "structure", params: [] },
 
-    // ── cell ─────────────────────────────────────────────────────────────────
-    // The excavation* presets are the cell-digging behaviour a Tool uses.
-    {
-        key: "excavationDefault",
-        type: "cell",
-        slots: ["itemAction"],
-        scope: "cell",
-        itemTypes: ["Tool"],
-        params: [p("power", "Power", "number", { def: "10", min: 0 })],
-    },
-    {
-        key: "excavationCrusher",
-        type: "cell",
-        slots: ["itemAction"],
-        scope: "cell",
-        itemTypes: ["Tool"],
-        params: [p("power", "Power", "number", { def: "24", min: 0 })],
-    },
-    {
-        key: "excavationDrill",
-        type: "cell",
-        slots: ["itemAction"],
-        scope: "cell",
-        itemTypes: ["Tool"],
-        params: [
-            p("power", "Power", "number", { def: "8", min: 0 }),
-            p("drillTierDamage", "Drill tier damage", "number", { def: "25", min: 0, int: true }),
-        ],
-    },
-    {
-        key: "excavationGun",
-        type: "cell",
-        slots: ["itemAction"],
-        scope: "cell",
-        itemTypes: ["Tool"],
-        params: [p("power", "Power", "number", { def: "4", min: 0 })],
-    },
-    {
-        key: "excavationShatter",
-        type: "cell",
-        slots: ["itemAction"],
-        scope: "cell",
-        itemTypes: ["Tool"],
-        params: [p("power", "Power", "number", { def: "16", min: 0 })],
-    },
     {
         key: "energyDefault",
         type: "cell",
@@ -275,6 +712,24 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     { key: "signalLog", type: "message", slots: ["signal"], scope: "structure", params: [] },
     { key: "structureInspect", type: "message", slots: ["signal"], scope: "structure", params: [] },
     {
+        // The context's first producer. `processing` is the only slot that delivers
+        // a `StructureProcessingContext`, and therefore the only one where "ask a
+        // cell what it holds" can be asked at all. The `as` name is not a declared
+        // param — it is on the *step*, not the action, and applies to every action.
+        key: "isElementAtCell",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("element", "Element", "text", {
+                required: true,
+                hint: "the element id to test for",
+            }),
+            p("dx", "Offset X", "number", { def: "0", int: true }),
+            p("dy", "Offset Y", "number", { def: "0", int: true }),
+        ],
+    },
+    {
         key: "structureReadData",
         type: "message",
         slots: ["signal"],
@@ -303,11 +758,41 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     // family that provably did nothing, while looking correctly configured.
     // `triggerLog` and `triggerTick` are the ones that actually work there.
     { key: "triggerLog", type: "message", slots: ["trigger"], scope: "global", params: [] },
-    { key: "triggerTick", type: "message", slots: ["trigger"], scope: "global", params: [] },
+    // `triggerTick` counts into `payload.data`, so it needs an instance bag — and
+    // the `trigger` call site delivers **no payload at all** (see the note above).
+    // Offering it there was a wrong answer the old `ACTION_SCOPE` row hid by
+    // declaring it needed nothing. It is offered in `signal`, which does hand
+    // over a structure.
+    { key: "triggerTick", type: "message", slots: ["signal"], scope: "structure", params: [] },
+    // The two `feel/` actions. `toast` needs nothing from the payload, so it is
+    // offered everywhere the engine will call a process — including `trigger`,
+    // which delivers no payload at all. `particles` needs a position.
+    {
+        key: "toast",
+        type: "message",
+        slots: ["signal", "trigger", "processing", "itemAction", "upgrade", "modifier"],
+        scope: "global",
+        params: [p("text", "Text", "text", { def: "Hello", required: true })],
+    },
+    {
+        key: "particles",
+        type: "message",
+        slots: ["signal", "processing", "modifier"],
+        scope: "cell",
+        params: [
+            p("name", "Effect", "text", { required: true, hint: "effect name" }),
+            p("count", "Count", "number", { def: "1", min: 0, max: 999 }),
+        ],
+    },
     {
         key: "itemExcavate",
         type: "message",
-        slots: ["itemAction"],
+        // `itemAction` is **not** offered: `handleAction(state, action)` delivers
+        // `pos: false`, and this action reads `x` / `y` to know where to dig. It was
+        // slotted there anyway, which `canRunAt` now refuses — an action offered
+        // where the engine hands it nothing it reads quietly does nothing, which is
+        // the failure this whole table exists to prevent.
+        slots: ["signal", "processing", "modifier"],
         scope: "cell",
         itemTypes: ["Tool"],
         params: [
@@ -320,7 +805,9 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     {
         key: "itemShoot",
         type: "message",
-        slots: ["itemAction"],
+        // Same reason as `itemExcavate`: `handleAction` delivers no position, and
+        // this action needs one to spawn the projectile from.
+        slots: ["signal", "processing", "modifier"],
         scope: "global",
         itemTypes: ["Weapon"],
         params: [
@@ -398,7 +885,11 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     {
         key: "energyConsumePerRun",
         type: "processor",
-        slots: ["processing", "trigger"],
+        // `trigger` is **not** offered: `registerTrigger` calls its callback with no
+        // arguments at all, so `payload.x` / `payload.y` are unavailable and there is
+        // no network cell to draw from. The action would have returned early every
+        // time while looking correctly configured.
+        slots: ["processing", "signal", "modifier"],
         scope: "cell",
         params: [
             p("energyType", "Energy type", "text", { required: true }),
@@ -482,6 +973,22 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         scope: "global",
         params: [],
     },
+    // The element family, after the message entries they extend.
+    ...ELEMENT_ENTRIES,
+    // The motion family, after the element entries for the same reason: these are
+    // reached for once "what is there" has been answered. `type: "cell"` and
+    // `scope: "cell"` are shared with the element family, but the *dependency* is not —
+    // these reach `api.elements.*` rather than the processing context, and the measured
+    // class and scope in `action-class.ts` / `scope.ts` say so. The registry records what
+    // the panel needs to know; those two tables record what the action actually does.
+    ...MOTION_ENTRIES,
+    // The structure family, after the motion entries for the same ordering reason: a
+    // program places a machine before it fills it. `type: "cell"` and `scope: "cell"` are
+    // shared with both other families, but the *dependency* is neither: these reach
+    // `api.structures.*` and never the processing context, which the measured class and
+    // scope in `action-class.ts` / `scope.ts` say so. The registry records what the panel
+    // needs; those two tables record what the action actually does.
+    ...STRUCTURE_ENTRIES,
 ];
 
 export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => ({
@@ -663,6 +1170,23 @@ const SLOT_LOCATION: Record<HandlerSlot, string> = {
     itemAction: "items",
 };
 
+/**
+ * The same table inverted: which slot a stored config key belongs to.
+ *
+ * **Computed** from `SLOT_LOCATION` rather than written out beside it. A hand-kept
+ * second table is the drift this file already had once — the excavation presets were
+ * in one and not the other — and the failure is a scan that silently stops finding
+ * usages, which looks exactly like "nothing uses this any more".
+ *
+ * Needed because a scan walks the *config* (`Object.entries`) while the register path
+ * starts from a *slot*. Neither direction is derivable from the other without this.
+ */
+const SLOTS_BY_CATEGORY: Record<string, HandlerSlot> = Object.fromEntries(
+    Object.entries(SLOT_LOCATION).map(([slot, key]) => [key, slot as HandlerSlot]),
+) as Record<string, HandlerSlot>;
+
+export { SLOTS_BY_CATEGORY };
+
 /** Where a stored `handlerKey` was found. */
 export interface HandlerUsage {
     category: string;
@@ -703,6 +1227,32 @@ export function scanProjectileOptionUsage(
         const { ref, problem } = projectileOptionOf(e);
         return {
             category: "projectiles",
+            id: String(e?.id ?? "?"),
+            key: ref?.key,
+            problem,
+        };
+    });
+}
+
+/**
+ * Which excavation profiles use which option, and which ones are broken.
+ *
+ * The excavation twin of `scanProjectileOptionUsage`, reading
+ * `excavationProfiles` rather than `projectiles`. It exists so the options tab can
+ * say "used ×2" and flag a profile naming a preset that no longer exists — the same
+ * two facts the projectile screen shows, for the same reason: an option nobody
+ * names is dead code, and one that is named but missing is a profile quietly
+ * falling back to a default power.
+ */
+export function scanExcavationOptionUsage(
+    cfg: Record<string, unknown>,
+): { category: string; id: string; key?: string; problem?: string }[] {
+    const list = cfg.excavationProfiles;
+    if (!Array.isArray(list)) return [];
+    return (list as Record<string, unknown>[]).map((e) => {
+        const { ref, problem } = excavationOptionOf(e);
+        return {
+            category: "excavationProfiles",
             id: String(e?.id ?? "?"),
             key: ref?.key,
             problem,

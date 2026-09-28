@@ -10,7 +10,7 @@
  */
 import { listElements } from "../../catalog.ts";
 import { MOD_ID } from "../../constants.ts";
-import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../../hooks/handler-registry.ts";
+import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../../handler/core/handler-registry.ts";
 import type { Opt } from "../../catalog.ts";
 import type { FieldSpec } from "./types.ts";
 

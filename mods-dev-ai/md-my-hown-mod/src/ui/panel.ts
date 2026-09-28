@@ -13,6 +13,7 @@
 import { LOG, type ModConfig, type PanelState, type StructureConfig } from "../constants.ts";
 import {
     addOrUpdateContact,
+    addOrUpdateCustomProcess,
     addOrUpdateElement,
     addOrUpdateEnergyNetwork,
     addOrUpdateEnergyType,
@@ -39,6 +40,7 @@ import {
     loadConfig,
     loadPanelState,
     removeContact,
+    removeCustomProcess,
     removeElement,
     removeEnergyNetwork,
     removeEnergyType,
@@ -109,6 +111,7 @@ import {
 } from "./panel/component/selector/selector.ts";
 import { renderActionList } from "./action-list-control.ts";
 import { renderProjectileOption } from "./projectile-option-control.ts";
+import { renderProcessRef } from "./process-ref-control.ts";
 import { listFor } from "./panel/index.ts";
 import { attachedTo, parentOf } from "./panel/attach.ts";
 import { handlerDoc, listBuildModeTypes, type Opt, searchLibraryAssets } from "../catalog.ts";
@@ -119,6 +122,7 @@ import {
     type HandlersTabState,
     initialHandlersState,
     renderActions,
+    renderExcavationOptions,
     renderProjectileOptions,
     renderUpgradeActions,
 } from "./panel/handlers.ts";
@@ -126,6 +130,15 @@ import { renderHelp } from "./panel/help.ts";
 import { renderConfigMap } from "./config-map.ts";
 import { DEFAULT_UNLOCK_NODE, techUnlockStructureIds, unlockLine } from "./tech-link.ts";
 import { renderDraws } from "./panel/draws.ts";
+// The process index, installed once the config loads. `validateField` and the option
+// controls are called with a form and no config, so a process reference is checked
+// against this rather than against a list threaded through every call.
+import {
+    currentProcessRegistry,
+    processProblem,
+    ProcessRegistry,
+    setProcessRegistry,
+} from "../handler/custom-process/index.ts";
 
 /**
  * Tab → screen, for the Handlers menu group.
@@ -142,6 +155,7 @@ import { renderDraws } from "./panel/draws.ts";
 const HANDLER_SCREENS = {
     action: renderActions,
     projectileOption: renderProjectileOptions,
+    excavationOption: renderExcavationOptions,
     upgradeAction: renderUpgradeActions,
 } as const;
 
@@ -214,6 +228,7 @@ export const UPSERT: Partial<Record<Tab, UpsertFn>> = {
     projectiles: addOrUpdateProjectile,
     energy: addOrUpdateEnergyType,
     excavation: addOrUpdateExcavationProfile,
+    customProcess: addOrUpdateCustomProcess,
     behaviors: addOrUpdateStructureBehavior,
     signals: addOrUpdateSignal,
     triggers: addOrUpdateTrigger,
@@ -239,6 +254,7 @@ export const REMOVE: Partial<Record<Tab, RemoveFn>> = {
     projectiles: removeProjectile,
     energy: removeEnergyType,
     excavation: removeExcavationProfile,
+    customProcess: removeCustomProcess,
     behaviors: removeStructureBehavior,
     signals: removeSignal,
     triggers: removeTrigger,
@@ -283,7 +299,16 @@ export function createPanelComponent(defaultMinimized = true) {
 
     function Panel() {
         const [panel, setPanel] = useState<PanelState>(() => loadPanelState(defaultMinimized));
-        const [cfg, setCfg] = useState<ModConfig>(() => loadConfig());
+        const [cfg, setCfg] = useState<ModConfig>(() => {
+            const loaded = loadConfig();
+            // Install the process index for everything that validates a reference
+            // without holding the config — `validateField` and the two option
+            // controls, which are called with a form and nothing else. Re-installed on
+            // every load, so a process the author has just saved is visible to a
+            // picker without a reload.
+            setProcessRegistry(new ProcessRegistry(loaded.processes ?? []));
+            return loaded;
+        });
         const [groupKey, setGroupKey] = useState("content");
         const [rawCat, setCat] = useState<Tab>("elements");
         const [mode, setMode] = useState<Mode>("list");
@@ -867,6 +892,22 @@ export function createPanelComponent(defaultMinimized = true) {
                 // special case, because a projectile is not a process: there is no
                 // list, so there is nothing to add, reorder or repeat.
                 control = renderProjectileOption({
+                    h,
+                    form,
+                    cfg,
+                    setField,
+                    field: f,
+                    value: val,
+                    error: err,
+                    locked,
+                    tab: cat,
+                });
+            }
+            if (control === null && f.kind === "processRef") {
+                // The process picker. A `select` and not an `actionList`, because the
+                // value is **one id**: the steps are edited on the Processes tab, and
+                // putting them here would be the copy this feature exists to delete.
+                control = renderProcessRef({
                     h,
                     form,
                     cfg,

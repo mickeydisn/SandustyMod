@@ -18,7 +18,7 @@
  * changed since). Those are listed at the top in red rather than failing
  * silently in-game.
  */
-import type { HandlerMeta, HandlerUsage } from "../../hooks/handler-registry.ts";
+import type { HandlerMeta, HandlerUsage } from "../../handler/core/handler-registry.ts";
 import {
     ACTION_DOMAIN_BLURBS,
     ACTION_DOMAIN_LABELS,
@@ -28,7 +28,7 @@ import {
     type ActionEffect,
     domainOf,
     effectOf,
-} from "../../hooks/action-class.ts";
+} from "../../handler/core/action-class.ts";
 import {
     CALL_SITE_SCOPE,
     canRunAt,
@@ -38,14 +38,14 @@ import {
     SCOPE_NEED_LABELS,
     SCOPE_NEEDS,
     type ScopeNeed,
-} from "../../hooks/scope.ts";
-import { actionRefsOf, CALL_SITE_LABELS } from "../../hooks/process.ts";
+} from "../../handler/core/scope.ts";
+import { actionRefsOf, CALL_SITE_LABELS } from "../../handler/core/process.ts";
 import {
     PROJECTILE_OPTION_DOCS,
     PROJECTILE_OPTIONS,
     projectileOptionParams,
     resolveProjectileOption,
-} from "../../hooks/projectile-option/index.ts";
+} from "../../handler/projectile-option/index.ts";
 import {
     buildHandlerOptions,
     HANDLER_META,
@@ -53,12 +53,19 @@ import {
     HANDLER_SLOT_LABELS,
     handlersOnlyAtSlot,
     isOnlyAtSlot,
+    scanExcavationOptionUsage,
     scanProjectileOptionUsage,
     unreachableHandlers,
     usageIndex,
     validateHandlerParams,
-} from "../../hooks/handler-registry.ts";
-import { allHandlerDocs } from "../../hooks/handlers.ts";
+} from "../../handler/core/handler-registry.ts";
+import {
+    EXCAVATION_OPTION_DOCS,
+    EXCAVATION_OPTIONS,
+    excavationOptionParams,
+    resolveExcavationOption,
+} from "../../handler/excavation-option/index.ts";
+import { ACTION_DOCS } from "../../handler/actions/index.ts";
 import * as S from "../styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
@@ -233,6 +240,37 @@ export function filterProjectileOptions(
             key,
             doc: PROJECTILE_OPTION_DOCS[key] ?? "(no description)",
             params: projectileOptionParams(key),
+        }));
+}
+
+/**
+ * The excavation options, filtered by the shared search box.
+ *
+ * A third copy of the rule `filterProjectileOptions` already states, deliberately
+ * kept parallel rather than merged. The asymmetry that function's comment defends —
+ * axis filters are questions about an *action*, and an option answers none of them —
+ * applies identically here, and a shared generic would need a filter interface the
+ * two catalogues do not otherwise share.
+ */
+export function filterExcavationOptions(
+    query: string,
+    onlyUsed: boolean,
+    used: Record<string, number>,
+): { key: string; doc: string; params: { key: string; def: number | boolean }[] }[] {
+    const q = query.trim().toLowerCase();
+    return Object.keys(EXCAVATION_OPTIONS)
+        .sort()
+        .filter((key) => {
+            if (onlyUsed && !(used[key] ?? 0)) return false;
+            if (!q) return true;
+            // The doc is searched as well as the key, so "drill" and "blast" both find
+            // something.
+            return `${key} ${EXCAVATION_OPTION_DOCS[key] ?? ""}`.toLowerCase().includes(q);
+        })
+        .map((key) => ({
+            key,
+            doc: EXCAVATION_OPTION_DOCS[key] ?? "(no description)",
+            params: excavationOptionParams(key),
         }));
 }
 
@@ -475,7 +513,7 @@ function paramEditor(
 
 export function renderActions(props: HandlersTabProps): unknown {
     const { h, cfg, state, setState, onGoTo, onCopy } = props;
-    const docs = allHandlerDocs();
+    const docs = ACTION_DOCS;
     const used = usageIndex(cfg);
     const bad = unreachableHandlers(cfg);
 
@@ -608,7 +646,7 @@ export function renderActions(props: HandlersTabProps): unknown {
  */
 export function renderUpgradeActions(props: HandlersTabProps): unknown {
     const { h, cfg, state, setState, onCopy } = props;
-    const docs = allHandlerDocs();
+    const docs = ACTION_DOCS;
     const used = usageIndex(cfg);
     const { toggle, setParam } = paramEditor(state, setState);
 
@@ -1087,5 +1125,127 @@ function renderExpanded(
             h("span", { style: S.hint }, "paste into the entry's Process field"),
         ),
         h("pre", { style: S.codeBlock }, snippet),
+    );
+}
+
+/**
+ * The **Excavation options** screen: the second "builds a value" catalogue.
+ *
+ * The same three facts as the projectile screen, because they are the same kind of
+ * thing: the key, what it is for, and the value the engine will actually build. The
+ * one difference worth stating is *what* that value covers — an excavation option
+ * sets only a profile's `power` and `options`; the `pattern` and `terrainRules`
+ * stay with the author. Each row therefore carries a second chip saying so, because
+ * without it the row reads as if the preset described the whole dig.
+ */
+export function renderExcavationOptions(props: HandlersTabProps): unknown {
+    const { h, cfg, state, setState } = props;
+    const usage = scanExcavationOptionUsage(cfg);
+    const used: Record<string, number> = {};
+    for (const u of usage) if (u.key) used[u.key] = (used[u.key] ?? 0) + 1;
+    // A profile naming a preset that no longer exists is a real state, so it is
+    // reported rather than quietly falling back to the entry's own power.
+    const bad = usage.filter((u) => u.problem);
+    const shown = filterExcavationOptions(state.query, state.onlyUsed, used);
+
+    const search = h(
+        "div",
+        { style: { ...S.card, display: "flex", gap: 8, alignItems: "center" } },
+        h("input", {
+            style: { ...S.input, flex: 1 },
+            value: state.query,
+            placeholder: "Search options…",
+            onInput: (e: { currentTarget: { value: string } }) =>
+                setState({ ...state, query: e.currentTarget.value }),
+        }),
+        chip(
+            h,
+            state.onlyUsed ? "In use only" : "All",
+            state.onlyUsed,
+            () => setState({ ...state, onlyUsed: !state.onlyUsed }),
+            state.onlyUsed
+                ? "In use only — options some profile names. Click for all."
+                : "All — every option. Click for 'In use only'.",
+        ),
+        h("span", { style: S.hint }, `${shown.length}/${Object.keys(EXCAVATION_OPTIONS).length}`),
+    );
+
+    return h(
+        "div",
+        null,
+        ...bad.map((u) =>
+            h(
+                "div",
+                {
+                    key: `bad:${u.id}`,
+                    style: { ...S.noteBox, borderColor: "#c0392b", marginBottom: 8 },
+                },
+                h("div", { style: S.errorText }, `Profile ${u.id}: ${u.problem}`),
+            )
+        ),
+        search,
+        h(
+            "div",
+            { style: { ...S.sectionTitle, marginTop: 8 } },
+            `Options${
+                shown.length === Object.keys(EXCAVATION_OPTIONS).length ? "" : ` (${shown.length})`
+            }`,
+        ),
+        shown.length === 0
+            ? h("div", { style: S.card }, h("div", { style: S.hint }, "No option matches that."))
+            : h(
+                "div",
+                { style: { ...S.card, paddingTop: 2, paddingBottom: 2 } },
+                ...shown.map((o) => renderExcavationOptionRow(o, { h, used })),
+            ),
+    );
+}
+
+/** One excavation option: its key, what it is for, and the value it builds. */
+function renderExcavationOptionRow(
+    o: { key: string; doc: string; params: { key: string; def: number | boolean }[] },
+    ctx: { h: H; used: Record<string, number> },
+): unknown {
+    const { h } = ctx;
+    const count = ctx.used[o.key] ?? 0;
+    // The real return value, so the row shows what the engine will get rather than a
+    // claim about what it will get.
+    const sample = resolveExcavationOption(o.key)?.({}) ?? {};
+    // Flattened for display: the `{ power, options: { … } }` nesting is the one
+    // non-obvious thing about the return, and a row of flat chips says the same
+    // thing without asking the reader to unfold a JSON object.
+    const fields: [string, unknown][] = typeof sample.power === "number"
+        ? [["power", sample.power], ...Object.entries(sample.options ?? {})]
+        : Object.entries(sample.options ?? {});
+    return h(
+        "div",
+        { key: o.key, style: { ...S.row, flexDirection: "column", alignItems: "stretch", gap: 4 } },
+        h(
+            "div",
+            { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
+            h("span", { style: S.codeKey }, o.key),
+            count > 0
+                ? h(
+                    "span",
+                    { style: { ...S.tagChip, borderColor: "#4caf50" } },
+                    `used ×${count}`,
+                )
+                : h("span", { style: { ...S.hint, opacity: 0.6 } }, "unused"),
+            // Says what it *is*, which is the distinction this screen exists for.
+            h("span", { style: { ...S.tagChip, borderColor: "#8e44ad" } }, "builds a value"),
+            h("span", { style: S.tagChip }, "power + flags only"),
+        ),
+        h("div", { style: S.hint }, o.doc),
+        h(
+            "div",
+            { style: { display: "flex", gap: 4, flexWrap: "wrap" } },
+            ...fields.map(([k, v]) =>
+                h(
+                    "span",
+                    { key: k, style: S.tagChip, title: `default ${String(v)}` },
+                    `${k}: ${String(v)}`,
+                )
+            ),
+        ),
     );
 }

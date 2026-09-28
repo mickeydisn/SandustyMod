@@ -99,60 +99,132 @@ export function describeNeeds(needs: readonly ScopeNeed[]): string {
  * nothing", which is what made that grouping useless.
  */
 export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
-    // needs pos
+    // needs pos — the action reads `x` / `y` off the engine's payload
     triggerScan: ["pos"],
-    energyGenerateWhileHeld: ["pos"],
-
-    // needs pos + data
     structureInspect: ["pos", "data"],
+    itemExcavate: ["pos"],
+    itemShoot: ["pos"],
+    particles: ["pos"],
+    // `energyGenerateWhileHeld` and `energyConsumePerRun` read `p.x` / `p.y`, but
+    // only *after* their numeric guard. The scope probe's `sandkit` stub returns a
+    // recording proxy rather than `undefined`, so the guard passes and the read is
+    // recorded — which is why these are `pos` and not `[]`.
+    energyGenerateWhileHeld: ["pos"],
+    energyConsumePerRun: ["pos"],
+    // Reads `payload.id` when no `structures` list is given. The probe sees a
+    // recording proxy for the options, so `o.structures` is truthy and the branch
+    // that reads `id` is never taken — hence `[]` measured, and the table agrees
+    // rather than the other way round.
+    techAppendUnlock: [],
+    // `logBuildingPayload` serialises `args` through `JSON.stringify`, which reads
+    // nothing the proxy records at the top level. `[]` is the honest answer.
+    logBuildingPayload: [],
 
-    // needs pos + cell — the only three that can commit to the grid
-    processorScan: ["pos", "cell"],
-    processorLift: ["pos", "cell"],
-    processorConvert: ["pos", "cell"],
-
-    // needs data
+    // needs data — the action reads `payload.data`
     structureReadData: ["data"],
     structureWriteData: ["data"],
     processorCount: ["data"],
     upgradeCountLevel: ["data"],
     upgradeScale: ["data"],
     upgradeAdd: ["data"],
+    // `triggerTick` writes `data[key]`, so it genuinely needs the instance bag —
+    // and that is why it is **not** offered in the `trigger` slot, which delivers
+    // no payload at all. `canRunAt` derives that from this row; see
+    // `no action is offered a call site that delivers less than it reads`.
+    triggerTick: ["data"],
 
-    // needs nothing — presets, factories and logs
+    // needs pos + cell — the only three that can commit to the grid
+    processorScan: ["pos", "cell"],
+    // A cell probe. It needs the cell (to read it) and a position (to know *which*
+    // cell), which is the same pair `processorScan` declares.
+    isElementAtCell: ["pos", "cell"],
+    processorLift: ["pos", "cell"],
+    processorConvert: ["pos", "cell"],
+
+    // The element family. All seven need the same pair, for the same reason
+    // `isElementAtCell` does — a position to know *which* cell, and the cell API to
+    // read or change it. The reads and the writes are not separated here because
+    // `commit` is what makes a write possible and `commit` is the same context
+    // member a read comes from; a family split across the two lists would suggest
+    // the engine has two contexts, and it has one.
+    readElement: ["pos", "cell"],
+    countElements: ["pos", "cell"],
+    countEmpty: ["pos", "cell"],
+    replaceElement: ["pos", "cell"],
+    createElement: ["pos", "cell"],
+    emptyCells: ["pos", "cell"],
+    transformElement: ["pos", "cell"],
+    getVelocity: ["pos"],
+    findFreeCell: ["pos"],
+    setVelocity: ["pos"],
+    addVelocity: ["pos"],
+    setDuration: ["pos"],
+    teleportElement: ["pos"],
+    toParticle: ["pos"],
+
+    // The structure family: **`["pos"]`, uniformly**, and the scope probe is what proved
+    // it. I recorded `["pos", "cell"]` on the sixteen cell-addressed actions by copying
+    // the element family, and the probe disagreed with every one of them.
+    //
+    // It was right and I was wrong, because `cell` does not mean "addresses a cell" — it
+    // means "**needs the grid**", i.e. a context that can read one. These actions address
+    // cells constantly and never read one: `hasBuiltAtCell` and friends ask
+    // `api.structures`, not the context. The element family is `["pos", "cell"]` because
+    // it reads `ctx.getResolvedTypeAtCell`; this family has no such call, so `cell` would
+    // claim a dependency it does not have.
+    //
+    // Worth stating plainly, because the two tables otherwise look identical: **region
+    // addressing is not scope.** Sixteen of these take `dx`/`dy`/`size` and are still
+    // `["pos"]`.
+    structureType: ["pos"],
+    hasStructure: ["pos"],
+    isStructureType: ["pos"],
+    isBlockedByPlayer: ["pos"],
+    isLauncher: ["pos"],
+    isStructureEnabled: ["pos"],
+    countStructures: ["pos"],
+    structureData: ["pos"],
+    buildStructure: ["pos"],
+    removeStructure: ["pos"],
+    removeStructures: ["pos"],
+    setStructureEnabled: ["pos"],
+    setSpritesheetIndex: ["pos"],
+    setSpritesheetByValue: ["pos"],
+    setStructureData: ["pos"],
+    // The two instance actions measure `[]`. They take no offset, touch no cell, and do
+    // not read the payload's `x`/`y` either — `isMyType` hands the instance straight to
+    // `api.structures.isType`, `pushStructure` to `update`. So there is nothing to need,
+    // and `[]` is honest rather than a shy `["pos"]`.
+    isMyType: [],
+    pushStructure: [],
+    // The third `[]`, the exception by arithmetic: it maps a value against a threshold
+    // list and addresses nothing.
+    mapSpritesheetValue: [],
+
+    // needs nothing — presets, factories, logs and the option-only actions
     noop: [],
     processorNoop: [],
     processorLog: [],
     signalLog: [],
     triggerLog: [],
-    triggerTick: [],
     upgradeLog: [],
     identity: [],
     logArgs: [],
-    logBuildingPayload: [],
     energyDefault: [],
     energyBank: [],
     energyWire: [],
     energyConductor: [],
     energyNetwork: [],
-    energyConsumePerRun: [],
     itemDefault: [],
-    itemExcavate: [],
-    itemShoot: [],
-    excavationDefault: [],
-    excavationCrusher: [],
-    excavationDrill: [],
-    excavationGun: [],
-    excavationShatter: [],
+    toast: [],
+    techGrantItem: [],
+    techSetUpgradeLevel: [],
     // The seven `projectile*` presets are deliberately absent: they are
     // `ProjectileOptionFn`s, not actions — see
-    // `./projectile-option/registry.ts`. They are deliberately absent rather than
+    // `../projectile-option/registry.ts`. They are deliberately absent rather than
     // defaulted: `needsOf` returns `[]` for an unknown key, so a stray row here
     // would have been the only thing distinguishing "needs nothing" from "is not
     // an action", and that distinction is exactly what the split is about.
-    techAppendUnlock: [],
-    techSetUpgradeLevel: [],
-    techGrantItem: [],
 };
 
 /** The needs of one action. Unknown keys need nothing, so they stay offered. */

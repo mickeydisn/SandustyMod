@@ -1,6 +1,7 @@
 /**
  * Thin wrappers around sandkit.api — full field forwarding for every register path.
  */
+import { compileExcavationProfile } from "../handler/excavation-option/index.ts";
 import {
     type ContactReactionConfig,
     type ElementConfig,
@@ -12,7 +13,7 @@ import {
     type RecipeConfig,
     type StructureConfig,
 } from "../constants.ts";
-import { actionRefsOf, compileProcess } from "../hooks/process.ts";
+import { compileEntryProcess } from "../handler/custom-process/index.ts";
 
 declare const sandkit: any;
 const g = () => {
@@ -186,15 +187,20 @@ export const api = {
              * return would let a missing engine API look like a successful unlock —
              * the same silent no-op that made this bug hard to find in the first
              * place. `apply.ts` uses this to warn once instead.
+             *
+             * Calls `unlockById`, not `unlockByType`: the latter is `@deprecated`
+             * in both engine type sets. The boolean is ours, not the engine's, so
+             * renaming the engine call costs nothing and keeps the `apply.ts`
+             * warning working.
              */
-            unlockByType(structureId: string): boolean {
+            unlockById(structureId: string): boolean {
                 try {
-                    const fn = g()?.api?.player?.buildings?.unlockByType;
+                    const fn = g()?.api?.player?.buildings?.unlockById;
                     if (typeof fn !== "function") return false;
                     fn(structureId);
                     return true;
                 } catch (e) {
-                    console.error(`${LOG} player.buildings.unlockByType failed`, structureId, e);
+                    console.error(`${LOG} player.buildings.unlockById failed`, structureId, e);
                     return false;
                 }
             },
@@ -699,17 +705,21 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
     // stored list is compiled here. A Consumable is skipped on purpose: ItemType
     // has a Consumable member but ActionType does not, so the engine can never
     // dispatch a use action to one.
-    const refs = actionRefsOf(def as Record<string, unknown>);
-    if (refs.length > 0 && !isConsumable) {
-        const { fn, skipped } = compileProcess(refs, "itemAction");
-        if (skipped.length) {
+    const compiled = compileEntryProcess(def as Record<string, unknown>, "itemAction");
+    if (compiled.source.kind !== "none" && !isConsumable) {
+        if (compiled.skipped.length) {
             console.warn(
-                `[md-my-hown-mod] item ${id}: unknown action ${skipped.join(", ")}`,
+                `[md-my-hown-mod] item ${id}: unknown action ${compiled.skipped.join(", ")}`,
             );
         }
-        out.handleAction = fn as never;
-        // Keep the process in the payload for the panel's "used by" scan.
-        out.actions = refs;
+        out.handleAction = compiled.fn as never;
+        // Keep the program in the payload for the panel's "used by" scan. Under the
+        // reference model that is the **id**, not the steps — a copy here would be the
+        // very duplication this feature removes, and it would go stale the moment the
+        // process was edited. A legacy array is passed through as-is because that is
+        // genuinely all it has.
+        if (compiled.source.kind === "process") out.processId = compiled.source.id;
+        else if (compiled.source.kind === "legacy") out.actions = compiled.source.refs;
         out.options = {
             ...(typeof def.options === "object" ? def.options : {}),
             itemId: id,
@@ -923,15 +933,15 @@ export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): v
         const { id: _id, ...rest } = def as Record<string, unknown>;
         // `onUpgrade` is a real top-level field of `upgrades.register` and the
         // engine reads it — a callback, like `ItemDefinition.handleAction`. The mod
-        // stores its process as `actions`; a config still on the old `onUpgradeKey`
-        // spelling holds no process at all, and all 7 upgrade actions are then
+        // stores a *reference* to a process; a config still on the old `onUpgradeKey`
+        // spelling holds no program at all, and all 7 upgrade actions are then
         // unreachable in-game. That is the author's entry to fix, not a silent gap
         // this layer should paper over.
-        const { fn, skipped } = compileProcess(actionRefsOf(rest), "upgrade");
-        if (skipped.length) {
-            console.warn(`${LOG} upgrade ${def.id}: unknown action ${skipped.join(", ")}`);
+        const compiled = compileEntryProcess(rest, "upgrade");
+        if (compiled.skipped.length) {
+            console.warn(`${LOG} upgrade ${def.id}: unknown action ${compiled.skipped.join(", ")}`);
         }
-        g()?.api?.upgrades?.register?.({ ...rest, onUpgrade: fn });
+        g()?.api?.upgrades?.register?.({ ...rest, onUpgrade: compiled.fn });
     } catch (e) {
         console.error(`${LOG} upgrades.register failed`, def.id, e);
     }
@@ -1021,7 +1031,23 @@ export function registerExcavationProfile(
         const { id, power, pattern, options, terrainRules } = def as typeof def & {
             terrainRules?: unknown;
         };
-        const payload: Record<string, unknown> = { power, pattern, options };
+        // `power` and `options` come from the chosen **ExcavationOption** when there
+        // is one, and from the entry's own fields when there is not. The option owns
+        // exactly those two keys and nothing else, which is why `pattern` and
+        // `terrainRules` below are read straight off the entry: a preset has no
+        // opinion about the shape of a dig or what sandstone becomes. See
+        // `../handler/excavation-option/compile.ts`.
+        const { patch, key, problem } = compileExcavationProfile(def as Record<string, unknown>);
+        if (problem) {
+            console.warn(`${LOG} excavation profile ${id}: ${problem} — using the stored power`);
+        } else if (key) {
+            console.log(`${LOG} excavation profile ${id}: power and flags from ${key}`);
+        }
+        const payload: Record<string, unknown> = {
+            power: patch.power ?? power,
+            options: patch.options ?? options,
+            pattern,
+        };
         if (Array.isArray(terrainRules) && terrainRules.length > 0) {
             // cellType → TerrainRef, outputElementType → ElementRef. Both accept a
             // string id, but we upgrade to numeric handles when the runtime knows them.

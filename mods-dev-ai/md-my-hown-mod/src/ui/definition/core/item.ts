@@ -19,7 +19,12 @@
 import { listSpriteIds, type Opt } from "../../../catalog.ts";
 import { loadConfig } from "../../../config/store.ts";
 import type { ModConfig } from "../../../constants.ts";
-import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
+import {
+    PROCESS_COVERED,
+    processRefField,
+    readProcessRef,
+    writeProcessRef,
+} from "../process-ref-field.ts";
 import {
     advField,
     boolField,
@@ -111,7 +116,7 @@ const FIELDS: FieldSpec[] = [
         // Was a `select` over `listItemActionHandlerKeys`. The `when` is carried
         // over unchanged: the field still hides itself for a Consumable, so the
         // author is not offered something the engine cannot dispatch.
-        ...actionListField("ItemDefinition.handleAction runs when the item is used", {
+        ...processRefField("ItemDefinition.handleAction runs when the item is used", {
             section: "Item",
             when: (f) => !!f.itemType && f.itemType !== "Consumable",
         }),
@@ -177,7 +182,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // dropped on the next save — a switch back to "Tool" would silently lose
     // the handler the author had chosen. The *save* path is where the
     // Consumable rule belongs; hiding is not the same as forgetting.
-    readActions(read, e);
+    readProcessRef(read, e);
     // One stored `sprite` object, two controls.
     const sprite = e.sprite as { id?: string; type?: string } | undefined;
     read.put("spriteId", read.str(sprite?.id));
@@ -205,7 +210,7 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     // A Consumable has no ActionType to dispatch a use through, so never persist a
     // process for one — even though the form still holds the previous value so
     // switching back to a Tool restores it. `enabled: false` removes it outright.
-    writeActions(w, w.opt("itemType") !== "Consumable");
+    writeProcessRef(w, w.opt("itemType") !== "Consumable");
     // Written unconditionally, as the element writes its flags: `setBool` drops
     // an `undefined`, so an item the author never touched stores no flag at all
     // rather than a `false` that says nothing.
@@ -240,7 +245,7 @@ const FORM_COVERED = [
     "projectileId",
     // Replaces `handlerKey`, which it also owns so the passthrough cannot leave
     // both behind. The Consumable rule lives in `writeActions`, not here.
-    ...ACTIONS_COVERED,
+    ...PROCESS_COVERED,
     "sprite",
     // The hidden flag is written by `formToEntry`, so it must be claimed here or
     // it falls through the passthrough as a duplicate. It was genuinely dropped

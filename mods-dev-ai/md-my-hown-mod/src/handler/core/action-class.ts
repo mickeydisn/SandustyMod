@@ -20,7 +20,7 @@
  * The 7 `projectile*` presets are not actions and are not in this table — they are
  * `ProjectileOptionFn`s, in `./projectile-option/`.
  */
-import { ANY_HANDLERS, CODE_HANDLERS, PROCESS_HANDLERS } from "./handlers.ts";
+import { ALL_ACTIONS } from "../actions/index.ts";
 
 // ── The class ────────────────────────────────────────────────────────────────
 
@@ -48,55 +48,111 @@ export const ACTION_CLASS_BLURBS: Record<HandlerActionClass, string> = {
  * an action that starts (or stops) calling an API cannot drift quietly.
  */
 export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
-    // ── api (5) ───────────────────────────────────────────────────────────────
+    // ── api (7) ───────────────────────────────────────────────────────────────
     energyGenerateWhileHeld: "api",
     energyConsumePerRun: "api",
     techAppendUnlock: "api",
     techSetUpgradeLevel: "api",
     techGrantItem: "api",
+    itemExcavate: "api",
+    itemShoot: "api",
 
     // ── context-bound (3) ─────────────────────────────────────────────────────
     processorScan: "context-bound",
+    isElementAtCell: "context-bound",
     processorLift: "context-bound",
     processorConvert: "context-bound",
+    readElement: "context-bound",
+    countElements: "context-bound",
+    countEmpty: "context-bound",
+    replaceElement: "api",
+    createElement: "api",
+    emptyCells: "api",
+    transformElement: "api",
+    getVelocity: "api",
+    findFreeCell: "api",
+    setVelocity: "api",
+    addVelocity: "api",
+    setDuration: "api",
+    teleportElement: "api",
+    toParticle: "api",
 
-    // ── self-sufficient (15) ──────────────────────────────────────────────────
+    // ── The structure family (18), all `api` ───────────────────────────────────
+    //
+    // The largest single-family block, and the one with the least to say: every one
+    // measures `api`, with no exceptions, no `context` readers, and no pure members.
+    //
+    // That uniformity is not a choice — it is forced. `StructureProcessingContext` has
+    // **no** structure members at all: its whole surface is `getResolvedTypeAtCell`,
+    // `isCellEmptyAtCell` and `commit`. So there was no version of any of these actions
+    // that could have been `context-bound`, and the probe had nothing to catch. Every
+    // cell- and instance-facing function in the engine's structures namespace is here.
+    //
+    // `mapSpritesheetValue` is the odd one in spirit: it takes neither a cell nor an
+    // instance, so it fell outside the brief's rule, and is here because it is the only
+    // way to get a frame index as a *value*. It still calls the namespace, so `api` is
+    // where it measures — filed by what it does, not by where it came from.
+    structureType: "api",
+    hasStructure: "api",
+    isStructureType: "api",
+    isMyType: "api",
+    isBlockedByPlayer: "api",
+    isLauncher: "api",
+    isStructureEnabled: "api",
+    countStructures: "api",
+    structureData: "api",
+    mapSpritesheetValue: "api",
+    buildStructure: "api",
+    removeStructure: "api",
+    removeStructures: "api",
+    setStructureEnabled: "api",
+    setSpritesheetIndex: "api",
+    setSpritesheetByValue: "api",
+    setStructureData: "api",
+    pushStructure: "api",
+
+    // ── self-sufficient (10) ──────────────────────────────────────────────────
     structureInspect: "self-sufficient",
     structureReadData: "self-sufficient",
     structureWriteData: "self-sufficient",
     triggerScan: "self-sufficient",
+    triggerTick: "self-sufficient",
     energyDefault: "self-sufficient",
     energyBank: "self-sufficient",
     energyWire: "self-sufficient",
-    energyConductor: "self-sufficient",
+    energyConductor: "pure",
     energyNetwork: "self-sufficient",
     upgradeCountLevel: "self-sufficient",
-    upgradeScale: "self-sufficient",
     upgradeAdd: "self-sufficient",
-    itemExcavate: "self-sufficient",
-    itemShoot: "self-sufficient",
     processorCount: "self-sufficient",
-
-    // ── pure (23) ─────────────────────────────────────────────────────────────
     noop: "pure",
-    processorNoop: "pure",
+    upgradeScale: "self-sufficient",
+
+    // ── pure (22) ─────────────────────────────────────────────────────────────
+    // The loggers. They read the payload they were handed to print it, which the
+    // probe counts as a read — so `signalLog` and friends sit in `pure` only
+    // because a `console.log` of a whole object never touches a *property* of it.
     signalLog: "pure",
     triggerLog: "pure",
-    triggerTick: "pure",
-    upgradeLog: "pure",
     processorLog: "pure",
-    itemDefault: "pure",
-    excavationDefault: "pure",
-    excavationCrusher: "pure",
-    excavationDrill: "pure",
-    excavationGun: "pure",
-    excavationShatter: "pure",
-    // The three modifier-slot actions, in `CODE_HANDLERS`. `identity` measures as
-    // pure because returning its argument is not a *read* of it — it is a constant
-    // function in all but name, which is a fair description.
+    processorNoop: "pure",
     logArgs: "pure",
     identity: "pure",
-    logBuildingPayload: "pure",
+    itemDefault: "pure",
+    // Both read nothing: `upgradeLog` prints its arguments whole, and `noop`
+    // returns undefined. The three modifier actions sit here too — `identity`
+    // because returning its argument is not a *read* of it.
+    upgradeLog: "pure",
+    // `logBuildingPayload` reads `args` (a property read on the payload), so it
+    // measures as self-sufficient. It used to be `pure` when it caught the
+    // serialisation failure instead of reading `args` up front.
+    logBuildingPayload: "self-sufficient",
+
+    // ── feel (2) ──────────────────────────────────────────────────────────────
+    // The two actions added with the `feel/` folder. Both call `api.ui` /
+    // `api.effects`, so they are `api` — measured, not assumed.
+    toast: "api",
+    particles: "api",
 };
 
 // ── The measurement ──────────────────────────────────────────────────────────
@@ -117,31 +173,24 @@ export interface ActionDeps {
  * runtime, because a probe that allocates three proxies per action has no
  * business being on a hot path.
  *
- * The two registries have **different signatures**, which is why the argument
- * labels differ and why a single flat "arg 2" label would be wrong:
+ * The action signature decides the argument labels, which is why a single flat
+ * "arg 2" label would be wrong:
  *
- *   - `ANY_HANDLERS`     → `(payload, extra)`
- *   - `PROCESS_HANDLERS` → `(structure, context, options)`
+ *   - `payload`    → `(payload, extra)`      — arg 2 is the *extra* options bag
+ *   - `processing` → `(structure, context)`  — arg 2 is the *cell context*
  *
  * Getting that backwards labels every `extra` as a `ctx` and manufactures
- * context-bound actions out of handlers that only read their options.
+ * context-bound actions out of actions that only read their options. The
+ * signature now lives on the action itself (`StoredAction.signature`), so the
+ * probe asks one table instead of consulting three registries.
  */
 export function measureActionDeps(key: string): ActionDeps | undefined {
-    const any = (ANY_HANDLERS as Record<string, unknown>)[key] as
-        | ((...a: unknown[]) => unknown)
-        | undefined;
-    const proc = (PROCESS_HANDLERS as Record<string, unknown>)[key] as
-        | ((...a: unknown[]) => unknown)
-        | undefined;
-    // The modifier slot lives in `CODE_HANDLERS`, whose values are
-    // `{ kind, fn }` **objects**, not bare functions — so it has to be unwrapped
-    // or the lookup misses. That indirection is also why `resolveAnyHandler`, the
-    // pre-split lookup, never found these three.
-    const code = (CODE_HANDLERS as Record<string, unknown>)[key] as
-        | { fn?: (p: unknown, c: unknown, o: unknown) => unknown }
-        | undefined;
-    const fn = any ?? proc ?? code?.fn;
-    if (typeof fn !== "function") return undefined;
+    const def = ALL_ACTIONS[key];
+    if (!def) return undefined;
+    const fn = def.fn as (...a: unknown[]) => unknown;
+    // A modifier's second argument is a `HookContext`, not an options bag, so it
+    // is probed as a context — matching what the engine actually passes.
+    const secondIsCtx = def.signature === "processing" || def.signature === "modifier";
 
     const seen: Record<keyof Omit<ActionDeps, "threw">, boolean> = {
         payload: false,
@@ -150,11 +199,42 @@ export function measureActionDeps(key: string): ActionDeps | undefined {
         api: false,
     };
 
-    /** Records any property read, and keeps returning something usable. */
+    /**
+     * Records any property read, and keeps returning something usable.
+     *
+     * Two traps in here, both found by the probe reporting an action as
+     * `self-sufficient` when it plainly calls the api:
+     *
+     *  - **`valueOf` / `toString` must return 1.** Otherwise `Number(spy)` is
+     *    `NaN`, so any action guarding on a numeric option — `if (!amount) return`
+     *    — returns before it ever touches the api. A false negative in the
+     *    measurement, which is worse than no measurement: the class table is
+     *    supposed to be derived from this.
+     *
+     *  - **A symbol property must return a function.** `ToPrimitive` reads
+     *    `Symbol.toPrimitive` first; handing back a proxy object made V8 throw
+     *    "object is not a function" before coercion was even attempted, and the
+     *    probe swallowed that as `threw`. `seen` only records string keys, so the
+     *    extra return is invisible to the measurement.
+     */
     const spy = (label: keyof typeof seen, depth = 0): unknown =>
         new Proxy({} as Record<PropertyKey, unknown>, {
             get(_t, prop) {
                 if (typeof prop === "string" && !prop.startsWith("__")) seen[label] = true;
+                // `valueOf` / `toString` return 1 so `Number(spy)` is 1, not NaN.
+                if (prop === "valueOf" || prop === "toString") return () => 1;
+                // `Symbol.toPrimitive` must be **absent**, not a stub. V8 reads it
+                // first when coercing; if it is callable, V8 calls it and uses the
+                // result, so a stub returning `undefined` makes `Number(spy)` NaN
+                // and every action that guards on a numeric option returns before
+                // it reaches the api. Returning `undefined` for the symbol makes V8
+                // fall back to OrdinaryToPrimitive, which calls `valueOf` above.
+                if (prop === Symbol.toPrimitive) return undefined;
+                // Other symbols drive protocol lookups (`Symbol.iterator`,
+                // `util.inspect.custom`, …). A callable is safer than a bare proxy
+                // object here: returning an object made V8 throw "object is not a
+                // function" and the probe recorded that as `threw`.
+                if (typeof prop === "symbol") return () => undefined;
                 return depth > 2 ? 1 : spy(label, depth + 1);
             },
             set(_t, prop) {
@@ -178,12 +258,14 @@ export function measureActionDeps(key: string): ActionDeps | undefined {
     console.warn = () => {};
     let threw = false;
     try {
-        if (proc) fn(spy("payload"), spy("ctx"), spy("extra"));
-        // `ANY_HANDLERS` is now the canonical `(payload, ctx, options)` too. It used
-        // to be `(payload, extra)` — the signature change is the paired half of the
-        // Process/Action split, and passing two arguments here would measure the
-        // wrong slot for every action in that registry.
-        else fn(spy("payload"), spy("ctx"), spy("extra"));
+        // The second slot is a `ctx` for a processing or modifier action and an
+        // `extra` options bag otherwise. The old code had a `proc` branch here and
+        // an identical `else` branch — both passing `spy("ctx")` — so the
+        // `processing` actions were measured through the *payload* path and every
+        // argument-2 read in them was labelled wrong. `secondIsCtx` restores the
+        // distinction the comment above always claimed.
+        if (secondIsCtx) fn(spy("payload"), spy("ctx"), spy("extra"));
+        else fn(spy("payload"), spy("extra"), spy("extra"));
     } catch {
         threw = true;
     } finally {
@@ -227,15 +309,87 @@ export const ACTION_APIS: Record<string, string> = {
     techAppendUnlock: "tech",
     techSetUpgradeLevel: "upgrades",
     techGrantItem: "player",
+    itemExcavate: "grid",
+    itemShoot: "projectiles",
+    // ── The structure family: 18 actions, all `api` ──────────────────────────────
+    //
+    // The largest single-family block in the table, and the one with the least to say:
+    // every one of them measures `api` on `structures`, with no exceptions, no `context`
+    // readers, and no pure members.
+    //
+    // That uniformity is not a choice — it is forced. `StructureProcessingContext` has
+    // **no** structure members at all: its whole surface is `getResolvedTypeAtCell`,
+    // `isCellEmptyAtCell` and `commit`. So there was no version of any of these actions
+    // that could have been `context-bound`, and the probe had nothing to catch. Every
+    // cell- and instance-facing function in the engine's structures namespace is here.
+    //
+    // `mapSpritesheetValue` is the odd one in spirit: it takes neither a cell nor an
+    // instance, so it fell outside the brief's rule, and is here because it is the only
+    // way to get a frame index as a *value*. It still calls the namespace, so `api` is
+    // where it measures — filed by what it does, not by where it came from.
+    structureType: "api",
+    hasStructure: "api",
+    isStructureType: "api",
+    isMyType: "api",
+    isBlockedByPlayer: "api",
+    isLauncher: "api",
+    isStructureEnabled: "api",
+    countStructures: "api",
+    structureData: "api",
+    mapSpritesheetValue: "api",
+    buildStructure: "api",
+    removeStructure: "api",
+    removeStructures: "api",
+    setStructureEnabled: "api",
+    setSpritesheetIndex: "api",
+    setSpritesheetByValue: "api",
+    setStructureData: "api",
+    pushStructure: "api",
+    // The four element **writes**, after the migration to `api.grid.mutate`.
+    //
+    // This is the one place where the `elements` and `grid` namespaces meet, and it is
+    // worth being exact about which is which: these four reach **`grid`**, for the
+    // writer (`api.grid.mutate` → `writer.elements.*`), not `elements`. The element
+    // *reads* still go through the processing context and are `context-bound`. So the
+    // family is split across two rows, and the split is the migration's whole story:
+    // writes became a typed coherent batch, reads stayed where they were.
+    //
+    // The `elements` entries below are the motion family, and the two sets never meet:
+    // no action in this catalogue calls `api.elements` **and** `api.grid`.
+    replaceElement: "grid",
+    createElement: "grid",
+    emptyCells: "grid",
+    transformElement: "grid",
+    // The motion family, all one namespace. It is worth being explicit that this is a
+    // *different* `elements` from the one the element family would have used: the
+    // element family never calls `api.elements` at all — it goes through the
+    // processing context — so "elements" appearing here and nowhere else is the
+    // clearest single statement of where the boundary between the two families runs.
+    getVelocity: "elements",
+    findFreeCell: "elements",
+    setVelocity: "elements",
+    addVelocity: "elements",
+    setDuration: "elements",
+    teleportElement: "elements",
+    toParticle: "elements",
+    // Added with `feel/`. Both are api-bound, measured.
+    toast: "ui",
+    particles: "effects",
 };
 
 /** The full call path, for documentation and "copy snippet". */
 export const ACTION_API_PATHS: Record<string, string> = {
     energyGenerateWhileHeld: "api.energy.addAtCell / api.energy.getNetworkFreeCapacityAtCell",
     energyConsumePerRun: "api.energy.consume",
+    // The namespace is real and the second argument is an object of id lists —
+    // this is the call `handler-classification.test.ts` asserts fires.
     techAppendUnlock: "api.tech.conservatory.appendUnlock",
     techSetUpgradeLevel: "api.upgrades.setLevelById",
     techGrantItem: "api.player.inventory.addById",
+    itemExcavate: "api.grid.excavateAtCell",
+    itemShoot: "api.projectiles.spawnAtWorld",
+    toast: "api.ui.toast",
+    particles: "api.effects.createParticlesAtWorld",
 };
 
 /** The namespace an action calls, or undefined if it calls none. */
@@ -318,28 +472,69 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     processorConvert: "commits",
     processorLift: "commits",
     processorScan: "reads",
+    isElementAtCell: "reads",
+    readElement: "reads",
+    countElements: "reads",
+    countEmpty: "reads",
+    replaceElement: "commits",
+    createElement: "commits",
+    emptyCells: "commits",
+    transformElement: "commits",
+    setVelocity: "commits",
+    addVelocity: "commits",
+    setDuration: "commits",
+    teleportElement: "commits",
+    toParticle: "commits",
+    getVelocity: "reads",
+    findFreeCell: "reads",
 
-    // api — the five that reach the engine
+    // The structure family. Ten read and eight write, and **none** of them can be
+    // `commits`: `commits` means `ctx.commit(...)`, and the processing context has no
+    // structure members at all. These go through `api.structures.*` like the motion
+    // family, and the ladder takes the first match — so they are listed **before** the
+    // `api` block, where `api` claims them, rather than after it where nothing would.
+    structureType: "api",
+    hasStructure: "api",
+    isStructureType: "api",
+    isMyType: "api",
+    isBlockedByPlayer: "api",
+    isLauncher: "api",
+    isStructureEnabled: "api",
+    countStructures: "api",
+    structureData: "api",
+    mapSpritesheetValue: "api",
+    buildStructure: "api",
+    removeStructure: "api",
+    removeStructures: "api",
+    setStructureEnabled: "api",
+    setSpritesheetIndex: "api",
+    setSpritesheetByValue: "api",
+    setStructureData: "api",
+    pushStructure: "api",
+
+    // api — the actions that reach the engine
     energyGenerateWhileHeld: "api",
     energyConsumePerRun: "api",
     techAppendUnlock: "api",
     techSetUpgradeLevel: "api",
     techGrantItem: "api",
+    // These two were `returns` while they were stubs that handed back a literal.
+    // They dig and shoot for real now, so `api` is the stronger and true claim —
+    // and the ladder takes the first match, so listing them here is what moves them.
+    itemExcavate: "api",
+    itemShoot: "api",
+    // The two `feel/` actions. Also `api`: they drive `ui.toast` and
+    // `effects.createParticlesAtWorld`.
+    toast: "api",
+    particles: "api",
 
     // returns — factories and presets
-    excavationDefault: "returns",
-    excavationCrusher: "returns",
-    excavationDrill: "returns",
-    excavationGun: "returns",
-    excavationShatter: "returns",
     energyDefault: "returns",
     energyBank: "returns",
     energyWire: "returns",
     energyConductor: "returns",
     energyNetwork: "returns",
     itemDefault: "returns",
-    itemExcavate: "returns",
-    itemShoot: "returns",
 
     // writes — the instance's own data
     structureWriteData: "writes",
@@ -420,7 +615,9 @@ export type ActionDomain =
     | "projectiles"
     | "excavation"
     | "structure"
-    | "diagnostics";
+    | "diagnostics"
+    /** Added with `feel/`: the player sees it, the simulation does not change. */
+    | "feedback";
 
 export const ACTION_DOMAIN_LABELS: Record<ActionDomain, string> = {
     energy: "Energy",
@@ -429,8 +626,10 @@ export const ACTION_DOMAIN_LABELS: Record<ActionDomain, string> = {
     tech: "Tech & upgrades",
     projectiles: "Projectiles",
     excavation: "Excavation",
-    structure: "Structure data",
+    structure: "Structures",
     diagnostics: "Diagnostics",
+    /** Added with `feel/`. The player sees it; nothing in the sim changes. */
+    feedback: "Feedback",
 };
 
 export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
@@ -440,8 +639,9 @@ export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
     tech: "Research completion and upgrade levels.",
     projectiles: "Spawn-time options for a projectile.",
     excavation: "Dig behaviour for a tool.",
-    structure: "Per-instance data on a placed structure.",
+    structure: "Placed structures: the buildings themselves.",
     diagnostics: "Logging and no-ops — wiring tests, not behaviour.",
+    feedback: "Something the player sees or hears. Changes no stored state.",
 };
 
 export const ACTION_DOMAINS: Record<string, ActionDomain> = {
@@ -458,6 +658,21 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     processorConvert: "grid",
     processorLift: "grid",
     processorScan: "grid",
+    isElementAtCell: "grid",
+    readElement: "grid",
+    countElements: "grid",
+    countEmpty: "grid",
+    replaceElement: "grid",
+    createElement: "grid",
+    emptyCells: "grid",
+    transformElement: "grid",
+    getVelocity: "grid",
+    findFreeCell: "grid",
+    setVelocity: "grid",
+    addVelocity: "grid",
+    setDuration: "grid",
+    teleportElement: "grid",
+    toParticle: "grid",
     triggerScan: "grid",
 
     // items
@@ -481,11 +696,6 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     // but no action is filed under it.
 
     // excavation
-    excavationDefault: "excavation",
-    excavationCrusher: "excavation",
-    excavationDrill: "excavation",
-    excavationGun: "excavation",
-    excavationShatter: "excavation",
 
     // structure data
     structureInspect: "structure",
@@ -493,17 +703,48 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     structureWriteData: "structure",
     processorCount: "structure",
 
+    // The structure family: one namespace, eighteen actions.
+    //
+    // A single block because there is nothing to distinguish. Every one of these reaches
+    // `api.structures`, and — unlike the element family, which split across `grid` and
+    // `context` — no structure action touches any other namespace. `processing` is a
+    // sub-namespace of `structures`, not a sibling, so `isStructureEnabled` and
+    // `setStructureEnabled` are recorded here too rather than as their own row.
+    structureType: "structure",
+    hasStructure: "structure",
+    isStructureType: "structure",
+    isMyType: "structure",
+    isBlockedByPlayer: "structure",
+    isLauncher: "structure",
+    isStructureEnabled: "structure",
+    countStructures: "structure",
+    structureData: "structure",
+    mapSpritesheetValue: "structure",
+    buildStructure: "structure",
+    removeStructure: "structure",
+    removeStructures: "structure",
+    setStructureEnabled: "structure",
+    setSpritesheetIndex: "structure",
+    setSpritesheetByValue: "structure",
+    setStructureData: "structure",
+    pushStructure: "structure",
+
     // diagnostics
     noop: "diagnostics",
     processorNoop: "diagnostics",
     processorLog: "diagnostics",
     signalLog: "diagnostics",
     triggerLog: "diagnostics",
-    triggerTick: "diagnostics",
+    triggerTick: "structure",
     upgradeLog: "diagnostics",
     logArgs: "diagnostics",
     identity: "diagnostics",
     logBuildingPayload: "diagnostics",
+    // The two `feel/` actions. `toast` and `particles` read and write no stored
+    // state, so `diagnostics` would be wrong — those are scaffolding, and this is
+    // something a player is meant to see.
+    toast: "feedback",
+    particles: "feedback",
 };
 
 export function domainOf(key: string): ActionDomain | undefined {

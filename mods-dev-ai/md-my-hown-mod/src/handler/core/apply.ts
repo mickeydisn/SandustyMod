@@ -1,9 +1,15 @@
 /**
- * Attach / detach hooks.intercept and hooks.modify from ModifierConfig entries.
+ * Attach / detach `hooks.intercept` and `hooks.modify` from ModifierConfig entries.
+ *
+ * This is the one place that genuinely talks to the *engine's* hook system rather
+ * than to the action catalogue, and the reason `src/hooks/` no longer exists as a
+ * name: a modifier is a call site, not a category of behaviour. The actions it
+ * runs live in `../actions/connect/` under the `modifier` signature.
+ *
  * Returns unsubscribe functions so teardown can clean up.
  */
-import { LOG, type ModifierConfig } from "../constants.ts";
-import { resolveHandler } from "./handlers.ts";
+import { LOG, type ModifierConfig } from "../../constants.ts";
+import { resolveModifier } from "../actions/index.ts";
 
 type Unsub = () => void;
 
@@ -39,15 +45,17 @@ export function applyModifier(entry: ModifierConfig): boolean {
     }
     if (!entry.handlerKey) {
         console.warn(
-            `${LOG} modifier ${entry.id}: no handlerKey — stored only. Add a handler in src/hooks/handlers.ts and set handlerKey.`,
+            `${LOG} modifier ${entry.id}: no handlerKey — stored only. Add an action ` +
+                `under src/handler/actions/connect/ and set handlerKey.`,
         );
         return false;
     }
 
-    const handler = resolveHandler(entry.handlerKey);
+    const handler = resolveModifier(entry.handlerKey);
     if (!handler) {
         console.warn(
-            `${LOG} modifier ${entry.id}: unknown handlerKey "${entry.handlerKey}". Known: see listHandlerKeys()`,
+            `${LOG} modifier ${entry.id}: unknown handlerKey "${entry.handlerKey}". ` +
+                `Known: the modifier actions in src/handler/actions/connect/index.ts`,
         );
         return false;
     }
@@ -56,7 +64,7 @@ export function applyModifier(entry: ModifierConfig): boolean {
     const kind = entry.kind ?? handler.kind;
     if (kind !== handler.kind) {
         console.warn(
-            `${LOG} modifier ${entry.id}: config kind="${kind}" but handler "${entry.handlerKey}" is kind="${handler.kind}" — using handler kind`,
+            `${LOG} modifier ${entry.id}: config kind="${kind}" but action "${entry.handlerKey}" is kind="${handler.kind}" — using the action's kind`,
         );
     }
     const useKind = handler.kind;

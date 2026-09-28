@@ -33,15 +33,31 @@ import { registerItems } from "./core/items.ts";
 import { mayRegister, registered } from "./registry.ts";
 import { joinedNetworkNames, reportEnergyNetworks } from "./custom/energy-network.ts";
 import { engineTechOf, techUnlockStructureIds } from "../ui/tech-link.ts";
-import { actionRefsOf, applyAllModifiers, compileProcess } from "../hooks/index.ts";
+import { applyAllModifiers, compileProcess } from "../handler/index.ts";
+import {
+    compileEntryProcess,
+    ProcessRegistry,
+    setProcessRegistry,
+} from "../handler/custom-process/index.ts";
 import {
     compileProjectile,
     PROJECTILE_OPTION_STORE_KEY,
     projectileOptionOf,
-} from "../hooks/projectile-option/index.ts";
+} from "../handler/projectile-option/index.ts";
 
 export function registerTheRest(config: ModConfig): Record<string, number> {
     const counts: Record<string, number> = {};
+
+    // One index of the author's processes, built once and handed to every call site
+    // below. Built here rather than imported so the register path is the only thing
+    // that needs it, and so a config with no processes costs one empty map.
+    const processes = new ProcessRegistry(config.processes ?? []);
+    // And **installed**, because two call sites live in `../packages/mysandkit.ts` and
+    // cannot take it as an argument: that layer mirrors the engine's own signatures
+    // (`registerItem(def)`, `registerUpgrade(def)` — one definition, no config), and
+    // changing those to thread a registry through would mean diverging from the API
+    // they exist to mirror. See the note on `setProcessRegistry`.
+    setProcessRegistry(processes);
 
     // Sprites first so items/structures can reference them
     for (const sp of config.sprites ?? []) {
@@ -67,15 +83,24 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         // process() cannot live in JSON — compile the process first.
         const entry = p as Record<string, unknown>;
         if (typeof entry.process !== "function") {
-            // A process, not a key: an ordered list of actions, each with its own
-            // options. This is the call that finally delivers them — the engine
-            // passes only `(structure, context)`, so `processorConvert`'s required
-            // `to` must be bound at compile time or the action can never fire.
-            const { fn, skipped } = compileProcess(actionRefsOf(entry), "processing");
-            if (skipped.length) {
-                console.warn(`${LOG} processing ${p.id}: unknown action ${skipped.join(", ")}`);
+            // A program, not a key. A definition stores a *reference* to a process
+            // (`processId`); the migration in `../config/store.ts` has already turned
+            // any legacy `actions` array into one. This is the call that finally
+            // resolves the reference — the engine passes only `(structure, context)`,
+            // so `processorConvert`'s required `to` must be bound at compile time or
+            // the action can never fire.
+            const compiled = compileEntryProcess(entry, "processing", processes);
+            if (compiled.source.kind === "process" && compiled.expanded.length) {
+                console.log(
+                    `${LOG} processing ${p.id}: program from ${compiled.expanded.join(" → ")}`,
+                );
             }
-            entry.process = fn;
+            if (compiled.skipped.length) {
+                console.warn(
+                    `${LOG} processing ${p.id}: unknown action ${compiled.skipped.join(", ")}`,
+                );
+            }
+            entry.process = compiled.fn as never;
         }
         registerProcessing(p);
         registered.processing.add(p.id);
@@ -199,7 +224,7 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         if (!sg?.id || registered.signals.has(sg.id)) continue;
         registerSignal(
             sg,
-            compileProcess(actionRefsOf(sg as Record<string, unknown>), "signal").fn as never,
+            compileEntryProcess(sg as Record<string, unknown>, "signal", processes).fn as never,
         );
         registered.signals.add(sg.id);
         counts.signals = (counts.signals ?? 0) + 1;
@@ -207,11 +232,11 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
     for (const tr of config.triggers ?? []) {
         if (!tr?.id || registered.triggers.has(tr.id)) continue;
         // The engine calls a trigger's callback with **no arguments** — `extra` goes
-        // in the registration, not the call — so the process is what finally hands
+        // in the registration, not the call — so the program is what finally hands
         // the options to the action.
         registerTrigger(
             tr,
-            compileProcess(actionRefsOf(tr as Record<string, unknown>), "trigger").fn as never,
+            compileEntryProcess(tr as Record<string, unknown>, "trigger", processes).fn as never,
         );
         registered.triggers.add(tr.id);
         counts.triggers = (counts.triggers ?? 0) + 1;

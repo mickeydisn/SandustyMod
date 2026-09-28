@@ -440,7 +440,7 @@ console.log("── unknown fields are preserved ──");
         id: "md-my-hown-mod:mdmy.mod.speed",
         hookId: "onTick",
         kind: "modify",
-        // The modifier slot's actions live in `CODE_HANDLERS`, the third registry.
+        // The modifier slot's actions live in `MODIFIER_ACTIONS`, the third registry.
         actions: [{ key: "logArgs" }],
         notes: "test",
     });
@@ -1439,12 +1439,18 @@ console.log("── item fields are type-aware ──");
 
 console.log("── handler pickers are domain-scoped and described ──");
 {
-    const H = await import("../../hooks/handlers.ts");
+    const H = await import("../../handler/actions/index.ts");
+    // Under the names `catalog.ts` actually reads. It is loaded before
+    // `handler/index.ts`, so it cannot import the catalogue and goes through this
+    // global instead — and it still uses the pre-role spellings. The stub has to
+    // match what the reader asks for, not what the module prefers to publish.
     globalThis.__mdHandlers = {
-        ANY_HANDLERS: H.ANY_HANDLERS,
-        PROCESS_HANDLERS: H.PROCESS_HANDLERS,
-        ANY_HANDLER_DOCS: H.ANY_HANDLER_DOCS,
-        PROCESS_HANDLER_DOCS: H.PROCESS_HANDLER_DOCS,
+        listAnyHandlerKeys: () => Object.keys(H.ANY_ACTIONS),
+        listProcessorKeys: () => Object.keys(H.PROCESSING_ACTIONS),
+        listHandlerKeys: () => Object.keys(H.MODIFIER_ACTIONS),
+        ANY_HANDLER_DOCS: H.ACTION_DOCS,
+        PROCESS_HANDLER_DOCS: H.ACTION_DOCS,
+        CODE_HANDLER_DOCS: H.ACTION_DOCS,
     };
     const cat = await import("../../catalog.ts");
     const pickers = [
@@ -1462,7 +1468,7 @@ console.log("── handler pickers are domain-scoped and described ──");
         );
         check(
             `${name} picker keys all exist`,
-            opts.every((o) => o.value in H.ANY_HANDLERS),
+            opts.every((o) => o.value in H.ANY_ACTIONS),
             JSON.stringify(opts.map((o) => o.value)),
         );
         check(
@@ -1472,11 +1478,11 @@ console.log("── handler pickers are domain-scoped and described ──");
         );
     }
     // The projectile picker is listed **separately** because its keys are not in
-    // `ANY_HANDLERS` — they are `ProjectileOptionFn`s, and asserting they resolve
+    // `ANY_ACTIONS` — they are `ProjectileOptionFn`s, and asserting they resolve
     // as actions is precisely the confusion this split removed. So the check is the
     // opposite one: they must exist as options, and not as actions.
     {
-        const PROJ = await import("../../hooks/projectile-option/index.ts");
+        const PROJ = await import("../../handler/projectile-option/index.ts");
         const pj = cat.listProjectileHandlerKeys();
         check("projectile picker is non-empty", pj.length > 0, `${pj.length}`);
         check(
@@ -1491,13 +1497,23 @@ console.log("── handler pickers are domain-scoped and described ──");
         );
         check(
             "projectile picker keys are not actions",
-            pj.every((o) => !(o.value in H.ANY_HANDLERS)),
-            JSON.stringify(pj.map((o) => o.value).filter((v) => v in H.ANY_HANDLERS)),
+            pj.every((o) => !(o.value in H.ANY_ACTIONS)),
+            JSON.stringify(pj.map((o) => o.value).filter((v) => v in H.ANY_ACTIONS)),
         );
     }
     const proc = cat.listDescribedProcessorKeys();
     check("processor picker non-empty", proc.length > 0, `${proc.length}`);
-    check("processor picker keys all exist", proc.every((o) => o.value in H.PROCESS_HANDLERS));
+    // Checked against the **whole catalogue**, not `PROCESSING_ACTIONS`. A call site
+    // is not a signature: the `processing` slot legitimately holds actions of all
+    // three — `processorLift` and `toast` can both be a process step, they just take
+    // different argument lists. Asserting against one registry would call 13 of the
+    // 19 offered keys "fabricated".
+    const everyAction = new Set(H.actionKeys());
+    check(
+        "processor picker keys all exist",
+        proc.every((o) => everyAction.has(o.value)),
+        proc.map((o) => o.value).filter((k) => !everyAction.has(k)).join(" "),
+    );
     check(
         "processor picker labels described",
         proc.every((o) => o.label.includes("—")),
@@ -1511,10 +1527,19 @@ console.log("── handler pickers are domain-scoped and described ──");
     check("handlerDoc unknown is undefined", cat.handlerDoc("nope") === undefined);
 
     for (const c of ["signals", "triggers", "processing"]) {
-        // The single `handlerKey` select is gone; these tabs declare a process.
+        // The single `handlerKey` select is gone, and so is the inline `actions`
+        // array. These tabs now declare a **process reference** — one id, not a list —
+        // which is the whole of D5/D6: the program lives in one place and these tabs
+        // name it.
+        const proc = fieldsFor(c).find((f) => f.key === "processId");
         check(
-            `${c} declares an actions field`,
-            !!fieldsFor(c).find((f) => f.key === "actionsJson" && f.kind === "actionList"),
+            `${c} declares a process reference`,
+            proc?.kind === "processRef",
+            JSON.stringify(proc?.kind),
+        );
+        check(
+            `${c} no longer declares an inline actions list`,
+            !fieldsFor(c).some((f) => f.kind === "actionList"),
         );
         check(
             `${c} no longer declares handlerKey`,
@@ -1576,16 +1601,16 @@ console.log("── no fabricated engine fields (6.1) ──");
 
 console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
 {
-    const reg = await import("../../hooks/handler-registry.ts");
-    const hooks = await import("../../hooks/handlers.ts");
+    const reg = await import("../../handler/core/handler-registry.ts");
+    const hooks = await import("../../handler/actions/index.ts");
     // `resolveAction` lives in process.ts — it is the resolver registration uses, and
-    // it is the one that also unwraps `CODE_HANDLERS`; see the note on it.
+    // it is the one that also unwraps `MODIFIER_ACTIONS`; see the note on it.
 
     // Every callable reachable from JSON must be described exactly once.
     const real = [
-        ...Object.keys(hooks.ANY_HANDLERS),
-        ...Object.keys(hooks.PROCESS_HANDLERS),
-        ...Object.keys(hooks.CODE_HANDLERS),
+        ...Object.keys(hooks.ANY_ACTIONS),
+        ...Object.keys(hooks.PROCESSING_ACTIONS),
+        ...Object.keys(hooks.MODIFIER_ACTIONS),
     ];
     const known = reg.HANDLER_META.map((m) => m.key);
     const missing = real.filter((k) => !known.includes(k));
@@ -1596,14 +1621,14 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     check("no duplicate registry rows", dupes.length === 0, dupes.join(" "));
 
     // 9.3 — every handler reads a documented description.
-    const docs = hooks.allHandlerDocs();
+    const docs = hooks.ACTION_DOCS;
     const undoc = known.filter((k) => !docs[k]);
     check("every handler is documented", undoc.length === 0, undoc.join(" "));
 
     // 7.3 / 9.6 — no consumable handler ships.
     check(
         "itemConsume is gone (ActionType has no Consumable)",
-        !("itemConsume" in hooks.ANY_HANDLERS),
+        !("itemConsume" in hooks.ANY_ACTIONS),
     );
     check("itemConsume is not in the registry", !known.includes("itemConsume"));
 
@@ -1622,13 +1647,24 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     const keys = (s: typeof slots[number]) => reg.handlersForSlot(s).map((m) => m.key);
     const sameSet = (a: string[], b: string[]) =>
         a.slice().sort().join() === b.slice().sort().join();
+    // The `signal` slot grew, and every addition is a correction rather than a
+    // widening: `triggerTick` moved here from `trigger` (it reads `payload.data`,
+    // which `trigger` never delivers), and `itemExcavate` / `itemShoot` /
+    // `energyConsumePerRun` moved off the sites that hand them no position.
+    // `toast` and `particles` are the genuinely new ones.
     check(
-        "signal slot matches the old hardcoded list",
+        "signal slot holds the actions that can run there",
         sameSet(keys("signal"), [
             "signalLog",
             "structureInspect",
             "structureReadData",
             "structureWriteData",
+            "triggerTick",
+            "itemExcavate",
+            "itemShoot",
+            "energyConsumePerRun",
+            "toast",
+            "particles",
             "noop",
         ]),
         keys("signal").join(" "),
@@ -1655,7 +1691,7 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     // early. The check below replaces it — it asks the *scope* question, which is
     // the one that actually decides legality, rather than re-listing a name.
     {
-        const { canRunAt, needsOf } = await import("../../hooks/scope.ts");
+        const { canRunAt, needsOf } = await import("../../handler/core/scope.ts");
         const overOffered = reg.handlersForSlot("trigger")
             .map((m) => m.key)
             .filter((k) => !canRunAt(k, "trigger"));
@@ -1678,7 +1714,7 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     // registries. The real invariant is "every offered key resolves".
     // Imported dynamically like everything else here: this file sets the
     // `sandkit` stub at module top level, before anything is loaded.
-    const { resolveAction } = await import("../../hooks/process.ts");
+    const { resolveAction } = await import("../../handler/core/process.ts");
     const unresolved = keys("processing").filter((k) => !resolveAction(k));
     check(
         "every processing-slot handler resolves to a function",
@@ -1719,26 +1755,32 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         "valid params produce no errors",
         reg.validateHandlerParams(write, { field: "charge", value: "5" }).length === 0,
     );
-    const drill = reg.handlerMeta("excavationDrill")!;
+    // `energyDefault`, not a former excavation preset: `capacity` carries all three
+    // constraints this is about — a `def`, a `min`, and `int` — so the assertions
+    // below test the registry, not whichever action happens to own the field today.
+    const withConstraints = reg.handlerMeta("energyDefault")!;
     check(
         "int constraint enforced",
-        reg.validateHandlerParams(drill, { drillTierDamage: "2.5" }).length === 1,
-        JSON.stringify(reg.validateHandlerParams(drill, { drillTierDamage: "2.5" })),
+        reg.validateHandlerParams(withConstraints, { capacity: "2.5" }).length === 1,
+        JSON.stringify(reg.validateHandlerParams(withConstraints, { capacity: "2.5" })),
     );
     check(
         "min constraint enforced",
-        reg.validateHandlerParams(drill, { power: "-1" }).length === 1,
+        reg.validateHandlerParams(withConstraints, { capacity: "-1" }).length === 1,
     );
-    check("nan rejected", reg.validateHandlerParams(drill, { power: "abc" }).length === 1);
-    const opts = reg.buildHandlerOptions(drill, { power: "8", drillTierDamage: "25" });
+    check(
+        "nan rejected",
+        reg.validateHandlerParams(withConstraints, { capacity: "abc" }).length === 1,
+    );
+    const opts = reg.buildHandlerOptions(withConstraints, { capacity: "800" });
     check(
         "options are typed, not strings",
-        opts.power === 8 && opts.drillTierDamage === 25,
+        opts.capacity === 800,
         JSON.stringify(opts),
     );
     check(
         "blank options are dropped",
-        Object.keys(reg.buildHandlerOptions(drill, { power: "" })).length === 0,
+        Object.keys(reg.buildHandlerOptions(withConstraints, { capacity: "" })).length === 0,
     );
 
     // 9.5 — reachability scan over a stored config. The fixtures use the split
@@ -1751,10 +1793,19 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         items: [{ id: "i1", actions: [{ key: "itemShoot" }] }],
     };
     const bad = reg.unreachableHandlers(cfg);
-    check("mismatched slot is flagged unreachable", bad.length === 1, JSON.stringify(bad));
+    // **Two** now, not one. `itemShoot` in the `itemAction` slot is the second: that
+    // slot delivers no position and the action needs one, so it is unreachable for
+    // the same reason `techGrantItem` is unreachable in a trigger. Both are
+    // corrections the scope rule caught — see `canRunAt` in `handler/core/scope.ts`.
+    check("both mismatched slots are flagged unreachable", bad.length === 2, JSON.stringify(bad));
     check(
-        "the flagged one is the tech handler",
-        bad[0]?.key === "techGrantItem",
+        "the tech handler is one of them",
+        bad.some((b) => b.key === "techGrantItem"),
+        JSON.stringify(bad),
+    );
+    check(
+        "the shoot action in an item slot is the other",
+        bad.some((b) => b.key === "itemShoot" && b.usage.slot === "itemAction"),
         JSON.stringify(bad),
     );
     const idx = reg.usageIndex(cfg);
@@ -1780,7 +1831,7 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
 {
     const sch = await import("../schema.ts");
     const hp = await import("../panel/handlers.ts");
-    const reg = await import("../../hooks/handler-registry.ts");
+    const reg = await import("../../handler/core/handler-registry.ts");
 
     // Two tabs, one menu group. This is the point of the restructure: they are
     // siblings in the sub-nav rather than a mode behind a switcher drawn *below* it.
@@ -1798,9 +1849,9 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
     }
     // And the group holds exactly those three — a fourth would be a different feature.
     check(
-        "the Handlers group holds exactly the three catalogues",
+        "the Handlers group holds exactly the catalogues",
         sch.MENU_GROUPS.find((g) => g.key === "handlers")?.categories.join() ===
-            "action,projectileOption,upgradeAction",
+            "action,projectileOption,excavationOption,customProcess,upgradeAction",
     );
     check(
         "there is no `handlers` tab any more",
@@ -1813,11 +1864,14 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
     check("initial tab state is collapsed", hp.initialHandlersState().open === null);
 
     // defaultParams seeds the form from declared defaults.
-    const drill = reg.handlerMeta("excavationDrill")!;
+    // `energyDefault`, not a former excavation preset: `capacity` carries all three
+    // constraints this is about — a `def`, a `min`, and `int` — so the assertions
+    // below test the registry, not whichever action happens to own the field today.
+    const withConstraints = reg.handlerMeta("energyDefault")!;
     check(
         "defaultParams uses declared defaults",
-        hp.defaultParams(drill).power === "8",
-        JSON.stringify(hp.defaultParams(drill)),
+        hp.defaultParams(withConstraints).capacity === "1000",
+        JSON.stringify(hp.defaultParams(withConstraints)),
     );
     check(
         "defaultParams omits params with no default",
@@ -1860,8 +1914,8 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
             ACTION_DOMAIN_LABELS,
             ACTION_DOMAINS,
             ACTION_EFFECT_LABELS,
-        } = await import("../../hooks/action-class.ts");
-        const { CALL_SITE_SCOPE, SCOPE_NEED_LABELS } = await import("../../hooks/scope.ts");
+        } = await import("../../handler/core/action-class.ts");
+        const { CALL_SITE_SCOPE, SCOPE_NEED_LABELS } = await import("../../handler/core/scope.ts");
         // **Every domain an action actually has** is offered — not every domain
         // that happens to be declared.
         //
@@ -1873,7 +1927,9 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
         // took 6 of its 7 rows into their own tab). A chip that yields an empty
         // list reads as "your search found nothing", so the test was protecting
         // the bug.
-        const { HANDLER_META, isOnlyAtSlot } = await import("../../hooks/handler-registry.ts");
+        const { HANDLER_META, isOnlyAtSlot } = await import(
+            "../../handler/core/handler-registry.ts"
+        );
         const general = HANDLER_META.filter((m) => !isOnlyAtSlot(m, "upgrade"));
         const present = new Set(general.map((m) => ACTION_DOMAINS[m.key]).filter(Boolean));
         for (const [domain, label] of Object.entries(ACTION_DOMAIN_LABELS)) {
@@ -1890,7 +1946,7 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
         for (const label of Object.values(SCOPE_NEED_LABELS)) {
             check(`handlers tab offers a "${label}" scope filter`, flat.includes(label));
         }
-        const { CALL_SITE_LABELS } = await import("../../hooks/process.ts");
+        const { CALL_SITE_LABELS } = await import("../../handler/core/process.ts");
         for (const site of Object.keys(CALL_SITE_SCOPE)) {
             check(
                 `handlers tab offers a "${
@@ -1921,11 +1977,11 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
 
 console.log("── item use actions are type-gated (7.4 / 9.7) ──");
 {
-    const reg = await import("../../hooks/handler-registry.ts");
+    const reg = await import("../../handler/core/handler-registry.ts");
     const cat = await import("../../catalog.ts");
     // `resolveAction` is the resolver registration uses, and the one that unwraps
-    // `CODE_HANDLERS` — `resolveAnyHandler` misses that third registry's shape.
-    const { resolveAction } = await import("../../hooks/process.ts");
+    // `MODIFIER_ACTIONS` — `resolveAnyHandler` misses that third registry's shape.
+    const { resolveAction } = await import("../../handler/core/process.ts");
     const sch = await import("../schema.ts");
 
     // ActionType has no Consumable, so no handler may be offered for one.
@@ -1943,16 +1999,32 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     check("Mod offers a use action", cat.listItemActionHandlerKeys("Mod").length > 0);
 
     // Each type only sees handlers it can actually dispatch to.
+    //
+    // `itemExcavate` and `itemShoot` are **not** in any of these lists any more.
+    // They read `payload.x` / `payload.y`, and `handleAction(state, action)`
+    // delivers no position — so in the `itemAction` slot they returned early every
+    // time while looking correctly configured. `canRunAt` now refuses that
+    // combination, and the corrected slots are `signal` / `processing` / `modifier`,
+    // which do hand over a structure. The assertions below are the honest
+    // consequence: a Tool or Weapon gets actions that can actually run there.
     const toolKeys = cat.listItemActionHandlerKeys("Tool").map((o) => o.value);
     const weaponKeys = cat.listItemActionHandlerKeys("Weapon").map((o) => o.value);
     const modKeys = cat.listItemActionHandlerKeys("Mod").map((o) => o.value);
-    check("Tool sees the excavate action", toolKeys.includes("itemExcavate"), toolKeys.join(" "));
-    check("Tool never sees the shoot action", !toolKeys.includes("itemShoot"), toolKeys.join(" "));
-    check("Weapon sees the shoot action", weaponKeys.includes("itemShoot"), weaponKeys.join(" "));
+    const allItem = [...toolKeys, ...weaponKeys, ...modKeys];
     check(
-        "Weapon never sees the excavate action",
-        !weaponKeys.includes("itemExcavate"),
-        weaponKeys.join(" "),
+        "the dig and shoot actions are not offered where they could not run",
+        !allItem.some((k) => k === "itemExcavate" || k === "itemShoot"),
+        allItem.join(" "),
+    );
+    // The dig presets are **not** here any more. They were `itemAction` actions that
+    // returned a value, and `itemAction` discards it — so a Tool was offered five
+    // entries that could do nothing. They are `ExcavationOptionFn`s now, chosen on
+    // an *excavation profile* rather than on an item, which is where a profile's
+    // power and flags belong.
+    check(
+        "a Tool is offered no excavation preset",
+        !toolKeys.some((k) => k.startsWith("excavation")),
+        toolKeys.join(" "),
     );
     check(
         "Mod never sees the dig presets",
@@ -1965,7 +2037,7 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     );
     check(
         "every offered key resolves to a function",
-        [...toolKeys, ...weaponKeys, ...modKeys].every((k) => !!resolveAction(k)),
+        allItem.every((k) => !!resolveAction(k)),
     );
 
     // The process field is form-aware the way the old picker was: it hides itself
@@ -1975,21 +2047,31 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     // cannot be narrowed by `itemType` through a select. Asserting `resolveOptions`
     // here would compare two empty lists and pass for the wrong reason. The
     // per-type narrowing now lives in `itemActionHandlersFor`, checked below.
-    const field = sch.fieldsFor("items").find((f) => f.key === "actionsJson")!;
-    check("item declares an actions process", field?.kind === "actionList");
+    const field = sch.fieldsFor("items").find((f) => f.key === "processId")!;
+    check("item declares a process reference", field?.kind === "processRef");
     check("the process field offers no dropdown options", !field.options);
     check("field is hidden for Consumable", field.when?.({ itemType: "Consumable" }) === false);
     check("field is shown for Tool", field.when?.({ itemType: "Tool" }) === true);
     check("field is hidden when no type chosen", field.when?.({}) === false);
 
     // The narrowing itself, where it moved to.
-    const { itemActionHandlersFor } = await import("../../hooks/handler-registry.ts");
+    const { itemActionHandlersFor } = await import("../../handler/core/handler-registry.ts");
     const toolKeys2 = itemActionHandlersFor("Tool").map((m) => m.key);
     const weaponKeys2 = itemActionHandlersFor("Weapon").map((m) => m.key);
-    check("actions differ by item type", toolKeys2.join() !== weaponKeys2.join());
+    // `itemShoot` used to be the Weapon-only action, and the five `excavation*`
+    // presets used to be the Tool-only ones. Neither is in an item slot now: the
+    // first needs a position and `handleAction` delivers none, and the second were
+    // value-returning actions on that same void slot. What is left is `noop` and
+    // `toast`, both of which need nothing from the payload — so the two lists are
+    // legitimately **equal** now, and saying so is the honest assertion.
     check(
         "actions follow the itemType",
-        !toolKeys2.includes("itemShoot") && weaponKeys2.includes("itemShoot"),
+        toolKeys2.includes("toast") && weaponKeys2.includes("toast"),
+        `tool=${toolKeys2.join(" ")} weapon=${weaponKeys2.join(" ")}`,
+    );
+    check(
+        "the dig and shoot actions are in no item slot",
+        ![...toolKeys2, ...weaponKeys2].some((k) => k === "itemShoot" || k === "itemExcavate"),
     );
     check("a Consumable gets no action at all", itemActionHandlersFor("Consumable").length === 0);
 
@@ -2012,25 +2094,27 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         idSuffix: "juice",
         name: "Juice",
         itemType: "Consumable",
-        actionsJson: '[{"key":"itemShoot"}]',
+        processId: "sorter",
         spriteId: "sprites:juice",
     });
     check(
         "consumable never stores a process",
-        consumed.actions === undefined,
-        JSON.stringify(consumed.actions),
+        consumed.processId === undefined,
+        JSON.stringify(consumed.processId),
     );
     // …and switching back to a Tool restores it, which is why the rule is applied
     // on the way to the entry rather than by blanking the control.
     const backToTool = formToEntry("items", {
-        ...{ idSuffix: "juice", name: "Juice", spriteId: "sprites:juice" },
+        idSuffix: "juice",
+        name: "Juice",
+        spriteId: "sprites:juice",
         itemType: "Tool",
-        actionsJson: '[{"key":"itemShoot"}]',
+        processId: "sorter",
     });
     check(
         "switching Consumable → Tool restores the process",
-        JSON.stringify(backToTool.actions) === JSON.stringify([{ key: "itemShoot" }]),
-        JSON.stringify(backToTool.actions),
+        backToTool.processId === "sorter",
+        JSON.stringify(backToTool.processId),
     );
 }
 
@@ -2423,30 +2507,30 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
 console.log("── handler registry is documented and API-verified ──");
 {
     const {
-        ANY_HANDLERS,
-        ANY_HANDLER_DOCS,
-        CODE_HANDLERS,
-        PROCESS_HANDLERS,
-        PROCESS_HANDLER_DOCS,
-    } = await import("../../hooks/handlers.ts");
+        ANY_ACTIONS,
+        ACTION_DOCS,
+        MODIFIER_ACTIONS,
+        PROCESSING_ACTIONS,
+    } = await import("../../handler/actions/index.ts");
 
-    // Every generic callback must be documented, or the UI shows a bare key.
-    for (const key of Object.keys(ANY_HANDLERS)) {
-        check(`ANY_HANDLERS doc: ${key}`, !!ANY_HANDLER_DOCS[key], "missing from ANY_HANDLER_DOCS");
+    // Every action must be documented, or the UI shows a bare key.
+    //
+    // `ACTION_DOCS` is now one merged map over **all three** signatures — it used
+    // to be three separate ones (`ANY_HANDLER_DOCS` / `PROCESS_HANDLER_DOCS` /
+    // `CODE_HANDLER_DOCS`) and these two loops were per-registry. So the "docs must
+    // not describe actions that no longer exist" direction has to check against the
+    // whole catalogue, not one registry at a time; checking each separately would
+    // report every modifier action as a phantom.
+    const live = new Set([
+        ...Object.keys(ANY_ACTIONS),
+        ...Object.keys(PROCESSING_ACTIONS),
+        ...Object.keys(MODIFIER_ACTIONS),
+    ]);
+    for (const key of live) {
+        check(`doc: ${key}`, !!ACTION_DOCS[key], "missing from ACTION_DOCS");
     }
-    // …and the docs must not describe handlers that no longer exist.
-    for (const key of Object.keys(ANY_HANDLER_DOCS)) {
-        check(`ANY_HANDLER_DOCS live: ${key}`, key in ANY_HANDLERS, "no such handler");
-    }
-    for (const key of Object.keys(PROCESS_HANDLERS)) {
-        check(
-            `PROCESS_HANDLERS doc: ${key}`,
-            !!PROCESS_HANDLER_DOCS[key],
-            "missing from PROCESS_HANDLER_DOCS",
-        );
-    }
-    for (const key of Object.keys(PROCESS_HANDLER_DOCS)) {
-        check(`PROCESS_HANDLER_DOCS live: ${key}`, key in PROCESS_HANDLERS, "no such handler");
+    for (const key of Object.keys(ACTION_DOCS)) {
+        check(`ACTION_DOCS live: ${key}`, live.has(key), "no such action");
     }
 
     // Handlers that used non-existent engine APIs must be gone for good.
@@ -2459,12 +2543,12 @@ console.log("── handler registry is documented and API-verified ──");
         "energyFromProcessor", // replaced by energyConsumePerRun
     ];
     for (const key of removed) {
-        check(`removed: ${key}`, !(key in ANY_HANDLERS), "still registered");
+        check(`removed: ${key}`, !(key in ANY_ACTIONS), "still registered");
     }
 
     // The verified replacements must exist.
     for (const key of ["techAppendUnlock", "techSetUpgradeLevel", "energyConductor"]) {
-        check(`added: ${key}`, key in ANY_HANDLERS, "missing");
+        check(`added: ${key}`, key in ANY_ACTIONS, "missing");
     }
 
     // `commit(mutations)` takes ONE argument, not (x, y, type).
@@ -2473,18 +2557,29 @@ console.log("── handler registry is documented and API-verified ──");
         getResolvedTypeAtCell: () => 7,
         commit: (...args: unknown[]) => commits.push(args),
     };
-    PROCESS_HANDLERS.processorLift?.({ x: 1, y: 2 }, ctx);
+    PROCESSING_ACTIONS.processorLift?.({ x: 1, y: 2 }, ctx);
     check("processorLift commit arity", commits[0]?.length === 1, `args=${commits[0]?.length}`);
     commits.length = 0;
-    PROCESS_HANDLERS.processorConvert?.({ x: 1, y: 2 }, ctx, { to: 9 });
+    PROCESSING_ACTIONS.processorConvert?.({ x: 1, y: 2 }, ctx, { to: 9 });
     check("processorConvert commit arity", commits[0]?.length === 1, `args=${commits[0]?.length}`);
 
-    // drillTierDamage is a number (0–1000), not a boolean flag.
-    const drill = ANY_HANDLERS.excavationDrill?.();
+    // `drillTierDamage` is a number (0–1000), not a boolean flag — the one place the
+    // engine's seven `ExcavateOptions` fields is not boolean, and therefore the one a
+    // generic "all flags are switches" assumption gets wrong. Checked on the option,
+    // which is where the value now lives: it is no longer an action's return.
+    const EXC = await import("../../handler/excavation-option/index.ts");
+    const drill = EXC.EXCAVATION_OPTIONS.excavationDrill?.({});
     check(
         "drillTierDamage is numeric",
-        typeof drill?.drillTierDamage === "number",
-        String(drill?.drillTierDamage),
+        typeof drill?.options?.drillTierDamage === "number",
+        String(drill?.options?.drillTierDamage),
+    );
+    // And the whole `options` bag is nested under `options`, not flattened, because
+    // that is the shape `registerProfile` takes.
+    check(
+        "the flags sit under options, not at the top level",
+        drill?.power === 8 && drill.options?.fromDrill === true,
+        JSON.stringify(drill),
     );
 
     // Energy handlers must only emit documented registerType options.
@@ -2498,7 +2593,7 @@ console.log("── handler registry is documented and API-verified ──");
             "energyNetwork",
         ]
     ) {
-        const out = ANY_HANDLERS[key]?.({} as never, {}) as Record<string, unknown> | undefined;
+        const out = ANY_ACTIONS[key]?.({} as never, {}) as Record<string, unknown> | undefined;
         const bad = Object.keys(out ?? {}).filter((k) => !allowed.has(k));
         check(
             `energy opts documented: ${key}`,
@@ -2508,7 +2603,7 @@ console.log("── handler registry is documented and API-verified ──");
     }
 
     // Modifiers keep their own registry + keys.
-    check("CODE_HANDLERS non-empty", Object.keys(CODE_HANDLERS).length > 0);
+    check("MODIFIER_ACTIONS non-empty", Object.keys(MODIFIER_ACTIONS).length > 0);
 }
 
 console.log("── schema matches the real engine contracts ──");
@@ -2544,7 +2639,9 @@ console.log("── schema matches the real engine contracts ──");
     check("processing has no structureId field", !p.includes("structureId"));
     check("processing keys on structureType", p.includes("structureType"));
     check("processing has intervalMs", p.includes("intervalMs"));
-    check("processing declares an actions process", p.includes("actionsJson"));
+    // A process **reference** now, not the inline list. The program itself is on the
+    // Processes tab; this tab only names it.
+    check("processing declares a process reference", p.includes("processId"));
 
     // sprites: the path is a library field, and there is no hand-typed pattern.
     const spritePath = fieldsFor("sprites").find((f) => f.key === "path");

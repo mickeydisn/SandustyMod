@@ -12,7 +12,7 @@
  * a parameter is a key, a label, a kind and a default, and inventing a second shape
  * for it would be the very conflation this module's siblings were split to remove.
  */
-import type { HandlerParam } from "../hooks/handler-registry.ts";
+import type { HandlerParam } from "../handler/core/handler-registry.ts";
 import * as S from "./styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;

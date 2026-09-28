@@ -33,7 +33,7 @@
  * entry by the passthrough — this field does not claim it — so nothing is
  * destroyed, but it is no longer honoured.
  */
-import { actionRefsOf, type HandlerActionRef } from "../../hooks/process.ts";
+import { actionRefsOf, type HandlerActionRef } from "../../handler/core/process.ts";
 import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
 
 /** The form key. The `Json` suffix follows `buildModesJson` and friends. */

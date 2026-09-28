@@ -7,8 +7,13 @@
  * only reason the derived `slots` in `handler-registry.ts` can be trusted at all.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { HANDLER_META } from "./handler-registry.ts";
-import { resolveAction } from "./process.ts";
+import { HANDLER_META } from "../core/handler-registry.ts";
+import { resolveAction } from "../core/process.ts";
+// Imported for the cross-check in "only actions that change the grid are filed as
+// committing": that test needs to know whether an action is measured `api`-bound, and
+// this is the only table that knows. It is a *measurement*, not a declaration, which is
+// what makes it worth importing rather than re-deriving.
+import { ACTION_CLASSES } from "../core/action-class.ts";
 import {
     ACTION_DOMAIN_BLURBS,
     ACTION_DOMAIN_LABELS,
@@ -17,7 +22,7 @@ import {
     ACTION_EFFECT_LABELS,
     ACTION_EFFECTS,
     isVacuousReturn,
-} from "./action-class.ts";
+} from "../core/action-class.ts";
 import {
     ACTION_SCOPE,
     CALL_SITE_SCOPE,
@@ -27,16 +32,26 @@ import {
     type ScopeNeed,
     scopeSatisfies,
     slotsFor,
-} from "./scope.ts";
+} from "../core/scope.ts";
 
 // ── the probe, kept honest against tools/analyze-scopes.ts ───────────────────
 
 function probe(into: Set<string>, prefix = ""): unknown {
     return new Proxy(function () {} as object, {
         get(_t, prop) {
-            if (typeof prop === "symbol") return undefined;
+            if (typeof prop === "symbol") {
+                // `Symbol.toPrimitive` must be **absent**, not a stub: V8 calls it
+                // before falling back to `valueOf`, so a callable here makes
+                // `Number(probe)` NaN. That is not hypothetical — an action guarding
+                // on `if (!amount) return` then returns before reading the payload,
+                // and this probe reports it as needing nothing, which is a wrong
+                // answer rather than a missing one. See the note on `options` below.
+                if (prop === Symbol.toPrimitive) return undefined;
+                return () => undefined;
+            }
             const path = `${prefix}${String(prop)}`;
             into.add(path);
+            if (prop === "valueOf" || prop === "toString") return () => 1;
             return probe(into, `${path}.`);
         },
         apply: () => undefined,
@@ -122,14 +137,33 @@ Deno.test("an action may run only where its needs are delivered", () => {
     assert(!canRunAt("noop", "projectile"), "projectile is not a call site at all");
 });
 
-Deno.test("only the three cell actions are offered where the grid is reachable", () => {
+Deno.test("only the cell actions are offered where the grid is reachable", () => {
     // `cell` is the scarcest thing the engine hands out — only `process()` and the
-    // modifier hooks have it — so it is the axis worth pinning exactly.
+    // modifier hooks have it — so it is the axis worth pinning exactly. The list was
+    // three; it is four, because `isElementAtCell` reads a cell to answer into the
+    // process context and cannot be offered anywhere the grid is out of reach.
+    //
+    // Now eleven. The seven element actions all need `cell` for the same reason, and
+    // the fact that they **cannot** be offered in `modifier` — which *does* have the
+    // grid — is the list earning its keep: they are `commit`-shaped, and a modifier
+    // hook has no `commit` to commit through.
     const wantsCell = Object.entries(ACTION_SCOPE)
         .filter(([, n]) => n.includes("cell"))
         .map(([k]) => k)
         .sort();
-    assertEquals(wantsCell, ["processorConvert", "processorLift", "processorScan"]);
+    assertEquals(wantsCell, [
+        "countElements",
+        "countEmpty",
+        "createElement",
+        "emptyCells",
+        "isElementAtCell",
+        "processorConvert",
+        "processorLift",
+        "processorScan",
+        "readElement",
+        "replaceElement",
+        "transformElement",
+    ]);
     for (const key of wantsCell) {
         const sites = slotsFor(key);
         assert(
@@ -203,24 +237,53 @@ Deno.test("the effect vocabulary is closed and fully labelled", () => {
         assert(ACTION_DOMAIN_BLURBS[d], `domain "${d}" has no blurb`);
     }
     assertEquals(used.size, 6, "six effects, all of them reachable");
-    assertEquals(Object.keys(ACTION_DOMAIN_LABELS).length, 8, "eight domains");
+    assertEquals(Object.keys(ACTION_DOMAIN_LABELS).length, 9, "nine domains");
 });
 
 Deno.test("only actions that change the grid are filed as committing", () => {
-    // The claim is strong, so it is checked against the one thing that can prove
-    // it: `needsOf(...).includes("cell")` means the action reads the processing
-    // context, and `ctx.commit` is the only way to change the world from there.
+    // The claim is strong, so it is checked against the two things that can prove it.
+    //
+    // The rule used to be a single one: `commits` ⇒ `needsOf(key).includes("cell")`,
+    // on the grounds that `ctx.commit` was the only way to change the world from a
+    // processor. The motion family made that **false** — `setVelocityAtCell` changes a
+    // cell and reads no context at all. So the rule is now a disjunction, and both
+    // halves are load-bearing:
+    //
+    //   commits ⇒ reads the context (`ctx.commit`) **or** reaches an `api.*` namespace
+    //
+    // Which is the honest generalisation. `ACTION_CLASSES[key] === "api"` is measured
+    // rather than declared, so this is a real cross-check between two independent
+    // classifications: if a future action claimed to commit while doing neither, it
+    // would be caught here even though both tables were individually consistent.
     for (const [key, effect] of Object.entries(ACTION_EFFECTS)) {
         if (effect !== "commits") continue;
+        const viaContext = needsOf(key).includes("cell");
+        const viaApi = ACTION_CLASSES[key] === "api";
         assert(
-            needsOf(key).includes("cell"),
-            `${key} claims to commit but never reads the context, so it cannot`,
+            viaContext || viaApi,
+            `${key} claims to commit but neither reads the context nor reaches the api, ` +
+                "so it cannot change anything",
         );
     }
     assertEquals(
         Object.entries(ACTION_EFFECTS).filter(([, e]) => e === "commits").map(([k]) => k).sort(),
-        ["processorConvert", "processorLift"],
-        "scan only reads, so it is not a committer",
+        [
+            // The four `act` motion actions and the six element ones, **in true sorted
+            // order** so the two groups interleave. That interleaving is the point: it
+            // shows on one list that `commits` no longer means "uses `ctx.commit`".
+            "addVelocity",
+            "createElement",
+            "emptyCells",
+            "processorConvert",
+            "processorLift",
+            "replaceElement",
+            "setDuration",
+            "setVelocity",
+            "teleportElement",
+            "toParticle",
+            "transformElement",
+        ],
+        "the three sense element actions only read, so they are not committers",
     );
 });
 
@@ -229,15 +292,20 @@ Deno.test("a value returned where the engine ignores it is flagged, not hidden",
     // with 7 exceptions on the `projectile` slot — the one place the return was
     // read. Those 7 are now `ProjectileOptionFn`s rather than actions, so the
     // `returns` effect has **no** site that reads it and every one of the 13 is
-    // vacuous. The count dropping from 20 to 13 is the removal, not a fix.
+    // vacuous. The count went 20 → 13 → 11: the projectile presets left the
+    // catalogue, and `itemExcavate` / `itemShoot` stopped being factories once
+    // they dug and shot for real.
     assert(isVacuousReturn("energyBank", false), "processing discards it");
-    assert(isVacuousReturn("excavationCrusher", false), "itemAction discards it");
+    // Was `excavationCrusher` here. The five excavation profiles are
+    // `ExcavationOptionFn`s in `../excavation-option/` now, and this test is about
+    // *actions* — an option has no slot to be vacuous on, so the assertion moved
+    // with it rather than being deleted.
     assert(!isVacuousReturn("processorConvert", false), "not a returns action at all");
-    // The 13 themselves, so the count in the plan stays honest.
+    // The 6 themselves, so the count in the plan stays honest.
     assertEquals(
         Object.keys(ACTION_EFFECTS).filter((k) => isVacuousReturn(k, false)).length,
-        13,
-        "13 return a value and no slot reads it",
+        6,
+        "6 return a value and no slot reads it",
     );
     // And a projectile option is not in that table at all — its return is its
     // whole purpose, so calling it vacuous would be exactly backwards.

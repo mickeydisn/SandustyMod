@@ -7,6 +7,9 @@
  */
 import type { SettingsSchema } from "./packages/modkit.ts";
 
+// The stored shape of a custom process lives with the feature that compiles it, so
+// `constants.ts` and the compiler cannot drift apart.
+import type { CustomProcessConfig } from "./handler/custom-process/types.ts";
 export const MOD_ID = "md-my-hown-mod";
 export const VERSION = "0.1.4";
 export const LOG = `[${MOD_ID}]`;
@@ -316,7 +319,7 @@ export interface ItemConfig {
     /** Per-use cooldown tracking when set. */
     cooldown?: number | { last?: number; [key: string]: unknown };
     /**
-     * Name of a handler in `src/hooks/handlers.ts`, attached as
+     * Name of a handler in `src/handler/actions/`, attached as
      * `ItemDefinition.handleAction` at register time. Ignored for Consumable —
      * `ActionType` has no Consumable member, so no use action can be dispatched.
      */
@@ -848,7 +851,7 @@ export interface SpriteConfig {
 // HOOKS / MODIFIERS — hooks.intercept + hooks.modify
 // Docs: https://sandustry.dev/api/hooks
 // Callbacks cannot live in JSON. Two modes:
-//   1) handlerKey → resolved from CODE_HANDLERS registry in src/hooks/
+//   1) handlerKey → resolved from CODE_HANDLERS registry in src/handler/
 //   2) metadata-only entry (applied only when a matching code handler exists)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -861,7 +864,7 @@ export interface ModifierConfig {
     /** intercept = observe; modify = transform value flowing through. */
     kind: HookKind;
     /**
-     * Key into the in-mod CODE_HANDLERS map (src/hooks/handlers.ts).
+     * Key into the in-mod CODE_HANDLERS map (src/handler/actions/).
      * Required for a live callback. Without it the entry is stored but not attached.
      */
     handlerKey?: string;
@@ -906,6 +909,18 @@ export type ModConfig = {
     triggers: TriggerConfig[];
     sprites: SpriteConfig[];
     inputBindings: InputBindingConfig[];
+    /**
+     * The author's custom processes — the named, reusable handlers a definition
+     * *references* rather than copying.
+     *
+     * A separate list from the definitions on purpose. A signal does not own its
+     * program; it names one. That indirection is what makes "edit it once" possible,
+     * and it is why `processId` is an id and not a copy of `steps` (D5).
+     *
+     * Re-exported from `../handler/custom-process/types.ts` rather than restated
+     * here, so the compiler and the store cannot disagree about the stored shape.
+     */
+    processes: CustomProcessConfig[];
 };
 
 export const DEFAULT_CONFIG: ModConfig = {
@@ -931,6 +946,7 @@ export const DEFAULT_CONFIG: ModConfig = {
     signals: [],
     triggers: [],
     sprites: [],
+    processes: [],
     inputBindings: [],
 };
 

@@ -39,6 +39,17 @@ export type Tab =
     /** The HandlerAction catalogue. **Must match `Tab` in `../schema.ts`** — edit that one. */
     | "action"
     | "projectileOption"
+    /**
+     * The ExcavationOption catalogue. A tab rather than rows in Actions because a
+     * preset has no call site — it builds a value the same way a projectile option
+     * does. **Must match `Tab` in `../schema.ts`** — edit that one.
+     */
+    | "excavationOption"
+    /**
+     * The Processes screen — the author's own named handlers. **Must match `Tab` in
+     * `../schema.ts`** — edit that one.
+     */
+    | "customProcess"
     | "upgradeAction"
     /** Explains the objects and their relations — no configKey. */
     | "help"
@@ -86,7 +97,21 @@ export type FieldKind =
      */
     | "actionList"
     /** One `{ key, params }` — a single ProjectileOption, not a list. */
-    | "projectileOption";
+    | "projectileOption"
+    /** The same for an ExcavationOption. See `./excavation-option-field.ts`. */
+    | "excavationOption"
+    /**
+     * A definition's **process reference** — one process id, not a list of actions.
+     * See `./process-ref-field.ts`.
+     */
+    | "processRef"
+    /**
+     * A process's **program grid** — the ordered steps, plus the context list derived
+     * from them. Its own kind because the two halves are computed from each other and
+     * a generic json control could only show one of them. See
+     * `../program-grid-control.ts`.
+     */
+    | "program";
 
 export interface FieldSpec {
     key: string;

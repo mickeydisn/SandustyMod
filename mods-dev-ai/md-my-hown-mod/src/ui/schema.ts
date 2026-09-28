@@ -14,9 +14,11 @@
  *   doc/doc-tech/13-struct-interaction-and-categories.md (build categories)
  *   doc/doc-tech/03-hooks-reference.md                (hook ids)
  */
-import { handlerMeta, TAB_TO_CALL_SITE } from "../hooks/handler-registry.ts";
-import { resolveAction } from "../hooks/process.ts";
-import { resolveProjectileOption } from "../hooks/projectile-option/index.ts";
+import { handlerMeta, TAB_TO_CALL_SITE } from "../handler/core/handler-registry.ts";
+import { resolveAction } from "../handler/core/process.ts";
+import { resolveProjectileOption } from "../handler/projectile-option/index.ts";
+import { currentProcessRegistry, processProblem } from "../handler/custom-process/index.ts";
+import { resolveExcavationOption } from "../handler/excavation-option/index.ts";
 import { parseActionRefs } from "./definition/actions-field.ts";
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
@@ -127,6 +129,26 @@ export type Tab =
      * group because they belong to the same feature, and nothing else.
      */
     | "projectileOption"
+    /**
+     * The ExcavationOption catalogue — no configKey, renders its own body.
+     *
+     * The second of the two "builds a value" tabs, and the reason it is a tab
+     * rather than five rows in Actions: these presets are not actions and cannot be
+     * run as one. They were offered on `itemAction`, which discards a process's
+     * return, so each one built a correct `ExcavateOptions` object and gave it to
+     * nobody. A separate tab is the honest shape for a callable that has no call
+     * site.
+     */
+    | "excavationOption"
+    /**
+     * The **Processes** screen — the author's own named, reusable handlers, built by
+     * combining atomic handlers.
+     *
+     * A tab under Handlers for the same reason the two option catalogues are: a
+     * process is not an action and has no call site of its own. It is *used* by six
+     * definitions, and editing it here changes all of them — which is the feature.
+     */
+    | "customProcess"
     /**
      * The actions that can run at **one call site only** — today the seven upgrade
      * ones.
@@ -266,6 +288,15 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         label: "Projectile options",
         blurb: "Functions that build a projectile's spawn-time options.",
     },
+    excavationOption: {
+        label: "Excavation options",
+        blurb: "Functions that build an excavation profile's power and dig flags.",
+    },
+    customProcess: {
+        label: "Processes",
+        blurb: "Your own named handlers, built by combining actions once and used anywhere.",
+        configKey: "processes",
+    },
     upgradeAction: {
         label: "Upgrade actions",
         blurb: "The actions an upgrade can run — and nothing else can.",
@@ -347,11 +378,18 @@ export const MENU_GROUPS: MenuGroup[] = [
     {
         key: "handlers",
         label: "Handlers",
-        // The group's own hint, not a restatement of the two tabs under it. The
-        // sub-nav reads "Actions · Projectile options" and the group chip reads
-        // "Handlers", so the split is visible before you click anything.
+        // The group's own hint, not a restatement of the three tabs under it. The
+        // sub-nav reads "Actions · Projectile options · Excavation options" and the
+        // group chip reads "Handlers", so the split is visible before you click
+        // anything.
         hint: "What this mod can run, and what it can build",
-        categories: ["action", "projectileOption", "upgradeAction"],
+        categories: [
+            "action",
+            "projectileOption",
+            "excavationOption",
+            "customProcess",
+            "upgradeAction",
+        ],
     },
     { key: "help", label: "Graph", hint: "What points at what", categories: ["help"] },
     {
@@ -403,7 +441,30 @@ export type FieldKind =
      * is what the engine uses at spawn. Not a list: a projectile takes exactly one,
      * and it is not a process. See `./projectile-option-field.ts`.
      */
-    | "projectileOption";
+    | "projectileOption"
+    /**
+     * The same shape for an **ExcavationOption**: one `{ key, params }` whose
+     * result is the profile's `power` and `options`. Not a list, and deliberately
+     * not an `actionList` — these five presets used to be actions, could not run as
+     * one (a returned value is discarded on every slot they were offered on), and
+     * now build a value the same way a projectile option does. See
+     * `./excavation-option-field.ts`.
+     */
+    | "excavationOption"
+    /**
+     * A definition's **process reference** — one process id, not a list of actions.
+     * Not an `actionList`: the six definitions that used to store `actions` now
+     * *name* a process, which is what makes "edit it once" possible (D5/D6). The
+     * steps are edited on the Processes tab, not here.
+     */
+    | "processRef"
+    /**
+     * A process's **program grid** — the ordered steps plus the context list derived
+     * from them. Its own kind because the two halves are computed from each other; a
+     * generic `json` control could only show one of them, and the other would go
+     * stale. See `./definition/custom/process.ts`.
+     */
+    | "program";
 
 export interface FieldSpec {
     key: string;
@@ -619,16 +680,35 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
             }
             return null;
         }
-        case "projectileOption": {
-            // Only the key is checked. The parameters are a JSON bag whose keys are
-            // the chosen option's own fields, and `withParams` silently drops
-            // anything it does not recognise — so validating them here would mean
-            // re-deriving the option's field list, which `projectileOptionParams`
-            // already does by calling the option. An unknown parameter is dropped
-            // rather than fatal, by design: it is a value the author cannot see an
-            // effect from, not a broken config.
-            if (!raw.trim()) return null; // static options only
-            if (!resolveProjectileOption(raw)) return `unknown projectile option: ${raw}`;
+        case "processRef": {
+            // An empty value is legal: a definition with no program is a real state, and
+            // the engine registers it as a machine that does nothing.
+            if (!raw.trim()) return null;
+            // Checked against the author's own processes, and against the **slot this
+            // definition sits in**: a `processing` process in a signal is refused at
+            // compile time, and this is the panel saying so at save time rather than
+            // the game saying it with a console line.
+            const slot = TAB_TO_CALL_SITE[cat ?? ""];
+            if (!slot) return null; // an unknown tab: nothing to check against
+            return processProblem(currentProcessRegistry(), raw, slot) ?? null;
+        }
+        case "projectileOption":
+        // One case for both option kinds — the rule is identical, and two copies of
+        // it would be two places for them to drift. Only the key is checked: the
+        // parameters are a JSON bag whose keys are the chosen option's own fields,
+        // and `withParams` silently drops anything it does not recognise — so
+        // validating them here would mean re-deriving the field list that
+        // `excavationOptionParams` / `projectileOptionParams` already derive by
+        // calling the option. An unknown parameter is dropped rather than fatal, by
+        // design: it is a value the author cannot see an effect from, not a broken
+        // config.
+        case "excavationOption": {
+            if (!raw.trim()) return null; // hand-written power / options
+            if (f.kind === "projectileOption") {
+                if (!resolveProjectileOption(raw)) return `unknown projectile option: ${raw}`;
+            } else if (!resolveExcavationOption(raw)) {
+                return `unknown excavation option: ${raw}`;
+            }
             return null;
         }
         case "text":

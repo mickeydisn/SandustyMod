@@ -45,6 +45,7 @@ import { terrainDefinition } from "./core/terrain.ts";
 import { triggerDefinition } from "./core/trigger.ts";
 import { upgradeDefinition } from "./core/upgrade.ts";
 import { upgradeCategoryDefinition } from "./core/upgrade-category.ts";
+import { customProcessDefinition } from "./custom/process.ts";
 import { networkDefinition } from "./custom/network.ts";
 import { unlockNodeDefinition } from "./custom/unlock-node.ts";
 import type { Definition, Tab } from "./types.ts";
@@ -58,6 +59,7 @@ import type { Definition, Tab } from "./types.ts";
  */
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
     behaviors: behaviorDefinition,
+    customProcess: customProcessDefinition,
     categories: upgradeCategoryDefinition,
     contacts: contactDefinition,
     elements: elementDefinition,

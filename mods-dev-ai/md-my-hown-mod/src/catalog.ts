@@ -7,15 +7,19 @@ import { loadConfig } from "./config/store.ts";
 import type { Tab } from "./ui/schema.ts";
 import type { ListRow } from "./ui/definition/types.ts";
 import { allUnlockNodes, DEFAULT_UNLOCK_NODE } from "./ui/tech-link.ts";
-import type { HandlerMeta, HandlerSlot } from "./hooks/handler-registry.ts";
+import type { HandlerMeta, HandlerSlot } from "./handler/core/handler-registry.ts";
 // Imported as a value, not a type: `handler-registry.ts` has no imports of its
 // own, so this cannot cycle, and the pickers must work even when the hook
 // module has not yet published its `__mdHandlers` global.
-import { allHandlerTypes, HANDLER_META, itemActionHandlersFor } from "./hooks/handler-registry.ts";
+import {
+    allHandlerTypes,
+    HANDLER_META,
+    itemActionHandlersFor,
+} from "./handler/core/handler-registry.ts";
 // The projectile presets. A value import, and deliberately *not* through
 // `handler-registry.ts`: these are `ProjectileOptionFn`s, not actions, so they
 // live in their own registry and are compiled by `compileProjectile`.
-import { PROJECTILE_OPTION_DOCS, PROJECTILE_OPTIONS } from "./hooks/projectile-option/index.ts";
+import { PROJECTILE_OPTION_DOCS, PROJECTILE_OPTIONS } from "./handler/projectile-option/index.ts";
 
 /**
  * One choice for a reference field.
@@ -781,7 +785,7 @@ export function listProcessorKeys(): Opt[] {
 // options are labelled `key — what it does` so the description is visible in the
 // dropdown itself rather than hidden behind a tooltip.
 
-/** Read the handler registries exposed by src/hooks/handlers.ts at runtime. */
+/** Read the handler registries exposed by src/handler/handlers.ts at runtime. */
 function handlerRegistry(): {
     any?: Record<string, unknown>;
     process?: Record<string, unknown>;

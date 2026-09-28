@@ -8,7 +8,11 @@
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { DEFAULT_CONFIG } from "../../constants.ts";
-import { HANDLER_META, handlersForSlot, TAB_TO_CALL_SITE } from "../../hooks/handler-registry.ts";
+import {
+    HANDLER_META,
+    handlersForSlot,
+    TAB_TO_CALL_SITE,
+} from "../../handler/core/handler-registry.ts";
 import { renderActionList } from "../action-list-control.ts";
 import { formatActionRefs, parseActionRefs } from "../definition/actions-field.ts";
 

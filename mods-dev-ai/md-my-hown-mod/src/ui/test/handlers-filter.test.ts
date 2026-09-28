@@ -3,16 +3,16 @@
  * catalogue, and the menu structure that puts them side by side.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { allHandlerDocs } from "../../hooks/handlers.ts";
+import { ACTION_DOCS } from "../../handler/actions/index.ts";
 import {
     HANDLER_META,
     handlerMeta,
     handlersOnlyAtSlot,
     type HandlerUsage,
     isOnlyAtSlot,
-} from "../../hooks/handler-registry.ts";
-import { canRunAt, needsOf } from "../../hooks/scope.ts";
-import { PROJECTILE_OPTIONS } from "../../hooks/projectile-option/index.ts";
+} from "../../handler/core/handler-registry.ts";
+import { canRunAt, needsOf } from "../../handler/core/scope.ts";
+import { PROJECTILE_OPTIONS } from "../../handler/projectile-option/index.ts";
 import { filterActions, filterProjectileOptions, initialHandlersState } from "../panel/handlers.ts";
 
 /**
@@ -29,7 +29,7 @@ const SCHEMA_SRC = Deno.readTextFileSync(
     new URL("../schema.ts", import.meta.url).pathname,
 );
 
-const DOCS = allHandlerDocs();
+const DOCS = ACTION_DOCS;
 const NONE: Record<string, HandlerUsage[]> = {};
 
 const keys = (patch: Partial<ReturnType<typeof initialHandlersState>>) =>
@@ -48,11 +48,38 @@ const usedKeys = (patch: Partial<ReturnType<typeof initialHandlersState>>) =>
 Deno.test("the unfiltered list is every action, in alphabetical order", () => {
     const all = keys({});
     assertEquals(all.length, HANDLER_META.length);
-    assertEquals([...all].sort(), all, "not sorted");
+    // Sorted with `localeCompare`, because that is what the panel does and the test is
+    // about the list the panel shows. This distinction is not pedantic: it is a
+    // **case-insensitive** collation, so `toast` precedes `toParticle` — where a
+    // default `.sort()` puts `toParticle` first, because `P` (0x50) sorts before `a`
+    // (0x61). Asserting the default order here would have been asserting a list the
+    // panel never produces, and would have failed on a *correct* sort the first time
+    // the catalogue contained a key where the two disagree.
+    //
+    // Asserting the comparator rather than a hard-coded sequence also means the test
+    // still holds when a new action arrives: the claim is "the panel's order", not
+    // "this exact list".
+    assertEquals([...all].sort((a, b) => a.localeCompare(b)), all, "not sorted");
+    // And a case-sensitive default sort genuinely disagrees, which is what makes the
+    // comparator above load-bearing rather than decorative. If this ever starts
+    // passing on the default sort, a key with mixed case has gone away and the comment
+    // above needs revisiting.
+    const byDefault = [...all].sort();
+    assert(
+        byDefault.join() !== all.join(),
+        "case-sensitive and case-insensitive order now agree, so this file can say " +
+            "which collation it means without checking",
+    );
     // The first row alphabetically used to be `defaultProjectileOptions`. The
-    // projectile options are not actions, so the list starts at `energyBank` — and
+    // projectile options are not actions, so the list started at `energyBank` — and
     // asserting the *new* first name is what catches one of them creeping back in.
-    assertEquals(all[0], "energyBank");
+    //
+    // Now `addVelocity`, which is the same assertion doing a second and third job. It
+    // used to be `energyBank`, before the element family took `countElements`; the
+    // first name moved twice as families were added, and each move is free evidence
+    // that the new family is really in the catalogue and really sorted in. A `c` or an
+    // `a` that should lead and does not would mean a filter is dropping something.
+    assertEquals(all[0], "addVelocity");
     // And the split holds: none of the seven is browsable as an action.
     for (const key of Object.keys(PROJECTILE_OPTIONS)) {
         assert(!all.includes(key), `${key} is listed as an action again`);
@@ -144,15 +171,23 @@ Deno.test("Actions, Projectile options and Upgrade actions are sibling tabs", ()
     // this test: the match runs to the end of that one `categories: [...]` line.
     const group = /key: "handlers",[\s\S]*?categories: (\[[^\]]*\])/.exec(SCHEMA_SRC);
     assert(group, "the handlers menu group is missing from schema.ts");
+    // The trailing comma is stripped too: the list is now written across several lines,
+    // so `categories: [\n "a",\n …,\n]` captures one, and a raw comparison would fail on
+    // formatting rather than on membership.
     assertEquals(
-        group[1].replace(/\s+/g, ""),
-        '["action","projectileOption","upgradeAction"]',
+        group[1].replace(/\s+/g, "").replace(/,\]$/, "]"),
+        '["action","projectileOption","excavationOption","customProcess","upgradeAction"]',
     );
-    // Each is a real tab with its own label, so the sub-nav names all three.
+    // Each is a real tab with its own label, so the sub-nav names all five.
+    // `excavationOption` and `customProcess` are tabs for the same reason: a preset and
+    // a process both have no call site of their own, so listing them among the actions
+    // would claim a slot neither can run in.
     for (
         const [tab, label] of [
             ["action", "Actions"],
             ["projectileOption", "Projectile options"],
+            ["excavationOption", "Excavation options"],
+            ["customProcess", "Processes"],
             ["upgradeAction", "Upgrade actions"],
         ]
     ) {

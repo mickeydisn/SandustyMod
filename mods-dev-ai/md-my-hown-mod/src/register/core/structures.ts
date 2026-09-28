@@ -264,7 +264,11 @@ export function unlockStructures(cfg: ModConfig): number {
             api.player.buildings.removeById(st.id);
             continue;
         }
-        if (api.player.buildings.unlockByType(st.id)) n++;
+        // `unlockById`, not `unlockByType` — the latter is @deprecated in both
+        // type sets. The wrapper returns whether the engine call happened, which
+        // is what the post-check below needs; a plain void call would make that
+        // warning unreachable.
+        if (api.player.buildings.unlockById(st.id)) n++;
     }
     // Warn once, and only when there was something to unlock. A silent no-op here
     // is the whole failure this function exists to prevent, so it must not be one
@@ -274,7 +278,7 @@ export function unlockStructures(cfg: ModConfig): number {
     if (n === 0 && ungated.length > 0) {
         console.warn(
             `${LOG} structures could not be unlocked — ` +
-                `api.player.buildings.unlockByType is unavailable on this thread, ` +
+                `api.player.buildings.unlockById is unavailable on this thread, ` +
                 `so the build menu will be empty`,
         );
     }

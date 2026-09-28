@@ -16,7 +16,12 @@
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.upgrades.md`.
  */
 import { listItems, listUpgradeCategoryIds } from "../../../catalog.ts";
-import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
+import {
+    PROCESS_COVERED,
+    processRefField,
+    readProcessRef,
+    writeProcessRef,
+} from "../process-ref-field.ts";
 import { advField, boolField, idField, numField, textField } from "../fields.ts";
 import { CUSTOM } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
@@ -91,7 +96,7 @@ const FIELDS: FieldSpec[] = [
         // The stored key for this is `actions`, the same list every other process
         // uses. A config written under the old `onUpgradeKey` spelling is read as
         // no process at all.
-        ...actionListField("runs when a level is bought", { section: "Upgrade" }),
+        ...processRefField("runs when a level is bought", { section: "Upgrade" }),
     },
     advField(),
 ];
@@ -112,7 +117,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("maxLevel", read.num(u?.maxLevel));
     read.put("costsJson", read.json(u?.costs));
     if (typeof u?.oneOff === "boolean") read.put("oneOff", String(u.oneOff));
-    readActions(read, e);
+    readProcessRef(read, e);
 }
 
 /** Form strings → stored entry, for the whole upgrade. */
@@ -138,7 +143,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     const oneOff = w.optBool("oneOff");
     if (oneOff !== undefined) upgrade.oneOff = oneOff;
     if (Object.keys(upgrade).length > 0) w.setRaw("upgrade", upgrade);
-    writeActions(w);
+    writeProcessRef(w);
 }
 
 // ── The definition ───────────────────────────────────────────────────────────
@@ -150,7 +155,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
  * `costsJson` are the *controls* for it and are deliberately absent, so the real
  * key does not also fall through the passthrough as a duplicate.
  */
-const FORM_COVERED = ["itemId", "itemNameKey", "categoryId", "upgrade", ...ACTIONS_COVERED];
+const FORM_COVERED = ["itemId", "itemNameKey", "categoryId", "upgrade", ...PROCESS_COVERED];
 
 export const upgradeDefinition: Definition = {
     tab: "upgrades",

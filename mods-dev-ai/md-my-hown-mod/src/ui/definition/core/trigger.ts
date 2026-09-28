@@ -11,7 +11,12 @@
  *
  * Ground truth: `doc/doc-artifacts/doc.api/shared/api.input.md`.
  */
-import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
+import {
+    PROCESS_COVERED,
+    processRefField,
+    readProcessRef,
+    writeProcessRef,
+} from "../process-ref-field.ts";
 import { idField, numField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
@@ -29,7 +34,7 @@ const FIELDS: FieldSpec[] = [
     {
         // Was a `select` over `listTriggerHandlerKeys` picking exactly one
         // handlerKey. A trigger is a process now.
-        ...actionListField("runs on the interval"),
+        ...processRefField("runs on the interval"),
         section: "Timing",
         required: true,
     },
@@ -50,7 +55,7 @@ const FIELDS: FieldSpec[] = [
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("interval", read.num(e.interval));
     read.put("sequentialRuns", read.num(e.sequentialRuns));
-    readActions(read, e);
+    readProcessRef(read, e);
     read.put("extraJson", read.json(e.extra));
 }
 
@@ -58,7 +63,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setNum("interval", w.optNum("interval"));
     w.setNum("sequentialRuns", w.optNum("sequentialRuns"));
-    writeActions(w);
+    writeProcessRef(w);
     const extra = w.optJson<Record<string, unknown>>("extraJson");
     if (extra) w.setRaw("extra", extra);
     // `triggerId` is not written here. It has no control, so there is nothing
@@ -82,7 +87,7 @@ export const triggerDefinition: Definition = {
     // "Fields this panel does not show" box. That is the honest place for a
     // stored key the form genuinely cannot edit, and it is the first time it
     // has been visible at all.
-    formCovered: ["interval", "sequentialRuns", "extra", ...ACTIONS_COVERED],
+    formCovered: ["interval", "sequentialRuns", "extra", ...PROCESS_COVERED],
     entryToForm,
     formToEntry,
 };

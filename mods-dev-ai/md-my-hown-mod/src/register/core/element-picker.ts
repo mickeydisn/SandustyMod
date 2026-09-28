@@ -53,7 +53,7 @@ let detach: (() => void) | null = null;
  * The host's hook API, or null when this build has none.
  *
  * The wrapper does not re-export `hooks`, and should not: that is the engine's
- * own surface, already typed and already guarded in `hooks/apply.ts`. Read it
+ * own surface, already typed and already guarded in `handler/core/apply.ts`. Read it
  * the same way here so both call sites degrade identically on an older host.
  */
 function getHooksApi(): {

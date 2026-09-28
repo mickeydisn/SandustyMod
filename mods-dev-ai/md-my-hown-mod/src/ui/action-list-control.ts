@@ -23,13 +23,13 @@
  * schema, the migration and the compiler could all land before the widget: a plain
  * text box was a correct — if unpleasant — fallback the whole time.
  */
-import { actionClassOf } from "../hooks/action-class.ts";
+import { actionClassOf } from "../handler/core/action-class.ts";
 import {
     HANDLER_META,
     type HandlerMeta,
     type HandlerParam,
     TAB_TO_CALL_SITE,
-} from "../hooks/handler-registry.ts";
+} from "../handler/core/handler-registry.ts";
 import { ACTIONS_FORM_KEY, formatActionRefs, parseActionRefs } from "./definition/actions-field.ts";
 import type { FieldContext, Tab } from "./definition/types.ts";
 import * as S from "./styles.ts";

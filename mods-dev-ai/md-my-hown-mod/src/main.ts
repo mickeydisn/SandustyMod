@@ -9,7 +9,7 @@ import { onSettingsChange, readSettings, runDisableCleanup } from "./packages/mo
 import { registerAll } from "./register/index.ts";
 import { LOG, MOD_ID, SETTINGS, STORAGE_KEYS, VERSION } from "./constants.ts";
 import { mountPanel } from "./tool.ts";
-import "./hooks/index.ts"; // register handler keys for pickers
+import "./handler/index.ts"; // register handler keys for pickers
 
 console.log(`${LOG} SCRIPT START v${VERSION}`);
 

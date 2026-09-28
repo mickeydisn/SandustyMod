@@ -6,14 +6,14 @@
  * rule, and that a pre-split single key is *not* a process.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { ACTION_APIS, ACTION_CLASSES } from "./action-class.ts";
+import { ACTION_APIS, ACTION_CLASSES } from "../core/action-class.ts";
 import {
     HANDLER_META,
     scanHandlerUsage,
     scanProjectileOptionUsage,
     unreachableHandlers,
     usageIndex,
-} from "./handler-registry.ts";
+} from "../core/handler-registry.ts";
 import {
     actionRefsOf,
     CALL_SITE_LABELS,
@@ -23,7 +23,7 @@ import {
     compileProcess,
     type ProcessFailure,
     resolveAction,
-} from "./process.ts";
+} from "../core/process.ts";
 
 /** A payload whose every property read throws — the hostile case. */
 const hostile = (): unknown =>
@@ -38,17 +38,27 @@ Deno.test("options are bound per action, which the engine never did", () => {
     // required; before the split the engine called it with two arguments, so the
     // third was always `undefined` and it could never convert anything. Here the
     // compiler supplies the options the config asked for.
+    //
+    // The expected payload is the **verified** one: an array, discriminated by
+    // `kind`. It used to assert `{ type: "set", … }` — a bare object with a
+    // discriminator the engine does not have — which is the shape that made the
+    // action a silent no-op. `context.commit` is typed `(mutations: unknown)`, so
+    // nothing objected and the real payload was never checked. See
+    // `HandlerAction.md` §4.
     const commits: unknown[] = [];
     const ctx = {
         getResolvedTypeAtCell: () => "Sand",
-        commit: (m: unknown) => commits.push(m),
+        commit: (m: unknown) => {
+            commits.push(m);
+            return true;
+        },
     };
     const { fn } = compileProcess(
         [{ key: "processorConvert", options: { to: "Water" } }],
         "processing",
     );
     fn({ x: 4, y: 9 }, ctx);
-    assertEquals(commits, [{ type: "set", cellX: 4, cellY: 8, elementType: "Water" }]);
+    assertEquals(commits, [[{ kind: "create", cellX: 4, cellY: 8, elementType: "Water" }]]);
 });
 
 Deno.test("without options the same action commits nothing", () => {
@@ -179,10 +189,17 @@ Deno.test("a projectile option is not an action a process can run", () => {
 
 Deno.test("the same action may appear twice with different options", () => {
     // Order and options *are* the process. Nothing dedupes or sorts.
+    //
+    // Each action makes its own `commit` call and each call carries an **array**, so
+    // two uses of the same action produce two arrays rather than two merged
+    // mutations. That is the current contract — see the note on the test above.
     const commits: unknown[] = [];
     const ctx = {
         getResolvedTypeAtCell: () => "Sand",
-        commit: (m: unknown) => commits.push(m),
+        commit: (m: unknown) => {
+            commits.push(m);
+            return true;
+        },
     };
     compileProcess(
         [
@@ -192,8 +209,8 @@ Deno.test("the same action may appear twice with different options", () => {
         "processing",
     ).fn({ x: 1, y: 5 }, ctx);
     assertEquals(commits, [
-        { type: "set", cellX: 1, cellY: 4, elementType: "Water" },
-        { type: "set", cellX: 1, cellY: 4, elementType: "Lava" },
+        [{ kind: "create", cellX: 1, cellY: 4, elementType: "Water" }],
+        [{ kind: "create", cellX: 1, cellY: 4, elementType: "Lava" }],
     ]);
 });
 

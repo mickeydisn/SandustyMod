@@ -17,7 +17,12 @@
  * Ground truth: `doc/doc-tech/03-hooks-reference.md`.
  */
 import { listHookIds } from "../../../catalog.ts";
-import { actionListField, ACTIONS_COVERED, readActions, writeActions } from "../actions-field.ts";
+import {
+    PROCESS_COVERED,
+    processRefField,
+    readProcessRef,
+    writeProcessRef,
+} from "../process-ref-field.ts";
 import { boolField, idField, textField } from "../fields.ts";
 import { putCustomOrSelect } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
@@ -56,7 +61,7 @@ const FIELDS: FieldSpec[] = [
         // Was a `select` over `listHandlerKeys`. The modifier slot is the one
         // whose actions live in `CODE_HANDLERS` rather than `ANY_HANDLERS` — the
         // third registry, whose values are `{ kind, fn }` objects.
-        ...actionListField("intercepts or rewrites the engine hook", { section: "Hook" }),
+        ...processRefField("intercepts or rewrites the engine hook", { section: "Hook" }),
         required: true,
     },
     boolField("enabled", "Enabled", "Hook", "true"),
@@ -70,7 +75,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // A hook id outside the documented list round-trips via the custom box.
     putCustomOrSelect(read.put, read.str(e.hookId), "hookId", "hookCustom", listHookIds());
     read.put("kind", read.str(e.kind));
-    readActions(read, e);
+    readProcessRef(read, e);
     read.put("notes", read.str(e.notes));
     if (typeof e.enabled === "boolean") read.put("enabled", String(e.enabled));
 }
@@ -82,7 +87,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     // or the other — so this cannot disagree with itself in practice.
     w.setStr("hookId", w.opt("hookCustom") ?? w.opt("hookId"));
     w.setStr("kind", w.opt("kind"));
-    writeActions(w);
+    writeProcessRef(w);
     w.setStr("notes", w.opt("notes"));
     w.setBool("enabled", w.optBool("enabled"));
 }
@@ -90,7 +95,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
 // ── The definition ───────────────────────────────────────────────────────────
 
 /** Stored keys this form owns — the control names happen to match all of them. */
-const FORM_COVERED = ["hookId", "kind", "enabled", "notes", ...ACTIONS_COVERED];
+const FORM_COVERED = ["hookId", "kind", "enabled", "notes", ...PROCESS_COVERED];
 
 export const modifierDefinition: Definition = {
     tab: "modifiers",

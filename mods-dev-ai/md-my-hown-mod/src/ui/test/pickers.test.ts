@@ -142,9 +142,19 @@ Deno.test("the screens sit in the groups that were asked for, in order", () => {
     assertEquals(tabsOf("actions"), ["triggers", "inputs", "processing", "modifiers"]);
     assertEquals(tabsOf("energy"), ["networks", "energy"]);
     assertEquals(tabsOf("assets"), ["sprites", "draws"]);
-    // The three catalogues, as siblings. A single `handlers` tab holding them all
-    // would put a switcher below the sub-nav that already lists them.
-    assertEquals(tabsOf("handlers"), ["action", "projectileOption", "upgradeAction"]);
+    // The catalogues, as siblings. A single `handlers` tab holding them all would put
+    // a switcher below the sub-nav that already lists them. There are two "builds a
+    // value" catalogues — a projectile's spawn options and an excavation profile's
+    // power and flags — and both are tabs because a preset has no call site. The
+    // Processes tab is a third of the same kind: it holds no call site either, only
+    // things other definitions reference.
+    assertEquals(tabsOf("handlers"), [
+        "action",
+        "projectileOption",
+        "excavationOption",
+        "customProcess",
+        "upgradeAction",
+    ]);
     assertEquals(tabsOf("help"), ["help"], "Help must be the graph, and only the graph");
     assertEquals(tabsOf("data"), ["map", "json"]);
 });
@@ -536,6 +546,10 @@ const ALLOWED_FREE_TEXT: Record<string, string> = {
     "nameKey": "an i18n key; the game looks it up in a translation table we cannot read",
     "description": "free prose shown to the player in the tooltip body",
     "descriptionKey": "an i18n key, the translatable form of the line above",
+    // A process's own one-liner. There is no list of descriptions to pick from, and
+    // the engine never reads it — it is shown in the Processes list so the author can
+    // tell two similarly-named programs apart.
+    "doc": "free prose about a process, shown in its list; the engine never reads it",
     "notes": "a note to yourself; the engine never reads this field at all",
     "displayName": "a plain label in the settings list, grouped by the field below",
     "displayNameKey": "an i18n key for that settings label",

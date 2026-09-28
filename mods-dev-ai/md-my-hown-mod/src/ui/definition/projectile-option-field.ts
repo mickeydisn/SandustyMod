@@ -27,8 +27,8 @@
  * *written* either way, so clearing the option restores it rather than leaving the
  * projectile with nothing at all.
  */
-import { projectileOptionOf } from "../../hooks/projectile-option/index.ts";
-import { resolveProjectileOption } from "../../hooks/projectile-option/index.ts";
+import { projectileOptionOf } from "../../handler/projectile-option/index.ts";
+import { resolveProjectileOption } from "../../handler/projectile-option/index.ts";
 import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
 
 /** The form key for the chosen option. */

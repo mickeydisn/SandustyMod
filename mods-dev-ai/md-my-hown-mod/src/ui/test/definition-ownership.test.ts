@@ -41,7 +41,7 @@ const DEF_ROOT = new URL("../definition/", import.meta.url);
  *   - `unlockNodes`  — the mod's own gate in front of a structure, separate from
  *                      `techs` on purpose (see `constants.ts`).
  */
-const CUSTOM = new Set(["networks", "unlockNodes"]);
+const CUSTOM = new Set(["networks", "unlockNodes", "customProcess"]);
 
 /**
  * The tabs each folder is expected to hold, so a misfile is *named*.
@@ -75,7 +75,11 @@ const EXPECTED: Record<string, string[]> = {
         "triggers",
         "upgrades",
     ],
-    custom: ["networks", "unlockNodes"],
+    // `customProcess` is here for the same reason as the other two: the engine has no
+    // `register()` for a process. It is a mod-side object that six definitions
+    // reference, and the engine only ever sees the compiled function — which is the
+    // whole of decision D1.
+    custom: ["networks", "unlockNodes", "customProcess"],
 };
 
 /** The tab each definition file in a folder actually claims. */
@@ -131,6 +135,15 @@ Deno.test("every definition is filed by who owns the object", async () => {
     // and `core/projectile.ts` is the only file that uses it. Putting it inside
     // `core/` would suggest it defines an object, which is exactly the confusion the
     // `actions-field` exception exists to avoid.
+    //
+    // `excavation-option-field` is that same case again, for the second feature that
+    // builds a value. Two sibling `*-option-field.ts` files in the parent folder is
+    // the shape the rule is asking for: a field that belongs to no object's folder
+    // because it belongs to the *option kind*, not to an object.
+    //
+    // `process-ref-field` is the same idea for the other axis. It is shared by six
+    // definitions — which is *more* shared than any other entry here, and still does
+    // not belong to any one of them.
     const SHARED_HELPERS = [
         "types",
         "fields",
@@ -138,6 +151,8 @@ Deno.test("every definition is filed by who owns the object", async () => {
         "index",
         "actions-field",
         "projectile-option-field",
+        "excavation-option-field",
+        "process-ref-field",
     ];
     for (const entry of [...Deno.readDirSync(DEF_ROOT.pathname)]) {
         const stem = entry.name.replace(/\.ts$/, "");
