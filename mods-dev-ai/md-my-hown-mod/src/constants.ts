@@ -32,21 +32,22 @@ export const STORAGE_KEYS: readonly string[] = [
 
 export const SETTINGS = {
     enabled: { type: "boolean", default: true },
-    panelMinimized: { type: "boolean", default: false },
+    /**
+     * Whether the panel opens minimized. Read by `createPanelComponent`, which
+     * passes it to `loadPanelState` as the fallback for a first-ever boot.
+     *
+     * This only decides what a *fresh* install starts as. Once the reader has
+     * clicked the chip open or shut it, their own choice is stored and wins —
+     * a setting you cannot change after the first launch is a setting that
+     * looks broken.
+     */
+    panelMinimized: { type: "boolean", default: true },
 } as const satisfies SettingsSchema;
 
 export const OVERLAY_ID = `${MOD_ID}:panel`;
 
-/** Hotbar tool that opens the configurator (word-statistic pattern). */
-export const ITEM_ID = `${MOD_ID}:tool`;
-export const SPRITE_ID = `${MOD_ID}:icon`;
-export const SPRITE_PATH = "assets/config-icon.png";
-export const NAME_KEY = `mods|${MOD_ID}|tool|name`;
-export const DESC_KEY = `mods|${MOD_ID}|tool|desc`;
+/** Shown in the panel's error chip, and in the mount-failure toast. */
 export const TOOL_NAME = "My Own Mod";
-export const TOOL_DESC = "<b>My Own Mod</b> — in-game content configurator.<br/>" +
-    "Define elements, structures, items, recipes, processing, and more via JSON.<br/>" +
-    '<span style="opacity:0.85">Select this tool to open the panel.</span>';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MatterType (sandkit.enums.MatterType)

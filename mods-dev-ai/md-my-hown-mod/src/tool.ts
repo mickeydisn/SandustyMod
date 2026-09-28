@@ -1,118 +1,104 @@
 /**
- * Register the configurator tool item + global overlay.
- * Overlay visible only while this tool is the active hotbar item
- * (md-word-statistic pattern).
+ * Mount the configurator panel.
+ *
+ * The panel used to be reached through a hotbar item: it registered a tool, added
+ * it to the player's inventory, registered a global overlay, and then returned
+ * `null` from every render unless that item happened to be the active selection.
+ * So the panel's existence depended on game state the author had to arrange before
+ * they could edit anything — and an author who had picked a different tool had no
+ * way back to the configurator at all.
+ *
+ * It is now a plain injected component, mounted once at boot (the mdadmin pattern
+ * in `mods-dev/md-admin-element`). `api.ui.inject` takes a custom mount id and
+ * returns an unmount function; the panel renders itself minimized, and the chip is
+ * the way in.
+ *
+ * **No teardown, on purpose.** `inject` hands back an unmount fn and it is
+ * discarded. The mod is either enabled at boot — and then the panel is there for
+ * the session, like any HUD — or it is not, and nothing is mounted at all. The
+ * `enabled` setting still prunes stored config when switched off, but that is
+ * `runDisableCleanup`'s job in `main.ts` and has nothing to do with the panel: the
+ * alternative is a half-torn-down screen that is still on screen and no longer
+ * able to save.
  */
 import { api, getSandkit, h, React, safe, toast } from "./api.ts";
-import {
-    DESC_KEY,
-    ITEM_ID,
-    LOG,
-    NAME_KEY,
-    OVERLAY_ID,
-    SPRITE_ID,
-    SPRITE_PATH,
-    TOOL_DESC,
-    TOOL_NAME,
-} from "./constants.ts";
+import { LOG, MOD_ID, OVERLAY_ID, SETTINGS, TOOL_NAME } from "./constants.ts";
+import { readSettings } from "./packages/modkit.ts";
 import { ConfiguratorPanel } from "./ui/panel.ts";
 
-export async function registerTool(): Promise<void> {
+/** Guards against a second mount if this is somehow called again. */
+let mounted = false;
+
+export function mountPanel(): void {
+    if (mounted) return;
+    mounted = true;
+
     const sk = getSandkit();
     const a = sk?.api ?? api;
     if (!a) {
-        console.error(`${LOG} sandkit.api missing — cannot register tool`, {
+        console.error(`${LOG} sandkit.api missing — panel unavailable`, {
             hasDeclare: typeof sk !== "undefined",
             global: !!(globalThis as any).sandkit,
         });
         return;
     }
 
-    safe(() =>
-        a.i18n?.register?.("en", {
-            [NAME_KEY]: TOOL_NAME,
-            [DESC_KEY]: TOOL_DESC,
-        })
-    );
-
-    try {
-        await a.sprites?.loadFromMod?.(SPRITE_ID, SPRITE_PATH);
-        console.log(`${LOG} sprite loaded ${SPRITE_ID}`);
-    } catch (err) {
-        console.warn(`${LOG} sprite load failed (tool still registers)`, err);
-    }
-
-    try {
-        a.items.register({
-            id: ITEM_ID,
-            nameKey: NAME_KEY,
-            descriptionKey: DESC_KEY,
-            name: TOOL_NAME,
-            description: TOOL_DESC,
-            sprite: { id: SPRITE_ID },
-            itemType: "tool",
-            energyCost: 0,
-            cooldown: { durationMs: 120 },
-        });
-        console.log(`${LOG} items.register ${ITEM_ID}`);
-    } catch (err) {
-        console.warn(`${LOG} items.register failed`, err);
-    }
-
-    try {
-        if (typeof a.player?.inventory?.hasById === "function") {
-            if (!a.player.inventory.hasById(ITEM_ID)) {
-                a.player.inventory.addById(ITEM_ID);
-            }
-        } else {
-            a.player?.inventory?.addById?.(ITEM_ID);
-        }
-        console.log(`${LOG} tool added to inventory`);
-    } catch (err) {
-        console.warn(`${LOG} inventory add failed`, err);
-    }
-
     const R = React ?? sk?.react;
     const create = h ?? R?.createElement?.bind(R);
     if (!create) {
-        console.warn(`${LOG} sandkit.react missing — overlay unavailable`);
+        console.warn(`${LOG} sandkit.react missing — panel unavailable`);
         return;
     }
 
-    try {
-        a.ui?.overlays?.unregister?.("global", OVERLAY_ID);
-    } catch { /* */ }
+    // Does a fresh install start as a chip or wide open? Read once, here, and
+    // handed to the component — the reader's own stored choice overrides it after
+    // the first launch either way.
+    const startMinimized = readSettings(MOD_ID, SETTINGS).panelMinimized !== false;
 
-    try {
-        a.ui.overlays.register("global", OVERLAY_ID, () => ConfiguratorPanel());
-        console.log(`${LOG} overlays.register(global, ${OVERLAY_ID})`);
-    } catch (err) {
-        console.warn(`${LOG} overlays.register failed, trying inject`, err);
-        safe(() => a.ui.inject?.(OVERLAY_ID, ConfiguratorPanel));
+    // `inject` is the documented way to mount a component under a custom id, and
+    // it returns an unmount function — deliberately discarded. See the note on
+    // teardown below.
+    const dispose = safe(() =>
+        a.ui?.inject?.(OVERLAY_ID, (() => ConfiguratorPanel(startMinimized)) as never)
+    );
+    if (dispose) {
+        console.log(
+            `${LOG} ui.inject(${OVERLAY_ID}) — panel mounted, ${
+                startMinimized ? "minimized" : "open"
+            }`,
+        );
+        // The engine mounts overlays once the UI is live, so an early mount can
+        // land on nothing. A failed mount is silent, which makes a short retry
+        // cheaper than a panel that simply never appears.
+        const bump = () => safe(() => a.ui.overlays?.update?.("global"));
+        setTimeout(bump, 300);
+        setTimeout(bump, 1500);
+        try {
+            a.events?.on?.("game:ready", bump);
+        } catch { /* events unavailable — the retries above are the fallback */ }
+        return;
     }
 
-    const bump = () => {
-        safe(() => a.ui.overlays.update?.("global"));
-        safe(() => a.ui.overlays.update?.());
-    };
-    bump();
-    setTimeout(bump, 300);
-    setTimeout(bump, 1500);
-
+    // `inject` is not the only spelling: builds that predate it expose the overlay
+    // slot registry instead. Registering there is equivalent from the author's
+    // side — the render function always returns the panel, with no selection gate.
     try {
-        a.events.on("action:changed", bump);
-    } catch { /* */ }
-    try {
-        a.events.on("game:ready", bump);
-    } catch { /* */ }
-
-    toast(`${TOOL_NAME} ready — select the tool in the hotbar`);
-    console.log(`${LOG} tool + overlay registered (${ITEM_ID})`);
-}
-
-export function unregisterTool(): void {
-    try {
-        const a = getSandkit()?.api ?? api;
-        a?.ui?.overlays?.unregister?.("global", OVERLAY_ID);
-    } catch { /* */ }
+        safe(() => a.ui.overlays?.unregister?.("global", OVERLAY_ID));
+        a.ui.overlays.register(
+            "global",
+            OVERLAY_ID,
+            () => ConfiguratorPanel(startMinimized),
+        );
+        console.log(`${LOG} overlays.register(global, ${OVERLAY_ID}) — fallback mount`);
+        const bump = () => safe(() => a.ui.overlays?.update?.("global"));
+        bump();
+        setTimeout(bump, 300);
+        setTimeout(bump, 1500);
+        try {
+            a.events?.on?.("action:changed", bump);
+        } catch { /* events unavailable */ }
+    } catch (err) {
+        console.warn(`${LOG} panel mount failed — no ui.inject, no overlays.register`, err);
+        toast(`${TOOL_NAME}: could not open the panel — see console`);
+    }
 }

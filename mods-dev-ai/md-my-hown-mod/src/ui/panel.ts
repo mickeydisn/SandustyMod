@@ -63,8 +63,7 @@ import {
     savePanelState,
 } from "../config/store.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
-import { api, React as HostReact } from "../api.ts";
-import { isToolSelected } from "../select.ts";
+import { React as HostReact } from "../api.ts";
 import {
     autoGraphicsKey,
     CATEGORY_META,
@@ -155,12 +154,31 @@ function safeJson(text: string): unknown {
     }
 }
 
-/** External expand request (hotkey). Panel polls via useEffect. */
-let expandRequest = 0;
-export function forceExpandPanel(): void {
-    expandRequest += 1;
-    (globalThis as any).__mdMyHownPanelExpand = expandRequest;
-    console.log(`${LOG} forceExpandPanel #${expandRequest}`);
+/**
+ * Turn any value into a tab that has a screen behind it.
+ *
+ * Exported because the failure it prevents is invisible from the type system:
+ * `cat` is typed `Tab`, so `setCat(clickEvent)` type-checks at `any` and is
+ * caught by nothing until `CATEGORY_META[event].label` throws at render time.
+ *
+ * A value that is not a key logs loudly and falls back to Elements. The log is
+ * the important half — see the note at the call site for why a quiet fallback
+ * was worse than the crash it replaced.
+ */
+export function resolveCat(raw: unknown): Tab {
+    if (typeof raw === "string" && CATEGORY_META[raw as Tab]) return raw as Tab;
+    console.warn(
+        `${LOG} unknown category ${describeValue(raw)} — falling back to Elements`,
+    );
+    return "elements";
+}
+
+/** Name a bad value readably, without dumping a whole DOM event into the log. */
+function describeValue(v: unknown): string {
+    if (v === null) return "null";
+    if (typeof v !== "object") return String(v);
+    const name = (v as { constructor?: { name?: string } }).constructor?.name;
+    return name ? `<${name}>` : Object.prototype.toString.call(v);
 }
 
 type Mode = ViewMode;
@@ -237,20 +255,37 @@ function entriesOf(cfg: ModConfig, cat: Tab): Record<string, unknown>[] {
     return Array.isArray(arr) ? (arr as Record<string, unknown>[]) : [];
 }
 
+/**
+ * Build the panel component.
+ *
+ * `defaultMinimized` only applies to a *first* boot: `loadPanelState` falls back
+ * to it when nothing is stored yet, and uses the reader's own stored choice on
+ * every boot after that. So the setting decides where a fresh install starts,
+ * and never overrides someone who has already opened the panel.
+ */
 export function createPanelComponent(defaultMinimized = true) {
-    const React = HostReact ?? (api as { react?: typeof HostReact }).react;
+    // React lives at `sandkit.react`. `api.react` is NOT a thing — the engine
+    // exposes the host copy on the sandkit bag, not on the api namespace — so
+    // that fallback is dead code that only exists to hide a missing host. Kept
+    // out rather than left in as a trap: a second, wrong React would render the
+    // panel against a dispatcher the engine is not driving.
+    const React = HostReact;
     if (!React) {
         console.error(`${LOG} sandkit.react unavailable — panel disabled`);
         return () => null;
     }
-    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+    // `useEffect` is not destructured: the only effect this panel had was the
+    // Alt+M expand poll, which is gone. The selector's per-field state is held
+    // here as plain `useState` for the same reason React #310 does not apply to
+    // it — see the note on `selectorState`.
+    const { useState, useRef, useCallback, useMemo } = React;
     const h = React.createElement.bind(React) as (...args: unknown[]) => unknown;
 
     function Panel() {
         const [panel, setPanel] = useState<PanelState>(() => loadPanelState(defaultMinimized));
         const [cfg, setCfg] = useState<ModConfig>(() => loadConfig());
         const [groupKey, setGroupKey] = useState("content");
-        const [cat, setCat] = useState<Tab>("elements");
+        const [rawCat, setCat] = useState<Tab>("elements");
         const [mode, setMode] = useState<Mode>("list");
         const [form, setForm] = useState<Record<string, string>>({});
         const [editingId, setEditingId] = useState<string | null>(null);
@@ -361,6 +396,18 @@ export function createPanelComponent(defaultMinimized = true) {
         const suppressClick = useRef(false);
 
         const group = MENU_GROUPS.find((g) => g.key === groupKey) ?? MENU_GROUPS[0];
+        // `cat` is resolved defensively, because an unrecognised value used to
+        // take the whole panel down: `CATEGORY_META[bad].label` is a hard crash,
+        // and a crash on a save screen is far worse than landing somewhere
+        // unhelpful.
+        //
+        // It **warns** rather than falling back quietly. The silent version of
+        // this is actively harmful: when `onClick: startNew` leaked the click
+        // event in as the tab, the fallback turned a loud crash into a panel
+        // that confidently opened "New Element" on the Terrain screen. A wrong
+        // screen that looks right is harder to notice and harder to report than
+        // a red one, so a bad tab is logged every time it happens.
+        const cat = resolveCat(rawCat);
         const meta = CATEGORY_META[cat];
         // The tab the sub-nav is actually showing. An attached tab is still the
         // active `cat` while one of its entries is open, but it has no chip of its
@@ -376,28 +423,6 @@ export function createPanelComponent(defaultMinimized = true) {
             [mode, cat, form],
         );
         const errorCount = Object.keys(errors).length;
-
-        // Poll the external expand request (Alt+M / tool.ts).
-        useEffect(() => {
-            let last = 0;
-            const id = setInterval(() => {
-                const n = (globalThis as any).__mdMyHownPanelExpand | 0;
-                if (n && n !== last) {
-                    last = n;
-                    setPanel((p) => {
-                        const next = {
-                            ...p,
-                            minimized: false,
-                            x: Math.max(8, p.x || 24),
-                            y: Math.max(8, p.y || 80),
-                        };
-                        savePanelState(next);
-                        return next;
-                    });
-                }
-            }, 200);
-            return () => clearInterval(id);
-        }, []);
 
         /**
          * The "native" list under a reference field: what already exists, and by
@@ -1335,7 +1360,19 @@ export function createPanelComponent(defaultMinimized = true) {
                         { style: S.chipCount },
                         `${ownerCounts.get("own") ?? 0} in config`,
                     ),
-                    h("button", { style: S.btnPrimary, onClick: startNew }, "+ New"),
+                    // `() => startNew()`, never `onClick: startNew`. React calls a
+                    // handler with the click event, and `startNew`'s first
+                    // parameter is the tab — so passing it bare hands it the
+                    // event object, which then became `cat`. That is the bug
+                    // behind "New Terrain opens New Element": the event is not a
+                    // key in CATEGORY_META, so the tab resolved to the fallback
+                    // instead. Every handler here that takes an argument is
+                    // wrapped for this reason.
+                    h(
+                        "button",
+                        { style: S.btnPrimary, onClick: () => startNew() },
+                        "+ New",
+                    ),
                 ),
                 // The search box, on its own. It is a lookup over the rows rather
                 // than one of the filters, so it does not share a bar with them.
@@ -1797,22 +1834,43 @@ export function createPanelComponent(defaultMinimized = true) {
 }
 
 /**
- * Primary entry used by overlays.register("global", id, () => ConfiguratorPanel()).
  * The panel instance is created ONCE so hook order stays stable.
+ *
+ * The one React component for the whole session. It starts minimized, so the panel
+ * is present from the first frame as a chip in the corner — a configurator that is
+ * always there and never in the way, rather than one you have to equip something to
+ * summon. `panelMinimized` is the reader's own override for a fresh install.
  */
 let _panelInstance: (() => unknown) | null = null;
 
-function getPanelInstance(): () => unknown {
+function getPanelInstance(startMinimized: boolean): () => unknown {
     if (_panelInstance) return _panelInstance;
-    _panelInstance = createPanelComponent(false); // expanded when the tool is selected
+    _panelInstance = createPanelComponent(startMinimized);
     return _panelInstance;
 }
 
-export function ConfiguratorPanel(): unknown {
-    // word-statistic pattern: hide unless the tool is the active hotbar item
-    if (!isToolSelected()) return null;
-
-    const React = HostReact ?? (api as { react?: typeof HostReact }).react;
+/**
+ * The mounted component, handed to `api.ui.inject` (see `../tool.ts`).
+ *
+ * Always renders. It used to return `null` unless the tool item was the active
+ * hotbar selection, which meant the panel's existence depended on game state the
+ * author had to set up before they could edit anything. A click on the chip
+ * expands it; the "–" button puts it back.
+ *
+ * `startMinimized` is only a *fresh install* default — see `createPanelComponent`.
+ * A reader who has already opened the panel gets their stored choice back.
+ *
+ * **Why this returns an element and does not call `Panel()` itself.** `return
+ * Panel()` used to be here, and it works — but it runs `Panel`'s ~20 hooks
+ * against *this* component's fiber rather than a fiber of its own. That is a real
+ * fragility, and it is not what caused the crash that sent us looking (that was
+ * a click event being passed as a tab — see the note on the `+ New` button).
+ * Mounting `Panel` as an element gives it its own fiber, so its hooks are its own
+ * business and a failed render cannot desync the next one. The error chip below
+ * is for the case where mounting itself fails.
+ */
+export function ConfiguratorPanel(startMinimized = true): unknown {
+    const React = HostReact;
     if (!React?.createElement) {
         console.error(`${LOG} ConfiguratorPanel: no react`);
         return null;
@@ -1820,11 +1878,10 @@ export function ConfiguratorPanel(): unknown {
     const h = React.createElement.bind(React);
 
     try {
-        const Panel = getPanelInstance();
-        const tree = Panel();
-        if (tree != null) return tree;
+        const Panel = getPanelInstance(startMinimized);
+        return h(Panel as never, {});
     } catch (e) {
-        console.error(`${LOG} ConfiguratorPanel render failed`, e);
+        console.error(`${LOG} ConfiguratorPanel mount failed`, e);
     }
 
     return h(
@@ -1835,19 +1892,15 @@ export function ConfiguratorPanel(): unknown {
                 right: 16,
                 bottom: 16,
                 zIndex: 100000,
-                background: "rgba(20,40,90,0.95)",
-                color: "#e8f0ff",
-                border: "1px solid rgba(120,170,255,0.8)",
+                background: "rgba(120,30,30,0.95)",
+                color: "#ffe8e8",
+                border: "1px solid rgba(255,140,140,0.8)",
                 borderRadius: "10px",
                 padding: "10px 14px",
                 font: "13px/1.4 system-ui,sans-serif",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
                 pointerEvents: "auto",
             },
-            onClick: () => forceExpandPanel(),
         },
-        // Click-only: the minimised chip is the single way back in. There is no
-        // Alt+M binding — do not advertise one until one is actually wired up.
-        "My Own Mod — click to open",
+        `${LOG} panel failed to mount — see console`,
     );
 }

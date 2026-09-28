@@ -43,6 +43,66 @@ Deno.test("the overlay cannot be pushed off-screen", () => {
     assertEquals(overlayBox.maxHeight, "100vh");
 });
 
+// ── the panel is always there: no hotbar item gates it ────────────────────────
+
+Deno.test("the panel no longer hides behind a hotbar selection", () => {
+    // The old contract was `isToolSelected() ? panel : null` — the configurator
+    // existed only while a tool item was the active hotbar selection, which meant
+    // an author who picked anything else had no way back to it. Asserted against
+    // the source because the gate was a single expression at the top of the
+    // render function, and there is no DOM here to mount.
+    assert(
+        !panel.includes("isToolSelected"),
+        "the panel is gated on a hotbar selection again",
+    );
+    // And the file it read is gone entirely, rather than left behind unused.
+    assert(
+        !panel.includes('from "../select.ts"'),
+        "panel.ts still imports the selection gate",
+    );
+});
+
+Deno.test("the panel renders unconditionally", () => {
+    // `ConfiguratorPanel` has two legitimate `return null` paths: no React at all,
+    // which is a broken host rather than a gate. What must not exist is a *third*
+    // one that decides whether to show the panel from game state.
+    const body = panel.slice(panel.indexOf("export function ConfiguratorPanel"));
+    const early = body.slice(0, body.indexOf("getPanelInstance("));
+    const gates = early.match(/return null/g)?.length ?? 0;
+    assertEquals(
+        gates,
+        1,
+        "ConfiguratorPanel has a return null beyond the missing-React guard",
+    );
+    // And the only branch left before the mount is the React availability check.
+    assert(
+        /!React\?\.createElement/.test(early),
+        "the early return is no longer the missing-React guard",
+    );
+});
+
+Deno.test("the panel starts minimized", () => {
+    // A fresh install must land on the chip, not a 90vw overlay covering the
+    // game. `createPanelComponent`'s parameter is the fallback `loadPanelState`
+    // uses when nothing is stored, and its default is what a caller that passes
+    // nothing gets.
+    assert(
+        /export function createPanelComponent\(defaultMinimized = true\)/.test(panel),
+        "the default is no longer 'start minimized'",
+    );
+});
+
+Deno.test("no Alt+M expand hook is left polling", () => {
+    // A 200ms interval watching a global for an external "open it" request that
+    // nothing sets any more. It is a timer that runs for the whole session to
+    // serve a keybinding that was never wired up.
+    assert(
+        !panel.includes("__mdMyHownPanelExpand"),
+        "the expand-request poll is back",
+    );
+    assert(!panel.includes("forceExpandPanel"), "forceExpandPanel is back");
+});
+
 Deno.test("the open panel ignores the stored drag position", () => {
     // Otherwise reopening the panel would restore it to wherever the chip was
     // last parked, which is the exact opposite of an overlay.

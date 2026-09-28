@@ -6,7 +6,7 @@
     "apiVersion": 1,
     "entry": "main.js",
     "author": "MickeyDisn",
-    "description": "In-game configurator to define and register custom elements, structures, items, recipes and processing via JSON config stored in the game. Movable minimizable panel (minimized by default).",
+    "description": "In-game configurator to define and register custom elements, structures, items, recipes and processing via JSON config stored in the game. Always-on panel, open via its corner chip. No hotbar item required.",
     "dependencies": [],
     "loadOrder": 0,
     "configSchema": {
@@ -14,13 +14,13 @@
             "type": "boolean",
             "default": true,
             "label": "Enabled",
-            "description": "Master switch. When off, the mod prunes stale buildings/items, removes its orphaned placed objects and wipes its own storage."
+            "description": "Master switch. When off, the mod prunes stale buildings/items, removes its orphaned placed objects and wipes its own storage. Takes effect on the next reload."
         },
         "panelMinimized": {
             "type": "boolean",
-            "default": false,
-            "label": "Panel minimized by default",
-            "description": "Start the config panel minimized. No item is required to open it."
+            "default": true,
+            "label": "Panel minimized on first launch",
+            "description": "Where a fresh install starts: minimized to a corner chip (true) or wide open (false). Once you open or close the panel yourself, your own choice is remembered and this setting stops applying."
         }
     }
 }
