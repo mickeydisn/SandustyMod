@@ -118,17 +118,21 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
         //
         //     That makes the family the first real test of whether the probe is honest
         //     about a *uniform* outcome, and it is: 18/18, no stragglers. Compare
-        //     `self-sufficient`, which sat at 14 through three families because it is a
+        //     `self-sufficient`, which sat at 14 through four families because it is a
         //     claim about reaching for nothing and the original stub actions never grew
         //     out of it.
         //
-        //     `api` is now 38 of 69. Worth naming plainly: the class axis has stopped
-        //     being a useful discriminator and has become a census of "calls the
-        //     engine". The two families that *do* discriminate are the split by
-        //     **write path** (batched vs per-cell, in `scope.ts` and the module docs) and
-        //     the split by **effect** (`ACTION_EFFECTS`). If this table is ever
-        //     simplified, that is the finding that justifies it.
-        api: 38,
+        //     Then the terrain family added eleven more, all `api` again and with the same
+        //     uniformity for the same reason: `api.terrains` is a namespace the processing
+        //     context does not reach into, so nothing in it could have measured otherwise.
+        //
+        //     `api` is now 49 of 80. Worth naming plainly: the class axis has stopped being
+        //     a useful discriminator and has become a census of "calls the engine". The
+        //     axes that *do* separate the four cell families are the **write path**
+        //     (batched vs per-cell) and the **namespace** (`ACTION_APIS`, where terrain is
+        //     the only family spanning two). If this table is ever simplified, that is the
+        //     finding that would justify it.
+        api: 49,
         "context-bound": 7,
         "self-sufficient": 14,
         pure: 10,
@@ -166,7 +170,7 @@ Deno.test("only `api` satisfies the rule, and the rest are the work to do", () =
     // the three families are the **write path** (batched vs per-cell) and the **effect**
     // (`ACTION_EFFECTS`), both of which the module docs carry. If this table is ever
     // simplified, that is the finding that would justify it.
-    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 38);
+    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 49);
     assertEquals(offRuleActions().length, 31);
     const off = offRuleActions();
     assertEquals(

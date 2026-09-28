@@ -638,6 +638,126 @@ const STRUCTURE_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     },
 ];
 
+/**
+ * The terrain family, after the structure entries and for the sharpest reason of the four:
+ * terrain shares the element family's write path, so `type: "cell"` and `scope: "cell"` put
+ * it beside the other three while the **writer** is what actually separates it. A panel
+ * author choosing between these needs to know which writes are one batch; that lives in the
+ * action's doc string ("One atomic batch" / "Per-cell") and the module header's table,
+ * because the registry's `params` have nowhere to record it.
+ */
+const TERRAIN_REF_PARAMS: HandlerParam[] = [
+    p("terrain", "Terrain", "text", {
+        required: true,
+        hint: "the terrain id, or a handle from Terrain type",
+    }),
+];
+
+const TERRAIN_SHAPE_PARAMS: HandlerParam[] = [
+    ...TERRAIN_REF_PARAMS,
+    p("skipShadow", "Skip shadow", "bool", {
+        def: "false",
+        hint: "no shadow update around the changed cell",
+    }),
+];
+
+const TERRAIN_ENTRIES: Omit<HandlerMeta, "cls">[] = [
+    {
+        key: "terrainType",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "hasTerrain",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "isTerrainType",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...TERRAIN_REF_PARAMS, ...REGION_PARAMS],
+    },
+    {
+        key: "terrainHitPoints",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "terrainTypeHandle",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "countTerrain",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
+    },
+    {
+        key: "createTerrain",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...TERRAIN_SHAPE_PARAMS, ...REGION_PARAMS],
+    },
+    {
+        key: "replaceTerrain",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...TERRAIN_SHAPE_PARAMS, ...REGION_PARAMS],
+    },
+    {
+        key: "removeTerrain",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("skipShadow", "Skip shadow", "bool", {
+                def: "false",
+                hint: "no shadow update around the changed cell",
+            }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "damageTerrain",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("damage", "Damage", "number", { def: "1", min: 1, hint: "hit points to remove" }),
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        key: "setTerrainHitPoints",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("hitPoints", "Hit points", "number", {
+                def: "0",
+                int: true,
+                min: 0,
+                hint: "the health to set. 0 destroys the terrain.",
+            }),
+            ...REGION_PARAMS,
+        ],
+    },
+];
+
 const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     // ── global ───────────────────────────────────────────────────────────────
     { key: "noop", type: "global", slots: [...ALL_SLOTS], scope: "global", params: [] },
@@ -989,6 +1109,12 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     // scope in `action-class.ts` / `scope.ts` say so. The registry records what the panel
     // needs; those two tables record what the action actually does.
     ...STRUCTURE_ENTRIES,
+    // The terrain family, last of the four: it sits closest to the element family because
+    // it shares its write path. `type: "cell"` and `scope: "cell"` are common to all four,
+    // but the *dependency* is three-way — element reads the context, terrain and structure
+    // do not, and terrain alone batches. The measured class and scope in `action-class.ts`
+    // / `scope.ts` say so; the registry records only what the panel needs to render.
+    ...TERRAIN_ENTRIES,
 ];
 
 export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => ({

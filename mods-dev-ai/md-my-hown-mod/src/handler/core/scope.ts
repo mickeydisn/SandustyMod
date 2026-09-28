@@ -201,6 +201,30 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     // list and addresses nothing.
     mapSpritesheetValue: [],
 
+    // The terrain family, and the first family to be **all `["pos"]` with no `cell` at
+    // all** — the same conclusion the structure family reached, for the same reason. A
+    // `cell` need means "reads a cell", and the only terrain action that comes close is
+    // `terrainHitPoints`, which asks `api.terrains.getDataAtCell` rather than the
+    // processing context. The terrain family never touches `ctx` at all, so `cell` would
+    // claim a dependency it does not have.
+    //
+    // And all eleven address a region, so none of them is `[]` either — including
+    // `terrainTypeHandle`, which is a second read of the same cell rather than an
+    // instance-level one. Unlike the structure family, terrain has **no** instance-taking
+    // action: every function in the namespace is coordinate-based, so there is nothing
+    // that would measure `[]`.
+    terrainType: ["pos"],
+    hasTerrain: ["pos"],
+    isTerrainType: ["pos"],
+    terrainHitPoints: ["pos"],
+    terrainTypeHandle: ["pos"],
+    countTerrain: ["pos"],
+    createTerrain: ["pos"],
+    replaceTerrain: ["pos"],
+    removeTerrain: ["pos"],
+    damageTerrain: ["pos"],
+    setTerrainHitPoints: ["pos"],
+
     // needs nothing — presets, factories, logs and the option-only actions
     noop: [],
     processorNoop: [],

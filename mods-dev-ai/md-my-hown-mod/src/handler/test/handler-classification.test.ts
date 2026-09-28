@@ -78,6 +78,20 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     setSpritesheetByValue: ["processing"],
     setStructureData: ["processing"],
     pushStructure: ["processing"],
+    // The terrain family: eleven actions, `processing` slot only, for the same reason as
+    // the other three cell families — a processor tick is the only call site that hands
+    // over a position and expects the world to change.
+    terrainType: ["processing"],
+    hasTerrain: ["processing"],
+    isTerrainType: ["processing"],
+    terrainHitPoints: ["processing"],
+    terrainTypeHandle: ["processing"],
+    countTerrain: ["processing"],
+    createTerrain: ["processing"],
+    replaceTerrain: ["processing"],
+    removeTerrain: ["processing"],
+    damageTerrain: ["processing"],
+    setTerrainHitPoints: ["processing"],
     noop: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
     itemDefault: ["itemAction"],
     processorNoop: ["processing"],
@@ -205,6 +219,27 @@ Deno.test("the action catalogue's API binding, measured", () => {
         setSpritesheetByValue: "structures",
         setStructureData: "structures",
         pushStructure: "structures",
+        // The terrain family, and the first family whose members **disagree** about which
+        // namespace they reach. Eight record `terrains`; the three batched writes record
+        // `grid`, because `api.grid.mutate` and its `terrains` writer is what they call —
+        // `api.terrains.createAtCell` exists and is not what they use.
+        //
+        // That disagreement is the point. It proves the map is read from what an action
+        // really touches rather than from which folder it lives in, and it is why the fake
+        // below must carry **both** namespaces: a family recorded entirely as `terrains`
+        // would have let those three reach `grid` unrecorded, and the namespace set would
+        // have quietly lost `grid`.
+        terrainType: "terrains",
+        hasTerrain: "terrains",
+        isTerrainType: "terrains",
+        terrainHitPoints: "terrains",
+        terrainTypeHandle: "terrains",
+        countTerrain: "terrains",
+        createTerrain: "grid",
+        replaceTerrain: "grid",
+        removeTerrain: "grid",
+        damageTerrain: "terrains",
+        setTerrainHitPoints: "terrains",
     };
     const touched = new Set<string>();
     const fake: Record<string, unknown> = {};
@@ -223,6 +258,11 @@ Deno.test("the action catalogue's API binding, measured", () => {
             // and a missing namespace would be recorded as a read too — which would make
             // this test pass for the wrong reason. It has to be a real namespace here.
             "structures",
+            // Same for the terrain family, and the same reasoning. `grid` was already
+            // above, so the three batched writes are already covered — but the other eight
+            // reach a namespace nothing had reached before, and without it the proxy would
+            // be read as an undeclared property and this test would still pass.
+            "terrains",
         ]
     ) {
         // A proxy that records the namespace on any property read, so an action
@@ -292,8 +332,8 @@ Deno.test("the action catalogue's API binding, measured", () => {
     // The two figures measure different things and are easy to confuse: this is a count
     // of **actions** in `API_CALLING`, not of namespaces. The unique namespaces behind it
     // went 8 -> 9, which is the assertion just above.
-    assertEquals(Object.keys(API_CALLING).length, 27);
-    assertEquals(Object.keys(IMPLEMENTED).length, 69);
+    assertEquals(Object.keys(API_CALLING).length, 38);
+    assertEquals(Object.keys(IMPLEMENTED).length, 80);
 });
 
 Deno.test("`type` measures neither axis — that is why the split is real", () => {
@@ -451,6 +491,21 @@ const CONTEXT_READABLE = [
     "setSpritesheetByValue",
     "setStructureData",
     "pushStructure",
+    // The terrain family, all eleven — and like the structure family this list is
+    // **exhaustive**, not curated. Every one of these returns something: the reads their
+    // value, and the three batched writes return whether cells were *queued* (a weaker
+    // claim, since `api.grid.mutate` is `void`, but still a value the compiler can carry).
+    "terrainType",
+    "hasTerrain",
+    "isTerrainType",
+    "terrainHitPoints",
+    "terrainTypeHandle",
+    "countTerrain",
+    "createTerrain",
+    "replaceTerrain",
+    "removeTerrain",
+    "damageTerrain",
+    "setTerrainHitPoints",
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

@@ -207,7 +207,74 @@ and records what it touches. It is what placed the motion family in `api` rather
 away from `ctx.commit` — leaving the three element *reads*, which still use the context
 and never touched a namespace, as the only remaining `context-bound` element actions.
 
-### Three families, two write paths, and one that has neither
+### Four families, three write paths
+
+| | element | motion | structure | **terrain** |
+| --- | --- | --- | --- | --- |
+| write path | `api.grid.mutate` | `api.elements.*` | `api.structures.*` | **split — see below** |
+| atomic over a region | **yes** | **no** | **no** | **3 of 5 writes** |
+| reads coherent with writes | **yes** | **no** | **no** | **inside a batch only** |
+| create options | `ElementCreateOptions` | none | none | `skipShadow` only |
+| measured class | `api` (4) / `context-bound` (3) | `api` | `api` (18) | **`api` (11)** |
+| measured scope | `["pos", "cell"]` | `["pos"]` | `["pos"]`, three `[]` | `["pos"]` (11) |
+| namespace | `grid` | `elements` | `structures` | **`grid` + `terrains`** |
+| reads the context? | 3 of 7 | no | no | **no** |
+| actions | 7 | 7 | 18 | **11** |
+
+Terrain is the **only family with a split verdict**, and the split is the point rather than
+a defect. `GridMutationWriter` has `elements` *and* `terrains` (`grid.d.ts:146-152`), and
+the terrain half has exactly three methods — `createAtCell`, `replaceAtCell`, `removeAtCell`
+(`grid.d.ts:193-221`). So the three **shape-changing** writes are one coherent batch, with
+the read that decided them inside the same callback.
+
+The other two cannot. `damageAtCell` and `setHitPointsAtCell` change state, not shape, and
+there is no writer method for either — so they are one call per cell and a sweep can
+half-apply. "Terrain writes are atomic" would be a lie for two of the five, and a program
+that assumed it would half-apply a damage sweep and never find out. Every action's doc
+string says which path it uses: **"One atomic batch"** or **"Per-cell"**.
+
+Terrain is also the only family reaching **two namespaces**, which is what
+`ACTION_APIS` records and what the API-probe test's fake has to carry. A family recorded
+entirely as `terrains` would have let the three batched writes reach `grid` unrecorded and
+the namespace set would have quietly lost `grid`.
+
+### `meltAtCell` is documented and does not exist
+
+`api.terrains.md` lists `meltAtCell(cx, cy)` in its availability table. It is in no
+`.d.ts`, in neither the `sandkit` facade nor the `shared` layer, and a grep over the whole
+engine package finds zero occurrences.
+
+So it is **not** an action, and that is a deliberate refusal. An action for it would
+compile, register, appear in the panel, and then call `undefined` — the failure the
+motion-family comment already names as "the worst kind of bug: it compiles, it commits, it
+returns `true`, and nothing happens." The documentation is wrong; the code is not.
+
+### Terrain has `getIdByType`; structures do not
+
+`getTypeAtCell` returns a number. Terrains have `getIdByType`
+(`shared/api/terrains.d.ts:68`), so `terrainType` returns a real id an author can type.
+Structures have no such function, which is why `structureType` returns a raw handle and
+`isStructureType` needs a numeric retry.
+
+The one asymmetry worth naming: a **bind is a string**, so a terrain handle that round-trips
+through `as` arrives back as `"42"` while the engine still holds `42`. Both families retry a
+**digit-only** reference as a number, narrow on purpose — `"planterBox2"` is more likely an
+id than a handle, and coercing it would turn a real id into a false match.
+
+### What is deliberately not an action
+
+- **Registration** — `register`, `updateDefinition`. Mod-init and Main-only.
+- **Type-level** — `getDefinitionByType`, `getTypeById`, `getTypeFromId`.
+- **`isCellIdTerrain(cellId)`** — takes a *packed cell id*, not coordinates, so it is
+  outside the brief's rule and the panel has no way to produce one. It is the one function
+  here that would qualify by subject and not by signature.
+- **The `*WhenIdle` aliases** — `createAtCellWhenIdle`, `replaceAtCellWhenIdle`,
+  `removeAtCellWhenIdle`, `setHpAtCellWhenIdle`. Deprecated aliases of the deferred main
+  path; each has a current form in the family.
+- **Deprecated `setHpAtCell`** and the `hp` field on `TerrainDataAtCell` — read only as a
+  fallback, never preferred over `hitPoints`.
+
+### A timed spawn is atomic; a set-then-time is not
 
 | | element | motion | **structure** |
 | --- | --- | --- | --- |

@@ -58,6 +58,9 @@ import { motionActions } from "./motion/index.ts";
 // resolver and `targets` for the same reason motion does — "the cell above me" is one
 // meaning across all three, not three that happen to agree.
 import { structureActions } from "./structure/index.ts";
+// The terrain family: the solid world under the elements. The only one of the four with
+// an `api.grid.mutate` writer of its own, so half of it is atomic — see the module header.
+import { terrainActions } from "./terrain/index.ts";
 
 /** One role folder's export, with the signature its actions share. */
 interface Folder {
@@ -91,6 +94,12 @@ const FOLDERS: readonly Folder[] = [
     // actions ask about and drive *buildings*, which is the outermost layer — a program
     // places a machine before it fills it, and the picker should read in that order.
     { signature: "processing", defs: structureActions },
+    // After the element family and for the sharpest reason of the four: terrain shares the
+    // element family's write path, so putting it last would make the picker suggest a
+    // non-atomic family as a sibling of an atomic one with no hint which is which. The
+    // action's own doc string says "One atomic batch" or "Per-cell" — that is the cue, and
+    // it is the only one that matters when choosing between these.
+    { signature: "processing", defs: terrainActions },
     { signature: "payload", defs: rememberActions },
     { signature: "processing", defs: processingRememberActions },
     { signature: "payload", defs: feelActions },

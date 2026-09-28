@@ -111,6 +111,31 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     setStructureData: "api",
     pushStructure: "api",
 
+    // ── The terrain family (11) ────────────────────────────────────────────────
+    //
+    // The only family with a **split** verdict, and the split is the interesting part.
+    // Three actions go through `api.grid.mutate`'s terrain writer, five reach
+    // `api.terrains.*` directly, and `countTerrain` is a region scan over `isAtCell` that
+    // reaches the namespace N times.
+    //
+    // All eleven measure `api`, so the class does not see the split. What sees it is
+    // `ACTION_EFFECTS` and the module header's table — and that is the finding worth
+    // recording: **the class axis cannot express atomicity**, the single most consequential
+    // property of the four families. The element family has the same shape (its writes are
+    // batched, its reads are not) and the same blind spot. If this table is ever revised,
+    // "what is the write path" is the axis it is missing.
+    terrainType: "api",
+    hasTerrain: "api",
+    isTerrainType: "api",
+    terrainHitPoints: "api",
+    terrainTypeHandle: "api",
+    countTerrain: "api",
+    createTerrain: "api",
+    replaceTerrain: "api",
+    removeTerrain: "api",
+    damageTerrain: "api",
+    setTerrainHitPoints: "api",
+
     // ── self-sufficient (10) ──────────────────────────────────────────────────
     structureInspect: "self-sufficient",
     structureReadData: "self-sufficient",
@@ -375,6 +400,26 @@ export const ACTION_APIS: Record<string, string> = {
     // Added with `feel/`. Both are api-bound, measured.
     toast: "ui",
     particles: "effects",
+
+    // The terrain family: the only family reaching **two** namespaces, and a table with one
+    // value per action forces the split to resolve here.
+    //
+    // The three batched writes go to `grid`, because that is where `api.grid.mutate` and its
+    // `terrains` writer live — `api.terrains.createAtCell` exists and is **not** what they
+    // call. The other eight go to `terrains`. Getting this right is what keeps the
+    // API-probe test honest: it records the namespace an action actually reaches, and for
+    // those three that is `grid`.
+    terrainType: "terrains",
+    hasTerrain: "terrains",
+    isTerrainType: "terrains",
+    terrainHitPoints: "terrains",
+    terrainTypeHandle: "terrains",
+    countTerrain: "terrains",
+    createTerrain: "grid",
+    replaceTerrain: "grid",
+    removeTerrain: "grid",
+    damageTerrain: "terrains",
+    setTerrainHitPoints: "terrains",
 };
 
 /** The full call path, for documentation and "copy snippet". */
@@ -512,6 +557,28 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     setStructureData: "api",
     pushStructure: "api",
 
+    // The terrain family, and the one place the two write paths would be told apart if this
+    // axis could express them. `commits` means `ctx.commit(...)`; terrain never touches
+    // `ctx`, so none of these can be `commits` — the three batched writes call
+    // `api.grid.mutate` and the other eight call `api.terrains.*`. All eleven are `api`.
+    //
+    // That is the honest answer and also the least informative: a `true` from
+    // `createTerrain` means "one batch was submitted" and from `damageTerrain` means
+    // "sixteen calls were made", and this axis cannot tell those apart. The distinction a
+    // program author actually needs is the one no table here records — see the split table
+    // in the terrain module header.
+    terrainType: "api",
+    hasTerrain: "api",
+    isTerrainType: "api",
+    terrainHitPoints: "api",
+    terrainTypeHandle: "api",
+    countTerrain: "api",
+    createTerrain: "api",
+    replaceTerrain: "api",
+    removeTerrain: "api",
+    damageTerrain: "api",
+    setTerrainHitPoints: "api",
+
     // api — the actions that reach the engine
     energyGenerateWhileHeld: "api",
     energyConsumePerRun: "api",
@@ -615,6 +682,18 @@ export type ActionDomain =
     | "projectiles"
     | "excavation"
     | "structure"
+    /**
+     * Added with the terrain family, and the first domain named after a **namespace**
+     * rather than a kind of thing. Every other entry describes a role — energy, items,
+     * projectiles — while `terrain` describes a subject, because the solid world is a
+     * subject rather than a role: nothing else in the catalogue is *about* rock.
+     *
+     * The alternative was folding it into `grid`, where the element family already sits,
+     * and that was rejected deliberately: two families sharing a domain would make the
+     * panel's domain filter answer "does this touch the world" for both, which is the one
+     * question it exists to stop asking.
+     */
+    | "terrain"
     | "diagnostics"
     /** Added with `feel/`: the player sees it, the simulation does not change. */
     | "feedback";
@@ -627,6 +706,8 @@ export const ACTION_DOMAIN_LABELS: Record<ActionDomain, string> = {
     projectiles: "Projectiles",
     excavation: "Excavation",
     structure: "Structures",
+    /** Added with the terrain family: the solid world, which no other domain was about. */
+    terrain: "Terrain",
     diagnostics: "Diagnostics",
     /** Added with `feel/`. The player sees it; nothing in the sim changes. */
     feedback: "Feedback",
@@ -640,6 +721,7 @@ export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
     projectiles: "Spawn-time options for a projectile.",
     excavation: "Dig behaviour for a tool.",
     structure: "Placed structures: the buildings themselves.",
+    terrain: "The solid world: dirt, stone, ice — and their hit points.",
     diagnostics: "Logging and no-ops — wiring tests, not behaviour.",
     feedback: "Something the player sees or hears. Changes no stored state.",
 };
@@ -728,6 +810,24 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     setSpritesheetByValue: "structure",
     setStructureData: "structure",
     pushStructure: "structure",
+
+    // The terrain family. One domain like the other three cell families, and the reason is
+    // the same: the domain axis is about *what kind of thing* an action touches, and
+    // terrain is the world, not a player's inventory or a diagnostic. It is recorded here
+    // rather than folded into `grid` because the element family already owns `grid`, and
+    // two families sharing a domain would make the panel's filter useless for the one
+    // question it exists to answer.
+    terrainType: "terrain",
+    hasTerrain: "terrain",
+    isTerrainType: "terrain",
+    terrainHitPoints: "terrain",
+    terrainTypeHandle: "terrain",
+    countTerrain: "terrain",
+    createTerrain: "terrain",
+    replaceTerrain: "terrain",
+    removeTerrain: "terrain",
+    damageTerrain: "terrain",
+    setTerrainHitPoints: "terrain",
 
     // diagnostics
     noop: "diagnostics",

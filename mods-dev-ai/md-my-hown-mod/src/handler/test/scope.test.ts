@@ -237,7 +237,13 @@ Deno.test("the effect vocabulary is closed and fully labelled", () => {
         assert(ACTION_DOMAIN_BLURBS[d], `domain "${d}" has no blurb`);
     }
     assertEquals(used.size, 6, "six effects, all of them reachable");
-    assertEquals(Object.keys(ACTION_DOMAIN_LABELS).length, 9, "nine domains");
+    // 9 → 10, and the new one is the only domain named after a **namespace** rather than
+    // a role. Every other entry answers "what kind of action is this" (energy, items,
+    // projectiles); `terrain` answers "what is this about", because the solid world is a
+    // subject and nothing else in the catalogue is about rock. Folding it into `grid`
+    // would have kept the count at 9 and made the panel's domain filter unable to separate
+    // a wall from a grain of sand — which is the one question a domain filter is for.
+    assertEquals(Object.keys(ACTION_DOMAIN_LABELS).length, 10, "ten domains");
 });
 
 Deno.test("only actions that change the grid are filed as committing", () => {
