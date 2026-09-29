@@ -16,10 +16,10 @@ cd ~/Library/Application\ Support/Steam/steamapps/common/Sandustry
 ./Sandustry.app/Contents/MacOS/Sandustry --remote-debugging-port=9222
 
 # 2. in another terminal — stream every console line
-node doc/steam/sandkit-cdp.mjs log 60000
+node tools/sandkit-cdp.mjs log 60000
 
 # 3. or evaluate an expression inside the game
-node doc/steam/sandkit-cdp.mjs eval 'document.title'
+node tools/sandkit-cdp.mjs eval 'document.title'
 ```
 
 ---
@@ -143,16 +143,16 @@ evaluate expressions and stream `console.*` output to a terminal or a file.
 
 ```bash
 # stream the console for 60s
-node doc/steam/sandkit-cdp.mjs log 60000
+node tools/sandkit-cdp.mjs log 60000
 
 # evaluate an expression, print the result
-node doc/steam/sandkit-cdp.mjs eval 'Object.keys(window).length'
+node tools/sandkit-cdp.mjs eval 'Object.keys(window).length'
 
 # evaluate a whole file
-node doc/steam/sandkit-cdp.mjs file ./scratch.js
+node tools/sandkit-cdp.mjs file ./scratch.js
 
 # reload the page (does NOT reload mods — see the caching warning)
-node doc/steam/sandkit-cdp.mjs reload
+node tools/sandkit-cdp.mjs reload
 ```
 
 Environment variables:
@@ -174,7 +174,7 @@ Mods log during startup, long before you can attach. `Runtime.enable` does
 
 ```bash
 # terminal 1 — attaches as soon as the port opens
-CDP_WAIT_MS=120000 node doc/steam/sandkit-cdp.mjs log 120000 > /tmp/game.log 2>&1 &
+CDP_WAIT_MS=120000 node tools/sandkit-cdp.mjs log 120000 > /tmp/game.log 2>&1 &
 
 # terminal 2 — launch a moment later
 cd ~/Library/Application\ Support/Steam/steamapps/common/Sandustry
@@ -232,7 +232,7 @@ function dumpApiSurface(): void {
 ```bash
 deno task build
 # restart the app (mandatory — section 2)
-CDP_WAIT_MS=120000 node doc/steam/sandkit-cdp.mjs log 120000 | grep PROBE
+CDP_WAIT_MS=120000 node tools/sandkit-cdp.mjs log 120000 | grep PROBE
 ```
 
 > Remember to delete the probe and rebuild before committing.
@@ -285,7 +285,7 @@ Two terminals make it comfortable:
 
 ```bash
 # terminal 1 — never stops streaming
-cd doc/steam && CDP_WAIT_MS=600000 node sandkit-cdp.mjs log 600000 | grep --line-buffered 'my-mod'
+cd tools && CDP_WAIT_MS=600000 node sandkit-cdp.mjs log 600000 | grep --line-buffered 'my-mod'
 
 # terminal 2 — the edit/build/restart cycle
 cd mods-dev/my-mod && deno task check && deno task build
@@ -372,9 +372,9 @@ sandkit.state.shared.sim;       // SharedArrayBuffer views (hot per-cell data)
 
 | Path                                             | What                                                     |
 | ------------------------------------------------ | -------------------------------------------------------- |
-| `doc/steam/RUN_AND_TEST.md`                       | this file                                                 |
-| `doc/steam/STATE_TREE.md`                         | tree of `sandkit.state`, captured from a live game       |
-| `doc/steam/sandkit-cdp.mjs`                       | CDP client used throughout                               |
+| `tools/RUN_AND_TEST.md`                       | this file                                                 |
+| `tools/STATE_TREE.md`                         | tree of `sandkit.state`, captured from a live game       |
+| `tools/sandkit-cdp.mjs`                       | CDP client used throughout                               |
 | `doc/doc-tech/`                                   | engine internals, hooks vs events, threading             |
 | `doc/doc-artifacts/doc.api/`                      | generated API reference                                  |
 | `__pakages/__other/sandkit/src/sandkit/api/*.d.ts` | shipped typings for `sandkit.api`                       |

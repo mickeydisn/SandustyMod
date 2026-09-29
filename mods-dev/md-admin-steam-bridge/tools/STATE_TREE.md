@@ -15,7 +15,7 @@ to a running Sandustry game.
 **How this was captured** — see [`RUN_AND_TEST.md`](./RUN_AND_TEST.md) §3–4:
 
 1. the game was launched with `--remote-debugging-port=9333`,
-2. `node doc/steam/sandkit-cdp.mjs log` was attached **before** boot,
+2. `node tools/sandkit-cdp.mjs log` was attached **before** boot,
 3. a temporary probe inside `md-admin-clean` walked `sandkit.state` and logged
    it between `STATE-TREE-BEGIN` / `STATE-TREE-END` markers.
 
@@ -378,7 +378,7 @@ To re-verify after a patch:
 2. wrap the output in `STATE-TREE-BEGIN` / `STATE-TREE-END` markers so it can be
    extracted from the console stream;
 3. `deno task build`, **fully restart the game**, then
-   `CDP_WAIT_MS=120000 node doc/steam/sandkit-cdp.mjs log 120000`;
+   `CDP_WAIT_MS=120000 node tools/sandkit-cdp.mjs log 120000`;
 4. `awk '/STATE-TREE-BEGIN/,/STATE-TREE-END/' capture.log`;
 5. delete the probe and rebuild.
 

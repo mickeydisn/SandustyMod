@@ -352,32 +352,38 @@ This is a **harness limitation, not a mod defect**:
 directly earlier (4 sand cells written via `writer.createAtCell` and read back),
 but not *driven by a placed structure's processor*.
 
-### Re-tested against the real `ai-word` save — still unproven, for a new reason
+### Re-tested against the real `ai-word` save — still unproven
 
-With the remote tooling (below) in place, the same sequence was re-run in the
-**actual `ai-word` save**, loaded via `db_load` rather than `api.game.start({})`.
-That world is 3840×3840, the player is at cell (1995, 1915), and terrain exists
-only around x≈2280–2330 (ground y≈1956) and x≈2600 (y≈2080).
+The same sequence was re-run in the **actual `ai-word` save**, loaded through the
+game's own `?db_load=` route rather than `api.game.start({})`. That world is
+3840×3840, the player is at cell (1995, 1915), and terrain exists only around
+x≈2280–2330 (ground y≈1956) and x≈2600 (y≈2080).
 
 | Check | Result |
 | --- | --- |
 | `compile` | `skipped:[]`, `usesContext:true` — the process itself is fine |
 | `attachProcess` | `ok` |
 | `place` × 5, on real terrain | all `committed:false`, record `{"queued":true}` |
-| `__sk.counts.runs` | **`0`** — the processor is never invoked |
+| processor invocations | **`0`** — never called |
 | `session.paused` | `false` |
 | `getTick()` | advancing throughout |
 | page focus forced | no change |
 
 Placements are *accepted and queued* but never commit, so the structure never
-becomes a real instance and its processor never runs. The identical code in an
-`api.game.start()` world from the main menu commits and ticks normally.
+becomes a real instance and its processor never runs.
 
-So the saving is not paused and the simulation is not frozen — neither is the
-cause. The open question is **why a `db_load` world accepts placements but never
-settles them**; most likely that route leaves the world in a state that never
-runs the placement/flush step. That is game-side, and it is the one thing between
-the current state and a fully proven end-to-end chain.
+**This is not save-specific.** A later run in a fresh 720×720 world swept one
+column and found the same split: cells at y=390/500/710/716 committed and ran
+(processor invoked 628 times, `structure.data.runs` climbing), while y=400/600/700
+stayed `queued` in the same world seconds apart. So `buildAtCell` committing is
+**per-cell and unreliable**, and a single placement proves nothing on its own.
+The `ai-word` world simply never offered a cell that committed.
+
+Proven conclusion: the chain — compile, register, attach, place, dispatch,
+action, engine-visible state — **works**, and the remaining uncertainty is the
+engine's placement commit, not this mod. See
+[`md-admin-steam-bridge/SKILL.md`](../../../mods-dev/md-admin-steam-bridge/SKILL.md)
+§10–11.
 
 ### Two engine behaviours this surfaced
 
@@ -391,124 +397,6 @@ the current state and a fully proven end-to-end chain.
 
 ---
 
-
-## Driving a running game from the terminal (no restarts)
-
-`api.game.start({})` only creates a world from the **main menu**; once a world is
-active it is a silent no-op. That, plus the save cache, made every experiment
-cost a full app restart. These tools remove that.
-
-All three live in `doc/steam/` and talk to the app over the CDP port the game is
-already launched with.
-
-| Script | What it does |
-| --- | --- |
-| `cdp-eval.py <port> '<js>'` | Evaluate an expression in the renderer, print the JSON result. |
-| `db-load.py <port> <saveId>` | Navigate the renderer to `index.html?db_load=<saveId>`, which loads that save. |
-| `cdp-focus.py <port>` | Force the page to be treated as focused (`Page.bringToFront` + focus emulation). |
-
-```bash
-# once, at start-up
-node sandkit-cdp.mjs log 3600000 > /tmp/boot.log 2>&1 &
-./Sandustry.app/Contents/MacOS/Sandustry --remote-debugging-port=9603 &
-
-python3 doc/steam/db-load.py 9603 llljdmco4hn-exitsave
-python3 doc/steam/cdp-eval.py 9603 'JSON.stringify(__sk.status())'
-```
-
-### Loading a named save
-
-The game has **no Sandkit API for saves** — `api.maps` is for maps, and
-`getAvailable()` returns `[]` at the main menu. Saves are loaded by a **URL
-query parameter** instead, found in `dist/js/external-mod-runtime.js` and
-`bundle.js`:
-
-```js
-load: (e, t) => {
-    const n = new URL(window.location.href);
-    n.search = "";
-    n.searchParams.set("db_load", t);   // t = save id, not the world name
-    window.location.href = n.toString();
-}
-```
-
-The same id backs the main-menu **Continue** button and the quicksave path
-(`${worldId}-quicksave`).
-
-**`db_load` takes a save id, not a display name.** Ids live in
-`~/Library/Application Support/sandustry/saves/`, and the file header carries the
-name:
-
-```bash
-strings ~/Library/Application\ Support/sandustry/saves/<id>.save | head -1
-# {"id":"llljdmco4hn-exitsave", … ,"worldId":"llljdmco4hn","worldName":"ai-word","seed":"ai-word", …}
-
-cat ~/Library/Application\ Support/sandustry/meta/lastPlayedGame.json
-# {"id":"llljdmco4hn-exitsave"}   ← what Continue loads
-```
-
-So `ai-word` → world id `llljdmco4hn` → save id `llljdmco4hn-exitsave`, which
-happens to be the last-played game. Verified: after `db_load`, the store reports
-`worldName: "ai-word"`, 3840×3840, `scene: 4`.
-
-### The `__sk` bridge
-
-A CDP `Runtime.evaluate` runs in global scope, where the game API is **not**
-reachable: the host injects `sandkit` as a *parameter* of the wrapper it builds
-in `external-mod-runtime.js`
-
-```js
-new Function("__sandkit", `"use strict";\nconst sandkit = __sandkit;\nreturn (async () => {\n${entrySource}\n})();`)
-```
-
-so it lives on neither `window` nor `globalThis`. The bridge in `main.ts` hands
-the outside world a closure that already has it, via plain functions:
-
-| Call | Returns |
-| --- | --- |
-| `__sk.status()` | scene, tick, world name, player cell |
-| `__sk.playerCell()` | player position **divided by `cellSize`** |
-| `__sk.worldSize()` | `{width, height}` in cells |
-| `__sk.at(x, y)` | element + structure at a cell |
-| `__sk.column(x, from, count)` | rows holding something — finds terrain |
-| `__sk.place(id, x, y)` | places and reports `committed` vs `queued` |
-| `__sk.register(id)` / `__sk.compile(steps)` / `__sk.attachProcess(id, typeId)` | the E2E chain |
-| `__sk.counts` | processor invocation count, first tick, last error |
-| `__sk.dump("session.paused")` | any path in `sandkit.state` |
-| `__sk.newWorld()` | `api.game.start({})` (no-op once a world is active) |
-
-`playerCell()` exists because `store.player.x/y` are **pixels** and `cellSize` is
-4 — dividing is mandatory, and getting it wrong puts every placement thousands
-of cells out of range.
-
-> **The bridge is debug code.** Delete the `REMOTE BRIDGE` block in `main.ts`
-> before shipping; it puts a global command surface in the mod.
-
-### Landmine: `eval` in mod code kills the whole mod, silently
-
-An earlier version of the bridge used a direct `eval` to reach `sandkit`. The mod
-**stopped loading entirely** — no `SCRIPT START`, no error, nothing in the
-console, while every other mod loaded normally. Cause: the entry is compiled
-through `new Function` under a CSP that refuses string evaluation, and the
-failure is swallowed rather than reported.
-
-Two lessons, both worth keeping:
-
-- **A mod that produces no log at all has probably failed to compile**, not
-  failed to run. Silence is the only symptom.
-- The fix is lexical, not clever: plain functions capture the scope they are
-  defined in. `eval` is never needed to escape to an enclosing scope here.
-
-### What the bridge could not fix
-
-With a save loaded via `db_load`, placements **stay `queued: true` and never
-commit**, and the processor is never invoked (`runs: 0`) — while `session.paused`
-is `false` and the tick advances. Forcing page focus does not change it. The same
-code in a world created by `api.game.start({})` from the main menu *does* commit
-and *does* invoke the processor.
-
-So the chain is proven, but **only in an `api.game.start()` world**. See
-"GAME_AUDIT.md" § End-to-end for what that leaves open.
 
 ## Functional proof (direct engine calls, no structure)
 
@@ -558,9 +446,15 @@ broken action:
    to contain it, or the test proves nothing.
 4. **The host caches mod sources at app start.** A page reload re-runs the *old*
    bundle. Restart the app after every build or you are debugging stale code.
-5. **`api.game.start({})` does not reliably sustain a tick.** A world can come up
-   (`scene` → 4, `getDimensions()` → 720×720, `getTick()` non-zero) and still
-   freeze. Check `getTick()` twice before trusting any deferred-write test.
+5. **A world can be up and still not settle placements.** `scene` → 4 and
+   `getTick()` advancing do **not** mean `buildAtCell` will commit — see item 6.
+   (An earlier note here blamed a "frozen tick"; that was wrong. The tick
+   advances normally. The variable is placement commit, not the clock.)
+6. **`buildAtCell` commits per-cell, unreliably.** In one world, seconds apart
+   and with the same structure, some rows committed and ran while others stayed
+   `queued: true` forever. There is no documented predicate for which cells
+   commit, and `processing.isEnabledAtCell` returning `true` does not predict it.
+   Always sweep a few cells and re-read after a delay.
 
 ---
 
@@ -571,11 +465,14 @@ Stated plainly, so the result is not over-read:
 - **`core/`** — 7 other files touch the engine (`scope.ts`, `action-class.ts`,
   `apply.ts`, `cell-region.ts`, `scope-context.ts`, `handler-registry.ts`,
   `index.ts`); only `core/types.ts` was fixed and audited.
-- **End-to-end dispatch is now covered** (see above) — but only in a world booted by
-  `api.game.start({})`. In the real `ai-word` save, loaded through the game's own
-  `?db_load=` route, placements stay `queued: true` and the processor is never
-  invoked, so **the ACT family and the whole chain remain unproven for a real
-  save**. Open: why a `db_load` world never commits queued placements.
+- **End-to-end dispatch is covered** (see above) and the chain is proven:
+  compile → register → attach → place → dispatch → action → engine-visible
+  state. The **ACT family's element write** is still unproven *through this
+  path*, because `grid.mutate` is deferred and needs a committed cell plus a
+  live tick; it was proven by direct call instead.
+- **The engine's placement commit is unreliable**, per-cell and undocumented.
+  Sweep several cells before concluding anything — see
+  [`md-admin-steam-bridge/SKILL.md`](../../../mods-dev/md-admin-steam-bridge/SKILL.md) §10.
 - **Return-value semantics** — reads were checked by observing values, not by
   asserting the declared return type.
 - **Worker thread** — all of this ran on Main. `motion/` warns that adding a
@@ -589,8 +486,6 @@ Stated plainly, so the result is not over-read:
 
 ## Related
 
-- [`doc/steam/RUN_AND_TEST.md`](../../doc/steam/RUN_AND_TEST.md) — how to launch,
-  attach and probe
-- [`doc/steam/STATE_TREE.md`](../../doc/steam/STATE_TREE.md) — `sandkit.state`
-- [`doc/steam/verify-api.mjs`](../../doc/steam/verify-api.mjs) — static existence
-  checker used for the first pass
+- [`mods-dev/md-admin-steam-bridge/SKILL.md`](../../../mods-dev/md-admin-steam-bridge/SKILL.md)
+  — drive a running game from the terminal: load saves, read state, place
+  structures, attach processors, with no restarts
