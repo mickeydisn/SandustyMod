@@ -2,6 +2,7 @@
  * Persistent JSON configuration store — all categories including contacts & interactions.
  */
 import {
+    type BufferEntryConfig,
     type ContactReactionConfig,
     DEFAULT_CONFIG,
     type ElementConfig,
@@ -67,6 +68,10 @@ function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
         sprites: Array.isArray(raw?.sprites) ? raw!.sprites! : [],
         inputBindings: Array.isArray(raw?.inputBindings) ? raw!.inputBindings! : [],
         processes: Array.isArray(raw?.processes) ? raw!.processes! : [],
+        // `buffers` is the one list that did not exist before this version, so a
+        // stored config predating it has no key at all. `Array.isArray` is false
+        // for `undefined`, which is exactly the "absent" answer wanted here.
+        buffers: Array.isArray(raw?.buffers) ? raw!.buffers! : [],
     };
 }
 
@@ -440,6 +445,42 @@ export function removeUnlockNode(id: string): ModConfig {
 export function removeEnergyNetwork(id: string): ModConfig {
     const cfg = loadConfig();
     cfg.energyNetworks = removeById(cfg.energyNetworks, id);
+    saveConfig(cfg);
+    return cfg;
+}
+
+/**
+ * Save a buffer slot, or replace the one with the same id.
+ *
+ * The two are the same operation on purpose. A slot is addressed by `id` in the
+ * config and by `path` at runtime, and an author editing bounds or a default has
+ * to be able to do it without thinking about which of the two they are changing —
+ * so this matches on `id`, exactly like every other list in this store.
+ */
+export function addOrUpdateBufferEntry(entry: BufferEntryConfig): ModConfig {
+    const cfg = loadConfig();
+    cfg.buffers = upsert(cfg.buffers, entry);
+    saveConfig(cfg);
+    return cfg;
+}
+
+/**
+ * Drop a buffer slot.
+ *
+ * Nothing is rewritten on the way out, and that is a deliberate difference from
+ * `removeUnlockNode`. A node has referents in other lists, so deleting one has to
+ * repoint them or they dangle. A slot has referents in *action options* — a
+ * `bufferWrite` naming a path that no longer exists — and there is no honest
+ * rewrite for those: the process is the author's, and silently deleting a step
+ * from it would be a worse surprise than the step reading back its default.
+ *
+ * So a dangling `path` reads the slot's declared default, or the type's zero
+ * when the slot is gone entirely. The write is dropped and reported, not
+ * silently absorbed. See `problemFor` in the buffer store.
+ */
+export function removeBufferEntry(id: string): ModConfig {
+    const cfg = loadConfig();
+    cfg.buffers = removeById(cfg.buffers, id);
     saveConfig(cfg);
     return cfg;
 }

@@ -27,6 +27,12 @@ import {
     textField,
 } from "../fields.ts";
 import { HEX, hexToPacked, packedToHex } from "../values.ts";
+import {
+    ELEMENT_DATA_SLOTS,
+    type ElementDataField,
+    elementFieldsToRecord,
+    elementRecordToFields,
+} from "../data-fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
 
 // ── Colour variants ───────────────────────────────────────────────────────────
@@ -226,6 +232,38 @@ const COLLECTABLE_FIELDS: FieldSpec[] = [
     },
 ];
 
+/**
+ * The per-cell data slots, as a list.
+ *
+ * A JSON textarea here would have been the easy thing, and it is what the
+ * structure's `defaultData` still has for good reason. It is wrong for an element
+ * because the *shape* is the whole difficulty: a cell has exactly four numbered
+ * slots and no storage for a fifth, so a list that silently accepted a fifth row,
+ * or two rows naming the same slot, would save cleanly and produce an element
+ * whose second "frozen" flag was really its temperature. The list puts the slot
+ * number in a column where it is visible and where `elementFieldsToRecord` can
+ * check it.
+ *
+ * `name` is the author's label and is never sent to the engine — it is here so the
+ * list can say "temperature" instead of "field2", which is the difference between
+ * a field an author can reason about and a number they have to remember. See
+ * `./data-fields.ts` for why elements and structures cannot share one shape.
+ */
+const DATA_FIELDS: FieldSpec[] = [
+    {
+        key: "dataFieldsJson",
+        label: "Data fields",
+        kind: "json",
+        section: "Data",
+        jsonType: "array",
+        wide: true,
+        hint: `per-cell values a process can read and write — up to ${ELEMENT_DATA_SLOTS} slots. ` +
+            'Each row: { "name": "temperature", "slot": 2, "default": 20 }. ' +
+            "`name` is your label only; the engine stores the number in `slot` " +
+            "(1–4) and reads it back with getDataFieldAtCell / setDataFieldAtCell.",
+    },
+];
+
 const FIELDS: FieldSpec[] = [
     idField(),
     textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
@@ -309,6 +347,7 @@ const FIELDS: FieldSpec[] = [
     boolField("visibleInPicker", "Visible in picker", "Flags", "true"),
     ...FLAMMABLE_FIELDS,
     ...COLLECTABLE_FIELDS,
+    ...DATA_FIELDS,
     advField(),
 ];
 
@@ -331,7 +370,6 @@ const FIELDS: FieldSpec[] = [
  * it through the advanced-JSON box rather than being silently dropped.
  */
 const FLAGS = ["isTransportable", "isGrabbable", "visibleInPicker"];
-
 // ── Round trip ───────────────────────────────────────────────────────────────
 
 /** A stored matter type as picker text. A number reads back as its name, never as `"8"`. */
@@ -365,6 +403,12 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     }
     readFlammable(e.flammable, read);
     readCollectable(e.collectable, read);
+    // `defaultDataFields` is `{ field1..4 }` and the form is a list of
+    // `{ name, slot, default }`. The mapping is lossy in one direction only — the
+    // engine stored a slot number and no name — so the rows come back unnamed and
+    // the author names them again. That is honest about what is stored rather than
+    // inventing labels the config never had.
+    read.put("dataFieldsJson", read.json(elementRecordToFields(e.defaultDataFields)));
 }
 
 /** `flammable` → its toggle and controls. Object shape only: the engine gates on `typeof === "object"`. */
@@ -425,6 +469,28 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     for (const k of FLAGS) w.setBool(k, w.optBool(k));
     writeFlammable(w);
     writeCollectable(w);
+    writeElementDataFields(w);
+}
+
+/**
+ * The list → `defaultDataFields`, or the key is deleted.
+ *
+ * Deletes rather than writing an empty object when the list is blank: an empty
+ * `defaultDataFields` is a different stored value from an absent one, and the
+ * register step has no reason to be handed a key with nothing in it.
+ */
+function writeElementDataFields(w: EntryWriter): void {
+    const rows = w.optJson<ElementDataField[]>("dataFieldsJson");
+    if (!rows?.length) {
+        w.del("defaultDataFields");
+        return;
+    }
+    // `validate` has already refused a duplicate slot or an out-of-range one, so
+    // the problems here are reported rather than thrown: this runs on the save
+    // path, and a throw here would take the panel down over one row.
+    const { record, problems } = elementFieldsToRecord(rows);
+    if (problems.length) return;
+    w.setRaw("defaultDataFields", record);
 }
 
 /** Off deletes the key; on with nothing set writes `{}`, which still burns. The engine gates on truthiness. */
@@ -482,6 +548,51 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
     if (form.collectableOn === "true" && !form.collectableValue?.trim()) {
         errors.collectableValue = "required — without a value the collector skips this element";
     }
+    validateElementDataFields(form, errors);
+}
+
+/**
+ * The data-slot rules, checked on the form so the author is told while looking
+ * at the row rather than after a reload.
+ *
+ * The four limits are all "the engine would ignore or misread this", which is why
+ * they block Save instead of warning:
+ *
+ *   - a slot outside 1–4 has no storage behind it;
+ *   - two rows on one slot mean the second silently wins;
+ *   - a fraction is stored in a slot the engine reads as a whole number;
+ *   - a row without a slot cannot be addressed by a process at all.
+ *
+ * The row *name* is not required, and that is deliberate — it is the author's
+ * label and never reaches the engine, so an unnamed row is a working field with
+ * nothing to call it yet. Requiring it would push people to invent a name purely
+ * to get past a gate.
+ */
+function validateElementDataFields(
+    form: Record<string, string>,
+    errors: Record<string, string>,
+): void {
+    const raw = form.dataFieldsJson?.trim();
+    if (!raw) return;
+    let rows: ElementDataField[];
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+            errors.dataFieldsJson = "a list of { name, slot, default } rows";
+            return;
+        }
+        rows = parsed as ElementDataField[];
+    } catch {
+        // The json field's own validator owns the syntax error; saying it twice
+        // with a different message is noise.
+        return;
+    }
+    const { problems } = elementFieldsToRecord(rows);
+    if (!problems.length) return;
+    // All of them, not just the first: an author who put five rows on slot 1 wants
+    // to see five wrong rows fixed in one pass, not the same one five times.
+    const reasons = problems.map((p) => `row ${p.row + 1}: ${p.reason}`);
+    errors.dataFieldsJson = reasons.join("; ");
 }
 
 // ── The section panel ────────────────────────────────────────────────────────
@@ -592,6 +703,7 @@ const FORM_COVERED = [
     "isGrabbable",
     "collectable",
     "visibleInPicker",
+    "dataFieldsJson",
 ];
 
 export const elementDefinition: Definition = {

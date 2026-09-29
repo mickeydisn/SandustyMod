@@ -26,6 +26,7 @@
  * whether the game has heard of the object itself.
  */
 import { behaviorDefinition } from "./core/behavior.ts";
+import { bufferDefinition } from "./custom/buffer.ts";
 import { contactDefinition } from "./core/contact.ts";
 import { elementDefinition } from "./core/element.ts";
 import { energyDefinition } from "./core/energy.ts";
@@ -59,6 +60,7 @@ import type { Definition, Tab } from "./types.ts";
  */
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
     behaviors: behaviorDefinition,
+    buffers: bufferDefinition,
     customProcess: customProcessDefinition,
     categories: upgradeCategoryDefinition,
     contacts: contactDefinition,

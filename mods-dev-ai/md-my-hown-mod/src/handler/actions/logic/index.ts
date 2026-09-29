@@ -20,14 +20,9 @@
  *
  * @module
  */
-import {
-    cellReaders,
-    type ElementOptions,
-    walkRangeFor,
-    writeCells,
-} from "../element/index.ts";
+import { cellReaders, type ElementOptions, walkRangeFor, writeCells } from "../element/index.ts";
 import { defineActions, hostNs } from "../../core/types.ts";
-import { positionsOver, type Positions } from "../../core/positions.ts";
+import { type Positions, positionsOver } from "../../core/positions.ts";
 
 /** The options every walk takes: the element family's, plus what the walks add. */
 interface LogicOptions extends ElementOptions {

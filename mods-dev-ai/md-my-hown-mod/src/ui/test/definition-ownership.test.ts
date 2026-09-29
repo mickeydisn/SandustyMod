@@ -41,7 +41,7 @@ const DEF_ROOT = new URL("../definition/", import.meta.url);
  *   - `unlockNodes`  — the mod's own gate in front of a structure, separate from
  *                      `techs` on purpose (see `constants.ts`).
  */
-const CUSTOM = new Set(["networks", "unlockNodes", "customProcess"]);
+const CUSTOM = new Set(["networks", "unlockNodes", "customProcess", "buffers"]);
 
 /**
  * The tabs each folder is expected to hold, so a misfile is *named*.
@@ -79,7 +79,7 @@ const EXPECTED: Record<string, string[]> = {
     // `register()` for a process. It is a mod-side object that six definitions
     // reference, and the engine only ever sees the compiled function — which is the
     // whole of decision D1.
-    custom: ["networks", "unlockNodes", "customProcess"],
+    custom: ["networks", "unlockNodes", "customProcess", "buffers"],
 };
 
 /** The tab each definition file in a folder actually claims. */
@@ -153,6 +153,12 @@ Deno.test("every definition is filed by who owns the object", async () => {
         "projectile-option-field",
         "excavation-option-field",
         "process-ref-field",
+        // The data-field codecs, shared by the element and structure definitions.
+        // They live in `core/` rather than beside the schema because both objects
+        // need them and neither owns them: each is a pair of translators between a
+        // list the panel edits and an object the engine registers, and the two
+        // shapes differ precisely because the two engines do.
+        "data-fields",
     ];
     for (const entry of [...Deno.readDirSync(DEF_ROOT.pathname)]) {
         const stem = entry.name.replace(/\.ts$/, "");

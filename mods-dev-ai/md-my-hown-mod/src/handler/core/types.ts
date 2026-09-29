@@ -175,7 +175,15 @@ export function hostApi(): Record<string, unknown> | undefined {
         // not injected in this scope — fall through
     }
     try {
-        return (globalThis as { sandkit?: { api?: Record<string, unknown> } }).sandkit?.api;
+        // The `unknown` hop is what the first cast did not need and this one
+        // does. The buffer package imports the real `@sandmd/sandkit`, which puts
+        // a **typed** `sandkit` global in scope for the whole program — and
+        // `SandkitApi` has no string index signature, so casting it straight to
+        // `{ api?: Record<string, unknown> }` is now an error rather than a
+        // widening. Going through `unknown` says what is actually meant: this
+        // mod reads the host structurally, not by its declared type.
+        return (globalThis as unknown as { sandkit?: { api?: Record<string, unknown> } })
+            .sandkit?.api;
     } catch {
         return undefined;
     }

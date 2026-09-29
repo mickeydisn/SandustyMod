@@ -35,6 +35,7 @@ export type Tab =
     | "behaviors"
     | "energy"
     | "networks"
+    | "buffers"
     | "excavation"
     | "projectiles"
     | "sprites"

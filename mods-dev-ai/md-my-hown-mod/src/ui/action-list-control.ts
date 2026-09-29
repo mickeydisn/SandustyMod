@@ -111,49 +111,48 @@ export function renderActionList(ctx: FieldContext): unknown {
         branch: "then" | "else",
         steps: HandlerActionRef[],
         setBranch: (branch: "then" | "else", steps: HandlerActionRef[]) => void,
-    ) =>
+    ) => h(
+        "div",
+        {
+            key: branch,
+            style: { display: "flex", alignItems: "center", gap: 6 },
+        },
         h(
-            "div",
+            "span",
+            { style: { ...S.label, minWidth: 48, fontSize: 11 } },
+            branch,
+        ),
+        h(
+            "select",
             {
-                key: branch,
-                style: { display: "flex", alignItems: "center", gap: 6 },
+                key: `add:${branch}`,
+                style: { ...S.input, flex: 1, minWidth: 120, cursor: "pointer" },
+                value: "",
+                disabled: allowed.length === 0,
+                onChange: (e: { target: { value: string } }) => {
+                    if (e.target.value) {
+                        setBranch(branch, [
+                            ...steps,
+                            { key: e.target.value } as HandlerActionRef,
+                        ]);
+                    }
+                },
             },
             h(
-                "span",
-                { style: { ...S.label, minWidth: 48, fontSize: 11 } },
-                branch,
+                "option",
+                { value: "" },
+                allowed.length ? "— add a step —" : "no actions for this call site",
             ),
-            h(
-                "select",
-                {
-                    key: `add:${branch}`,
-                    style: { ...S.input, flex: 1, minWidth: 120, cursor: "pointer" },
-                    value: "",
-                    disabled: allowed.length === 0,
-                    onChange: (e: { target: { value: string } }) => {
-                        if (e.target.value) {
-                            setBranch(branch, [
-                                ...steps,
-                                { key: e.target.value } as HandlerActionRef,
-                            ]);
-                        }
-                    },
-                },
-                h(
-                    "option",
-                    { value: "" },
-                    allowed.length ? "— add a step —" : "no actions for this call site",
-                ),
-                ...allowed.map((m) =>
-                    h("option", { key: `${branch}:${m.key}`, value: m.key }, label(m.key))
-                ),
+            ...allowed.map((m) =>
+                h("option", { key: `${branch}:${m.key}`, value: m.key }, label(m.key))
             ),
-            h(
-                "span",
-                { style: S.hint },
-                steps.length ? `${steps.length} step${steps.length === 1 ? "" : "s"}` : "empty",
-            ),
-        );
+        ),
+        h(
+            "span",
+            { style: S.hint },
+            steps.length ? `${steps.length} step${steps.length === 1 ? "" : "s"}` : "empty",
+        ),
+    );
 
     const rows = refs.map((ref, i) => {
         // A block is a row too. It has no `HandlerMeta`, so it is recognised by key —
@@ -240,13 +239,11 @@ export function renderActionList(ctx: FieldContext): unknown {
                     },
                     // A key with no matching option still has to be *shown*, or the
                     // dropdown would display the first action and save a lie.
-                    allowed.some((m) => m.key === ref.key) && !isBlockRow
-                        ? null
-                        : h(
-                            "option",
-                            { value: ref.key },
-                            isBlockRow ? BLOCK_LABEL : label(ref.key),
-                        ),
+                    allowed.some((m) => m.key === ref.key) && !isBlockRow ? null : h(
+                        "option",
+                        { value: ref.key },
+                        isBlockRow ? BLOCK_LABEL : label(ref.key),
+                    ),
                     h(
                         "option",
                         { key: BLOCK_KEY, value: BLOCK_KEY },
@@ -331,7 +328,8 @@ export function renderActionList(ctx: FieldContext): unknown {
     return h(
         "div",
         { style: { display: "flex", flexDirection: "column" } },
-        ...rows,        h(
+        ...rows,
+        h(
             "div",
             { style: { display: "flex", gap: 8, alignItems: "center" } },
             // A **select**, not a button that appends the first action. With a

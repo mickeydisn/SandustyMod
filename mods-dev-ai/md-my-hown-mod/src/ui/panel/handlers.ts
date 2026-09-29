@@ -73,8 +73,7 @@ import { BLOCK_KEY } from "../../handler/core/types.ts";
  * position" has no answer that includes a conditional.
  */
 const BLOCK_DOC: Record<string, string> = {
-    [BLOCK_KEY]:
-        "if(when a bound variable is truthy) run one list of steps, otherwise run " +
+    [BLOCK_KEY]: "if(when a bound variable is truthy) run one list of steps, otherwise run " +
         "another. Both branches are compiled; only the chosen one runs. Branches may " +
         "contain further blocks, up to 8 deep. Not an action — it makes no api call.",
 };
@@ -787,58 +786,71 @@ export function renderUpgradeActions(props: HandlersTabProps): unknown {
 }
 
 /**
- * The **Projectile options** screen: the seven options, in full.
+ * The two "builds a value" catalogues, drawn **inline** under the entries they
+ * qualify.
  *
- * A tab of its own, not a mode of the action screen. The two answer different
- * questions with nothing in common — an action list answers "what can this run,
- * and where", this one answers "what will this projectile be" — and an option has
- * no needs, no effect, no domain and no call site, so all four axis filters would
- * silently exclude every row. That is why the sub-nav lists them separately.
+ * These hold presets written in code — `PROJECTILE_OPTIONS` and
+ * `EXCAVATION_OPTIONS` — compiled once and reused. There is no entry to create,
+ * so there is no list to add one to, and no screen to add it on. The presets
+ * themselves are the content, and they are drawn here rather than behind a
+ * `+ New` button that navigated away from the list the author was reading.
  *
- * Each row shows the **actual returned value**, produced by calling the option, not
- * a description of it. That is the whole point of the split made visible: the author
- * is choosing a function, and this is the object the engine will build from it.
- *
- * No title and no intro, for the same reason as the action screen: the sub-nav chip
- * already says "Projectile options". The one thing worth saying is *why* these are
- * not processes, and that belongs on the action screen's "Processes in use" list,
- * where the comparison is actually in play.
+ * Kept as one function with a `kind` rather than two near-identical screens
+ * because the *only* thing that differs is which registry is read and which noun
+ * a broken reference is reported in. Two copies of the disclosure, the search
+ * row and the row loop is two places for the three to drift.
  */
-export function renderProjectileOptions(props: HandlersTabProps): unknown {
-    const { h, cfg, state, setState, onGoTo } = props;
-    const usage = scanProjectileOptionUsage(cfg);
+export type FixedCatalogue = "projectileOption" | "excavationOption";
+
+/**
+ * What a fixed catalogue needs to draw itself, wherever it is being drawn.
+ *
+ * Query and filter are passed as values with setters rather than as the shared
+ * `HandlersTabState`, because the panel holds the state per *placement*: the
+ * standalone screens keyed it by tab, and the inline sections key it by the
+ * parent they sit under. Passing the two values is what lets one renderer serve
+ * both without either knowing how the other stores it.
+ */
+export interface FixedCatalogueProps {
+    h: H;
+    cfg: Record<string, unknown>;
+    query: string;
+    onlyUsed: boolean;
+    setQuery: (next: string) => void;
+    setOnlyUsed: (next: boolean) => void;
+}
+
+export function renderFixedCatalogue(
+    kind: FixedCatalogue,
+    ctx: FixedCatalogueProps,
+): unknown {
+    const { h } = ctx;
+    const isProjectile = kind === "projectileOption";
+
+    // Both scanners return the same shape — the two option systems were split
+    // apart but were not given different vocabularies — so one union handles
+    // both and the loop below is written once.
+    const usage = isProjectile
+        ? scanProjectileOptionUsage(ctx.cfg)
+        : scanExcavationOptionUsage(ctx.cfg);
     const used: Record<string, number> = {};
     for (const u of usage) if (u.key) used[u.key] = (used[u.key] ?? 0) + 1;
-    // A config holding more than one option is a real state — the list form existed
-    // for a while — so it is reported rather than half-applied by the compiler.
+    // An entry naming a preset that no longer exists is a real state, so it is
+    // reported rather than quietly falling back to the entry's own value.
     const bad = usage.filter((u) => u.problem);
-    const shown = filterProjectileOptions(state.query, state.onlyUsed, used);
-
-    const search = h(
-        "div",
-        { style: { ...S.card, display: "flex", gap: 8, alignItems: "center" } },
-        h("input", {
-            style: { ...S.input, flex: 1 },
-            value: state.query,
-            placeholder: "Search options…",
-            onInput: (e: { currentTarget: { value: string } }) =>
-                setState({ ...state, query: e.currentTarget.value }),
-        }),
-        chip(
-            h,
-            state.onlyUsed ? "In use only" : "All",
-            state.onlyUsed,
-            () => setState({ ...state, onlyUsed: !state.onlyUsed }),
-            state.onlyUsed
-                ? "In use only — options some projectile names. Click for all."
-                : "All — every option. Click for 'In use only'.",
-        ),
-        h("span", { style: S.hint }, `${shown.length}/${Object.keys(PROJECTILE_OPTIONS).length}`),
-    );
+    const shown = isProjectile
+        ? filterProjectileOptions(ctx.query, ctx.onlyUsed, used)
+        : filterExcavationOptions(ctx.query, ctx.onlyUsed, used);
+    const total = isProjectile
+        ? Object.keys(PROJECTILE_OPTIONS).length
+        : Object.keys(EXCAVATION_OPTIONS).length;
 
     return h(
         "div",
         null,
+        // **Outside** the disclosure. A config naming an option that no longer
+        // exists is a broken reference, and hiding it behind a summary would
+        // trade a visible error for an invisible one.
         ...bad.map((u) =>
             h(
                 "div",
@@ -846,31 +858,121 @@ export function renderProjectileOptions(props: HandlersTabProps): unknown {
                     key: `bad:${u.id}`,
                     style: { ...S.noteBox, borderColor: "#c0392b", marginBottom: 8 },
                 },
-                h("div", { style: S.errorText }, `Projectile ${u.id}: ${u.problem}`),
+                h(
+                    "div",
+                    { style: S.errorText },
+                    `${isProjectile ? "Projectile" : "Profile"} ${u.id}: ${u.problem}`,
+                ),
             )
         ),
-        search,
+        readOnlyCatalogue({
+            h,
+            title: isProjectile ? "Projectile options" : "Excavation options",
+            shown: shown.length,
+            total,
+            body: [
+                searchRow(ctx, shown.length, total),
+                shown.length === 0 ? h("div", { style: S.hint }, "No option matches that.") : h(
+                    "div",
+                    { style: { ...S.card, paddingTop: 2, paddingBottom: 2 } },
+                    ...shown.map((o) =>
+                        isProjectile
+                            ? renderOptionRow(o, { h, used })
+                            : renderExcavationOptionRow(o, { h, used })
+                    ),
+                ),
+            ],
+        }),
+    );
+}
+
+/**
+ * The disclosure shell shared by both "builds a value" catalogues.
+ *
+ * These lists are **fixed**. The presets are written in code, compiled once and
+ * reused, so there is no entry to create, add, remove, edit or delete — offering
+ * a `+ New` or an `Edit` button on a row would promise a change the screen cannot
+ * make. What the screen *is* is the list of the options this mod ships, so that
+ * list is the whole content, inside one `summary` that names it.
+ *
+ * **Open by default.** A disclosure that starts closed hides the only thing the
+ * screen has to show, and the reader has to click to learn how many options
+ * exist. The summary is there to get the section *out* of the way once the reader
+ * has what they came for, not to hold the list until asked.
+ *
+ * The count sits in the summary rather than under it, because the summary stays
+ * visible when the section is open and the count does not.
+ */
+function readOnlyCatalogue(
+    ctx: {
+        h: H;
+        title: string;
+        shown: number;
+        total: number;
+        body: unknown[];
+    },
+): unknown {
+    const { h } = ctx;
+    const all = ctx.shown === ctx.total;
+    return h(
+        "details",
+        // `open` is uncontrolled here: the browser owns the toggle, so the section
+        // keeps its own state and does not need one threaded through the panel.
+        { style: S.rowDetails, open: true },
         h(
-            "div",
-            { style: { ...S.sectionTitle, marginTop: 8 } },
-            `Options${
-                shown.length === Object.keys(PROJECTILE_OPTIONS).length ? "" : ` (${shown.length})`
-            }`,
-        ),
-        shown.length === 0
-            ? h("div", { style: S.card }, h("div", { style: S.hint }, "No option matches that."))
-            : h(
-                "div",
-                { style: { ...S.card, paddingTop: 2, paddingBottom: 2 } },
-                ...shown.map((o) => renderOptionRow(o, { h, used, onGoTo })),
+            "summary",
+            { style: S.rowSummary, title: "Hide these options" },
+            h("span", { style: S.sectionTitle }, ctx.title),
+            h(
+                "span",
+                { style: { ...S.hint, marginLeft: 8 } },
+                all ? `${ctx.total} available` : `${ctx.shown} of ${ctx.total}`,
             ),
+        ),
+        ...ctx.body,
+    );
+}
+
+/**
+ * The search box and the `In use only` chip, shared by both catalogues.
+ *
+ * Neither writes to the config. The box narrows what is shown, and the chip picks
+ * between "everything" and "the ones something actually names" — which is why
+ * they can sit on a list with no `New` and no `Edit` and still be worth having.
+ */
+function searchRow(
+    ctx: FixedCatalogueProps,
+    shown: number,
+    total: number,
+): unknown {
+    const { h } = ctx;
+    return h(
+        "div",
+        { style: { ...S.card, display: "flex", gap: 8, alignItems: "center" } },
+        h("input", {
+            style: { ...S.input, flex: 1 },
+            value: ctx.query,
+            placeholder: "Search options…",
+            onInput: (e: { currentTarget: { value: string } }) =>
+                ctx.setQuery(e.currentTarget.value),
+        }),
+        chip(
+            h,
+            ctx.onlyUsed ? "In use only" : "All",
+            ctx.onlyUsed,
+            () => ctx.setOnlyUsed(!ctx.onlyUsed),
+            ctx.onlyUsed
+                ? "In use only — options something names. Click for all."
+                : "All — every option. Click for 'In use only'.",
+        ),
+        h("span", { style: S.hint }, `${shown}/${total}`),
     );
 }
 
 /** One projectile option: its key, what it is for, and what it returns. */
 function renderOptionRow(
     o: { key: string; doc: string; params: { key: string; def: number | boolean }[] },
-    ctx: { h: H; used: Record<string, number>; onGoTo: Click },
+    ctx: { h: H; used: Record<string, number> },
 ): unknown {
     const { h } = ctx;
     const count = ctx.used[o.key] ?? 0;
@@ -1163,79 +1265,15 @@ function renderExpanded(
 }
 
 /**
- * The **Excavation options** screen: the second "builds a value" catalogue.
+ * One excavation option: its key, what it is for, and the value it builds.
  *
- * The same three facts as the projectile screen, because they are the same kind of
- * thing: the key, what it is for, and the value the engine will actually build. The
- * one difference worth stating is *what* that value covers — an excavation option
- * sets only a profile's `power` and `options`; the `pattern` and `terrainRules`
- * stay with the author. Each row therefore carries a second chip saying so, because
- * without it the row reads as if the preset described the whole dig.
+ * The same three facts as a projectile option, because it is the same kind of
+ * thing. The one difference worth stating is *what* the value covers — an
+ * excavation option sets only a profile's `power` and `options`; the `pattern`
+ * and `terrainRules` stay with the author. Each row therefore carries a second
+ * chip saying so, because without it the row reads as if the preset described
+ * the whole dig.
  */
-export function renderExcavationOptions(props: HandlersTabProps): unknown {
-    const { h, cfg, state, setState } = props;
-    const usage = scanExcavationOptionUsage(cfg);
-    const used: Record<string, number> = {};
-    for (const u of usage) if (u.key) used[u.key] = (used[u.key] ?? 0) + 1;
-    // A profile naming a preset that no longer exists is a real state, so it is
-    // reported rather than quietly falling back to the entry's own power.
-    const bad = usage.filter((u) => u.problem);
-    const shown = filterExcavationOptions(state.query, state.onlyUsed, used);
-
-    const search = h(
-        "div",
-        { style: { ...S.card, display: "flex", gap: 8, alignItems: "center" } },
-        h("input", {
-            style: { ...S.input, flex: 1 },
-            value: state.query,
-            placeholder: "Search options…",
-            onInput: (e: { currentTarget: { value: string } }) =>
-                setState({ ...state, query: e.currentTarget.value }),
-        }),
-        chip(
-            h,
-            state.onlyUsed ? "In use only" : "All",
-            state.onlyUsed,
-            () => setState({ ...state, onlyUsed: !state.onlyUsed }),
-            state.onlyUsed
-                ? "In use only — options some profile names. Click for all."
-                : "All — every option. Click for 'In use only'.",
-        ),
-        h("span", { style: S.hint }, `${shown.length}/${Object.keys(EXCAVATION_OPTIONS).length}`),
-    );
-
-    return h(
-        "div",
-        null,
-        ...bad.map((u) =>
-            h(
-                "div",
-                {
-                    key: `bad:${u.id}`,
-                    style: { ...S.noteBox, borderColor: "#c0392b", marginBottom: 8 },
-                },
-                h("div", { style: S.errorText }, `Profile ${u.id}: ${u.problem}`),
-            )
-        ),
-        search,
-        h(
-            "div",
-            { style: { ...S.sectionTitle, marginTop: 8 } },
-            `Options${
-                shown.length === Object.keys(EXCAVATION_OPTIONS).length ? "" : ` (${shown.length})`
-            }`,
-        ),
-        shown.length === 0
-            ? h("div", { style: S.card }, h("div", { style: S.hint }, "No option matches that."))
-            : h(
-                "div",
-                { style: { ...S.card, paddingTop: 2, paddingBottom: 2 } },
-                ...shown.map((o) => renderExcavationOptionRow(o, { h, used })),
-            ),
-    );
-}
-
-/** One excavation option: its key, what it is for, and the value it builds. */
 function renderExcavationOptionRow(
     o: { key: string; doc: string; params: { key: string; def: number | boolean }[] },
     ctx: { h: H; used: Record<string, number> },

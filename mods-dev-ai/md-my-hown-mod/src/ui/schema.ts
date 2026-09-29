@@ -106,6 +106,7 @@ export type Tab =
     | "behaviors"
     | "energy"
     | "networks"
+    | "buffers"
     | "excavation"
     | "projectiles"
     | "sprites"
@@ -260,6 +261,16 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         blurb: "Named energy channels. The game ships one; add the ones you need.",
         configKey: "energyNetworks",
     },
+    buffers: {
+        label: "Buffer",
+        // "Shared" is the whole point and the reason this is its own tab rather than
+        // a field on a structure: a slot is not one machine's memory, it is the one
+        // value every process in this mod agrees on. A structure's `data` bag —
+        // what `structureWriteData` reaches — is private to that structure and
+        // cannot express a counter shared across a network of them.
+        blurb: "Shared slots every process in this mod can read and write.",
+        configKey: "buffers",
+    },
     excavation: {
         label: "Excavation profiles",
         blurb: "Dig power + cell pattern.",
@@ -330,9 +341,16 @@ export interface MenuGroup {
  * `terrains` sits under Content rather than in a group of its own. A "World"
  * group holding nothing else costs a click and explains nothing.
  *
- * There is no group for the lists that only qualify a thing — tooltips, behaviours,
- * signals, excavation profiles, projectiles. They are drawn under the Content list
- * they belong to, and reached from there. See `./panel/attach.ts`.
+ * There is no group for the lists that only qualify a thing — tooltips,
+ * behaviours, signals, excavation profiles, projectiles, and the option- and
+ * upgrade-action functions. They are drawn under the list of the thing they
+ * belong to, and reached from there. See `./panel/attach.ts`.
+ *
+ * `Tech` and `Handlers` shrink for the same reason: `unlockNodes` belongs to the
+ * tech nodes it gates, and `categories` / `upgradeAction` belong to the upgrades
+ * they classify and run, so none of the three needs a tab. What is left in
+ * `Handlers` — the action vocabulary and the named processes built from it — is
+ * what is genuinely free-standing.
  *
  * `Assets`, `Handlers` and `Hooks` are separate. They are unrelated things that
  * happen to all be defined in code: an image
@@ -343,7 +361,7 @@ export const MENU_GROUPS: MenuGroup[] = [
         key: "content",
         label: "Content",
         hint: "What the player sees in the world",
-        categories: ["terrains", "elements", "structures", "items"],
+        categories: ["terrains", "elements", "structures", "items", "buffers"],
     },
     {
         key: "production",
@@ -355,7 +373,7 @@ export const MENU_GROUPS: MenuGroup[] = [
         key: "tech",
         label: "Tech",
         hint: "Research, progression & upgrades",
-        categories: ["unlockNodes", "techs", "categories", "upgrades"],
+        categories: ["techs", "upgrades"],
     },
     {
         key: "actions",
@@ -378,18 +396,11 @@ export const MENU_GROUPS: MenuGroup[] = [
     {
         key: "handlers",
         label: "Handlers",
-        // The group's own hint, not a restatement of the three tabs under it. The
-        // sub-nav reads "Actions · Projectile options · Excavation options" and the
-        // group chip reads "Handlers", so the split is visible before you click
-        // anything.
+        // The group's own hint, not a restatement of the two tabs under it. The
+        // sub-nav reads "Actions · Processes" and the group chip reads "Handlers",
+        // so the split is visible before you click anything.
         hint: "What this mod can run, and what it can build",
-        categories: [
-            "action",
-            "projectileOption",
-            "excavationOption",
-            "customProcess",
-            "upgradeAction",
-        ],
+        categories: ["action", "customProcess"],
     },
     { key: "help", label: "Graph", hint: "What points at what", categories: ["help"] },
     {

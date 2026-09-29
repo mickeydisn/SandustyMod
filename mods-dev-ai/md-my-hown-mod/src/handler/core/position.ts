@@ -235,8 +235,7 @@ export function addressFor(
             return {
                 conflict: {
                     reason: "matrix-with-range",
-                    message:
-                        "Matrix X/Y names one cell of the shape matrix, but a range " +
+                    message: "Matrix X/Y names one cell of the shape matrix, but a range " +
                         "field (Offset, Region size or My whole footprint) is also " +
                         "set. Choose one: a single matrix cell, or a region.",
                 },
@@ -293,8 +292,7 @@ export function walkFor(
         return {
             conflict: {
                 reason: "matrix-with-range",
-                message:
-                    "Matrix X/Y cannot be used with a range walk: a walk already asks " +
+                message: "Matrix X/Y cannot be used with a range walk: a walk already asks " +
                     "for every cell in a region. Leave it blank, or use a single-cell " +
                     "action such as isElementAtCell.",
             },

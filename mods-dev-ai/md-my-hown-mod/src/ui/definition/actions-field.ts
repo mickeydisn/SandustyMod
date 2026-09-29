@@ -181,8 +181,7 @@ export function actionListField(
         section: "Timing",
         jsonType: "array",
         wide: true,
-        hint:
-            `an ordered list of actions, run in order when the engine calls this. ` +
+        hint: `an ordered list of actions, run in order when the engine calls this. ` +
             `${slotLabel}. Each action may be repeated with different options. ` +
             `An entry of { "key": "if", "options": { "var": "name" }, "then": [...], ` +
             `"else": [...] } branches on whether a bound variable is true.`,

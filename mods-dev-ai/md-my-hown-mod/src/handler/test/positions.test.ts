@@ -61,16 +61,25 @@ Deno.test("a predicate that throws counts as a miss, and never ends the walk", (
     // A 64×64 range that stopped at the first bad cell would answer a question about
     // one cell instead of 4096 — a plausible number, and a wrong one.
     const list = positionsOver(run(0, 1, 2, 3));
-    assertEquals(list.count((c) => {
-        if (c.x === 0) return true;
-        throw new Error("bad cell");
-    }), 1);
-    assertEquals(list.any(() => {
-        throw new Error("everything is broken");
-    }), false);
-    assertEquals(list.all(() => {
-        throw new Error("everything is broken");
-    }), false);
+    assertEquals(
+        list.count((c) => {
+            if (c.x === 0) return true;
+            throw new Error("bad cell");
+        }),
+        1,
+    );
+    assertEquals(
+        list.any(() => {
+            throw new Error("everything is broken");
+        }),
+        false,
+    );
+    assertEquals(
+        list.all(() => {
+            throw new Error("everything is broken");
+        }),
+        false,
+    );
 });
 
 Deno.test("one unreadable cell does not poison a sum", () => {
@@ -95,9 +104,12 @@ Deno.test("all is true and any is false over an empty list", () => {
 Deno.test("forEach reports how many cells it visited", () => {
     const list = positionsOver(run(0, 1, 2));
     let seen = 0;
-    assertEquals(list.forEach(() => {
-        seen++;
-    }), 3);
+    assertEquals(
+        list.forEach(() => {
+            seen++;
+        }),
+        3,
+    );
     assertEquals(seen, 3);
 });
 

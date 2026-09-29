@@ -696,6 +696,44 @@ export interface UnlockNodeConfig {
     [key: string]: unknown;
 }
 
+/** What a buffer slot holds. Mirrors `FieldKind` in the buffer package's introspection. */
+export type BufferValueType = "number" | "bool" | "string";
+
+/**
+ * One addressable slot in the mod's shared buffer.
+ *
+ * Not an engine object. Nothing calls `register()` and the game never sees it —
+ * what the game *does* see is the shared `Int32Array` and the UTF-8 JSON slot that
+ * `JsonMapBuffer` allocates for this path, which is why the panel can declare one
+ * and have handlers read and write it on any thread.
+ *
+ * `min`/`max` are not decoration. A numeric path in a `JsonMapBuffer` is backed by
+ * an atomic counter, and that counter is **clamped** — so an unbounded number has
+ * nowhere to clamp to, and the constructor throws. They are therefore required for
+ * `number` and meaningless for the other two kinds, which is why they live here
+ * rather than being defaulted per type.
+ */
+export interface BufferEntryConfig {
+    id: string;
+    /**
+     * The path inside the shared record, e.g. `counters.digs` or `players[0].score`.
+     * Dot and bracket notation, exactly as `getPath`/`setPath` read it.
+     */
+    path: string;
+    type: BufferValueType;
+    /**
+     * The seed used when the slot has never been written.
+     *
+     * Coerced to `type` on load rather than trusted, because the form stores it as
+     * text and a hand-edited config can spell a number `"0"` or a bool `"yes"`.
+     */
+    default: number | boolean | string;
+    /** Atomic clamp bounds. Required for `number`, ignored otherwise. */
+    min?: number;
+    max?: number;
+    [key: string]: unknown;
+}
+
 export interface EnergyTypeConfig {
     id: string;
     /** Structure / node id this energy type attaches to. */
@@ -921,6 +959,16 @@ export type ModConfig = {
      * here, so the compiler and the store cannot disagree about the stored shape.
      */
     processes: CustomProcessConfig[];
+    /**
+     * The shared buffer's slots — mod-owned, and read by `bufferWrite` /
+     * `bufferRead` rather than by any `register()`.
+     *
+     * Separate from `structureBehaviors` and the rest on purpose: those are
+     * things the engine instantiates, and this is a bag of values the author's
+     * own processes agree on. A behaviour can be registered and never run; a
+     * buffer slot can be written and read back by anything.
+     */
+    buffers: BufferEntryConfig[];
 };
 
 export const DEFAULT_CONFIG: ModConfig = {
@@ -948,6 +996,7 @@ export const DEFAULT_CONFIG: ModConfig = {
     sprites: [],
     processes: [],
     inputBindings: [],
+    buffers: [],
 };
 
 export type PanelState = {

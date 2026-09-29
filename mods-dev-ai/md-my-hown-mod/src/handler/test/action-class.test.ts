@@ -113,6 +113,23 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
     //     `context-bound` 7 → 3, and the three that remain
     //     (`isElementAtCell`, `processorLift`, `processorConvert`) are the ones whose
     //     dependency really is the context object and nothing else.
+    //   `self-sufficient` 14 → 17 with the three buffer actions. They land there
+    //     rather than under a shared-memory class, and the reason is worth
+    //     recording: the probe watches property access *during* the call, and a
+    //     buffer action only calls methods on a handle it was handed — the
+    //     `api.shared.buffers` lookup happened at construction, before the action
+    //     ran. So they measure as "uses only its own options", which is exactly
+    //     what the class is supposed to mean. The `total` moved 84 → 87 because
+    //     three actions were genuinely added, not because any axis shifted.
+    //   `api` 57 → 59 with `readDataField` and `writeDataField`, the element data
+    //     slots, and only that class moves. They resolve `hostNs("elements")` the
+    //     same way the motion family does, so the probe sees the namespace — and
+    //     the reason it is worth saying is that the *first* draft of these two
+    //     measured `self-sufficient`: the `hostNs` call sat **after** the slot
+    //     validation, so an action that rejected a bad slot returned before ever
+    //     reaching it. Moving the lookup above the checks is what makes the
+    //     measurement true, and the ordering is now load-bearing rather than
+    //     incidental.
     //
     //     The total is unchanged, which is the point worth recording: no action was
     //     added or removed. What changed is that the class axis now agrees with what
@@ -153,9 +170,9 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
         //     where terrain is the only family spanning two) and the **scope**
         //     (`scope.ts`, the only one that still splits a family in two). If this
         //     table is ever simplified, that is the finding that would justify it.
-        api: 57,
+        api: 59,
         "context-bound": 3,
-        "self-sufficient": 14,
+        "self-sufficient": 17,
         pure: 10,
     });
     assertEquals(Object.values(ACTION_CLASSES).length, ALL_KEYS.length, "total");
@@ -204,8 +221,23 @@ Deno.test("only `api` satisfies the rule, and the rest are the work to do", () =
     // context-bound set drops from four to three (`isElementAtCell`, `processorLift`,
     // `processorConvert`) and those three are genuinely the actions whose dependency
     // is the context object and nothing else.
-    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 57);
-    assertEquals(offRuleActions().length, 27);
+    //
+    // ...and then 27 → 30 with the three buffer actions, which land on the off-rule
+    // side by the same reasoning recorded in the class table: a buffer action reads
+    // only the options it was handed, so it satisfies the "call the engine" rule no
+    // more than `structureWriteData` does, even though what it touches is shared
+    // memory rather than one structure's bag. Putting them in `api` would have
+    // satisfied this assertion and told a lie.
+    //
+    // ...and the off-rule count then **stays at 30**, because the two data-slot
+    // actions measure `api` and so join the on-rule side. That is the whole of what
+    // they are: `getDataFieldAtCell` and `setDataFieldAtCell` are engine calls, and
+    // an action that reaches one satisfies the rule legitimately. The `api` count
+    // moving while this one holds is the pair of numbers worth reading together —
+    // it is what "the catalogue grew" looks like when the growth is on the same
+    // side of the rule as everything else it grew alongside.
+    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 59);
+    assertEquals(offRuleActions().length, 30);
     const off = offRuleActions();
     assertEquals(
         off.filter((a) => a.cls === "context-bound").map((a) => a.key).sort(),

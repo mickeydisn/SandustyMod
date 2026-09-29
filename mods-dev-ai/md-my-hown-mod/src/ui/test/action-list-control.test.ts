@@ -88,7 +88,10 @@ Deno.test("the add list is the whole call site's vocabulary, on an empty process
     // belongs in a signal's list, and an upgrade action that writes instance data is
     // one of them. What must *not* appear is anything the slot cannot serve, which is
     // what the loop below asserts.
-    assert(opts.includes("processorCount") || opts.includes("signalLog"), "a plain action is offered");
+    assert(
+        opts.includes("processorCount") || opts.includes("signalLog"),
+        "a plain action is offered",
+    );
     assert(opts.includes("if"), "the if/else block is offered in the same list");
     for (const o of opts.filter((x) => x !== "" && x !== "if")) {
         const meta = HANDLER_META.find((m) => m.key === o);
@@ -129,7 +132,10 @@ Deno.test("turning a block into an action drops the branches it no longer has", 
     // Otherwise the author changes a row's action, is told by the compiler that an
     // ordinary action is malformed, and has no idea the dropdown caused it.
     const written = render("processing", {
-        actionsJson: formatActionRefs([{ key: "if", options: { then: [{ key: "processorLog" }] } }]),
+        actionsJson: formatActionRefs([{
+            key: "if",
+            options: { then: [{ key: "processorLog" }] },
+        }]),
     });
     type(find("select", "key")!, "readElement");
     const parsed = parseActionRefs(written() ?? "");

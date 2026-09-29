@@ -12,6 +12,7 @@
  */
 import { LOG, type ModConfig, type PanelState, type StructureConfig } from "../constants.ts";
 import {
+    addOrUpdateBufferEntry,
     addOrUpdateContact,
     addOrUpdateCustomProcess,
     addOrUpdateElement,
@@ -39,6 +40,7 @@ import {
     importConfigJson,
     loadConfig,
     loadPanelState,
+    removeBufferEntry,
     removeContact,
     removeCustomProcess,
     removeElement,
@@ -137,7 +139,7 @@ import { renderActionList } from "./action-list-control.ts";
 import { renderProjectileOption } from "./projectile-option-control.ts";
 import { renderProcessRef } from "./process-ref-control.ts";
 import { listFor } from "./panel/index.ts";
-import { attachedTo, parentOf } from "./panel/attach.ts";
+import { attachedTo, isInlineCatalogue, parentOf } from "./panel/attach.ts";
 import {
     handlerDoc,
     listBuildModeTypes,
@@ -151,11 +153,11 @@ import * as S from "./styles.ts";
 import { emptyViewState, LIST_DEFAULTS, type ViewMode } from "./viewstate.ts";
 import { clampChip, exceedsSlop } from "./drag.ts";
 import {
+    type FixedCatalogue,
     type HandlersTabState,
     initialHandlersState,
     renderActions,
-    renderExcavationOptions,
-    renderProjectileOptions,
+    renderFixedCatalogue,
     renderUpgradeActions,
 } from "./panel/handlers.ts";
 import { renderHelp } from "./panel/help.ts";
@@ -186,8 +188,6 @@ import {
  */
 const HANDLER_SCREENS = {
     action: renderActions,
-    projectileOption: renderProjectileOptions,
-    excavationOption: renderExcavationOptions,
     upgradeAction: renderUpgradeActions,
 } as const;
 
@@ -212,7 +212,15 @@ function safeJson(text: string): unknown {
  * was worse than the crash it replaced.
  */
 export function resolveCat(raw: unknown): Tab {
-    if (typeof raw === "string" && CATEGORY_META[raw as Tab]) return raw as Tab;
+    if (typeof raw === "string" && CATEGORY_META[raw as Tab]) {
+        const tab = raw as Tab;
+        // A fixed catalogue has no screen of its own — it is drawn inside its
+        // parent — so it is resolved to that parent. This is what a panel state
+        // saved while these two *did* have screens holds, and a stale `cat` that
+        // resolved to itself would land on an empty list with no way back.
+        if (isInlineCatalogue(tab)) return parentOf(tab) ?? tab;
+        return tab;
+    }
     console.warn(
         `${LOG} unknown category ${describeValue(raw)} — falling back to Elements`,
     );
@@ -268,6 +276,7 @@ export const UPSERT: Partial<Record<Tab, UpsertFn>> = {
     networks: addOrUpdateEnergyNetwork,
     categories: addOrUpdateUpgradeCategory,
     inputs: addOrUpdateInputBinding,
+    buffers: addOrUpdateBufferEntry,
 };
 
 export const REMOVE: Partial<Record<Tab, RemoveFn>> = {
@@ -294,6 +303,7 @@ export const REMOVE: Partial<Record<Tab, RemoveFn>> = {
     networks: removeEnergyNetwork,
     categories: removeUpgradeCategory,
     inputs: removeInputBinding,
+    buffers: removeBufferEntry,
 };
 
 function entriesOf(cfg: ModConfig, cat: Tab): Record<string, unknown>[] {
@@ -490,6 +500,17 @@ export function createPanelComponent(defaultMinimized = true) {
          * two searches fighting over one box.
          */
         const [attachedQuery, setAttachedQuery] = useState<Record<string, string>>({});
+        /**
+         * The `In use only` tick on each fixed catalogue, per tab.
+         *
+         * Its own state rather than a field on the shared handlers state, for the
+         * same reason `attachedQuery` is its own: the two option catalogues are
+         * drawn inline under Items, and their ticks must not move together. An
+         * author comparing "everything" on one against "in use" on the other is
+         * reading two lists, and a single shared boolean would make the second
+         * click silently undo the first.
+         */
+        const [catalogueOnlyUsed, setCatalogueOnlyUsed] = useState<Record<string, boolean>>({});
         const drag = useRef<{
             ox: number;
             oy: number;
@@ -658,7 +679,10 @@ export function createPanelComponent(defaultMinimized = true) {
 
         const goCategory = (next: Tab) => {
             resetView();
-            setCat(next);
+            // Same rule as `resolveCat`, applied to in-session navigation: an
+            // inline catalogue is a section of its parent, so asking to go to it
+            // as a screen means "go to the screen it lives in".
+            setCat(isInlineCatalogue(next) ? (parentOf(next) ?? next) : next);
         };
 
         /**
@@ -1294,6 +1318,28 @@ export function createPanelComponent(defaultMinimized = true) {
          * untouched, which reads as a broken filter rather than two filters.
          */
         const renderAttachedList = (child: Tab) => {
+            // A fixed catalogue is not a list of entries, so it skips the frame
+            // below entirely. That frame ends in `+ New` and an empty-state line
+            // that says "press + New to add one" — both wrong here, because these
+            // presets are written in code and the *list* is the content. So the
+            // branch comes first and returns before any of it is built.
+            if (isInlineCatalogue(child)) {
+                return h(
+                    "div",
+                    { key: child, style: { ...S.sectionBox, marginBottom: 8 } },
+                    renderFixedCatalogue(child as FixedCatalogue, {
+                        h: h as never,
+                        cfg: cfg as unknown as Record<string, unknown>,
+                        query: attachedQuery[child] ?? "",
+                        setQuery: (next: string) =>
+                            setAttachedQuery((p) => ({ ...p, [child]: next })),
+                        onlyUsed: catalogueOnlyUsed[child] ?? false,
+                        setOnlyUsed: (next: boolean) =>
+                            setCatalogueOnlyUsed((p) => ({ ...p, [child]: next })),
+                    }),
+                );
+            }
+
             const childMeta = CATEGORY_META[child];
             const childSpec = listFor(child);
             // No host discovery for these: a tooltip, a behaviour and a signal are

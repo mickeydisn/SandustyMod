@@ -32,6 +32,11 @@ import {
     textField,
 } from "../fields.ts";
 import { parseObjectOrUndefined, safeJson } from "../values.ts";
+import {
+    type StructureDataField,
+    structureFieldsToRecord,
+    structureRecordToFields,
+} from "../data-fields.ts";
 import type {
     Definition,
     EntryReader,
@@ -404,6 +409,38 @@ const FIELDS: FieldSpec[] = [
         hint:
             "the data object every placed copy starts with; the hover tooltip reads dataField1..4 back out of it. Unrelated to elements.",
     },
+    {
+        // The same value again, one row per key, and the reason this list exists
+        // where the element one is a list too: `defaultData` is a free object, so
+        // the difficulty is not *how many* fields there are but that each one has a
+        // type, and typing them by hand in a JSON box means reading the quotes
+        // right on every row. `"5"` and `5` store differently and only one of them
+        // survives a comparison in a process.
+        //
+        // The box stays above it, not beside it, on purpose. `defaultData`
+        // legitimately holds shapes a row cannot — a nested object, an array — and
+        // a list that rejected those would make them unreachable rather than
+        // merely awkward.
+        //
+        // The rule between them is in `writeStructureDefaultData` and it is not
+        // simply "the list wins": that would delete a nested value on every re-save,
+        // because such a value has no row and the list would replace the object
+        // around it. The list is used only when it accounts for every key the box
+        // holds, and the box is written untouched otherwise. The hint says "when
+        // both are filled" rather than promising a priority, because whether the
+        // list is used at all depends on that.
+        key: "dataFieldsJson",
+        label: "Data fields",
+        kind: "json",
+        section: "Grid",
+        jsonType: "array",
+        wide: true,
+        hint: "the same data, one row per key: " +
+            '{ "key": "charge", "type": "number", "default": 0 }. ' +
+            "Read and written in a process with structureData / setStructureData. " +
+            "Used when it covers every key in the box above; otherwise the box is kept " +
+            "as-is, so a nested value is never lost.",
+    },
     advField(),
 ];
 
@@ -483,6 +520,12 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
         read.put("skipCopyData", String(e.skipCopyData));
     }
     read.put("defaultDataJson", read.json(e.defaultData));
+    // The list is derived from the same stored object rather than read from a
+    // second key — there is only ever one `defaultData`. A stored value that is
+    // not a row-shaped primitive (a nested object, an array) becomes no row and
+    // stays visible in the box, which is the honest split: the list shows what it
+    // can represent and the box shows the rest, and neither claims the other's.
+    read.put("dataFieldsJson", read.json(structureRecordToFields(e.defaultData)));
 }
 
 /** Form strings → stored entry, for the whole structure. */
@@ -530,8 +573,41 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setBool("skipCopyData", w.optBool("skipCopyData"));
     const drawKey = w.opt("drawKey") ?? "default";
     if (drawKey !== "default") w.setStr("drawKey", drawKey);
-    const defaultData = w.optJson<Record<string, unknown>>("defaultDataJson");
-    if (defaultData) w.setRaw("defaultData", defaultData);
+    writeStructureDefaultData(w);
+}
+
+/**
+ * The list and the box are one stored key, and this is where they are reconciled.
+ *
+ * The tempting rule is "the list wins", and it loses data. A `defaultData` holding
+ * a nested object reads back as a list of only the flat rows, and re-saving it
+ * with the list winning replaces the whole object with those rows — the nested
+ * value is gone, and the author never touched it. That is the worst failure this
+ * pair of fields could have: silent, on a value they could see in the box.
+ *
+ * So the list is only allowed to win when it is **complete** — when every key in
+ * the box is also a row in the list. That covers the two ordinary cases (a list
+ * alone, and a list plus a box the list accounts for) and refuses exactly the one
+ * that would destroy something. When the list is incomplete the box is written
+ * instead, untouched, and the author keeps both: the rows they can read and the
+ * nested value they cannot.
+ *
+ * A `del` when neither is filled, because an empty `defaultData` is a different
+ * stored value from an absent one and the register step has no use for it.
+ */
+function writeStructureDefaultData(w: EntryWriter): void {
+    const rows = w.optJson<StructureDataField[]>("dataFieldsJson");
+    const box = w.optJson<Record<string, unknown>>("defaultDataJson");
+    if (rows?.length) {
+        const { record, problems } = structureFieldsToRecord(rows);
+        if (problems.length) return; // `validate` has already refused these
+        if (!box || Object.keys(box).every((k) => k in record)) {
+            w.setRaw("defaultData", record);
+            return;
+        }
+    }
+    if (box) w.setRaw("defaultData", box);
+    else w.del("defaultData");
 }
 
 /** Rules no single field can express: the engine throws on `spanTiles` off a line mode. */
@@ -552,6 +628,45 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
     } catch {
         // the json control reports the parse error
     }
+    validateStructureDataFields(form, errors);
+}
+
+/**
+ * Two rules on the field list, both of which the engine would store and then
+ * misreport on:
+ *
+ *   - a row needs a key, because the key **is** what a process passes to
+ *     `structureData`; a nameless field cannot be addressed at all;
+ *   - two rows cannot share one key, because the second would overwrite the first
+ *     and the list would keep showing both as if they were separate.
+ *
+ * The `type` is not checked, and that is the difference from the element list. It
+ * is recorded rather than enforced: `defaultData` is stored verbatim, so a value
+ * that is not the type the row claims is still stored, still readable, and is the
+ * author's own business — the type exists to make the row readable, not to police
+ * what the engine accepts.
+ */
+function validateStructureDataFields(
+    form: Record<string, string>,
+    errors: Record<string, string>,
+): void {
+    const raw = form.dataFieldsJson?.trim();
+    if (!raw) return;
+    let rows: StructureDataField[];
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+            errors.dataFieldsJson = "a list of { key, type, default } rows";
+            return;
+        }
+        rows = parsed as StructureDataField[];
+    } catch {
+        // The json control owns the syntax error.
+        return;
+    }
+    const { problems } = structureFieldsToRecord(rows);
+    if (!problems.length) return;
+    errors.dataFieldsJson = problems.map((p) => `row ${p.row + 1}: ${p.reason}`).join("; ");
 }
 
 /** Parse a 4×4 matrix from text; returns null when not exactly 4 rows of 4. */

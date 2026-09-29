@@ -37,6 +37,10 @@ const { RELATIONS } = await import("../relations.ts");
 const { MENU_GROUPS } = await import("../schema.ts");
 const { graphCategories, buildGraph } = await import("../graph.ts");
 const { renderConfigMap } = await import("../config-map.ts");
+const { renderFixedCatalogue } = await import("../panel/handlers.ts");
+const { resolveCat } = await import("../panel.ts");
+const { PROJECTILE_OPTIONS } = await import("../../handler/projectile-option/index.ts");
+const { EXCAVATION_OPTIONS } = await import("../../handler/excavation-option/index.ts");
 const { HANDLER_META, HANDLER_TYPE_BLURBS, HANDLER_TYPE_LABELS } = await import(
     "../../handler/core/handler-registry.ts"
 );
@@ -50,24 +54,27 @@ function fakeH() {
         return node;
     };
     h.seen = seen;
-    h.text = () => {
-        const parts = [];
-        const walk = (n) => {
-            if (n === null || n === undefined || n === false) return;
-            if (typeof n === "string" || typeof n === "number") {
-                parts.push(String(n));
-                return;
-            }
-            if (Array.isArray(n)) {
-                n.forEach(walk);
-                return;
-            }
-            if (n.children) n.children.forEach(walk);
-        };
-        walk(seen);
-        return parts.join(" ");
-    };
+    h.text = () => textOf(seen);
     return h;
+}
+
+/** Every string under `node`, so a subtree can be searched on its own. */
+function textOf(node) {
+    const parts = [];
+    const walk = (n) => {
+        if (n === null || n === undefined || n === false) return;
+        if (typeof n === "string" || typeof n === "number") {
+            parts.push(String(n));
+            return;
+        }
+        if (Array.isArray(n)) {
+            n.forEach(walk);
+            return;
+        }
+        if (n.children) n.children.forEach(walk);
+    };
+    walk(node);
+    return parts.join(" ");
 }
 
 const POPULATED = {
@@ -507,6 +514,109 @@ Deno.test("every details has a summary", () => {
         h.seen.filter((n) => n.tag === "details").length,
         "a <details> with no <summary> cannot be opened",
     );
+});
+
+// ── the two fixed catalogues ─────────────────────────────────────────────────
+
+/** Both "builds a value" catalogues, and the presets each one is supposed to list. */
+const FIXED_CATALOGUES = [
+    {
+        kind: "projectileOption",
+        name: "Projectile options",
+        presets: PROJECTILE_OPTIONS,
+    },
+    {
+        kind: "excavationOption",
+        name: "Excavation options",
+        presets: EXCAVATION_OPTIONS,
+    },
+];
+
+/** The props a catalogue needs. Nothing is read from the config here. */
+function fixedProps(h) {
+    return {
+        h,
+        cfg: {},
+        query: "",
+        setQuery: noop,
+        onlyUsed: false,
+        setOnlyUsed: noop,
+    };
+}
+
+for (const { kind, name, presets } of FIXED_CATALOGUES) {
+    Deno.test(`${name} shows the list, and it starts open`, () => {
+        // The section exists to show which options ship. Wrapping the list in a
+        // closed disclosure would hide the only thing it has to say, so it is open
+        // on arrival and the summary is there to collapse it.
+        const h = fakeH();
+        renderFixedCatalogue(kind, fixedProps(h));
+        const details = h.seen.find((n) => n.tag === "details");
+        assert(details, `${name} is not in a <details>`);
+        assertEquals(details.props.open, true, `${name} starts closed`);
+        // Every preset is named, so the list is the list and not a placeholder.
+        const text = h.text();
+        for (const key of Object.keys(presets)) {
+            assert(text.includes(key), `${name} does not list ${key}`);
+        }
+        // The count is on the summary, which stays visible whether or not it is open.
+        const summary = h.seen.find((n) => n.tag === "summary");
+        assert(summary, `${name} has no <summary>`);
+        assert(
+            text.includes(`${Object.keys(presets).length} available`),
+            `${name} does not say how many it has`,
+        );
+    });
+
+    Deno.test(`${name} offers nothing to add, remove or edit`, () => {
+        // These presets are written in code and compiled once. A `+ New`, a `Del`
+        // or an `Edit` would create an entry that nothing compiles or reads, so
+        // the absence is pinned: it is the property that makes the section fixed.
+        //
+        // Asserted on the *labels*, not on a button count. The `In use only` chip
+        // is a button too, and it is legitimate — it narrows what is shown and
+        // changes nothing. What is forbidden is a button that writes.
+        const h = fakeH();
+        renderFixedCatalogue(kind, fixedProps(h));
+        const labels = h.seen.filter((n) => n.tag === "button").flatMap((n) =>
+            textOf(n).split(/\s+/)
+        );
+        for (const forbidden of ["Edit", "Del", "New", "Add", "Remove", "Delete"]) {
+            assert(
+                !labels.includes(forbidden),
+                `${name} offers a "${forbidden}" button`,
+            );
+        }
+        // And nothing in the section writes to the config: the only input is the
+        // search box, so a stray save path would show up here.
+        const inputs = h.seen.filter((n) => n.tag === "input");
+        assertEquals(inputs.length, 1, `${name} draws ${inputs.length} inputs`);
+        assertEquals(inputs[0].props.placeholder, "Search options…");
+    });
+
+    Deno.test(`${name} counts what is in use`, () => {
+        // "In use only" is only useful if "in use" is derived from the config, so
+        // a section that is inline still has to read the entries above it.
+        const h = fakeH();
+        const key = Object.keys(presets)[0];
+        const cfg = kind === "projectileOption"
+            ? { projectiles: [{ id: "arrow", option: { key } }, { id: "arrow2", option: { key } }] }
+            : { excavationProfiles: [{ id: "dig", option: { key } }] };
+        renderFixedCatalogue(kind, { ...fixedProps(h), cfg });
+        const expected = kind === "projectileOption" ? "used ×2" : "used ×1";
+        assert(h.text().includes(expected), `${name} does not report ${expected}`);
+    });
+}
+
+Deno.test("both fixed catalogues resolve to the screen they live in", () => {
+    // They are sections of Items now, not screens. A stale panel state naming one
+    // — saved while these did have their own screen — must land on Items, not on
+    // an empty list with no way back.
+    assertEquals(resolveCat("projectileOption"), "items");
+    assertEquals(resolveCat("excavationOption"), "items");
+    // And a real tab is untouched by that rule.
+    assertEquals(resolveCat("items"), "items");
+    assertEquals(resolveCat("projectiles"), "projectiles");
 });
 
 Deno.test("the map screen renders an empty config, with a way out", () => {

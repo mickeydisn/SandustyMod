@@ -1079,6 +1079,101 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             p("value", "Value", "text", { required: true }),
         ],
     },
+    // ── The buffer family ─────────────────────────────────────────────────────
+    //
+    // Declared here so the panel can build a real option form for each one, the
+    // same way it does for every other action — which is the whole reason this
+    // table exists. `path` is the only field all three share, and it is the field
+    // that matters: a wrong path is the one mistake these can make that the author
+    // cannot see at run time, so the hint points at the Buffer tab rather than
+    // describing the syntax again.
+    {
+        // The element data slots. `slot` is a **number**, 1–4, and that is the
+        // whole reason the element's `Data fields` list asks for one in a column:
+        // the engine stores `field1..4` and nothing else, so a name typed there
+        // would have nothing to resolve against. `slotValue` rather than `value`
+        // so the two read as a pair — the destination and what goes in it.
+        key: "readDataField",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "cell",
+        params: [
+            p("slot", "Data slot", "select", {
+                required: true,
+                def: "1",
+                options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
+                hint:
+                    "1–4, from the element's Data fields list. The engine stores only these four.",
+            }),
+        ],
+    },
+    {
+        key: "writeDataField",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "cell",
+        params: [
+            p("slot", "Data slot", "select", {
+                required: true,
+                def: "1",
+                options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
+                hint: "1–4, from the element's Data fields list",
+            }),
+            p("slotValue", "Value", "text", {
+                required: true,
+                hint: "a number, or {{aVariable}} from an earlier step. Rounded to a whole number.",
+            }),
+        ],
+    },
+    {
+        key: "bufferRead",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+            p("path", "Buffer path", "text", {
+                required: true,
+                hint: "a path declared in Content → Buffer",
+            }),
+        ],
+    },
+    {
+        key: "bufferWrite",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+            p("path", "Buffer path", "text", {
+                required: true,
+                hint: "a path declared in Content → Buffer",
+            }),
+            // Not `required`, and deliberately: an author who writes `{"value":"{{x}}"}`
+            // against a variable that never got bound should have the write
+            // dropped, not be told the step is malformed. A missing value is
+            // `undefined`, which is a legitimate thing to store in a slot.
+            p("value", "Value", "text", {
+                hint: "a literal, or {{aVariable}} from an earlier step",
+            }),
+        ],
+    },
+    {
+        key: "bufferIncrement",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+            p("path", "Buffer path", "text", {
+                required: true,
+                hint:
+                    "a **number** path from Content → Buffer — a bool or string slot is not a counter",
+            }),
+            // Required, unlike `bufferWrite`'s value. An increment with an implied
+            // step of 1 is the kind of default that reads fine and means something
+            // other than what was meant, and the action itself refuses a missing
+            // delta — so the form says the same thing the code does.
+            p("delta", "Amount", "number", { required: true, def: "1", int: true }),
+        ],
+    },
     // `triggerScan` reads `payload.x`/`payload.y` to find a position — but the
     // engine calls a trigger's callback with **no arguments at all**
     // (`registerTrigger` puts `extra` in the registration, not the call). So on
@@ -1425,7 +1520,8 @@ export const BLOCK_META: HandlerMeta = {
             label: "When variable is true",
             kind: "text",
             required: true,
-            hint: "The name a step bound with As. Both branches are compiled; the one that runs is chosen at run time.",
+            hint:
+                "The name a step bound with As. Both branches are compiled; the one that runs is chosen at run time.",
         },
     ],
 };

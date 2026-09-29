@@ -132,7 +132,7 @@ function fakeApi(cells: Record<string, FakeCell> = {}) {
             },
         },
     };
-    const g = globalThis as { sandkit?: { api: Record<string, unknown> } };
+    const g = globalThis as unknown as { sandkit?: { api: Record<string, unknown> } };
     const had = "sandkit" in g;
     const prev = g.sandkit;
     g.sandkit = { api: { structures: api } };

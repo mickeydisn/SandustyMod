@@ -13,8 +13,8 @@ import {
     type Offset,
     type Position,
     positionsFor,
-    shift,
     shapePositions,
+    shift,
     walkFor,
 } from "../core/position.ts";
 

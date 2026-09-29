@@ -97,7 +97,31 @@ roundTrip("elements", {
     // Likewise `{ value }`: the collector's lookup is built from
     // `collectable?.value`, which is `undefined` on a boolean.
     collectable: { value: 2 },
+    // The four data slots, in the engine's own `fieldN` keys — the list shows
+    // them as `{ name, slot, default }` and the name is not stored, so a
+    // round trip back from this record brings unnamed rows. What matters here is
+    // that the **keys and numbers** survive, which is what `register` receives.
+    defaultDataFields: { field1: 0, field2: 20, field4: 7 },
 });
+
+{
+    // The lossy direction, checked as a claim rather than left to be discovered:
+    // an element row's name is the author's label and the engine never sees it,
+    // so it cannot come back. Asserting that here is what stops someone later
+    // "fixing" the round trip by inventing a label that was never stored.
+    const { form } = roundTrip("elements", { defaultDataFields: { field2: 20 } });
+    const rows = JSON.parse(form.dataFieldsJson as string);
+    check(
+        "elements.dataFieldsJson round trips to one unnamed row",
+        rows.length === 1 && rows[0].slot === 2 && rows[0].default === 20,
+        JSON.stringify(rows),
+    );
+    check(
+        "elements.dataFieldsJson row name is empty, not invented",
+        rows[0].name === "",
+        JSON.stringify(rows[0]),
+    );
+}
 
 roundTrip("structures", {
     id: "md-my-hown-mod:mdmy.structure.crusher",
@@ -195,6 +219,99 @@ roundTrip("upgrades", {
         "a second build mode survives the round trip",
         Array.isArray(entry.buildModes) && entry.buildModes.length === 2,
         JSON.stringify(entry.buildModes),
+    );
+
+    // ── `defaultData`: the list and the box are one stored key ──────────────
+    //
+    // Two form fields, one engine key, and the rule that decides between them.
+    // Each case below is a way an author can leave the structure, and the answer
+    // has to be the *same* one every time or the value moves under them.
+
+    const listOnly = formToEntry("structures", {
+        ...f,
+        dataFieldsJson: JSON.stringify([
+            { key: "charge", type: "number", default: 5 },
+            { key: "on", type: "bool", default: "true" },
+        ]),
+    }) as { defaultData?: unknown };
+    check(
+        "the data list alone writes the engine's object, coerced",
+        JSON.stringify(listOnly.defaultData) === JSON.stringify({ charge: 5, on: true }),
+        JSON.stringify(listOnly.defaultData),
+    );
+
+    // The list is used when it accounts for every key the box holds. Here it does
+    // not — `other` is in the box and in no row — so the box is written untouched.
+    // The alternative, "the list always wins", silently deleted `other`.
+    const both = formToEntry("structures", {
+        ...f,
+        dataFieldsJson: JSON.stringify([{ key: "charge", type: "number", default: 5 }]),
+        defaultDataJson: JSON.stringify({ charge: 999, other: 1 }),
+    }) as { defaultData?: unknown };
+    check(
+        "an incomplete list does not overwrite the box",
+        JSON.stringify(both.defaultData) === JSON.stringify({ charge: 999, other: 1 }),
+        JSON.stringify(both.defaultData),
+    );
+
+    // ...and when it *is* complete, the list is the one that is written, so a value
+    // the author typed as a row is not read back out of the box as a string.
+    const complete = formToEntry("structures", {
+        ...f,
+        dataFieldsJson: JSON.stringify([{ key: "charge", type: "bool", default: "true" }]),
+        defaultDataJson: JSON.stringify({ charge: "false" }),
+    }) as { defaultData?: unknown };
+    check(
+        "a complete list is used, and coerces its own row",
+        JSON.stringify(complete.defaultData) === JSON.stringify({ charge: true }),
+        JSON.stringify(complete.defaultData),
+    );
+
+    // A blank list is not an empty one — that is what lets the box keep working
+    // for the shapes a row cannot hold.
+    const boxOnly = formToEntry("structures", {
+        ...f,
+        dataFieldsJson: "",
+        defaultDataJson: JSON.stringify({ nested: { a: 1 } }),
+    }) as { defaultData?: unknown };
+    check(
+        "a blank list leaves the box to write",
+        JSON.stringify(boxOnly.defaultData) === JSON.stringify({ nested: { a: 1 } }),
+        JSON.stringify(boxOnly.defaultData),
+    );
+
+    // Neither filled deletes the key rather than storing `{}`. An empty object is
+    // a different value from an absent one, and the register step has no use for it.
+    const neither = formToEntry("structures", {
+        ...f,
+        dataFieldsJson: "",
+        defaultDataJson: "",
+    }) as { defaultData?: unknown };
+    check("neither filled removes defaultData", !("defaultData" in neither));
+
+    // A value the list cannot represent stays out of the list, so the box remains
+    // the only place it is visible — and saving does not turn it into
+    // "[object Object]".
+    const mixed = roundTrip("structures", { defaultData: { charge: 1, nested: { a: 1 } } });
+    const mixedRows = JSON.parse(mixed.form.dataFieldsJson as string);
+    check(
+        "a nested value produces no list row",
+        mixedRows.length === 1 && mixedRows[0].key === "charge",
+        JSON.stringify(mixedRows),
+    );
+    check(
+        "the box still holds the nested value",
+        JSON.parse(mixed.form.defaultDataJson as string).nested?.a === 1,
+        String(mixed.form.defaultDataJson),
+    );
+
+    const badRows = {
+        ...f,
+        dataFieldsJson: JSON.stringify([{ key: "", type: "number", default: 1 }]),
+    };
+    check(
+        "a data row with no key blocks the save",
+        !!validateForm("structures", badRows).dataFieldsJson,
     );
 
     // spanTiles off a line mode would make the engine throw on register, so
@@ -1677,7 +1794,10 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     // agree with a broken implementation and disagree with a fixed one.
     check(
         "signal slot holds exactly the actions a signal delivers",
-        sameSet(keys("signal"), known.filter((k) => reg.slotsForEntry(byKey(k)).includes("signal"))),
+        sameSet(
+            keys("signal"),
+            known.filter((k) => reg.slotsForEntry(byKey(k)).includes("signal")),
+        ),
         keys("signal").join(" "),
     );
     // And, read straight off the scope model, the part a reader can check by eye: a
@@ -1695,10 +1815,10 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     // set and a reader should not have to diff 67 keys to see the point.
     for (
         const k of [
-            "readElement",   // needs a position and a read — a click has both
-            "logicCount",    // a walk needs a position and nothing else
-            "itemExcavate",  // the cursor is the cell, so a tool can dig
-            "processorCount",// a processing-signed action, offered because needs allow it
+            "readElement", // needs a position and a read — a click has both
+            "logicCount", // a walk needs a position and nothing else
+            "itemExcavate", // the cursor is the cell, so a tool can dig
+            "processorCount", // a processing-signed action, offered because needs allow it
         ]
     ) {
         check(`signal offers ${k}`, keys("signal").includes(k), keys("signal").join(" "));
@@ -1894,14 +2014,24 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
     const sch = await import("../schema.ts");
     const hp = await import("../panel/handlers.ts");
     const reg = await import("../../handler/core/handler-registry.ts");
+    const att = await import("../panel/attach.ts");
 
     // Two tabs, one menu group. This is the point of the restructure: they are
     // siblings in the sub-nav rather than a mode behind a switcher drawn *below* it.
+    //
+    // `projectileOption` and `upgradeAction` are checked as *reachable* but no
+    // longer as Handlers tabs: both qualify one specific entry elsewhere, so they
+    // are drawn under it. The point of the test is that each is a real screen with
+    // a real label and no entry form of its own, wherever it is reached from.
     for (const t of ["action", "projectileOption", "upgradeAction"] as const) {
         check(`${t} is a known tab`, t in sch.CATEGORY_META);
         check(
-            `${t} is in the Handlers menu group`,
-            sch.MENU_GROUPS.find((g) => g.key === "handlers")?.categories.includes(t) === true,
+            `${t} is reachable — in a group or attached to one`,
+            [
+                ...sch.MENU_GROUPS.flatMap((g) => g.categories),
+                ...Object.values(att.ATTACHED)
+                    .flat(),
+            ].includes(t),
         );
         check(
             `${t} has no config key (it is a browser)`,
@@ -1909,11 +2039,28 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
         );
         check(`${t} has no entry form`, sch.fieldsFor(t).length === 0);
     }
-    // And the group holds exactly those three — a fourth would be a different feature.
+    // The two that are still tabs, and only those — a third would be a different
+    // feature. `customProcess` is the fourth screen in the group and the one
+    // deliberate exception: a named process is a thing you author and reference
+    // everywhere, not a browser over something else, so it keeps a tab.
     check(
-        "the Handlers group holds exactly the catalogues",
+        "the Handlers group holds exactly Actions and Processes",
         sch.MENU_GROUPS.find((g) => g.key === "handlers")?.categories.join() ===
-            "action,projectileOption,excavationOption,customProcess,upgradeAction",
+            "action,customProcess",
+    );
+    // The two that moved are attached to the thing they configure, which is the
+    // only thing that makes them reachable now.
+    check(
+        "Projectile options hang off Items",
+        att.parentOf("projectileOption" as never) === "items",
+    );
+    check(
+        "Excavation options hang off Items",
+        att.parentOf("excavationOption" as never) === "items",
+    );
+    check(
+        "Upgrade actions hang off Upgrades",
+        att.parentOf("upgradeAction" as never) === "upgrades",
     );
     check(
         "there is no `handlers` tab any more",
@@ -2083,7 +2230,11 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     // An item use does have a position: the engine hands over its state, and
     // `api.input.getMouseCellPosition()` ("the cell under the cursor", `input.d.ts:37`)
     // is ambient — which is what `anchorFor` in `handler/core/cell-region.ts` reads.
-    check("a Tool is offered the dig action", toolKeys.includes("itemExcavate"), toolKeys.join(" "));
+    check(
+        "a Tool is offered the dig action",
+        toolKeys.includes("itemExcavate"),
+        toolKeys.join(" "),
+    );
     check(
         "a Weapon is offered the shoot action",
         weaponKeys.includes("itemShoot"),
@@ -2156,8 +2307,12 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     // An item use has a position — `api.input.getMouseCellPosition()` is ambient
     // (`input.d.ts:37`) and `anchorFor` reads it — and `itemTypes` is what keeps them
     // apart, so the per-type narrowing is the claim worth making here.
-    check("a Tool is offered the dig action and not the shoot", toolKeys2.includes("itemExcavate") &&
-        !toolKeys2.includes("itemShoot"), `tool=${toolKeys2.join(" ")}`);
+    check(
+        "a Tool is offered the dig action and not the shoot",
+        toolKeys2.includes("itemExcavate") &&
+            !toolKeys2.includes("itemShoot"),
+        `tool=${toolKeys2.join(" ")}`,
+    );
     check(
         "a Weapon is offered the shoot action and not the dig",
         weaponKeys2.includes("itemShoot") && !weaponKeys2.includes("itemExcavate"),

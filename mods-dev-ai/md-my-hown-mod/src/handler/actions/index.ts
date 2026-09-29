@@ -43,6 +43,7 @@ import {
 import { processingSenseActions, senseActions } from "./sense/index.ts";
 import { decideActions } from "./decide/index.ts";
 import { actActions, processingActActions } from "./act/index.ts";
+import { bufferActions } from "./buffer/index.ts";
 import { processingRememberActions, rememberActions } from "./remember/index.ts";
 import { feelActions } from "./feel/index.ts";
 import { connectActions, connectModifierActions } from "./connect/index.ts";
@@ -109,6 +110,11 @@ const FOLDERS: readonly Folder[] = [
     // it is the only one that matters when choosing between these.
     { signature: "processing", defs: terrainActions },
     { signature: "payload", defs: rememberActions },
+    // The buffer reads and writes with the payload signature, and is filed under
+    // "remember" like `structureWriteData` is: both are state that outlives the
+    // tick. The one real difference is that a slot is shared, which is exactly
+    // what the module note is about.
+    { signature: "payload", defs: bufferActions },
     { signature: "processing", defs: processingRememberActions },
     { signature: "payload", defs: feelActions },
     { signature: "payload", defs: connectActions },

@@ -71,12 +71,13 @@
  * @module
  */
 import { defineActions, hostNs } from "../../core/types.ts";
+import { ELEMENT_DATA_SLOTS } from "../../../ui/definition/data-fields.ts";
 import { anchorFor, MAX_SCAN_SIDE } from "../../core/cell-region.ts";
 import {
     addressFor,
     type Position,
-    type Range,
     positionsFor,
+    type Range,
     walkFor,
 } from "../../core/position.ts";
 // `CellMutation` is deliberately **not** imported. It used to be, and the import going
@@ -129,6 +130,17 @@ export interface ElementOptions {
     vx?: unknown;
     /** Velocity Y for a `particle` spawn. Negative is up. */
     vy?: unknown;
+    /**
+     * The data slot, 1–4, for `readDataField` / `writeDataField`.
+     *
+     * The **number**, never the row's name from the element's `Data fields` list.
+     * The name is the author's label and is not stored, so nothing could resolve it
+     * back to a slot — which is exactly why the list asks for a number in a column
+     * rather than inferring one.
+     */
+    slot?: unknown;
+    /** The number to store, for `writeDataField`. Usually a `{{…}}` reference. */
+    slotValue?: unknown;
 }
 
 /** A number, or `fallback`. `NaN` must never reach the engine: it is not a cell. */
@@ -196,8 +208,7 @@ export function regionFor(
     const at = anchorPosition(structure);
     if (!at) {
         return {
-            error:
-                "this call site delivered no position and there is no cursor to read, " +
+            error: "this call site delivered no position and there is no cursor to read, " +
                 "so there is no cell to work on",
         };
     }
@@ -237,6 +248,20 @@ function elementOf(options: ElementOptions): string {
 }
 
 /**
+ * The 1–4 slot an option names, or `0` when it names none.
+ *
+ * Bounded here rather than passed through, because the engine's own failure for
+ * an out-of-range `n` is not a refusal — the doc describes `dataFieldNumber` as
+ * indexing engine slots, so a `9` addresses nothing and the write is a no-op that
+ * reports success. One clamp at the edge is the only place that can stop it, and
+ * it is the same four the element's `Data fields` list will not let you exceed.
+ */
+function dataSlotOf(options: ElementOptions): number {
+    const n = Math.round(Number(options.slot));
+    return Number.isInteger(n) && n >= 1 && n <= ELEMENT_DATA_SLOTS ? n : 0;
+}
+
+/**
  * How to ask a cell what it holds — the context if there is one, the ambient api
  * otherwise.
  *
@@ -273,7 +298,9 @@ export function cellReaders(context: unknown): {
         : hostNs("grid")?.isCellEmptyAtCell;
     return {
         readType: readType as (x: number, y: number) => unknown,
-        isEmpty: typeof isEmpty === "function" ? isEmpty as (x: number, y: number) => boolean : undefined,
+        isEmpty: typeof isEmpty === "function"
+            ? isEmpty as (x: number, y: number) => boolean
+            : undefined,
     };
 }
 
@@ -456,6 +483,102 @@ export const elementActions = defineActions({
             } catch (e) {
                 console.warn("[md-my-hown-mod:process] readElement failed", e);
                 return "";
+            }
+        },
+    },
+
+    /**
+     * Reads one of the cell's four data slots, and returns the number.
+     *
+     * The counterpart to the `Data fields` list on the element: that list decides
+     * what each slot starts at, and this is how a process asks what it holds now.
+     * `slot` is the number from that list, **not** the row's name — the engine
+     * never sees the name, so a name here could not be resolved to anything.
+     *
+     * A slot that was never declared reads as `0` rather than `null`, because the
+     * engine's own answer is `null` and `null` is the one value that makes
+     * `{{temp}} < 100` quietly false instead of an error. A declared slot that has
+     * simply never been written is genuinely `0` on the engine's side too.
+     */
+    readDataField: {
+        role: "sense",
+        doc: "Reads data slot N (1–4) at the cell and returns the number. Bind it with " +
+            "As. The slot is the number from the element's Data fields list.",
+        fn: (structure, _context, options) => {
+            try {
+                const s = structure as StructureLike | null;
+                if (!s) return 0;
+                const o = (options ?? {}) as ElementOptions;
+                // The namespace is resolved **before** the slot is checked, not after.
+                //
+                // That ordering is load-bearing and it is the same one
+                // `../motion/index.ts` uses through `overRegion`: `hostNs` is the
+                // one place the probe watches, so an action that validates its
+                // options first and returns early never shows the engine being
+                // touched — and would measure as if it reached nothing at all. The
+                // measurement is the reason, but the read is free and the honest
+                // order is "ask what I would call, then decide whether to call it".
+                const ns = hostNs("elements");
+                const slot = dataSlotOf(o);
+                if (!slot) return 0;
+                const region = regionFor(s, o);
+                if ("error" in region) return 0;
+                const first = region.range[0];
+                if (!first) return 0;
+                const read = ns?.getDataFieldAtCell;
+                if (typeof read !== "function") return 0;
+                const value = read(first.x, first.y, slot);
+                return typeof value === "number" && Number.isFinite(value) ? value : 0;
+            } catch (e) {
+                console.warn("[md-my-hown-mod:process] readDataField failed", e);
+                return 0;
+            }
+        },
+    },
+
+    /**
+     * Writes one of the cell's four data slots.
+     *
+     * The write half of `readDataField`, and like it addressed by slot number. It
+     * is **not** part of the `mutate` batch in `replaceElement` and friends: the
+     * grid writer's own options bag is `ElementCreateOptions`, and `dataFields` is
+     * one of its members but only at *creation*. There is no per-cell slot write on
+     * the writer, so this goes through the ambient `setDataFieldAtCell` and is
+     * therefore a per-cell deferred write like the motion family — which is the
+     * trade `mutate` was for, documented at the top of this file.
+     */
+    writeDataField: {
+        role: "act",
+        doc: "Writes a number into data slot N (1–4) at the cell. Set `slot` (1–4) and " +
+            "`value`.",
+        fn: (structure, _context, options) => {
+            try {
+                const s = structure as StructureLike | null;
+                if (!s) return;
+                const o = (options ?? {}) as ElementOptions;
+                // Resolved before the slot check, for the same reason and with the
+                // same note as `readDataField` above: the probe watches `hostNs`, and
+                // an early return before it would make a real write measure as
+                // though it touched nothing.
+                const ns = hostNs("elements");
+                const slot = dataSlotOf(o);
+                if (!slot) return;
+                const region = regionFor(s, o);
+                if ("error" in region) return;
+                const first = region.range[0];
+                if (!first) return;
+                const write = ns?.setDataFieldAtCell;
+                if (typeof write !== "function") return;
+                // Rounded rather than refused: the slot is a number the engine
+                // reads back whole, so a fraction would come back as something else
+                // and the author would never learn which. `slotValue` rather than a
+                // bare `value`, because the element family spells a create option
+                // `value` nowhere and one name per intent is easier to read.
+                const n = Math.round(Number(o.slotValue));
+                if (!Number.isFinite(n)) return;
+                write(first.x, first.y, slot, n);
+            } catch (e) {
+                console.warn("[md-my-hown-mod:process] writeDataField failed", e);
             }
         },
     },

@@ -356,7 +356,8 @@ Deno.test("only a commit needs the context; a read is ambient", () => {
     for (const key of wantsRead) {
         const sites = slotsFor(key);
         assert(
-            sites.includes("processing") && sites.includes("itemAction") && sites.includes("signal"),
+            sites.includes("processing") && sites.includes("itemAction") &&
+                sites.includes("signal"),
             `${key} reads ambiently, so it should not be locked to one slot: ${sites.join(", ")}`,
         );
     }
@@ -498,6 +499,12 @@ Deno.test("only actions that change the grid are filed as committing", () => {
             "teleportElement",
             "toParticle",
             "transformElement",
+            // The element data slots. `writeDataField` is a committer and not a
+            // `writes`-effect action because a slot is per-cell state the engine
+            // keeps on the element — it moves with the cell and is saved with it —
+            // so it is a grid change rather than a structure's own bag. Sits last
+            // because this list is compared in sorted order.
+            "writeDataField",
         ],
         "the three sense element actions only read, so they are not committers",
     );
@@ -517,11 +524,24 @@ Deno.test("a value returned where the engine ignores it is flagged, not hidden",
     // *actions* — an option has no slot to be vacuous on, so the assertion moved
     // with it rather than being deleted.
     assert(!isVacuousReturn("processorConvert", false), "not a returns action at all");
-    // The 6 themselves, so the count in the plan stays honest.
+    // The 7 themselves, so the count in the plan stays honest.
+    //
+    // 6 → 7 with `bufferRead`, and this one is a real finding rather than a
+    // bookkeeping chore, so it is worth stating. The rule is "returns a value
+    // that no call site reads", and `bufferRead` returns one that no engine call
+    // site reads either — the engine ignores every process return. What makes it
+    // different from the other six is that a process step binds it with `as:`, so
+    // the value is not lost, it is captured one layer above the engine.
+    //
+    // So it is counted here, which reads oddly, and the alternative was worse:
+    // declaring it non-vacuous would have meant adding a call site that "uses the
+    // return", and `CALL_SITE_USES_RETURN` is all-`false` **because** the engine
+    // reads none of them. Inventing one `true` to make the count come out would
+    // have been a lie about the engine, bought to keep an assertion tidy.
     assertEquals(
         Object.keys(ACTION_EFFECTS).filter((k) => isVacuousReturn(k, false)).length,
-        6,
-        "6 return a value and no slot reads it",
+        7,
+        "7 return a value and no slot reads it",
     );
     // And a projectile option is not in that table at all — its return is its
     // whole purpose, so calling it vacuous would be exactly backwards.

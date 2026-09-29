@@ -93,6 +93,29 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     removeTerrain: ["processing"],
     damageTerrain: ["processing"],
     setTerrainHitPoints: ["processing"],
+    // The element data slots. Every slot, because a slot is per-cell state reached
+    // through `api.elements` and not through the processing context, so these need
+    // nothing but a position — which is what the scope table records, and it is why
+    // they work in an item use or a hook as well as in a processor.
+    readDataField: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
+    writeDataField: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
+    // ── The buffer family ─────────────────────────────────────────────────────
+    //
+    // Not a "family" in the sense the ones above are: these three write to the
+    // mod's own shared slots rather than to a structure's data bag, so they are
+    // filed here rather than beside `structureWriteData`.
+    //
+    // The position is load-bearing, mechanically and not by taste:
+    // `CONTEXT_READABLE` is compared element-by-element against
+    // `Object.keys(IMPLEMENTED)`, so a row added here has to be reflected in that
+    // list at the same place or the diff names a key that is in both sets.
+    //
+    // All six slots for all three, which is the same claim the scope table makes:
+    // a slot needs nothing the call site delivers, so a buffer action is legal
+    // wherever a process can run.
+    bufferRead: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
+    bufferWrite: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
+    bufferIncrement: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
     noop: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
     itemDefault: ["itemAction"],
     processorNoop: ["processing"],
@@ -368,8 +391,23 @@ Deno.test("the action catalogue's API binding, measured", () => {
     // namespace" outcome the element, motion and terrain families each produced. The
     // structure family was the only change so far that moved the numerator, because
     // `api.structures` was genuinely new.
+    // 84 → 87: the three buffer actions arrived.
+    //
+    // Neither the numerator nor the denominator of the namespace share moves,
+    // because the buffer family calls no `api.*` namespace at all — it reaches
+    // shared memory through a handle built at construction. That is the same
+    // reason the three are absent from `API_CALLING`, and it is worth pairing the
+    // two facts: 3 actions added, 0 namespaces, because a slot is not a service.
+    //
+    // 87 → 89 with the two element data-slot actions, and the *numerator* holds at
+    // 38. `api.elements` was already in the share — the motion family calls it —
+    // so these two add actions against an existing namespace rather than a new one.
+    // That is the same outcome every family so far has produced, and it is what
+    // makes the axis less informative than it looks: `api` counts "calls the
+    // engine", and the write path and the effect are what actually separate the
+    // families.
     assertEquals(Object.keys(API_CALLING).length, 38);
-    assertEquals(Object.keys(IMPLEMENTED).length, 84);
+    assertEquals(Object.keys(IMPLEMENTED).length, 89);
 });
 
 Deno.test("`type` measures neither axis — that is why the split is real", () => {
@@ -558,6 +596,29 @@ const CONTEXT_READABLE = [
     "removeTerrain",
     "damageTerrain",
     "setTerrainHitPoints",
+    // `readDataField` returns a slot's number, so it is bindable with `as` and
+    // belongs here on the same terms as the sense element actions above: a
+    // **scalar** a `decide` step can compare. Its effect is recorded as `reads`
+    // rather than `returns` because the number is a fact about the cell rather than
+    // a value the action manufactured — the two are not exclusive, and this list is
+    // the one that records the "and it is bindable" half.
+    //
+    // It sits here, after the terrain family, because the assertion above compares
+    // this list against `Object.keys(IMPLEMENTED)` in order and the row is declared
+    // there. The list reads by family; this entry's position is the registry's.
+    "readDataField",
+    // `bufferRead`, and it earns its place on the same terms as `getVelocity` and
+    // `findFreeCell`: it returns a **scalar** — whatever the slot holds, and a
+    // slot's type is one of number, bool or string — which is the shape a `decide`
+    // step can compare. A read that returned an object would be bindable but not
+    // decidable, which this list's own rule calls a weaker kind of readable.
+    //
+    // It sits between the cell families and the logic walks for a mechanical
+    // reason rather than a thematic one: the assertion below compares this list
+    // against `Object.keys(IMPLEMENTED)` **in order**, and the buffer row is
+    // declared there between the terrain family and the logic family. The list
+    // otherwise reads by family; this entry's position is the registry's.
+    "bufferRead",
     // The logic family, last: the five range walks. They are the only actions in
     // the catalogue that are a *generalisation* of another family rather than a
     // member of one — each is the element family's read or write applied to every

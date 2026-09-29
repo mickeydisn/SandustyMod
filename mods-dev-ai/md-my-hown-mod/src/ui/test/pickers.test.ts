@@ -133,43 +133,71 @@ Deno.test("the screens sit in the groups that were asked for, in order", () => {
         "elements",
         "structures",
         "items",
+        // `buffers` is a Content tab and not an attached list, which is worth
+        // stating because the two look alike in the code. An attached list is
+        // something a structure *has* — a tooltip, a behaviour — and is drawn
+        // beneath the list of the thing it qualifies. A buffer slot belongs to the
+        // mod and to no entry, so there is nothing for it to hang off and every
+        // structure's process can reach it. That is what makes it a tab of its own
+        // rather than a field on a structure.
+        "buffers",
     ]);
     assertEquals(tabsOf("production"), ["contacts", "recipes"]);
-    // `unlockNodes` comes first under Tech: it is what a structure names, and the
-    // tech screen is where its *result* is configured. Reading a structure's gate
-    // and then the research step behind it should not mean crossing the group.
-    assertEquals(tabsOf("tech"), ["unlockNodes", "techs", "categories", "upgrades"]);
+    // `unlockNodes` is no longer a Tech tab. It used to come first here, on the
+    // argument that a structure's gate and the research step behind it should not
+    // mean crossing the group. But that argument only holds if both things are
+    // tabs — and once it is drawn under the tech nodes it gates, they are not two
+    // places to choose between at all. It is read with the thing it qualifies.
+    assertEquals(tabsOf("tech"), ["techs", "upgrades"]);
     assertEquals(tabsOf("actions"), ["triggers", "inputs", "processing", "modifiers"]);
     assertEquals(tabsOf("energy"), ["networks", "energy"]);
     assertEquals(tabsOf("assets"), ["sprites", "draws"]);
-    // The catalogues, as siblings. A single `handlers` tab holding them all would put
-    // a switcher below the sub-nav that already lists them. There are two "builds a
-    // value" catalogues — a projectile's spawn options and an excavation profile's
-    // power and flags — and both are tabs because a preset has no call site. The
-    // Processes tab is a third of the same kind: it holds no call site either, only
-    // things other definitions reference.
-    assertEquals(tabsOf("handlers"), [
-        "action",
-        "projectileOption",
-        "excavationOption",
-        "customProcess",
-        "upgradeAction",
-    ]);
+    // What is left in Handlers is what has no owner to be drawn under: the
+    // action vocabulary, and the named processes built from it. The two "builds a
+    // value" catalogues and the upgrade-action list each configure one specific
+    // entry elsewhere, so they moved under it and stopped being tabs.
+    assertEquals(tabsOf("handlers"), ["action", "customProcess"]);
     assertEquals(tabsOf("help"), ["help"], "Help must be the graph, and only the graph");
     assertEquals(tabsOf("data"), ["map", "json"]);
 });
 
 Deno.test("the qualifying lists hang off the thing they qualify", () => {
-    // This is the reorganisation: each of these five used to be a menu chip in a
-    // group called Extend, and is now drawn under the list of the object it
-    // describes. A reader looking for the tooltip of an element should not have
-    // to know that tooltips live somewhere else entirely.
+    // This is the reorganisation: each of these ten used to be a menu chip, five of
+    // them in a group called Extend and five as tabs of their own, and all are now
+    // drawn under the list of the object they describe. A reader looking for the
+    // tooltip of an element, or the functions behind an item's projectiles, should
+    // not have to know that those live somewhere else entirely.
     assertEquals(attachedTo("elements"), ["interactions"]);
     assertEquals(attachedTo("structures"), ["behaviors", "signals"]);
-    assertEquals(attachedTo("items"), ["excavation", "projectiles"]);
-    // And nothing hangs off a tab that is not a Content list.
-    for (const cat of ["terrains", "recipes", "techs", "sprites"]) {
+    // The two "builds a value" catalogues sit with the entries they configure, in
+    // the same order as the thing they configure.
+    assertEquals(attachedTo("items"), [
+        "excavation",
+        "projectiles",
+        "excavationOption",
+        "projectileOption",
+    ]);
+    // Tech loses two tabs to the same rule. A structure's unlock gate belongs to the
+    // research node it gates, and the category and action list belong to the upgrade
+    // they classify and run.
+    assertEquals(attachedTo("techs"), ["unlockNodes"]);
+    assertEquals(attachedTo("upgrades"), ["categories", "upgradeAction"]);
+    // Nothing hangs off a tab that owns its whole subject. `terrains` and
+    // `recipes` are the strongest cases: there is nothing to qualify.
+    for (const cat of ["terrains", "recipes", "sprites", "contacts", "triggers"]) {
         assertEquals(attachedTo(cat as never), [], `${cat} should have nothing attached`);
+    }
+    // The two fixed catalogues are the reason a list and an editable list are
+    // different things here. They are written in code and compiled once, so an
+    // entry form on either would be a form that cannot change its entry — and a
+    // `+ New` beside it would create something nothing reads. If one of these ever
+    // becomes authorable, it needs a `configKey` as well as a form.
+    for (const cat of ["excavationOption", "projectileOption"] as const) {
+        assert(
+            !CATEGORY_META[cat].configKey,
+            `${cat} became a stored list — it now needs a form and a save path`,
+        );
+        assertEquals(fieldsFor(cat).length, 0, `${cat} must not have an entry form`);
     }
     // Every attachment names a real screen, and the round trip holds: an attached
     // tab must be able to name the tab it is drawn under.
@@ -574,6 +602,18 @@ const ALLOWED_FREE_TEXT: Record<string, string> = {
     "runTickSharedBufferKey": "a shared-buffer key, which the mod invents when " +
         "it calls api.shared.buffers.ensure(key) — a buffer is created by naming " +
         "it, so there is no list of existing keys to pick from",
+    // The buffer tab's two. `path` is the same situation as the key above, one
+    // level down: a slot is created by naming its path, so the list of paths that
+    // exist is the mod's own Buffer tab — which this field *is*. A picker here
+    // would be the tab picking from itself, and the `buffers.bufferRead` action's
+    // own `path` option is where the cross-reference actually belongs.
+    "path": "an address inside the shared record; created by naming it, so there " +
+        "is no list of existing paths to pick from",
+    // The seed value. It is a *value*, not a reference: "0", "true" and "hello" are
+    // all legal, and a picker of buffer contents would have to be a live view of
+    // the running mod to be any use. `type` is what constrains it, and the
+    // definition's own `validate` is what checks it.
+    "default": "the value a slot starts at; constrained by `type`, not a reference",
 };
 
 Deno.test("every text field is a picker, or is on the free-text list", () => {

@@ -170,13 +170,17 @@ Deno.test("an unknown filter value yields nothing rather than everything", () =>
     assertEquals(keys({ callSite: "nonsense" }), []);
 });
 
-// ── the two screens are tabs, not a mode ─────────────────────────────────────
+// ── the two screens that stay are tabs, not a mode ───────────────────────────
 
-Deno.test("Actions, Projectile options and Upgrade actions are sibling tabs", () => {
-    // The structure, asserted directly. These were one `handlers` tab holding a
-    // `panel` field, with a switcher drawn *below* the sub-nav that already listed
-    // them — so the screen you were looking at was named in two places at once, and
-    // changing which one you wanted took two clicks in two different nav rows.
+Deno.test("Handlers is down to Actions and Processes, and the rest are attached", () => {
+    // These five were one `handlers` tab holding a `panel` field, with a switcher
+    // drawn *below* the sub-nav that already listed them — so the screen you were
+    // looking at was named in two places at once, and changing which one you wanted
+    // took two clicks in two different nav rows. Splitting them fixed that and
+    // created a second problem: three of the five qualify one specific entry
+    // elsewhere, so as tabs they named a subject they had nothing to do with.
+    // `Projectile options` and `Excavation options` are now drawn under Items, and
+    // `Upgrade actions` under Upgrades.
     //
     // Scoped to the handlers group so a change elsewhere in the file cannot fail
     // this test: the match runs to the end of that one `categories: [...]` line.
@@ -187,24 +191,34 @@ Deno.test("Actions, Projectile options and Upgrade actions are sibling tabs", ()
     // formatting rather than on membership.
     assertEquals(
         group[1].replace(/\s+/g, "").replace(/,\]$/, "]"),
-        '["action","projectileOption","excavationOption","customProcess","upgradeAction"]',
+        '["action","customProcess"]',
     );
-    // Each is a real tab with its own label, so the sub-nav names all five.
-    // `excavationOption` and `customProcess` are tabs for the same reason: a preset and
-    // a process both have no call site of their own, so listing them among the actions
-    // would claim a slot neither can run in.
+    // Each of the two that stay is a real tab with its own label, so the sub-nav
+    // names both. `customProcess` is a tab because a process has no call site of
+    // its own, so listing it among the actions would claim a slot it cannot run in.
     for (
         const [tab, label] of [
             ["action", "Actions"],
-            ["projectileOption", "Projectile options"],
-            ["excavationOption", "Excavation options"],
             ["customProcess", "Processes"],
-            ["upgradeAction", "Upgrade actions"],
         ]
     ) {
         assert(
             new RegExp(`${tab}: \\{\\s*label: "${label}"`).test(SCHEMA_SRC),
             `the ${tab} tab has no label`,
+        );
+    }
+    // The three that moved kept their labels — they are still screens, just reached
+    // from the thing they configure rather than from a tab of their own.
+    for (
+        const [tab, label] of [
+            ["projectileOption", "Projectile options"],
+            ["excavationOption", "Excavation options"],
+            ["upgradeAction", "Upgrade actions"],
+        ]
+    ) {
+        assert(
+            new RegExp(`${tab}: \\{\\s*label: "${label}"`).test(SCHEMA_SRC),
+            `the ${tab} screen has no label`,
         );
     }
     // And the wrapper is gone: a `handlers` *tab* would reintroduce the layer even
@@ -332,7 +346,6 @@ Deno.test("a filter that outlived its options is still clearable", () => {
         "a present domain still filters",
     );
 });
-
 
 Deno.test("the if block is listed, and is not an action", () => {
     // The block was reachable only through a dropdown inside one editor, which made the

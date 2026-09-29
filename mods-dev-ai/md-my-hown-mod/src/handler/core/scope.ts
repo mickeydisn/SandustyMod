@@ -164,6 +164,17 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     // nothing the proxy records at the top level. `[]` is the honest answer.
     logBuildingPayload: [],
 
+    // The buffer family needs nothing at all: `[]`, like `techAppendUnlock` above.
+    //
+    // Not an oversight and not "the same as no scope" — a buffer slot is *shared*,
+    // so a buffer action is the clearest case in the catalogue of an action that
+    // does not care what the engine handed it. That is what makes the family legal
+    // in every slot at once, and it is the property the `all slots` entry in
+    // `handler-registry.ts` is claiming when it lists all six.
+    bufferRead: [],
+    bufferWrite: [],
+    bufferIncrement: [],
+
     // needs data — the action reads `payload.data`
     structureReadData: ["data"],
     structureWriteData: ["data"],
@@ -188,6 +199,14 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     // is the same pair the element readers declare.
     isElementAtCell: ["pos", "read"],
     readElement: ["pos", "read"],
+    // The element data slots need a **position** and nothing else. No `read`, and
+    // that is the point: they go through `api.elements`, not the processing
+    // context, so they work in a slot that hands over no context at all — an item
+    // use, an engine hook. `read` is only needed by the family that reads through
+    // the context, and adding it here would have made these the two actions that
+    // could not run outside a processor.
+    readDataField: ["pos"],
+    writeDataField: ["pos"],
     countElements: ["pos", "read"],
     countEmpty: ["pos", "read"],
 

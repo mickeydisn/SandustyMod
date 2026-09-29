@@ -110,7 +110,7 @@ function fakeApi(cells: Record<string, FakeCell> = {}) {
             },
         },
     };
-    const g = globalThis as { sandkit?: { api: Record<string, unknown> } };
+    const g = globalThis as unknown as { sandkit?: { api: Record<string, unknown> } };
     const had = "sandkit" in g;
     const prev = g.sandkit;
     g.sandkit = { api };
@@ -231,7 +231,7 @@ Deno.test("with no getIdByType the handle comes back, still usable", () => {
     // is exactly what the structure family's test pins, and the reason this action cannot
     // simply drop the fallback.
     const fake = fakeApi({ "100,200": { cellType: 2 } });
-    const g = globalThis as { sandkit?: { api: { terrains: Record<string, unknown> } } };
+    const g = globalThis as unknown as { sandkit?: { api: { terrains: Record<string, unknown> } } };
     delete (g.sandkit!.api.terrains as Record<string, unknown>).getIdByType;
     assertEquals(terrainActions.terrainType.fn(at, null, {}), "2");
     assertEquals(terrainActions.isTerrainType.fn(at, null, { terrain: "2" }), true);
@@ -331,7 +331,7 @@ Deno.test("no grid.mutate means the batched three refuse rather than half-write"
     // terrain would still appear, just without atomicity, and nothing would say so. So
     // these refuse outright rather than falling back.
     const fake = fakeApi();
-    const g = globalThis as { sandkit?: { api: Record<string, unknown> } };
+    const g = globalThis as unknown as { sandkit?: { api: Record<string, unknown> } };
     delete (g.sandkit!.api as Record<string, unknown>).grid;
     for (
         const key of ["createTerrain", "replaceTerrain", "removeTerrain"] as const
@@ -351,7 +351,7 @@ Deno.test("no api.terrains means every action is falsy rather than throwing", ()
     // there" value, so a program faulting is avoided. The two batched writes refuse for a
     // different reason — they need the *reads* to decide inside the batch — and are
     // covered by the test above.
-    const g = globalThis as { sandkit?: { api: Record<string, unknown> } };
+    const g = globalThis as unknown as { sandkit?: { api: Record<string, unknown> } };
     const fake = fakeApi();
     delete (g.sandkit!.api as Record<string, unknown>).terrains;
     try {

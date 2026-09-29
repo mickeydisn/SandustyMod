@@ -163,6 +163,19 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     damageTerrain: "api",
     setTerrainHitPoints: "api",
 
+    // ── The buffer family ─────────────────────────────────────────────────────
+    //
+    // `self-sufficient`, and measured rather than asserted: each one reaches only
+    // for the `options` it was handed and for the already-built handle, so it
+    // reads as an action with no engine service and no payload. The shared memory
+    // is real and cross-thread, but it is reached through a value captured at
+    // construction, not through `api.*` inside the action body — which is why
+    // `ACTION_APIS` has no entry for them and "no namespace" is the honest answer
+    // rather than a gap.
+    bufferRead: "self-sufficient",
+    bufferWrite: "self-sufficient",
+    bufferIncrement: "self-sufficient",
+
     // ── self-sufficient (10) ──────────────────────────────────────────────────
     structureInspect: "self-sufficient",
     structureReadData: "self-sufficient",
@@ -177,6 +190,14 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     upgradeCountLevel: "self-sufficient",
     upgradeAdd: "self-sufficient",
     processorCount: "self-sufficient",
+    // Measured, and the measurement is the reason the `hostNs` call in these two
+    // actions comes **before** the option checks: the probe watches `hostNs`, so an
+    // action that validated its slot and returned early would measure as reaching
+    // nothing at all. `api`, exactly like `setVelocity` and the rest of the motion
+    // family, which resolve the namespace the same way. The API axis below names
+    // the namespace; the class only says that one is reached.
+    readDataField: "api",
+    writeDataField: "api",
     noop: "pure",
     upgradeScale: "self-sufficient",
 
@@ -388,6 +409,12 @@ export function actionClassOf(key: string): HandlerActionClass | undefined {
  * record on property access.
  */
 export const ACTION_APIS: Record<string, string> = {
+    // The buffer family is deliberately absent, and not by oversight. It does
+    // reach shared memory — `api.shared.buffers`, at construction, via the
+    // package's `ensureBuffer` — but the action body only calls `getPath` /
+    // `setPath` / `increment` on a handle built earlier. The probe watches
+    // property access *during* the call, so it sees nothing, and filing them
+    // under "shared" would be a claim the measurement does not support.
     energyGenerateWhileHeld: "energy",
     energyConsumePerRun: "energy",
     techAppendUnlock: "tech",
@@ -476,6 +503,14 @@ export const ACTION_APIS: Record<string, string> = {
     // processing context — so "elements" appearing here and nowhere else is the
     // clearest single statement of where the boundary between the two families runs.
     getVelocity: "elements",
+    // The element data slots. `elements` and not `grid`, unlike every other row in
+    // this family: `getDataFieldAtCell` / `setDataFieldAtCell` are declared on
+    // `api.elements` in the engine's own `.d.ts` (`api.elements.definition.md`
+    // lines 90–91), so the namespace is the engine's and not a judgement call. It
+    // is also the clearest sign that the data slots are element state rather than
+    // grid geometry — a slot rides along with a cell and moves when it moves.
+    readDataField: "elements",
+    writeDataField: "elements",
     findFreeCell: "elements",
     setVelocity: "elements",
     addVelocity: "elements",
@@ -585,6 +620,19 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     teleportElement: "commits",
     toParticle: "commits",
     getVelocity: "reads",
+    // The element data slots: a read and a write of one number per cell. The read
+    // is `reads` and not `returns`, and the reason is the engine's own answer:
+    // `getDataFieldAtCell` hands back a number *at a cell*, which is a fact about
+    // the world, rather than a value this action manufactured for the process. It
+    // is still bindable with `as` — the two are not exclusive, and the
+    // context-readable test in `handler-classification.test.ts` is what records
+    // that it is.
+    readDataField: "reads",
+    // `commits`, not `writes`: a data slot is per-cell state the engine persists on
+    // the element, so changing it is a grid change like any other cell write — and
+    // the slot lives on the cell rather than in a structure's `data` bag, which is
+    // what `writes` means everywhere else in this table.
+    writeDataField: "commits",
     findFreeCell: "reads",
 
     // The structure family. Ten read and eight write, and **none** of them can be
@@ -667,6 +715,18 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     energyConductor: "returns",
     energyNetwork: "returns",
     itemDefault: "returns",
+
+    // The buffer family.
+    //
+    // `bufferRead` is `returns` and not `reads`, and the difference is the whole
+    // reason it can be used: `returns` is the class of action whose value the
+    // process binds with `as:`, so a read feeds later steps. `bufferWrite` is
+    // `writes` for the same reason `structureWriteData` is — it is the one effect
+    // that means "changed a thing that persists" — even though what it changes is
+    // shared memory rather than one instance's bag.
+    bufferRead: "returns",
+    bufferWrite: "writes",
+    bufferIncrement: "writes",
 
     // writes — the instance's own data
     structureWriteData: "writes",
@@ -819,6 +879,8 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     setDuration: "grid",
     teleportElement: "grid",
     toParticle: "grid",
+    readDataField: "grid",
+    writeDataField: "grid",
     triggerScan: "grid",
     // The logic family, all on the grid: the four read-only walks through
     // `api.elements` / `api.terrains`, and `forEach` through the element family's
@@ -851,6 +913,17 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     // but no action is filed under it.
 
     // excavation
+
+    // The buffer family: the mod's own shared slots.
+    //
+    // Filed under `structure` because that is the nearest honest fit — the
+    // alternatives were all worse. Not a new domain: "does this touch the world"
+    // is the question the domain filter answers, and a buffer is the one thing in
+    // the catalogue that touches *neither* the world nor any structure, so a
+    // domain of its own would have to be a special case in every consumer.
+    bufferRead: "structure",
+    bufferWrite: "structure",
+    bufferIncrement: "structure",
 
     // structure data
     structureInspect: "structure",

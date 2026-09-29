@@ -7,6 +7,8 @@
  */
 import { onSettingsChange, readSettings, runDisableCleanup } from "./packages/modkit.ts";
 import { registerAll } from "./register/index.ts";
+import { setBufferSource } from "./handler/actions/buffer/index.ts";
+import { loadConfig } from "./config/store.ts";
 import { LOG, MOD_ID, SETTINGS, STORAGE_KEYS, VERSION } from "./constants.ts";
 import { mountPanel } from "./tool.ts";
 import "./handler/index.ts"; // register handler keys for pickers
@@ -38,6 +40,14 @@ try {
     // before the engine's one-shot sync to the simulation worker. The comment
     // inside `registerAll` says why it has to be here and not later.
     if (enabled) registerAll();
+
+    // Hand the buffer actions their slots, so a `bufferRead`/`bufferWrite` in a
+    // process resolves a path against what the author declared in
+    // Content → Buffer. Set here rather than imported there because the action
+    // module cannot reach the config store itself — the store imports the handler
+    // registry, which imports the action barrel, and the cycle would take the
+    // whole mod down. See the note on `setBufferSource`.
+    setBufferSource(() => loadConfig().buffers ?? []);
 
     applyEnabled(enabled, "boot");
     onSettingsChange(MOD_ID, SETTINGS, (next) => {

@@ -31,7 +31,7 @@ interface Call {
  * injection could pass while the real lookup failed.
  */
 function withApi(overrides: Record<string, unknown> = {}, run: () => void): Call[] {
-    const g = globalThis as { sandkit?: { api: Record<string, unknown> } };
+    const g = globalThis as unknown as { sandkit?: { api: Record<string, unknown> } };
     const calls: Call[] = [];
     const record = (fn: string, result: unknown = undefined) => (...args: unknown[]) => {
         calls.push({ fn, args });

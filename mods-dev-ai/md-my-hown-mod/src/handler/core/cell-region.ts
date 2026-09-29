@@ -59,7 +59,6 @@ function sane(value: number, max: number): number {
     return Number.isFinite(value) ? Math.min(max, Math.max(0, Math.floor(value))) : 0;
 }
 
-
 /**
  * A structure's own footprint, as a region.
  *
@@ -85,7 +84,10 @@ export function footprint(x: number, y: number, shape?: ShapeMatrix | null): Cel
     }
     // A ragged matrix is the engine's own shape, not an error: a row that stops early
     // is a row with fewer cells, and a hole is a cell the structure does not occupy.
-    const width = sane(Math.max(...shape.map((r) => (Array.isArray(r) ? r.length : 0))), MAX_SCAN_SIDE);
+    const width = sane(
+        Math.max(...shape.map((r) => (Array.isArray(r) ? r.length : 0))),
+        MAX_SCAN_SIDE,
+    );
     // A shape with no width at all — `[[]]`, or a row of nothing — describes a machine
     // that occupies a cell, so it gets the same 1×1 every shape-less structure does.
     // Without this the mask would be empty and every counter would answer 0.
@@ -122,7 +124,6 @@ export function shapeSize(shape: ShapeMatrix | undefined | null): Size {
 export function cellAt(region: CellRegion, col: number, row: number): Cell {
     return { x: region.x + col, y: region.y + row };
 }
-
 
 /**
  * Every **occupied** cell, row-major.
