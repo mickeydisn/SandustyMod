@@ -50,21 +50,43 @@ export const feelActions = defineActions({
         },
     },
 
-    /** Emits particles at the action's position. */
+    /**
+     * Emits particles at the action's position.
+     *
+     * `createParticlesAtWorld(worldX, worldY, options?)` is the real signature. The
+     * old call was `(o.name, p.x, p.y, o.count)`, which passed a **string** as
+     * `worldX` and a number where the options bag belongs; `count` was dropped.
+     *
+     * ## Why `name` is not forwarded
+     *
+     * This function has no effect-name parameter. The only string-ish field on
+     * `ParticleEffectOptions` is `imageName`, and the engine's own `.d.ts` types it
+     * as `string` — but passing a string was **measured** to throw
+     * `Cannot read properties of undefined (reading 'image')`, so the declared type
+     * is wrong or incomplete. A live matrix test:
+     *
+     * ```
+     * (20, 20, { count: 3 })            → accepted
+     * (20, 20)                           → accepted
+     * (20, 20, { imageName: "spark" })   → THROWS
+     * (20, 20, { imageName: "sand" })    → THROWS
+     * sprites.getById("sand" | "stone" | "dirt" | "water" | "spark") → all undefined
+     * ```
+     *
+     * `sprites.getById` returning `undefined` for every name means the
+     * `LoadedSprite` route could not be confirmed either, so nothing is guessed:
+     * only `count` is passed, which is verified to work. If `imageName` is
+     * investigated further, `name` can be wired to it then.
+     */
     particles: {
         role: "feel",
-        doc: "Emits particles here. Set `name` and `count` in options.",
+        doc: "Emits particles here. Set `count` in options.",
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { name?: string; count?: number };
             const p = payload as { x?: number; y?: number } | null;
             if (!p || !o.name) return;
             try {
-                hostNs("effects")?.createParticlesAtWorld?.(
-                    o.name,
-                    p.x,
-                    p.y,
-                    o.count ?? 1,
-                );
+                hostNs("effects")?.createParticlesAtWorld?.(p.x, p.y, { count: o.count ?? 1 });
             } catch (e) {
                 console.warn("[md-my-hown-mod:feel] particles failed", e);
             }

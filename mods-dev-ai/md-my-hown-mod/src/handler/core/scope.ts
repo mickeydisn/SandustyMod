@@ -143,12 +143,18 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     itemExcavate: ["pos"],
     itemShoot: ["pos"],
     particles: ["pos"],
-    // `energyGenerateWhileHeld` and `energyConsumePerRun` read `p.x` / `p.y`, but
-    // only *after* their numeric guard. The scope probe's `sandkit` stub returns a
+    // `energyGenerateWhileHeld` reads `p.x` / `p.y` to place the power, but only
+    // *after* its numeric guard. The scope probe's `sandkit` stub returns a
     // recording proxy rather than `undefined`, so the guard passes and the read is
-    // recorded — which is why these are `pos` and not `[]`.
+    // recorded — which is why this is `pos` and not `[]`.
     energyGenerateWhileHeld: ["pos"],
-    energyConsumePerRun: ["pos"],
+    // `energyConsumePerRun` is `[]` and this is a real change, not a stale entry.
+    // It used to be `pos` because it called `energy.consume(p.x, p.y, amount)` —
+    // a call that does not exist in that shape (`consume` is `(amount, options?)`
+    // and takes no coordinates). With the call corrected there is no position left
+    // to read, and a global-pool draw is genuinely position-independent, so `[]` is
+    // the honest scope. See the action's own note in `actions/connect/index.ts`.
+    energyConsumePerRun: [],
     // Reads `payload.id` when no `structures` list is given. The probe sees a
     // recording proxy for the options, so `o.structures` is truthy and the branch
     // that reads `id` is never taken — hence `[]` measured, and the table agrees

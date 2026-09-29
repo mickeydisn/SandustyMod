@@ -44,16 +44,39 @@ import { defineActions, defineModifiers, hostNs } from "../../core/types.ts";
 // ── Payload-signature actions ────────────────────────────────────────────────
 
 export const connectActions = defineActions({
-    /** Draws energy from the network at this position. */
+    /**
+     * Draws energy from the pool.
+     *
+     * The engine has **no** per-cell consume: `energy.consume(amount, options?)`
+     * draws from the global pool, and the old call `consume(p.x, p.y, amount)`
+     * therefore consumed `p.x` units — the requested `amount` was a third
+     * argument the function never read, and `p.y` landed in the `options` slot
+     * where a `{ allOrNothing }` flag belongs. Optional chaining meant it never
+     * threw.
+     *
+     * ## Why it no longer needs a position
+     *
+     * The `payload` argument used to exist only to feed `p.x`/`p.y` into that
+     * broken call. With the call fixed there is nothing left to read from it, so
+     * keeping an `if (!payload) return` guard would demand a position the action
+     * never uses — and the scope probe is right to call that drift: it records
+     * payload *property* reads, and there are none.
+     *
+     * A global-pool draw genuinely is position-independent, so the honest scope is
+     * `[]` (`ACTION_SCOPE` in `core/scope.ts`) and the action is now allowed to run
+     * at any call site. This is the scope table agreeing with the code rather than
+     * being edited to agree with a stale measurement.
+     */
     energyConsumePerRun: {
         role: "connect",
-        doc: "Draws power from the network here. Set `amount` in options.",
-        fn: (payload, _ctx, options) => {
+        doc: "Draws `amount` from the shared power pool. Set `amount` in options.",
+        fn: (_payload, _ctx, options) => {
             const amount = Number((options as { amount?: number } | null)?.amount ?? 0);
-            const p = payload as { x?: number; y?: number } | null;
-            if (!p || !amount) return;
+            if (!amount) return;
             try {
-                hostNs("energy")?.consume?.(p.x, p.y, amount);
+                // `allOrNothing: false` is the documented default; it is passed
+                // explicitly so the intent survives if the engine ever changes it.
+                hostNs("energy")?.consume?.(amount, { allOrNothing: false });
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] energy consume failed", e);
             }

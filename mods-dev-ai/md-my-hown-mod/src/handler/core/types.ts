@@ -3,6 +3,13 @@
 // that no other file has to write one. The comment above that function explains it.
 
 /**
+ * The sandbox the host injects. Declared here rather than pulled from the engine's
+ * `.d.ts` files, which are not part of this mod's dependency graph — see the note
+ * on `hostApi` below, which is the only thing that reads it.
+ */
+declare const sandkit: any;
+
+/**
  * The vocabulary every action file speaks.
  *
  * ## Why the roles exist
@@ -131,11 +138,42 @@ export type HandlerActionFn = (
  * unknown>` says "indexable, untrusted" without `any`, so the optional-chain guards
  * below stay honest and the linter stays quiet.
  *
- * Reading it through this helper rather than `(globalThis as any).sandkit` also
- * means a missing mod produces `undefined` instead of a TypeError, which is the
- * difference between an action that no-ops and one that throws mid-process.
+ * ## The resolution order, and why `globalThis` alone was not enough
+ *
+ * The host evaluates a mod as
+ * `new Function("__sandkit", "const sandkit = __sandkit; return (async () => { … })()")`,
+ * so `sandkit` is a **parameter in the mod's own scope** — it is not a property of
+ * the global object. A probe of the running game confirmed it:
+ *
+ * ```
+ * scoped=object scoped.api=object globalThis.sandkit=undefined
+ * ```
+ *
+ * Reading only `globalThis.sandkit` therefore yielded `undefined`, `hostNs()`
+ * returned `undefined` for every namespace, and **every action in every role folder
+ * silently no-opped** — `hostNs("grid")?.mutate?.(…)` is an optional call on
+ * `undefined`, so the failure surfaced as `return false` with nothing logged. The
+ * unit tests could not catch it, because they supply a mocked api and so prove the
+ * action's logic without ever asking whether the real host was reachable.
+ *
+ * `globalThis` is kept as a **fallback**, not discarded: it is what the worker
+ * scope and any test harness provide, and `mysandkit.ts`'s `g()` resolves the same
+ * two sources in the same order. Reading through a helper rather than
+ * `(globalThis as any).sandkit` also means a missing host produces `undefined`
+ * instead of a TypeError — the difference between an action that no-ops and one
+ * that throws mid-process.
  */
 export function hostApi(): Record<string, unknown> | undefined {
+    // The injected parameter. Present in the real mod scope; absent in a worker
+    // test, hence the guard rather than a bare reference.
+    try {
+        if (typeof sandkit !== "undefined" && sandkit) {
+            const api = (sandkit as { api?: Record<string, unknown> }).api;
+            if (api) return api;
+        }
+    } catch {
+        // not injected in this scope — fall through
+    }
     try {
         return (globalThis as { sandkit?: { api?: Record<string, unknown> } }).sandkit?.api;
     } catch {

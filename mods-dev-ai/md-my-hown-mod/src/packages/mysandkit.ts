@@ -16,7 +16,7 @@ import {
 import { compileEntryProcess } from "../handler/custom-process/index.ts";
 
 declare const sandkit: any;
-export const g = () => {
+const g = () => {
     try {
         if (typeof sandkit !== "undefined" && sandkit) return sandkit;
     } catch { /* */ }

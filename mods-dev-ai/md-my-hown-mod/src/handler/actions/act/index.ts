@@ -159,9 +159,33 @@ export const actActions = defineActions({
                 return;
             }
             try {
+                // `spawnAtWorld(worldX, worldY, angle, blueprint)` — four
+                // positional arguments, and **no** `getTypeFromId`: the
+                // `projectiles` namespace has no such member, so the old
+                // `api?.getTypeFromId?.(id) ?? id` silently fell through to the
+                // raw string and then handed it over as `worldX`. Optional
+                // chaining meant nothing threw and nothing was logged.
+                //
+                // The blueprint is what carries the projectile's identity, and
+                // `createBlueprintFromId` is the documented way to get one. The
+                // launch direction is an **angle in radians**, not a vector, so it
+                // is derived rather than passed through.
                 const api = hostNs("projectiles");
-                const type = api?.getTypeFromId?.(o.projectileId) ?? o.projectileId;
-                api?.spawnAtWorld?.(type, at.x, at.y, { x: o.vx ?? 0, y: o.vy ?? 0 });
+                const blueprint = api?.createBlueprintFromId?.(o.projectileId);
+                if (!blueprint) {
+                    console.warn(
+                        `[md-my-hown-mod:act] itemShoot: no projectile registered as ` +
+                            `"${o.projectileId}", so nothing was fired`,
+                    );
+                    return;
+                }
+                const vx = o.vx ?? 0;
+                const vy = o.vy ?? 0;
+                // `atan2(0, 0)` is 0 (due right). A launcher with no configured
+                // velocity therefore still fires, along +x, instead of dividing
+                // by zero or producing NaN.
+                const angle = vx === 0 && vy === 0 ? 0 : Math.atan2(vy, vx);
+                api?.spawnAtWorld?.(at.x, at.y, angle, blueprint);
             } catch (e) {
                 console.warn("[md-my-hown-mod:act] shoot failed", e);
             }
