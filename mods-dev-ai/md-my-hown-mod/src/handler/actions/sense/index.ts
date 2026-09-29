@@ -9,16 +9,18 @@
  * Everything here has the `payload` signature: `(payload, extra)`. A
  * `processing` action cannot be a SENSE action unless it is in `act/`, because
  * only that call site hands over the cell context — and a context read *is* a
- * sense, which is why `processorScan` lives in `act/` today and should move to
- * this folder the moment the signature split stops being a file split.
+ * sense. Both the role and the signature are declared per action rather than
+ * inferred from the folder, so an action filed here is free to declare
+ * `signature: "processing"` when it needs the context.
  *
  * See `HandlerAction.md` §2.
  *
  * @module
  */
-import { defineActions } from "../../core/types.ts";
+import { anchorFor } from "../../core/cell-region.ts";
+import { defineActions, hostNs } from "../../core/types.ts";
 // The one shared shape the context-aware actions need. Declared once in `act/`
-// rather than re-written here, so `processorScan` and `isElementAtCell` cannot
+// rather than re-written here, so `isElementAtCell` and the element family cannot
 // disagree about what the engine's processing context is.
 import type { ProcessingContext } from "../act/index.ts";
 
@@ -88,9 +90,9 @@ export const senseActions = defineActions({
  * same arrangement `act/` and `remember/` already use.
  *
  * The split used to be a rule rather than a shape: a sense action needing the
- * context had to be filed as an `act`, which is why `processorScan` still lives in
- * `act/` and is mis-filed for its role. The role and signature axes are independent,
- * and this is the first action that needed them to be.
+ * context had to be filed as an `act`, which is exactly the kind of
+ * mis-filing the two-axis model exists to remove. The role and signature axes
+ * are independent, and `isElementAtCell` is the action that needed them to be.
  */
 export const processingSenseActions = defineActions({
     /**
@@ -124,9 +126,15 @@ export const processingSenseActions = defineActions({
             "answer with the step's As field, then read it as {{name}}.",
         fn: (structure, context, options) => {
             try {
-                const s = structure as { x?: number; y?: number } | null;
-                const ctx = context as ProcessingContext | null;
-                if (!s || !ctx?.getResolvedTypeAtCell) return false;
+                const anchor = anchorFor(structure);
+                // The ambient fallback, for the same reason the element family has one:
+                // `api.elements.getResolvedTypeAtCell` is a top-level function
+                // (`elements.d.ts:71`), so asking a cell what it holds needs no
+                // `StructureProcessingContext`. The context is still preferred when
+                // present, because inside a mutate batch it sees staged writes.
+                const readType = (context as ProcessingContext | null)?.getResolvedTypeAtCell ??
+                    hostNs("elements")?.getResolvedTypeAtCell;
+                if (anchor.source === "none" || typeof readType !== "function") return false;
                 const o = (options ?? {}) as {
                     element?: unknown;
                     dx?: unknown;
@@ -139,7 +147,10 @@ export const processingSenseActions = defineActions({
                 // would ask the engine about a cell that cannot exist.
                 const dx = Number(o.dx ?? 0) || 0;
                 const dy = Number(o.dy ?? 0) || 0;
-                const found = ctx.getResolvedTypeAtCell((s.x ?? 0) + dx, (s.y ?? 0) + dy);
+                const found = (readType as (x: number, y: number) => unknown)(
+                    anchor.x + dx,
+                    anchor.y + dy,
+                );
                 return found === name;
             } catch (e) {
                 console.warn("[md-my-hown-mod:process] isElementAtCell failed", e);

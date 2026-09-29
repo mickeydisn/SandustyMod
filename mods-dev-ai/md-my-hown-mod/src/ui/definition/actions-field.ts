@@ -16,6 +16,24 @@
  * are different behaviours, and the same action may appear twice with different
  * options. Nothing here sorts or dedupes.
  *
+ * ## Blocks
+ *
+ * A list entry may instead be a decision, holding two more lists:
+ *
+ * ```json
+ * "actions": [
+ *   { "key": "isElementAtCell", "as": "wet", "options": { "element": "water" } },
+ *   { "key": "if", "options": { "var": "wet" },
+ *     "then": [ { "key": "removeElement" } ],
+ *     "else": [ { "key": "toast", "options": { "message": "dry" } } ] }
+ * ]
+ * ```
+ *
+ * The condition is the truthiness of a **named variable**, not an expression — a
+ * block branches on something an earlier step already bound and computes nothing
+ * itself. The field is JSON text, so blocks work here with no new widget: the text
+ * is the editor until one is built, exactly as it was for the flat list.
+ *
  * ## Why the form value is JSON text
  *
  * Because that is the established shape for a nested control here — `buildModes`
@@ -51,6 +69,47 @@ export const ACTIONS_STORE_KEY = "actions";
  */
 export const ACTIONS_COVERED = [ACTIONS_STORE_KEY];
 
+/**
+ * One ref out of a parsed list, or `null` for a shape we do not read.
+ *
+ * Recursive, because a block holds more lists. Kept in one place so parse and format
+ * agree on what a ref *is* — two implementations of the same shape is how a block ends
+ * up parsing and never coming back.
+ */
+function oneRef(a: unknown): HandlerActionRef | null {
+    // A bare string in the list is one action with no options.
+    if (typeof a === "string" && a) return { key: a };
+    if (!a || typeof a !== "object") return null;
+    const raw = a as Record<string, unknown>;
+    if (typeof raw.key !== "string" || !raw.key) return null;
+    const ref: HandlerActionRef = { key: raw.key };
+    // `options` is **omitted** rather than set to `undefined`, so a parsed ref and a
+    // formatted ref are the same object. Setting the key to `undefined` looks identical
+    // in a log and compares unequal to an absent key, which is a round-trip test that
+    // fails for a reason nobody can see.
+    if (raw.options && typeof raw.options === "object") {
+        ref.options = raw.options as Record<string, unknown>;
+    }
+    if (typeof raw.as === "string" && raw.as) ref.as = raw.as;
+    // A block's arms, recursively. An empty array is dropped so `{"then": []}` does not
+    // come back as a key the compiler then treats as present.
+    if (Array.isArray(raw.then)) {
+        const then = parseList(raw.then);
+        if (then.length) ref.then = then;
+    }
+    if (Array.isArray(raw.else)) {
+        const otherwise = parseList(raw.else);
+        if (otherwise.length) ref.else = otherwise;
+    }
+    return ref;
+}
+
+/** A list of refs, dropping the shapes we do not read. */
+function parseList(list: unknown): HandlerActionRef[] {
+    if (!Array.isArray(list)) return [];
+    return list.map(oneRef).filter((a): a is HandlerActionRef => a !== null);
+}
+
 /** Parse the form's JSON into action refs. Unparseable text yields `[]` and is left alone. */
 export function parseActionRefs(raw: string | undefined): HandlerActionRef[] {
     if (!raw || !raw.trim()) return [];
@@ -64,41 +123,27 @@ export function parseActionRefs(raw: string | undefined): HandlerActionRef[] {
     // works. Anything else must be a list, and a wrong shape is left to the
     // field's own error rather than coerced.
     if (typeof parsed === "string") return [{ key: parsed }];
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-        .map((a): HandlerActionRef | null => {
-            // A bare string in the list is one action with no options.
-            if (typeof a === "string" && a) return { key: a };
-            if (a && typeof a === "object" && typeof (a as HandlerActionRef).key === "string") {
-                const ref = a as HandlerActionRef;
-                // `options` is **omitted** rather than set to `undefined`, so a
-                // parsed ref and a formatted ref are the same object. Setting the
-                // key to `undefined` looks identical in a log and compares unequal
-                // to an absent key, which is a round-trip test that fails for a
-                // reason nobody can see.
-                return ref.options && typeof ref.options === "object"
-                    ? { key: ref.key, options: ref.options }
-                    : { key: ref.key };
-            }
-            return null;
-        })
-        .filter((a): a is HandlerActionRef => a !== null && a.key !== "");
+    return parseList(parsed);
+}
+
+/** One ref back to JSON, keeping only the keys this module reads. */
+function oneToJson(r: HandlerActionRef): Record<string, unknown> {
+    const out: Record<string, unknown> = { key: r.key };
+    if (r.options) out.options = r.options;
+    if (r.as) out.as = r.as;
+    if (r.then?.length) out.then = r.then.map(oneToJson);
+    if (r.else?.length) out.else = r.else.map(oneToJson);
+    return out;
 }
 
 /** Action refs → the form's JSON text. `[]` is `""`, so an empty list is empty. */
 export function formatActionRefs(refs: readonly HandlerActionRef[]): string {
     if (!refs.length) return "";
-    // Omit `options` entirely when there is none, rather than writing
-    // `"options": undefined` — which `JSON.stringify` drops anyway, but only
-    // because the key is absent from the object. Building it explicitly keeps the
-    // round trip exact: a ref with no options and a ref with `options: undefined`
-    // are the same thing, and a test comparing them should not trip on the
-    // difference between "absent" and "explicitly nothing".
-    return JSON.stringify(
-        refs.map((r) => (r.options ? { key: r.key, options: r.options } : { key: r.key })),
-        null,
-        2,
-    );
+    // Keys are added by `oneToJson` rather than left to `JSON.stringify` dropping the
+    // undefined ones, so a ref with no options and a ref with `options: undefined` are
+    // the same thing and a round-trip test does not trip on the difference between
+    // "absent" and "explicitly nothing".
+    return JSON.stringify(refs.map(oneToJson), null, 2);
 }
 
 /** Read a stored entry's process into the form. */
@@ -137,8 +182,10 @@ export function actionListField(
         jsonType: "array",
         wide: true,
         hint:
-            `an ordered list of actions, run in order when the engine calls this. ${slotLabel}. ` +
-            `Each action may be repeated with different options.`,
+            `an ordered list of actions, run in order when the engine calls this. ` +
+            `${slotLabel}. Each action may be repeated with different options. ` +
+            `An entry of { "key": "if", "options": { "var": "name" }, "then": [...], ` +
+            `"else": [...] } branches on whether a bound variable is true.`,
         ...extra,
     };
 }

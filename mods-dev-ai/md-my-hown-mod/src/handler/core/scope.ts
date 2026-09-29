@@ -1,28 +1,45 @@
 /**
  * What a **process** hands its actions, and what each **action** needs from it.
  *
- * This replaces "group the actions by which `api.*` they call", and the reason
- * that axis did not survive the code is worth keeping in view:
+ * This replaces "group the actions by which `api.*` they call", and the reason that
+ * axis did not survive the code is worth keeping in view:
  *
- *   - **`api` is ambient.** The five api-calling actions read
- *     `globalThis.sandkit.api`, a module global — not an argument. Every call site
- *     provides it, so it cannot say where an action can run, which is the only
- *     question a grouping axis has to answer.
+ *   - **`api` is ambient.** The api-calling actions read `globalThis.sandkit.api`, a
+ *     module global — not an argument. Every call site provides it, so it cannot say
+ *     where an action can run, which is the only question a grouping axis must answer.
  *   - **What does discriminate is the payload.** Measured, an action needs at most
- *     three things — a position, an instance's `data`, and the cell context — and
- *     each call site delivers a known subset.
+ *     four things — a position, an instance's `data`, a cell read, and a cell write —
+ *     and each call site delivers a known subset.
  *
  * So the rule is one line:
  *
  *     an action may sit in a process  **iff**  its needs ⊆ what the call site delivers
  *
  * Because both halves are *measured*, `HANDLER_META.slots` is derived rather than
- * hand-written 46 times — which is how two actions ended up offered in a slot the
- * engine cannot serve (see `analyze-scopes.ts`).
+ * hand-written 84 times — which is how two actions ended up offered in a slot the engine
+ * cannot serve (see `analyze-scopes.ts`).
  */
 
-/** The three things an action can need from the call it is running in. */
-export type ScopeNeed = "pos" | "data" | "cell";
+/**
+ * The things an action can need from the call it is running in.
+ *
+ * ## Why `cell` became two
+ *
+ * There was one need called `cell`, described as "needs the grid", and it meant two
+ * unrelated things at once:
+ *
+ *   - **reading** a cell — `api.elements.getResolvedTypeAtCell` and
+ *     `api.grid.isCellEmptyAtCell` are ordinary top-level functions
+ *     (`elements.d.ts:71`, `grid.d.ts:21`), so this is **ambient**: every call site can
+ *     do it;
+ *   - **committing** a write — `ctx.commit(mutations)` exists on
+ *     `StructureProcessingContext` and nowhere else. Only `process()` hands one over.
+ *
+ * Collapsing them locked all eleven element actions to the one slot that can commit,
+ * even for the four that only ever *read*. They are now `read` and `commit`, and the
+ * rule is unchanged — `needs ⊆ provides` — with a smaller, truer vocabulary.
+ */
+export type ScopeNeed = "pos" | "data" | "read" | "commit";
 
 /** One call site's delivery, as a set of needs satisfied. */
 export type ProcessScope = Record<ScopeNeed, boolean> & {
@@ -34,18 +51,20 @@ export type ProcessScope = Record<ScopeNeed, boolean> & {
     ret: boolean;
 };
 
-export const SCOPE_NEEDS: readonly ScopeNeed[] = ["pos", "data", "cell"] as const;
+export const SCOPE_NEEDS: readonly ScopeNeed[] = ["pos", "data", "read", "commit"] as const;
 
 export const SCOPE_NEED_LABELS: Record<ScopeNeed, string> = {
     pos: "a position",
     data: "instance data",
-    cell: "the cell grid",
+    read: "to read cells",
+    commit: "to commit writes",
 };
 
 export const SCOPE_NEED_BLURBS: Record<ScopeNeed, string> = {
-    pos: "reads payload.x / payload.y — needs to know *where* it is.",
+    pos: "needs to know *where* it is — the payload's x/y, or the cursor cell.",
     data: "reads payload.data — needs the per-instance bag.",
-    cell: "reads the processing context — commit() and getResolvedTypeAtCell().",
+    read: "reads a cell via api.elements / api.grid, which are ambient.",
+    commit: "writes through ctx.commit — only process(structure, context) hands one over.",
 };
 
 /**
@@ -57,20 +76,39 @@ export const SCOPE_NEED_BLURBS: Record<ScopeNeed, string> = {
  * *registration*, so the engine's callback is called with literally nothing.
  */
 export const CALL_SITE_SCOPE: Record<string, ProcessScope> = {
-    // process(structure, context) — the only site that delivers everything.
-    processing: { pos: true, data: true, cell: true, ret: false },
+    // process(structure, context) — the only site that delivers a `commit`.
+    processing: { pos: true, data: true, read: true, commit: true, ret: false },
     // handler(structure) — a placed structure: x, y and .data
-    signal: { pos: true, data: true, cell: false, ret: false },
-    // handleAction(state, action) — an item instance
-    itemAction: { pos: false, data: true, cell: false, ret: false },
-    // onUpgrade(item) — an item instance
-    upgrade: { pos: false, data: true, cell: false, ret: false },
-    // intercept(args, ctx) / modify(args) — whatever the hook chose to pass
-    modifier: { pos: true, data: true, cell: true, ret: true },
+    signal: { pos: true, data: true, read: true, commit: false, ret: false },
+    // handleAction(state, action) — the engine hands over the **state**, and the cell
+    // under the player is the cursor. This row used to say `pos: false`, and that one
+    // word is what stopped a Tool from digging: `pos` is a need of 51 of the 80
+    // actions, so refusing it here refused the entire element, terrain, structure and
+    // motion catalogue to the item slot, and `itemExcavate` / `itemShoot` — the two
+    // actions named for items — were re-slotted *away* from it.
+    //
+    // The justification was "`handleAction` delivers no position", which is true of the
+    // *argument* and false of the *call site*: `api.input.getMouseCellPosition()`
+    // ("the cell under the cursor", `input.d.ts:37`) is available to any caller, and the
+    // three shipping mods that dig from a hotbar tool all read it — `diagonal-delete`
+    // walks `state.session.input.mouse.cellPosition` by hand for exactly this
+    // (`__scraped-mods/…/diagonal-delete/src/entry.ts:89`).
+    //
+    // `anchorFor` in `./cell-region.ts` is the shared resolver that makes this true in
+    // code rather than in prose: payload first, cursor second, and an honest "no anchor"
+    // instead of a silent `(0,0)`.
+    itemAction: { pos: true, data: true, read: true, commit: false, ret: false },
+    // onUpgrade(item) — an item instance. `pos: false` because an upgrade fires with
+    // no pointer involved; the cursor would be a guess, not the place the item is.
+    upgrade: { pos: false, data: true, read: true, commit: false, ret: false },
+    // intercept(args, ctx) / modify(args) — whatever the hook chose to pass. It reads
+    // its return (`ret: true`), but it has no `commit` to commit through, which is why
+    // the `commit`-shaped actions are still refused here.
+    modifier: { pos: true, data: true, read: true, commit: false, ret: true },
     // callback() — NOTHING. See registerTrigger.
-    trigger: { pos: false, data: false, cell: false, ret: false },
-    // onDownKey(key)
-    behavior: { pos: false, data: false, cell: false, ret: false },
+    trigger: { pos: false, data: false, read: true, commit: false, ret: false },
+    // onDownKey(key) — a key code, and nothing else.
+    behavior: { pos: false, data: false, read: true, commit: false, ret: false },
 };
 
 /** Does this call site deliver everything `needs` asks for? The whole rule. */
@@ -133,27 +171,42 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     // `no action is offered a call site that delivers less than it reads`.
     triggerTick: ["data"],
 
-    // needs pos + cell — the only three that can commit to the grid
-    processorScan: ["pos", "cell"],
-    // A cell probe. It needs the cell (to read it) and a position (to know *which*
-    // cell), which is the same pair `processorScan` declares.
-    isElementAtCell: ["pos", "cell"],
-    processorLift: ["pos", "cell"],
-    processorConvert: ["pos", "cell"],
+    // needs pos + read — the actions that *ask a cell what it holds*.
+    //
+    // These are `read`, not `commit`, and that is the whole point of splitting the old
+    // `cell` need: `api.elements.getResolvedTypeAtCell` is an ordinary top-level
+    // function (`elements.d.ts:71`), so asking a cell a question needs no context at
+    // all. `isElementAtCell` is a pure reader and is now offered
+    // wherever a position exists.
+    // A cell probe. It needs to read a cell and a position to know *which* cell, which
+    // is the same pair the element readers declare.
+    isElementAtCell: ["pos", "read"],
+    readElement: ["pos", "read"],
+    countElements: ["pos", "read"],
+    countEmpty: ["pos", "read"],
 
-    // The element family. All seven need the same pair, for the same reason
-    // `isElementAtCell` does — a position to know *which* cell, and the cell API to
-    // read or change it. The reads and the writes are not separated here because
-    // `commit` is what makes a write possible and `commit` is the same context
-    // member a read comes from; a family split across the two lists would suggest
-    // the engine has two contexts, and it has one.
-    readElement: ["pos", "cell"],
-    countElements: ["pos", "cell"],
-    countEmpty: ["pos", "cell"],
-    replaceElement: ["pos", "cell"],
-    createElement: ["pos", "cell"],
-    emptyCells: ["pos", "cell"],
-    transformElement: ["pos", "cell"],
+    // needs pos + commit — the actions that *change* a cell.
+    //
+    // `commit` is the one genuinely scarce thing in the whole model: `ctx.commit` is a
+    // member of `StructureProcessingContext` and of nothing else, so only
+    // `process(structure, context)` can hand one over.
+    //
+    // The three original `processor*` writers commit directly. The element writers
+    // batch through `api.grid.mutate` — which *is* ambient — but they read **inside**
+    // that batch, and the only reader that sees the writes staged before it in the same
+    // transaction is the context's. Without it a transform would read committed state,
+    // decide on stale data, and write over cells a previous step in the same batch had
+    // already changed. So these genuinely need the context, and `read: true` alone
+    // would be a promise the code cannot keep.
+    processorLift: ["pos", "commit"],
+    processorConvert: ["pos", "commit"],
+    replaceElement: ["pos", "commit"],
+    createElement: ["pos", "commit"],
+    // `emptyCells` is filed with the writers, not the readers, and the file names are
+    // misleading on this one: it is a `sense`-shaped question ("is this cell empty?")
+    // attached to an `act` (remove it). Removing needs the writer, so it needs `commit`.
+    emptyCells: ["pos", "commit"],
+    transformElement: ["pos", "commit"],
     getVelocity: ["pos"],
     findFreeCell: ["pos"],
     setVelocity: ["pos"],
@@ -224,6 +277,26 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     removeTerrain: ["pos"],
     damageTerrain: ["pos"],
     setTerrainHitPoints: ["pos"],
+
+    // ── logic ─────────────────────────────────────────────────────────────────
+    // The five walks. Each needs a position to anchor its range.
+    //
+    // Four are `["pos", "read"]`: they ask cells through `cellReaders`, which
+    // resolves to the ambient `api.elements` reader, so a walk can *count* from a
+    // hotbar tool with no `StructureProcessingContext` in sight.
+    //
+    // `logicForEach` is `commit`, and the reason is worth stating because it is not
+    // the walk that makes it so. It delegates to the element family's `writeCells`,
+    // and `writeCells` reads **only** through `ctx.getResolvedTypeAtCell` — the
+    // ambient fallback was added to `cellReaders`, not to the batch path. So the
+    // walk inherits its parent's dependency exactly, which is the correct outcome:
+    // the walk does no writing of its own, so it should not claim a need its body
+    // does not have, and it should not hide the one its body really does.
+    logicAny: ["pos", "read"],
+    logicAll: ["pos", "read"],
+    logicCount: ["pos", "read"],
+    logicSum: ["pos", "read"],
+    logicForEach: ["pos", "commit"],
 
     // needs nothing — presets, factories, logs and the option-only actions
     noop: [],

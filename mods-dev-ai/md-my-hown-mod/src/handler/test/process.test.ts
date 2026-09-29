@@ -266,9 +266,14 @@ Deno.test("a process scans as exactly one usage per action", () => {
     });
     assertEquals(uses.length, 1, "not twice");
     assertEquals(uses[0].key, "signalLog");
+    // A genuinely unreachable action. This used to be `techGrantItem`, which was
+    // pinned to the `upgrade` slot by hand — but it only needs `data`, which a signal
+    // delivers, so it became reachable and the test stopped testing anything. A
+    // **commit**-writing action is the honest unreachable case: only `process()` hands
+    // over the context, so it cannot appear in a signal at all.
     assertEquals(
         unreachableHandlers({
-            signals: [{ id: "s1", actions: [{ key: "techGrantItem" }] }],
+            signals: [{ id: "s1", actions: [{ key: "createElement" }] }],
         }).length,
         1,
     );

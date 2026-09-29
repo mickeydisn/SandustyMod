@@ -9,8 +9,8 @@
  * which is a mutation, and silently did nothing. So these tests assert on the shape of
  * what reaches `commit`, not just on the return value.
  */
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { elementActions, regionFor } from "../actions/element/index.ts";
+import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { elementActions, regionFor, walkRangeFor } from "../actions/element/index.ts";
 import { MAX_SCAN_SIDE } from "../core/cell-region.ts";
 
 /** One call recorded on the fake writer. */
@@ -283,12 +283,39 @@ Deno.test("a size builds a square centred on the offset, and is clamped", () => 
 });
 
 Deno.test("regionFor reports the clamp rather than hiding it", () => {
-    assertEquals(regionFor({ x: 0, y: 0 }, { size: 3 }).clamped, false);
-    assertEquals(regionFor({ x: 0, y: 0 }, { size: 500 }).clamped, true);
+    // `regionFor` now answers `{ range, clamped }` or `{ error }`, so a test has to
+    // say which it got. Asserting on the union directly is not possible in TypeScript,
+    // and the cast would hide the very thing the type is for.
+    const clampedOf = (r: ReturnType<typeof regionFor>) => ("clamped" in r ? r.clamped : null);
+    assertEquals(clampedOf(regionFor({ x: 0, y: 0 }, { size: 3 })), false);
+    assertEquals(clampedOf(regionFor({ x: 0, y: 0 }, { size: 500 })), true);
     // A footprint is the structure's own size, which the author does not control, so
     // it is never clamped: an 80×80 structure is 80×80.
     const big = Array.from({ length: 80 }, () => Array(80).fill(1));
-    assertEquals(regionFor({ x: 0, y: 0, shape: big }, { footprint: true }).clamped, false);
+    assertEquals(clampedOf(regionFor({ x: 0, y: 0, shape: big }, { footprint: true })), false);
+});
+
+Deno.test("a matrix cell and a region are refused together, not silently merged", () => {
+    // The bug this replaces: `if (mx) … else if (size)` let the matrix branch win, so a
+    // form with "Matrix X = 2" and "Region size = 5" operated on ONE cell and reported
+    // no error. Both addresses are legitimate; only the combination is not.
+    const built = regionFor({ x: 0, y: 0 }, { mx: 2, my: 3, size: 5 });
+    assert("error" in built, "a contradictory address should be refused");
+    if (!("error" in built)) return;
+    // The message has to name the offending axis, or the author cannot act on it.
+    assert(/Matrix X\/Y/.test(built.error));
+    // …and a matrix cell on its own is still perfectly good.
+    const alone = regionFor({ x: 0, y: 0 }, { mx: 2, my: 3 });
+    assert(!("error" in alone));
+    if (!("error" in alone)) assertEquals(alone.range, [{ x: 2, y: 3 }]);
+});
+
+Deno.test("a walk never accepts a matrix cell", () => {
+    // The five walks are the reason the matrix axis is separate. A `logicForEach` that
+    // quietly became a one-cell write is the worst version of the old silent win.
+    const built = walkRangeFor({ x: 0, y: 0 }, { mx: 1, my: 1 });
+    assert("error" in built);
+    if ("error" in built) assert(/range walk/.test(built.error));
 });
 
 Deno.test("createElement can set a lifetime, and it is not a separate write", () => {

@@ -103,8 +103,22 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
     //     accurate claim. An action can be `api`-bound *and* still depend on the
     //     context, and all four migrated writes do, for their reads. A single class
     //     axis cannot say both things, which is why the **scope** table is checked
-    //     separately in `scope.test.ts`: `["pos", "cell"]` vs `["pos"]` is the axis
+    //     separately in `scope.test.ts`: `["pos", "commit"]` vs `["pos"]` is the axis
     //     that actually still distinguishes them.
+    //   58 → 58 with the ambient cell read, and it completes the migration the line
+    //     above describes. `readElement`, `countElements` and `countEmpty` were the
+    //     last three readers that reached **no** namespace; `cellReaders` now falls
+    //     back to `api.elements.getResolvedTypeAtCell` / `api.grid.isCellEmptyAtCell`
+    //     when the engine hands over no context, so they measure `api` too.
+    //     `context-bound` 7 → 3, and the three that remain
+    //     (`isElementAtCell`, `processorLift`, `processorConvert`) are the ones whose
+    //     dependency really is the context object and nothing else.
+    //
+    //     The total is unchanged, which is the point worth recording: no action was
+    //     added or removed. What changed is that the class axis now agrees with what
+    //     the code does — the readers genuinely call the engine now, and the scope
+    //     table's `read` need (ambient) is what lets them run in a slot that hands
+    //     over no `StructureProcessingContext` at all, including an item use.
     const counts: Record<string, number> = {};
     for (const c of Object.values(ACTION_CLASSES)) counts[c] = (counts[c] ?? 0) + 1;
     assertEquals(counts, {
@@ -126,14 +140,21 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
         //     uniformity for the same reason: `api.terrains` is a namespace the processing
         //     context does not reach into, so nothing in it could have measured otherwise.
         //
-        //     `api` is now 49 of 80. Worth naming plainly: the class axis has stopped being
-        //     a useful discriminator and has become a census of "calls the engine". The
-        //     axes that *do* separate the four cell families are the **write path**
-        //     (batched vs per-cell) and the **namespace** (`ACTION_APIS`, where terrain is
-        //     the only family spanning two). If this table is ever simplified, that is the
-        //     finding that would justify it.
-        api: 49,
-        "context-bound": 7,
+        //   79 → 84 with the logic family — five range walks, all `api` and all five
+        //     in the same class again. The uniformity has a single cause: they reuse
+        //     the element family's own `cellReaders` and `writeCells`, so they reach
+        //     `api.elements` / `api.terrains` / `api.grid.mutate` through the same
+        //     ambient namespaces every other cell action does.
+        //
+        //     `api` is now 57 of 84. Worth naming plainly: the class axis has stopped
+        //     being a useful discriminator and has become a census of "calls the
+        //     engine". The axes that *do* separate the five cell families are the
+        //     **write path** (batched vs per-cell), the **namespace** (`ACTION_APIS`,
+        //     where terrain is the only family spanning two) and the **scope**
+        //     (`scope.ts`, the only one that still splits a family in two). If this
+        //     table is ever simplified, that is the finding that would justify it.
+        api: 57,
+        "context-bound": 3,
         "self-sufficient": 14,
         pure: 10,
     });
@@ -170,24 +191,33 @@ Deno.test("only `api` satisfies the rule, and the rest are the work to do", () =
     // the three families are the **write path** (batched vs per-cell) and the **effect**
     // (`ACTION_EFFECTS`), both of which the module docs carry. If this table is ever
     // simplified, that is the finding that would justify it.
-    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 49);
-    assertEquals(offRuleActions().length, 31);
+    //
+    // 52 → 57, and all five that crossed are the logic family's walks — `logicAny`,
+    // `logicAll`, `logicCount`, `logicSum` and `logicForEach`. They reuse the element
+    // family's `cellReaders` and `writeCells`, so they call the same ambient
+    // namespaces the single-cell actions do.
+    //
+    // The off-rule count moves 28 → 27, and it is worth being precise about why it
+    // fell by one rather than five. Five actions left the off-rule side, but
+    // `processorScan` also left the *catalogue* when the logic family replaced it —
+    // and it was `context-bound`, which is the only class on this list. So the
+    // context-bound set drops from four to three (`isElementAtCell`, `processorLift`,
+    // `processorConvert`) and those three are genuinely the actions whose dependency
+    // is the context object and nothing else.
+    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 57);
+    assertEquals(offRuleActions().length, 27);
     const off = offRuleActions();
     assertEquals(
         off.filter((a) => a.cls === "context-bound").map((a) => a.key).sort(),
         [
-            // The three element **reads** and the original `processor*` trio. The four
-            // element *writes* used to be on this list and are not any more: reaching
-            // `api.grid.mutate` put them on the on-rule side. This is the list that
-            // shows the migration most plainly, because these seven are exactly the
-            // element family and the four that left are exactly the ones that write.
-            "countElements",
-            "countEmpty",
+            // The `processor*` quartet, and only those. Both element families have now
+            // migrated off this list: the four **writes** when they moved to
+            // `api.grid.mutate`, and the three **reads** when they gained the ambient
+            // fallback. What is left is the set that genuinely cannot reach the engine
+            // any other way, which is the honest remainder rather than a backlog.
             "isElementAtCell",
             "processorConvert",
             "processorLift",
-            "processorScan",
-            "readElement",
         ],
     );
 });

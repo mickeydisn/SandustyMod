@@ -56,25 +56,29 @@
  * moving, atomically. So a timed, already-launched element is expressible in **both**
  * families, by different means, with different atomicity — see `createOptions`.
  *
- * ## The region is the point
+ * ## The address is the point
  *
- * Each action takes `dx`/`dy` (an offset) **or** a matrix position, and works on a
- * `CellRegion` from `../../core/cell-region.ts`. `processorConvert` — "replace the
- * cell above the structure" — is therefore `replaceElement` with `dy: -1`, and a 4×4
- * sorter is `countElements` over `footprint`. Same action, different region.
+ * Each action names a set of cells through `regionFor`, which resolves to a
+ * **`Range`** — a plain list of `Position`s. `processorConvert` — "replace the cell
+ * above the structure" — is `replaceElement` with `dy: -1`, and a 4×4 sorter is
+ * `countElements` over `footprint`. Same action, different address.
+ *
+ * The types are deliberately distinct — `Position` (where), `Offset` (how far) and
+ * `MatrixCell` (which cell of the shape) — so a field cannot quietly mean a
+ * different thing from its neighbour. See `../../core/position.ts` for why that
+ * matters and what used to go wrong.
  *
  * @module
  */
 import { defineActions, hostNs } from "../../core/types.ts";
+import { anchorFor, MAX_SCAN_SIDE } from "../../core/cell-region.ts";
 import {
-    around,
-    type CellRegion,
-    cellsOf,
-    footprint,
-    isOccupied,
-    MAX_SCAN_SIDE,
-    rect,
-} from "../../core/cell-region.ts";
+    addressFor,
+    type Position,
+    type Range,
+    positionsFor,
+    walkFor,
+} from "../../core/position.ts";
 // `CellMutation` is deliberately **not** imported. It used to be, and the import going
 // unused is the point: the element family no longer stages mutation objects, so it does
 // not need their shape. The type still lives in `act/index.ts` because the three
@@ -91,7 +95,7 @@ interface StructureLike {
 }
 
 /** The options every element action shares. */
-interface ElementOptions {
+export interface ElementOptions {
     /** Offset from the structure's own cell. The region origin when no size is given. */
     dx?: unknown;
     dy?: unknown;
@@ -133,75 +137,97 @@ function num(value: unknown, fallback = 0): number {
     return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
-/** The cell the structure occupies, read defensively. */
-function origin(structure: StructureLike | null): { x: number; y: number } {
-    return { x: num(structure?.x), y: num(structure?.y) };
+/**
+ * The cell this action works from, as a `Position`, or `null`.
+ *
+ * `anchorFor` — payload first, then the cursor — and the cursor half is the whole
+ * point: a hotbar tool's payload is the engine *state*, which has no `x`, so a resolver
+ * that read only the payload put every region at the top-left corner of the map.
+ *
+ * `null` means the call site could not say where it is, and the caller must refuse. Not
+ * `(0, 0)`: treating "I do not know where I am" as "I am at the origin" is how a process
+ * ends up writing to the top-left of the map and reporting success.
+ */
+function anchorPosition(structure: StructureLike | null): Position | null {
+    const anchor = anchorFor(structure);
+    return anchor.source === "none" ? null : { x: anchor.x, y: anchor.y };
 }
 
 /**
- * The region an action works on, from `dx`/`dy`/`size`/`footprint`/`mx`/`my`.
+ * The cells an action works on, from `dx`/`dy`/`size`/`footprint`/`mx`/`my`.
  *
- * Four cases, ordered so the options compose the way an author reads them:
+ * One function, shared by all four cell families, so "the cell above me" means the
+ * same thing everywhere. It resolves in two steps, and the split is the point:
  *
- * 1. `mx`/`my` given → that **one cell of the footprint matrix**. This is the literal
- *    "the element at matrix x, y".
- * 2. `footprint` → the whole matrix, occupied cells only.
- * 3. `size` > 1 → a square of that side, centred on the offset. An absent `size` → a
- *    single cell, which is why every action works with no options at all.
+ *   1. `addressFor` turns the options into a **named** `Address` — a discriminated
+ *      union, so the five ways of addressing a cell cannot be mixed. It also refuses
+ *      a contradictory fill (see the note on `matrix-with-range`).
+ *   2. `positionsFor` turns that address into a `Range` — a plain list of
+ *      `Position`s, which is all any action ever wanted.
  *
- * A `size` past `MAX_SCAN_SIDE` is clamped **and reported**: a count over 40,000 cells
- * on a 100 ms tick looks exactly like a hung game, and a count that quietly covered a
- * fraction of what was asked for is a wrong answer rather than a slow one.
+ * There is no `CellRegion` on this path any more. A rectangle with a mask was a
+ * *description* of a set of cells, and every consumer immediately turned it back into
+ * a list; `motion/` kept its own copy of that conversion, and the two copies were
+ * free to drift. The rectangle survives only in `cell-region.ts`, for the
+ * `structure.*` context seeds, which really do expose a mask.
+ *
+ * ## What a matrix cell is, and why it conflicts
+ *
+ * `mx`/`my` name a cell of the structure's **shape matrix** — an index, not a
+ * location. Every other field here names a **region**. They are different axes, and
+ * the old `if (mx) … else if (footprint) … else if (size)` chain let the matrix
+ * branch win every time, so a form with "Matrix X = 2" and "Region size = 5" quietly
+ * operated on one cell and reported no error at all.
+ *
+ * That is now a reported conflict. And a **walk** refuses a matrix cell outright
+ * (`walkFor`): "the one cell at matrix 2,3" and "every cell in a range" are not two
+ * settings of one question, and a `logicForEach` that silently became a single-cell
+ * write is the worst version of it.
+ *
+ * A `size` past `MAX_SCAN_SIDE` is capped **and reported** for the same reason it
+ * always was: a `count` over 40,000 cells on a 100 ms tick looks like a hung game,
+ * and a count that quietly covered a fraction of what was asked for is a wrong
+ * answer rather than a slow one.
  */
 export function regionFor(
     structure: StructureLike | null,
     options: ElementOptions,
-): { region: CellRegion; clamped: boolean } {
-    const { x, y } = origin(structure);
-    const dx = num(options.dx);
-    const dy = num(options.dy);
-
-    if (options.mx !== undefined || options.my !== undefined) {
-        return { region: rect(x + num(options.mx), y + num(options.my), 1, 1), clamped: false };
+): { range: Range; clamped: boolean } | { error: string } {
+    const at = anchorPosition(structure);
+    if (!at) {
+        return {
+            error:
+                "this call site delivered no position and there is no cursor to read, " +
+                "so there is no cell to work on",
+        };
     }
-    if (options.footprint === true) {
-        return { region: footprint(x, y, structure?.shape), clamped: false };
-    }
-    const size = Math.abs(num(options.size));
-    if (size > 1) {
-        const side = Math.min(size, MAX_SCAN_SIDE);
-        return { region: around(x + dx, y + dy, side), clamped: size > MAX_SCAN_SIDE };
-    }
-    return { region: rect(x + dx, y + dy, 1, 1), clamped: false };
+    const built = addressFor(structure, options, MAX_SCAN_SIDE);
+    if ("conflict" in built) return { error: built.conflict.message };
+    return { range: positionsFor(built.address, at), clamped: built.clamped };
 }
 
 /**
- * Every cell the action should touch.
+ * The cells a **walk** covers — `regionFor` with the matrix axis removed.
  *
- * A region whose mask has holes keeps only its occupied cells — the difference between
- * a footprint and a bounding box, and for an L-shaped structure the difference between
- * touching 5 cells and touching 9.
- *
- * Exported because it is the canonical "which cells does this region mean" answer, and
- * two other families now need it: MOTION keeps its own near-identical copy, and STRUCTURE
- * imports this one. The duplication in MOTION is noted there and left alone — collapsing
- * it is a refactor of working, tested code, not part of adding a third family.
+ * The one place a range is built for a walk, so the refusal lives here rather than
+ * being repeated by each of the five walks. Each of them would otherwise need the
+ * same check, and one of them would eventually be forgotten.
  */
-export function targets(region: CellRegion): { x: number; y: number }[] {
-    if (region.mask.some((row) => row.some((bit) => bit === 0))) return cellsOf(region);
-    const out: { x: number; y: number }[] = [];
-    for (let row = 0; row < region.height; row++) {
-        for (let col = 0; col < region.width; col++) {
-            if (isOccupied(region, col, row)) out.push({ x: region.x + col, y: region.y + row });
-        }
-    }
-    return out;
+export function walkRangeFor(
+    structure: StructureLike | null,
+    options: ElementOptions,
+): { range: Range; clamped: boolean } | { error: string } {
+    const at = anchorPosition(structure);
+    if (!at) return { error: "no position and no cursor: a walk has no cells to visit" };
+    const built = walkFor(at, structure, options, MAX_SCAN_SIDE);
+    if ("conflict" in built) return { error: built.conflict.message };
+    return { range: built.range, clamped: built.clamped };
 }
 
 /** The one-time line for a clamped scan, or `""`. */
 function clampNote(clamped: boolean, label: string): string {
     return clamped
-        ? `[md-my-hown-mod:process] ${label}: region clamped to ${MAX_SCAN_SIDE}×${MAX_SCAN_SIDE} — the count below covers less than you asked for`
+        ? `[md-my-hown-mod:process] ${label}: range clamped to ${MAX_SCAN_SIDE}×${MAX_SCAN_SIDE} — the count below covers less than you asked for`
         : "";
 }
 
@@ -211,14 +237,56 @@ function elementOf(options: ElementOptions): string {
 }
 
 /**
+ * How to ask a cell what it holds — the context if there is one, the ambient api
+ * otherwise.
+ *
+ * ## Why this exists
+ *
+ * The `read` need was split out of the old `cell` need on the grounds that reading is
+ * **ambient** — `api.elements.getResolvedTypeAtCell` and `api.grid.isCellEmptyAtCell`
+ * are ordinary top-level functions (`elements.d.ts:71`, `grid.d.ts:21`), callable from
+ * any slot. That claim was true of the engine and false of this file: every reader here
+ * did `if (!ctx?.getResolvedTypeAtCell) return …`, so a `sense` step placed in an item
+ * process would have quietly returned `""` while the scope table promised it worked.
+ *
+ * A need the code does not honour is a lie with a type on it. So the readers go through
+ * this, and the table above describes what actually happens.
+ *
+ * ## Why the context still wins
+ *
+ * When a `StructureProcessingContext` is present its readers are authoritative, because
+ * they see the writes staged earlier in the same `api.grid.mutate` batch. The ambient
+ * functions read committed state. Inside a batch the context is the correct answer, so
+ * it is tried first and the fallback is only reached where there is no context at all.
+ */
+export function cellReaders(context: unknown): {
+    readType: (x: number, y: number) => unknown;
+    isEmpty: ((x: number, y: number) => boolean) | undefined;
+} | null {
+    const ctx = context as ProcessingContext | null;
+    const readType = typeof ctx?.getResolvedTypeAtCell === "function"
+        ? ctx.getResolvedTypeAtCell
+        : hostNs("elements")?.getResolvedTypeAtCell;
+    if (typeof readType !== "function") return null;
+    const isEmpty = typeof ctx?.isCellEmptyAtCell === "function"
+        ? ctx.isCellEmptyAtCell
+        : hostNs("grid")?.isCellEmptyAtCell;
+    return {
+        readType: readType as (x: number, y: number) => unknown,
+        isEmpty: typeof isEmpty === "function" ? isEmpty as (x: number, y: number) => boolean : undefined,
+    };
+}
+
+/**
  * The element writer half of `api.grid.mutate`'s callback.
  *
  * The engine types it as `GridMutationWriterElements`
  * (`grid.d.ts:166-189`). Only three methods, and the mod cannot import that type — the
  * engine's `.d.ts` files are not in this mod's dependency graph — so it is declared
  * here as the shape it is used through, which is the same compromise `hostNs` makes.
+ * Exported because `../logic/`'s `forEach` drives a batch through it.
  */
-interface ElementWriter {
+export interface ElementWriter {
     createAtCell: (x: number, y: number, type: string, options?: unknown) => void;
     replaceAtCell: (x: number, y: number, type: string, options?: unknown) => void;
     removeAtCell: (x: number, y: number, options?: unknown) => void;
@@ -252,8 +320,14 @@ interface ElementWriter {
  *   `ElementRemovalOptions` (`skipCollectorCheck`). Compare-and-remove is expressed
  *   structurally instead: the read and the remove are the same atomic step, which is
  *   what the field was emulating in the first place.
+ *
+ * Exported because the logic family's `forEach` **is** this function with a guard
+ * folded into `decide`. Reusing it is the point: a walk is not a second
+ * implementation of "write every cell of a region" — it is this one with a
+ * condition attached, and it inherits the batch atomicity and the in-batch reads
+ * for free.
  */
-function writeCells(
+export function writeCells(
     structure: unknown,
     context: unknown,
     options: unknown,
@@ -285,10 +359,15 @@ function writeCells(
         return false;
     }
     const o = (options ?? {}) as ElementOptions;
-    const { region, clamped } = regionFor(s, o);
+    const resolved = regionFor(s, o);
+    if ("error" in resolved) {
+        console.warn(`[md-my-hown-mod:process] ${label}: ${resolved.error} — nothing was written`);
+        return false;
+    }
+    const { range, clamped } = resolved;
     const note = clampNote(clamped, label);
     if (note) console.warn(note);
-    const cells = targets(region);
+    const cells = range;
 
     // Counted rather than returned by the engine: `mutate` is `void`, so this is the
     // only honest signal available. It says the batch was **submitted**, which is a
@@ -346,8 +425,7 @@ function createOptions(options: ElementOptions): Record<string, unknown> | undef
  *
  * Exported as **one** table for the `processing` signature. They are declared under
  * `sense`/`act` by role but filed together, because they are one family sharing one
- * region resolver and one write path — the same reasoning as `processorScan` living in
- * `act/index.ts` under a `sense` role: the **role** says what it is for, the **file**
+ * region resolver and one write path. The **role** says what it is for, the **file**
  * says where its signature puts it, and those are independent axes.
  */
 export const elementActions = defineActions({
@@ -367,12 +445,13 @@ export const elementActions = defineActions({
         fn: (structure, context, options) => {
             try {
                 const s = structure as StructureLike | null;
-                const ctx = context as ProcessingContext | null;
-                if (!s || !ctx?.getResolvedTypeAtCell) return "";
-                const { region } = regionFor(s, (options ?? {}) as ElementOptions);
-                const first = targets(region)[0];
+                const readers = cellReaders(context);
+                if (!s || !readers) return "";
+                const resolved = regionFor(s, (options ?? {}) as ElementOptions);
+                if ("error" in resolved) return "";
+                const first = resolved.range[0];
                 if (!first) return "";
-                const found = ctx.getResolvedTypeAtCell(first.x, first.y);
+                const found = readers.readType(first.x, first.y);
                 return found === undefined || found === null ? "" : String(found);
             } catch (e) {
                 console.warn("[md-my-hown-mod:process] readElement failed", e);
@@ -395,16 +474,20 @@ export const elementActions = defineActions({
         fn: (structure, context, options) => {
             try {
                 const s = structure as StructureLike | null;
-                const ctx = context as ProcessingContext | null;
-                if (!s || !ctx?.getResolvedTypeAtCell) return 0;
+                const readers = cellReaders(context);
+                if (!s || !readers) return 0;
                 const o = (options ?? {}) as ElementOptions;
                 const want = elementOf(o);
-                const { region, clamped } = regionFor(s, o);
-                const note = clampNote(clamped, "countElements");
+                const resolved = regionFor(s, o);
+                if ("error" in resolved) {
+                    console.warn(`[md-my-hown-mod:process] countElements: ${resolved.error}`);
+                    return 0;
+                }
+                const note = clampNote(resolved.clamped, "countElements");
                 if (note) console.warn(note);
                 let n = 0;
-                for (const cell of targets(region)) {
-                    if (ctx.getResolvedTypeAtCell(cell.x, cell.y) === want) n++;
+                for (const cell of resolved.range) {
+                    if (readers.readType(cell.x, cell.y) === want) n++;
                 }
                 return n;
             } catch (e) {
@@ -429,12 +512,14 @@ export const elementActions = defineActions({
         fn: (structure, context, options) => {
             try {
                 const s = structure as StructureLike | null;
-                const ctx = context as ProcessingContext | null;
-                if (!s || !ctx?.isCellEmptyAtCell) return 0;
-                const { region } = regionFor(s, (options ?? {}) as ElementOptions);
+                const readers = cellReaders(context);
+                if (!s || !readers?.isEmpty) return 0;
+                const resolved = regionFor(s, (options ?? {}) as ElementOptions);
+                if ("error" in resolved) return 0;
+                const isEmpty = readers.isEmpty;
                 let n = 0;
-                for (const cell of targets(region)) {
-                    if (ctx.isCellEmptyAtCell(cell.x, cell.y)) n++;
+                for (const cell of resolved.range) {
+                    if (isEmpty(cell.x, cell.y)) n++;
                 }
                 return n;
             } catch (e) {

@@ -70,7 +70,7 @@
  */
 import { defineActions, hostNs } from "../../core/types.ts";
 import { MAX_SCAN_SIDE } from "../../core/cell-region.ts";
-import { regionFor, targets } from "../element/index.ts";
+import { regionFor } from "../element/index.ts";
 
 /** A structure instance, as far as these actions are concerned. */
 interface StructureLike {
@@ -179,8 +179,8 @@ function terrains(): TerrainsApi | null {
 /**
  * The cells a terrain action touches, and a warning if the region was clamped.
  *
- * The shared `regionFor` and `targets`, so "the cell above me" means the same thing in all
- * four families. A clamp is reported rather than swallowed: a `size: 500` that quietly
+ * The shared `regionFor`, so "the cell above me" means the same thing in all four
+ * families. A clamp is reported rather than swallowed: a `size: 500` that quietly
  * covered 64×64 is a wrong answer dressed as a right one.
  */
 function regionCells(
@@ -188,14 +188,18 @@ function regionCells(
     options: TerrainOptions,
     label: string,
 ): { x: number; y: number }[] {
-    const { region, clamped } = regionFor(structure ?? {}, options as never);
-    if (clamped) {
+    const resolved = regionFor(structure ?? {}, options as never);
+    if ("error" in resolved) {
+        console.warn(`[md-my-hown-mod:process] ${label}: ${resolved.error}`);
+        return [];
+    }
+    if (resolved.clamped) {
         console.warn(
-            `[md-my-hown-mod:process] ${label}: region clamped to ${MAX_SCAN_SIDE}×` +
+            `[md-my-hown-mod:process] ${label}: range clamped to ${MAX_SCAN_SIDE}×` +
                 `${MAX_SCAN_SIDE} — this call covered less than you asked for`,
         );
     }
-    return targets(region);
+    return resolved.range.map((cell) => ({ x: cell.x, y: cell.y }));
 }
 
 /** The first cell of the region, or `null` when the region resolved to nothing. */

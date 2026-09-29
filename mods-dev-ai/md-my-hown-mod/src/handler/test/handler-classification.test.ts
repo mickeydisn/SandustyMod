@@ -10,6 +10,7 @@ import {
 } from "../actions/index.ts";
 import { HANDLER_META, type HandlerSlot, itemActionHandlersFor } from "../core/handler-registry.ts";
 import { PROJECTILE_OPTIONS, resolveProjectileOption } from "../projectile-option/index.ts";
+import { slotsFor } from "../core/scope.ts";
 
 /** The six role folders, for the source-level checks below. */
 const ACTION_DIRS = [
@@ -110,10 +111,15 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     structureWriteData: ["signal"],
     triggerLog: ["trigger"],
     triggerTick: ["signal"],
-    itemExcavate: ["signal", "processing", "modifier"],
-    itemShoot: ["signal", "processing", "modifier"],
+    // Both of these were `["signal", "processing", "modifier"]`, and both lost the
+    // **itemAction** slot to a wrong `pos: false` in `CALL_SITE_SCOPE` — an action named
+    // for an item that could not run on an item. They are back, because an item use does
+    // have a position: the engine hands over its state, and
+    // `api.input.getMouseCellPosition()` ("the cell under the cursor", `input.d.ts:37`)
+    // is ambient. `anchorFor` in `core/cell-region.ts` is what reads it.
+    itemExcavate: ["signal", "processing", "modifier", "itemAction"],
+    itemShoot: ["signal", "processing", "modifier", "itemAction"],
     processorLog: ["processing"],
-    processorScan: ["processing"],
     processorLift: ["processing"],
     processorConvert: ["processing"],
     processorCount: ["processing"],
@@ -153,6 +159,28 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     logArgs: ["modifier"],
     identity: ["modifier"],
     logBuildingPayload: ["modifier"],
+
+    // The logic family: the five range walks.
+    //
+    // The four readers are offered every slot that hands over a position, and the
+    // asymmetry is the interesting part. `trigger` is absent because the engine
+    // calls a trigger's callback with **literally nothing** — `registerTrigger` puts
+    // `extra` in the registration, not in the call — so a walk there would anchor
+    // its range to a cursor fallback rather than to anything the author chose.
+    // `upgrade` and `behavior` are absent for the same reason: an item instance and
+    // a key code are not positions.
+    logicAny: ["signal", "processing", "itemAction", "modifier"],
+    logicAll: ["signal", "processing", "itemAction", "modifier"],
+    logicCount: ["signal", "processing", "itemAction", "modifier"],
+    logicSum: ["signal", "processing", "itemAction", "modifier"],
+    // `logicForEach` gets `processing` **only**, and this is the clearest statement
+    // of the `commit` need anywhere in the codebase. It writes through
+    // `api.grid.mutate`, whose callback reads the batch's staged writes through the
+    // `StructureProcessingContext` — the one member no other call site delivers. So
+    // a tool can *ask* what is under the cursor (`logicAny` and friends) and cannot
+    // atomically rewrite it. That is a real limit of the engine, not a choice, and
+    // `scope.test.ts` re-derives it from the code.
+    logicForEach: ["processing"],
 };
 
 /**
@@ -332,8 +360,16 @@ Deno.test("the action catalogue's API binding, measured", () => {
     // The two figures measure different things and are easy to confuse: this is a count
     // of **actions** in `API_CALLING`, not of namespaces. The unique namespaces behind it
     // went 8 -> 9, which is the assertion just above.
+    // 80 → 84: `processorScan` was removed (−1) and the five range walks arrived (+5).
+    //
+    // The numerator does not move, and that is the point worth recording. All three
+    // namespaces the walks reach — `elements`, `terrains`, `grid` — were already
+    // counted, so adding five more actions against them is the same "existing
+    // namespace" outcome the element, motion and terrain families each produced. The
+    // structure family was the only change so far that moved the numerator, because
+    // `api.structures` was genuinely new.
     assertEquals(Object.keys(API_CALLING).length, 38);
-    assertEquals(Object.keys(IMPLEMENTED).length, 80);
+    assertEquals(Object.keys(IMPLEMENTED).length, 84);
 });
 
 Deno.test("`type` measures neither axis — that is why the split is real", () => {
@@ -347,8 +383,8 @@ Deno.test("`type` measures neither axis — that is why the split is real", () =
         byType.set(meta.type, [...(byType.get(meta.type) ?? []), ...slots]);
     }
     const cellSpans = new Set(byType.get("cell"));
-    // This used to assert three call sites, then two. It is **one** now, and each
-    // drop is a fix rather than a loss:
+    // This asserted three call sites, then two, then **one** — and each drop was a
+    // fix rather than a loss:
     //
     //   - the third was `triggerScan`, which is filed `cell` and reads a position,
     //     but a trigger callback is called with no arguments — so it could never do
@@ -359,11 +395,27 @@ Deno.test("`type` measures neither axis — that is why the split is real", () =
     //     They are `ExcavationOptionFn`s now, in `../excavation-option/`, which is
     //     not a call site at all.
     //
-    // If it ever spans two again, the extra one is a `type`/`slots` disagreement
-    // rather than a new capability.
+    // It is **four** now, and this time the old warning does not apply — so the
+    // warning is what changed, not the invariant. The four are the logic family's
+    // read-only walks (`logicAny`, `logicAll`, `logicCount`, `logicSum`) plus
+    // `signal` and `modifier` as slots those and the element readers share.
+    //
+    // What used to make `type: "cell"` single-site was that every member of the
+    // family needed a `StructureProcessingContext` — either to commit a write or to
+    // read a cell — and only `process()` delivers one. The walks broke that: they
+    // read through `cellReaders`, which falls back to the ambient
+    // `api.elements` / `api.terrains` readers, so they need a **position** and
+    // nothing else. A position is what `signal`, `itemAction` and `modifier` all
+    // have. So this is a new capability, not a `type`/`slots` disagreement:
+    // "reads a cell" and "has a cursor" are now enough, and before this change they
+    // were not.
+    //
+    // `logicForEach` is deliberately **not** among them. It is filed `cell` and is
+    // offered `processing` only, because it writes through the batch path and
+    // inherits its context dependency — the old rule, still exactly true of it.
     assertEquals(
         [...cellSpans].sort(),
-        ["processing"],
+        ["itemAction", "modifier", "processing", "signal"],
         'type:"cell" spans a different set of call sites than the scope rule allows',
     );
     // A call-site label and an API label in one field, both still load-bearing.
@@ -506,6 +558,18 @@ const CONTEXT_READABLE = [
     "removeTerrain",
     "damageTerrain",
     "setTerrainHitPoints",
+    // The logic family, last: the five range walks. They are the only actions in
+    // the catalogue that are a *generalisation* of another family rather than a
+    // member of one — each is the element family's read or write applied to every
+    // cell of a range — so they belong after all four cell families both in the
+    // registry and here. `logicSum` is also the only action in the list whose
+    // subject is terrain rather than elements, for the same reason the terrain
+    // family is separate: a total needs a number and a cell does not have one.
+    "logicAny",
+    "logicAll",
+    "logicCount",
+    "logicSum",
+    "logicForEach",
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -650,18 +714,52 @@ Deno.test("the projectile presets are options, and stay out of the action system
     }
 });
 
-Deno.test("the inventory's slots match what the registry declares", () => {
-    // The two must not drift: the registry decides what the UI offers, the
-    // inventory records what the code does.
+Deno.test("the inventory's declared slots match the registry table", () => {
+    // The table records what a human wrote; `HANDLER_META.slots` is now **derived** from
+    // the scope model and no longer reads this. So the comparison that still means
+    // something is against `declaredSlots` — and the two are allowed to differ, which
+    // is exactly the drift the next test measures.
     for (const [key, slots] of Object.entries(IMPLEMENTED)) {
         const meta = HANDLER_META.find((m) => m.key === key);
         assert(meta, `${key} has no HANDLER_META entry`);
         assertEquals(
-            [...meta.slots].sort(),
+            [...(meta.declaredSlots ?? meta.slots)].sort(),
             [...slots].sort(),
             `${key} is slotted differently in the registry`,
         );
     }
+});
+
+Deno.test("every slot offered is one the action can actually serve", () => {
+    // The guarantee that matters now that the slots are derived. It used to be
+    // impossible to state — the registry decided, so asking was circular.
+    //
+    // `logicForEach` is the witness worth keeping: it writes through `api.grid.mutate`
+    // and so needs the processing context, which makes it the one walk offered in
+    // exactly one slot. If a future change widened it, this is what would notice.
+    for (const m of HANDLER_META) {
+        for (const slot of m.slots) {
+            assert(
+                slotsFor(m.key).includes(slot as never),
+                `${m.key} is offered in "${slot}" but its needs do not include it`,
+            );
+        }
+    }
+    assertEquals(
+        HANDLER_META.find((m) => m.key === "logicForEach")?.slots,
+        ["processing"],
+        "a commit-writing walk belongs in one slot only",
+    );
+});
+
+Deno.test("no declared entry falls back to its hand-written slots", () => {
+    // The fallback in `HANDLER_META` exists so a missing scope entry cannot make an
+    // action vanish from every picker silently. This is what says it never happens.
+    const fellBack = HANDLER_META.filter((m) =>
+        [...(m.declaredSlots ?? [])].join() === m.slots.join() &&
+        !slotsFor(m.key).length
+    );
+    assertEquals(fellBack.map((m) => m.key), [], "an action has no derived slots at all");
 });
 
 Deno.test("registration compiles a process, so options finally arrive", () => {

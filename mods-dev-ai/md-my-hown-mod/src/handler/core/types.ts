@@ -28,7 +28,14 @@
 // ── The role axis ────────────────────────────────────────────────────────────
 
 /** What an action is *for*. The axis a person building a mod thinks in. */
-export type ActionRole = "sense" | "decide" | "act" | "remember" | "feel" | "connect";
+export type ActionRole =
+    | "sense"
+    | "decide"
+    | "act"
+    | "remember"
+    | "feel"
+    | "connect"
+    | "logic";
 
 /** Display order and section headings, for the panel and the docs. */
 export const ACTION_ROLES: readonly ActionRole[] = [
@@ -38,6 +45,7 @@ export const ACTION_ROLES: readonly ActionRole[] = [
     "remember",
     "feel",
     "connect",
+    "logic",
 ] as const;
 
 export const ROLE_LABELS: Record<ActionRole, string> = {
@@ -47,6 +55,7 @@ export const ROLE_LABELS: Record<ActionRole, string> = {
     remember: "Remember",
     feel: "Feel",
     connect: "Connect",
+    logic: "Logic",
 };
 
 export const ROLE_BLURBS: Record<ActionRole, string> = {
@@ -56,6 +65,7 @@ export const ROLE_BLURBS: Record<ActionRole, string> = {
     remember: "Write state that survives the save.",
     feel: "Feedback the player can see or hear.",
     connect: "Reach an engine system: power, tech, signals, items.",
+    logic: "Walk a range of cells. The only place a process may loop.",
 };
 
 /**
@@ -69,6 +79,7 @@ export const ROLE_IO: Record<ActionRole, { reads: string; writes: string }> = {
     remember: { reads: "vars", writes: "structure.data" },
     feel: { reads: "vars", writes: "the screen" },
     connect: { reads: "vars", writes: "the engine" },
+    logic: { reads: "vars, engine, cells", writes: "vars, pending" },
 };
 
 // ── The signature axis ───────────────────────────────────────────────────────
@@ -215,15 +226,25 @@ export function defineModifiers<
 
 // ── The call site axis ───────────────────────────────────────────────────────
 
-/** One entry in a process: which action, the params it runs with, and what it binds. */
+/**
+ * The key that marks a ref as a **block** rather than an action.
+ *
+ * A block is a decision, not a step: the compiler reads it and never looks it up in the
+ * action catalogue. It is a plain string rather than a separate type so that a block
+ * and a step share one list, one JSON round trip, and one panel field — a process
+ * stays an *array*, with nesting inside it rather than beside it.
+ */
+export const BLOCK_KEY = "if";
+
+/** One entry in a process: a step, or a block that holds steps. */
 export interface HandlerActionRef {
     key: string;
     options?: Record<string, unknown>;
     /**
      * The context variable this step's **return value** is bound to.
      *
-     * The whole mechanism of the process context, in one field. It is read *after*
-     * the action returns rather than passed in, so an action is an ordinary
+     * The whole mechanism of the process context, in one field. It is read *after* the
+     * action returns rather than passed in, so an action is an ordinary
      * `(payload, ctx, options)` function that happens to return something — no
      * action has to know the context exists, and every existing one already
      * satisfies this unchanged.
@@ -232,6 +253,32 @@ export interface HandlerActionRef {
      * `structure.x` or `commit`.
      */
     as?: string;
+    /**
+     * The `then` branch, for a `BLOCK_KEY` ref. The steps run when the block's
+     * condition is truthy.
+     */
+    then?: HandlerActionRef[];
+    /** The `else` branch. Runs when the condition is falsy; absent means "nothing". */
+    else?: HandlerActionRef[];
+}
+
+/** `true` when this ref is a decision block rather than a step. */
+export function isBlock(ref: HandlerActionRef): boolean {
+    return ref.key === BLOCK_KEY;
+}
+
+/** Every ref in a process, blocks included, depth-first. For counts and usage scans. */
+export function flattenRefs(refs: readonly HandlerActionRef[]): HandlerActionRef[] {
+    const out: HandlerActionRef[] = [];
+    const walk = (list: readonly HandlerActionRef[]) => {
+        for (const r of list) {
+            out.push(r);
+            if (r.then) walk(r.then);
+            if (r.else) walk(r.else);
+        }
+    };
+    walk(refs);
+    return out;
 }
 
 /** The compiled process — shaped like whatever the engine will call. */

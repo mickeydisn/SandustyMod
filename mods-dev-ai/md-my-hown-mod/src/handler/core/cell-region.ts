@@ -1,39 +1,21 @@
 /**
- * Rectangles of cells: the one shape every element action is expressed in.
+ * The shape **matrix**, and the one place that asks the engine where it is.
  *
- * ## Why a region, and not a pair of coordinates
+ * This used to own "which cells does this mean" — a rectangle with a mask that four
+ * action families all took. That moved to `position.ts`, which resolves an `Address`
+ * straight to a list of positions with no rectangle in between.
  *
- * The first element actions were written as "the cell above the structure" and "the
- * cell below it" — `processorLift` and `processorConvert` still are. That works for
- * exactly two cells and cannot be parameterised, which is why every new behaviour
- * wanted a new *action* instead of a new *option*.
- *
- * A **region** is a rectangle of cells with an origin and a size. It is the shape
- * three separate things all turned out to need:
- *
- * 1. **An offset** — "the cell above me" is a 1×1 region at `(x, y-1)`.
- * 2. **A structure's footprint** — `StructureDefinition.shape` is a `number[][]`, and
- *    a 4×4 structure is a 4×4 region plus an occupancy mask.
- * 3. **A neighbourhood** — "count water in the 5×5 around me" is a region too.
- *
- * So one type covers all three, and `rect`, `around` and `footprint` are three ways
- * to build it. An action written against `CellRegion` works unchanged on all three,
- * which is the property that makes *atomic element actions work on a matrix*.
- *
- * ## The origin is the region's top-left, in **grid** cells
- *
- * Not matrix coordinates. `footprint()` converts, so a caller never has to know that
- * matrix `(1, 2)` and cell `(x+1, y+2)` are one place expressed twice.
- *
- * ## Nothing here touches the engine
- *
- * Pure arithmetic over plain data. Deliberate: this is the part that is *possible* to
- * get wrong, and it can be tested without a game.
+ * What is left is what a rectangle was still genuinely needed for: the mask, for the
+ * `structure.*` context seeds (a flat list would lose the holes that make an L-shaped
+ * structure an L), and `anchorFor`, the only code in the action system that asks the
+ * engine where the current call site is.
  *
  * @module
  */
 
-/** One cell. `x`/`y` are absolute grid cells. */
+import { hostNs } from "./types.ts";
+
+/** One cell. `x`/`y` are absolute **grid** cells, never matrix coordinates. */
 export interface Cell {
     x: number;
     y: number;
@@ -72,63 +54,11 @@ export interface Size {
     height: number;
 }
 
-/** Nothing here allocates a region with a non-positive or non-finite side. */
-function sane(width: number, height: number): { width: number; height: number } {
-    return {
-        width: Number.isFinite(width) ? Math.max(0, Math.floor(width)) : 0,
-        height: Number.isFinite(height) ? Math.max(0, Math.floor(height)) : 0,
-    };
+/** A whole number within a bound, or 0. `NaN` is never a cell and never a side. */
+function sane(value: number, max: number): number {
+    return Number.isFinite(value) ? Math.min(max, Math.max(0, Math.floor(value))) : 0;
 }
 
-/** A mask with every cell occupied. */
-function fullMask(width: number, height: number): number[][] {
-    return Array.from({ length: height }, () => Array.from({ length: width }, () => 1));
-}
-
-/**
- * A plain rectangle of cells, every one occupied.
- *
- * The default way to build a region. `width`/`height` are clamped rather than
- * rejected, because they usually come from panel options where `0` means "the author
- * has not set this yet" and an exception would take down a processing tick.
- */
-export function rect(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    mask?: number[][],
-): CellRegion {
-    const size = sane(width, height);
-    return {
-        x: Math.floor(Number.isFinite(x) ? x : 0),
-        y: Math.floor(Number.isFinite(y) ? y : 0),
-        width: size.width,
-        height: size.height,
-        mask: mask ?? fullMask(size.width, size.height),
-    };
-}
-
-/**
- * A square region **centred** on a cell.
- *
- * Centred because "the 5×5 around me" means that, and the alternative — an origin plus
- * a size — makes the author do arithmetic to say "around".
- *
- * An **even** size has no centre, and cells are not points, so the choice is
- * arbitrary. One extra cell goes to the **right/below**, so `around(x, y, 2)` is
- * `[x, x+1]` rather than `[x-1, x]` and the origin stays the cell the author named —
- * which keeps `around(0, 0, 1)` at exactly one cell, the case that would otherwise be
- * ambiguous.
- */
-export function around(cx: number, cy: number, size: number): CellRegion {
-    const n = sane(size, size).width;
-    if (n <= 0) return rect(cx, cy, 0, 0);
-    const back = Math.floor((n - 1) / 2);
-    // The forward extent is `n - 1 - back`, and `n` already covers it — a region of
-    // side `n` starting `back` cells back reaches exactly `forward` cells ahead.
-    return rect(cx - back, cy - back, n, n);
-}
 
 /**
  * A structure's own footprint, as a region.
@@ -149,66 +79,50 @@ export function around(cx: number, cy: number, size: number): CellRegion {
  * no-op; one cell is the reading that keeps the action alive. It is a judgement call
  * about a malformed input, so it is stated rather than left to the reader.
  */
-export function footprint(
-    originX: number,
-    originY: number,
-    shape: ShapeMatrix | undefined | null,
-): CellRegion {
-    if (!Array.isArray(shape) || shape.length === 0) return rect(originX, originY, 1, 1);
-    const width = Math.max(...shape.map((row) => (Array.isArray(row) ? row.length : 0)));
-    const height = shape.length;
-    if (width === 0) return rect(originX, originY, 1, 1);
-    const mask: number[][] = shape.map((row) =>
-        Array.from(
+export function footprint(x: number, y: number, shape?: ShapeMatrix | null): CellRegion {
+    if (!Array.isArray(shape) || shape.length === 0) {
+        return { x, y, width: 1, height: 1, mask: [[1]] };
+    }
+    // A ragged matrix is the engine's own shape, not an error: a row that stops early
+    // is a row with fewer cells, and a hole is a cell the structure does not occupy.
+    const width = sane(Math.max(...shape.map((r) => (Array.isArray(r) ? r.length : 0))), MAX_SCAN_SIDE);
+    // A shape with no width at all — `[[]]`, or a row of nothing — describes a machine
+    // that occupies a cell, so it gets the same 1×1 every shape-less structure does.
+    // Without this the mask would be empty and every counter would answer 0.
+    if (width === 0) return { x, y, width: 1, height: 1, mask: [[1]] };
+    const height = sane(shape.length, MAX_SCAN_SIDE);
+    const mask = Array.from({ length: height }, (_, row) => {
+        const cells = shape[row];
+        return Array.from(
             { length: width },
-            (_, col) => (Array.isArray(row) ? Number(row[col]) || 0 : 0),
-        )
-    );
-    return { x: originX, y: originY, width, height, mask };
+            (_, col) => (Array.isArray(cells) ? Number(cells[col]) || 0 : 0),
+        );
+    });
+    return { x, y, width, height, mask };
 }
 
-/** The size of a shape, without keeping the region. For the panel's context list. */
+/**
+ * A matrix's size, read to its longest row.
+ *
+ * A ragged matrix is read to its **longest** row because that is the box it actually
+ * spans; reading to the first would report a narrower box for an L than it is.
+ */
 export function shapeSize(shape: ShapeMatrix | undefined | null): Size {
     const region = footprint(0, 0, shape);
     return { width: region.width, height: region.height };
-}
-
-/** Whether `(col, row)` is inside the region at all. */
-export function contains(region: CellRegion, col: number, row: number): boolean {
-    return col >= 0 && row >= 0 && col < region.width && row < region.height;
-}
-
-/** Whether `(col, row)` is inside **and** its mask bit is set. */
-export function isOccupied(region: CellRegion, col: number, row: number): boolean {
-    if (!contains(region, col, row)) return false;
-    return region.mask[row]?.[col] !== 0;
 }
 
 /**
  * The absolute cell for a mask position.
  *
  * The mask→cell direction. Exported because it is the one conversion a caller cannot
- * do safely by hand; `maskAt` below is its inverse.
+ * do safely by hand: it uses the same row-major index as the mask, and getting it
+ * backwards puts a machine's north-east cell in its south-west corner.
  */
 export function cellAt(region: CellRegion, col: number, row: number): Cell {
     return { x: region.x + col, y: region.y + row };
 }
 
-/**
- * The mask position for an absolute cell, or `undefined` if it is outside.
- *
- * Used to answer "is this cell part of me?", which is cheaper than materialising the
- * region just to test membership.
- */
-export function maskAt(
-    region: CellRegion,
-    cellX: number,
-    cellY: number,
-): { col: number; row: number } | undefined {
-    const col = cellX - region.x;
-    const row = cellY - region.y;
-    return contains(region, col, row) ? { col, row } : undefined;
-}
 
 /**
  * Every **occupied** cell, row-major.
@@ -223,24 +137,90 @@ export function cellsOf(region: CellRegion): Cell[] {
     const out: Cell[] = [];
     for (let row = 0; row < region.height; row++) {
         for (let col = 0; col < region.width; col++) {
-            if (isOccupied(region, col, row)) out.push(cellAt(region, col, row));
+            if (region.mask[row]?.[col] !== 0) out.push(cellAt(region, col, row));
         }
     }
     return out;
 }
 
-/** How many cells the region covers, occupied or not. */
-export function areaOf(region: CellRegion): number {
-    return region.width * region.height;
+// ── The position resolver ────────────────────────────────────────────────────
+//
+// Added because four families each re-derived "where am I" on their own, and every
+// one of them read `payload.x` / `payload.y` directly. That works for a structure
+// (`process(structure, context)` hands one over) and **silently resolves to (0,0) for
+// an item**, because `handleAction(state, action)` hands over the engine *state* — the
+// cursor position lives at `state.session.input.mouse.cellPosition`, not at `state.x`.
+// The four resolvers were the reason "a Tool cannot dig where the player is pointing"
+// was a structural fact rather than a bug report.
+
+/** A resolved cell. `ok: false` means the call site could not tell us where it is. */
+export interface Anchor {
+    x: number;
+    y: number;
+    /** Where the value came from. For the panel's "where does this come from" column. */
+    source: "payload" | "cursor" | "none";
 }
 
-/** How many of the region's cells are occupied. The footprint's real size. */
-export function occupiedCount(region: CellRegion): number {
-    let n = 0;
-    for (let row = 0; row < region.height; row++) {
-        for (let col = 0; col < region.width; col++) if (isOccupied(region, col, row)) n++;
+/** A number, or `undefined` when it is not one. `NaN` is never a cell. */
+function coord(value: unknown): number | undefined {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.trunc(n) : undefined;
+}
+
+/**
+ * The cell this process is anchored at: payload first, cursor second, and an honest
+ * "no anchor" otherwise.
+ *
+ * The cursor is not a fallback for convenience, it is the **only** path an item use
+ * has: `handleAction(state, action)` hands over the engine *state*, whose `x`/`y` do
+ * not exist — the pointer is recorded at `state.session.input.mouse.cellPosition`.
+ * `input.d.ts:37` documents `getMouseCellPosition()` as "the cell under the cursor",
+ * and the three shipping mods that dig from a hotbar tool all read it.
+ *
+ * `source` is returned rather than discarded because the panel shows it: "it dug the
+ * wrong cell" is a different bug to chase when the list says `cursor` than when it says
+ * `payload`.
+ *
+ * Not `(0, 0)` on failure. Silently treating "I do not know where I am" as "I am at the
+ * origin" is how a process ends up writing to the top-left corner of the map and
+ * reporting success — so the caller gets `source: "none"` and must refuse.
+ *
+ * The cursor lookup is guarded twice: `hostNs` for a missing namespace, and a `try` for
+ * a host that throws on a call it cannot serve. An anchor is on the path of every cell
+ * action, so it must not be the thing that takes down a tick.
+ */
+export function anchorFor(payload: unknown): Anchor {
+    const x = coord(readProp(payload, "x"));
+    const y = coord(readProp(payload, "y"));
+    if (x !== undefined && y !== undefined) return { x, y, source: "payload" };
+
+    try {
+        const cursor = hostNs("input")?.getMouseCellPosition?.();
+        const cx = coord(readProp(cursor, "x"));
+        const cy = coord(readProp(cursor, "y"));
+        if (cx !== undefined && cy !== undefined) return { x: cx, y: cy, source: "cursor" };
+    } catch {
+        // A thread with no pointer. Falls through to "no anchor" below, which is the
+        // honest answer: this call site really cannot say where it is.
     }
-    return n;
+    return { x: 0, y: 0, source: "none" };
+}
+
+/**
+ * A property read, tolerating a host object that throws on access.
+ *
+ * The same defensive read `scope-context.ts` needs, for the same reason: the payload
+ * is the engine's own object, and a getter that throws must not escape into a tick.
+ */
+function readProp(source: unknown, key: string): unknown {
+    if (source === null || (typeof source !== "object" && typeof source !== "function")) {
+        return undefined;
+    }
+    try {
+        return (source as Record<string, unknown>)[key];
+    } catch {
+        return undefined;
+    }
 }
 
 /**

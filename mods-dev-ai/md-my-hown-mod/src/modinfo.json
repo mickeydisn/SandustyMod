@@ -1,12 +1,12 @@
 {
     "manifestVersion": 1,
-    "id": "md-my-hown-mod",
-    "name": "My Own Mod Configurator",
+    "id": "md-mod-school",
+    "name": "Mod School",
     "version": "0.1.4",
     "apiVersion": 1,
     "entry": "main.js",
     "author": "MickeyDisn",
-    "description": "In-game configurator to define and register custom elements, structures, items, recipes and processing via JSON config stored in the game. Always-on panel, open via its corner chip. No hotbar item required.",
+    "description": "In-game configurator to define and register custom elements, structures, items, recipes and processing via JSON config stored in the game. Always-on panel, open via its corner chip. ",
     "dependencies": [],
     "loadOrder": 0,
     "configSchema": {

@@ -120,16 +120,3 @@ export function emptyViewState(): VolatileViewState {
         openRow: null,
     };
 }
-
-/**
- * Reset only the fields that a screen change should clear, leaving anything
- * else in the state object alone.
- *
- * Screen state is stored as separate `useState` hooks in `panel.ts` rather than
- * one object, so this is applied setter by setter. Keeping the shape here means
- * the *decision* of what to clear lives in one testable place even though the
- * application is spread across hooks.
- */
-export function resetPatch(keep: Partial<VolatileViewState> = {}): VolatileViewState {
-    return { ...emptyViewState(), ...keep };
-}

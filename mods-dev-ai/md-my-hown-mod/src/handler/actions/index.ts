@@ -62,6 +62,14 @@ import { structureActions } from "./structure/index.ts";
 // an `api.grid.mutate` writer of its own, so half of it is atomic — see the module header.
 import { terrainActions } from "./terrain/index.ts";
 
+// The logic family: the five walks of a range of cells. Registered **last**, and
+// that order is not cosmetic — a walk's body is resolved by key through the very
+// catalogue this loop is assembling, so `logicAny` must not be able to see itself
+// while the table is still being built. Its `resolveAction` call happens at run
+// time, long after this loop has finished, so the ordering only has to keep the
+// *table* complete by the time anything runs.
+import { logicActions } from "./logic/index.ts";
+
 /** One role folder's export, with the signature its actions share. */
 interface Folder {
     signature: ActionSignature;
@@ -105,6 +113,13 @@ const FOLDERS: readonly Folder[] = [
     { signature: "payload", defs: feelActions },
     { signature: "payload", defs: connectActions },
     { signature: "modifier", defs: connectModifierActions },
+    // The five range walks, last of all. The order is load-bearing in one direction
+    // only: a walk resolves its body by key through the catalogue this loop is
+    // building, and it does so at **run** time, so the table just has to be complete
+    // before any process runs. Registering them last keeps them at the bottom of the
+    // picker, which is right — they are a generalisation of the cell families above,
+    // not a first thing an author reaches for.
+    { signature: "payload", defs: logicActions },
 ] as const;
 
 /** `key → StoredAction`, flattened from every folder. */

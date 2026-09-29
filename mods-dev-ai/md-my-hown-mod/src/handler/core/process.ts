@@ -20,7 +20,7 @@
  */
 
 import { resolveAction } from "../actions/index.ts";
-import { createContext, varsWrite } from "./context.ts";
+import { createContext, type ProcessContext, varsRead, varsWrite } from "./context.ts";
 import { refsIn, resolveRefs } from "./refs.ts";
 import { seedsFor } from "./scope-context.ts";
 import {
@@ -28,15 +28,19 @@ import {
     type HandlerActionFn,
     type HandlerActionRef,
     type HandlerProcessFn,
+    isBlock,
 } from "./types.ts";
 
 export {
+    BLOCK_KEY,
     CALL_SITE_LABELS,
     CALL_SITE_SIGNATURES,
     CALL_SITE_USES_RETURN,
     type CallSite,
+    flattenRefs,
     type HandlerActionRef,
     type HandlerProcessFn,
+    isBlock,
 } from "./types.ts";
 
 // `resolveAction` lives with the catalogue in `../actions/index.ts` — one table,
@@ -53,11 +57,38 @@ export interface ProcessFailure {
     error: unknown;
 }
 
+/**
+ * How deep blocks may nest.
+ *
+ * A hand-written config can nest as far as the author likes and the compiler is
+ * recursive. Eight is far past anything readable in a panel, and shallow enough that a
+ * pathological config reports "too deep" instead of overflowing the stack on a tick.
+ */
+export const MAX_BLOCK_DEPTH = 8;
+
+/** A compiled step: either a resolved action, or a decision between two step lists. */
+type CompiledStep =
+    | {
+        kind: "step";
+        key: string;
+        fn: HandlerActionFn;
+        options: unknown;
+        as?: string;
+    }
+    | {
+        kind: "block";
+        key: string;
+        /** The context variable whose truthiness picks the branch. */
+        test: string;
+        then: CompiledStep[];
+        otherwise: CompiledStep[];
+    };
+
 /** What `compileProcess` produced, alongside the function itself. */
 export interface CompiledProcess {
     fn: HandlerProcessFn;
     callSite: CallSite;
-    /** Action keys dropped because nothing resolves them. */
+    /** Action keys dropped because nothing resolves them. Blocks included. */
     skipped: string[];
     /**
      * Whether any step wrote a value another step could read.
@@ -81,45 +112,113 @@ export interface CompiledProcess {
  * argument that no existing action reads. That is what lets this change be additive:
  * all 36 actions keep their current three-argument signature and ignore it.
  *
- * A step binds with the `as` field on its ref (`{ key, options, as }`). The result
- * is written after the action returns, so an action is free to `return` a value and
- * have it land in the context — which is the whole mechanism, and is why `as` is
- * checked *after* the call rather than passed in.
+ * A step binds with the `as` field on its ref (`{ key, options, as }`). The result is
+ * written after the action returns, so an action is free to `return` a value and have
+ * it land in the context.
+ *
+ * ## Blocks
+ *
+ * A `BLOCK_KEY` ref compiles to a decision between two step lists instead of a call.
+ * Its condition is the **truthiness of a named context variable** — not an expression.
+ * That is deliberate, and it is what keeps the one rule this system has: a block
+ * *branches*, it never *computes*. The truth value is something an earlier step already
+ * produced, so there is still no way to write a test-and-return in a config, and the
+ * author can still read the whole decision off the panel.
+ *
+ * The consequence worth stating: a block whose variable was never bound takes the
+ * `else` branch, not an error. An unbound name is a missing binding rather than a
+ * false claim, and the compiler cannot tell those apart — the reference resolver
+ * reports the missing name separately. A branch that quietly did nothing is far better
+ * than a tick that threw.
  */
 export function compileProcess(
     refs: readonly HandlerActionRef[],
     callSite: CallSite,
     onFailure?: (f: ProcessFailure) => void,
 ): CompiledProcess {
-    const steps: { key: string; fn: HandlerActionFn; options: unknown; as?: string }[] = [];
     const skipped: string[] = [];
+    let usesContext = false;
 
-    for (const ref of refs ?? []) {
-        const fn = resolveAction(ref.key);
-        if (typeof fn !== "function") {
-            skipped.push(ref.key);
-            continue;
+    /**
+     * Compile one list of refs, recursively.
+     *
+     * The result is the same shape at every depth, so a branch compiles exactly like
+     * the top level — there is no separate "block compiler" that could drift from the
+     * one above it.
+     */
+    const compileList = (list: readonly HandlerActionRef[], depth: number): CompiledStep[] => {
+        const out: CompiledStep[] = [];
+        for (const ref of list ?? []) {
+            if (!ref || typeof ref.key !== "string" || !ref.key) continue;
+
+            if (isBlock(ref)) {
+                if (depth >= MAX_BLOCK_DEPTH) {
+                    onFailure?.({
+                        key: ref.key,
+                        error: `blocks nested deeper than ${MAX_BLOCK_DEPTH}`,
+                    });
+                    continue;
+                }
+                const test = String((ref.options as { var?: unknown } | undefined)?.var ?? "");
+                if (!test) {
+                    // A block that cannot name what it is testing would pick a branch
+                    // arbitrarily. Refuse rather than guess.
+                    onFailure?.({ key: ref.key, error: "an if block needs options.var" });
+                    continue;
+                }
+                // A block reads a name, so it *is* a use of the context.
+                usesContext = true;
+                out.push({
+                    kind: "block",
+                    key: ref.key,
+                    test,
+                    then: compileList(ref.then ?? [], depth + 1),
+                    otherwise: compileList(ref.else ?? [], depth + 1),
+                });
+                continue;
+            }
+
+            if (ref.then || ref.else) {
+                // Branches on a step that is not a block. Following them would need a
+                // step that is both called and branched on; ignoring them would leave
+                // steps in the config that never run. Report and drop.
+                onFailure?.({ key: ref.key, error: "only an if block may have then/else" });
+            }
+            const fn = resolveAction(ref.key);
+            if (typeof fn !== "function") {
+                skipped.push(ref.key);
+                continue;
+            }
+            const as = typeof ref.as === "string" && ref.as ? ref.as : undefined;
+            // A ref only counts as using the context if it actually *does* something:
+            // binds a name, or reads one. A process of five actions that share nothing
+            // is not a process that has a context.
+            if (as) usesContext = true;
+            if (refsIn(ref.options).size > 0) usesContext = true;
+            out.push({ kind: "step", key: ref.key, fn, options: ref.options, as });
         }
-        steps.push({
-            key: ref.key,
-            fn,
-            options: ref.options,
-            as: typeof ref.as === "string" && ref.as ? ref.as : undefined,
-        });
-    }
+        return out;
+    };
 
-    // A ref only counts as using the context if it actually *does* something: binds
-    // a name, or reads one. A process of five actions that share nothing is not a
-    // process that has a context.
-    const usesContext = steps.some((s) => !!s.as) ||
-        steps.some((s) => refsIn(s.options).size > 0);
+    const steps = compileList(refs, 0);
 
-    const fn: HandlerProcessFn = (...args: unknown[]) => {
-        const [payload, ctx] = args;
-        // Per invocation, so two structures running this on the same tick cannot see
-        // each other's variables. See `context.ts` for why this is not a closure.
-        const context = createContext(seedsFor(callSite, args));
-        for (const step of steps) {
+    /** Run one compiled list. Shared by the top level and by every branch. */
+    const runList = (
+        list: readonly CompiledStep[],
+        payload: unknown,
+        ctx: unknown,
+        context: ProcessContext,
+    ): void => {
+        for (const step of list) {
+            if (step.kind === "block") {
+                runList(
+                    varsRead(context, step.test) ? step.then : step.otherwise,
+                    payload,
+                    ctx,
+                    context,
+                );
+                continue;
+            }
             try {
                 const { value, problems } = resolveRefs(
                     step.options as Record<string, unknown> | undefined,
@@ -141,6 +240,14 @@ export function compileProcess(
         }
     };
 
+    const fn: HandlerProcessFn = (...args: unknown[]) => {
+        const [payload, ctx] = args;
+        // Per invocation, so two structures running this on the same tick cannot see
+        // each other's variables. See `context.ts` for why this is not a closure.
+        const context = createContext(seedsFor(callSite, args));
+        runList(steps, payload, ctx, context);
+    };
+
     return { fn, callSite, skipped, usesContext };
 }
 
@@ -153,5 +260,11 @@ export function actionRefsOf(entry: Record<string, unknown> | undefined): Handle
         .map((a) => ({
             key: String(a.key),
             options: (a.options as Record<string, unknown> | undefined) ?? undefined,
+            // Branches survive the read, or a saved `if` would come back as a bare step
+            // and silently lose both arms. `as` too — it has always been dropped here,
+            // which means a `as`-bound step lost its name the moment it was reloaded.
+            ...(typeof a.as === "string" && a.as ? { as: a.as } : {}),
+            ...(Array.isArray(a.then) ? { then: actionRefsOf({ actions: a.then }) } : {}),
+            ...(Array.isArray(a.else) ? { else: actionRefsOf({ actions: a.else }) } : {}),
         }));
 }

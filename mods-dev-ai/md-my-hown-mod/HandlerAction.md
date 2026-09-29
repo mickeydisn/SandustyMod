@@ -29,32 +29,57 @@ violation (`player.buildings.unlockByType`) — now `unlockById`; see §9.
 
 ## 1. How a process works
 
-A process is compiled in `src/hooks/process.ts` from two independent axes:
+A process is compiled in `src/handler/core/process.ts` from two independent axes:
 
 | axis | question | values |
 | --- | --- | --- |
 | **call site** | *when* does the engine call this? | `signal`, `trigger`, `processing`, `itemAction`, `upgrade`, `behavior`, `modifier` |
-| **action** | *what* does it do? | any key in the registries |
+| **action** | *what* does it do? | any key in the catalogue |
 
 The signature is `(payload, ctx, options)`. The engine never supplies `options`:
 the **compiler** binds it from config. That is the trick that makes a config-driven
 mod possible — the engine's 2-argument call and the author's 3-part intent are
 joined once, at compile time.
 
-| registry | count | holds |
-| --- | --- | --- |
-| `ANY_HANDLERS` | 30 | every call site except `processing` |
-| `PROCESS_HANDLERS` | 6 | `processing` only — receives the engine's `ctx` |
-| `CODE_HANDLERS` | 3 | `modifier` only — `{ kind, fn }`, not a bare function |
+### Blocks: IF / THEN / ELSE
+
+A list entry may be a decision instead of a step, with two more lists inside it:
+
+```json
+"actions": [
+  { "key": "isElementAtCell", "as": "wet", "options": { "element": "water" } },
+  { "key": "if", "options": { "var": "wet" },
+    "then": [ { "key": "removeElement" } ],
+    "else": [ { "key": "toast", "options": { "text": "dry" } } ] }
+]
+```
+
+The condition is the **truthiness of a named variable** — not an expression. A block
+*branches*; it never *computes*. The truth value is something an earlier step already
+bound, so there is still no way to write a test-and-return in a config; you can only
+branch on one you were handed.
+
+Three rules that are enforced, not merely documented:
+
+- **Nesting is capped** at `MAX_BLOCK_DEPTH` (8). Deeper is *reported*, not silently
+  truncated.
+- **A block with no `var`** is refused rather than guessing a branch.
+- **A variable that was never bound takes `else`.** An unbound name is a missing
+  binding, not a false claim, and the compiler cannot tell those apart — the reference
+  resolver reports the missing name separately.
+
+`then`/`else` on a step that is not a block is **reported and dropped**: following it
+would need a step that is both called and branched on, and ignoring it would leave
+steps in the config that never run.
 
 **What an action *depends on*** is measured too (`measureActionDeps` runs each one
 against recording `Proxy` objects; a test holds the map honest):
 
 | class | needs | n |
 | --- | --- | --- |
-| `pure` | nothing — a constant or a log line | 16 |
-| `self-sufficient` | only its payload and options | 15 |
-| `api` | one `api.*` namespace | 5 |
+| `pure` | nothing — a constant or a log line | 10 |
+| `self-sufficient` | only its payload and options | 14 |
+| `api` | one `api.*` namespace | 57 |
 | `context-bound` | the engine's processing `ctx` | 3 |
 
 The rule behind the split is "an action calls one `api.*` section", and **34 of 39
@@ -71,7 +96,6 @@ break it**. The split is sound; the catalogue is a skeleton. §2–§7 fill it i
 | `structureInspect` | the clicked structure | `structures.getAtCell` |
 | `structureReadData` | `structure.data[key]` | payload only |
 | `triggerScan` | nearby cells | `grid.forEachCellInRectangle` |
-| `processorScan` | 3×3 around the structure | `context.getResolvedTypeAtCell` |
 | `triggerTick` | the trigger's own payload | payload only |
 
 ### Available, not yet built
@@ -158,7 +182,7 @@ processor.commit([{ kind: "remove", cellX, cellY, expectedElementType }]) // →
 `kind` values across all 19 mods: `create`, `remove`, `structure`.
 `expectedElementType` is a **compare-and-remove** — the engine's own atomicity,
 and the only safe "remove it if it is still this type". The other four actions
-(`processorLog`, `processorNoop`, `processorScan`, `processorCount`) never touch
+(`processorLog`, `processorNoop`, `processorCount`) never touch
 `commit` and are fine.
 
 A trash can, pump or converter built in the panel today is a **silent no-op**.

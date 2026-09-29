@@ -18,7 +18,9 @@ import { ACTION_APIS, ACTION_CLASSES, type HandlerActionClass } from "./action-c
 // two the `{value,label}[]` this replaced had already drifted into.
 import type { Opt } from "../../catalog.ts";
 // `process.ts` imports only `handlers.ts`, so this is not a cycle.
-import { actionRefsOf } from "./process.ts";
+import { actionRefsOf, flattenRefs, isBlock } from "./process.ts";
+import { slotsFor } from "./scope.ts";
+import { BLOCK_KEY } from "./types.ts";
 // The projectile options. A value import, not a type one: the usage scanner below
 // reads stored entries through `projectileOptionOf`, and `projectile-option/` does
 // not import this file, so there is still no cycle.
@@ -31,7 +33,17 @@ export type HandlerType =
     | "message"
     | "tech"
     | "processor"
-    | "modifier";
+    | "modifier"
+    /**
+     * A decision block, not an action.
+     *
+     * `if` is the only entry with this type, and it is here because the Handlers tab
+     * lists things a process can *contain* — and a block that appears only in a
+     * dropdown somewhere is a block most authors will never find. It has no class, no
+     * `api` and no scope-table entry, because the compiler reads it rather than
+     * calling it, so it is not in `HANDLER_META` and is never counted as an action.
+     */
+    | "block";
 
 /**
  * A config slot that can select a handler.
@@ -114,8 +126,21 @@ export interface HandlerMeta {
      * rule; the other three record how far short of it the action falls.
      */
     cls: HandlerActionClass;
-    /** Slots allowed to select this handler. */
+    /**
+     * The call sites this action may run at — **derived** from its measured needs
+     * (`slotsFor`), which is what every picker and the schema validator read.
+     *
+     * It used to be hand-written, and 71 of 84 entries disagreed with their own needs.
+     * That is not a cosmetic drift: the "add an action" list is built from this field,
+     * so a structure click offered 15 actions and an item use 9, where the same model
+     * said both could run 77.
+     */
     slots: HandlerSlot[];
+    /**
+     * The slots the registry table *declares*, kept so a test can measure how far off
+     * the table was. Not read by the panel — `slots` is the used value.
+     */
+    declaredSlots?: HandlerSlot[];
     /** Default scope; a handler may be rebound per use. */
     scope: HandlerScope;
     /**
@@ -138,6 +163,7 @@ export const HANDLER_TYPE_LABELS: Record<HandlerType, string> = {
     tech: "Tech",
     processor: "Processor",
     modifier: "Modifier",
+    block: "Block",
 };
 
 export const HANDLER_TYPE_BLURBS: Record<HandlerType, string> = {
@@ -147,6 +173,7 @@ export const HANDLER_TYPE_BLURBS: Record<HandlerType, string> = {
     tech: "Run when research completes or an item is upgraded.",
     processor: "One step of a structure's process() run.",
     modifier: "Intercept or rewrite an engine hook.",
+    block: "Decide which steps run. Holds two branches, not a call.",
 };
 
 export const HANDLER_SCOPE_LABELS: Record<HandlerScope, string> = {
@@ -175,24 +202,21 @@ const ALL_SLOTS = [
     "itemAction",
 ] as const satisfies readonly HandlerSlot[];
 
-/** The registry. One row per callable reachable from JSON config. */
 /**
  * The declared catalogue, with the two derived axes filled in.
  *
- * `api` and `cls` are computed from `ACTION_CLASSES` / `ACTION_APIS` rather than
- * written out per entry, because 46 hand-maintained copies of a measured fact is
- * 46 chances to be wrong — and the measurement already has a test that checks it
- * against behaviour.
+ * `api` and `cls` are computed from `ACTION_CLASSES` / `ACTION_APIS` rather than written
+ * out per entry, because 84 hand-maintained copies of a measured fact is 84 chances to be
+ * wrong — and the measurement already has a test that checks it against behaviour.
  *
- * The raw list stays separate so the entries above read as a plain table; only
- * this export carries the derived fields, and it is the one everything imports.
+ * The raw list stays separate so the entries above read as a plain table; only this
+ * export carries the derived fields, and it is the one everything imports.
  */
 
-// The region options every element action shares. One array, spread into each
-// entry, because an option that exists for `replaceElement` but not for
-// `countElements` is either a mistake or an accident of copy-paste — and the
-// panel would then show a field the action ignores, which is the worst outcome
-// a form can have.
+// The region options every element action shares. One array, spread into each entry,
+// because an option that exists for `replaceElement` but not for `countElements` is
+// either a mistake or an accident of copy-paste — and the panel would then show a
+// field the action ignores, which is the worst outcome a form can have.
 const REGION_PARAMS: HandlerParam[] = [
     p("dx", "Offset X", "number", { def: "0", int: true, hint: "from my own cell" }),
     p("dy", "Offset Y", "number", { def: "0", int: true }),
@@ -214,12 +238,40 @@ const REGION_PARAMS: HandlerParam[] = [
         hint: "work over every occupied cell of my shape matrix, ignoring the " +
             "offsets above",
     }),
+];
+
+/**
+ * The **matrix** axis, kept out of `REGION_PARAMS` on purpose.
+ *
+ * `mx`/`my` name one cell of the structure's shape matrix — an *index*, not a
+ * location — and every other region field names a *set* of cells. They were one flat
+ * list, so a form could offer both and the panel had no way to say the two are
+ * mutually exclusive; the resolver picked one silently and the author saw no error.
+ *
+ * `addressFor` now refuses a form that sets both, and this is the other half: a
+ * single-cell action that genuinely wants a matrix cell asks for these two by name,
+ * so offering them means something. A **range walk** never gets them at all —
+ * `walkFor` refuses a matrix cell, so a field the action would reject is a field the
+ * panel should not render.
+ */
+const MATRIX_PARAMS: HandlerParam[] = [
     p("mx", "Matrix X", "number", {
         int: true,
-        hint: "one cell of the matrix, by column. Overrides the offsets.",
+        hint: "one cell of my shape matrix, by column. Cannot be combined with a " +
+            "region field.",
     }),
-    p("my", "Matrix Y", "number", { int: true, hint: "one cell of the matrix, by row." }),
+    p("my", "Matrix Y", "number", { int: true, hint: "one cell of my shape matrix, by row." }),
 ];
+
+/**
+ * The range fields, and nothing else.
+ *
+ * Used by the five walks, so the panel can never offer a `Matrix X` to an action that
+ * would reject it. The distinction is only worth making because a field the action
+ * ignores — or refuses — is worse than an absent one: the author fills it in, and the
+ * action does something other than what they asked.
+ */
+const RANGE_PARAMS: HandlerParam[] = REGION_PARAMS;
 
 /**
  * The region options the motion family shares with the element family.
@@ -264,9 +316,11 @@ const MOTION_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         type: "cell",
         slots: ["processing"],
         scope: "cell",
-        // `size` is here twice on purpose and only one wins: the region resolver reads
-        // it when no footprint is set, and `findFreeCell` reads it as the search square.
-        // One name, one meaning per action, and the hint says which.
+        // `size` here is a **search square**, not a region: this action asks the engine
+        // for a free cell and answers with an index, so it never reaches the region
+        // resolver and deliberately does not take `MOTION_REGION_PARAMS`. A cell-shaped
+        // action that answers a question rather than touching a cell has no offset,
+        // footprint or matrix axis to expose.
         params: [
             p("size", "Search size", "number", {
                 def: "0",
@@ -427,7 +481,14 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         type: "cell",
         slots: ["processing"],
         scope: "cell",
-        params: [...REGION_PARAMS],
+        // The one element action that addresses a **single** cell, so it is the one
+        // that gets `MATRIX_PARAMS` as well: "the element at matrix 2,3" is a real
+        // question about a machine's own layout, and it is answered in cells.
+        //
+        // The two lists together are the whole vocabulary — a position, a delta, a
+        // square, a footprint, or a matrix cell — and `addressFor` refuses a form that
+        // names two of them at once, so no combination here is a silent winner.
+        params: [...REGION_PARAMS, ...MATRIX_PARAMS],
     },
     {
         key: "countElements",
@@ -823,6 +884,91 @@ const TERRAIN_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     },
 ];
 
+/**
+ * The five range walks.
+ *
+ * `type: "cell"` and `scope: "cell"` are shared with the four cell families, and
+ * that is accurate: a walk *is* a cell action applied to a range. `scope.ts`
+ * records the real dependency, and it is the one place in this registry where the
+ * five do not agree with each other — the four readers need only `["pos", "read"]`
+ * while `logicForEach` needs `["pos", "commit"]`, because it writes through the
+ * element family's `writeCells` and inherits that batch path's context dependency.
+ *
+ * The registry records what the panel must render. `scope.ts` records what the
+ * action actually needs, and the two are allowed to disagree — the test that
+ * matters is `scope.test.ts`'s, which measures the code rather than this table.
+ *
+ * ## Why the slots are not `ALL_SLOTS`
+ *
+ * A walk needs a position to anchor its range, and three call sites deliver none:
+ * `trigger` (the engine calls back with literally nothing — see `registerTrigger`),
+ * `upgrade` (an item instance) and `behavior` (a key code). Listing them would
+ * offer a walk that resolves its range against a cursor fallback and writes to a
+ * cell the author never chose. `scope.test.ts` fails on exactly that, which is the
+ * point of deriving slots from measured needs in the first place.
+ */
+const LOGIC_ENTRIES: Omit<HandlerMeta, "cls">[] = [
+    {
+        key: "logicAny",
+        type: "cell",
+        slots: ["signal", "processing", "itemAction", "modifier"],
+        scope: "cell",
+        params: [elementRef("the element to look for in the range"), ...RANGE_PARAMS],
+    },
+    {
+        key: "logicAll",
+        type: "cell",
+        slots: ["signal", "processing", "itemAction", "modifier"],
+        scope: "cell",
+        params: [elementRef("every cell in the range must hold this"), ...RANGE_PARAMS],
+    },
+    {
+        key: "logicCount",
+        type: "cell",
+        slots: ["signal", "processing", "itemAction", "modifier"],
+        scope: "cell",
+        params: [elementRef("the element to count"), ...RANGE_PARAMS],
+    },
+    {
+        // No `element` param, and the omission is deliberate: a total needs a number
+        // and a cell does not have one. It sums terrain hit points, so the only
+        // inputs are the range. A field here would be an option the action ignores.
+        key: "logicSum",
+        type: "cell",
+        slots: ["signal", "processing", "itemAction", "modifier"],
+        scope: "cell",
+        params: [...RANGE_PARAMS],
+    },
+    {
+        key: "logicForEach",
+        type: "cell",
+        // `processing` only, and the reason is the whole point of the `commit` need:
+        // this writes through `api.grid.mutate`'s callback, which reads the batch's
+        // staged writes through the processing context. `itemAction` is the slot a
+        // reader can reach and a writer cannot — an item use hands over the engine
+        // state and **no** `StructureProcessingContext`, so offering a batch write
+        // there would promise a change that cannot happen. That asymmetry is
+        // intended: a tool can *ask* about the cells under the cursor and cannot
+        // atomically rewrite them through the processor's batch.
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            p("to", "Write element", "select", {
+                required: true,
+                content: "element",
+                hint: "written at every cell in the range",
+            }),
+            p("when", "…but only cells holding", "select", {
+                content: "element",
+                hint: "leave blank to write every cell, whatever is there",
+            }),
+            // `RANGE_PARAMS`, never `MATRIX_PARAMS`: a walk refuses a matrix cell, so
+            // rendering that field would offer the author an input this action rejects.
+            ...RANGE_PARAMS,
+        ],
+    },
+];
+
 const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     // ── global ───────────────────────────────────────────────────────────────
     { key: "noop", type: "global", slots: [...ALL_SLOTS], scope: "global", params: [] },
@@ -969,12 +1115,16 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     {
         key: "itemExcavate",
         type: "message",
-        // `itemAction` is **not** offered: `handleAction(state, action)` delivers
-        // `pos: false`, and this action reads `x` / `y` to know where to dig. It was
-        // slotted there anyway, which `canRunAt` now refuses — an action offered
-        // where the engine hands it nothing it reads quietly does nothing, which is
-        // the failure this whole table exists to prevent.
-        slots: ["signal", "processing", "modifier"],
+        // `itemAction` is offered again, and this is the entry that proves why `pos` was
+        // corrected for it. The row used to say `pos: false` on the grounds that
+        // "`handleAction` delivers no position" — true of the *argument*, which is the
+        // engine state, and false of the *call site*, because
+        // `api.input.getMouseCellPosition()` is ambient (`input.d.ts:37`).
+        //
+        // So an action named for items could not run on an item, and the dig presets
+        // built on it were `itemAction` actions that "returned a value nothing reads"
+        // (see `excavation-option/`). Both problems had the same single cause.
+        slots: ["signal", "processing", "modifier", "itemAction"],
         scope: "cell",
         itemTypes: ["Tool"],
         params: [
@@ -987,9 +1137,9 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     {
         key: "itemShoot",
         type: "message",
-        // Same reason as `itemExcavate`: `handleAction` delivers no position, and
-        // this action needs one to spawn the projectile from.
-        slots: ["signal", "processing", "modifier"],
+        // Same reason as `itemExcavate`, and the same fix: a Weapon has a cursor and the
+        // engine will tell us where it is, so this runs from the hotbar.
+        slots: ["signal", "processing", "modifier", "itemAction"],
         scope: "global",
         itemTypes: ["Weapon"],
         params: [
@@ -1008,13 +1158,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         slots: ["processing"],
         scope: "structure",
         params: [],
-    },
-    {
-        key: "processorScan",
-        type: "processor",
-        slots: ["processing"],
-        scope: "structure",
-        params: [p("radius", "Radius", "number", { def: "1", min: 0, int: true })],
     },
     {
         key: "processorLift",
@@ -1177,16 +1320,115 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     // do not, and terrain alone batches. The measured class and scope in `action-class.ts`
     // / `scope.ts` say so; the registry records only what the panel needs to render.
     ...TERRAIN_ENTRIES,
+    // The logic family, after all four cell families: a walk is one of those cell
+    // actions applied to a range, so it is a generalisation of them rather than a
+    // sibling. Last also because it is the only family that can *loop*, and an
+    // author reaching for a loop has usually already decided what the cells do.
+    ...LOGIC_ENTRIES,
 ];
 
-export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => ({
-    ...m,
-    api: ACTION_APIS[m.key],
-    // An action with no measurement is `pure` by default rather than a hole: it
-    // reaches for nothing, which is the weakest claim and the safe default. The
-    // inventory test in action-class.test.ts is what catches a real omission.
-    cls: ACTION_CLASSES[m.key] ?? "pure",
-}));
+/**
+ * Slots a `type` restricts to, on top of what the action *needs*.
+ *
+ * Needs alone are not the whole story, and the one place they are not is a matter of
+ * **subject**, not capability. A `tech` action reaches `api.tech.conservatory` and
+ * reads no payload at all, so its measured needs are `[]` — which would offer it in
+ * every slot, including "structure click". Clicking a structure should not unlock a
+ * tech, however capable the tech action happens to be.
+ *
+ * So `tech` keeps the `upgrade` slot, and it is written as **one rule** rather than
+ * seven hand-written values. Every other type is left entirely to the scope model:
+ * a `cell`, `message`, `processor`, `modifier` or `global` action is offered wherever
+ * the call site delivers what it needs.
+ */
+const TYPE_SLOTS: Partial<Record<HandlerType, HandlerSlot[]>> = {
+    tech: ["upgrade"],
+};
+
+/**
+ * The call sites one entry is offered at: what it needs, narrowed by its subject.
+ *
+ * Exported so the scope test can assert the two halves agree, rather than only that
+ * the result does.
+ */
+export function slotsForEntry(
+    m: { key: string; type: HandlerType },
+): HandlerSlot[] {
+    const needed = slotsFor(m.key) as HandlerSlot[];
+    const narrowed = TYPE_SLOTS[m.type];
+    if (!narrowed) return needed;
+    return needed.filter((s) => narrowed.includes(s));
+}
+
+/**
+ * The declared catalogue, with every **derived** axis filled in.
+ *
+ * `api`, `cls` and `slots` are all computed rather than written out per entry, and
+ * `slots` is the one that was missing until now: the registry carried a hand-written
+ * column that `scope.ts` was written to *replace*, and 84 copies of a measured fact is
+ * 84 chances to be wrong.
+ *
+ * ## What that hand-written column was costing
+ *
+ * Measured, 71 of 84 entries disagreed with their own needs, and **50** were pinned to
+ * `processing` alone. The panel builds its "add an action" list from this column, so
+ * the visible effect was that a structure click offered **15** actions and an item use
+ * offered **9** — while the same scope model said both could run **77**. The actions
+ * were fine; the picker was hiding them.
+ *
+ * The declared `slots` stays in `DECLARED_META`: it reads well in the table, and
+ * `declaredSlots` keeps a copy so a test can say *how far off* the table was.
+ *
+ * The fallback is deliberate and tested: an entry whose derived slots come back empty
+ * would otherwise vanish from every picker with no error at all, so it keeps what it
+ * declared. `scope.test.ts` asserts that no declared entry ever takes that path.
+ */
+export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => {
+    const derived = slotsForEntry(m);
+    return {
+        ...m,
+        api: ACTION_APIS[m.key],
+        // An action with no measurement is `pure` by default rather than a hole: it
+        // reaches for nothing, which is the weakest claim and the safe default. The
+        // inventory test in action-class.test.ts is what catches a real omission.
+        cls: ACTION_CLASSES[m.key] ?? "pure",
+        slots: derived.length ? derived : m.slots,
+        declaredSlots: m.slots,
+    };
+});
+
+/**
+ * The `if` block, as a reference entry.
+ *
+ * Deliberately **not** in `HANDLER_META`. That array is the action catalogue: the
+ * usage scan counts it, the scope tests iterate it, the "84 actions" figure is it. A
+ * block is not an action, and folding it in would make every one of those numbers lie
+ * by one — most visibly the count of actions available in a slot.
+ *
+ * It is separate because the Handlers tab is a *reference*, and a reference that omits
+ * something you can put in a process is not a reference. `slots` is every slot: a
+ * conditional needs nothing from the call site, so it runs anywhere.
+ */
+export const BLOCK_META: HandlerMeta = {
+    key: BLOCK_KEY,
+    type: "block",
+    cls: "pure",
+    // Every `HandlerSlot` — the six config places a process can be stored. A
+    // conditional needs nothing from the call site, so it runs in all of them.
+    // (`slotsFor` also answers `behavior`, which is not a slot a config array maps
+    // to; it is deliberately absent here.)
+    slots: ["signal", "trigger", "processing", "itemAction", "upgrade", "modifier"],
+    scope: "cell",
+    params: [
+        {
+            key: "var",
+            label: "When variable is true",
+            kind: "text",
+            required: true,
+            hint: "The name a step bound with As. Both branches are compiled; the one that runs is chosen at run time.",
+        },
+    ],
+};
 
 const META_BY_KEY: Record<string, HandlerMeta> = Object.fromEntries(
     HANDLER_META.map((m) => [m.key, m]),
@@ -1413,8 +1655,16 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
         if (!Array.isArray(list)) continue;
         for (const e of list as Record<string, unknown>[]) {
             // `actionRefsOf` is the one reader of a process, so there is no
-            // second path that could count the same slot twice.
-            for (const key of actionRefsOf(e as Record<string, unknown>).map((r) => r.key)) {
+            // second path that could count the same slot twice. `flattenRefs`
+            // then walks **into** any `if` block, because a step the panel cannot
+            // count is a step the panel cannot offer to fix — an action used only
+            // inside a branch would look unused and the author would have no way
+            // to learn otherwise.
+            const refs = flattenRefs(actionRefsOf(e as Record<string, unknown>));
+            for (const key of refs.map((r) => r.key)) {
+                // A block is not an action, so it is a compiler node with no registry
+                // entry. Counting it would report a dangling reference.
+                if (isBlock({ key })) continue;
                 out.push({ category: cfgKey, id: String(e.id ?? "?"), slot, key });
             }
         }

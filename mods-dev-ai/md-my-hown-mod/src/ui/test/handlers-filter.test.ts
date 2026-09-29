@@ -5,6 +5,7 @@
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { ACTION_DOCS } from "../../handler/actions/index.ts";
 import {
+    BLOCK_META,
     HANDLER_META,
     handlerMeta,
     handlersOnlyAtSlot,
@@ -94,7 +95,12 @@ Deno.test("each axis on its own actually filters", () => {
         const [name, patch] of [
             ["domain", { domain: "energy" }],
             ["effect", { effect: "commits" }],
-            ["need", { need: "cell" }],
+            // `read` rather than the old `cell`: reading a cell is ambient
+            // (`api.elements.getResolvedTypeAtCell`), so most call sites satisfy it and a
+            // chip on it would barely narrow anything. `commit` is the scarce one — only
+            // `process()` delivers a `StructureProcessingContext` carrying a `commit`.
+            // See `core/scope.ts`.
+            ["need", { need: "commit" }],
             ["callSite", { callSite: "trigger" }],
             ["query", { query: "processor" }],
         ] as const
@@ -111,7 +117,12 @@ Deno.test("the axes combine, and an impossible combination is empty, not an erro
     // A trigger gets no arguments at all, so nothing that needs a position can run
     // there. The panel must be able to say "none of these" rather than falling back
     // to showing everything.
-    assertEquals(keys({ callSite: "trigger", need: "cell" }), []);
+    //
+    // `commit` joins `pos` here, and it is the sharper of the two: a trigger is handed no
+    // context at all, so it cannot reach `ctx.commit` even though it could still read a
+    // cell through the ambient api. `read` is deliberately **not** asserted empty,
+    // because it would not be — that asymmetry is the whole point of the split.
+    assertEquals(keys({ callSite: "trigger", need: "commit" }), []);
     assertEquals(keys({ callSite: "trigger", need: "pos" }), []);
     // And a real combination narrows rather than emptying.
     const narrow = keys({ domain: "energy", effect: "api" });
@@ -320,4 +331,61 @@ Deno.test("a filter that outlived its options is still clearable", () => {
             .length > 0,
         "a present domain still filters",
     );
+});
+
+
+Deno.test("the if block is listed, and is not an action", () => {
+    // The block was reachable only through a dropdown inside one editor, which made the
+    // whole feature look absent from the reference tab. These are the two halves of
+    // that: it is *shown*, and it is not counted as an action.
+    const listed = filterActions(
+        [...HANDLER_META, BLOCK_META],
+        initialHandlersState(),
+        NONE,
+        DOCS,
+    ).map((m) => m.key);
+    assert(listed.includes("if"), "the block is not in the list");
+    assertEquals(
+        HANDLER_META.filter((m) => m.key === "if").length,
+        0,
+        "a block must not be in the action catalogue",
+    );
+    assertEquals(BLOCK_META.type, "block");
+    assertEquals(BLOCK_META.params.map((p) => p.key), ["var"]);
+});
+
+Deno.test("a block drops out as soon as an axis filter is set", () => {
+    // It has no needs, no effect, no domain and runs in every slot, so every axis
+    // filter legitimately excludes it. The alternative — showing it under "needs a
+    // position" — would be a lie, and hiding it silently would read as an empty list.
+    const withBlock = [...HANDLER_META, BLOCK_META];
+    const filtered = (patch: Record<string, unknown>) =>
+        filterActions(withBlock, { ...initialHandlersState(), ...patch }, NONE, DOCS)
+            .map((m) => m.key);
+    assert(filtered({}).includes("if"), "present with no filter");
+    for (
+        const axis of [
+            { need: "pos" },
+            { callSite: "signal" },
+            { domain: "grid" },
+            { effect: "returns" },
+        ]
+    ) {
+        assert(
+            !filtered(axis).includes("if"),
+            `a block answered the "${Object.keys(axis)[0]}" filter`,
+        );
+    }
+});
+
+Deno.test("the block is still findable by searching for what it does", () => {
+    // A distinctive word from the block's own description, so this is a real search
+    // rather than "else", which half the catalogue happens to contain.
+    const found = filterActions(
+        [...HANDLER_META, BLOCK_META],
+        { ...initialHandlersState(), query: "branches" },
+        NONE,
+        { ...DOCS, if: "run one list of steps, otherwise run another; both branches compile" },
+    ).map((m) => m.key);
+    assertEquals(found, ["if"], "searching 'branches' finds the block and nothing else");
 });

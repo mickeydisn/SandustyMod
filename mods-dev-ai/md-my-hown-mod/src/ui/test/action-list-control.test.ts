@@ -83,11 +83,86 @@ Deno.test("the add list is the whole call site's vocabulary, on an empty process
     const opts = nodes.filter((n) => n.tag === "option").map((o) => o.props.value as string);
     assert(opts.includes("processorConvert"), "a processing action is offered");
     assert(!opts.includes("projectileHeavy"), "a projectile factory is not");
-    assert(!opts.includes("techAppendUnlock"), "an upgrade action is not");
-    for (const o of opts.filter((x) => x !== "")) {
+    // The vocabulary is the **measured** one now — `HANDLER_META.slots` is derived from
+    // each action's needs — so an action that only needs a position or a data bag
+    // belongs in a signal's list, and an upgrade action that writes instance data is
+    // one of them. What must *not* appear is anything the slot cannot serve, which is
+    // what the loop below asserts.
+    assert(opts.includes("processorCount") || opts.includes("signalLog"), "a plain action is offered");
+    assert(opts.includes("if"), "the if/else block is offered in the same list");
+    for (const o of opts.filter((x) => x !== "" && x !== "if")) {
         const meta = HANDLER_META.find((m) => m.key === o);
         assert(meta?.slots.includes("processing" as never), `${o} cannot serve processing`);
     }
+});
+
+Deno.test("the if block can be added, is given both branches, and takes a variable", () => {
+    // The node was reachable only by hand-editing JSON, which made the whole block
+    // feature undiscoverable. This is the path an author actually takes.
+    const written = render("processing", {});
+    type(find("select", "add")!, "if");
+    const parsed = parseActionRefs(written() ?? "");
+    assertEquals(parsed.length, 1, "one row was added");
+    assertEquals(parsed[0].key, "if");
+    // Both branches present and empty: the shape is visible before a step exists, and
+    // the JSON says `if` rather than an action that happens to be conditional.
+    assertEquals(parsed[0].options?.then, []);
+    assertEquals(parsed[0].options?.else, []);
+});
+
+Deno.test("a block's branches are edited as their own lists and round-trip", () => {
+    // The shape the control writes for a new block: both branches present and empty.
+    const written = render("processing", {
+        actionsJson: formatActionRefs([{ key: "if", options: { then: [], else: [] } }]),
+    });
+    const branches = ["add:then", "add:else"].map((k) => find("select", k));
+    assert(branches.every(Boolean), "both branches have an add-list");
+    // Adding to a branch writes into that branch only, and leaves the row a block.
+    type(branches[0]!, "processorLog");
+    const parsed = parseActionRefs(written() ?? "");
+    assertEquals(parsed[0].key, "if");
+    assertEquals(parsed[0].options?.then, [{ key: "processorLog" }]);
+    assertEquals(parsed[0].options?.else, [], "the other branch is untouched");
+});
+
+Deno.test("turning a block into an action drops the branches it no longer has", () => {
+    // Otherwise the author changes a row's action, is told by the compiler that an
+    // ordinary action is malformed, and has no idea the dropdown caused it.
+    const written = render("processing", {
+        actionsJson: formatActionRefs([{ key: "if", options: { then: [{ key: "processorLog" }] } }]),
+    });
+    type(find("select", "key")!, "readElement");
+    const parsed = parseActionRefs(written() ?? "");
+    assertEquals(parsed[0].key, "readElement");
+    assertEquals(parsed[0].options?.then, undefined, "a dead then-list was left behind");
+    assertEquals(parsed[0].options?.else, undefined, "a dead else-list was left behind");
+});
+
+Deno.test("a signal and an item offer the same cell vocabulary, and neither offers a commit", () => {
+    // The regression this derivation exists to prevent: the slots used to be a
+    // hand-written column, and a structure click offered 15 actions where the scope
+    // model said 77. So the two slots are now asserted *equal* — both are just "a
+    // position" — and a commit-writing action is excluded from both.
+    //
+    // The tab names are the **config** keys, not the slots: `signals` and `items`.
+    // An unknown tab makes the control offer the whole catalogue, so a typo here
+    // would quietly turn this into a test that asserts nothing.
+    const at = (tab: string): string[] => {
+        render(tab, {});
+        return nodes.filter((n) => n.tag === "option")
+            .map((o) => o.props.value as string)
+            .filter(Boolean)
+            .sort();
+    };
+    assertEquals(
+        at("signals"),
+        at("items"),
+        "a click and an item use are both 'a position'",
+    );
+    assert(at("signals").includes("readElement"), "a cell reader is reachable from a click");
+    assert(at("signals").includes("if"), "a block is offered in every call site");
+    assert(!at("signals").includes("createElement"), "a commit write is not");
+    assert(!at("items").includes("logicForEach"), "a batch write is not");
 });
 
 Deno.test("choosing from the add list appends exactly that action", () => {
@@ -148,26 +223,31 @@ Deno.test("a row's own dropdown is also slot-scoped", () => {
     // The *add* list is the whole vocabulary; a row's own dropdown is the same list
     // plus whatever the row already holds, so an action the slot cannot serve stays
     // visible instead of the dropdown silently displaying a different action.
-    render("processing", { actionsJson: formatActionRefs([{ key: "processorLog" }]) });
+    //
+    // Rendered on the `signals` tab, not `processing`: `processing` delivers everything,
+    // so a scope difference is invisible there. On a signal, a commit-writing action is
+    // the thing that must be absent.
+    render("signals", { actionsJson: formatActionRefs([{ key: "processorLog" }]) });
     const selects = nodes.filter((n) => n.tag === "select" && n.props.key === "key");
     assertEquals(selects.length, 1, "the row has its own dropdown");
     const opts = nodes.filter((n) => n.tag === "option").map((o) => o.props.value as string);
     assert(opts.includes("processorLog"));
-    assert(!opts.includes("triggerLog"), "a trigger action is not offered to a processor");
+    assert(opts.includes("readElement"), "a cell reader is available from a click");
+    assert(!opts.includes("createElement"), "a commit-writing action is not offered here");
 });
 
 Deno.test("an action the slot cannot serve is kept and marked, not dropped", () => {
     // The regression this guards: silently deleting a row is how a process loses a
     // step with nobody noticing. It must still be shown, and still be in the JSON.
     //
-    // `triggerLog` is a *real* action that `processing` cannot run — it needs a
-    // position and a process's first argument is not one. It used to be
-    // `projectileHeavy` here, which no longer works as an example: a projectile
-    // option is not an action at all, so it would now be an *unknown* key rather
-    // than a slot mismatch, and the two failures need different messages.
-    render("processing", { actionsJson: formatActionRefs([{ key: "triggerLog" }]) });
+    // `createElement` is a *real* action that `processing` can run and a signal
+    // cannot: it writes through `api.grid.mutate`, whose batch reads the staged writes
+    // through the processing context, so only `process()` supplies it. It used to be
+    // `triggerLog` here, which stopped being an example the moment the slots became
+    // measured — a logger needs nothing, so it is offered everywhere.
+    render("signals", { actionsJson: formatActionRefs([{ key: "createElement" }]) });
     assert(
-        nodes.some((n) => n.tag === "option" && n.props.value === "triggerLog"),
+        nodes.some((n) => n.tag === "option" && n.props.value === "createElement"),
         "the unusable action is not shown at all",
     );
     // `style` is an object, so this has to read the property — `String(style)`
@@ -177,6 +257,14 @@ Deno.test("an action the slot cannot serve is kept and marked, not dropped", () 
             String((n.props.style as { border?: string })?.border).includes("7a3030")
         ),
         "an unusable row is not outlined",
+    );
+    // …and a row the slot *can* serve is not outlined, or the red would be noise.
+    render("signals", { actionsJson: formatActionRefs([{ key: "processorLog" }]) });
+    assert(
+        !nodes.some((n) =>
+            String((n.props.style as { border?: string })?.border).includes("7a3030")
+        ),
+        "a usable row in this slot must not be outlined",
     );
 });
 

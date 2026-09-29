@@ -41,7 +41,7 @@
  * @module
  */
 import { defineActions, hostNs } from "../../core/types.ts";
-import { type CellRegion, shapeSize } from "../../core/cell-region.ts";
+import { shapeSize } from "../../core/cell-region.ts";
 import { regionFor } from "../element/index.ts";
 
 /** A structure, as far as these actions are concerned. */
@@ -113,38 +113,36 @@ function vectorOf(options: MotionOptions): Vector2 {
     return { x: num(options.vx), y: num(options.vy) };
 }
 
-/** Every occupied cell of a region, in row-major order. */
-function cellsOfRegion(region: CellRegion): { x: number; y: number }[] {
-    const out: { x: number; y: number }[] = [];
-    for (let row = 0; row < region.height; row++) {
-        for (let col = 0; col < region.width; col++) {
-            if (region.mask[row]?.[col] !== 0) out.push({ x: region.x + col, y: region.y + row });
-        }
-    }
-    return out;
-}
-
 /**
  * The cells a motion action touches.
  *
- * The region is resolved by the **shared** `regionFor`, so "the cell above me" means
- * the same thing in this family as in the element one. A clamp is reported once rather
- * than swallowed: a `size: 500` that quietly covered 64×64 would be a wrong answer
- * dressed as a right one.
+ * The range is resolved by the **shared** `regionFor`, so "the cell above me" means the
+ * same thing in this family as in the element one. A clamp is reported once rather than
+ * swallowed: a `size: 500` that quietly covered 64×64 would be a wrong answer dressed as
+ * a right one.
+ *
+ * This file used to keep its own copy of the mask→cells conversion. Two copies of
+ * "which cells does this mean" is two things to keep equal, and there is now one — the
+ * `Range` that `regionFor` returns. An empty list means the address was refused, which
+ * every caller already treats as "nothing to do", so the refusal needs no plumbing.
  */
 function regionCells(
     structure: StructureLike | null,
     options: MotionOptions,
     label: string,
 ): { x: number; y: number }[] {
-    const { region, clamped } = regionFor(structure ?? {}, options as never);
-    if (clamped) {
+    const resolved = regionFor(structure ?? {}, options as never);
+    if ("error" in resolved) {
+        console.warn(`[md-my-hown-mod:process] ${label}: ${resolved.error}`);
+        return [];
+    }
+    if (resolved.clamped) {
         console.warn(
-            `[md-my-hown-mod:process] ${label}: region clamped to 64×64 — this call covered ` +
+            `[md-my-hown-mod:process] ${label}: range clamped to 64×64 — this call covered ` +
                 "less than you asked for",
         );
     }
-    return cellsOfRegion(region);
+    return resolved.range.map((cell) => ({ x: cell.x, y: cell.y }));
 }
 
 /**

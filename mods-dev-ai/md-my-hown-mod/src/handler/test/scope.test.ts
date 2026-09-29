@@ -22,6 +22,7 @@ import {
     ACTION_EFFECT_LABELS,
     ACTION_EFFECTS,
     isVacuousReturn,
+    VALID_OPTIONS,
 } from "../core/action-class.ts";
 import {
     ACTION_SCOPE,
@@ -36,7 +37,31 @@ import {
 
 // ── the probe, kept honest against tools/analyze-scopes.ts ───────────────────
 
-function probe(into: Set<string>, prefix = ""): unknown {
+/**
+ * A recording proxy: every property read is noted, and calling it returns a stub.
+ *
+ * ## Why `apply` returns a plausible value rather than `undefined`
+ *
+ * The `read` / `commit` split is decided by *behaviour* — does the action still work
+ * when the engine hands over no context? — so the stub has to model a world that
+ * answers. Returning `undefined` from every call made `api.elements.getResolvedTypeAtCell`
+ * look like an empty cell, so `readElement` returned `""` without a context, the probe
+ * scored that as "stopped working", and every ambient reader was mis-filed as
+ * `commit` — the exact error the split was introduced to remove.
+ *
+ * ## Why the read stub and the option stub differ
+ *
+ * `countElements` compares what a cell holds against the `element` its **options** name.
+ * One shared stub made both sides `"probe"`, every cell matched, and — worse — the
+ * comparison passed for the wrong reason: the action had found nothing and the id it was
+ * looking for was equally fictional. Separate values keep the comparison honest, so the
+ * action only scores as "worked" if it genuinely reached an ambient reader and compared
+ * its result against a *different* id, which is what a real count does.
+ */
+const READ_STUB = "probe-read";
+const OPTION_STUB = "probe-option";
+
+function probe(into: Set<string>, prefix = "", stub: string = OPTION_STUB): unknown {
     return new Proxy(function () {} as object, {
         get(_t, prop) {
             if (typeof prop === "symbol") {
@@ -47,23 +72,59 @@ function probe(into: Set<string>, prefix = ""): unknown {
                 // and this probe reports it as needing nothing, which is a wrong
                 // answer rather than a missing one. See the note on `options` below.
                 if (prop === Symbol.toPrimitive) return undefined;
-                return () => undefined;
+                return () => stub;
             }
             const path = `${prefix}${String(prop)}`;
             into.add(path);
             if (prop === "valueOf" || prop === "toString") return () => 1;
-            return probe(into, `${path}.`);
+            return probe(into, `${path}.`, stub);
         },
-        apply: () => undefined,
+        apply: () => stub,
         set: () => true,
     });
 }
 
+/** The proxy that stands in for `globalThis.sandkit.api` — the ambient namespaces. */
+function apiProbe(into: Set<string>): unknown {
+    return probe(into, "api.", READ_STUB);
+}
+
+/**
+ * Run an action once with a recording context, and again with **no context at all**.
+ *
+ * The second run is the whole point, and it exists because access patterns cannot answer
+ * the question the `read` / `commit` split asks. `readElement` touches
+ * `ctx.getResolvedTypeAtCell` *and* `api.elements.getResolvedTypeAtCell`; so does
+ * `createElement`. Looking at which context members were read says both are
+ * context-bound, which is the wrong answer for one of them.
+ *
+ * ## The measure is a **cell-read reach**, not a return value
+ *
+ * An earlier version judged "did it work?" by the return value, and that is wrong for
+ * the most obvious cases: `countElements` returns `0` and `isElementAtCell` returns
+ * `false` when the cell does not hold the element it was asked about — a perfectly
+ * correct answer, scored as "stopped working".
+ *
+ * A second version compared the whole `api.*` set across the two runs, which is wrong in
+ * the other direction: `createElement` calls `api.grid.mutate` **before** it discovers
+ * the context is missing, so it reaches the engine either way and looked ambient.
+ *
+ * So the question is asked precisely, about the one thing the `read` need is about:
+ * **with no context, does the action still read a cell?** That is exactly the set of
+ * ambient cell readers — `api.elements.getResolvedTypeAtCell` and
+ * `api.grid.isCellEmptyAtCell` — which is the same pair the ambient fallbacks in
+ * `actions/element/index.ts` and `actions/sense/index.ts` call. Reaching one means the
+ * action has an ambient path and needs `read`; touching the context and reaching neither
+ * means the context was its only route, which is `commit`.
+ */
 function measureNeeds(key: string): ScopeNeed[] {
     const fn = resolveAction(key);
     if (!fn) return [];
     const payload = new Set<string>();
     const ctx = new Set<string>();
+    // Every `api.*` path the action reaches when the engine has handed over **no**
+    // context — what a signal, an item use or a modifier hook looks like from inside.
+    const withoutCtx = new Set<string>();
     const { log, warn } = console;
     console.log = () => {};
     console.warn = () => {};
@@ -77,13 +138,46 @@ function measureNeeds(key: string): ScopeNeed[] {
     // hits `if (!energy?.addAtCell) return` and never reaches the `st.x` it needs —
     // so it would measure as needing nothing, which is a wrong answer rather than
     // a missing one. The tool sets this up too; the two probes have to match.
+    //
+    // `apiProbe` rather than a bare `probe`, so an ambient *read* answers with a
+    // different value from the one the options carry. See the note on the stubs above.
     const prevSandkit = (globalThis as { sandkit?: unknown }).sandkit;
-    (globalThis as { sandkit?: unknown }).sandkit = probe(new Set(), "api.");
+    // An action that **validates** its options cannot be driven by a proxy answering
+    // "defined" to everything: the five range walks read `mx` as set *and* `dx` as 1,
+    // report a conflict, and return before reaching the engine. So they are measured a
+    // third time with a real, valid bag — the same table the class probe uses, so the
+    // two measurements cannot drift into disagreeing about what an action touches.
+    const valid = VALID_OPTIONS[key];
     try {
-        fn(probe(payload), probe(ctx), options);
-    } catch {
-        // A throw still tells us what it touched before failing, and every action
-        // is wrapped, so this is not a real path.
+        // First run, with a context: this is what records the payload and the context.
+        (globalThis as { sandkit?: unknown }).sandkit = apiProbe(new Set());
+        try {
+            fn(probe(payload), probe(ctx), options);
+        } catch {
+            // A throw still tells us what it reached before failing, and every action is
+            // wrapped, so this is not a real path.
+        }
+        if (valid) {
+            try {
+                fn(probe(payload), probe(ctx), valid);
+            } catch {
+                // Same.
+            }
+        }
+        // Second run, without one: what ambient engine surface can it still reach?
+        (globalThis as { sandkit?: unknown }).sandkit = apiProbe(withoutCtx);
+        try {
+            fn(probe(new Set()), null, options);
+        } catch {
+            // Same: not a real path, and it reached nothing more.
+        }
+        if (valid) {
+            try {
+                fn(probe(new Set()), null, valid);
+            } catch {
+                // Same.
+            }
+        }
     } finally {
         console.log = log;
         console.warn = warn;
@@ -94,9 +188,47 @@ function measureNeeds(key: string): ScopeNeed[] {
     const needs: ScopeNeed[] = [];
     if (top.has("x") || top.has("y")) needs.push("pos");
     if (top.has("data")) needs.push("data");
-    if (ctx.size > 0) needs.push("cell");
+    // The old single `cell` need, split in two by the only question that separates
+    // them: with the context gone, can the action still read a cell?
+    if (ctx.size > 0) {
+        const stillReadsAmbiently = [...AMBIENT_CELL_READS].some((p) =>
+            [...withoutCtx].some((seen) => seen.endsWith(`.${p}`))
+        );
+        needs.push(stillReadsAmbiently ? "read" : "commit");
+    }
     return needs;
 }
+
+/**
+ * The ambient cell readers — the engine members a `read` action may rely on without
+ * a `StructureProcessingContext`.
+ *
+ * Matched as **leaf names**, not as `api.elements.getResolvedTypeAtCell`. That is
+ * deliberate and it is not laziness: `hostNs("elements")` walks one segment at a time
+ * through a namespace this codebase cannot type, so the recording proxy sees
+ * `api.elements` on one read and `api.getResolvedTypeAtCell` on the next. Writing the
+ * dotted path here would match nothing and every ambient reader would be scored
+ * `commit` — a probe that is confidently wrong, which is the worst kind.
+ *
+ * ## Why this is a list and not a rule
+ *
+ * A name list cannot tell a **read** from a **write**: `createElement` also reaches
+ * `api.grid.mutate` with no context in sight, so "reached some api" would score it
+ * `read` and quietly drop the `commit` need that is the whole reason it exists. The
+ * distinction has to come from the engine's own vocabulary, so it is enumerated here
+ * and kept honest by the drift test below — a new ambient reader that is not on this
+ * list is reported as scope drift, not absorbed.
+ *
+ * The third name, `getDataAtCell`, is the terrain family's ambient per-cell accessor
+ * and is here because of `logicSum`. It is the same category as the other two: a
+ * top-level function on an ordinary `api.*` namespace (`terrains.d.ts`), callable
+ * from any call site, which is precisely what `ctx.commit` is not.
+ */
+const AMBIENT_CELL_READS = [
+    "getResolvedTypeAtCell",
+    "isCellEmptyAtCell",
+    "getDataAtCell",
+];
 
 Deno.test("ACTION_SCOPE matches what the actions actually read", () => {
     // The guard that makes the derived slots trustworthy. If this fails, run
@@ -125,9 +257,12 @@ Deno.test("every registered action has a scope entry", () => {
 Deno.test("an action may run only where its needs are delivered", () => {
     // The one-line rule, stated as examples rather than as a loop, so a failure
     // names a case a reader can picture.
-    assert(canRunAt("processorConvert", "processing"), "needs the cell context");
+    assert(canRunAt("processorConvert", "processing"), "needs a commit");
     assert(!canRunAt("processorConvert", "signal"), "a signal has no commit()");
-    assert(!canRunAt("processorConvert", "itemAction"), "nor does an item use");
+    assert(
+        !canRunAt("processorConvert", "itemAction"),
+        "nor does an item use — but it does have a position now, see the test below",
+    );
     assert(canRunAt("structureReadData", "signal"), "a structure has .data");
     assert(!canRunAt("structureReadData", "trigger"), "a trigger gets nothing at all");
     // "Needs nothing, so it fits anywhere" is no longer assertable against
@@ -137,38 +272,92 @@ Deno.test("an action may run only where its needs are delivered", () => {
     assert(!canRunAt("noop", "projectile"), "projectile is not a call site at all");
 });
 
-Deno.test("only the cell actions are offered where the grid is reachable", () => {
-    // `cell` is the scarcest thing the engine hands out — only `process()` and the
-    // modifier hooks have it — so it is the axis worth pinning exactly. The list was
-    // three; it is four, because `isElementAtCell` reads a cell to answer into the
-    // process context and cannot be offered anywhere the grid is out of reach.
+Deno.test("an item use has a position, and the cell families come with it", () => {
+    // The regression this file now exists to prevent, and the reason `pos` was
+    // corrected for `itemAction`.
     //
-    // Now eleven. The seven element actions all need `cell` for the same reason, and
-    // the fact that they **cannot** be offered in `modifier` — which *does* have the
-    // grid — is the list earning its keep: they are `commit`-shaped, and a modifier
-    // hook has no `commit` to commit through.
-    const wantsCell = Object.entries(ACTION_SCOPE)
-        .filter(([, n]) => n.includes("cell"))
+    // `handleAction(state, action)` hands over the engine **state**, whose `x`/`y` do
+    // not exist — the cursor is the cell. `api.input.getMouseCellPosition()` is
+    // ambient (`input.d.ts:37`, "the cell under the cursor") and the three shipping
+    // mods that dig from a hotbar tool all read it. So `pos` is true here, and with
+    // it the whole element / terrain / structure / motion catalogue.
+    //
+    // This used to be the opposite: `pos: false` refused 51 of the 80 actions to the
+    // item slot and pushed `itemExcavate` / `itemShoot` — the two actions named for
+    // items — out of it entirely.
+    assertEquals(CALL_SITE_SCOPE.itemAction, {
+        pos: true,
+        data: true,
+        read: true,
+        commit: false,
+        ret: false,
+    });
+    for (const key of ["itemExcavate", "itemShoot", "createTerrain", "buildStructure"]) {
+        assert(canRunAt(key, "itemAction"), `${key} should run from a hotbar tool`);
+    }
+    // …and the readers, which no longer need a context at all.
+    for (const key of ["readElement", "countElements", "countEmpty", "isElementAtCell"]) {
+        assert(canRunAt(key, "itemAction"), `${key} reads ambiently, so an item can ask too`);
+    }
+});
+
+Deno.test("only a commit needs the context; a read is ambient", () => {
+    // The split the old single `cell` need hid. `api.elements.getResolvedTypeAtCell`
+    // and `api.grid.isCellEmptyAtCell` are top-level functions (`elements.d.ts:71`,
+    // `grid.d.ts:21`), so *reading* a cell needs no `StructureProcessingContext`.
+    // `ctx.commit` is a member of that interface and of nothing else, so *writing*
+    // through it is the one thing only `process()` can serve.
+    const wantsCommit = Object.entries(ACTION_SCOPE)
+        .filter(([, n]) => n.includes("commit"))
         .map(([k]) => k)
         .sort();
-    assertEquals(wantsCell, [
-        "countElements",
-        "countEmpty",
+    assertEquals(wantsCommit, [
         "createElement",
         "emptyCells",
-        "isElementAtCell",
+        "logicForEach",
         "processorConvert",
         "processorLift",
-        "processorScan",
-        "readElement",
         "replaceElement",
         "transformElement",
     ]);
-    for (const key of wantsCell) {
+    for (const key of wantsCommit) {
+        assertEquals(
+            slotsFor(key),
+            ["processing"],
+            `${key} writes through ctx.commit, which only process() delivers`,
+        );
+    }
+
+    // The readers are the mirror image: they need a position, not a context, so they
+    // are offered everywhere a position exists — including the modifier hooks, which
+    // have a `pos` but no `commit`.
+    //
+    // The four logic walks joined this list, and they are the first four entries
+    // here that are not element-family actions. They read through the same
+    // `cellReaders` helper the element readers use, so they are ambient for the same
+    // reason and inherit the same reach — a hotbar tool can count water around the
+    // cursor. `logicSum` is in this list for `getDataAtCell` rather than
+    // `getResolvedTypeAtCell`, but it is the same kind of claim: a top-level
+    // function on an ordinary namespace, reachable from any call site.
+    const wantsRead = Object.entries(ACTION_SCOPE)
+        .filter(([, n]) => n.includes("read"))
+        .map(([k]) => k)
+        .sort();
+    assertEquals(wantsRead, [
+        "countElements",
+        "countEmpty",
+        "isElementAtCell",
+        "logicAll",
+        "logicAny",
+        "logicCount",
+        "logicSum",
+        "readElement",
+    ]);
+    for (const key of wantsRead) {
         const sites = slotsFor(key);
         assert(
-            sites.every((s) => CALL_SITE_SCOPE[s].cell),
-            `${key} was offered at a site with no cell context: ${sites.join(", ")}`,
+            sites.includes("processing") && sites.includes("itemAction") && sites.includes("signal"),
+            `${key} reads ambiently, so it should not be locked to one slot: ${sites.join(", ")}`,
         );
     }
 });
@@ -192,7 +381,13 @@ Deno.test("a trigger delivers nothing, so only the needless actions fit there", 
     // `registerTrigger` puts `extra` in the *registration*, not the call, so the
     // engine's callback really is invoked with zero arguments. This is the fact
     // that makes the row above a bug rather than a style choice.
-    assertEquals(CALL_SITE_SCOPE.trigger, { pos: false, data: false, cell: false, ret: false });
+    assertEquals(CALL_SITE_SCOPE.trigger, {
+        pos: false,
+        data: false,
+        read: true,
+        commit: false,
+        ret: false,
+    });
     assert(slotsFor("noop").includes("trigger"));
     for (const key of Object.keys(ACTION_SCOPE)) {
         if (needsOf(key).length === 0) continue;
@@ -201,14 +396,29 @@ Deno.test("a trigger delivers nothing, so only the needless actions fit there", 
 });
 
 Deno.test("scopeSatisfies is the subset relation, and it is total", () => {
-    const all: ScopeNeed[] = ["pos", "data", "cell"];
-    assert(scopeSatisfies({ pos: true, data: true, cell: true, ret: false }, all));
-    assert(!scopeSatisfies({ pos: true, data: false, cell: true, ret: false }, all));
+    const all: ScopeNeed[] = ["pos", "data", "read", "commit"];
+    assert(
+        scopeSatisfies({ pos: true, data: true, read: true, commit: true, ret: false }, all),
+    );
+    // A `read` is not a `commit`. This is the distinction the old single `cell` need
+    // could not express, and it is the one that decides whether an element reader may
+    // sit in a slot that hands over no context.
+    assert(
+        !scopeSatisfies({ pos: true, data: true, read: true, commit: false, ret: false }, all),
+    );
+    assert(
+        scopeSatisfies({ pos: true, data: true, read: false, commit: false, ret: false }, [
+            "pos",
+            "data",
+        ]),
+    );
     // `ret` is not a need, so a slot that only reads the return still satisfies an
     // action that wants nothing.
-    assert(scopeSatisfies({ pos: false, data: false, cell: false, ret: true }, []));
+    assert(
+        scopeSatisfies({ pos: false, data: false, read: false, commit: false, ret: true }, []),
+    );
     assert(!canRunAt("noop", "not-a-call-site"), "an unknown site satisfies nothing");
-    assertEquals(SCOPE_NEEDS.length, 3, "three needs is the whole vocabulary");
+    assertEquals(SCOPE_NEEDS.length, 4, "four needs is the whole vocabulary");
 });
 
 // ── the other two axes the panel filters by ──────────────────────────────────
@@ -255,7 +465,7 @@ Deno.test("only actions that change the grid are filed as committing", () => {
     // cell and reads no context at all. So the rule is now a disjunction, and both
     // halves are load-bearing:
     //
-    //   commits ⇒ reads the context (`ctx.commit`) **or** reaches an `api.*` namespace
+    //   commits ⇒ needs `commit` (uses `ctx.commit`) **or** reaches an `api.*` namespace
     //
     // Which is the honest generalisation. `ACTION_CLASSES[key] === "api"` is measured
     // rather than declared, so this is a real cross-check between two independent
@@ -263,7 +473,7 @@ Deno.test("only actions that change the grid are filed as committing", () => {
     // would be caught here even though both tables were individually consistent.
     for (const [key, effect] of Object.entries(ACTION_EFFECTS)) {
         if (effect !== "commits") continue;
-        const viaContext = needsOf(key).includes("cell");
+        const viaContext = needsOf(key).includes("commit");
         const viaApi = ACTION_CLASSES[key] === "api";
         assert(
             viaContext || viaApi,

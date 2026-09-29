@@ -1466,9 +1466,21 @@ console.log("── handler pickers are domain-scoped and described ──");
             opts.some((o) => o.value === expectSome),
             JSON.stringify(opts.map((o) => o.value)),
         );
+        // A picker's key must be a **real action**, whichever registry holds it. The
+        // check used to be `in H.ANY_ACTIONS` alone, which passed only because every
+        // signal action happened to be `payload`-signed. Now that the slots are
+        // derived, a signal can legitimately offer a `processing`-signed action such as
+        // `readElement` — which is the point of the fix, not a defect. The union is the
+        // honest question, and the comment further down (on the processor picker) already
+        // argues exactly this.
+        const real = new Set([
+            ...Object.keys(H.ANY_ACTIONS),
+            ...Object.keys(H.PROCESSING_ACTIONS),
+            ...Object.keys(H.MODIFIER_ACTIONS),
+        ]);
         check(
             `${name} picker keys all exist`,
-            opts.every((o) => o.value in H.ANY_ACTIONS),
+            opts.every((o) => real.has(o.value)),
             JSON.stringify(opts.map((o) => o.value)),
         );
         check(
@@ -1647,27 +1659,69 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     const keys = (s: typeof slots[number]) => reg.handlersForSlot(s).map((m) => m.key);
     const sameSet = (a: string[], b: string[]) =>
         a.slice().sort().join() === b.slice().sort().join();
-    // The `signal` slot grew, and every addition is a correction rather than a
-    // widening: `triggerTick` moved here from `trigger` (it reads `payload.data`,
-    // which `trigger` never delivers), and `itemExcavate` / `itemShoot` /
-    // `energyConsumePerRun` moved off the sites that hand them no position.
-    // `toast` and `particles` are the genuinely new ones.
+    // The `signal` slot is no longer a hand-kept list, and asserting one would have
+    // hidden exactly the bug it is here to catch: the slots were once a hand-written
+    // column, 71 of 84 entries disagreed with their own measured needs, and 50 were
+    // pinned to `processing` alone. A signal click offered 15 actions where the scope
+    // model said 77. The old list was the symptom nobody could see.
+    //
+    // So the claim is the **rule**, taken from the same `slotsForEntry` the registry
+    // uses — not re-derived here, because a test that re-implements the rule it checks
+    // can agree with a broken implementation and disagree with a fixed one.
+    const { needsOf, CALL_SITE_SCOPE } = await import("../../handler/core/scope.ts");
+    const needs = (k: string) => needsOf(k);
+    const signalProvides = CALL_SITE_SCOPE.signal;
+    const byKey = (k: string) => reg.HANDLER_META.find((m) => m.key === k)!;
+    // The rule, from the same `slotsForEntry` the registry itself uses — not
+    // re-derived here, because a test that re-implements the rule it is checking can
+    // agree with a broken implementation and disagree with a fixed one.
     check(
-        "signal slot holds the actions that can run there",
-        sameSet(keys("signal"), [
-            "signalLog",
-            "structureInspect",
-            "structureReadData",
-            "structureWriteData",
-            "triggerTick",
-            "itemExcavate",
-            "itemShoot",
-            "energyConsumePerRun",
-            "toast",
-            "particles",
-            "noop",
-        ]),
+        "signal slot holds exactly the actions a signal delivers",
+        sameSet(keys("signal"), known.filter((k) => reg.slotsForEntry(byKey(k)).includes("signal"))),
         keys("signal").join(" "),
+    );
+    // And, read straight off the scope model, the part a reader can check by eye: a
+    // signal delivers a position, a data bag and a cell read, and **not** a commit.
+    check(
+        "no signal action needs something a signal does not deliver",
+        keys("signal").every((k) =>
+            needs(k).every((n) => n === "ret" || signalProvides[n as never] === true)
+        ),
+        keys("signal").filter((k) =>
+            !needs(k).every((n) => n === "ret" || signalProvides[n as never] === true)
+        ).join(" "),
+    );
+    // The named witnesses, because "the whole set matches" says nothing about *which*
+    // set and a reader should not have to diff 67 keys to see the point.
+    for (
+        const k of [
+            "readElement",   // needs a position and a read — a click has both
+            "logicCount",    // a walk needs a position and nothing else
+            "itemExcavate",  // the cursor is the cell, so a tool can dig
+            "processorCount",// a processing-signed action, offered because needs allow it
+        ]
+    ) {
+        check(`signal offers ${k}`, keys("signal").includes(k), keys("signal").join(" "));
+    }
+    // …and the ones it must not: a commit write cannot happen from a click, because
+    // `api.grid.mutate` reads its batch through the `StructureProcessingContext` that
+    // only `process()` supplies.
+    check(
+        "signal offers no commit-writing action",
+        keys("signal").every((k) => !needs(k).includes("commit")),
+        keys("signal").filter((k) => needs(k).includes("commit")).join(" "),
+    );
+    // The four read-only walks are in there because a `signal` delivers a position and
+    // a walk needs only a position: they read through the ambient `api.elements` /
+    // `api.terrains` readers, not the context. `logicForEach` is **absent**, and that is
+    // the interesting half — a structure can ask about the cells around it and cannot
+    // rewrite them there.
+    check(
+        "the walks split by scope: readers reach signal, the writer does not",
+        ["logicAny", "logicAll", "logicCount", "logicSum"].every((k) =>
+            keys("signal").includes(k)
+        ) && !keys("signal").includes("logicForEach"),
+        keys("signal").filter((k) => k.startsWith("logic")).join(" ") || "none",
     );
     // The `projectile` slot is **gone**, and that is the point of the split rather
     // than a gap in the list above. It used to hold the seven presets plus `noop`.
@@ -1793,19 +1847,27 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         items: [{ id: "i1", actions: [{ key: "itemShoot" }] }],
     };
     const bad = reg.unreachableHandlers(cfg);
-    // **Two** now, not one. `itemShoot` in the `itemAction` slot is the second: that
-    // slot delivers no position and the action needs one, so it is unreachable for
-    // the same reason `techGrantItem` is unreachable in a trigger. Both are
-    // corrections the scope rule caught — see `canRunAt` in `handler/core/scope.ts`.
-    check("both mismatched slots are flagged unreachable", bad.length === 2, JSON.stringify(bad));
+    // **One** again, and the second is gone for the right reason.
+    //
+    // This used to be two: `itemShoot` in the `itemAction` slot was flagged unreachable
+    // because `CALL_SITE_SCOPE.itemAction` claimed `pos: false` — "handleAction delivers
+    // no position". That was true of the *argument* (the engine state) and false of the
+    // *call site*: `api.input.getMouseCellPosition()` is ambient (`input.d.ts:37`), and
+    // `anchorFor` in `handler/core/cell-region.ts` reads it. So a Weapon was reported as
+    // unable to shoot from a Weapon.
+    //
+    // `techGrantItem` in a trigger is untouched by any of that and remains the one real
+    // mismatch: a trigger is called with no arguments at all, so nothing that reads the
+    // payload can run there. That is what this check is for.
+    check("the one mismatched slot is flagged unreachable", bad.length === 1, JSON.stringify(bad));
     check(
-        "the tech handler is one of them",
-        bad.some((b) => b.key === "techGrantItem"),
+        "the tech handler is it",
+        bad.some((b) => b.key === "techGrantItem" && b.usage.slot === "trigger"),
         JSON.stringify(bad),
     );
     check(
-        "the shoot action in an item slot is the other",
-        bad.some((b) => b.key === "itemShoot" && b.usage.slot === "itemAction"),
+        "and nothing in the item slot is flagged",
+        !bad.some((b) => b.usage.slot === "itemAction"),
         JSON.stringify(bad),
     );
     const idx = reg.usageIndex(cfg);
@@ -2011,11 +2073,26 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     const weaponKeys = cat.listItemActionHandlerKeys("Weapon").map((o) => o.value);
     const modKeys = cat.listItemActionHandlerKeys("Mod").map((o) => o.value);
     const allItem = [...toolKeys, ...weaponKeys, ...modKeys];
+    // The dig and shoot actions **are** offered now, each to the item type it belongs
+    // to, and this assertion would have caught the original bug from the other end.
+    //
+    // They were absent because `CALL_SITE_SCOPE.itemAction` said `pos: false` and
+    // `canRunAt` believed it — so a Tool was offered no way to dig and a Weapon no way
+    // to shoot, while the panel showed an item context carrying an x and a y.
+    //
+    // An item use does have a position: the engine hands over its state, and
+    // `api.input.getMouseCellPosition()` ("the cell under the cursor", `input.d.ts:37`)
+    // is ambient — which is what `anchorFor` in `handler/core/cell-region.ts` reads.
+    check("a Tool is offered the dig action", toolKeys.includes("itemExcavate"), toolKeys.join(" "));
     check(
-        "the dig and shoot actions are not offered where they could not run",
-        !allItem.some((k) => k === "itemExcavate" || k === "itemShoot"),
-        allItem.join(" "),
+        "a Weapon is offered the shoot action",
+        weaponKeys.includes("itemShoot"),
+        weaponKeys.join(" "),
     );
+    // …and they stay type-gated, which is the whole reason they carry `itemTypes`: a
+    // dig is a Tool's job and a shot is a Weapon's.
+    check("a Weapon is not offered the dig action", !weaponKeys.includes("itemExcavate"));
+    check("a Tool is not offered the shoot action", !toolKeys.includes("itemShoot"));
     // The dig presets are **not** here any more. They were `itemAction` actions that
     // returned a value, and `itemAction` discards it — so a Tool was offered five
     // entries that could do nothing. They are `ExcavationOptionFn`s now, chosen on
@@ -2069,9 +2146,22 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         toolKeys2.includes("toast") && weaponKeys2.includes("toast"),
         `tool=${toolKeys2.join(" ")} weapon=${weaponKeys2.join(" ")}`,
     );
+    // `itemShoot` is the Weapon-only action and `itemExcavate` the Tool-only one, and
+    // both are **in** an item slot again.
+    //
+    // They were not, and this is the third assertion written to pin that: the first said
+    // `itemAction` delivers no position, the second re-slotted the two actions away from
+    // it, and this one confirmed they had gone. All three described one wrong cell.
+    //
+    // An item use has a position — `api.input.getMouseCellPosition()` is ambient
+    // (`input.d.ts:37`) and `anchorFor` reads it — and `itemTypes` is what keeps them
+    // apart, so the per-type narrowing is the claim worth making here.
+    check("a Tool is offered the dig action and not the shoot", toolKeys2.includes("itemExcavate") &&
+        !toolKeys2.includes("itemShoot"), `tool=${toolKeys2.join(" ")}`);
     check(
-        "the dig and shoot actions are in no item slot",
-        ![...toolKeys2, ...weaponKeys2].some((k) => k === "itemShoot" || k === "itemExcavate"),
+        "a Weapon is offered the shoot action and not the dig",
+        weaponKeys2.includes("itemShoot") && !weaponKeys2.includes("itemExcavate"),
+        `weapon=${weaponKeys2.join(" ")}`,
     );
     check("a Consumable gets no action at all", itemActionHandlersFor("Consumable").length === 0);
 

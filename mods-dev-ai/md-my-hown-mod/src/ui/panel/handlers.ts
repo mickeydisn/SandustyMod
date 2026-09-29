@@ -47,6 +47,7 @@ import {
     resolveProjectileOption,
 } from "../../handler/projectile-option/index.ts";
 import {
+    BLOCK_META,
     buildHandlerOptions,
     HANDLER_META,
     HANDLER_SCOPE_LABELS,
@@ -59,6 +60,24 @@ import {
     usageIndex,
     validateHandlerParams,
 } from "../../handler/core/handler-registry.ts";
+import { BLOCK_KEY } from "../../handler/core/types.ts";
+
+/**
+ * What the `if` row says in this list.
+ *
+ * A block has no domain, no effect and no needs, so the axis chips would all exclude
+ * it — and an entry that vanishes the moment you touch any filter reads as "there is
+ * nothing here", which is the same misleading silence the projectile options avoid by
+ * not offering those filters at all. The block is therefore listed, and drops out as
+ * soon as an axis filter is set, which is *correct*: "show me actions needing a
+ * position" has no answer that includes a conditional.
+ */
+const BLOCK_DOC: Record<string, string> = {
+    [BLOCK_KEY]:
+        "if(when a bound variable is truthy) run one list of steps, otherwise run " +
+        "another. Both branches are compiled; only the chosen one runs. Branches may " +
+        "contain further blocks, up to 8 deep. Not an action — it makes no api call.",
+};
 import {
     EXCAVATION_OPTION_DOCS,
     EXCAVATION_OPTIONS,
@@ -188,9 +207,17 @@ export function filterActions(
     docs: Record<string, string>,
 ): HandlerMeta[] {
     const q = state.query.trim().toLowerCase();
+    // A block is not an action, so it is present in the list but answers none of the
+    // four axes. See `BLOCK_DOC` above: an entry that disappears the instant a filter
+    // is set looks like an empty catalogue rather than a correct exclusion.
+    const axisFilterSet = !!(state.domain || state.effect || state.need || state.callSite);
     return [...metas]
         .sort((a, b) => a.key.localeCompare(b.key))
         .filter((m) => {
+            if (m.type === "block") {
+                if (axisFilterSet) return false;
+                return !q || `${m.key} ${docs[m.key] ?? ""}`.toLowerCase().includes(q);
+            }
             if (state.onlyUsed && !(used[m.key] ?? []).length) return false;
             if (state.domain && domainOf(m.key) !== state.domain) return false;
             if (state.effect && effectOf(m.key) !== state.effect) return false;
@@ -513,7 +540,11 @@ function paramEditor(
 
 export function renderActions(props: HandlersTabProps): unknown {
     const { h, cfg, state, setState, onGoTo, onCopy } = props;
-    const docs = ACTION_DOCS;
+    // The block is merged in here, not in `HANDLER_META`. This tab is a *reference*,
+    // and a reference that omits something a process can contain makes the whole block
+    // feature look absent — which is exactly how it read when the only place it existed
+    // was a dropdown inside one editor.
+    const docs = { ...ACTION_DOCS, ...BLOCK_DOC };
     const used = usageIndex(cfg);
     const bad = unreachableHandlers(cfg);
 
@@ -531,7 +562,10 @@ export function renderActions(props: HandlersTabProps): unknown {
     // actions that run in many — listing the same 7 in both meant neither screen was
     // a clean answer to anything. The filter is `isOnlyAtSlot`, so this cannot
     // disagree with what the other tab shows.
-    const listed = HANDLER_META.filter((m) => !isOnlyAtSlot(m, "upgrade"));
+    const listed = [
+        ...HANDLER_META.filter((m) => !isOnlyAtSlot(m, "upgrade")),
+        BLOCK_META,
+    ];
     const shown = filterActions(listed, state, used, docs);
     const bar = filterBar(h, state, setState, used, shown.length, listed.length, listed);
 

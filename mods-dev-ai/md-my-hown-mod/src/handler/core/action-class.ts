@@ -2,20 +2,26 @@
  * What a handler action **depends on** to do its job.
  *
  * An action is supposed to call one `api.*` section — the rule the Process/Action
- * split rests on. Measured, only 5 of 43 do. This is a **ladder**, not a taxonomy:
- * an action that both reads the payload and calls `api.energy` is filed under
- * `api`, because that is the stronger claim.
+ * split rests on. This is a **ladder**, not a taxonomy: an action that both reads the
+ * payload and calls `api.energy` is filed under `api`, because that is the stronger
+ * claim.
  *
- * | class | needs | n |
- * | --- | --- | --- |
- * | `api` | one `api.*` namespace | 5 |
- * | `self-sufficient` | only the payload and params it was handed | 15 |
- * | `context-bound` | the engine's processing context (`ctx`) | 3 |
- * | `pure` | nothing at all — a constant, or a logger | 16 |
+ * | class            | needs                                    | n  |
+ * | ---------------- | ---------------------------------------- | -- |
+ * | `api`            | one `api.*` namespace                    | 57 |
+ * | `self-sufficient`| only the payload and params it was handed | 14 |
+ * | `context-bound`  | the engine's processing context (`ctx`)   |  3 |
+ * | `pure`           | nothing at all — a constant, or a logger  | 10 |
  *
- * `context-bound` is the closest thing here to a real capability boundary: it gets
- * `ctx.commit` handed in rather than reaching for a namespace. `pure` is a third of
- * the catalogue and is mostly debug scaffolding.
+ * The counts are measured, and `measureActionDeps` re-measures them on every run, so a
+ * drift here fails the tests rather than rotting. They are recorded because the shape is
+ * the finding: 57 of 84 means the class axis has stopped discriminating and has become a
+ * census of "calls the engine". What still separates the cell families is the **write
+ * path** (batched vs per-cell), the **namespace** (`ACTION_APIS`), and the **scope**
+ * (`./scope.ts`, the only axis still splitting a family in two).
+ *
+ * `context-bound` is the one real capability boundary here: it gets `ctx.commit` handed
+ * in rather than reaching for a namespace.
  *
  * The 7 `projectile*` presets are not actions and are not in this table — they are
  * `ProjectileOptionFn`s, in `./projectile-option/`.
@@ -57,14 +63,35 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     itemExcavate: "api",
     itemShoot: "api",
 
-    // ── context-bound (3) ─────────────────────────────────────────────────────
-    processorScan: "context-bound",
+    // ── context-bound (4) ─────────────────────────────────────────────────────
+    //
+    // These four read `ctx` and reach **no** `api.*` namespace, which is the whole
+    // meaning of the class: they are defined by the one dependency the engine hands a
+    // processor and nothing else does.
+    //
+    // It used to be seven. `readElement`, `countElements` and `countEmpty` left it when
+    // they gained the ambient fallback in `actions/element/index.ts` — they now call
+    // `api.elements.getResolvedTypeAtCell` / `api.grid.isCellEmptyAtCell` directly when
+    // no context is present, so they measure `api`. That is a real change in behaviour,
+    // not a re-labelling: it is what lets them run in a slot that hands over no context
+    // (see the `read` need in `./scope.ts`).
     isElementAtCell: "context-bound",
+    // ── The logic family: the five range walks, all `api` ───────────────────────
+    //
+    // The first actions to measure `api` with no `context` access at all, and that
+    // is the whole finding. `cellReaders` and `writeCells` are the element family's
+    // own primitives, so a walk over a range reads and writes through exactly the
+    // same ambient api the single-cell actions use. See `actions/logic/index.ts`.
+    logicAny: "api",
+    logicAll: "api",
+    logicCount: "api",
+    logicSum: "api",
+    logicForEach: "api",
     processorLift: "context-bound",
     processorConvert: "context-bound",
-    readElement: "context-bound",
-    countElements: "context-bound",
-    countEmpty: "context-bound",
+    readElement: "api",
+    countElements: "api",
+    countEmpty: "api",
     replaceElement: "api",
     createElement: "api",
     emptyCells: "api",
@@ -192,6 +219,32 @@ export interface ActionDeps {
 }
 
 /**
+ * A **valid** options bag, for the actions that validate their input.
+ *
+ * `measureActionDeps` feeds `options` a recording proxy, and that proxy answers
+ * "defined" to every property. That is deliberate for most actions — `valueOf` returns
+ * 1 so a guard like `if (!amount) return` does not short-circuit — but wrong for the
+ * **range** walks, which validate their addressing options. `walkFor` refuses a matrix
+ * cell set alongside a range field, and under a proxy `mx` reads as set *and* `dx`
+ * coerces to 1, so every walk reported a conflict and returned before reaching the
+ * engine. The measurement then said `self-sufficient` where the class table said `api`.
+ *
+ * So this is not the probe being tuned until the numbers agree. It is the probe being
+ * unable to ask a question it has no way to pose: "what does this reach for, **given
+ * options that make sense**". A blind proxy cannot express "a sensible `size`".
+ *
+ * A row is needed only for an action that *rejects* the proxy's answer, so this table's
+ * contents are themselves the record of which actions validate.
+ */
+export const VALID_OPTIONS: Record<string, Record<string, unknown>> = {
+    logicAny: { element: "water", size: 3 },
+    logicAll: { element: "water", size: 3 },
+    logicCount: { element: "water", size: 3 },
+    logicSum: { size: 3 },
+    logicForEach: { to: "stone", size: 3 },
+};
+
+/**
  * Run one action against recording proxies and report what it reached for.
  *
  * Exported for the test that proves `ACTION_CLASSES` is still true; not used at
@@ -291,6 +344,13 @@ export function measureActionDeps(key: string): ActionDeps | undefined {
         // distinction the comment above always claimed.
         if (secondIsCtx) fn(spy("payload"), spy("ctx"), spy("extra"));
         else fn(spy("payload"), spy("extra"), spy("extra"));
+        // An action that *validates* its options cannot be driven by a proxy that
+        // answers "defined" to everything, so it gets a real one. See `VALID_OPTIONS`.
+        const valid = VALID_OPTIONS[key];
+        if (valid) {
+            if (secondIsCtx) fn(spy("payload"), spy("ctx"), valid);
+            else fn(spy("payload"), spy("extra"), valid);
+        }
     } catch {
         threw = true;
     } finally {
@@ -323,7 +383,6 @@ export function actionClassOf(key: string): HandlerActionClass | undefined {
  *
  * Only the namespace root, not the full path, because the root is the grouping key
  * and `api.energy.consume` and `api.energy.addAtCell` belong in the same section.
- * `ACTION_API_PATHS` keeps the leaves for documentation and the snippet output.
  *
  * Measured with the same probe as the class: a fake `sandkit` whose namespaces
  * record on property access.
@@ -336,6 +395,17 @@ export const ACTION_APIS: Record<string, string> = {
     techGrantItem: "player",
     itemExcavate: "grid",
     itemShoot: "projectiles",
+    // ── The logic family: the five range walks ──────────────────────────────────
+    //
+    // `elements` for the three boolean walks, because `cellReaders` resolves to the
+    // ambient `api.elements.getResolvedTypeAtCell` whenever no processing context is
+    // handed over. `terrains` for `sum`, and `grid` for `forEach`, which goes
+    // through the element family's `writeCells` and so reaches `api.grid.mutate`.
+    logicAny: "elements",
+    logicAll: "elements",
+    logicCount: "elements",
+    logicSum: "terrains",
+    logicForEach: "grid",
     // ── The structure family: 18 actions, all `api` ──────────────────────────────
     //
     // The largest single-family block in the table, and the one with the least to say:
@@ -381,6 +451,21 @@ export const ACTION_APIS: Record<string, string> = {
     //
     // The `elements` entries below are the motion family, and the two sets never meet:
     // no action in this catalogue calls `api.elements` **and** `api.grid`.
+    //
+    // The three element *readers* join the table here, and were absent from it before.
+    // They used to read only through the processing context, so they reached no
+    // namespace at all. `cellReaders` in `actions/element/index.ts` now falls back to
+    // `api.elements.getResolvedTypeAtCell` and `api.grid.isCellEmptyAtCell` when no
+    // context is handed over — so they do reach the engine, and this table is
+    // **measured**, so leaving them out would be a lie the probe catches.
+    //
+    // `elements` rather than `grid`, because the type read is the element namespace's.
+    // It is a first-listed choice, not a claim that only one is called. The result is
+    // that the family is now split cleanly — readers on `elements`, writers on `grid` —
+    // where before it was a migration in progress.
+    readElement: "elements",
+    countElements: "elements",
+    countEmpty: "elements",
     replaceElement: "grid",
     createElement: "grid",
     emptyCells: "grid",
@@ -421,36 +506,6 @@ export const ACTION_APIS: Record<string, string> = {
     damageTerrain: "terrains",
     setTerrainHitPoints: "terrains",
 };
-
-/** The full call path, for documentation and "copy snippet". */
-export const ACTION_API_PATHS: Record<string, string> = {
-    energyGenerateWhileHeld: "api.energy.addAtCell / api.energy.getNetworkFreeCapacityAtCell",
-    energyConsumePerRun: "api.energy.consume",
-    // The namespace is real and the second argument is an object of id lists —
-    // this is the call `handler-classification.test.ts` asserts fires.
-    techAppendUnlock: "api.tech.conservatory.appendUnlock",
-    techSetUpgradeLevel: "api.upgrades.setLevelById",
-    techGrantItem: "api.player.inventory.addById",
-    itemExcavate: "api.grid.excavateAtCell",
-    itemShoot: "api.projectiles.spawnAtWorld",
-    toast: "api.ui.toast",
-    particles: "api.effects.createParticlesAtWorld",
-};
-
-/** The namespace an action calls, or undefined if it calls none. */
-export function apiOf(key: string): string | undefined {
-    return ACTION_APIS[key];
-}
-
-/** Every action a given `api.*` namespace owns, for the catalogue's grouping. */
-export function actionsOfApi(namespace: string): string[] {
-    return Object.keys(ACTION_APIS).filter((k) => ACTION_APIS[k] === namespace);
-}
-
-/** Every action with no API at all — the ones the rule has to rule on. */
-export function actionsWithoutApi(): string[] {
-    return Object.keys(ACTION_CLASSES).filter((k) => !ACTION_APIS[k]);
-}
 
 // ── The effect axis ──────────────────────────────────────────────────────────
 
@@ -516,7 +571,6 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     // commits — the only three that can change the world
     processorConvert: "commits",
     processorLift: "commits",
-    processorScan: "reads",
     isElementAtCell: "reads",
     readElement: "reads",
     countElements: "reads",
@@ -594,6 +648,17 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     // `effects.createParticlesAtWorld`.
     toast: "api",
     particles: "api",
+    // The four read-only walks are `api` too, and that is the honest claim: they
+    // reach `api.elements` / `api.terrains` on every call. They change nothing,
+    // which is what `reads` is for — but `reads` is not one of the effect
+    // categories, and filing them as `returns` would understate the engine
+    // contact that is their whole cost.
+    logicAny: "api",
+    logicAll: "api",
+    logicCount: "api",
+    logicSum: "api",
+    // `forEach` is the one that actually writes, through `writeCells` → `grid.mutate`.
+    logicForEach: "api",
 
     // returns — factories and presets
     energyDefault: "returns",
@@ -739,7 +804,6 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     // grid — the only domain that can change the world
     processorConvert: "grid",
     processorLift: "grid",
-    processorScan: "grid",
     isElementAtCell: "grid",
     readElement: "grid",
     countElements: "grid",
@@ -756,6 +820,15 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     teleportElement: "grid",
     toParticle: "grid",
     triggerScan: "grid",
+    // The logic family, all on the grid: the four read-only walks through
+    // `api.elements` / `api.terrains`, and `forEach` through the element family's
+    // `writeCells`. "grid" is the domain — what they touch — which is the axis
+    // `ACTION_EFFECTS` answers differently.
+    logicAny: "grid",
+    logicAll: "grid",
+    logicCount: "grid",
+    logicSum: "grid",
+    logicForEach: "grid",
 
     // items
     itemDefault: "items",
@@ -849,13 +922,6 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
 
 export function domainOf(key: string): ActionDomain | undefined {
     return ACTION_DOMAINS[key];
-}
-
-/** How many actions each domain holds, for the filter chips. */
-export function domainCounts(): Record<string, number> {
-    const out: Record<string, number> = {};
-    for (const d of Object.values(ACTION_DOMAINS)) out[d] = (out[d] ?? 0) + 1;
-    return out;
 }
 
 /** Every action that does not satisfy the "must call one api.*" rule. */

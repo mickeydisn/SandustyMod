@@ -29,6 +29,7 @@
  *
  * @module
  */
+import { anchorFor } from "../../core/cell-region.ts";
 import { defineActions, hostNs } from "../../core/types.ts";
 
 /** The parts of `StructureProcessingContext` the ACT actions use. */
@@ -113,13 +114,25 @@ export const actActions = defineActions({
         doc: "Digs at this position. Set `damage` and `velocity` in options.",
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { damage?: number; vx?: number; vy?: number };
-            const p = payload as { x?: number; y?: number } | null;
-            if (!p) return;
+            // `anchorFor`, not `payload.x`. This action reads the position the same way
+            // every cell action does now, and the difference is the whole bug: an item
+            // use hands over the engine **state**, which has no `x`, so the old
+            // `payload.x` passed `undefined` to the engine and it excavated at
+            // `undefined, undefined` while reporting no error at all. The anchor falls
+            // back to `api.input.getMouseCellPosition()`, so a Tool digs under the cursor.
+            const at = anchorFor(payload);
+            if (at.source === "none") {
+                console.warn(
+                    "[md-my-hown-mod:act] itemExcavate: this call site gave no position and " +
+                        "there is no cursor to read, so nothing was dug",
+                );
+                return;
+            }
             try {
                 const grid = hostNs("grid");
                 grid?.excavateAtCell?.(
-                    p.x,
-                    p.y,
+                    at.x,
+                    at.y,
                     { x: o.vx ?? 0, y: o.vy ?? 0 },
                     o.damage ?? 1,
                 );
@@ -135,12 +148,20 @@ export const actActions = defineActions({
         doc: "Fires a projectile. Set `projectileId` and `velocity` in options.",
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { projectileId?: string; vx?: number; vy?: number };
-            const p = payload as { x?: number; y?: number } | null;
-            if (!p || !o.projectileId) return;
+            if (!o.projectileId) return;
+            // The same anchor, and the same reason — see `itemExcavate`.
+            const at = anchorFor(payload);
+            if (at.source === "none") {
+                console.warn(
+                    "[md-my-hown-mod:act] itemShoot: this call site gave no position and " +
+                        "there is no cursor to read, so nothing was fired",
+                );
+                return;
+            }
             try {
                 const api = hostNs("projectiles");
                 const type = api?.getTypeFromId?.(o.projectileId) ?? o.projectileId;
-                api?.spawnAtWorld?.(type, p.x, p.y, { x: o.vx ?? 0, y: o.vy ?? 0 });
+                api?.spawnAtWorld?.(type, at.x, at.y, { x: o.vx ?? 0, y: o.vy ?? 0 });
             } catch (e) {
                 console.warn("[md-my-hown-mod:act] shoot failed", e);
             }
@@ -170,37 +191,6 @@ export const processingActActions = defineActions({
         role: "act",
         doc: "Does nothing. Keeps the interval alive without side effects.",
         fn: () => {},
-    },
-
-    /**
-     * Reports what sits around the structure.
-     *
-     * A read, so it is genuinely SENSE — but only this call site hands over the
-     * cell context, which under the old file split made it an `act/` resident.
-     * The role is `sense`; the *file* is wherever its signature puts it. This is
-     * the clearest example of the two axes being independent.
-     */
-    processorScan: {
-        role: "sense",
-        doc: "Logs the 3×3 elements surrounding the structure.",
-        fn: (structure, context) => {
-            try {
-                const s = structure as { x?: number; y?: number } | null;
-                const ctx = context as ProcessingContext | null;
-                if (!s || !ctx?.getResolvedTypeAtCell) return;
-                const x = s.x ?? 0;
-                const y = s.y ?? 0;
-                const seen: unknown[] = [];
-                for (let dx = -1; dx <= 1; dx++) {
-                    for (let dy = -1; dy <= 1; dy++) {
-                        seen.push(ctx.getResolvedTypeAtCell(x + dx, y + dy));
-                    }
-                }
-                console.log("[md-my-hown-mod:process] scan", seen);
-            } catch (e) {
-                console.warn("[md-my-hown-mod:process] scan failed", e);
-            }
-        },
     },
 
     /**
