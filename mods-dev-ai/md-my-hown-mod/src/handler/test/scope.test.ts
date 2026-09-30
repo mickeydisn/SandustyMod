@@ -307,6 +307,11 @@ Deno.test("only a commit needs the context; a read is ambient", () => {
     // `grid.d.ts:21`), so *reading* a cell needs no `StructureProcessingContext`.
     // `ctx.commit` is a member of that interface and of nothing else, so *writing*
     // through it is the one thing only `process()` can serve.
+    //
+    // `removeElement` is deliberately absent: it removes through
+    // `api.elements.removeAtCellWhenIdle`, a top-level call, so it needs no
+    // commit. It was listed here while removal was still aimed at the batch
+    // writer — which has no `removeAtCell` to aim at.
     const wantsCommit = Object.entries(ACTION_SCOPE)
         .filter(([, n]) => n.includes("commit"))
         .map(([k]) => k)
@@ -352,6 +357,11 @@ Deno.test("only a commit needs the context; a read is ambient", () => {
         "logicCount",
         "logicSum",
         "readElement",
+        // Removing joins the readers. It resolves the element id through the
+        // context's `getResolvedTypeAtCell` — the same top-level read the other
+        // readers use — and then removes with `api.elements.removeAtCellWhenIdle`,
+        // which needs no commit either.
+        "removeElement",
     ]);
     for (const key of wantsRead) {
         const sites = slotsFor(key);
@@ -454,7 +464,12 @@ Deno.test("the effect vocabulary is closed and fully labelled", () => {
     // subject and nothing else in the catalogue is about rock. Folding it into `grid`
     // would have kept the count at 9 and made the panel's domain filter unable to separate
     // a wall from a grain of sand — which is the one question a domain filter is for.
-    assertEquals(Object.keys(ACTION_DOMAIN_LABELS).length, 10, "ten domains");
+    // Ten → eleven with `signalOutput`, and the new one is a subject rather than a
+    // role, like `terrain`. Everything before it either described what a thing does
+    // (energy, items, projectiles) or where it shows up (diagnostics, feedback).
+    // Wiring is neither: it is the thing a `senderType` signal is *for*, and it had
+    // nowhere to live before `signalOutput` existed to need one.
+    assertEquals(Object.keys(ACTION_DOMAIN_LABELS).length, 11, "eleven domains");
 });
 
 Deno.test("only actions that change the grid are filed as committing", () => {
@@ -493,6 +508,7 @@ Deno.test("only actions that change the grid are filed as committing", () => {
             "emptyCells",
             "processorConvert",
             "processorLift",
+            "removeElement",
             "replaceElement",
             "setDuration",
             "setVelocity",

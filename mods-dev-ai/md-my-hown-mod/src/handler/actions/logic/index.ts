@@ -95,9 +95,13 @@ function typeTest(
 ): ((cell: { x: number; y: number }) => boolean) | null {
     const readers = cellReaders(context);
     if (!readers) return null;
+    // `matches`, not `===`: the engine's `getResolvedTypeAtCell` returns the
+    // numeric element type while a config names the id as a string, so a direct
+    // comparison is never true and every walk counted nothing. See `cellReaders`.
+    const holds = readers.matches(wanted);
     return ({ x, y }) => {
         if (onlyEmpty && readers.isEmpty && !readers.isEmpty(x, y)) return false;
-        return readers.readType(x, y) === wanted;
+        return holds(x, y);
     };
 }
 

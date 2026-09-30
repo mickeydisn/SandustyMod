@@ -170,7 +170,11 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
         //     where terrain is the only family spanning two) and the **scope**
         //     (`scope.ts`, the only one that still splits a family in two). If this
         //     table is ever simplified, that is the finding that would justify it.
-        api: 59,
+        //   60 → 61 with `signalOutput`. One action, one class, and the reason it is
+        //     `api` rather than `self-sufficient` is the whole point of it: it exists
+        //     to reach `api.signals.setOutputAtCell`, and an action that resolved no
+        //     namespace would be an action that published nothing.
+        api: 61,
         "context-bound": 3,
         "self-sufficient": 17,
         pure: 10,
@@ -236,7 +240,12 @@ Deno.test("only `api` satisfies the rule, and the rest are the work to do", () =
     // moving while this one holds is the pair of numbers worth reading together —
     // it is what "the catalogue grew" looks like when the growth is on the same
     // side of the rule as everything else it grew alongside.
-    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 59);
+    //   59 → 60 with `removeElement`, which reaches `api.grid.mutate` and so lands
+    //   on the same side of the rule as the rest of the element writers.
+    //   60 → 61 with `signalOutput`, which reaches `api.signals` — the rule is the
+    //   point here: publishing a signal output *is* an engine call, and filing it
+    //   off-rule would have called an action that publishes nothing "outstanding work".
+    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 61);
     assertEquals(offRuleActions().length, 30);
     const off = offRuleActions();
     assertEquals(

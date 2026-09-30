@@ -36,6 +36,24 @@ interface Write {
  * sees the writes before it, so two steps over overlapping regions compose. The old
  * read-then-commit fake could not model that, and could not have caught a regression
  * that depended on it.
+ *
+ * ## The writer has exactly two methods, and the batch is **deferred**
+ *
+ * `GridMutationWriterElements` (`grid.d.ts:154-189`) declares `createAtCell` and
+ * `replaceAtCell`. This fake used to offer a third, `removeAtCell`, written from
+ * the mod's own `ElementWriter` interface rather than from the `.d.ts` — so it
+ * agreed with a fiction and hid a crash.
+ *
+ * The far worse half: this fake used to call the `mutate` callback
+ * **synchronously**, and the engine does not. `api.grid.mutate` defers, so the
+ * callback runs after `process()` has returned and the engine's context is dead —
+ * reading it there throws `Structure processor context can only be used during
+ * process()`. The synchronous fake kept alive exactly the property the code was
+ * built on ("a read inside the batch sees the writes before it"), so every test
+ * passed and every write action threw the first time one ran in the game.
+ *
+ * `flush()` below is the engine's behaviour, and the one test that depends on
+ * in-batch reads has been rewritten to assert the truth instead.
  */
 function fakeContext(grid: Record<string, string> = {}) {
     const cells = new Map<string, string>(Object.entries(grid));
@@ -43,6 +61,12 @@ function fakeContext(grid: Record<string, string> = {}) {
     /** One entry per `mutate` call, so "one batch, N writes" is assertable. */
     const batches: Write[][] = [];
     let current: Write[] = [];
+    /**
+     * Batches opened but not yet run. `api.grid.mutate` defers, and modelling that
+     * is the whole point — a synchronous fake is what let a guaranteed throw sit
+     * behind a green suite.
+     */
+    let pending: { writer: unknown; run?: (w: { elements: unknown }) => void }[] = [];
 
     const record =
         (op: Write["op"]) => (x: number, y: number, type?: string, options?: unknown) => {
@@ -65,35 +89,100 @@ function fakeContext(grid: Record<string, string> = {}) {
                 mutate: (fn: (w: { elements: unknown }) => void) => {
                     current = [];
                     batches.push(current);
-                    fn({
+                    // **Deferred**, like the engine. `flush()` runs it.
+                    const writer = {
                         elements: {
                             createAtCell: record("create"),
                             replaceAtCell: record("replace"),
-                            removeAtCell: record("remove"),
+                            // NO `removeAtCell` — the engine's writer has none.
                         },
-                    });
+                    };
+                    pending.push({ writer });
+                    pending[pending.length - 1].run = fn;
                 },
             },
+            // Where removal really lives. Recorded into the same `writes` array so
+            // the batch assertions below still see every write in call order.
+            elements: { removeAtCell: record("remove") },
         },
     };
-    return {
-        writes,
-        batches,
-        cells,
-        ctx: {
-            getResolvedTypeAtCell: (x: number, y: number) => cells.get(`${x},${y}`) ?? null,
-            isCellEmptyAtCell: (x: number, y: number) => !cells.has(`${x},${y}`),
+    // The engine's context, including the one rule that caused the crash: it is
+    // only valid **during** `process()`. A `mutate` batch is deferred, so touching
+    // it from the flushed callback throws
+    // `Structure processor context can only be used during process()`.
+    // `retire()` stands in for `process()` returning.
+    let inProcess = true;
+    const guard = <T>(v: T): T => {
+        if (!inProcess) {
+            throw new Error("Structure processor context can only be used during process().");
+        }
+        return v;
+    };
+    const ctx = {
+        getResolvedTypeAtCell: (x: number, y: number) => {
+            guard(0);
+            return cells.get(`${x},${y}`) ?? null;
         },
+        isCellEmptyAtCell: (x: number, y: number) => {
+            guard(0);
+            return !cells.has(`${x},${y}`);
+        },
+    };
+    // `out` is typed as itself so `out.flush()` inside the accessors below is not
+    // `unknown`; `Record<string, unknown>` is not enough, and the flush-on-read
+    // getters are load-bearing rather than a convenience.
+    const out = {
+        batches,
+        ctx,
+        /** `process()` has returned. Any further context use now throws, as in the game. */
+        retire() {
+            inProcess = false;
+        },
+        /**
+         * Run the deferred batches, the way the engine's flush does.
+         *
+         * Every test that asserts on `writes` or `cells` must call this — the
+         * action is now asynchronous, exactly as it is in the game, and an
+         * unflushed assertion would be asserting on nothing.
+         */
+        flush() {
+            const open = pending;
+            pending = [];
+            for (const b of open) b.run?.(b.writer as { elements: unknown });
+        },
+        /**
+         * The grid and the write log. Both **flush first** — see the note on
+         * `flush` — and are declared here so the type knows they exist.
+         */
+        get cells() {
+            out.flush();
+            return cells;
+        },
+        get writes() {
+            out.flush();
+            return writes;
+        },
+        /** The writer the engine hands `mutate`, so its shape can be asserted. */
+        writer: () => ({
+            createAtCell: (x: number, y: number, t: string) => cells.set(`${x},${y}`, t),
+            replaceAtCell: (x: number, y: number, t: string) => cells.set(`${x},${y}`, t),
+        }),
         /** How many batches were opened. One action must open exactly one. */
-        batchCount: () => batches.length,
-        /** The last batch, or `[]` if `mutate` was never called. */
-        batch: () => batches[batches.length - 1] ?? [],
+        batchCount: () => (out.flush(), batches.length),
+        /** The last batch, or `[]` if `mutate` was never called. Flushed first. */
+        batch: () => (out.flush(), batches[batches.length - 1] ?? []),
         /** Put the global back. Every test that uses this must call it. */
         done: () => {
             if (had) g.sandkit = prev;
             else delete g.sandkit;
         },
     };
+
+    // `writes` and `cells` are getters that **flush first**, because the action is
+    // now deferred. Reading either materialises the pending batch, so every
+    // assertion sees what the engine would eventually see — and none of them can
+    // pass by accidentally checking a grid the batch has not touched yet.
+    return out;
 }
 
 const S4 = [[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]];
@@ -157,21 +246,54 @@ Deno.test("a write over a region is ONE batch, not one per cell", () => {
     fake.done();
 });
 
-Deno.test("a read inside the batch sees the writes before it in that batch", () => {
-    // The reason to prefer `api.grid.mutate` over `context.commit`, and the one thing
-    // the old read-then-commit shape could not do. The two steps are separate actions,
-    // so the second one's emptiness test would have read **pre-write** state and found
-    // the cell still occupied — and skipped.
+Deno.test("a batch is deferred, and the context is dead by the time it runs", () => {
+    // **This is the bug.** The old version of this test asserted the opposite —
+    // that a read inside the batch sees the writes before it — and it was the
+    // reason every write action threw the first time one ran in the game.
+    //
+    // `api.grid.mutate` defers its callback. `process()` has returned by the time
+    // it runs, and the engine's `StructureProcessingContext` is then invalid:
+    //
+    //     Structure processor context can only be used during process().
+    //
+    // So `writeCells` must read the context **before** opening the batch, and this
+    // is the test that holds it there. A fake that called the callback
+    // synchronously could never have caught it.
     const fake = fakeContext();
-    // Step one fills the footprint.
+    const wrote = elementActions.createElement.fn(at, fake.ctx, {
+        element: "sand",
+        footprint: true,
+    });
+    assertEquals(wrote, true, "the decision is made up front, so the answer is real");
+
+    // Nothing has been written yet: the batch is still open.
+    assertEquals(fake.batches.length, 1, "one batch per action, not one per cell");
+
+    // `process()` returns. Now the context is invalid, exactly as in the game.
+    fake.retire();
+    fake.flush();
+
+    // …and the batch still ran, because it never needed the context.
+    assertEquals(fake.cells.get("100,200"), "sand", "the batch landed");
+    fake.done();
+});
+
+Deno.test("two steps over one region each decide against pre-write state", () => {
+    // The honest consequence of the fix, and it replaces a test that asserted the
+    // opposite. Step two's emptiness check now happens before step one's batch has
+    // flushed, so it sees the cell as empty and queues a second write.
+    //
+    // The engine offers no way to keep the old behaviour: reading inside the batch
+    // is what throws. This is the weaker guarantee, stated rather than hidden.
+    const fake = fakeContext();
     elementActions.createElement.fn(at, fake.ctx, { element: "sand", footprint: true });
-    // Step two fills it again, into cells that are now occupied.
     const second = elementActions.createElement.fn(at, fake.ctx, {
         element: "dirt",
         footprint: true,
     });
-    assertEquals(second, false, "nothing left to fill");
-    assertEquals(fake.cells.get("100,200"), "sand", "the first write survived");
+    assertEquals(second, true, "step two decides before step one's batch has flushed");
+    fake.flush();
+    // The last write wins on the grid, which is the engine's business, not ours.
     assertEquals(fake.batchCount(), 2, "one batch per action, not one per cell");
     fake.done();
 });
@@ -184,6 +306,40 @@ Deno.test("createElement fills gaps and leaves everything else alone", () => {
     assertEquals(fake.cells.get("100,200"), "dirt");
     assertEquals(fake.cells.get("101,200"), "sand");
     assertEquals(fake.cells.size, 16);
+    fake.done();
+});
+
+Deno.test("the batch writer offers only the two methods the engine declares", () => {
+    // The guard against re-introducing the fiction.
+    //
+    // `emptyCells` and `removeElement` both called `writer.removeAtCell`, which
+    // `GridMutationWriterElements` (`grid.d.ts:154-189`) does not have. It threw
+    // `writer.removeAtCell is not a function` in the game while every test in this
+    // file passed green — because the fake writer was written from the mod's own
+    // `ElementWriter` interface, which had invented the method. The fake agreed
+    // with the fiction, so nothing ever checked the fiction.
+    //
+    // The check is on the **fake**, because the fake is the thing that was wrong.
+    // It must offer exactly the engine's two methods; a third — which is how the
+    // bug got in — fails here rather than at runtime inside a processor.
+    const fake = fakeContext();
+    let offered: string[] | undefined;
+    const g = globalThis as unknown as {
+        sandkit: {
+            api: {
+                grid: { mutate: (fn: (w: { elements: object }) => void) => void };
+            };
+        };
+    };
+    g.sandkit.api.grid.mutate = (fn) => fn({ elements: fake.writer() });
+    g.sandkit.api.grid.mutate((w) => {
+        offered = Object.keys(w.elements as Record<string, unknown>);
+    });
+    assertEquals(
+        offered,
+        ["createAtCell", "replaceAtCell"],
+        "the fake writer no longer matches grid.d.ts — re-read it before changing this",
+    );
     fake.done();
 });
 
@@ -205,31 +361,94 @@ Deno.test("emptyCells removes only what it read, and skips empty cells", () => {
     fake.done();
 });
 
+// ── removeElement ────────────────────────────────────────────────────────────
+// The one primitive the family was missing: take *this* element out of a region.
+// `emptyCells` over the same 3×3 would have taken the gold, the copper and the
+// sand with it, which is the difference between a machine that eats and one that
+// bulldozes.
+Deno.test("removeElement takes only the named element, leaving the rest", () => {
+    const fake = fakeContext({
+        "100,200": "gold",
+        "101,200": "gold",
+        "102,200": "copper",
+    });
+    const wrote = elementActions.removeElement.fn(at, fake.ctx, {
+        element: "gold",
+        footprint: true,
+    });
+    // `wrote` is "the batch was submitted", which is what `writeCells` can honestly
+    // claim about a `mutate` that returns void.
+    assertEquals(wrote, true);
+    // `undefined`, not `null`: the fake's `removeAtCell` deletes the key, and a
+    // missing key and a null value are different answers.
+    assertEquals(
+        fake.cells.get("100,200"),
+        undefined,
+        "the gold was taken",
+    );
+    assertEquals(
+        fake.cells.get("101,200"),
+        undefined,
+        "the second gold was taken",
+    );
+    assertEquals(
+        fake.cells.get("102,200"),
+        "copper",
+        "a different element must survive — this is the whole point of the action",
+    );
+    assertEquals(fake.batch().every((w) => w.op === "remove"), true);
+    fake.done();
+});
+
+Deno.test("removeElement with nothing to take writes nothing", () => {
+    // The empty-commit rule the rest of the family follows: a no-op must not
+    // masquerade as a successful write.
+    const fake = fakeContext({ "100,200": "copper" });
+    assertEquals(
+        elementActions.removeElement.fn(at, fake.ctx, { element: "gold", footprint: true }),
+        false,
+    );
+    assertEquals(fake.batch().length, 0, "an empty batch, and no writes queued");
+    assertEquals(fake.cells.get("100,200"), "copper");
+    fake.done();
+});
+
+Deno.test("removeElement with no element named refuses rather than clearing", () => {
+    // Blank would mean "whatever is there" in the panel's own wording, but a config
+    // that forgot the field should not silently become `emptyCells`. The action says
+    // so out loud and writes nothing.
+    const fake = fakeContext({ "100,200": "gold" });
+    assertEquals(elementActions.removeElement.fn(at, fake.ctx, { footprint: true }), false);
+    assertEquals(fake.batch().length, 0);
+    assertEquals(fake.cells.get("100,200"), "gold", "and nothing was removed");
+    fake.done();
+});
+
 Deno.test("transformElement maps one element to another", () => {
     // The action that turns a process into a machine: conditional, so the same
     // program means different things under different options.
-    const { ctx, cells } = fakeContext({ "100,200": "dirt", "101,200": "sand" });
-    elementActions.transformElement.fn(at, ctx, {
+    const fake = fakeContext({ "100,200": "dirt", "101,200": "sand" });
+    elementActions.transformElement.fn(at, fake.ctx, {
         from: "dirt",
         to: "clay",
         footprint: true,
     });
-    assertEquals(cells.get("100,200"), "clay");
-    assertEquals(cells.get("101,200"), "sand", "sand was not named, so it stays");
+    assertEquals(fake.cells.get("100,200"), "clay");
+    assertEquals(fake.cells.get("101,200"), "sand", "sand was not named, so it stays");
 });
 
 Deno.test("a blank `from` normalises, and a cell already correct is skipped", () => {
     // Two behaviours in one test because they share a path and the second is
     // invisible without the first.
-    const { ctx, cells } = fakeContext({
+    const fake = fakeContext({
         "100,200": "dirt",
         "101,200": "sand",
         "102,200": "water",
     });
-    elementActions.transformElement.fn(at, ctx, { to: "stone", footprint: true });
-    assertEquals(cells.get("100,200"), "stone");
-    assertEquals(cells.get("101,200"), "stone");
-    assertEquals(cells.get("102,200"), "stone");
+    elementActions.transformElement.fn(at, fake.ctx, { to: "stone", footprint: true });
+    assertEquals(fake.cells.get("100,200"), "stone");
+    assertEquals(fake.cells.get("101,200"), "stone");
+    assertEquals(fake.cells.get("102,200"), "stone");
     // A cell already holding `to` is left alone — a valid write, but one that would
     // fire every tick forever for no change.
     //
@@ -251,27 +470,27 @@ Deno.test("a blank `from` normalises, and a cell already correct is skipped", ()
 
 Deno.test("a matrix position addresses one cell, ignoring the offsets", () => {
     // `mx`/`my` is the literal "the element at matrix x, y".
-    const { ctx, cells } = fakeContext();
-    elementActions.createElement.fn(at, ctx, { element: "stone", mx: 2, my: 3 });
-    assertEquals([...cells.keys()], ["102,203"]);
+    const fake = fakeContext();
+    elementActions.createElement.fn(at, fake.ctx, { element: "stone", mx: 2, my: 3 });
+    assertEquals([...fake.cells.keys()], ["102,203"]);
 });
 
 Deno.test("an offset with no size is exactly one cell", () => {
     // This is what makes `replaceElement` with `dy: -1` the parameterised
     // `processorConvert` rather than a second, separate action.
-    const { ctx, cells } = fakeContext();
-    elementActions.createElement.fn({ x: 100, y: 200 }, ctx, {
+    const fake = fakeContext();
+    elementActions.createElement.fn({ x: 100, y: 200 }, fake.ctx, {
         element: "stone",
         dx: 0,
         dy: -1,
     });
-    assertEquals([...cells.keys()], ["100,199"]);
+    assertEquals([...fake.cells.keys()], ["100,199"]);
 });
 
 Deno.test("a size builds a square centred on the offset, and is clamped", () => {
-    const { ctx, cells } = fakeContext();
-    elementActions.createElement.fn({ x: 0, y: 0 }, ctx, { element: "stone", size: 3 });
-    assertEquals(cells.size, 9, "a 3x3 around the origin");
+    const fake = fakeContext();
+    elementActions.createElement.fn({ x: 0, y: 0 }, fake.ctx, { element: "stone", size: 3 });
+    assertEquals(fake.cells.size, 9, "a 3x3 around the origin");
     // A size past the cap is clamped rather than honoured, and the action still
     // runs — a silent refusal would look like a broken engine.
     const big = fakeContext();

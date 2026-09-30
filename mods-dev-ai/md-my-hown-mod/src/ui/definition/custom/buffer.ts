@@ -76,13 +76,34 @@ const FIELDS: FieldSpec[] = [
 
 // ── Round trip ───────────────────────────────────────────────────────────────
 
+/**
+ * A slot's stored `default`, as the form's text.
+ *
+ * The field is a `textField`, so the form always holds a string — but what
+ * *arrives* from the entry is not necessarily one. A hand-authored config (or
+ * any import) naturally writes `"default": 0` as a JSON **number**, and
+ * `read.str` returns `undefined` for that, leaving the box **empty** on a slot
+ * that plainly has a default. Since `default` is `required`, that then reads as
+ * a validation error and invites the author to retype a value that was there all
+ * along.
+ *
+ * The buffer store coerces either shape (`coerceDefault`), so the value itself
+ * was never wrong. Only the form could not see it.
+ */
+function readValue(v: unknown): string | undefined {
+    if (typeof v === "string") return v;
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+    if (typeof v === "boolean") return String(v);
+    return undefined;
+}
+
 /** Stored entry → form strings. */
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("path", read.str(e.path));
     read.put("type", read.str(e.type));
-    read.put("default", read.str(e.default));
-    read.put("min", read.str(e.min));
-    read.put("max", read.str(e.max));
+    read.put("default", readValue(e.default));
+    read.put("min", read.num(e.min));
+    read.put("max", read.num(e.max));
 }
 
 /**
@@ -97,11 +118,15 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("path", w.opt("path"));
     w.setStr("type", w.opt("type"));
-    w.setStr("default", w.opt("default"));
     if (form.type === "number") {
+        // A number, for the same reason `min`/`max` are: the entry then reads
+        // back as the number it went in as, instead of quietly changing shape
+        // the first time the entry is opened in the panel.
+        w.setNum("default", w.optNum("default"));
         w.setNum("min", w.optNum("min"));
         w.setNum("max", w.optNum("max"));
     } else {
+        w.setStr("default", w.opt("default"));
         // Not merely left unwritten. Switching a slot from `number` to `bool` does
         // not re-open the entry, so the old bounds would still be sitting in the
         // stored object — and `planSlot` would go on reading them for a slot that

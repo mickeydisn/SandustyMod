@@ -32,6 +32,10 @@ import { inputDefinition } from "./definition/core/input.ts";
 import { interactionDefinition } from "./definition/core/interaction.ts";
 import { itemDefinition } from "./definition/core/item.ts";
 import { modifierDefinition } from "./definition/core/modifier.ts";
+// Used by the `customProcess` and `buffers` cases in entryToForm/formToEntry.
+// Both tabs own a config list, and both were missing from those switches.
+import { customProcessDefinition } from "./definition/custom/process.ts";
+import { bufferDefinition } from "./definition/custom/buffer.ts";
 import { networkDefinition } from "./definition/custom/network.ts";
 import { processingDefinition } from "./definition/core/processing.ts";
 import { projectileDefinition } from "./definition/core/projectile.ts";
@@ -1016,6 +1020,28 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             modifierDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
+        case "customProcess": {
+            // Owned by ./definition/custom/process.ts.
+            //
+            // This case and the `buffers` one below were **missing**, and the
+            // symptom was quiet: `definitionFor(cat).fields` still supplied the
+            // controls, so the editor drew a Scope select and a Program grid —
+            // but `entryToForm` fell through to `default: break`, so both stayed
+            // empty for a process that was perfectly valid on disk. A config
+            // imported from JSON looked blank.
+            //
+            // `formToEntry` was missing them too, and that is the worse half:
+            // `passthroughOf` trusts `formCovered`, so `scope` and `steps` were
+            // neither read into the form nor written back — opening a process and
+            // pressing Save would have dropped its program.
+            customProcessDefinition.entryToForm?.(e, readerFor(form));
+            break;
+        }
+        case "buffers": {
+            // Owned by ./definition/custom/buffer.ts — missing for the same reason.
+            bufferDefinition.entryToForm?.(e, readerFor(form));
+            break;
+        }
         default:
             break;
     }
@@ -1184,6 +1210,16 @@ export function formToEntry(
             // Owned by ./definition/modifier.ts. Delegated rather than inlined so
             // the hook-id picker and its companion box stay a read/write pair.
             modifierDefinition.formToEntry?.(form, writerFor(form, entry));
+            break;
+        }
+        case "customProcess": {
+            // Owned by ./definition/custom/process.ts.
+            customProcessDefinition.formToEntry?.(form, writerFor(form, entry));
+            break;
+        }
+        case "buffers": {
+            // Owned by ./definition/custom/buffer.ts.
+            bufferDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         default:

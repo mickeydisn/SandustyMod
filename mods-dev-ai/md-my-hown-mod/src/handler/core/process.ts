@@ -19,6 +19,7 @@
  * be `payload`-signed or `processing`-signed without changing what it is for.
  */
 
+export { resolveAction } from "../actions/index.ts";
 import { resolveAction } from "../actions/index.ts";
 import { createContext, type ProcessContext, varsRead, varsWrite } from "./context.ts";
 import { refsIn, resolveRefs } from "./refs.ts";
@@ -47,7 +48,40 @@ export {
 // one lookup order. It is re-exported here because `process.ts` is what
 // registration already imports from, and a caller asking for "the process
 // compiler" should not have to know the resolver moved.
-export { resolveAction } from "../actions/index.ts";
+/**
+ * The option keys an action declares, or `undefined` when the action is unknown.
+ *
+ * This exists because a wrong option key is **invisible**. The action resolves,
+ * so `skipped` stays empty, the process compiles, and the only symptom is a
+ * warning raised from inside the action at run time — or none at all when the
+ * action just reads a default:
+ *
+ *     setSpritesheetByValue: no thresholds, so there is no frame to choose
+ *
+ * which is what a config written with `value` instead of the action's real
+ * `value2` produced. The action key was right, so nothing above it could tell.
+ *
+ * It is a **hook** rather than an import because `handler-registry.ts` already
+ * imports this file. Importing the registry back would be a cycle, and the
+ * failure mode of that cycle is a `ReferenceError: Cannot access 'ACTION_APIS'
+ * before initialization` at module load — in whichever test happened to import
+ * the registry first, which is not a place anyone would look for this.
+ * `handler-registry.ts` sets it at module scope, so it is present by the time
+ * any process is compiled.
+ */
+let optionKeysLookup: ((key: string) => ReadonlySet<string> | undefined) | undefined;
+
+/** Installed by `handler-registry.ts`, which is the only module with the params. */
+export function setOptionKeysLookup(
+    fn: (key: string) => ReadonlySet<string> | undefined,
+): void {
+    optionKeysLookup = fn;
+}
+
+/** The declared option keys for `key`, or `undefined` when nothing is known. */
+export function optionKeysFor(key: string | undefined): ReadonlySet<string> | undefined {
+    return key ? optionKeysLookup?.(key) : undefined;
+}
 
 // ── The compiler ─────────────────────────────────────────────────────────────
 
@@ -90,6 +124,22 @@ export interface CompiledProcess {
     callSite: CallSite;
     /** Action keys dropped because nothing resolves them. Blocks included. */
     skipped: string[];
+    /**
+     * Option keys no action declares, as `action.option` pairs.
+     *
+     * Reported rather than dropped, because the step still runs — it just runs
+     * with the action's defaults. That is the quietest failure in the catalogue:
+     * a config can name a real action, misspell one of its options, compile
+     * cleanly, and do something subtly different from what it says.
+     *
+     * ```json
+     * { "key": "setSpritesheetByValue", "options": { "value": "1" } }
+     * ```
+     *
+     * produced exactly one symptom, an hour later, inside the action:
+     * `no thresholds, so there is no frame to choose`.
+     */
+    unknownOptions: string[];
     /**
      * Whether any step wrote a value another step could read.
      *
@@ -137,6 +187,7 @@ export function compileProcess(
     onFailure?: (f: ProcessFailure) => void,
 ): CompiledProcess {
     const skipped: string[] = [];
+    const unknownOptions: string[] = [];
     let usesContext = false;
 
     /**
@@ -190,6 +241,17 @@ export function compileProcess(
                 continue;
             }
             const as = typeof ref.as === "string" && ref.as ? ref.as : undefined;
+            // An option the action does not declare is not an error — the step
+            // still runs, on defaults. It is worth saying out loud, because this
+            // is the one mistake that compiles clean and misbehaves later.
+            const declared = optionKeysFor(ref.key);
+            if (declared && ref.options) {
+                for (const name of Object.keys(ref.options)) {
+                    if (!declared.has(name)) {
+                        unknownOptions.push(`${ref.key}.${name}`);
+                    }
+                }
+            }
             // A ref only counts as using the context if it actually *does* something:
             // binds a name, or reads one. A process of five actions that share nothing
             // is not a process that has a context.
@@ -246,9 +308,16 @@ export function compileProcess(
         // each other's variables. See `context.ts` for why this is not a closure.
         const context = createContext(seedsFor(callSite, args));
         runList(steps, payload, ctx, context);
+        // The program's value to its caller, or nothing. See `RESULT_VAR` in
+        // `context.ts` for why this exists: `signals.registerSenderType` is read as
+        // a plain boolean, so without a way out a declarative sender was
+        // permanently falsy. `undefined` is returned rather than `null` for a
+        // program that binds nothing, because every existing call site ignores the
+        // return and `undefined` is the one value that is falsy in both readings.
+        return context.result.value;
     };
 
-    return { fn, callSite, skipped, usesContext };
+    return { fn, callSite, skipped, unknownOptions, usesContext };
 }
 
 /** Read a stored entry's `actions` array. A pre-split `handlerKey` is not a process, and is left in place. */

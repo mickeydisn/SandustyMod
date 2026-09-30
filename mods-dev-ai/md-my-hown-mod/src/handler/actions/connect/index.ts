@@ -45,6 +45,42 @@ import { defineActions, defineModifiers, hostNs } from "../../core/types.ts";
 
 export const connectActions = defineActions({
     /**
+     * Publishes this structure's signal output.
+     *
+     * `registerSenderType` alone cannot be a live sensor — it only seeds a wire's
+     * `on` flag at the moment the wire is drawn, and the push that updates a
+     * sensor afterwards is not public api. That is why the note at the top of this
+     * file says the two together are not one call. It is **not** the end of the
+     * story: `api.signals.setOutputAtCell(x, y, value)` is public and is a direct
+     * call to the engine's `signals.setAll`, and it is what the source mod used to
+     * keep its material links lit.
+     *
+     * So a `senderType` signal plus this action is the working combination, and
+     * this action is the half that was missing: without it a config could
+     * *register* a sender and never actually publish anything, which looks like a
+     * successful setup and is inert.
+     *
+     * The value is coerced to a boolean, because the engine's own `setAll` takes
+     * the on/off flag and a number that happens to be `0` should read as off.
+     */
+    signalOutput: {
+        role: "connect",
+        doc: "Publishes this structure's signal output. Set `value` in options.",
+        fn: (payload, _ctx, options) => {
+            const s = payload as { x?: number; y?: number } | null;
+            const x = Number(s?.x);
+            const y = Number(s?.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            const value = (options as { value?: unknown } | null)?.value;
+            try {
+                hostNs("signals")?.setOutputAtCell?.(x, y, Boolean(value));
+            } catch (e) {
+                console.warn("[md-my-hown-mod:connect] signal output failed", e);
+            }
+        },
+    },
+
+    /**
      * Draws energy from the pool.
      *
      * The engine has **no** per-cell consume: `energy.consume(amount, options?)`

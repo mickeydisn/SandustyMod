@@ -100,9 +100,32 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
                     `${LOG} processing ${p.id}: unknown action ${compiled.skipped.join(", ")}`,
                 );
             }
-            entry.process = compiled.fn as never;
+            if (compiled.unknownOptions.length) {
+                // Loud on purpose. An option no action declares is *not* a compile
+                // error — the step still runs, on defaults — so this is the only
+                // place the mistake is visible before it shows up as an action
+                // quietly doing the wrong thing.
+                console.warn(
+                    `${LOG} processing ${p.id}: option no action declares ` +
+                        `${compiled.unknownOptions.join(", ")} — the step runs on defaults`,
+                );
+            }
+            // A **copy**, never `entry.process = …` on the object being iterated.
+            //
+            // `api.storage.get` is `state.store.mods[modId][key]` — a live
+            // reference, not a copy — so `config` here *is* the save payload.
+            // Writing the compiled callback onto it put a **function** into the
+            // store, and the game saves with
+            //     simulation.manager.postMessage([Save, { ...e.store }, …])
+            // which is a structured clone. A function cannot be cloned, so every
+            // quit threw
+            //     DataCloneError: … could not be cloned
+            // Reproduced in the game, on every save, for any config with a
+            // `processing` or `projectiles` entry.
+            registerProcessing({ ...entry, process: compiled.fn } as never);
+        } else {
+            registerProcessing(p);
         }
-        registerProcessing(p);
         registered.processing.add(p.id);
         counts.processing = (counts.processing ?? 0) + 1;
     }
@@ -185,16 +208,22 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
             if (compiled.problem) {
                 console.warn(`[md-my-hown-mod] projectile ${entry.id}: ${compiled.problem}`);
             }
+            // A **copy** again, for the same reason as `processing` above: `entry`
+            // is the live object inside the save payload, and a function there
+            // breaks the save's structured clone.
+            //
             // Only the current key is written. The pre-split spellings are left
             // where they are: nothing reads them, and deleting an author's key on
             // the way to the engine is how a config loses data it never showed
             // anyone.
-            if (ref) {
-                entry[PROJECTILE_OPTION_STORE_KEY] = ref;
-            }
-            entry.getOptions = compiled.getOptions as never;
+            registerProjectile({
+                ...entry,
+                ...(ref ? { [PROJECTILE_OPTION_STORE_KEY]: ref } : {}),
+                getOptions: compiled.getOptions,
+            } as never);
+        } else {
+            registerProjectile(p);
         }
-        registerProjectile(p);
         registered.projectiles.add(p.id);
         counts.projectiles = (counts.projectiles ?? 0) + 1;
     }

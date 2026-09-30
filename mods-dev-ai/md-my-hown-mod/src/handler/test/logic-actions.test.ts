@@ -19,26 +19,42 @@ interface FakeWorld {
     read: (x: number, y: number) => string | null;
     written: { x: number; y: number; type: string }[];
     setHp: (x: number, y: number, n: number) => void;
+    /** Run the deferred `mutate` batches, as the engine's flush does. */
+    flush(): void;
 }
 
 function fakeWorld(cells: Record<string, string>): FakeWorld {
     const read = (x: number, y: number) => cells[`${x},${y}`] ?? null;
     const written: { x: number; y: number; type: string }[] = [];
     const hp = new Map<string, number>();
+    /**
+     * Batches opened but not yet run.
+     *
+     * `api.grid.mutate` **defers** its callback, and this fake used to call it
+     * synchronously. That is what let every write action pass here and throw
+     * `Structure processor context can only be used during process()` in the game —
+     * the synchronous fake kept the context alive past the point where the engine
+     * destroys it. `withWorld` flushes on teardown, so the assertions below see
+     * the same grid the engine would.
+     */
+    let pending: { writer: unknown; run?: (w: { elements: unknown }) => void }[] = [];
     (globalThis as { sandkit?: unknown }).sandkit = {
         api: {
             elements: { getResolvedTypeAtCell: read },
             grid: {
                 isCellEmptyAtCell: (x: number, y: number) => read(x, y) === null,
-                mutate: (fn: (w: { elements: unknown }) => void) =>
-                    fn({
+                mutate: (fn: (w: { elements: unknown }) => void) => {
+                    const writer = {
                         elements: {
                             createAtCell: (x: number, y: number, t: string) => {
                                 written.push({ x, y, type: t });
                                 cells[`${x},${y}`] = t;
                             },
                         },
-                    }),
+                    };
+                    pending.push({ writer });
+                    pending[pending.length - 1].run = fn;
+                },
             },
             terrains: {
                 getDataAtCell: (x: number, y: number) =>
@@ -46,13 +62,25 @@ function fakeWorld(cells: Record<string, string>): FakeWorld {
             },
         },
     };
-    return {
+    // `written` is a getter that flushes first, so an assertion inside `body` sees
+    // the writes the engine would have applied — the batch is deferred, and a
+    // synchronous read of `written` would otherwise be reading nothing.
+    const out: FakeWorld = {
         read,
-        written,
         setHp(x: number, y: number, n: number) {
             hp.set(`${x},${y}`, n);
         },
+        flush() {
+            const open = pending;
+            pending = [];
+            for (const b of open) b.run?.(b.writer as { elements: unknown });
+        },
+        get written() {
+            out.flush();
+            return written;
+        },
     };
+    return out;
 }
 
 /**

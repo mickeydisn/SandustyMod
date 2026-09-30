@@ -106,9 +106,28 @@ E 'JSON.stringify(__sk.status())'
 | `__sk.contentColumns(width, step)` | which columns hold anything |
 | `__sk.register(id, shape?)` | register a structure definition |
 | `__sk.place(id, x, y)` | place, and report `committed` / `queued` |
+| `__sk.placeWhenIdle(id, x, y)` | same, queued for the next idle frame — see §12 |
 | `__sk.attachProcess(typeId, body, intervalMs?)` | attach a processor |
+| `__sk.structureTypes()` / `…Matching(filter)` | every registered structure type |
+| `__sk.hasSprite(id)` / `__sk.hasSprites(ids)` | whether a graphics key really decoded |
+| `__sk.storageGet(modId, key)` / `__sk.storageSet(modId, key, json)` | read/write another mod's `api.storage` |
+| `__sk.bufferGet(key)` / `__sk.bufferSet(key, path, n)` | read/write a shared `JsonMapBuffer` |
+| `__sk.save(saveId, name)` / `__sk.saveState()` | request an exit-save — see §12 |
 | `__sk.counts` | `{runs, firstTick, lastError}` |
 | `__sk.uninstall()` | delete the global |
+
+### ⚠️ `structureTypes` returns numbers too
+
+`getAvailableTypes()` is a `Set` whose members are **not all strings** — the
+engine's own types come back as bare numbers (`11`, `12`, …). A Set also
+stringifies to `{}`, so it has to be spread. `structureTypesMatching` does both;
+`String(id)` first, or `id.includes(…)` throws a TypeError on a number.
+
+### ⚠️ `api.sprites` has no `list`
+
+The accessor for "did this texture actually load" is **`getById`**. Probing for
+`sprites.list()` / `getAll()` returns nothing for *any* mod, which reads exactly
+like "no sprites loaded anywhere" — a silent false negative, not an error.
 
 ### ⚠️ Player coordinates are pixels
 
@@ -242,3 +261,78 @@ the typings.
 - **`newWorld()` is menu-only.** A silent no-op once a world is active.
 - **The bridge is debug code.** Keep it out of anything you ship; the enable
   switch removes the global entirely.
+
+---
+
+## 12. Persisting state written from the terminal
+
+Two things have to be true before a `storageSet` survives: the write has to land
+in `store.mods`, and the game has to save. **Neither happens on their own.**
+
+### ⚠️ Killing the game throws the write away
+
+`pkill` sends SIGTERM and a graceful `osascript … quit` is no better — in both
+cases the renderer is gone before the save runs. The `.save` file's mtime does
+not move, and the write is silently lost. Confirmed by mtime, not assumed.
+
+### The engine's save is flag-gated
+
+From `dist/js/bundle.js`:
+
+```js
+M = e => { if (!e.session.saving) return;
+           if ("pending" !== e.session.saving.status) return; … }
+```
+
+and the requester sets
+
+```js
+e.session.saving = { name, id, type, status: "pending", onComplete, onError }
+```
+
+with `type` one of `autosave` / `quicksave` / **`exitsave`**. The path is
+`state.session`, **not** `state.store.session` — `e.store` is the payload,
+`e.session` sits beside it. Writing the flag into `store` leaves it at
+`"pending"` forever and writes nothing.
+
+```bash
+__sk.save("llljdmco4hn-exitsave", "ai-word")   # ~3 s later the file changes
+```
+
+**Verify on the file, not on the return value.** And note the save format: a JSON
+metadata line, a newline, then a **gzipped** payload.
+
+```bash
+python3 - <<'EOF'
+import json, gzip
+raw = open(P, "rb").read()
+d = json.loads(gzip.decompress(raw[raw.find(b"\n")+1:]))
+print(d["store"]["mods"]["<modId>"].keys())
+EOF
+```
+
+A `grep` for a key name in the raw file finds **nothing** — the payload is
+compressed. That reads exactly like "the config did not save".
+
+### Loading a config into a mod
+
+Mod config lives at `api.storage` key `"config"`, namespaced by mod id:
+
+```bash
+__sk.storageSet("md-my-hown-mod", "config", '<json>')   # json is a STRING
+__sk.storageGet("md-my-hown-mod", "config")
+```
+
+`json` is a string because a CDP expression can only pass strings; the bridge
+parses it. **Re-read after writing** — a write that reports `ok` and did not
+land is exactly the failure worth catching.
+
+### Shared buffers
+
+`api.shared.buffers.get(key)` takes **one** argument. There is no mod id: a mod's
+buffers are namespaced by its runtime, so passing a second argument silently
+looks up an unrelated key and reports "absent" for a buffer that exists.
+
+`md-my-hown-mod` allocates one buffer under the key **`mdBuffers`**, and builds it
+**lazily** — the shared memory does not exist until the first `bufferRead` action
+runs, so an absent buffer before the first tick is expected, not a fault.

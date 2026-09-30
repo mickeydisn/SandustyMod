@@ -1,7 +1,7 @@
 /**
- * The process context: seeds, variables, and `{{}}` references.
+ * The process context: seeds, variables, `{{}}` references, and the return value.
  *
- * The three things this file exists to hold:
+ * The four things this file exists to hold:
  *
  *  1. **A seed is read-only.** A step that could overwrite `structure.x` would make
  *     every later dig happen somewhere else; one that could overwrite `commit` would
@@ -11,11 +11,130 @@
  *     `""` would reach the engine as a real value.
  *  3. **A context is per invocation.** Two structures running one compiled process
  *     on the same tick must not see each other's variables.
+ *  4. **A program can return a value.** `signals.registerSenderType` is read by the
+ *     engine as a plain boolean, so a compiled program needs a way *out*. The
+ *     reserved name is `result`; the assertions below are what stop that silently
+ *     regressing into "every sender is off", which fails with no error and no log
+ *     line anywhere.
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { canBind, createContext, hasVar, varsRead, varsWrite } from "../core/context.ts";
+import {
+    canBind,
+    createContext,
+    hasVar,
+    RESULT_VAR,
+    varsRead,
+    varsWrite,
+} from "../core/context.ts";
 import { refsIn, resolveRefs } from "../core/refs.ts";
 import { compileProcess } from "../core/process.ts";
+
+// ── The return value ──────────────────────────────────────────────────────────
+
+/**
+ * Mount a host api for the duration of one assertion.
+ *
+ * `hostApi()` resolves the injected `sandkit` first and `globalThis.sandkit`
+ * second, and no test here injects the former — so the global is the seam. The
+ * namespace is `getAtCell`, which is what `structureData` calls; `structures.at`
+ * would be a plausible-looking name that the action never touches, and a mock
+ * under the wrong key fails as "returned empty string" rather than as a typo.
+ */
+function withHost(getDataField: (x: number, y: number, n: number) => number): {
+    restore: () => void;
+} {
+    (globalThis as Record<string, unknown>).sandkit = {
+        api: { elements: { getDataFieldAtCell: getDataField } },
+    };
+    return {
+        restore: () => {
+            delete (globalThis as Record<string, unknown>).sandkit;
+        },
+    };
+}
+
+Deno.test("a program returns the value bound to `result`", () => {
+    // The whole point: a declarative `senderType` is called by the engine and its
+    // **return** is the boolean. Before this, `runList` returned `void` and the
+    // wrapper discarded everything, so every compiled sender was `undefined` — and
+    // `undefined` is falsy, so every signal read as permanently off with nothing
+    // logged anywhere.
+    //
+    // `readDataField` is used because it is an action that both needs a position
+    // and returns a number — the shape a real sender has: read a value, hand it
+    // back as the boolean. The host it reaches through is
+    // `api.elements.getDataFieldAtCell`.
+    const { fn } = compileProcess(
+        [{ key: "readDataField", options: { slot: 1 }, as: RESULT_VAR }],
+        "signal",
+    );
+    const host = withHost(() => 1);
+    const got = (fn as (a: unknown, b: unknown) => unknown)({ x: 1, y: 2 }, {});
+    host.restore();
+    assertEquals(got, 1, "the value must reach the caller");
+    assert(Boolean(got), "and be truthy, which is what a sender is read as");
+});
+
+Deno.test("a program that binds nothing returns undefined", () => {
+    // The other half, and the one that matters for safety: a sender with no
+    // `result` binding must read as **off**, not as a stale value from a previous
+    // invocation. `undefined` is what a `registerSenderType` handler that did
+    // nothing has to yield.
+    const { fn } = compileProcess([{ key: "processorNoop" }], "signal");
+    assertEquals((fn as () => unknown)(), undefined);
+});
+
+Deno.test("`result` is per invocation, like every other variable", () => {
+    // Same guarantee as `vars`, for the same reason: one compiled function serves
+    // every structure. If this leaked, structure A's last read would decide
+    // structure B's signal. The host returns a different value per payload, so a
+    // leak would show as the second call reporting the first call's number.
+    const { fn } = compileProcess(
+        [{ key: "readDataField", options: { slot: 1 }, as: RESULT_VAR }],
+        "signal",
+    );
+    // The host answers from the cell it is asked about, so a leaked result would
+    // show as the second call reporting the first cell's number.
+    const host = withHost((x) => x);
+    const first = (fn as (a: unknown, b: unknown) => unknown)({ x: 1, y: 2 }, {});
+    const second = (fn as (a: unknown, b: unknown) => unknown)({ x: 2, y: 2 }, {});
+    host.restore();
+    assertEquals(first, 1);
+    assertEquals(second, 2, "the second invocation must not read the first's value");
+});
+
+Deno.test("`result` survives the frozen context", () => {
+    // The bug this exists to prevent: `createContext` returns an `Object.freeze`d
+    // object, so a top-level `ctx.result = v` throws "object is not extensible"
+    // and `runList`'s per-step `try` swallows it. The result looked impossible to
+    // set. It is a nested holder for exactly that reason.
+    const ctx = createContext();
+    assertEquals(varsWrite(ctx, RESULT_VAR, 42), { ok: true });
+    assertEquals(ctx.result.value, 42);
+    assert(!Object.isFrozen(ctx.result), "the holder itself must stay writable");
+});
+
+Deno.test("`result` is readable as a reference, and is never a `vars` entry", () => {
+    // Readable so a later step can branch on it; *not* stored in `vars` so that
+    // `{{result}}` cannot be both "the program's output" and "a scratch name",
+    // which would make it mean two things depending on step order.
+    const ctx = createContext();
+    varsWrite(ctx, RESULT_VAR, "on");
+    assertEquals(varsRead(ctx, RESULT_VAR), "on");
+    assert(!(RESULT_VAR in ctx.vars), "result must not land in vars");
+    assert(hasVar(ctx, RESULT_VAR), "result is always readable, even before it is set");
+});
+
+Deno.test("`result` is not a name a step can shadow as an ordinary variable", () => {
+    // The same rule as `structure.x`: it is a name the contract gives a meaning
+    // to, so binding it must be the one special case rather than a normal `vars`
+    // write that later steps could overwrite by accident.
+    const ctx = createContext();
+    varsWrite(ctx, RESULT_VAR, 1);
+    varsWrite(ctx, RESULT_VAR, 2);
+    assertEquals(ctx.result.value, 2, "last binding wins, as for any rebind");
+    assertEquals(Object.keys(ctx.vars).length, 0, "and neither is a var");
+});
 
 // ── Seeds ─────────────────────────────────────────────────────────────────────
 

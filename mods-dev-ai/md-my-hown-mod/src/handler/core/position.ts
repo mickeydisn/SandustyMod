@@ -162,11 +162,21 @@ export function positionsFor(address: Address, at: Position): Range {
             // Even sides keep the anchor **inside** the square, biased up and left, so
             // "3×3 around me" contains my own cell. A 4×4 that started one row above
             // would put the machine in the corner of its own region.
+            //
+            // The offset is applied to the **centre** before the grid is built, not
+            // after. It used to be dropped entirely: `addressFor` puts `dx`/`dy` in
+            // `offset` and this case read only `side`, so "3×3, one cell right"
+            // silently produced the same 3×3 as "3×3, here" — and a config that
+            // aimed a region at part of a 4×4 footprint got the wrong nine cells
+            // with nothing reported. The `offset` kind honours `dx`/`dy` on its own,
+            // which is why the omission survived: `size: 1` worked, and that is
+            // the shape almost every action in the catalogue defaults to.
+            const centre = address.offset ? shift(at, address.offset) : at;
             const low = Math.floor((address.side - 1) / 2);
             const high = Math.ceil((address.side - 1) / 2);
             const out: Position[] = [];
             for (let dy = -low; dy <= high; dy++) {
-                for (let dx = -low; dx <= high; dx++) out.push(shift(at, { dx, dy }));
+                for (let dx = -low; dx <= high; dx++) out.push(shift(centre, { dx, dy }));
             }
             return out;
         }

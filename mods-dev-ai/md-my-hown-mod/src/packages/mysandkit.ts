@@ -836,20 +836,31 @@ export function registerProcessing(p: ProcessingConfig): void {
     // The engine definition is `{ structureType, intervalMs, process }`; there is
     // no per-instance registration, so `structures.addProcessor` is not a real API
     // and is no longer called.
-    const { id: _id, structureType, handlerKey: _hk, ...rest } = p as
+    const { id, handlerKey: _hk, ...rest } = p as
         & Record<string, unknown>
         & ProcessingConfig;
+    const { structureType } = rest as { structureType?: string };
     if (structureType === undefined) {
-        console.warn(`${LOG} processing ${p.id}: missing structureType`);
+        console.warn(`${LOG} processing ${id}: missing structureType`);
         return;
     }
     if (typeof rest.process !== "function") {
         console.warn(
-            `${LOG} processing ${p.id}: process() not a function (JSON cannot store callbacks). Skip.`,
+            `${LOG} processing ${id}: process() not a function (JSON cannot store callbacks). Skip.`,
         );
         return;
     }
-    api.structures.processing.register(structureType, rest);
+    // The engine signature is `register(id, definition)` — the **id is a label for
+    // the registration**, and `structureType` belongs inside the definition.
+    //
+    // This used to be `register(structureType, rest)`, which reads plausibly and
+    // is wrong twice over: it passed the structure type where the id belongs, and
+    // destructured `structureType` *out* of `rest`, so the definition the engine
+    // received had no `structureType` at all. The engine then threw
+    //     Structure "undefined" must be registered before its processing.
+    // and the tick never ran. Offline tests missed it because the stubbed
+    // `processing.register` never looks at the definition.
+    api.structures.processing.register(id ?? `${structureType}:process`, rest);
 }
 
 export function registerContact(c: ContactReactionConfig): void {

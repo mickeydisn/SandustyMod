@@ -95,6 +95,7 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     replaceElement: "api",
     createElement: "api",
     emptyCells: "api",
+    removeElement: "api",
     transformElement: "api",
     getVelocity: "api",
     findFreeCell: "api",
@@ -206,6 +207,10 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     // probe counts as a read — so `signalLog` and friends sit in `pure` only
     // because a `console.log` of a whole object never touches a *property* of it.
     signalLog: "pure",
+    // Publishing a signal output is a call into `api.signals`, so it is an `api`
+    // effect rather than a pure one — it changes engine state, and a panel
+    // offering it should say so.
+    signalOutput: "api",
     triggerLog: "pure",
     processorLog: "pure",
     processorNoop: "pure",
@@ -422,6 +427,8 @@ export const ACTION_APIS: Record<string, string> = {
     techGrantItem: "player",
     itemExcavate: "grid",
     itemShoot: "projectiles",
+    // `api.signals.setOutputAtCell` — the live half of a `senderType` signal.
+    signalOutput: "signals",
     // ── The logic family: the five range walks ──────────────────────────────────
     //
     // `elements` for the three boolean walks, because `cellReaders` resolves to the
@@ -496,6 +503,7 @@ export const ACTION_APIS: Record<string, string> = {
     replaceElement: "grid",
     createElement: "grid",
     emptyCells: "grid",
+    removeElement: "grid",
     transformElement: "grid",
     // The motion family, all one namespace. It is worth being explicit that this is a
     // *different* `elements` from the one the element family would have used: the
@@ -613,6 +621,7 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     replaceElement: "commits",
     createElement: "commits",
     emptyCells: "commits",
+    removeElement: "commits",
     transformElement: "commits",
     setVelocity: "commits",
     addVelocity: "commits",
@@ -684,6 +693,7 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     // api — the actions that reach the engine
     energyGenerateWhileHeld: "api",
     energyConsumePerRun: "api",
+    signalOutput: "api",
     techAppendUnlock: "api",
     techSetUpgradeLevel: "api",
     techGrantItem: "api",
@@ -821,7 +831,14 @@ export type ActionDomain =
     | "terrain"
     | "diagnostics"
     /** Added with `feel/`: the player sees it, the simulation does not change. */
-    | "feedback";
+    | "feedback"
+    /**
+     * Added with `signalOutput`, on the same reasoning as `terrain` and for the same
+     * reason the alternative was rejected: wiring is a subject nothing else in the
+     * catalogue is about, and folding it into `grid` or `structure` would make the
+     * panel's domain filter answer "does this touch the world" for all three.
+     */
+    | "signals";
 
 export const ACTION_DOMAIN_LABELS: Record<ActionDomain, string> = {
     energy: "Energy",
@@ -836,6 +853,14 @@ export const ACTION_DOMAIN_LABELS: Record<ActionDomain, string> = {
     diagnostics: "Diagnostics",
     /** Added with `feel/`. The player sees it; nothing in the sim changes. */
     feedback: "Feedback",
+    /**
+     * Added with `signalOutput`. Signals are the one engine subsystem the panel
+     * could previously only *observe* through: `signalLog` filed them under
+     * diagnostics, which is true of the logger and false of the thing itself. A
+     * structure publishing its output is behaviour a player builds, not wiring
+     * they are testing, so it needed a domain of its own rather than a worse fit.
+     */
+    signals: "Signals",
 };
 
 export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
@@ -849,6 +874,7 @@ export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
     terrain: "The solid world: dirt, stone, ice — and their hit points.",
     diagnostics: "Logging and no-ops — wiring tests, not behaviour.",
     feedback: "Something the player sees or hears. Changes no stored state.",
+    signals: "Wiring: publishing a structure's signal output, and reading it back.",
 };
 
 export const ACTION_DOMAINS: Record<string, ActionDomain> = {
@@ -871,6 +897,7 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     replaceElement: "grid",
     createElement: "grid",
     emptyCells: "grid",
+    removeElement: "grid",
     transformElement: "grid",
     getVelocity: "grid",
     findFreeCell: "grid",
@@ -991,6 +1018,10 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     // something a player is meant to see.
     toast: "feedback",
     particles: "feedback",
+    // The publisher, filed with the thing it is about rather than with the
+    // loggers. `signalLog` is `diagnostics` because it prints; this one changes
+    // engine state, and the panel should not offer it as a diagnostic.
+    signalOutput: "signals",
 };
 
 export function domainOf(key: string): ActionDomain | undefined {

@@ -287,6 +287,22 @@ function dataSlotOf(options: ElementOptions): number {
 export function cellReaders(context: unknown): {
     readType: (x: number, y: number) => unknown;
     isEmpty: ((x: number, y: number) => boolean) | undefined;
+    /** The element **id** for a raw reader value. */
+    idOf: (found: unknown) => string;
+    /** "Does this cell hold element `id`?" — accepts either representation. */
+    matches: (id: string) => (x: number, y: number) => boolean;
+    /**
+     * The same test against a value the caller already holds.
+     *
+     * This is the one a `writeCells` action must use. `decide` is called a second
+     * time **inside** the deferred `api.grid.mutate` batch, by which point
+     * `process()` has returned and the context is dead — so re-reading through
+     * `matches` there throws "Structure processor context can only be used during
+     * process()" and takes the whole batch with it. The plan handed to `decide`
+     * already carries each cell's type, snapshotted before the batch opened, and
+     * that value is what has to be tested.
+     */
+    holdsValue: (id: string) => (found: unknown) => boolean;
 } | null {
     const ctx = context as ProcessingContext | null;
     const readType = typeof ctx?.getResolvedTypeAtCell === "function"
@@ -296,27 +312,127 @@ export function cellReaders(context: unknown): {
     const isEmpty = typeof ctx?.isCellEmptyAtCell === "function"
         ? ctx.isCellEmptyAtCell
         : hostNs("grid")?.isCellEmptyAtCell;
+    const elements = hostNs("elements");
+
+    /**
+     * `getResolvedTypeAtCell` hands back the **numeric** element type, verified
+     * against the live engine (`typeof` `"number"`, value `7` for gold). A config
+     * names an element by id — the string `"gold"` — so comparing the reader's
+     * answer to the id with `===` was never true, and every scan reported zero
+     * however much of the element was in front of it. Both sides are now
+     * resolved to the set of forms they can legitimately take.
+     *
+     * The unit fakes return the id string, which is why this stayed green: the
+     * fakes agreed with each other and nothing checked either against the engine.
+     */
+    const forms = (id: string): Set<unknown> => {
+        const set = new Set<unknown>([id]);
+        try {
+            const t = elements?.getTypeFromId?.(id);
+            if (t != null) set.add(t);
+        } catch {
+            /* an id the engine does not know can only match itself */
+        }
+        return set;
+    };
+
+    const idOf = (found: unknown): string => {
+        if (found == null) return "";
+        if (typeof found === "string") return found;
+        try {
+            const id = elements?.getIdByType?.(found as number);
+            if (typeof id === "string" && id) return id;
+        } catch {
+            /* an unregistered type has no id */
+        }
+        return String(found);
+    };
+
+    const holdsValue = (id: string) => {
+        const want = forms(id);
+        return (found: unknown) => found != null && want.has(found);
+    };
+
     return {
         readType: readType as (x: number, y: number) => unknown,
         isEmpty: typeof isEmpty === "function"
             ? isEmpty as (x: number, y: number) => boolean
             : undefined,
+        idOf,
+        holdsValue,
+        matches: (id: string) => {
+            const test = holdsValue(id);
+            return (x: number, y: number) => test(readType(x, y));
+        },
     };
 }
 
 /**
  * The element writer half of `api.grid.mutate`'s callback.
  *
- * The engine types it as `GridMutationWriterElements`
- * (`grid.d.ts:166-189`). Only three methods, and the mod cannot import that type — the
- * engine's `.d.ts` files are not in this mod's dependency graph — so it is declared
- * here as the shape it is used through, which is the same compromise `hostNs` makes.
- * Exported because `../logic/`'s `forEach` drives a batch through it.
+ * The engine types it as `GridMutationWriterElements` (`grid.d.ts:154-189`) and
+ * that type has **exactly two** methods: `createAtCell` and `replaceAtCell`.
+ * The mod cannot import it — the engine's `.d.ts` files are not in this mod's
+ * dependency graph — so the shape it is used through is declared here, which is
+ * the same compromise `hostNs` makes.
+ *
+ * It used to declare a third, `removeAtCell`, which **the engine does not have**.
+ * Two actions called it — `emptyCells`, and `removeElement` after this pass
+ * added it — and both threw `writer.removeAtCell is not a function` the moment a
+ * processor actually ran in the game. The unit tests passed throughout, because
+ * the fake writer in `element-actions.test.ts` was written from this interface
+ * rather than from `grid.d.ts`: the fake agreed with the fiction, so the fiction
+ * was never checked against anything.
+ *
+ * **Removal is therefore not batchable.** `api.elements.removeAtCell` is a
+ * top-level main-entry call — "main-entry writes are deferred; reads see the old
+ * grid" — so a read-then-remove is no longer the single atomic step `emptyCells`
+ * claimed it was. The read and the remove are now in different frames, and the
+ * compare-and-remove can in principle remove a cell the simulation refilled in
+ * between. That is a weaker guarantee than the code used to advertise, and the
+ * engine is the reason; it is not a trade this file can make back.
  */
 export interface ElementWriter {
     createAtCell: (x: number, y: number, type: string, options?: unknown) => void;
     replaceAtCell: (x: number, y: number, type: string, options?: unknown) => void;
-    removeAtCell: (x: number, y: number, options?: unknown) => void;
+    /**
+     * The live writer **does** have this, and it is the only route that actually
+     * removes anything. `grid.d.ts` declares `GridMutationWriterElements` with
+     * just `createAtCell` and `replaceAtCell`, and that under-documented typing is
+     * what pushed removal onto `api.elements.removeAtCell` — where, measured in
+     * the game, both `removeAtCell` and `removeAtCellWhenIdle` return without
+     * changing the cell. The generator counted its gold correctly and then left
+     * every last grain on the ground.
+     *
+     * Optional in the type because the fakes are written from the same source; the
+     * call sites check before using it and fall back to the api.
+     */
+    removeAtCell?: (x: number, y: number, options?: unknown) => void;
+}
+
+/**
+ * The element namespace, for the writes a batch writer does not offer.
+ *
+ * `removeAtCellWhenIdle` is preferred, and the reason is not a preference:
+ * verified in the live engine, `api.elements.removeAtCell` returns without doing
+ * anything — the element is still there a moment later. The `…WhenIdle` variant
+ * is what actually lands, the same reason `buildAtCell` needed
+ * `buildAtCellWhenIdle` for structures. Choosing the plain name looked like a
+ * working call and silently removed nothing, which is precisely why a generator
+ * could count its Gold correctly and then leave all of it on the ground.
+ */
+function elementsApi():
+    | { remove?: (x: number, y: number, options?: unknown) => void }
+    | undefined {
+    const api = hostNs("elements") as
+        | {
+            removeAtCellWhenIdle?: (x: number, y: number, options?: unknown) => void;
+            removeAtCell?: (x: number, y: number, options?: unknown) => void;
+        }
+        | undefined;
+    if (!api) return undefined;
+    const remove = api.removeAtCellWhenIdle ?? api.removeAtCell;
+    return remove ? { remove: remove.bind(api) } : undefined;
 }
 
 /**
@@ -399,18 +515,59 @@ export function writeCells(
     // Counted rather than returned by the engine: `mutate` is `void`, so this is the
     // only honest signal available. It says the batch was **submitted**, which is a
     // weaker claim than `commit`'s "it landed" and is documented as such at the call.
+    //
+    // The reads happen **before** the batch is opened, and that is not a style
+    // choice. `api.grid.mutate` **defers** its callback, so by the time it runs
+    // `process()` has already returned and the engine's context is dead:
+    //
+    //     Structure processor context can only be used during process().
+    //
+    // Reading inside the callback therefore threw for **every** write action in
+    // this family — `createElement`, `replaceElement`, `emptyCells`,
+    // `transformElement` and `removeElement` alike — and the throw surfaced as an
+    // unhandled rejection at the `mutate(` line with nothing pointing at the real
+    // cause. It is the reason the fake in `element-actions.test.ts` calls the
+    // callback synchronously: the fake kept the property the engine does not have,
+    // so "a read inside the batch sees the writes before it" held in every test
+    // and was false everywhere else.
+    //
+    // What is lost: a read no longer sees a write staged earlier in the same batch,
+    // so two overlapping steps in one process can each decide against pre-write
+    // state. The alternative is not a weaker guarantee — it is a guaranteed throw.
+    const plan: { cell: { x: number; y: number }; current: unknown; empty: boolean }[] = [];
+    for (const cell of cells) {
+        const empty = isEmpty ? isEmpty(cell.x, cell.y) : false;
+        plan.push({ cell, current: empty ? null : readType(cell.x, cell.y), empty });
+    }
+
+    // Decide **before** the batch opens, against a writer that writes nothing.
+    //
+    // `mutate` is `void` and deferred, so counting inside the callback would read
+    // 0 for every action — the return value would be a constant lie. And an action
+    // that would write nothing must not open a batch at all: an empty commit looks
+    // exactly like a successful no-op to the caller.
+    //
+    // The contract this puts on `decide`: **no side effects except through the
+    // writer it is handed.** It is called twice, once to count and once for real,
+    // and every `decide` in this file is a pure test on `(writer, cell, current,
+    // empty)`. The logic family's `forEach` guard is the same shape.
+    const noop: ElementWriter = {
+        createAtCell: () => {},
+        replaceAtCell: () => {},
+        removeAtCell: () => {},
+    };
     let queued = 0;
+    for (const step of plan) {
+        if (decide(noop, step.cell, step.current, step.empty)) queued++;
+    }
+    if (queued === 0) return false;
+
     mutate((writer: { elements: ElementWriter }) => {
-        for (const cell of cells) {
-            // Inside the batch, so each read sees the writes before it in the same
-            // batch. Two actions over overlapping regions in one process therefore
-            // compose, where the old read-then-commit form would have read stale.
-            const empty = isEmpty ? isEmpty(cell.x, cell.y) : false;
-            const current = empty ? null : readType(cell.x, cell.y);
-            if (decide(writer.elements, cell, current, empty)) queued++;
+        for (const step of plan) {
+            decide(writer.elements, step.cell, step.current, step.empty);
         }
     });
-    return queued > 0;
+    return true;
 }
 
 /**
@@ -479,7 +636,10 @@ export const elementActions = defineActions({
                 const first = resolved.range[0];
                 if (!first) return "";
                 const found = readers.readType(first.x, first.y);
-                return found === undefined || found === null ? "" : String(found);
+                // `idOf`, not `String(found)`: the engine answers with a numeric
+                // type, so `String` would hand back `"7"` and the step promises an
+                // id. See `cellReaders`.
+                return found === undefined || found === null ? "" : readers.idOf(found);
             } catch (e) {
                 console.warn("[md-my-hown-mod:process] readElement failed", e);
                 return "";
@@ -608,9 +768,12 @@ export const elementActions = defineActions({
                 }
                 const note = clampNote(resolved.clamped, "countElements");
                 if (note) console.warn(note);
+                // `matches`, not `===`: the engine answers with a numeric type and
+                // `want` is an element id. See `cellReaders`.
+                const holds = readers.matches(want);
                 let n = 0;
                 for (const cell of resolved.range) {
-                    if (readers.readType(cell.x, cell.y) === want) n++;
+                    if (holds(cell.x, cell.y)) n++;
                 }
                 return n;
             } catch (e) {
@@ -739,28 +902,22 @@ export const elementActions = defineActions({
     /**
      * Empties the region.
      *
-     * A compare-and-remove — `expectedElementType` is what was read, not a blind
-     * `remove`. Over a footprint, read-then-remove in the same tick, the blind form
-     * would delete whatever the simulation moved into the cell in between; the compare
-     * form is the engine's own atomicity rather than a lock we would have to hold.
-     */
-    /**
-     * Empties the region.
+     * The removal goes through `api.elements.removeAtCell`, **not** the batch
+     * writer — the engine's `GridMutationWriterElements` has only
+     * `createAtCell` and `replaceAtCell`, so `writer.removeAtCell` is `undefined`
+     * and calling it threw `writer.removeAtCell is not a function` the first time
+     * a processor ran in the game.
      *
-     * The compare-and-remove guard is now **structural** rather than a field. The old
-     * path read every cell, then committed `{kind: "remove", expectedElementType}` in a
-     * later tick, and the field existed to close the gap: without it, a cell the
-     * simulation refilled in between would have been emptied by mistake.
-     *
-     * Here there is no gap to close. The read that decides and the `removeAtCell` that
-     * acts on it are the **same atomic step** inside one `api.grid.mutate` batch, which
-     * is strictly stronger than the field: the old guard only protected removals, and
-     * only because it was the one mutation kind that had it.
+     * **The atomicity claim in the old note here was false**, and the engine is
+     * why. It rested on the read and the remove being the same step inside one
+     * `api.grid.mutate` batch; with removal off the writer they are two calls in
+     * different frames, and the "still holds what was read" test is a compare
+     * against a grid the simulation may already have moved on from. The doc
+     * string is worded as the test it actually is, not as a lock.
      */
     emptyCells: {
         role: "act",
-        doc: "Removes the element from every cell in the region, but only if the cell " +
-            "still holds what was read.",
+        doc: "Removes the element from every occupied cell in the region.",
         fn: (structure, context, options) => {
             return writeCells(
                 structure,
@@ -769,7 +926,86 @@ export const elementActions = defineActions({
                 "emptyCells",
                 (writer, cell, _current, empty) => {
                     if (empty) return false;
-                    writer.removeAtCell(cell.x, cell.y);
+                    if (typeof writer.removeAtCell === "function") {
+                        writer.removeAtCell(cell.x, cell.y, {});
+                        return true;
+                    }
+                    const api = elementsApi();
+                    if (typeof api?.remove !== "function") {
+                        console.warn(
+                            "[md-my-hown-mod:process] emptyCells: neither the batch " +
+                                "writer nor api.elements can remove, so nothing was removed",
+                        );
+                        return false;
+                    }
+                    api.remove(cell.x, cell.y, {});
+                    return true;
+                },
+            );
+        },
+    },
+
+    /**
+     * Removes the element from every cell in the region **that holds `element`**.
+     *
+     * The gap this fills is narrow and real. The family could create, replace,
+     * transform (`from` → `to`) and `emptyCells` (clear everything), but nothing
+     * could say "take *this* element out of here" — which is the ordinary
+     * primitive for a machine that consumes what it is given. `emptyCells` over a
+     * 3×3 would eat the gold and the copper and the sand with it.
+     *
+     * `element` blank means "whatever is there", which makes this the general form
+     * of `emptyCells` rather than a special case of it, and matches
+     * `transformElement`'s blank `from`.
+     *
+     * The read and the remove are the same atomic step inside one
+     * `api.grid.mutate` batch, so a cell the simulation refilled in between is not
+     * emptied by mistake — the same guarantee `emptyCells` documents, and the
+     * reason this is a `writeCells` action rather than a `readEach` plus a blind
+     * remove.
+     */
+    removeElement: {
+        role: "act",
+        doc: "Removes the element from every cell in the region that holds `element`. " +
+            "Leave the element blank to empty every non-empty cell.",
+        fn: (structure, context, options) => {
+            const want = elementOf(options as ElementOptions);
+            if (!want) {
+                console.warn("[md-my-hown-mod:process] removeElement: no element set");
+                return false;
+            }
+            // `holdsValue`, not `matches`: `decide` runs a second time inside the
+            // deferred batch, where the context is dead and a re-read throws. The
+            // plan's `current` is the snapshot taken before the batch opened, and
+            // it is a **numeric** engine type, hence `holdsValue` rather than a
+            // string compare. See `cellReaders`.
+            const isGold = cellReaders(context)?.holdsValue(want) ?? null;
+            return writeCells(
+                structure,
+                context,
+                options,
+                "removeElement",
+                (writer, cell, current) => {
+                    // Already empty, or holds something else: nothing to take.
+                    if (current === null || current === undefined) return false;
+                    if (!isGold || !isGold(current)) return false;
+                    // Through the **writer**, which is the only route measured to
+                    // actually remove: both `api.elements.removeAtCell` and its
+                    // `…WhenIdle` sibling return without changing the cell. See
+                    // `ElementWriter`.
+                    if (typeof writer.removeAtCell === "function") {
+                        writer.removeAtCell(cell.x, cell.y, {});
+                        return true;
+                    }
+                    const api = elementsApi();
+                    if (typeof api?.remove !== "function") {
+                        console.warn(
+                            "[md-my-hown-mod:process] removeElement: neither the batch " +
+                                "writer nor api.elements can remove, so nothing was removed",
+                        );
+                        return false;
+                    }
+                    api.remove(cell.x, cell.y, {});
                     return true;
                 },
             );

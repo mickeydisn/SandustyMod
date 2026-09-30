@@ -41,6 +41,7 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     replaceElement: ["processing"],
     createElement: ["processing"],
     emptyCells: ["processing"],
+    removeElement: ["processing"],
     transformElement: ["processing"],
     // The motion family. Same slot for the same reason — `processing` is where a
     // `StructureProcessingContext` is delivered — but a different *reason* from the
@@ -129,6 +130,9 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     // one. See ACTION_SCOPE and tools/analyze-scopes.ts.
     triggerScan: ["processing"],
     signalLog: ["signal"],
+    // The live half of a `senderType` signal, so it runs wherever a signal does and
+    // wherever a processor does — the engine hands both a structure with a position.
+    signalOutput: ["signal", "processing"],
     structureInspect: ["signal"],
     structureReadData: ["signal"],
     structureWriteData: ["signal"],
@@ -247,6 +251,10 @@ Deno.test("the action catalogue's API binding, measured", () => {
         itemShoot: "projectiles",
         toast: "ui",
         particles: "effects",
+        // The one action that makes a `senderType` signal a live sensor. It was
+        // missing entirely, which is why a config could register three senders and
+        // publish nothing: `registerSenderType` only seeds a wire as it is drawn.
+        signalOutput: "signals",
         // The structure family: 18 actions, all reaching `api.structures`. The only
         // family where the count of actions and the count of namespaces move in
         // lockstep, because there is exactly one namespace to reach and no member of
@@ -314,6 +322,11 @@ Deno.test("the action catalogue's API binding, measured", () => {
             // reach a namespace nothing had reached before, and without it the proxy would
             // be read as an undeclared property and this test would still pass.
             "terrains",
+            // `signals`, for the same reason: it is a namespace no action reached
+            // before `signalOutput` did, and a missing one would be recorded by the
+            // proxy as a read anyway — so the test would pass for the wrong reason
+            // and the action would look api-bound without ever touching an engine.
+            "signals",
         ]
     ) {
         // A proxy that records the namespace on any property read, so an action
@@ -406,8 +419,19 @@ Deno.test("the action catalogue's API binding, measured", () => {
     // makes the axis less informative than it looks: `api` counts "calls the
     // engine", and the write path and the effect are what actually separate the
     // families.
-    assertEquals(Object.keys(API_CALLING).length, 38);
-    assertEquals(Object.keys(IMPLEMENTED).length, 89);
+    // 38 → 39 with `signalOutput`, and unlike the three families above this one moves
+    // **both** counts: `api.signals` is a namespace nothing had reached, and one
+    // action is all it took. The pattern the comment above keeps describing — "an
+    // action on an existing namespace does not move the numerator" — is about actions
+    // being added; it does not apply when the namespace itself is new.
+    assertEquals(Object.keys(API_CALLING).length, 39);
+    //   89 → 90 with `removeElement`, which is filed against `api.grid.mutate` like
+    //   the rest of the element writers — the same "adds an action against an
+    //   existing namespace" outcome every family so far has produced.
+    // 90 → 91 with `signalOutput`. One action, and it is the smallest thing that can
+    // close a real gap: a `senderType` signal registered but had no way to publish,
+    // so three senders sat inert while looking correctly set up.
+    assertEquals(Object.keys(IMPLEMENTED).length, 91);
 });
 
 Deno.test("`type` measures neither axis — that is why the split is real", () => {
@@ -501,6 +525,7 @@ const VACUOUS_RETURNS = [
     "replaceElement",
     "createElement",
     "emptyCells",
+    "removeElement",
     "transformElement",
     // The five `act` motion actions, for exactly the same reason. Each returns a
     // boolean "did anything happen", which a void slot discards and which nothing can

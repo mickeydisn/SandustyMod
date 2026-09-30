@@ -59,12 +59,28 @@ export function processRefOf(entry: Record<string, unknown> | undefined): Proces
 
 /** What a compiled definition produced. */
 export interface CompiledEntry {
-    /** The function to hand the engine. Always callable. */
-    fn: () => void;
+    /**
+     * The function to hand the engine. Always callable.
+     *
+     * Takes the engine's `(structure, context)` for a `processing` call site — the
+     * arity the real signature has. It was declared `() => void`, and the cast that
+     * installed it (`compiled.fn as () => void`) made that true only to the type
+     * checker: the engine passes two arguments, `compileProcess` reads them, and a
+     * caller who believed the declared arity could not drive a compiled program at
+     * all. Optional, because the `none` branch really is a nullary no-op.
+     */
+    fn: (structure?: unknown, context?: unknown) => void;
     /** Where the program came from, for the log. */
     source: ProcessSource;
     /** Action keys dropped because nothing resolves them. */
     skipped: string[];
+    /**
+     * Option keys no action declares, as `action.option`.
+     *
+     * Passed through from the compiler rather than recomputed, so the register
+     * path and the panel report the same list.
+     */
+    unknownOptions: string[];
     /** Whether the program shares a context between its steps. */
     usesContext: boolean;
     /** Every process expanded into this one. Empty for a legacy array. */
@@ -94,6 +110,7 @@ export function compileEntryProcess(
             fn: () => undefined,
             source,
             skipped: [],
+            unknownOptions: [],
             usesContext: false,
             expanded: [],
         };
@@ -102,9 +119,10 @@ export function compileEntryProcess(
     if (source.kind === "legacy") {
         const compiled = compileProcess(source.refs, slot, onFailure);
         return {
-            fn: compiled.fn as () => void,
+            fn: compiled.fn,
             source,
             skipped: compiled.skipped,
+            unknownOptions: compiled.unknownOptions,
             usesContext: compiled.usesContext,
             expanded: [],
         };
@@ -120,6 +138,7 @@ export function compileEntryProcess(
         fn: compiled.fn as () => void,
         source,
         skipped: compiled.skipped,
+        unknownOptions: compiled.unknownOptions,
         usesContext: compiled.usesContext,
         expanded: compiled.expanded,
     };

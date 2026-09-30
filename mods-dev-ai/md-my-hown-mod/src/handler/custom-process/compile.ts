@@ -140,6 +140,7 @@ export function compileCustomProcess(
         fn: () => undefined,
         callSite: slot,
         skipped: [],
+        unknownOptions: [],
         usesContext: false,
         processId: id,
         expanded: [] as string[],

@@ -19,6 +19,8 @@ import { assertEquals } from "jsr:@std/assert";
 const registered: Record<string, unknown>[] = [];
 /** Types handed to the discovery catalogue. */
 const discovered: number[] = [];
+/** Every `processing.register(id, definition)` call, in order. */
+const processingRegistrations: { id: string; def: Record<string, unknown> }[] = [];
 
 globalThis.sandkit = {
     api: {
@@ -26,6 +28,22 @@ globalThis.sandkit = {
             register: (def: Record<string, unknown>) => {
                 registered.push(def);
                 return { elementType: 101 };
+            },
+        },
+        structures: {
+            register: (def: Record<string, unknown>) => {
+                registered.push(def);
+                return { structureType: 7 };
+            },
+            getAvailableTypes: () => new Set<string>(),
+            getDefinitionByType: () => undefined,
+            processing: {
+                register: (
+                    id: string,
+                    def: Record<string, unknown>,
+                ) => {
+                    processingRegistrations.push({ id, def });
+                },
             },
         },
         discoveries: {
@@ -196,4 +214,70 @@ Deno.test("a read the host does not have is empty, not a throw", () => {
     assertEquals(api.items.getRegisteredIds(), []);
     assertEquals(api.elements.getDefinitionByType(0), undefined);
     assertEquals(api.structures.getDefinitionByType("x"), undefined);
+});
+
+// ── processing.register ───────────────────────────────────────────────────────
+// Found in the game, not by reading the code. The live log said:
+//
+//   [md-my-hown-mod] processing gen-tick: program from artefact-generator-tick
+//   [md-my-hown-mod] structures.processing.register failed
+//       Error: Structure "undefined" must be registered before its processing.
+//
+// The engine signature is `register(id, definition)`, and the id is only a label
+// for the registration — the engine reads `definition.structureType`. The old
+// call was `register(structureType, rest)` with `structureType` destructured
+// *out* of `rest`, so the definition arrived with no `structureType` and the
+// whole tick silently never ran.
+//
+// These assert the **definition**, not merely that register was called: a stub
+// that only counts calls cannot see this class of bug at all.
+Deno.test("processing.register carries structureType inside the definition", async () => {
+    processingRegistrations.length = 0;
+    const { registerProcessing } = await import("./mysandkit.ts");
+
+    registerProcessing({
+        id: "gen-tick",
+        structureType: "md-my-hown-mod:generator",
+        intervalMs: 200,
+        process: () => {},
+    } as never);
+
+    assertEquals(processingRegistrations.length, 1, "nothing reached the engine");
+    const [call] = processingRegistrations;
+    assertEquals(
+        call.def.structureType,
+        "md-my-hown-mod:generator",
+        "the engine reads definition.structureType; without it the tick never runs",
+    );
+    assertEquals(call.def.intervalMs, 200);
+    assertEquals(typeof call.def.process, "function");
+});
+
+Deno.test("processing.register uses the entry's own id, not the structure type", async () => {
+    processingRegistrations.length = 0;
+    const { registerProcessing } = await import("./mysandkit.ts");
+
+    registerProcessing({
+        id: "gen-tick",
+        structureType: "md-my-hown-mod:generator",
+        intervalMs: 200,
+        process: () => {},
+    } as never);
+
+    // Two entries can target the same structure type; keying the registration by
+    // the structure type would make the second one collide with the first.
+    assertEquals(processingRegistrations[0].id, "gen-tick");
+});
+
+Deno.test("a processing entry with no structureType is refused, not forwarded", async () => {
+    processingRegistrations.length = 0;
+    const { registerProcessing } = await import("./mysandkit.ts");
+
+    registerProcessing({ id: "broken", intervalMs: 200, process: () => {} } as never);
+
+    assertEquals(
+        processingRegistrations.length,
+        0,
+        "an entry with no structureType must not reach the engine",
+    );
 });

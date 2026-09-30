@@ -52,7 +52,40 @@ export interface ProcessContext {
     readonly seeds: ContextSeeds;
     /** What the steps have produced so far. */
     readonly vars: ProcessVars;
+    /**
+     * What the process **returns** to the engine, or `undefined` for none.
+     *
+     * Set by binding a step's result to the reserved name `result` (see
+     * `RESULT_VAR`). This is the only way out of a program, and it exists because
+     * one engine call site is defined by what the callback *returns*: a
+     * `signals.registerSenderType` handler is read as a plain boolean, so a
+     * declarative sender had no way to say "on" — every compiled process
+     * returned `undefined` and read as permanently off.
+     *
+     * Separate from `vars` on purpose. A `vars` name is a step-to-step wire and is
+     * meant to be read by later steps and by `{{…}}`; this one is the program's
+     * value to its caller, and putting it in `vars` would invite a step to read
+     * A one-field **holder object** rather than a plain `result?: unknown` field,
+     * and that is not a style choice. The context is `Object.freeze`d in
+     * `createContext` — deliberately, so a stray `ctx.x = 1` in an action cannot
+     * corrupt the seeds — and a frozen object rejects new properties. A top-level
+     * `ctx.result = v` therefore throws `TypeError: object is not extensible`, and
+     * the step is swallowed by the per-step `try` in `runList`, which is exactly
+     * how this looked like "a compiled process cannot return anything". `vars` is
+     * already a nested mutable object for the same reason; this matches it.
+     */
+    readonly result: { value?: unknown };
 }
+
+/**
+ * The reserved name a step binds to set what the process returns.
+ *
+ * Reserved for the same reason `structure.x` is: it is a name the engine's own
+ * contract gives a meaning to, and letting an author bind it as an ordinary
+ * variable would make `{{result}}` mean two different things in the same config
+ * depending on whether a later step happened to overwrite it.
+ */
+export const RESULT_VAR = "result";
 
 /** A variable a step wants to bind, and whether that is allowed. */
 export type WriteResult =
@@ -89,6 +122,15 @@ export function canBind(name: string, ctx: ProcessContext): WriteResult {
  * forbidding it would make a program impossible to write.
  */
 export function varsWrite(ctx: ProcessContext, name: string, value: unknown): WriteResult {
+    // `result` is the one name that is not a step-to-step wire, so it is handled
+    // before `canBind` — which would otherwise reject it, since a binding target
+    // has to be bindable. It is deliberately still *not* a `vars` entry: a later
+    // step reading `{{result}}` would be reading the program's output mid-flight,
+    // and the value the caller finally gets is the last one bound either way.
+    if (name === RESULT_VAR) {
+        ctx.result.value = value;
+        return { ok: true };
+    }
     const verdict = canBind(name, ctx);
     if (!verdict.ok) return verdict;
     ctx.vars[name] = value;
@@ -102,12 +144,14 @@ export function varsWrite(ctx: ProcessContext, name: string, value: unknown): Wr
  * back — "last write wins", read back the same way.
  */
 export function varsRead(ctx: ProcessContext, name: string): unknown {
+    if (name === RESULT_VAR) return ctx.result.value;
     if (name in ctx.vars) return ctx.vars[name];
     return Object.hasOwn(ctx.seeds, name) ? ctx.seeds[name] : undefined;
 }
 
 /** Whether a name is readable at all, as opposed to merely absent. */
 export function hasVar(ctx: ProcessContext, name: string): boolean {
+    if (name === RESULT_VAR) return true;
     return name in ctx.vars || Object.hasOwn(ctx.seeds, name);
 }
 
@@ -128,5 +172,9 @@ export function createContext(seeds: ContextSeeds = {}): ProcessContext {
     return Object.freeze({
         seeds: Object.freeze({ ...seeds }),
         vars: {},
+        // Nested and mutable for the reason in `ProcessContext.result`: the outer
+        // object is frozen, so a top-level assignment would throw and the step
+        // would be silently swallowed by the per-step `try` in `runList`.
+        result: {},
     });
 }

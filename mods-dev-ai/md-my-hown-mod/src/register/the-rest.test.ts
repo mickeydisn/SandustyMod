@@ -7,7 +7,10 @@
 import { assertEquals } from "jsr:@std/assert";
 
 /** What the host was handed, per namespace. */
-const seen: { bindings?: { id: string; keys: unknown; def: unknown }[] } = {};
+const seen: {
+    bindings?: { id: string; keys: unknown; def: unknown }[];
+    processing?: { id: string; def: unknown }[];
+} = {};
 
 /** A resolver stub: `listInputBindingHandlerKeys` decides which keys are known. */
 globalThis.sandkit = {
@@ -20,7 +23,16 @@ globalThis.sandkit = {
         },
         ui: { toast: () => {} },
         sprites: { list: () => [] },
-        structures: { list: () => [], recipes: {}, processing: {}, signals: {} },
+        structures: {
+            list: () => [],
+            recipes: {},
+            processing: {
+                register: (id: string, def: unknown) => {
+                    (seen.processing ??= []).push({ id, def });
+                },
+            },
+            signals: {},
+        },
         elements: { list: () => [] },
         items: { list: () => [] },
         input: {
@@ -90,4 +102,137 @@ Deno.test("an unknown binding key is reported, not registered as text", () => {
     assertEquals(counts.inputBindings, 1);
     const def = seen.bindings[0].def as Record<string, unknown>;
     assertEquals(def.handlers, {}, "an unknown key must not produce a handler");
+});
+
+// ── the DataCloneError on quit ────────────────────────────────────────────────
+// Found in the game, on every quit, with any config carrying a `processing`
+// entry:
+//
+//   Uncaught (in promise) DataCloneError: Failed to execute 'postMessage' on
+//   'Worker': … could not be cloned.
+//
+// The save is a structured clone of the whole store:
+//
+//   simulation.manager.postMessage([Save, { ...e.store }, …])
+//
+// and a **function** cannot be cloned. The register path used to write the
+// compiled callback onto the config entry it was iterating — and
+// `api.storage.get` is `state.store.mods[modId][key]`, a **live reference, not a
+// copy**. So `entry.process = compiled.fn` was writing the function straight
+// into the save payload, and every subsequent save threw.
+//
+// The engine is still handed a working callback; the fix is that the store never
+// sees one.
+Deno.test("a processing entry reaches the engine without a function in the entry", () => {
+    seen.processing = [];
+    const entry = {
+        id: "gen-tick",
+        structureType: "md-my-hown-mod:generator",
+        intervalMs: 200,
+        processId: "artefact-generator-tick",
+    };
+
+    registerTheRest({
+        version: 1,
+        processing: [entry],
+        processes: [
+            {
+                id: "artefact-generator-tick",
+                scope: "processing",
+                steps: [{ key: "bufferRead", options: { path: "progress" }, as: "x" }],
+            },
+        ],
+    } as never);
+
+    // The engine got a real callback…
+    const def = seen.processing[0].def as Record<string, unknown>;
+    assertEquals(typeof def.process, "function", "the engine got no callback");
+    assertEquals(
+        def.structureType,
+        "md-my-hown-mod:generator",
+        "and no structure type, so nothing ticks",
+    );
+
+    // …and the entry that lives in the store did not grow one.
+    assertEquals(
+        typeof entry.process,
+        "undefined",
+        "the compiled callback was written onto the stored config entry",
+    );
+    assertEquals(
+        JSON.stringify(entry),
+        JSON.stringify({
+            id: "gen-tick",
+            structureType: "md-my-hown-mod:generator",
+            intervalMs: 200,
+            processId: "artefact-generator-tick",
+        }),
+        "the stored entry was mutated — a function in here breaks the save's clone",
+    );
+});
+
+// ── an option key no action declares ──────────────────────────────────────────
+// The quietest failure in the catalogue. The action resolves, so `skipped` stays
+// empty and the process compiles; the step then runs on the action's *defaults*.
+// A config that named a real action and misspelled one of its options therefore
+// looked perfectly valid everywhere above the action itself.
+//
+// Found in the game as the only symptom, on placing a structure:
+//
+//   setSpritesheetByValue: no thresholds, so there is no frame to choose
+//
+// The config said `{"value": "1"}`. The action's parameter is `value2`, and
+// `thresholds` is what picks a frame at all.
+Deno.test("an option no action declares is reported, not silently dropped", async () => {
+    const { compileEntryProcess, setProcessRegistry } = await import(
+        "../handler/custom-process/index.ts"
+    );
+    const registry = new Map();
+    setProcessRegistry(registry);
+
+    registry.set("bad-opts", {
+        id: "bad-opts",
+        scope: "processing",
+        steps: [
+            { key: "setSpritesheetByValue", options: { value: "1" } },
+            // The real names, in the same step list, to show the difference.
+            { key: "setSpritesheetByValue", options: { value2: "1", thresholds: "0.5" } },
+        ],
+    });
+
+    const compiled = compileEntryProcess({ processId: "bad-opts" }, "processing", registry);
+
+    assertEquals(
+        compiled.skipped,
+        [],
+        "the action key is valid, so nothing is skipped — that is the whole problem",
+    );
+    assertEquals(
+        compiled.unknownOptions,
+        ["setSpritesheetByValue.value"],
+        "the misspelled option was not reported",
+    );
+});
+
+Deno.test("a step's own key and as are not mistaken for options", async () => {
+    const { compileEntryProcess, setProcessRegistry } = await import(
+        "../handler/custom-process/index.ts"
+    );
+    const registry = new Map();
+    setProcessRegistry(registry);
+
+    registry.set("clean", {
+        id: "clean",
+        scope: "processing",
+        steps: [
+            {
+                key: "setSpritesheetByValue",
+                options: { value2: "0", thresholds: "0.5" },
+                as: "frame",
+            },
+        ],
+    });
+
+    const compiled = compileEntryProcess({ processId: "clean" }, "processing", registry);
+    assertEquals(compiled.unknownOptions, [], "a well-formed step reported a problem");
 });

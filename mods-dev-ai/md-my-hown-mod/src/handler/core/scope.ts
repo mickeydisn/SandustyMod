@@ -139,6 +139,11 @@ export function describeNeeds(needs: readonly ScopeNeed[]): string {
 export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     // needs pos — the action reads `x` / `y` off the engine's payload
     triggerScan: ["pos"],
+    // `pos` and nothing else. It reads `payload.x` / `payload.y` to name the cell
+    // it publishes from, and `setOutputAtCell` needs no context: no grid read, no
+    // batch, no commit. That is why it can run in the `signal` slot, which hands
+    // over a structure and no `StructureProcessingContext`.
+    signalOutput: ["pos"],
     structureInspect: ["pos", "data"],
     itemExcavate: ["pos"],
     itemShoot: ["pos"],
@@ -231,6 +236,15 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     // misleading on this one: it is a `sense`-shaped question ("is this cell empty?")
     // attached to an `act` (remove it). Removing needs the writer, so it needs `commit`.
     emptyCells: ["pos", "commit"],
+    // `removeElement` was `["pos", "commit"]` because removal was believed to go
+    // through the batch writer, and therefore to need the writer's commit. It does
+    // not: `api.elements.removeAtCellWhenIdle` is a top-level call, and the
+    // `GridMutationWriterElements` has no `removeAtCell` to call in the first
+    // place. The action now genuinely **reads** — it resolves the element id
+    // through the context so the numeric engine type matches the id the config
+    // names — so it is filed with the readers. `transformElement` keeps `commit`:
+    // it rewrites through the writer, which is a real batch write.
+    removeElement: ["pos", "read"],
     transformElement: ["pos", "commit"],
     getVelocity: ["pos"],
     findFreeCell: ["pos"],

@@ -18,7 +18,7 @@ import { ACTION_APIS, ACTION_CLASSES, type HandlerActionClass } from "./action-c
 // two the `{value,label}[]` this replaced had already drifted into.
 import type { Opt } from "../../catalog.ts";
 // `process.ts` imports only `handlers.ts`, so this is not a cycle.
-import { actionRefsOf, flattenRefs, isBlock } from "./process.ts";
+import { actionRefsOf, flattenRefs, isBlock, setOptionKeysLookup } from "./process.ts";
 import { slotsFor } from "./scope.ts";
 import { BLOCK_KEY } from "./types.ts";
 // The projectile options. A value import, not a type one: the usage scanner below
@@ -517,6 +517,19 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         params: [
             elementRef("the element to write"),
             ...CREATE_PARAMS,
+            ...REGION_PARAMS,
+        ],
+    },
+    {
+        // "Take this element out of here" — the family could create, replace,
+        // transform and empty, but not remove one *type* from a region. A machine
+        // that consumes what it is given has no other way to say so.
+        key: "removeElement",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+            elementRef("only cells holding this are emptied"),
             ...REGION_PARAMS,
         ],
     },
@@ -1041,6 +1054,16 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     },
     // ── message ──────────────────────────────────────────────────────────────
     { key: "signalLog", type: "message", slots: ["signal"], scope: "structure", params: [] },
+    {
+        // The live half of a `senderType` signal. `registerSenderType` only seeds a
+        // wire when it is drawn; this is what keeps a sensor's output current, and
+        // it is the call the source mod used for its material links.
+        key: "signalOutput",
+        type: "message",
+        slots: ["signal", "processing"],
+        scope: "structure",
+        params: [p("value", "Output", "bool", { def: "false" })],
+    },
     { key: "structureInspect", type: "message", slots: ["signal"], scope: "structure", params: [] },
     {
         // The context's first producer. `processing` is the only slot that delivers
@@ -1533,6 +1556,21 @@ const META_BY_KEY: Record<string, HandlerMeta> = Object.fromEntries(
 export function handlerMeta(key: string | undefined): HandlerMeta | undefined {
     return key ? META_BY_KEY[key] : undefined;
 }
+
+// The compiler cannot import this module — it already imports `./process.ts`, and
+// the reverse edge would be a cycle. So the params are handed over instead, and
+// the compiler asks for them through `optionKeysFor`. See the note there.
+setOptionKeysLookup((key) => {
+    const meta = handlerMeta(key);
+    if (!meta) return undefined;
+    const names = new Set<string>();
+    for (const p of meta.params ?? []) names.add(p.key);
+    // A stored step holds these two beside `options`, so a caller walking a whole
+    // step must be able to say "unknown option" without also flagging them.
+    names.add("key");
+    names.add("as");
+    return names;
+});
 
 export function handlersForSlot(slot: HandlerSlot): HandlerMeta[] {
     return HANDLER_META.filter((m) => m.slots.includes(slot));
