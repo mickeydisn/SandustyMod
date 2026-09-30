@@ -1053,6 +1053,66 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         params: [p("radius", "Radius", "number", { def: "3", min: 0, int: true })],
     },
     // ── message ──────────────────────────────────────────────────────────────
+    {
+        // The decide family's pick action. See the action's own doc for why it
+        // reads `api.random` rather than calling `Math.random()`: the engine's
+        // generator is deterministic and shared, so a save-and-reload reproduces
+        // the same picks and the mod does not fork the world's randomness.
+        key: "randomInt",
+        type: "processor",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+            p("min", "Lowest", "number", {
+                required: true,
+                def: "0",
+                int: true,
+                hint: "inclusive",
+            }),
+            p("max", "Highest", "number", {
+                required: true,
+                def: "0",
+                int: true,
+                hint: "inclusive. A max below min answers the min.",
+            }),
+        ],
+    },
+    {
+        // The decide family's only threshold action, and the reason every rule of
+        // the form "once it reaches N" was previously inexpressible.
+        //
+        // The `if` block branches on the **truthiness** of a context variable,
+        // which is enough for a flag and not enough for a number — and a charge
+        // meter reaching 50 is a number. Without something to turn that number
+        // into a truth value, a config could fill a buffer and never know it.
+        //
+        // It declares **every** slot because `scope` is `[]`: it reads its own
+        // options and nothing else, so it is safe anywhere the engine will call a
+        // process, including `trigger` (which passes no payload at all).
+        key: "compare",
+        type: "processor",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+            p("left", "Left", "text", {
+                required: true,
+                hint: "a number, or {{aVariable}} from an earlier step",
+            }),
+            p("op", "Test", "select", {
+                required: true,
+                def: "gte",
+                options: [
+                    { value: "eq", label: "is" },
+                    { value: "ne", label: "is not" },
+                    { value: "gt", label: "is more than" },
+                    { value: "gte", label: "is at least" },
+                    { value: "lt", label: "is less than" },
+                    { value: "lte", label: "is at most" },
+                ],
+            }),
+            p("right", "Right", "number", { required: true, def: "0" }),
+        ],
+    },
     { key: "signalLog", type: "message", slots: ["signal"], scope: "structure", params: [] },
     {
         // The live half of a `senderType` signal. `registerSenderType` only seeds a

@@ -174,9 +174,19 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
         //     `api` rather than `self-sufficient` is the whole point of it: it exists
         //     to reach `api.signals.setOutputAtCell`, and an action that resolved no
         //     namespace would be an action that published nothing.
-        api: 61,
+        //   61 → 62 with `randomInt`, and this is the first addition where the class is
+        //     the *interesting* part rather than bookkeeping. It reads only its own
+        //     options, exactly like `compare` beside it — and it is still `api`,
+        //     because reaching `api.random` is a call into the engine. So the two
+        //     decide primitives come out differently classed despite reading the same
+        //     inputs, which is the class axis earning its place.
+        api: 62,
         "context-bound": 3,
-        "self-sufficient": 17,
+        // `self-sufficient` 17 → 18 with `compare`, which is the class the name was
+        // coined for: it reaches nothing at all — not the payload, not the context,
+        // not a namespace — and answers from its own options. The one thing it does
+        // with its result is hand it to the compiler.
+        "self-sufficient": 18,
         pure: 10,
     });
     assertEquals(Object.values(ACTION_CLASSES).length, ALL_KEYS.length, "total");
@@ -245,8 +255,17 @@ Deno.test("only `api` satisfies the rule, and the rest are the work to do", () =
     //   60 → 61 with `signalOutput`, which reaches `api.signals` — the rule is the
     //   point here: publishing a signal output *is* an engine call, and filing it
     //   off-rule would have called an action that publishes nothing "outstanding work".
-    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 61);
-    assertEquals(offRuleActions().length, 30);
+    //   61 → 62 with `randomInt`. This one moves the **numerator**, which only
+    //   `structures` and `terrains` have done: `api.random` is a namespace nothing
+    //   reached before, and a new namespace plus one action on it is the whole
+    //   change.
+    assertEquals(Object.values(ACTION_CLASSES).filter((c) => c === "api").length, 62);
+    // 30 → 31 with `compare`. It calls no `api.*` namespace, so it is correctly
+    // off-rule, and the reason is worth stating because it is the whole
+    // justification for the action existing: a comparison is pure arithmetic and
+    // anything it needed to reach for would be a bug in the config, not a
+    // missing capability.
+    assertEquals(offRuleActions().length, 31);
     const off = offRuleActions();
     assertEquals(
         off.filter((a) => a.cls === "context-bound").map((a) => a.key).sort(),

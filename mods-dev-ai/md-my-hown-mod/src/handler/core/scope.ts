@@ -339,6 +339,15 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
 
     // needs nothing — presets, factories, logs and the option-only actions
     noop: [],
+    // Reads its options and nothing else — no payload, no context, no namespace.
+    // Which is what makes it runnable in every slot, including `trigger`.
+    compare: [],
+    // Reads its options and reaches `api.random`. So its scope is still `[]` —
+    // scope records what it needs *from the caller*, and the engine namespace is
+    // ambient, reaching for it costs the call site nothing. That is the same
+    // reasoning as the element readers, and it is why this can run in `trigger`,
+    // which hands over no payload at all.
+    randomInt: [],
     processorNoop: [],
     processorLog: [],
     signalLog: [],

@@ -133,6 +133,13 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     // The live half of a `senderType` signal, so it runs wherever a signal does and
     // wherever a processor does — the engine hands both a structure with a position.
     signalOutput: ["signal", "processing"],
+    // Every slot, including `trigger`. `scope` is `[]` — it reads its own options
+    // and nothing else — so it can run anywhere the engine will call a process,
+    // which is the point of it being a decision primitive rather than a cell one.
+    compare: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
+    // Every slot, same as `compare` and for the same reason: `scope` is `[]`.
+    // A pick does not need the caller to hand it anything.
+    randomInt: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
     structureInspect: ["signal"],
     structureReadData: ["signal"],
     structureWriteData: ["signal"],
@@ -255,6 +262,10 @@ Deno.test("the action catalogue's API binding, measured", () => {
         // missing entirely, which is why a config could register three senders and
         // publish nothing: `registerSenderType` only seeds a wire as it is drawn.
         signalOutput: "signals",
+        // `api.random`. The one namespace in the table that supplies entropy
+        // rather than changing the world — every other entry reaches a namespace
+        // in order to act on a cell, a structure or a player's research.
+        randomInt: "random",
         // The structure family: 18 actions, all reaching `api.structures`. The only
         // family where the count of actions and the count of namespaces move in
         // lockstep, because there is exactly one namespace to reach and no member of
@@ -327,6 +338,11 @@ Deno.test("the action catalogue's API binding, measured", () => {
             // proxy as a read anyway — so the test would pass for the wrong reason
             // and the action would look api-bound without ever touching an engine.
             "signals",
+            // `random`, the engine's deterministic generator. Same reasoning as
+            // `signals`: a missing namespace would still be recorded by the proxy
+            // as a read, so the test would pass for the wrong reason and
+            // `randomInt` would look api-bound without ever drawing a number.
+            "random",
         ]
     ) {
         // A proxy that records the namespace on any property read, so an action
@@ -424,14 +440,23 @@ Deno.test("the action catalogue's API binding, measured", () => {
     // action is all it took. The pattern the comment above keeps describing — "an
     // action on an existing namespace does not move the numerator" — is about actions
     // being added; it does not apply when the namespace itself is new.
-    assertEquals(Object.keys(API_CALLING).length, 39);
+    // 39 → 40 with `randomInt`, and it moves **both** counts for the third time:
+    // `api.random` is a namespace no action had reached, and one action is all it
+    // took. The pattern these comments keep describing — "an action on an existing
+    // namespace does not move the numerator" — is about actions being added; it
+    // does not apply when the namespace itself is new.
+    assertEquals(Object.keys(API_CALLING).length, 40);
     //   89 → 90 with `removeElement`, which is filed against `api.grid.mutate` like
     //   the rest of the element writers — the same "adds an action against an
     //   existing namespace" outcome every family so far has produced.
     // 90 → 91 with `signalOutput`. One action, and it is the smallest thing that can
     // close a real gap: a `senderType` signal registered but had no way to publish,
     // so three senders sat inert while looking correctly set up.
-    assertEquals(Object.keys(IMPLEMENTED).length, 91);
+    // 91 → 92 with `compare`. It reaches no namespace at all — deliberately, since a
+    // comparison that had to call the engine would be doing something other than
+    // arithmetic — so the numerator holds and the catalogue grows.
+    // 92 → 93 with `randomInt`.
+    assertEquals(Object.keys(IMPLEMENTED).length, 93);
 });
 
 Deno.test("`type` measures neither axis — that is why the split is real", () => {
@@ -644,6 +669,22 @@ const CONTEXT_READABLE = [
     // declared there between the terrain family and the logic family. The list
     // otherwise reads by family; this entry's position is the registry's.
     "bufferRead",
+    // `compare` comes after the buffer row rather than among the readers above,
+    // because that is where `IMPLEMENTED` declares it — the decide family's entry
+    // in the message section, after the buffer actions. This assertion compares
+    // the two lists **in order**, so the position is the registry's and not a
+    // reading of what belongs together.
+    //
+    // It earns the place rather than being filed away: its return is 1 or 0, and
+    // the reason it exists is the `if` block that follows it. It is the first
+    // entry here whose return exists *only* to be branched on — every other one
+    // is a reading some other step might want, and this is a decision made ready
+    // to be consumed as one.
+    "compare",
+    // `randomInt` follows it in the registry, and for the same reason it follows
+    // it here: the two decide primitives a threshold rule is built from, and the
+    // assertion compares in registry order.
+    "randomInt",
     // The logic family, last: the five range walks. They are the only actions in
     // the catalogue that are a *generalisation* of another family rather than a
     // member of one — each is the element family's read or write applied to every

@@ -61,6 +61,123 @@ Deno.test("options are bound per action, which the engine never did", () => {
     assertEquals(commits, [[{ kind: "create", cellX: 4, cellY: 8, elementType: "Water" }]]);
 });
 
+Deno.test("randomInt draws from api.random, and a missing namespace is not a crash", () => {
+    // Two claims, and the second is the one that matters.
+    //
+    // The first: it calls the **engine's** generator, not `Math.random()`. The
+    // engine's is deterministic and shared, so a reload reproduces the same picks
+    // and a player cannot desync the world by watching what the mod drew.
+    const calls: [number, number][] = [];
+    const prev = (globalThis as Record<string, unknown>).sandkit;
+    (globalThis as Record<string, unknown>).sandkit = {
+        api: {
+            random: {
+                int: (a: number, b: number) => {
+                    calls.push([a, b]);
+                    return 1;
+                },
+            },
+        },
+        state: { store: { mods: {} } },
+    };
+    try {
+        const { fn } = compileProcess(
+            [{ key: "randomInt", options: { min: "0", max: "2" }, as: "pick" }],
+            "processing",
+        );
+        fn({ x: 0, y: 0 }, undefined);
+        assertEquals(
+            calls,
+            [[0, 2]],
+            "the range must reach api.random verbatim — inclusive at both ends, " +
+                "matching the source mod's Math.floor(Math.random() * 3)",
+        );
+    } finally {
+        if (prev === undefined) delete (globalThis as Record<string, unknown>).sandkit;
+        else (globalThis as Record<string, unknown>).sandkit = prev;
+    }
+
+    // The second: with no namespace at all it answers `min` rather than throwing.
+    // A random value is only ever read by the next step, so a fallback keeps a
+    // misconfigured world running; throwing would take out the whole tick.
+    const bare = (globalThis as Record<string, unknown>).sandkit;
+    (globalThis as Record<string, unknown>).sandkit = { api: {} };
+    try {
+        const { fn } = compileProcess(
+            [{ key: "randomInt", options: { min: "0", max: "2" }, as: "pick" }],
+            "processing",
+        );
+        fn({ x: 0, y: 0 }, undefined);
+    } finally {
+        if (bare === undefined) delete (globalThis as Record<string, unknown>).sandkit;
+        else (globalThis as Record<string, unknown>).sandkit = bare;
+    }
+});
+
+Deno.test("a threshold rule is a comparison and an if block, and both halves work", () => {
+    // The rule the whole `compare` action exists for: "once this reaches N, do
+    // the thing". Before it, the `if` block could branch on truthiness and
+    // nothing could turn a number into a truth value, so the rule was
+    // inexpressible rather than merely awkward.
+    //
+    // Built from the real compiler and the real actions, so it is the shape a
+    // config author would actually write — not a unit test of `compare` alone
+    // that would still pass if `if` had stopped reading the name.
+    const commits: unknown[] = [];
+    const ctx = {
+        getResolvedTypeAtCell: () => "Sand",
+        commit: (m: unknown) => commits.push(m),
+    };
+    const { fn } = compileProcess(
+        [
+            {
+                key: "compare",
+                options: { left: "50", op: "gte", right: "50" },
+                as: "full",
+            },
+            {
+                key: "if",
+                options: { var: "full" },
+                then: [{ key: "processorConvert", options: { to: "Water" } }],
+                else: [{ key: "processorLog" }],
+            },
+        ],
+        "processing",
+    );
+    fn({ x: 4, y: 9 }, ctx);
+    assertEquals(
+        commits,
+        [[{ kind: "create", cellX: 4, cellY: 8, elementType: "Water" }]],
+        "the threshold held, so the then branch ran",
+    );
+
+    // And the same process one point below the threshold takes the other branch.
+    // Without this the block could be ignoring `full` entirely and the assertion
+    // above would still pass.
+    const commits2: unknown[] = [];
+    const ctx2 = {
+        getResolvedTypeAtCell: () => "Sand",
+        commit: (m: unknown) => commits2.push(m),
+    };
+    const { fn: fn2 } = compileProcess(
+        [
+            {
+                key: "compare",
+                options: { left: "49", op: "gte", right: "50" },
+                as: "full",
+            },
+            {
+                key: "if",
+                options: { var: "full" },
+                then: [{ key: "processorConvert", options: { to: "Water" } }],
+            },
+        ],
+        "processing",
+    );
+    fn2({ x: 4, y: 9 }, ctx2);
+    assertEquals(commits2, [], "the threshold did not hold, so nothing ran");
+});
+
 Deno.test("without options the same action commits nothing", () => {
     // The old behaviour, kept as a test: no `to`, so it only reports. This is what
     // every converted config does today, which is the bug.

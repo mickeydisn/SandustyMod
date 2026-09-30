@@ -201,6 +201,16 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     writeDataField: "api",
     noop: "pure",
     upgradeScale: "self-sufficient",
+    // Reads only the options it was handed and answers a value. Same shape as
+    // `upgradeScale`, for the same reason, and it is deliberately **not** `pure`:
+    // `pure` is for actions that do nothing observable, and this one's whole job
+    // is to be observed by the `if` block after it.
+    compare: "self-sufficient",
+    // Same shape as `compare` — reads only its own options — but it **reaches
+    // `api.random`**, so it is `api` and not `self-sufficient`. That is the
+    // distinction the class axis is actually for: this one calls the engine, the
+    // one above it does not, and they are otherwise the same kind of action.
+    randomInt: "api",
 
     // ── pure (22) ─────────────────────────────────────────────────────────────
     // The loggers. They read the payload they were handed to print it, which the
@@ -427,6 +437,10 @@ export const ACTION_APIS: Record<string, string> = {
     techGrantItem: "player",
     itemExcavate: "grid",
     itemShoot: "projectiles",
+    // `api.random`, the engine's own deterministic generator. Distinct from every
+    // other entry: this is the only action whose namespace exists to supply
+    // entropy rather than to change the world.
+    randomInt: "random",
     // `api.signals.setOutputAtCell` — the live half of a `senderType` signal.
     signalOutput: "signals",
     // ── The logic family: the five range walks ──────────────────────────────────
@@ -743,6 +757,12 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     processorCount: "writes",
     upgradeCountLevel: "writes",
     upgradeScale: "writes",
+    // `returns` and not `writes`: it writes no payload and no context, it produces
+    // the 1/0 that a later step's `as` reads. That is the effect class that means
+    // "exists to be read by the next step", which is exactly its role.
+    compare: "returns",
+    // Same: the number it answers is for the next step's `as`.
+    randomInt: "returns",
     upgradeAdd: "writes",
 
     // reads — looks, changes nothing
@@ -1004,6 +1024,20 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
 
     // diagnostics
     noop: "diagnostics",
+    // The weakest fit in this table, and worth saying why it was not fixed by
+    // adding a domain. A domain is "the subject an action is about", and a
+    // comparison of two numbers is about neither gold nor terrain nor wiring —
+    // it has no subject. Filing it under `signals` or `grid` would be a worse
+    // lie than this one: those are the questions the filter exists to separate.
+    // `diagnostics` is where the other pure decision primitives already live
+    // (`noop`, `identity`), and a "plain values" domain with exactly one member
+    // would cost the filter more than it earns.
+    compare: "diagnostics",
+    // `diagnostics` is the wrong answer here and there is nothing better in the
+    // vocabulary: the nine domains describe subjects (gold, terrain, wiring), and
+    // a number drawn at random is about none of them. A `random` domain would hold
+    // exactly this action and would make the panel's filter one question wider.
+    randomInt: "diagnostics",
     processorNoop: "diagnostics",
     processorLog: "diagnostics",
     signalLog: "diagnostics",

@@ -554,10 +554,16 @@ Deno.test("a value returned where the engine ignores it is flagged, not hidden",
     // return", and `CALL_SITE_USES_RETURN` is all-`false` **because** the engine
     // reads none of them. Inventing one `true` to make the count come out would
     // have been a lie about the engine, bought to keep an assertion tidy.
+    //   7 → 8 with `compare`. It returns 1/0 and the engine reads none of it — but
+    //   the `if` block does, one layer above, so it is the same case as the six
+    //   beside it rather than a new one: a value the engine discards and the
+    //   compiler captures.
+    // 8 → 9 with `randomInt`. Same case as the eight beside it: the engine
+    //   discards the number, the compiler captures it for the next step's `as`.
     assertEquals(
         Object.keys(ACTION_EFFECTS).filter((k) => isVacuousReturn(k, false)).length,
-        7,
-        "7 return a value and no slot reads it",
+        9,
+        "9 return a value and no slot reads it",
     );
     // And a projectile option is not in that table at all — its return is its
     // whole purpose, so calling it vacuous would be exactly backwards.

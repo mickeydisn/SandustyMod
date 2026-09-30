@@ -22,6 +22,7 @@
  * already a form and a drag handle inside one is a second, conflicting interaction.
  */
 import {
+    BLOCK_META,
     HANDLER_META,
     type HandlerMeta,
     type HandlerParam,
@@ -30,7 +31,7 @@ import {
 import { scopeSeedNames } from "../handler/core/scope-context.ts";
 import { refsIn } from "../handler/core/refs.ts";
 import { canBind, createContext } from "../handler/core/context.ts";
-import { ACTION_ROLES, ROLE_LABELS } from "../handler/core/types.ts";
+import { ACTION_ROLES, isBlock, ROLE_LABELS } from "../handler/core/types.ts";
 import { ACTION_DOCS, ALL_ACTIONS } from "../handler/actions/index.ts";
 import { currentProcessRegistry, type ProcessStep } from "../handler/custom-process/index.ts";
 import { paramInput } from "./param-controls.ts";
@@ -77,33 +78,49 @@ export function deriveContext(scope: string, steps: readonly ProcessStep[]): Con
         rows.set(name, { name, from: SCOPE_FROM[name] ?? "the engine", seed: true, readBy: [] });
     }
 
-    steps.forEach((step, i) => {
-        if (step.as) {
-            const allowed = canBind(step.as, seeds);
-            rows.set(step.as, {
-                name: step.as,
-                from: allowed.ok ? `step ${i + 1} binds it` : allowed.reason,
-                seed: false,
-                writtenBy: i,
-                readBy: [],
-            });
-        }
-        for (const ref of refsIn(step.options)) {
-            const existing = rows.get(ref);
-            if (existing) {
-                if (!existing.readBy.includes(i)) existing.readBy.push(i);
-            } else {
-                // Referenced but never written: the thing the derived list exists to
-                // make visible. A `sense` action that binds nothing still has this.
-                rows.set(ref, {
-                    name: ref,
-                    from: "referenced, never bound",
+    // Walks **into** blocks. It used to iterate the top level only, so every
+    // variable a branch bound — `eaten` in a threshold rule, `result` in a
+    // guarded walk — was reported as "referenced, never bound", and the very steps
+    // that write it appeared in the same list as steps that do not. A program whose
+    // whole body is in branches therefore showed an entirely unbound context, which
+    // is the most misleading thing this table can say.
+    //
+    // Depth-first in program order, so a reader still follows the program top to
+    // bottom — the branches are simply part of the program rather than after it.
+    let position = 0;
+    const walk = (list: readonly ProcessStep[]): void => {
+        for (const step of list) {
+            const i = position++;
+            if (step.as) {
+                const allowed = canBind(step.as, seeds);
+                rows.set(step.as, {
+                    name: step.as,
+                    from: allowed.ok ? `step ${i + 1} binds it` : allowed.reason,
                     seed: false,
-                    readBy: [i],
+                    writtenBy: i,
+                    readBy: [],
                 });
             }
+            for (const ref of refsIn(step.options)) {
+                const existing = rows.get(ref);
+                if (existing) {
+                    if (!existing.readBy.includes(i)) existing.readBy.push(i);
+                } else {
+                    // Referenced but never written: the thing the derived list exists to
+                    // make visible. A `sense` action that binds nothing still has this.
+                    rows.set(ref, {
+                        name: ref,
+                        from: "referenced, never bound",
+                        seed: false,
+                        readBy: [i],
+                    });
+                }
+            }
+            walk(step.then ?? []);
+            walk(step.else ?? []);
         }
-    });
+    };
+    walk(steps);
     return [...rows.values()];
 }
 
@@ -160,24 +177,53 @@ function canRunHere(meta: HandlerMeta, scope: string): boolean {
  * Exported for the test that says the grid offers nothing it cannot run.
  */
 export function stepChoices(scope: string): { role: string; label: string; keys: string[] }[] {
-    return ACTION_ROLES.map((role) => ({
-        role,
-        label: ROLE_LABELS[role],
-        // The role comes from `ALL_ACTIONS`, not from `HandlerMeta`: the registry row
-        // carries the *slot* axis and deliberately carries no role, so grouping by it
-        // here would mean every `HandlerMeta` needed a field it has no other use for.
-        // `HANDLER_META` answers "can this run here", `ALL_ACTIONS` answers "what is it
-        // for", and the key is the join.
-        keys: HANDLER_META
-            .filter((m) => ALL_ACTIONS[m.key]?.role === role && canRunHere(m, scope))
-            .map((m) => m.key)
-            .sort(),
-    })).filter((g) => g.keys.length > 0);
+    // The block is offered in **every** scope, as its own group at the top. It is
+    // not in `HANDLER_META` — that array is the action catalogue, and a block is
+    // not an action — so without this a program grid had no way to insert a
+    // conditional at all, however the block was edited once it existed.
+    const blockGroup = {
+        role: "decide",
+        label: "Decisions",
+        keys: [BLOCK_META.key],
+    };
+    return [
+        blockGroup,
+        ...ACTION_ROLES.map((role) => {
+            return {
+                role,
+                label: ROLE_LABELS[role],
+                // The role comes from `ALL_ACTIONS`, not from `HandlerMeta`: the registry
+                // row carries the *slot* axis and deliberately carries no role, so
+                // grouping by it here would mean every `HandlerMeta` needed a field it
+                // has no other use for. `HANDLER_META` answers "can this run here",
+                // `ALL_ACTIONS` answers "what is it for", and the key is the join.
+                keys: HANDLER_META
+                    .filter((m) => ALL_ACTIONS[m.key]?.role === role && canRunHere(m, scope))
+                    .map((m) => m.key)
+                    .sort(),
+            };
+        }).filter((g) => g.keys.length > 0),
+    ];
 }
 
-/** The declared params of one step, for the row's inputs. */
+/**
+ * The declared params of one step, for the row's inputs.
+ *
+ * Falls back to `BLOCK_META` for the `if` block. It used to search
+ * `HANDLER_META` alone — and a block is deliberately not in there, because that
+ * array is the action catalogue and counting a block as an action would make every
+ * "how many actions can I use" figure lie by one. The consequence was that the
+ * block's one param, `var`, was **never rendered**: an `if` appeared in a program
+ * with no way to say what it tests. Correct as a catalogue, wrong as a form.
+ */
 function paramsOf(key: string): HandlerParam[] {
+    if (isBlockKey(key)) return BLOCK_META.params;
     return HANDLER_META.find((m) => m.key === key)?.params ?? [];
+}
+
+/** `true` for the one key that is a block rather than an action. */
+function isBlockKey(key: string): boolean {
+    return key === BLOCK_META.key;
 }
 
 /**
@@ -213,6 +259,16 @@ function stepRow(
         replace: (step: ProcessStep) => void;
         move: (by: number) => void;
         remove: () => void;
+        /**
+         * Renders this step's `then`/`else` branches, indented, or nothing.
+         *
+         * Supplied by the grid rather than built here so the branch list is edited
+         * through the same path as the top level — same picker, same move buttons,
+         * same rewrite-the-JSON discipline. A block's body is a program like any
+         * other and the one thing it must not be is a second-class list with its
+         * own rules.
+         */
+        branches?: (step: ProcessStep) => unknown;
     },
 ): unknown {
     const { step, index, total, choices, nestable, known, locked } = args;
@@ -312,11 +368,9 @@ function stepRow(
                     disabled: locked,
                     placeholder: "bind this step's result to a name",
                     onInput: (e: { currentTarget: { value: string } }) => {
-                        const name = e.currentTarget.value.trim();
-                        args.replace({
-                            ...withOptions(step, step.options ?? {}),
-                            ...(name ? { as: name } : {}),
-                        });
+                        // `withAs`, not a literal: the literal dropped the branches of a
+                        // block, so binding a name on an `if` emptied it.
+                        args.replace(withAs(step, e.currentTarget.value.trim()));
                     },
                 }),
                 h(
@@ -326,14 +380,70 @@ function stepRow(
                 ),
             )
             : null,
+        // The branches, indented under the block. A block used to render as a bare
+        // row with nothing under it, which is the "if is empty" an author sees: the
+        // program was there in the file the whole time, and the screen said it was
+        // not there at all.
+        args.branches ? args.branches(step) : null,
     );
 }
 
-/** A step with new options, keeping its `as` and dropping an emptied bag. */
+/** The label and border for a branch, so a nested list reads as belonging to it. */
+const BRANCH_STYLE = {
+    then: { borderLeft: "2px solid #27ae60", paddingLeft: 8, color: "#27ae60" },
+    else: { borderLeft: "2px solid #7f8c8d", paddingLeft: 8, color: "#7f8c8d" },
+} as const;
+
+/**
+ * A step with new options.
+ *
+ * **Must carry `then`/`else` across.** It used to build a fresh object from `key`,
+ * `as` and `options` only — so typing one character into a *block's* `var` field
+ * silently deleted every step inside both of its branches. For a program that
+ * keeps its whole body in branches — which is what a threshold rule necessarily
+ * looks like — that is the entire program, gone on Save, with no error and no
+ * visible cause.
+ *
+ * Spreading the original and then overwriting `options` is the fix, and it is also
+ * why this is not written as an explicit field list: every field added to
+ * `HandlerActionRef` from now on is carried by default rather than by someone
+ * remembering to add it here.
+ */
 function withOptions(step: ProcessStep, options: Record<string, unknown>): ProcessStep {
-    const next: ProcessStep = { key: step.key };
-    if (step.as) next.as = step.as;
+    const next: ProcessStep = { ...step, options };
     if (Object.keys(options).length) next.options = options;
+    else delete next.options;
+    return next;
+}
+
+/**
+ * A step with a new `as` binding, or with it removed.
+ *
+ * Same reason as `withOptions`, and it is a separate call site because it was
+ * written separately: the `as` box would have kept dropping the branches even
+ * after the parameter inputs were fixed.
+ */
+function withAs(step: ProcessStep, as: string): ProcessStep {
+    const next: ProcessStep = { ...step };
+    if (as) next.as = as;
+    else delete next.as;
+    return next;
+}
+
+/**
+ * A block with a new branch list.
+ *
+ * The branches are *replaced* rather than merged, so the grid's "rewrite the whole
+ * json field" discipline holds: a nested edit re-renders from the JSON, and there
+ * is no per-branch state that could drift from what would be saved.
+ */
+function withBranch(
+    step: ProcessStep,
+    which: "then" | "else",
+    branch: ProcessStep[],
+): ProcessStep {
+    const next: ProcessStep = { ...step };
+    next[which] = branch;
     return next;
 }
 
@@ -443,6 +553,119 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
         commit(next);
     };
 
+    /**
+     * Renders one list of steps, and hands `write` the new list so the caller can
+     * put it back where it came from.
+     *
+     * `write` is what makes nesting work without a second code path: the top level
+     * commits to the form field, and a block commits by replacing its own `then` or
+     * `else`. Everything in between — the rows, the move buttons, the picker — is
+     * the same, so a branch is a program rather than a special list.
+     */
+    const stepList = (
+        list: readonly ProcessStep[],
+        depth: number,
+        write: (next: ProcessStep[]) => void,
+    ): unknown =>
+        h(
+            "div",
+            {
+                style: {
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    // One indent level per branch, so nesting is visible without
+                    // counting colours. Blocks nest at most 8 deep (MAX_BLOCK_DEPTH).
+                    marginLeft: depth ? 12 : 0,
+                },
+            },
+            ...list.map((step, i) =>
+                stepRow(h, {
+                    step,
+                    index: i,
+                    total: list.length,
+                    scope,
+                    choices,
+                    nestable,
+                    known,
+                    locked,
+                    selector: ctx.selector,
+                    replace: (s) => {
+                        const next = [...list];
+                        next[i] = s;
+                        write(next);
+                    },
+                    move: (by) => {
+                        const to = i + by;
+                        if (to < 0 || to >= list.length) return;
+                        const next = [...list];
+                        const [row] = next.splice(i, 1);
+                        next.splice(to, 0, row);
+                        write(next);
+                    },
+                    remove: () => write(list.filter((_, n) => n !== i)),
+                    branches: isBlock(step) ? (s) => renderBranches(s, depth) : undefined,
+                })
+            ),
+            h(
+                "button",
+                {
+                    style: S.chip,
+                    disabled: locked,
+                    onClick: () => write([...list, { key: seedKey(choices, nestable) }]),
+                },
+                "+ step",
+            ),
+        );
+
+    /** Both branches of a block, each labelled and each holding a nested list. */
+    const renderBranches = (step: ProcessStep, depth: number): unknown =>
+        h(
+            "div",
+            { style: { display: "flex", flexDirection: "column", gap: 6 } },
+            ...(["then", "else"] as const).map((which) =>
+                h(
+                    "div",
+                    { key: which, style: { display: "flex", flexDirection: "column", gap: 4 } },
+                    h(
+                        "div",
+                        { style: { ...S.hint, ...BRANCH_STYLE[which] } },
+                        which === "then"
+                            ? "when the value is true"
+                            : "when it is false — empty means do nothing else",
+                    ),
+                    stepList(
+                        step[which] ?? [],
+                        depth + 1,
+                        (next) => replaceAt(step, which, next),
+                    ),
+                )
+            ),
+        );
+
+    /**
+     * Replaces one branch of one block, wherever in the tree that block is.
+     *
+     * Found by **identity** rather than by path: the branches are rebuilt from the
+     * JSON on every render, so a path captured at render time is stale the moment
+     * anything else changes, and the edit would land on a different block.
+     */
+    const replaceAt = (
+        target: ProcessStep,
+        which: "then" | "else",
+        branch: ProcessStep[],
+    ): void => {
+        const rewrite = (list: ProcessStep[]): ProcessStep[] =>
+            list.map((s) => {
+                if (s === target) return withBranch(s, which, branch);
+                if (!isBlock(s)) return s;
+                const next = withBranch(s, "then", rewrite(s.then ?? []));
+                if (s.else) withBranchInto(next, "else", rewrite(s.else));
+                return next;
+            });
+        commit(rewrite(steps));
+    };
+
     return h(
         "div",
         { style: { display: "flex", flexDirection: "column", gap: 10 } },
@@ -452,53 +675,30 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                 "div",
                 { style: { display: "flex", flexDirection: "column", gap: 6 } },
                 h("div", { style: S.label }, "Steps"),
-                ...steps.map((step, i) =>
-                    stepRow(h, {
-                        step,
-                        index: i,
-                        total: steps.length,
-                        scope,
-                        choices,
-                        nestable,
-                        known,
-                        locked,
-                        selector: ctx.selector,
-                        replace: (s) => replace(i, s),
-                        move: (by) => move(i, by),
-                        remove: () => commit(steps.filter((_, n) => n !== i)),
-                    })
-                ),
-                h(
-                    "button",
-                    {
-                        style: S.chip,
-                        disabled: locked,
-                        onClick: () => {
-                            // Seeded with something this scope can actually run, so the
-                            // row that appears is always a *legal* one. A blank row
-                            // would have to be filled before the program meant anything,
-                            // and an empty `key` compiles to a step that does nothing.
-                            commit([...steps, {
-                                key: nestable[0] ?? choices[0]?.keys[0] ?? "noop",
-                            }]);
-                        },
-                    },
-                    "+ Add step",
-                ),
-                steps.length === 0
-                    ? h(
-                        "div",
-                        { style: S.hint },
-                        "No steps. A process with none still registers — it is a machine " +
-                            "that does nothing.",
-                    )
-                    : null,
+                stepList(steps, 0, commit),
             )
-            : h(
-                "div",
-                { style: S.hint },
-                "Pick a scope first — it decides which steps you can add.",
-            ),
-        error ? h("div", { style: S.errorText }, error) : null,
+            : null,
     );
+}
+
+/** `withBranch`, as a statement — so the intent reads as "also set this one". */
+function withBranchInto(
+    step: ProcessStep,
+    which: "then" | "else",
+    branch: ProcessStep[],
+): void {
+    step[which] = branch;
+}
+
+/**
+ * A legal first action for a scope, or `noop`.
+ *
+ * The same rule the top-level add button used, now shared by the branch buttons so
+ * a branch cannot be seeded with an action the compiler would refuse.
+ */
+function seedKey(
+    choices: { keys: string[] }[],
+    nestable: string[],
+): string {
+    return choices[0]?.keys[0] ?? nestable[0] ?? "noop";
 }

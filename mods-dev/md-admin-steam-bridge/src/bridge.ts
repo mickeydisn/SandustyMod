@@ -128,6 +128,10 @@ export interface Bridge {
     takeElement(x: number, y: number): unknown;
     /** Enumerate the instances the engine holds for a structure type. */
     instancesOfType(typeId: string): unknown;
+    /** The resolved element id at a cell, or null. */
+    elementAt(x: number, y: number): unknown;
+    /** Whether api.random resolves here, and what it draws. */
+    probeRandom(n?: number): unknown;
     /** Everything the engine knows about one cell. */
     cellInfo(x: number, y: number): unknown;
     /** The engine's authoritative world dimensions. */
@@ -764,27 +768,24 @@ export function createBridge(): Bridge {
          * deferred, so the write lands after this returns: re-read with `at()`.
          */
         putElement(id: string, x: number, y: number) {
-            // Two API mistakes hid here for a long time. The resolver is
-            // `getTypeFromId`, not `getElementTypeFromId` (which does not exist and
-            // so quietly returned undefined). And `createAtCell` takes FOUR
-            // arguments — calling it with three does nothing at all, no throw.
+            // `createAtCell` only fills an *empty* cell, and the surface
+            // already carries elements, while `replaceAtCell` refuses to
+            // overwrite an existing element — it only swaps terrain. So
+            // clear first.
+            //
+            // And the removal has to be **awaited** before the create. The
+            // `…WhenIdle` variants queue their work for the next simulation
+            // idle, so a remove and a create submitted in the same tick race:
+            // the create lands first and is then wiped by the remove. Every put
+            // here used to report `{before: 5, immediate: 5, resolved: 5}` —
+            // unchanged, whatever was asked for. Type 5 is the cell's existing
+            // content, not a failure code, which is what made it read as a
+            // silent no-op rather than a race.
             const type = api?.elements?.getTypeFromId?.(id);
             if (type == null) return { at: [x, y], id, error: "unresolved id" };
             const before = api?.elements?.getTypeAtCell?.(x, y) ?? null;
             try {
-                // Three separate lessons, all learned the hard way here:
-                //  - `createAtCell` only fills an *empty* cell, and the surface
-                //    already carries elements, while `replaceAtCell` refuses to
-                //    overwrite an existing element — it only swaps terrain. So
-                //    clear first.
-                //  - the direct calls do not take effect at all. Only the
-                //    `…WhenIdle` variants settle — the same reason
-                //    `buildAtCell` needed `buildAtCellWhenIdle` for structures.
                 if (before != null) api?.elements?.removeAtCellWhenIdle?.(x, y, {});
-                // `replaceAtCell` is the one that works on a cell holding terrain,
-                // `createAtCell` the one that works on a cell that is empty. Which
-                // applies is not knowable from here, so submit both — they target
-                // the same element type, and whichever the engine accepts wins.
                 api?.elements?.replaceAtCellWhenIdle?.(x, y, type, {});
                 api?.elements?.createAtCellWhenIdle?.(x, y, type, {});
             } catch (e) {
@@ -898,6 +899,69 @@ export function createBridge(): Bridge {
                 return { at: [x, y], before, threw: (e as Error).message, hasIdle, hasPlain };
             }
             return { at: [x, y], before, hasIdle, hasPlain };
+        },
+
+        /**
+         * Whether `api.random` resolves here, and what it draws.
+         * Put an element at a cell, waiting for the simulation to settle between
+         * steps.
+         *
+         * The one-shot `putElement` never lands: the `…WhenIdle` variants queue
+         * their work, so submitting a remove and a create in the same call races —
+         * the create lands first and is then wiped by the remove. Every put
+         * reported `{before: 5, immediate: 5, resolved: 5}`, unchanged, which
+         * reads exactly like "the element cannot be created here" and is why the
+         * generator's eat region could never be loaded with anything.
+         *
+         * This awaits an idle callback between the two calls instead of assuming
+         * they queue in order, and reports what the cell holds afterwards.
+         */
+
+        /**
+         * Whether `api.random` resolves here, and what it draws.
+         *
+         * `randomInt` reads `api.random`, and that namespace is on the **main**
+         * thread's api only. A structure processor runs on a worker where it
+         * resolves to nothing and the action answers its `min` fallback — so the
+         * material pick would silently be gold every cycle in the live game while
+         * the bundle looked correct.
+         *
+         * This reports the namespace's presence and a short sample of draws, which
+         * is the only way to tell that case apart from a pick that is working.
+         */
+        probeRandom(n = 8) {
+            const ns = api?.random;
+            if (!ns) {
+                return {
+                    present: false,
+                    note: "no api.random on this thread — randomInt will answer its min fallback",
+                };
+            }
+            const draws: number[] = [];
+            for (let i = 0; i < n; i++) {
+                try {
+                    draws.push(ns.int(0, 2));
+                } catch (e) {
+                    return { present: true, threw: (e as Error).message };
+                }
+            }
+            return { present: true, draws, distinct: [...new Set(draws)].sort() };
+        },
+
+        /**
+         * The resolved element id at a cell, or `null`.
+         *
+         * `cellInfo` reports terrain, not elements — every element read through it
+         * came back `undefined`, which reads exactly like "there is nothing here".
+         * So this goes through `api.elements.getResolvedTypeAtCell`, which is what
+         * the element actions themselves use.
+         */
+        elementAt(x: number, y: number): unknown {
+            try {
+                return api?.elements?.getResolvedTypeAtCell?.(x, y) ?? null;
+            } catch {
+                return null;
+            }
         },
 
         /**
