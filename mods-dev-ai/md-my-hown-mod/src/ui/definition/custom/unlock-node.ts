@@ -63,6 +63,10 @@ const FIELDS: FieldSpec[] = [
         ],
         hint: "a tech node is a real research step in the game's tech tree",
     },
+    // Here rather than down by the other Identity field: `sectionsFor` groups
+    // *consecutive* fields, so a second Identity-labelled field after Research
+    // starts a second Identity box. One run of Identity means one box.
+    textField("description", "Description", "Identity", false, { maxLength: DESC_MAX }),
     {
         // The borrow is exclusive: an engine tech keeps its own definition,
         // so a cost typed alongside it would be a second source for the same
@@ -151,15 +155,21 @@ const FIELDS: FieldSpec[] = [
         emptyHint: "add another Tech first — a node cannot require itself.",
         hint: "other research that must be done first",
     },
-    textField("description", "Description", "Identity", false, { maxLength: DESC_MAX }),
     {
         // Read-only in the form's terms: the link lives on each structure, and
         // this is the reverse view of it. Declared so the graph can show what a
         // node holds back — see the `gatesStructures` row in relations.ts.
+        //
+        // Its own "Unlocks" section rather than back in "Identity". It was
+        // declared `section: "Identity"` down here, past the whole Research
+        // block, so `sectionsFor` opened a *second* Identity box and the panel
+        // drew Identity / Node / Research / Identity for fifteen fields. The name
+        // also matches what the same concept is called on a Tech ("Unlocks"),
+        // so the two screens read the same way.
         key: "gatesStructures",
         label: "Structures it unlocks",
         kind: "multiselect",
-        section: "Identity",
+        section: "Unlocks",
         options: listStructures,
         emptyHint: "no structure points at this node yet.",
         hint:

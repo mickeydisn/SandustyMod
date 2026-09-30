@@ -86,6 +86,55 @@ Deno.test("an unknown key is dropped, not passed through as a string", () => {
     assertEquals(resolveDraw({ id: "a", drawKey: "nope" }).draw, undefined);
 });
 
+// ── the mod-only rewrites ────────────────────────────────────────────────────
+//
+// Both of these used to pass straight through, and both failed *silently* — the
+// engine does not reject an unknown definition key, it just never reads it. The
+// config then asserted a protection that did not exist, which is the worst shape
+// a bug can take: it looks correct in review and in the panel.
+
+Deno.test("disallowPick is renamed to the engine's disallowSelection", () => {
+    const out = resolveDraw({ id: "a", disallowPick: true });
+    // The engine reads this flag in three places (bundel 5251 copy-flow,
+    // 79329 marquee filter, 40443 preserveUnselectable) and in **none** of the
+    // shipped `.d.ts`. The config's own spelling is not one of them, so a
+    // structure set to `disallowPick` was pickable, movable and copyable.
+    assertEquals(out.disallowSelection, true);
+    // And the wrong-spelled key must not also be sent: it would sit in a
+    // definition the engine persists and hands back to the player.
+    assertEquals("disallowPick" in out, false, "the config spelling leaked through");
+});
+
+Deno.test("an absent disallowPick writes no disallowSelection at all", () => {
+    // Not `false`. Forcing the key off would be a claim — and a structure whose
+    // definition was extended elsewhere could already have it set.
+    const out = resolveDraw({ id: "a" });
+    assertEquals("disallowSelection" in out, false);
+    assertEquals(resolveDraw({ id: "a", disallowPick: false }).disallowSelection, undefined);
+});
+
+Deno.test("maxPlaced never reaches the engine", () => {
+    // It is a mod-layer rule enforced by cancelling the placement; the engine has
+    // no such field and would only store the stray key.
+    const out = resolveDraw({ id: "a", maxPlaced: 1 });
+    assertEquals("maxPlaced" in out, false, "the mod-only cap leaked through");
+    // The *other* mod-only keys are still stripped, so the rewrite did not lose
+    // the behaviour `resolveDraw` already had.
+    assertEquals("drawKey" in resolveDraw({ id: "a", drawKey: "hidden" }), false);
+    assertEquals("unlockNode" in resolveDraw({ id: "a", unlockNode: "n" }), false);
+});
+
+Deno.test("the selection guard survives a drawKey", () => {
+    // Both rewrites apply to the same object, so the order matters: a `drawKey`
+    // spread must not drop `disallowSelection` (or add it back under the wrong
+    // name) depending on which branch built the object.
+    for (const drawKey of ["default", "hidden", "outline", "nope"]) {
+        const out = resolveDraw({ id: "a", drawKey, disallowPick: true });
+        assertEquals(out.disallowSelection, true, `lost for drawKey=${drawKey}`);
+        assertEquals("disallowPick" in out, false, `leaked for drawKey=${drawKey}`);
+    }
+});
+
 Deno.test("hidden consumes the frame and draws nothing", () => {
     const out = resolveDraw({ id: "a", drawKey: "hidden" });
     assertEquals(typeof out.draw, "function");

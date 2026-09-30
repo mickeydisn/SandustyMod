@@ -20,7 +20,15 @@ import type { Tab } from "../definition/types.ts";
 /** Content tab → the lists shown beneath it, in draw order. */
 export const ATTACHED: Partial<Record<Tab, readonly Tab[]>> = {
     elements: ["interactions"],
-    structures: ["behaviors", "signals"],
+    // `placementConfigs` was a top-level **Content** chip of its own, so the path
+    // to it was Content → Placement fields → Placement fields: a screen whose
+    // title named itself. It qualifies a structure and nothing else — every entry
+    // names one structure and becomes that building's hotbar widgets — which is
+    // exactly what an attached tab is for, the same as `behaviors` and `signals`
+    // sitting under `structures` either side of it. Drawn first: it is the
+    // broadest of the three, being about the structure itself rather than an
+    // optional behaviour attached to it.
+    structures: ["placementConfigs", "behaviors", "signals"],
     items: ["excavation", "projectiles", "excavationOption", "projectileOption"],
     techs: ["unlockNodes"],
     upgrades: ["categories", "upgradeAction"],

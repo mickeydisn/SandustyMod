@@ -10,6 +10,7 @@ import { assertEquals } from "jsr:@std/assert";
 const seen: {
     bindings?: { id: string; keys: unknown; def: unknown }[];
     processing?: { id: string; def: unknown }[];
+    placementConfigs?: unknown[];
 } = {};
 
 /** A resolver stub: `listInputBindingHandlerKeys` decides which keys are known. */
@@ -30,6 +31,9 @@ globalThis.sandkit = {
                 register: (id: string, def: unknown) => {
                     (seen.processing ??= []).push({ id, def });
                 },
+            },
+            registerPlacementConfig: (def: unknown) => {
+                (seen.placementConfigs ??= []).push(def);
             },
             signals: {},
         },
@@ -235,4 +239,79 @@ Deno.test("a step's own key and as are not mistaken for options", async () => {
 
     const compiled = compileEntryProcess({ processId: "clean" }, "processing", registry);
     assertEquals(compiled.unknownOptions, [], "a well-formed step reported a problem");
+});
+
+// ── the placement round trip ─────────────────────────────────────────────────
+
+Deno.test("the config's placement definition reaches registerPlacementConfig", async () => {
+    // The end-to-end shape of the bug this guards. `registerTheRest` iterates
+    // `config.placementConfigs`; an entry nested under a structure is simply not
+    // in that list, so the loop body never runs, nothing is registered, and the
+    // hotbar widgets never appear -- with no error anywhere to notice. Reading
+    // the nested location in the config test made it pass anyway.
+    //
+    // Driven by the REAL config file, so a move of the entry breaks this.
+    const cfg = JSON.parse(
+        await Deno.readTextFile(
+            new URL(
+                "../../../__home/md-random-artefact/config/random-artefact.json",
+                import.meta.url,
+            ),
+        ),
+    );
+
+    seen.placementConfigs = [];
+    const counts = registerTheRest({
+        structures: cfg.structures,
+        placementConfigs: cfg.placementConfigs,
+    } as never);
+
+    assertEquals(
+        (seen.placementConfigs ?? []).length,
+        1,
+        "no placement definition was handed to the engine",
+    );
+    assertEquals(counts.placementConfigs, 1);
+
+    const sent = seen.placementConfigs![0] as {
+        structureId: string;
+        fields: { id: string; type: string; default?: unknown }[];
+    };
+    assertEquals(sent.structureId, "md-my-hown-mod:generator");
+    assertEquals(
+        sent.fields.map((f) => f.id),
+        ["chargeTarget", "matPref"],
+    );
+    // Every field needs a default, or the engine seeds it as `undefined` -- see
+    // the note in `placement-fields.test.ts` about non-finite `compare`.
+    for (const f of sent.fields) {
+        assertEquals("default" in f, true, `${f.id} reaches the engine with no default`);
+    }
+});
+
+Deno.test("a definition nested under a structure registers nothing", async () => {
+    // The same config with the entry put back where it used to be. This must
+    // register zero -- it is the failure being guarded against, pinned so the
+    // location cannot quietly change back.
+    const cfg = JSON.parse(
+        await Deno.readTextFile(
+            new URL(
+                "../../../__home/md-random-artefact/config/random-artefact.json",
+                import.meta.url,
+            ),
+        ),
+    );
+    const structures = cfg.structures.map((s: Record<string, unknown>) => ({ ...s }));
+    structures[0] = {
+        ...structures[0],
+        placementConfigs: cfg.placementConfigs,
+    };
+
+    seen.placementConfigs = [];
+    registerTheRest({ structures, placementConfigs: undefined } as never);
+    assertEquals(
+        (seen.placementConfigs ?? []).length,
+        0,
+        "a nested entry was registered, so the loop is reading somewhere unexpected",
+    );
 });

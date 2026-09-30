@@ -76,15 +76,16 @@ const PROGRAM = [
     },
 ];
 
-/** Run the grid over a program and hand back the live form plus the node tree. */
-function render(program: unknown, scope = "processing") {
-    nodes = [];
-    const form: Record<string, string> = {
-        id: "p1",
-        name: "test",
-        scope,
-        [STEPS_JSON_KEY]: JSON.stringify(program, null, 2),
-    };
+/**
+ * A live view of the grid: the form, and a way to draw it again.
+ *
+ * The grid re-derives itself from the JSON on every render and holds no React state
+ * of its own, so a test has to **re-draw** to see the effect of a click. Holding
+ * on to the first tree — which is what the harness did at first — silently asserts
+ * against the screen *before* the action, which is how a test ends up passing
+ * because the row it checked was never the row it changed.
+ */
+function makeView(form: Record<string, string>) {
     const ctx = {
         h,
         form,
@@ -94,13 +95,48 @@ function render(program: unknown, scope = "processing") {
         error: "",
         locked: false,
     } as unknown as FieldContext;
-    const root = renderProgramGrid(ctx);
     return {
         form,
-        root,
+        /** The grid as it stands now. */
+        tree: () => {
+            nodes = [];
+            return renderProgramGrid(ctx);
+        },
         steps: (): { key: string; as?: string; then?: unknown[]; else?: unknown[] }[] =>
             form[STEPS_JSON_KEY] ? JSON.parse(form[STEPS_JSON_KEY]) : [],
     };
+}
+
+/**
+ * Run the grid over a program.
+ *
+ * Each call is a **different process**, with a fresh id. That is not tidiness: which
+ * rows are open is stored per process id, so two renders sharing an id would share
+ * that state and the second test would inherit the first one's expanded rows. The
+ * first version of this harness did exactly that and reported every summary test as
+ * failing on a screen that was showing input boxes.
+ */
+let processSeq = 0;
+
+function render(program: unknown, scope = "processing") {
+    return makeView({
+        id: `p${++processSeq}`,
+        name: "test",
+        scope,
+        [STEPS_JSON_KEY]: JSON.stringify(program, null, 2),
+    });
+}
+
+/**
+ * Render, then open every row, then re-render.
+ *
+ * Rows start **collapsed** — a program is a list of summaries you open one row at a
+ * time — so any test that reaches a parameter input has to come through here.
+ */
+function renderOpen(program: unknown, scope = "processing") {
+    const view = render(program, scope);
+    click(view.tree(), "Expand all");
+    return view;
 }
 
 /** The node for the row whose action select reads `action`. */
@@ -129,20 +165,21 @@ function rowFor(root: unknown, action: string): Node {
     return card;
 }
 
-/** Every node in a subtree, depth-first. */
-function inside(node: unknown): Node[] {
-    return all(node);
-}
-
 /**
- * The input shown for a labelled field, found by the label beside it.
+ * Types into a labelled field the way the screen does.
  *
- * Found by **label** and searched across the whole tree, not by position: a row's
- * fields sit one div deeper than its controls, and a positional lookup edits
- * whichever field happens to come first — the `var` on one render, something else
- * on the next. That is a test that passes for the wrong reason.
+ * The field is found by its **label** and searched across the whole tree, not by
+ * position: a row's fields sit one div deeper than its controls, and a positional
+ * lookup edits whichever field comes first — the `var` on one render, something
+ * else on the next. That is a test which passes for the wrong reason.
+ *
+ * The two field kinds are not interchangeable either: a **param** is written by
+ * `paramInput`, which fires `onChange` reading `e.target.value`, while the **`as`
+ * box** is written inline and fires `onInput` reading `e.currentTarget.value`.
+ * Calling the wrong one is a silent no-op, so a test that dispatched the wrong
+ * event would report "this field does nothing" about a field that works.
  */
-function fieldByLabel(root: unknown, label: string): Node {
+function typeInto(root: unknown, label: string, value: string): void {
     const box = all(root).find((n) => {
         if (n.tag !== "div") return false;
         const hasLabel = n.children.some(
@@ -154,37 +191,41 @@ function fieldByLabel(root: unknown, label: string): Node {
         return hasLabel && all(n).some((c) => c.tag === "input");
     });
     if (!box) throw new Error(`the grid shows no field labelled "${label}"`);
-    return all(box).find((c) => c.tag === "input") as Node;
-}
-
-/**
- * Type into a labelled field the way the screen does.
- *
- * The two field kinds are not interchangeable and this is why: a **param** is
- * written by `paramInput`, which fires `onChange` reading `e.target.value`, while
- * the **`as` box** is written inline and fires `onInput` reading
- * `e.currentTarget.value`. Calling the wrong one is a no-op, so a test that
- * dispatched the wrong event would report "the field did nothing" for a field that
- * works perfectly.
- */
-function typeInto(root: unknown, label: string, value: string): void {
-    const input = fieldByLabel(root, label);
+    const input = all(box).find((c) => c.tag === "input") as Node;
     const p = input.props as Record<string, (e: unknown) => void>;
     if (typeof p.onChange === "function") p.onChange({ target: { value } });
     else if (typeof p.onInput === "function") p.onInput({ currentTarget: { value } });
     else throw new Error(`the field "${label}" has no handler to drive`);
 }
 
+/**
+ * Clicks a button by its label.
+ *
+ * Every test that edits a parameter has to go through this, because rows start
+ * **collapsed**: a program is shown as a list of summaries and opened one row at a
+ * time. That is the intended behaviour, so a test that reached an input without
+ * expanding would be testing a screen that no longer exists.
+ */
+function click(root: unknown, label: string): void {
+    const button = all(root).find(
+        (n) =>
+            n.tag === "button" &&
+            n.children.some((c) => typeof c === "string" && c.includes(label)),
+    );
+    if (!button) throw new Error(`there is no "${label}" button on screen`);
+    (button.props as { onClick: () => void }).onClick();
+}
+
 Deno.test("a block keeps both branches when a parameter of its own is edited", () => {
     // The data-loss bug, driven the way an author drives it: render the grid, then
     // change a field on the `if` row itself.
-    const view = render(PROGRAM);
+    const view = renderOpen(PROGRAM);
     const before = JSON.stringify(view.steps());
 
     // The block's one field is `var`, labelled by `BLOCK_META` — the same label the
     // screen shows, so this test breaks if the field is ever renamed rather than
     // quietly editing something else.
-    typeInto(rowFor(view.root, "if"), BLOCK_VAR_LABEL, "renamed");
+    typeInto(rowFor(view.tree(), "if"), BLOCK_VAR_LABEL, "renamed");
 
     const block = view.steps().find((s) => s.key === "if");
     assertEquals(
@@ -217,8 +258,8 @@ Deno.test("a block keeps its branches when its `as` box is used", () => {
     // A second, separate call site: the `as` input built its replacement inline
     // rather than through the shared helper, so fixing the params alone would have
     // left this one still emptying the block.
-    const view = render(PROGRAM);
-    typeInto(rowFor(view.root, "if"), "As", "flag");
+    const view = renderOpen(PROGRAM);
+    typeInto(rowFor(view.tree(), "if"), "As", "flag");
     const block = view.steps().find((s) => s.key === "if");
     assertEquals(block?.as, "flag", "the as box did not take the name");
     assertEquals(block?.then?.length, 2, "using the as box emptied the then branch");
@@ -229,16 +270,16 @@ Deno.test("a block's branches are rendered, indented under it", () => {
     // would pass a grid that rendered the block and not its body, so this checks
     // the branches' own labels are in the tree.
     const view = render(PROGRAM);
-    const text = all(view.root)
+    const text = all(view.tree())
         .flatMap((n) => n.children)
         .filter((c): c is string => typeof c === "string");
     assert(
-        text.some((t) => t.includes("when the value is true")),
+        text.some((t) => t.includes("when true")),
         "the then branch is unlabelled, so a block and a plain step look alike",
     );
     assert(text.some((t) => t.includes("false")), "the else branch is unlabelled");
     // Indented rather than flush, which is what makes depth readable at a glance.
-    const indented = all(view.root).filter(
+    const indented = all(view.tree()).filter(
         (n) => (n.props as { style?: { marginLeft?: number } }).style?.marginLeft === 12,
     );
     assert(indented.length > 0, "no branch list is indented, so nesting is invisible");
@@ -268,9 +309,6 @@ Deno.test("the derived context sees variables bound inside a branch", () => {
 });
 
 Deno.test("deriveContext numbers steps in program order, branches included", () => {
-    // Depth-first, so `writtenBy` and `readBy` point at positions a reader can
-    // follow down the screen. Numbering branches after the whole top level would
-    // make the index correspond to nothing the author can see.
     const rows = deriveContext("processing", [
         { key: "bufferRead", options: { path: "a" }, as: "one" },
         {
@@ -282,4 +320,103 @@ Deno.test("deriveContext numbers steps in program order, branches included", () 
     const byName = new Map(rows.map((r) => [r.name, r]));
     assertEquals(byName.get("one")?.writtenBy, 0);
     assertEquals(byName.get("two")?.writtenBy, 2, "a branch step is numbered out of order");
+});
+
+// ── The summary view ─────────────────────────────────────────────────────────
+
+/** The text of every `span` on screen, joined — what the author actually reads. */
+function textOf(root: unknown): string {
+    return all(root)
+        .filter((n) => n.tag === "span")
+        .map((n) => n.children.filter((c): c is string => typeof c === "string").join(""))
+        .join(" | ");
+}
+
+Deno.test("a collapsed row shows every value in one line, as text not inputs", () => {
+    // The point of the whole mode. It must be a `span` — a read-only input is still
+    // a control, and a program made of controls cannot be scanned.
+    const view = render([
+        { key: "compare", options: { left: "{{p}}", op: "gte", right: "50" }, as: "full" },
+    ]);
+    const tree = view.tree();
+    const text = textOf(tree);
+    for (const part of ["compare", "left: {{p}}", "op: gte", "right: 50", "→ full"]) {
+        assert(text.includes(part), `the summary omits ${part} — it reads: ${text}`);
+    }
+    assertEquals(
+        all(tree).filter((n) => n.tag === "input").length,
+        0,
+        "a collapsed row still rendered inputs, so it is still a form, not a summary",
+    );
+});
+
+Deno.test("a summary shows an unset param rather than hiding it", () => {
+    // The failure mode this rule exists for: a summary that prints only what is set
+    // makes a field that was never filled look identical to a default.
+    const view = render([{ key: "compare", options: { left: "{{p}}" } }]);
+    const text = textOf(view.tree());
+    assert(text.includes("op —"), `an unset param is not shown at all: ${text}`);
+    assert(text.includes("right —"), `an unset param is not shown at all: ${text}`);
+});
+
+Deno.test("a summary shows options the action does not declare", () => {
+    // A row that has drifted from its schema is exactly what you are looking for in
+    // this view, so it is never quietly dropped.
+    const view = render([
+        { key: "compare", options: { left: "a", typo_param: "kept" }, as: "x" },
+    ]);
+    assert(
+        textOf(view.tree()).includes("typo_param: kept"),
+        "an undeclared option is hidden, so a drifted row looks clean",
+    );
+});
+
+Deno.test("Edit opens one row and Collapse all closes them", () => {
+    const view = render(PROGRAM);
+    const before = all(view.tree()).filter((n) => n.tag === "input").length;
+    assertEquals(before, 0, "the grid started expanded, so nothing was collapsed");
+
+    // One row, not the program: editing is the exception, reading is the rule.
+    const firstEdit = all(view.tree()).find(
+        (n) => n.tag === "button" && n.children.includes("Edit"),
+    );
+    assert(firstEdit, "no row offered an Edit button");
+    (firstEdit.props as { onClick: () => void }).onClick();
+    const after = all(view.tree()).filter((n) => n.tag === "input").length;
+    assert(after > before, "Edit did not open the row");
+
+    click(view.tree(), "Collapse all");
+    assertEquals(
+        all(view.tree()).filter((n) => n.tag === "input").length,
+        0,
+        "Collapse all left rows open",
+    );
+});
+
+Deno.test("a collapsed block still shows its branches", () => {
+    // The trap: collapsing a block and hiding its body would be the same bug as never
+    // rendering branches at all, just quieter. A collapsed block is one line for the
+    // decision and a line for every step inside it.
+    const text = textOf(render(PROGRAM).tree());
+    assert(text.includes("bufferWrite"), `a branch step is not readable: ${text}`);
+    assert(text.includes("buildStructure"), `a branch step is not readable: ${text}`);
+});
+
+Deno.test("moving a row from its summary reorders the program", () => {
+    // Order and delete have to work without expanding anything, or a program is one
+    // that you reorder reluctantly.
+    const view = render([
+        { key: "noop", as: "first" },
+        { key: "noop", as: "second" },
+    ]);
+    const down = all(view.tree())
+        .filter((n) => n.tag === "button" && n.children.includes("↓"))
+        .find((n) => !(n.props as { disabled?: boolean }).disabled);
+    assert(down, "no enabled Move down button on a collapsed row");
+    (down.props as { onClick: () => void }).onClick();
+    assertEquals(
+        view.steps().map((s) => s.as),
+        ["second", "first"],
+        "the summary's move button did not reorder the program",
+    );
 });

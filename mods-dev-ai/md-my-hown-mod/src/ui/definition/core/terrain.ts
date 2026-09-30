@@ -95,7 +95,6 @@ const FIELDS: FieldSpec[] = [
         def: "1",
         when: (f) => f.outputElement !== "",
     }),
-    boolField("flammable", "Flammable", "Flags"),
     {
         // engine: `const s = t?.materialId; if (void 0 !== s) { … throw }`
         //   must be a number, > i.A.obstacleBreakpoint, and < 150,
@@ -105,6 +104,10 @@ const FIELDS: FieldSpec[] = [
         // Every value in it is an obstacle, so there are no tiers to name —
         // the picker offers the engine's own next-free id instead of
         // inviting a hand-typed collision.
+        //
+        // Above `flammable` on purpose. It used to sit below it, which put one
+        // field on its own after "Flags" and made `sectionsFor` open a second
+        // "Tile" box — the panel drew Tile, Flags, Tile for seven fields.
         key: "materialId",
         label: "Material id",
         kind: "select",
@@ -113,6 +116,7 @@ const FIELDS: FieldSpec[] = [
         hint:
             "must be 101–149; every value is an obstacle, so the engine's next-free id is the safe pick",
     },
+    boolField("flammable", "Flammable", "Flags"),
     // No `fog` field: `fog` is not a documented terrain property. "Water Fog"
     // and "Lava Fog" are *terrain entries*, not a per-terrain boolean, so a
     // foggy-looking terrain must be registered as its own terrain id.

@@ -40,6 +40,7 @@ let safeRead: unknown = null;
  */
 
 import "@sandmd/sandkit";
+import { MOD_ID } from "./constants.ts";
 
 /** The store subtree, once. `sandkit.state` is not on the `api` namespace. */
 const store = (sandkit as { state?: { store?: Record<string, any> } }).state?.store;
@@ -84,6 +85,26 @@ export interface Bridge {
     bufferGet(key: string): unknown;
     /** Write a shared buffer value — a sentinel proves a processor is running. */
     bufferSet(key: string, path: string, value: number): unknown;
+    /**
+     * Read another mod's **settings** — a different namespace from its storage.
+     *
+     * Worth its own pair of methods because confusing the two cost a restart cycle
+     * during a live check. A mod that keeps its content under `storage` and its
+     * master switch under `settings` will read a *disabled* switch as "no config",
+     * prune what it stored, and leave the game holding none of it — and the
+     * symptom (no structures, no buffers) is identical to a build that failed to
+     * register anything. The setting is named `"<modId>.<key>"`, one argument; a
+     * second argument is silently ignored, which is the trap `modkit.ts` documents.
+     */
+    settingsGet(modId: string, key: string): unknown;
+    /** Write another mod's setting. `value` arrives as a JSON string, as above. */
+    settingsSet(modId: string, key: string, json: string): unknown;
+    /** Which storage namespace a key actually lives in — see the implementation. */
+    storageProbe(modId: string, key: string): unknown;
+    /** Read a `api.storage.local` entry, the non-save-backed store. */
+    localGet(key: string): unknown;
+    /** Write a `api.storage.local` entry. `json` as everywhere else. */
+    localSet(key: string, json: string): unknown;
     /** Whether the engine actually holds a graphics key (`getById`). */
     hasSprite(id: string): unknown;
     /** Probe several keys in one round trip. */
@@ -363,6 +384,114 @@ export function createBridge(): Bridge {
                 const value = JSON.parse(json);
                 api?.storage?.set?.(modId, key, value);
                 return { ok: true, modId, key, bytes: json.length };
+            } catch (e) {
+                return { ok: false, modId, key, threw: (e as Error).message };
+            }
+        },
+
+        /**
+         * Which storage namespace does a key actually live in?
+         *
+         * The engine has **two** spellings and they are not interchangeable:
+         * `storage.get(modId, key)` is cross-mod, while `storage.get(key)` reads the
+         * *calling* mod's own namespace. A harness that writes a config with the
+         * first, for a mod that reads it with the second, stores it somewhere the
+         * mod will never look — and the symptom is a mod that boots cleanly, logs
+         * **zero** registered objects, and keeps no config. That is not a guess:
+         * it is exactly what a live check of `md-my-hown-mod` produced, and it is
+         * worth a permanent way to see the two namespaces side by side rather than
+         * re-deriving it from scratch each time.
+         *
+         * `ownOneArg` and `ownTwoArg` are the *same key* read both ways from this
+         * bridge. If they ever disagree, the spellings are not aliases and a
+         * cross-mod write cannot populate another mod's own namespace at all —
+         * which is the thing worth knowing before trying to drive a mod headlessly.
+         */
+        storageProbe(modId: string, key: string) {
+            const shape = (v: unknown) =>
+                v === undefined
+                    ? "undefined"
+                    : v === null
+                    ? "null"
+                    : typeof v === "object"
+                    ? `object(${Object.keys(v as object).length} keys)`
+                    : typeof v;
+            return {
+                // What the *bridge's own* single-argument read sees.
+                ownOneArg: shape(api?.storage?.get?.(key)),
+                // The same key through the cross-mod spelling, aimed at the bridge.
+                ownTwoArg: shape(api?.storage?.get?.(MOD_ID, key)),
+                // And the same two-argument read aimed at another mod.
+                otherTwoArg: shape(api?.storage?.get?.(modId, key)),
+                // What the bridge itself is called, so the answer above is checkable.
+                ownModId: MOD_ID,
+            };
+        },
+
+        /**
+         * Read/write `api.storage.local` — browser `localStorage`, keyed by a flat
+         * dotted name rather than a `(modId, key)` pair.
+         *
+         * Separate from `storageGet`/`storageSet` because the engine documents it
+         * as a **different** store: `get`/`set` are "save-backed" and `local.*`
+         * is localStorage "not necessarily in save file". A live check that found
+         * its cross-mod write readable in-session but gone after a restart, with
+         * **no** world save on disk containing any mod storage at all, needed
+         * somewhere to write that is not the save — and this is the only such
+         * place the API offers.
+         */
+        localGet(key: string) {
+            try {
+                const v = api?.storage?.local?.get?.(key);
+                return { key, value: v ?? null, present: v !== undefined && v !== null };
+            } catch (e) {
+                return { key, threw: (e as Error).message };
+            }
+        },
+
+        localSet(key: string, json: string) {
+            try {
+                const value = JSON.parse(json);
+                api?.storage?.local?.set?.(key, value);
+                const back = api?.storage?.local?.get?.(key);
+                return { ok: true, key, readBack: back ?? null };
+            } catch (e) {
+                return { ok: false, key, threw: (e as Error).message };
+            }
+        },
+
+        /**
+         * Read another mod's setting. The field is `"<modId>.<key>"` and takes
+         * **one** argument — `settings.get(modId, key)` ignores the second and
+         * reads a field named after the mod id alone, which never exists, so it
+         * answers `undefined` for every key and looks like "the mod has no
+         * settings". Both spellings are tried for the same reason
+         * `readSettings` in `modkit.ts` does.
+         */
+        settingsGet(modId: string, key: string) {
+            try {
+                let value = api?.settings?.get?.(`${modId}.${key}`);
+                if (value === undefined) value = api?.settings?.get?.(key);
+                return { modId, key, field: `${modId}.${key}`, value: value ?? null };
+            } catch (e) {
+                return { modId, key, threw: (e as Error).message };
+            }
+        },
+
+        /**
+         * Write another mod's setting. `json` because a CDP expression can only
+         * pass a string across the boundary; a boolean is spelled `"true"`.
+         *
+         * Read back with `settingsGet` rather than trusted: a setting that appears
+         * to write and did not is the same silent failure as a storage write that
+         * did not land, and only a re-read distinguishes them.
+         */
+        settingsSet(modId: string, key: string, json: string) {
+            try {
+                const value = JSON.parse(json);
+                api?.settings?.set?.(`${modId}.${key}`, value);
+                const back = api?.settings?.get?.(`${modId}.${key}`);
+                return { ok: true, modId, key, wrote: value, readBack: back ?? null };
             } catch (e) {
                 return { ok: false, modId, key, threw: (e as Error).message };
             }

@@ -14,6 +14,9 @@ import {
     type StructureConfig,
 } from "../constants.ts";
 import { compileEntryProcess } from "../handler/custom-process/index.ts";
+// The placement rules, shared with the panel. Imported here rather than
+// re-derived so the boot-time guard and the save-time guard are one function.
+import { placementConfigPayload, placementConfigProblem } from "../config/placement.ts";
 
 declare const sandkit: any;
 const g = () => {
@@ -323,6 +326,54 @@ export const api = {
                 return undefined;
             }
         },
+        /**
+         * The numeric type for an id string.
+         *
+         * Probed, not assumed: the mod's own `HandlerAction.md` records a
+         * `getTypeFromId` that did not exist on `projectiles`, and the structure
+         * namespace has been through the same rename (`getTypeFromId` /
+         * `getTypeById`). Falls back to the id so a caller that only wants a
+         * usable ref still gets one.
+         */
+        getTypeById(id: string): number | string {
+            try {
+                const s = g()?.api?.structures as
+                    | {
+                        getTypeFromId?: (a: string) => number;
+                        getTypeById?: (a: string) => number;
+                    }
+                    | undefined;
+                return s?.getTypeFromId?.(id) ?? s?.getTypeById?.(id) ?? id;
+            } catch (e) {
+                console.warn(`${LOG} structures.getTypeById failed`, id, e);
+                return id;
+            }
+        },
+        /**
+         * Count structures of one type that exist right now.
+         *
+         * A `count`, not a list, because the only caller wants a number and an
+         * array of every generator in the world would be a large allocation to
+         * throw away. Returns `null` — not `0` — when the call is unavailable,
+         * so a caller can tell "there are none" from "we could not look", which
+         * are very different answers for a cap that is about to block a player.
+         */
+        countOfType(ref: number | string): number | null {
+            try {
+                const fn = g()?.api?.structures?.forEachOfType as
+                    | ((a: number | string, b: () => void) => unknown)
+                    | undefined;
+                if (typeof fn !== "function") return null;
+                let n = 0;
+                fn(ref, () => {
+                    n++;
+                });
+                return n;
+            } catch (e) {
+                console.warn(`${LOG} structures.forEachOfType failed`, ref, e);
+                return null;
+            }
+        },
     },
     items: {
         register(def: ItemConfig): void {
@@ -472,6 +523,50 @@ export const api = {
                     g()?.api?.ui?.overlays?.unregister?.(zone, id);
                 } catch { /* ignore */ }
             },
+        },
+        /**
+         * A transient message for the player.
+         *
+         * `(message, options?)` — the optional second argument is simply omitted
+         * rather than passed as `{}`. `GAME_AUDIT.md` records this as a 1-of-2
+         * arity match, and the audit's own advice is to omit the argument it
+         * cannot fill. An empty object is *also* accepted by the engine, so
+         * either is safe; omitting is the one the audit verified.
+         */
+        toast(message: string): void {
+            try {
+                (g()?.api?.ui?.toast as ((m: string) => void) | undefined)?.(message);
+            } catch (e) {
+                // A toast that throws must never take down whatever asked for it
+                // — the one caller here is a placement-limit refusal, where the
+                // cancel has already happened and losing the message is
+                // recoverable but losing the hook is not.
+                console.warn(`${LOG} ui.toast failed`, message, e);
+            }
+        },
+    },
+    /**
+     * The engine's hook system.
+     *
+     * `intercept` returns the engine's own unsubscribe, passed through
+     * unchanged, so a caller can detach and re-install — which is the only way
+     * a rule driven by a config can actually *change* when the config is
+     * re-applied. `apply.ts` reaches into `globalThis` for the same calls; that
+     * duplication is left alone here rather than folded in, because it is not
+     * what this change is about.
+     */
+    hooks: {
+        intercept(
+            id: string,
+            fn: (args: never, context: { cancel?: () => void }) => unknown,
+            opts?: Record<string, unknown>,
+        ): unknown {
+            try {
+                return g()?.api?.hooks?.intercept?.(id, fn, opts);
+            } catch (e) {
+                console.error(`${LOG} hooks.intercept failed`, id, e);
+                return undefined;
+            }
         },
     },
     events: {
@@ -1125,6 +1220,60 @@ export function registerStructureBehavior(
         }
     } catch (e) {
         console.error(`${LOG} structureBehaviors failed`, def.id, e);
+    }
+}
+
+/**
+ * Register one structure's **placement hotbar fields**.
+ *
+ * `structures.registerPlacementConfig({ structureId, fields })` — the widgets the
+ * player adjusts while holding the building, before placing it.
+ *
+ * Two things are worth stating because both are ways this call silently fails,
+ * and both have already happened to a mod that shipped them:
+ *
+ * 1. **The payload is `{ structureId, fields }` and nothing else.** There is no
+ *    `maxCount`. The engine's body (bundel 88861) opens with
+ *    `if (!t.structureId || !t.fields.length) throw …` — so a call carrying
+ *    `{ structureId, maxCount }` throws, and a `try {} catch {}` around it turns
+ *    that into a config that does not exist and a player who sees no widget and
+ *    no reason. Hence the pre-flight below: nothing reaches the engine unchecked.
+ *
+ * 2. **The check is `structureId` + a non-empty `fields`, not a count.** A
+ *    placement config is the hotbar field list. It does not cap how many of a
+ *    structure may be placed — the engine's `maxCount` is gated behind
+ *    `structureType === GloomEmitter` (bundel 5251) and is unreachable from a mod.
+ *
+ * The rules themselves live in `../config/placement.ts` and are shared with the
+ * panel, so a save the panel accepts and a boot the game accepts cannot disagree.
+ */
+export function registerPlacementConfig(
+    def: import("../constants.ts").PlacementConfigConfig,
+): void {
+    const problem = placementConfigProblem(def);
+    if (problem) {
+        // The engine's own wording, so the boot log and the panel read alike.
+        console.error(`${LOG} placement config "${def?.id ?? "?"}" rejected: ${problem}`);
+        return;
+    }
+    try {
+        const api = g()?.api;
+        if (!api) {
+            console.warn(`${LOG} sandkit api unavailable`);
+            return;
+        }
+        const structures = api.structures as {
+            registerPlacementConfig?: (definition: unknown) => unknown;
+        } | undefined;
+        if (typeof structures?.registerPlacementConfig !== "function") {
+            console.warn(`${LOG} no registerPlacementConfig on this build`, def.id);
+            return;
+        }
+        structures.registerPlacementConfig(placementConfigPayload(def));
+    } catch (e) {
+        // Reachable: the engine throws *after* its own checks on anything the
+        // pre-flight does not model, and a partial registration can throw too.
+        console.error(`${LOG} placement config failed`, def.id, e);
     }
 }
 

@@ -313,10 +313,16 @@ const FIELDS: FieldSpec[] = [
         // about is still expressible. The named options are merged in first and
         // anything typed here wins, which is what keeps this a catch-all rather
         // than a second source of truth for the same keys.
+        //
+        // Its own "Payload" section, not "Behaviour" again. It is declared last,
+        // after the Conveyor and Launcher blocks, so sharing the section name
+        // with `kind` at the top made the panel draw "Behaviour" twice with the
+        // Conveyor and Launcher tables wedged between them. It stays last on
+        // purpose: the hint below refers to "the options above".
         key: "definitionJson",
         label: "Rest of the payload",
         kind: "json",
-        section: "Behaviour",
+        section: "Payload",
         jsonType: "object",
         wide: true,
         hint:

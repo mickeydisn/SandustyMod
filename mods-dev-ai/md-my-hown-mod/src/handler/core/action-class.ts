@@ -211,6 +211,10 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     // distinction the class axis is actually for: this one calls the engine, the
     // one above it does not, and they are otherwise the same kind of action.
     randomInt: "api",
+    // The arithmetic sibling of `compare`, and the same class for the same reason:
+    // it reads only its own options and never reaches the engine. It is `api` only
+    // if it calls something, and `Math.round` is not the engine.
+    math: "self-sufficient",
 
     // ── pure (22) ─────────────────────────────────────────────────────────────
     // The loggers. They read the payload they were handed to print it, which the
@@ -763,6 +767,10 @@ export const ACTION_EFFECTS: Record<string, ActionEffect> = {
     compare: "returns",
     // Same: the number it answers is for the next step's `as`.
     randomInt: "returns",
+    // Also `returns`: `math` answers a number for the next step's `as`, and then
+    // nothing else. It is the third member of the "exists to be read" family,
+    // after `compare` and `randomInt`.
+    math: "returns",
     upgradeAdd: "writes",
 
     // reads — looks, changes nothing
@@ -1033,6 +1041,12 @@ export const ACTION_DOMAINS: Record<string, ActionDomain> = {
     // (`noop`, `identity`), and a "plain values" domain with exactly one member
     // would cost the filter more than it earns.
     compare: "diagnostics",
+    // `diagnostics` again, and the same reasoning as `compare` above applies with
+    // even less to argue about: a number that has had arithmetic done to it is
+    // about no subject in the vocabulary. It is also where a `math` domain would
+    // be wrong, for the reason recorded under `randomInt` — one action is not a
+    // domain.
+    math: "diagnostics",
     // `diagnostics` is the wrong answer here and there is nothing better in the
     // vocabulary: the nine domains describe subjects (gold, terrain, wiring), and
     // a number drawn at random is about none of them. A `random` domain would hold

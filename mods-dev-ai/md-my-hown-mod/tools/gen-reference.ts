@@ -121,6 +121,15 @@ export const COMPOSITE: Record<string, [string, string][]> = {
         ["rightType", "definition.rightType"],
         ["definitionJson", "definition (everything else)"],
     ],
+    placementConfigs: [
+        // The hotbar field list is one JSON control and one stored array. It is
+        // *not* a composite in the `behaviors` sense — nothing is merged in on
+        // the way out, the control holds the whole value the engine wants — but
+        // it still needs naming, or the generator reports it as an unmapped
+        // field alongside the real ones. `structureId` is a select over the live
+        // structure list and is documented as a relation instead.
+        ["fieldsJson", "fields[]"],
+    ],
     interactions: [
         // The descriptor is assembled from the `kind` plus that kind's fields.
         ["interactionKind", "interaction.kind"],

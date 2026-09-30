@@ -349,6 +349,21 @@ export const RELATIONS: Relation[] = [
         note: "The structure this conveyor moves items for.",
         strength: "required",
     },
+    // ── placement configs ──
+    //
+    // The one reference a placement config has. It is the field the engine keys
+    // the whole definition by — `registerPlacementConfig` stores the entry in a
+    // `Map` under this id and only reads it while that building is selected — so
+    // a typo here produces a config that validates, registers, and is then never
+    // shown to the player. Required for the same reason it is required for a
+    // behaviour: the engine throws without it.
+    {
+        from: "placementConfigs",
+        field: "structureId",
+        to: "structures",
+        note: "The building whose placement hotbar these fields appear on.",
+        strength: "required",
+    },
     {
         from: "behaviors",
         field: "upType",

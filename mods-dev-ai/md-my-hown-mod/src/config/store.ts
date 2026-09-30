@@ -16,6 +16,7 @@ import {
     type ModConfig,
     type ModifierConfig,
     type PanelState,
+    type PlacementConfigConfig,
     type ProcessingConfig,
     type ProjectileConfig,
     type RecipeConfig,
@@ -63,6 +64,7 @@ function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
         unlockNodes: Array.isArray(raw?.unlockNodes) ? raw!.unlockNodes! : [],
         excavationProfiles: Array.isArray(raw?.excavationProfiles) ? raw!.excavationProfiles! : [],
         structureBehaviors: Array.isArray(raw?.structureBehaviors) ? raw!.structureBehaviors! : [],
+        placementConfigs: Array.isArray(raw?.placementConfigs) ? raw!.placementConfigs! : [],
         signals: Array.isArray(raw?.signals) ? raw!.signals! : [],
         triggers: Array.isArray(raw?.triggers) ? raw!.triggers! : [],
         sprites: Array.isArray(raw?.sprites) ? raw!.sprites! : [],
@@ -576,6 +578,21 @@ export function addOrUpdateStructureBehavior(entry: StructureBehaviorConfig): Mo
 export function removeStructureBehavior(id: string): ModConfig {
     const cfg = loadConfig();
     cfg.structureBehaviors = removeById(cfg.structureBehaviors, id);
+    saveConfig(cfg);
+    return cfg;
+}
+
+export function addOrUpdatePlacementConfig(
+    entry: PlacementConfigConfig,
+): ModConfig {
+    const cfg = loadConfig();
+    cfg.placementConfigs = upsert(cfg.placementConfigs, entry);
+    saveConfig(cfg);
+    return cfg;
+}
+export function removePlacementConfig(id: string): ModConfig {
+    const cfg = loadConfig();
+    cfg.placementConfigs = removeById(cfg.placementConfigs, id);
     saveConfig(cfg);
     return cfg;
 }

@@ -221,16 +221,24 @@ const FIELDS: FieldSpec[] = [
         hint: "how a multi-cell footprint is validated against the cells under it",
     },
     {
+        // Build-menu placement: which category the structure is filed under and
+        // where it sorts inside it. These were their own one-row "Build menu"
+        // section wedged **between** two runs of "Placement", so the panel drew
+        // "Placement / Build menu / Placement / Flags / Placement / Render / Grid /
+        // Render / Grid" — eleven boxes for twenty-six fields, four of them
+        // repeating a title the reader had already scrolled past. `sectionsFor`
+        // groups *consecutive* fields by section, so the only way to get one
+        // "Placement" is to have one run of them.
         key: "categoryKey",
         label: "Build category",
         kind: "select",
-        section: "Build menu",
+        section: "Placement",
         required: true,
         options: listStructureCategories,
         def: "blocks",
         hint: "grouping in the build window",
     },
-    numField("order", "Order", "Build menu", {
+    numField("order", "Order", "Placement", {
         min: 0,
         max: 9999,
         hint: "sort inside the category",
@@ -253,6 +261,13 @@ const FIELDS: FieldSpec[] = [
     boolField("dirH", "Horizontal", "Placement", "true", "placement directions"),
     boolField("dirV", "Vertical", "Placement", "true"),
     boolField("dirD", "Diagonal", "Placement", "false"),
+    {
+        key: "rejectWhenBlocked",
+        label: "Reject when blocked",
+        kind: "bool",
+        section: "Placement",
+        hint: "refuse placement if any footprint cell is occupied",
+    },
     shapeField(),
     // The menu-visibility lever. `alwaysUnlocked` is gone: the engine reads it in
     // exactly one place, iterating a `const` literal of the *vanilla* structures,
@@ -304,13 +319,6 @@ const FIELDS: FieldSpec[] = [
     },
     boolField("disallowPick", "Disallow pick", "Flags"),
     {
-        key: "rejectWhenBlocked",
-        label: "Reject when blocked",
-        kind: "bool",
-        section: "Placement",
-        hint: "refuse placement if any footprint cell is occupied",
-    },
-    {
         // engine type: StructureTooltipHover — { type: "custom", dataFieldMessage }
         key: "tooltipHoverJson",
         label: "Hover tooltip",
@@ -339,6 +347,22 @@ const FIELDS: FieldSpec[] = [
         hint: "render.imageName (load a sprite first)",
     },
     {
+        // `draw` is a callback: `T(id, fn)`, called as
+        // `fn(session, instance, {tilemap, ctx, useTilemap, placing, opts})`,
+        // where returning `false` falls through to the normal sprite render.
+        // It cannot be stored as JSON, so the config holds a key that
+        // apply.ts resolves. This was previously a free JSON box that
+        // nothing ever read, so a value set here did nothing at all.
+        key: "drawKey",
+        label: "Custom draw",
+        kind: "select",
+        section: "Render",
+        options: listDrawFunctions,
+        def: "default",
+        hint:
+            "draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game.",
+    },
+    {
         // engine: registerStructureType(blockGridType ?? id), then
         // registerStructureTypeAlias(id, blockGridType) when it differs.
         //
@@ -354,6 +378,11 @@ const FIELDS: FieldSpec[] = [
         //     shapes up to 8x8." So above 8x8 it is not optional.
         //
         // Left empty is only safe for a small structure.
+        //
+        // Sits *after* `drawKey`, not before it, so "Render" is one
+        // uninterrupted run and "Grid" starts here. The two used to interleave
+        // (Render, Grid, Render, Grid) and the panel drew the same two titles
+        // twice, separated by one field each.
         key: "blockGridType",
         label: "Block grid type",
         kind: "select",
@@ -366,22 +395,6 @@ const FIELDS: FieldSpec[] = [
             "no other structures exist yet — save this one first, then pick its own id from the list.",
         hint:
             "leave empty only for a footprint of 8x8 or smaller. Above that, set this to the structure's OWN id: without it a large structure places as a single 1-cell unit and its hover tooltip only resolves at the origin cell. Point it at a DIFFERENT structure to share that structure's grid instead.",
-    },
-    {
-        // `draw` is a callback: `T(id, fn)`, called as
-        // `fn(session, instance, {tilemap, ctx, useTilemap, placing, opts})`,
-        // where returning `false` falls through to the normal sprite render.
-        // It cannot be stored as JSON, so the config holds a key that
-        // apply.ts resolves. This was previously a free JSON box that
-        // nothing ever read, so a value set here did nothing at all.
-        key: "drawKey",
-        label: "Custom draw",
-        kind: "select",
-        section: "Render",
-        options: listDrawFunctions,
-        def: "default",
-        hint:
-            "draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game.",
     },
     {
         // engine: !1 === t.copyData && (t.skipCopyData = !0) — setting copyData
@@ -487,7 +500,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     // dangling node is resolved to "available from the start" at apply time, so
     // dropping it here would silently repair the structure behind the user's
     // back. It stays visible and repairable instead.
-    read.put("unlockNode", read.str(e.unlockNode));
+    read.put("unlockNode", read.str(e.unlockNode) || DEFAULT_UNLOCK_NODE);
     if (typeof e.rejectWhenBlocked === "boolean") {
         read.put("rejectWhenBlocked", String(e.rejectWhenBlocked));
     }

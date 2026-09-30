@@ -29,7 +29,7 @@ const FIELDS: FieldSpec[] = [
         wide: true,
         autoKey: "idSuffix",
         placeholder: "search icons by name…",
-        hint: "pick a PNG from assets/icons/ — the path is filled in for you",
+        hint: "pick a PNG bundled in this mod — the path is filled in for you",
     },
     boolField("fromMod", "Load from mod folder", "File", "true"),
 ];

@@ -413,8 +413,23 @@ export const input: React.CSSProperties = {
     outline: "none",
 };
 
+/**
+ * The multi-line control, used for every JSON box and the full-config editor.
+ *
+ * `width: 100%` is the fix for the reported one: a `<textarea>` has an intrinsic
+ * width of about 20 characters and does NOT stretch to its container the way an
+ * `<input>` in the same grid cell does, so every JSON box came out roughly half
+ * the width of the row beside it — and on a `wide` field, half the form.
+ *
+ * `boxSizing: border-box` is not optional alongside it. `input` above sets
+ * `padding: "5px 8px"` and no box-sizing, so a `width: 100%` textarea would be
+ * 16px wider than its grid cell and push its neighbour along, trading one layout
+ * bug for a quieter one.
+ */
 export const textarea: React.CSSProperties = {
     ...input,
+    width: "100%",
+    boxSizing: "border-box",
     minHeight: 120,
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
     fontSize: 11,
@@ -585,16 +600,70 @@ export const screenTitle: React.CSSProperties = {
     letterSpacing: 0.2,
 };
 
+/**
+ * The one heading size for every list the reader can see.
+ *
+ * A screen's own title uses `screenTitle`. The lists drawn *under* it used to
+ * use `sectionTitle` instead — 10px, uppercase, grey — so a screen with three
+ * lists came out as one big title followed by three small ones, and the small
+ * ones read as captions of the list above rather than as titles in their own
+ * right. They are peers, so they are sized from this: `listHeadingRow` spreads
+ * `screenTitle` rather than restating its numbers, so the two cannot drift.
+ *
+ * (`sectionTitle` stays for the collapsible field groups inside an edit form.
+ * Those are a different thing — a disclosure, not a list — and should stay quiet.)
+ */
+export const listHeadingRow: React.CSSProperties = {
+    ...screenTitle,
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+};
+
 export const screenBlurb: React.CSSProperties = {
     fontSize: 11,
     color: "#8a93aa",
     flex: 1,
 };
 
+/**
+ * A collapsible field group: the `<details>` shell the panel renders each
+ * section into.
+ *
+ * A structure's form is twenty-six fields across a dozen groups, and it opened
+ * flat, so the screen was several screens long with no way to tell which
+ * question any row belonged to. Each group is now closed until asked for.
+ *
+ * `sectionBox` is kept as the name because `sectionTitle`/`fieldGrid` are
+ * already looked up by it elsewhere; it is the `<details>` element itself.
+ */
 export const sectionBox: React.CSSProperties = {
-    marginTop: 10,
+    marginTop: 6,
     borderTop: "1px solid rgba(90, 105, 140, 0.3)",
-    paddingTop: 8,
+};
+
+/**
+ * The clickable line. `<summary>` ships a disclosure triangle; it is kept,
+ * because it is the affordance that says "this opens", but it is aligned and
+ * sized to sit with the label rather than push it.
+ */
+export const sectionSummary: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "7px 2px",
+    cursor: "pointer",
+    userSelect: "none",
+    listStyle: "revert",
+};
+
+/** How many controls are folded away, right-aligned and quiet. */
+export const sectionCount: React.CSSProperties = {
+    fontSize: 10,
+    color: "#5d6880",
+    marginLeft: "auto",
+    paddingRight: 2,
 };
 
 /** The structure's unlock relation, said in words next to the "Create" action. */

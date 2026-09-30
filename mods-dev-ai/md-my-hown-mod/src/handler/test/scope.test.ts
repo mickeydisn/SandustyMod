@@ -560,10 +560,16 @@ Deno.test("a value returned where the engine ignores it is flagged, not hidden",
     //   compiler captures.
     // 8 → 9 with `randomInt`. Same case as the eight beside it: the engine
     //   discards the number, the compiler captures it for the next step's `as`.
+    // 9 → 10 with `math`, and the reason it is *not* a new case is the whole
+    //   reason it was worth adding. The three decide primitives are now the three
+    //   largest members of this list, and every one of them is here for the same
+    //   reason: the engine reads no process return, and the `as` binding is the
+    //   only consumer. A number that had to be transformed still had to be
+    //   transformed by something, and this is that something.
     assertEquals(
         Object.keys(ACTION_EFFECTS).filter((k) => isVacuousReturn(k, false)).length,
-        9,
-        "9 return a value and no slot reads it",
+        10,
+        "10 return a value and no slot reads it",
     );
     // And a projectile option is not in that table at all — its return is its
     // whole purpose, so calling it vacuous would be exactly backwards.

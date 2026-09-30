@@ -176,8 +176,11 @@ export function resolveDraw(st: StructureConfig): StructureConfig {
     // it reads the same relation off the *tech* as `unlocks.structures`. Stripped
     // here, in the one place every structure passes through, rather than in the
     // save path where a new caller would forget.
-    const { drawKey, unlockNode: _ours, ...rest } = st;
-    if (!drawKey || drawKey === "default") return rest;
+    const { drawKey } = st;
+    // The two mod-only rewrites, so `drawKey` handling below has one `base` to
+    // spread rather than three subtly different objects.
+    const base = withSelectionGuard(withoutModOnlyKeys(st));
+    if (!drawKey || drawKey === "default") return base;
     // The footprint is only known here, at registration, so it is closed over
     // rather than looked up per frame.
     //
@@ -192,9 +195,63 @@ export function resolveDraw(st: StructureConfig): StructureConfig {
         wCells: Math.max(1, shape[0]?.length || 1),
         hCells: Math.max(1, shape.length || 1),
     };
-    if (drawKey === "hidden") return { ...rest, draw: hidden };
-    if (drawKey === "outline") return { ...rest, draw: makeOutline(ctx) };
+    if (drawKey === "hidden") return { ...base, draw: hidden };
+    if (drawKey === "outline") return { ...base, draw: makeOutline(ctx) };
+    return base;
+}
+
+/**
+ * Strip the fields that exist for this mod and mean nothing to the engine.
+ *
+ * `maxPlaced` is a mod-layer rule enforced by `custom/placement-limit.ts`; the
+ * engine has no `maxPlaced` and never will (see that file's header). Forwarding
+ * it would put a key the game does not understand into a definition object it
+ * persists and hands back.
+ *
+ * `unlockTech` is ours too, and the engine has no use for it — it reads the same
+ * relation off the *tech* as `unlocks.structures`. Stripped here, in the one
+ * place every structure passes through, rather than in the save path where a new
+ * caller would forget.
+ */
+function withoutModOnlyKeys(st: StructureConfig): StructureConfig {
+    const { drawKey: _draw, maxPlaced: _cap, unlockNode: _node, ...rest } = st;
     return rest;
+}
+
+/**
+ * `disallowPick` in the config is `disallowSelection` in the engine.
+ *
+ * The config name is the readable one; the engine's is the one that works, and
+ * the two have to meet here or not at all. Passing the config's spelling
+ * through was a **silent** failure — the engine does not reject an unknown
+ * definition key, it just never reads it, so the structure stayed fully
+ * pickable, movable and copyable while the config said it was not. That is the
+ * worst shape of bug: the config asserts a protection that does not exist.
+ *
+ * The engine reads this flag in three places (all found in the bundle, none in
+ * the shipped `.d.ts` — it is an undeclared field):
+ *
+ *  - bundel 5251:579  `if (n.copiedStructure && u.disallowSelection) return null`
+ *    — rejects the copy/clone-structure flow.
+ *  - bundel 79329:202 the marquee selection filter
+ *    `!(…?.disallowSelection) && …` — the grabber can never pick it up or move it.
+ *  - bundel 40443:414 `if (c.preserveUnselectable) { if (…?.disallowSelection) return true }`
+ *    — survives a clear / demolish-by-marquee.
+ *
+ * The three hook-based guards the original mod tried and documented as inert are
+ * listed in its own `artefact.ts`: `building:clearShape` only fires for
+ * `dynamicShape` definitions, and `structures:removed:prepare` / `:moved:prepare`
+ * run *after* the store filter has already dropped the structure, so editing
+ * their payload changes nothing.
+ *
+ * The flag is only ever **added**, never forced off: an absent `disallowPick`
+ * must not write `disallowSelection: false`, because a structure whose
+ * definition was extended elsewhere could have it set already.
+ */
+function withSelectionGuard(st: StructureConfig): StructureConfig {
+    if (st.disallowPick !== true) return st;
+    const { disallowPick: _ours, ...rest } = st;
+    return { ...rest, disallowSelection: true } as StructureConfig;
 }
 
 /**
@@ -255,6 +312,34 @@ export function unlockStructures(cfg: ModConfig): number {
     let n = 0;
     for (const st of cfg.structures ?? []) {
         if (!st?.id) continue;
+        // `hideFromBuildMenu` now means what its name says, all the way to the
+        // game — not just this mod's own list.
+        //
+        // It is the *only* lever that can do this, and the alternatives are
+        // worth writing down because each looks right and is not:
+        //
+        //  - `alwaysUnlocked: false` — the engine reads this in exactly one
+        //    place, iterating `Object.keys(Ue)` (bundel 5251:1314-1322), and `Ue`
+        //    is a `const` object literal declared at bundel 5251:970 holding the
+        //    *vanilla* structures. It has no assignment site, so a mod id never
+        //    enters it and the flag is never read for one.
+        //  - `hideFromBuildMenu` as a *definition* field — grepped the whole
+        //    bundle: the name appears nowhere. The engine has no such option
+        //    for structures at all.
+        //
+        // What the build menu actually lists is `getUnlockedTypes()`
+        // (bundel 46781:2969), which seeds itself from `player.buildings` and
+        // then adds the `Ue` entries whose `alwaysUnlocked` is set. For a mod
+        // structure only `player.buildings` membership counts.
+        //
+        // The unlock is *withdrawn* rather than merely skipped, for the same
+        // reason the gated path below does it: a save or an earlier apply may
+        // have already put this id in the list, and a structure the author has
+        // since marked hidden must not keep sitting in the menu until reload.
+        if (st.hideFromBuildMenu) {
+            api.player.buildings.removeById(st.id);
+            continue;
+        }
         // A dangling link must not gate anything, or the structure would be
         // unreachable and the player would never know why. See `unlockTechOf`.
         if (!isAlwaysUnlocked(st.id, cfg)) {

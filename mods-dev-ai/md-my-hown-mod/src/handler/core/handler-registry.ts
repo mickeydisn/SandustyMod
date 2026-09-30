@@ -1113,6 +1113,36 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             p("right", "Right", "number", { required: true, def: "0" }),
         ],
     },
+    {
+        // The arithmetic companion to `compare`, and declared in **every** slot for
+        // the same reason: it reads its own options and nothing else.
+        //
+        // It is here because without it a value could be read but never transformed,
+        // so every *rate* in a config had to be a literal. The case that forced it:
+        // a generator that charges at `round(cells / mult)` across three materials.
+        // All three charged identically and `mult` was decoration on the tooltip.
+        key: "math",
+        type: "processor",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+            p("left", "Left", "text", {
+                required: true,
+                hint: "a number, or {{aVariable}} from an earlier step",
+            }),
+            p("op", "Operation", "select", {
+                required: true,
+                def: "add",
+                options: [
+                    { value: "add", label: "plus" },
+                    { value: "sub", label: "minus" },
+                    { value: "mul", label: "times" },
+                    { value: "div", label: "divided by" },
+                ],
+            }),
+            p("right", "Right", "number", { required: true, def: "1" }),
+        ],
+    },
     { key: "signalLog", type: "message", slots: ["signal"], scope: "structure", params: [] },
     {
         // The live half of a `senderType` signal. `registerSenderType` only seeds a

@@ -33,6 +33,11 @@ export type Tab =
     | "signals"
     | "triggers"
     | "behaviors"
+    /**
+     * Placement-hotbar fields (`structures.registerPlacementConfig`). **Must match
+     * `Tab` in `../schema.ts`** — edit that one.
+     */
+    | "placementConfigs"
     | "energy"
     | "networks"
     | "buffers"

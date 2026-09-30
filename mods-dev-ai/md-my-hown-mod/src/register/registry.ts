@@ -106,6 +106,7 @@ export const registered: Record<string, Set<string>> = {
     energyTypes: new Set(),
     excavationProfiles: new Set(),
     structureBehaviors: new Set(),
+    placementConfigs: new Set(),
     signals: new Set(),
     triggers: new Set(),
     inputBindings: new Set(),

@@ -24,6 +24,7 @@ import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
 import {} from "./definition/fields.ts";
 import { behaviorDefinition } from "./definition/core/behavior.ts";
+import { placementConfigDefinition } from "./definition/core/placement.ts";
 import { contactDefinition } from "./definition/core/contact.ts";
 import { elementDefinition } from "./definition/core/element.ts";
 import { energyDefinition } from "./definition/core/energy.ts";
@@ -108,6 +109,12 @@ export type Tab =
     | "signals"
     | "triggers"
     | "behaviors"
+    /**
+     * Placement-hotbar fields — `structures.registerPlacementConfig`.
+     *
+     * **Must match `Tab` in `./definition/types.ts`** — edit that one.
+     */
+    | "placementConfigs"
     | "energy"
     | "networks"
     | "buffers"
@@ -255,13 +262,25 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         blurb: "Conveyor / launcher behaviour definitions.",
         configKey: "structureBehaviors",
     },
+    placementConfigs: {
+        label: "Placement fields",
+        blurb: "Sliders and pickers the player adjusts while holding a building. " +
+            "Not a limit on how many may be placed.",
+        configKey: "placementConfigs",
+    },
+    // Neither label repeats "Energy". Both of these are reached through the
+    // **Energy** group, so the group's own name is already on screen in the chip
+    // above them — "Energy › Energy networks" says the word twice and reads as two
+    // different kinds of thing. The config keys keep their `energy` prefix
+    // (`energyNetworks`, `energyTypes`): those are written into saved worlds and
+    // renaming one would orphan every existing entry.
     energy: {
-        label: "Energy interactions",
+        label: "Interactions",
         blurb: "Attach a conductor/storage energy node to a structure.",
         configKey: "energyTypes",
     },
     networks: {
-        label: "Energy networks",
+        label: "Networks",
         blurb: "Named energy channels. The game ships one; add the ones you need.",
         configKey: "energyNetworks",
     },
@@ -365,6 +384,11 @@ export const MENU_GROUPS: MenuGroup[] = [
         key: "content",
         label: "Content",
         hint: "What the player sees in the world",
+        // `placementConfigs` is deliberately absent: it is drawn under
+        // `structures` (see `./panel/attach.ts`). A tab that is both a chip of its
+        // own and attached gets two entries that lead to different screens — the
+        // chip opens the bare list, the attachment opens it under its parent —
+        // and neither is obviously the one the other meant.
         categories: ["terrains", "elements", "structures", "items", "buffers"],
     },
     {
@@ -603,6 +627,32 @@ export function fieldsFor(cat: Tab): FieldSpec[] {
     // is what lets the split proceed one object at a time: moving a tab is
     // deleting its entry here, and nothing else has to know.
     return definitionFor(cat)?.fields ?? FIELDS[cat] ?? [];
+}
+
+/**
+ * The section titles the panel must render **open**, whatever the collapsed
+ * default is.
+ *
+ * Sections are closed by default — a structure's form is twenty-six fields and
+ * opened flat it ran for several screens — but a section holding a validation
+ * error is the one exception. Save is disabled while there is an error, so
+ * folding the offending field away reports a problem and hides its fix.
+ *
+ * Returned as a set of titles (the identity a `<details key>` is built from)
+ * rather than booleans per section, because the panel latches it: once a box has
+ * been forced open it stays open while the reader fixes things inside it.
+ * Re-deriving this from `errors` alone would slam the box shut the moment the
+ * field turned valid, pulling the row out from under them.
+ */
+export function sectionsToReveal(
+    sections: Section[],
+    errors: Record<string, string>,
+): Set<string> {
+    const out = new Set<string>();
+    for (const sec of sections) {
+        if (sec.fields.some((f) => errors[f.key])) out.add(sec.title);
+    }
+    return out;
 }
 
 export interface Section {
@@ -990,6 +1040,10 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
             behaviorDefinition.entryToForm?.(e, readerFor(form));
             break;
         }
+        case "placementConfigs": {
+            placementConfigDefinition.entryToForm?.(e, readerFor(form));
+            break;
+        }
         case "energy": {
             // Owned by ./definition/energy.ts — see the note in formToEntry.
             energyDefinition.entryToForm?.(e, readerFor(form));
@@ -1175,6 +1229,13 @@ export function formToEntry(
             // the split between the four named pickers and the raw payload box —
             // and the order they merge in — stays in one file.
             behaviorDefinition.formToEntry?.(form, writerFor(form, entry));
+            break;
+        }
+        case "placementConfigs": {
+            // Owned by ./definition/core/placement.ts. Delegated so the five
+            // engine rules it enforces stay in one file, shared with the register
+            // wrapper by way of `src/config/placement.ts`.
+            placementConfigDefinition.formToEntry?.(form, writerFor(form, entry));
             break;
         }
         case "energy": {

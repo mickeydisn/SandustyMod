@@ -137,6 +137,7 @@ const IMPLEMENTED: Record<string, HandlerSlot[]> = {
     // and nothing else — so it can run anywhere the engine will call a process,
     // which is the point of it being a decision primitive rather than a cell one.
     compare: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
+    math: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
     // Every slot, same as `compare` and for the same reason: `scope` is `[]`.
     // A pick does not need the caller to hand it anything.
     randomInt: ["signal", "trigger", "processing", "upgrade", "modifier", "itemAction"],
@@ -456,7 +457,13 @@ Deno.test("the action catalogue's API binding, measured", () => {
     // comparison that had to call the engine would be doing something other than
     // arithmetic — so the numerator holds and the catalogue grows.
     // 92 → 93 with `randomInt`.
-    assertEquals(Object.keys(IMPLEMENTED).length, 93);
+    // 93 → 94 with `math`, and it is the second action to leave the numerator
+    // alone while the catalogue grows. It reaches no namespace — `Math.round` is a
+    // JavaScript builtin, not the engine — so `API_CALLING` stays at 40 above.
+    // Adding it there would have made the "one namespace per action" census read
+    // 41 without a single new namespace existing, which is the failure mode this
+    // table exists to prevent.
+    assertEquals(Object.keys(IMPLEMENTED).length, 94);
 });
 
 Deno.test("`type` measures neither axis — that is why the split is real", () => {
@@ -681,9 +688,13 @@ const CONTEXT_READABLE = [
     // is a reading some other step might want, and this is a decision made ready
     // to be consumed as one.
     "compare",
-    // `randomInt` follows it in the registry, and for the same reason it follows
-    // it here: the two decide primitives a threshold rule is built from, and the
-    // assertion compares in registry order.
+    // `math` sits immediately after it in the registry, so it sits immediately
+    // after it here — this list is compared **in order** against
+    // `Object.keys(IMPLEMENTED)`, and the order is the registry's rather than a
+    // reading of what belongs together. `compare` asks, `math` transforms,
+    // `randomInt` chooses: they are the three decide primitives, and each one's
+    // return exists to be consumed by the step after it.
+    "math",
     "randomInt",
     // The logic family, last: the five range walks. They are the only actions in
     // the catalogue that are a *generalisation* of another family rather than a

@@ -221,9 +221,244 @@ function paramsOf(key: string): HandlerParam[] {
     return HANDLER_META.find((m) => m.key === key)?.params ?? [];
 }
 
-/** `true` for the one key that is a block rather than an action. */
+/**
+ * `true` for the one key that is a block rather than an action.
+ *
+ * Delegates to `isBlock` from the core types rather than repeating
+ * `key === "if"` here. This file carried two spellings — this one and
+ * `isBlock({ key })` — which is the shape a bug takes when the block key is ever
+ * changed in one place and not the other. The core version is the one the compiler
+ * branches on, so a UI that disagreed with it would offer a block the compiler
+ * would not run.
+ */
 function isBlockKey(key: string): boolean {
-    return key === BLOCK_META.key;
+    return isBlock({ key });
+}
+
+// ── Summary mode ─────────────────────────────────────────────────────────────
+
+/**
+ * One line that says everything the row is, in text rather than inputs.
+ *
+ * The reason this exists: a program is a *program*. Shown as a grid of input boxes
+ * it is not one — it is a wall of form fields, and reading it top to bottom (the
+ * only way to check that a generator does what you think) means reading input
+ * boxes. Every parameter on every row was a control where a word would do.
+ *
+ * The rules it follows, each of which exists because breaking it hides something:
+ *
+ *   - **An unset param is shown, not omitted.** `structure: —` is information;
+ *     silence is not. An omitted field and a defaulted one look identical if you
+ *     only print what is there.
+ *   - **A `false` boolean is omitted** but a `true` one is shown, because a
+ *     boolean param is normally written down to be *turned off*; printing
+ *     `flag: false` on every row buries the one that matters.
+ *   - **Options the action does not declare are still printed.** A row that has
+ *     drifted from its schema is exactly the thing you are looking for here, so it
+ *     is never quietly dropped.
+ *   - **`as` goes last**, as `→ name`, because it is the step's output and reads as
+ *     the arrow that causes it.
+ */
+function summarize(step: ProcessStep): string {
+    const options = (step.options ?? {}) as Record<string, unknown>;
+    const specs = paramsOf(step.key);
+    const declared = new Set(specs.map((s) => s.key));
+    const parts: string[] = [];
+    for (const spec of specs) {
+        const raw = options[spec.key];
+        if (raw === undefined) {
+            parts.push(`${spec.key} —`);
+        } else if (typeof raw === "boolean") {
+            if (raw) parts.push(spec.key);
+        } else {
+            parts.push(`${spec.key}: ${String(raw)}`);
+        }
+    }
+    for (const [k, v] of Object.entries(options)) {
+        if (declared.has(k)) continue;
+        parts.push(`${k}: ${String(v)}`);
+    }
+    if (step.as) parts.push(`→ ${step.as}`);
+    return parts.join("   ");
+}
+
+/**
+ * Which rows are open for editing, per process.
+ *
+ * **Outside React**, like the selector: the grid is a plain render function with no
+ * hook of its own, and it already re-derives itself from the JSON on every
+ * keystroke. Row identity is a **path** (`"3"`, `"3/1/then/0"`) rather than an object
+ * or a flat index, because a flat index would make row 4 of a renamed block the
+ * wrong row. A path changes when a row moves, which is the behaviour you want: you
+ * just reordered the program, so you want to read it, not have a stale open form.
+ *
+ * Keyed by process id so one process's open rows do not open another's.
+ */
+const EXPANDED: Map<string, Set<string>> = new Map();
+
+/** The open-row set for a process, created on first use. */
+function expandedFor(processId: string): Set<string> {
+    const id = processId || "(new)";
+    let set = EXPANDED.get(id);
+    if (!set) {
+        set = new Set();
+        EXPANDED.set(id, set);
+    }
+    return set;
+}
+
+/** The `key` prefix for a branch of row `path`. */
+function branchPath(path: string, which: "then" | "else"): string {
+    return `${path}/${which}/`;
+}
+
+/**
+ * Every row path in a program, in the same order and shape `stepList` builds them.
+ *
+ * Shared with Expand-all so the two cannot disagree about what a path is. Written
+ * once as a separate walk rather than collected during render, because render order
+ * is not a contract — a walk that happened to match would break the first time a
+ * row returned `null` instead of a node.
+ */
+function allPaths(list: readonly ProcessStep[], prefix: string): string[] {
+    const out: string[] = [];
+    list.forEach((step, i) => {
+        const at = `${prefix}${i}`;
+        out.push(at);
+        out.push(...allPaths(step.then ?? [], branchPath(at, "then")));
+        out.push(...allPaths(step.else ?? [], branchPath(at, "else")));
+    });
+    return out;
+}
+
+/** The muted style every summary piece shares. */
+const SUMMARY = { fontSize: 11, fontFamily: "ui-monospace, Menlo, monospace" } as const;
+
+/**
+ * The four row controls: move up, move down, delete — and, in summary mode, Edit.
+ *
+ * Shared because both modes must offer the **same** order and delete. Written once
+ * for a reason, not tidiness: two copies drift, and the drift here is silent — a
+ * collapsed row without a delete button still looks complete, and the program can
+ * only be reordered by expanding every row first.
+ */
+function rowControls(
+    h: H,
+    args: {
+        index: number;
+        total: number;
+        locked: boolean;
+        move: (by: number) => void;
+        remove: () => void;
+        /** The Edit/Done button, or `null` in the expanded form, which is open. */
+        toggle?: (() => void) | null;
+    },
+): unknown[] {
+    const chip = (
+        label: string,
+        title: string,
+        disabled: boolean,
+        onClick: () => void,
+        red = false,
+    ) => h(
+        "button",
+        {
+            style: { ...S.chip, padding: "0 5px", ...(red ? { color: "#c0392b" } : {}) },
+            disabled,
+            onClick,
+            title,
+        },
+        label,
+    );
+    return [
+        chip("↑", "Move up", args.locked || args.index === 0, () => args.move(-1)),
+        chip(
+            "↓",
+            "Move down",
+            args.locked || args.index === args.total - 1,
+            () => args.move(1),
+        ),
+        // Only the collapsed form offers Edit: the expanded form *is* the edit.
+        args.toggle ? chip("Edit", "Edit this step", args.locked, args.toggle) : null,
+        chip("×", "Delete this step", args.locked, args.remove, true),
+    ];
+}
+
+/**
+ * The collapsed row: the action's name, everything it is set to, and an Edit button.
+ *
+ * A `<span>`, not an `<input>` — a read-only input is still a control, and a
+ * program made of controls cannot be scanned. This is the view you read the
+ * generator in, so it is built to be read: the action name in bold, the values
+ * after it, and the `as` arrow at the end.
+ *
+ * A nested process shows its id and no options, because a nested process *is* its
+ * id — it has no parameters of its own, and printing an empty row of em-dashes for
+ * one would suggest it did.
+ */
+function summaryRow(h: H, step: ProcessStep, index: number, args: {
+    locked: boolean;
+    toggle: () => void;
+    move: (by: number) => void;
+    remove: () => void;
+    total: number;
+}): unknown {
+    const known = HANDLER_META.some((m) => m.key === step.key) || isBlockKey(step.key);
+    const label = isBlockKey(step.key) ? "if" : step.key;
+    return h(
+        "div",
+        {
+            style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "1px 2px",
+                borderRadius: 3,
+            },
+        },
+        h("span", { style: { ...S.label, minWidth: 18, fontSize: 10 } }, `${index + 1}`),
+        h(
+            "span",
+            {
+                style: {
+                    ...SUMMARY,
+                    color: isBlockKey(step.key) ? "#27ae60" : known ? "#e6e6e6" : "#e0a458",
+                    fontWeight: 600,
+                    minWidth: 88,
+                },
+                // The action's own doc, as a tooltip — it was a permanent line of text
+                // under every row, which was roughly a third of the screen.
+                title: ACTION_DOCS[step.key] ?? "",
+            },
+            label,
+        ),
+        h(
+            "span",
+            {
+                style: {
+                    ...SUMMARY,
+                    color: "#9aa0a6",
+                    flex: 1,
+                    // Wrap rather than clip: a long value must not be the one thing you
+                    // cannot see, and an ellipsis here would hide a truncated path —
+                    // the commonest cause of a step that does nothing.
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                },
+            },
+            summarize(step),
+        ),
+        // Order and delete stay in both modes. A program you could only reorder by
+        // expanding every row would be a program you reorder reluctantly.
+        ...rowControls(h, {
+            index,
+            total: args.total,
+            locked: args.locked,
+            move: args.move,
+            remove: args.remove,
+            toggle: args.toggle,
+        }),
+    );
 }
 
 /**
@@ -237,38 +472,65 @@ function isBlockKey(key: string): boolean {
  * keystroke; the benefit is that what the author sees and what would be saved are the
  * same value by construction.
  */
-function stepRow(
+/**
+ * One grid row, in whichever of the two modes it is in.
+ *
+ * The split lives **here** rather than inside the form, so the two modes cannot
+ * drift: same move buttons, same delete, same branches, same identity. Only the
+ * middle differs — a line of text, or the parameters as inputs.
+ */
+function stepRow(h: H, args: {
+    step: ProcessStep;
+    index: number;
+    total: number;
+    scope: string;
+    choices: { role: string; label: string; keys: string[] }[];
+    nestable: string[];
+    known: string[];
+    locked: boolean;
+    selector?: SelectorHandle;
+    replace: (step: ProcessStep) => void;
+    move: (by: number) => void;
+    remove: () => void;
+    branches?: (step: ProcessStep) => unknown;
+    /** `true` to render the full parameter form, `false` for the one-line summary. */
+    open: boolean;
+    toggle: () => void;
+}): unknown {
+    const body = args.open ? editRow(h, args) : summaryRow(h, args.step, args.index, {
+        locked: args.locked,
+        toggle: args.toggle,
+        move: args.move,
+        remove: args.remove,
+        total: args.total,
+    });
+    return h(
+        "div",
+        { key: `step:${args.index}`, style: { display: "flex", flexDirection: "column", gap: 3 } },
+        body,
+        // The branches render in **both** modes. Collapsing a block must not hide the
+        // program inside it — the block's own line is the least interesting part of
+        // a block, and a collapsed tree that hid them would be the same bug as never
+        // rendering them at all.
+        args.branches ? args.branches(args.step) : null,
+    );
+}
+
+/** The expanded row: the action picker, its params, and the `as` box. */
+function editRow(
     h: H,
     args: {
         step: ProcessStep;
         index: number;
         total: number;
-        /** Unused by the row itself, kept so the signature says what it is. */
-        scope: string;
         choices: { role: string; label: string; keys: string[] }[];
         nestable: string[];
         known: string[];
         locked: boolean;
-        /**
-         * The panel's shared selector, forwarded to every parameter below. Present so a
-         * `terrain` or `element` step parameter is a picker rather than a text box — the
-         * program grid is where most authored programs are built, so this is the screen
-         * where the text box was most worth fixing.
-         */
         selector?: SelectorHandle;
         replace: (step: ProcessStep) => void;
         move: (by: number) => void;
         remove: () => void;
-        /**
-         * Renders this step's `then`/`else` branches, indented, or nothing.
-         *
-         * Supplied by the grid rather than built here so the branch list is edited
-         * through the same path as the top level — same picker, same move buttons,
-         * same rewrite-the-JSON discipline. A block's body is a program like any
-         * other and the one thing it must not be is a second-class list with its
-         * own rules.
-         */
-        branches?: (step: ProcessStep) => unknown;
     },
 ): unknown {
     const { step, index, total, choices, nestable, known, locked } = args;
@@ -279,7 +541,6 @@ function stepRow(
     return h(
         "div",
         {
-            key: `step:${index}`,
             style: { ...S.card, display: "flex", flexDirection: "column", gap: 6, padding: 8 },
         },
         h(
@@ -320,25 +581,16 @@ function stepRow(
                     ? h("option", { value: step.key }, `${step.key} (unknown)`)
                     : null,
             ),
-            h("button", {
-                style: S.chip,
-                disabled: locked || index === 0,
-                onClick: () => args.move(-1),
-            }, "↑"),
-            h(
-                "button",
-                {
-                    style: S.chip,
-                    disabled: locked || index === total - 1,
-                    onClick: () => args.move(1),
-                },
-                "↓",
-            ),
-            h("button", {
-                style: { ...S.chip, color: "#c0392b" },
-                disabled: locked,
-                onClick: args.remove,
-            }, "×"),
+            // The same three controls as the collapsed row, in the same order. No
+            // Edit button: this row *is* the edit, so offering one would be a
+            // button whose only action is to make itself disappear.
+            ...rowControls(h, {
+                index,
+                total,
+                locked,
+                move: args.move,
+                remove: args.remove,
+            }),
         ),
         h("div", { style: S.hint }, ACTION_DOCS[step.key] ?? ""),
         ...specs.map((spec) =>
@@ -380,11 +632,6 @@ function stepRow(
                 ),
             )
             : null,
-        // The branches, indented under the block. A block used to render as a bare
-        // row with nothing under it, which is the "if is empty" an author sees: the
-        // program was there in the file the whole time, and the screen said it was
-        // not there at all.
-        args.branches ? args.branches(step) : null,
     );
 }
 
@@ -538,6 +785,10 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
             .map((p) => p.id)
         : [];
 
+    // Which rows are open, for this process only. Read here so the set is shared by
+    // every list in the tree — the top level and every branch.
+    const openRows = expandedFor(form.id ?? "");
+
     const commit = (next: ProcessStep[]): void => setField(STEPS_JSON_KEY, writeSteps(next));
     const replace = (index: number, step: ProcessStep): void => {
         const next = [...steps];
@@ -565,6 +816,7 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
     const stepList = (
         list: readonly ProcessStep[],
         depth: number,
+        path: string,
         write: (next: ProcessStep[]) => void,
     ): unknown =>
         h(
@@ -573,14 +825,15 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                 style: {
                     display: "flex",
                     flexDirection: "column",
-                    gap: 6,
+                    gap: 2,
                     // One indent level per branch, so nesting is visible without
                     // counting colours. Blocks nest at most 8 deep (MAX_BLOCK_DEPTH).
                     marginLeft: depth ? 12 : 0,
                 },
             },
-            ...list.map((step, i) =>
-                stepRow(h, {
+            ...list.map((step, i) => {
+                const at = `${path}${i}`;
+                return stepRow(h, {
                     step,
                     index: i,
                     total: list.length,
@@ -590,6 +843,15 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                     known,
                     locked,
                     selector: ctx.selector,
+                    open: openRows.has(at),
+                    toggle: () => {
+                        if (openRows.has(at)) openRows.delete(at);
+                        else openRows.add(at);
+                        // Re-render without touching the program: rewriting the same
+                        // JSON is the only way to ask the panel to draw again, and it
+                        // changes nothing a save would see.
+                        commit([...steps]);
+                    },
                     replace: (s) => {
                         const next = [...list];
                         next[i] = s;
@@ -604,13 +866,15 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                         write(next);
                     },
                     remove: () => write(list.filter((_, n) => n !== i)),
-                    branches: isBlock(step) ? (s) => renderBranches(s, depth) : undefined,
-                })
-            ),
+                    branches: isBlockKey(step.key)
+                        ? (s) => renderBranches(s, depth, at)
+                        : undefined,
+                });
+            }),
             h(
                 "button",
                 {
-                    style: S.chip,
+                    style: { ...S.chip, alignSelf: "flex-start" },
                     disabled: locked,
                     onClick: () => write([...list, { key: seedKey(choices, nestable) }]),
                 },
@@ -619,24 +883,27 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
         );
 
     /** Both branches of a block, each labelled and each holding a nested list. */
-    const renderBranches = (step: ProcessStep, depth: number): unknown =>
+    const renderBranches = (
+        step: ProcessStep,
+        depth: number,
+        at: string,
+    ): unknown =>
         h(
             "div",
-            { style: { display: "flex", flexDirection: "column", gap: 6 } },
+            { style: { display: "flex", flexDirection: "column", gap: 2 } },
             ...(["then", "else"] as const).map((which) =>
                 h(
                     "div",
-                    { key: which, style: { display: "flex", flexDirection: "column", gap: 4 } },
+                    { key: which, style: { display: "flex", flexDirection: "column", gap: 2 } },
                     h(
                         "div",
                         { style: { ...S.hint, ...BRANCH_STYLE[which] } },
-                        which === "then"
-                            ? "when the value is true"
-                            : "when it is false — empty means do nothing else",
+                        which === "then" ? "when true" : "when false",
                     ),
                     stepList(
                         step[which] ?? [],
                         depth + 1,
+                        branchPath(at, which),
                         (next) => replaceAt(step, which, next),
                     ),
                 )
@@ -658,9 +925,13 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
         const rewrite = (list: ProcessStep[]): ProcessStep[] =>
             list.map((s) => {
                 if (s === target) return withBranch(s, which, branch);
-                if (!isBlock(s)) return s;
-                const next = withBranch(s, "then", rewrite(s.then ?? []));
-                if (s.else) withBranchInto(next, "else", rewrite(s.else));
+                if (!isBlockKey(s.key)) return s;
+                // Both branches, one `withBranch` each. It copies, so the two calls
+                // cannot clobber each other — which a mutate-in-place variant here
+                // could, and did: the second branch was written onto the object the
+                // first had just returned.
+                let next = withBranch(s, "then", rewrite(s.then ?? []));
+                if (s.else) next = withBranch(next, "else", rewrite(s.else));
                 return next;
             });
         commit(rewrite(steps));
@@ -668,26 +939,58 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
 
     return h(
         "div",
-        { style: { display: "flex", flexDirection: "column", gap: 10 } },
+        { style: { display: "flex", flexDirection: "column", gap: 8 } },
         contextList(ctx, scope, steps),
         scope
             ? h(
                 "div",
-                { style: { display: "flex", flexDirection: "column", gap: 6 } },
-                h("div", { style: S.label }, "Steps"),
-                stepList(steps, 0, commit),
+                { style: { display: "flex", flexDirection: "column", gap: 4 } },
+                h(
+                    "div",
+                    { style: { display: "flex", alignItems: "center", gap: 6 } },
+                    h("div", { style: S.label }, "Steps"),
+                    // Expand-all / collapse-all, because per-row buttons alone make a
+                    // thirty-row program a thirty-click wall. Reading is the default
+                    // state and collapsing back to it is one click.
+                    h(
+                        "button",
+                        {
+                            style: { ...S.chip, marginLeft: "auto" },
+                            disabled: locked,
+                            onClick: () => {
+                                openRows.clear();
+                                allPaths(steps, "").forEach((p) => openRows.add(p));
+                                commit([...steps]);
+                            },
+                        },
+                        "Expand all",
+                    ),
+                    h(
+                        "button",
+                        {
+                            style: S.chip,
+                            disabled: locked,
+                            onClick: () => {
+                                openRows.clear();
+                                commit([...steps]);
+                            },
+                        },
+                        "Collapse all",
+                    ),
+                ),
+                stepList(steps, 0, "", commit),
             )
-            : null,
+            : h(
+                "div",
+                { style: S.hint },
+                "Pick a scope first — it decides which steps you can add.",
+            ),
+        // The field's own validation error, at the bottom. This is the only place a
+        // broken program shows itself before Save refuses it, so it stays in the
+        // collapsed view: making a program disappear in order to read the error is no
+        // way to fix a program.
+        error ? h("div", { style: S.errorText }, error) : null,
     );
-}
-
-/** `withBranch`, as a statement — so the intent reads as "also set this one". */
-function withBranchInto(
-    step: ProcessStep,
-    which: "then" | "else",
-    branch: ProcessStep[],
-): void {
-    step[which] = branch;
 }
 
 /**

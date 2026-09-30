@@ -240,6 +240,32 @@ export interface StructureConfig {
      */
     unlockNode?: string;
     disallowPick?: boolean;
+    /**
+     * Cap on how many of this structure may exist in one world at once.
+     *
+     * **The engine cannot do this for a mod, and a mod that ships
+     * `registerPlacementConfig({ maxCount })` is mistaken.** Two separate
+     * misconceptions meet here, so both are worth naming:
+     *
+     *  - `registerPlacementConfig` is the *hotbar field list*
+     *    (`{ structureId, fields }`). It has no `maxCount`, and passing one
+     *    makes the engine throw (bundel 88861).
+     *  - the engine's real `maxCount` is unreachable: bundel 5251 guards the
+     *    whole branch with `if (u.structureType === a.ev.GloomEmitter)`, and the
+     *    `building:placement-limit` hook that would write it is consulted for
+     *    that one structure only.
+     *
+     * So this is enforced by a single shared `hooks.intercept("building:place")`
+     * that counts live structures and cancels — see
+     * `src/register/custom/placement-limit.ts`.
+     *
+     * The count is **live**, read through `forEachOfType` at intercept time, not
+     * a running total in storage. The hook fires before the structure exists, so
+     * the pending one is not counted, and a count saved in a buffer would drift
+     * the moment a world was loaded, a save was restored, or a structure was
+     * removed by the Demolisher.
+     */
+    maxPlaced?: number;
     /** Alias structure type for the block grid. */
     blockGridType?: string;
     /**
@@ -804,6 +830,90 @@ export interface StructureBehaviorConfig {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PLACEMENT CONFIGS — structures.registerPlacementConfig
+//
+// `api.structures.registerPlacementConfig({ structureId, fields })` builds the
+// **placement hotbar fields** for one structure: the little widgets the player
+// adjusts while holding the building, before it is placed. An integer field
+// clamps a stored number to `min`/`max`; a choice field maps a value onto one of
+// a fixed set of labelled options.
+//
+// It is NOT a placement *count* limit, and it is worth being blunt about why
+// there is no `maxCount` here. The engine does have one, but it is unreachable
+// from a mod: bundel 5251 guards it with `if (u.structureType === a.ev.GloomEmitter)`
+// and never consults it for any other id, and the `maxCount` it would write is
+// only produced by the `building:placement-limit` hook for that same one
+// structure. A mod capping how many of its structure may exist has to do it in
+// `hooks.intercept("building:place", …)` and call `context.cancel()` — there is
+// no engine-side knob to reach for.
+//
+// The engine's own body (bundel 88861) throws on a missing `structureId`, an
+// empty `fields`, a field with no `id`, a field or choice-option with neither a
+// non-blank `label` nor a non-blank `labelKey`, a duplicate field `id`, or a
+// `choice` with no options. The panel enforces the same five rules at save time
+// — see `src/ui/definition/core/placement.ts`, which is where they are stated.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `max` as an upgrade-derived bound rather than a fixed number.
+ *
+ * The shipped `.d.ts` types `max?: number`, but the engine's `max` resolver
+ * (bundel 88861) reads the level of a purchased upgrade and adds an offset, so
+ * the bound grows with progression. Typing it here keeps the two honest rather
+ * than leaving a real capability looking like a typo.
+ */
+export interface PlacementFieldUpgradeMax {
+    /** The upgrade item whose level sets the bound. */
+    itemId: string;
+    /** Which upgrade on that item. */
+    upgradeId: string;
+    /** Floor applied before the level is added. */
+    minimum?: number;
+    /** Added to the level. */
+    offset?: number;
+}
+
+export interface PlacementFieldOptionConfig {
+    /** The stored value. Compared with `===` against what the player picked. */
+    value: string;
+    /** Plain-text label. A non-blank `label` **or** `labelKey` is required. */
+    label?: string;
+    /** i18n key label, for a translated label. */
+    labelKey?: string;
+    [key: string]: unknown;
+}
+
+export interface PlacementFieldConfig {
+    /** `integer` or `choice`. The engine treats anything else as a choice. */
+    type: "integer" | "choice";
+    /** Unique within this placement config. The key the value is stored under. */
+    id: string;
+    /** Plain-text label. A non-blank `label` **or** `labelKey` is required. */
+    label?: string;
+    /** i18n key label, for a translated label. */
+    labelKey?: string;
+    /** Integer only. Lower clamp; defaults to `Number.MIN_SAFE_INTEGER`. */
+    min?: number;
+    /** Integer only. A number, or an upgrade-derived bound. */
+    max?: number | PlacementFieldUpgradeMax;
+    /** Integer only. Starting value when nothing is stored yet. */
+    default?: number;
+    /** Choice only. At least one option is required. */
+    options?: PlacementFieldOptionConfig[];
+    [key: string]: unknown;
+}
+
+export interface PlacementConfigConfig {
+    /** Mod-local identity, for the row and the already-registered guard. */
+    id: string;
+    /** The structure these fields belong to. Required. */
+    structureId: string;
+    /** The hotbar fields. Required and non-empty — an empty list throws. */
+    fields: PlacementFieldConfig[];
+    [key: string]: unknown;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SIGNALS — targets / interactables / senderType (callbacks → handlerKey)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -943,6 +1053,16 @@ export type ModConfig = {
     unlockNodes: UnlockNodeConfig[];
     excavationProfiles: ExcavationProfileConfig[];
     structureBehaviors: StructureBehaviorConfig[];
+    /**
+     * Placement-hotbar fields — `structures.registerPlacementConfig`.
+     *
+     * Separate from `structureBehaviors` because the two answer different
+     * questions about the same structure: a behaviour is a simulation pass the
+     * engine runs, a placement config is UI the player adjusts before placing.
+     * A structure can have either, both, or neither, and neither implies the
+     * other — so a config with a `structureId` is a reference, not an owner.
+     */
+    placementConfigs: PlacementConfigConfig[];
     signals: SignalConfig[];
     triggers: TriggerConfig[];
     sprites: SpriteConfig[];
@@ -991,6 +1111,7 @@ export const DEFAULT_CONFIG: ModConfig = {
     unlockNodes: [],
     excavationProfiles: [],
     structureBehaviors: [],
+    placementConfigs: [],
     signals: [],
     triggers: [],
     sprites: [],
@@ -1087,6 +1208,14 @@ export const FIELD_HELP = {
     energyTypes: ["id, structureId, type (e.g. storage), options:{priority,excludeFromNetwork}"],
     excavationProfiles: ["id, power, pattern (square number[][]), options flags"],
     structureBehaviors: ["id, kind (conveyor|launcher), definition{}"],
+    placementConfigs: [
+        "id (required, mod-local)",
+        "structureId (required) — the structure these fields belong to",
+        "fields[] (required, non-empty) — {type: integer|choice, id, label|labelKey}",
+        "  integer: min?, max? (number or {itemId, upgradeId, minimum?, offset?}), default?",
+        "  choice: options[] (required, non-empty) — {value, label|labelKey}",
+        "NOTE: a hotbar field list, NOT a cap on how many may be placed",
+    ],
     signals: ["kind: targets|interactables|senderType, target, actions: [{key, options}]"],
     triggers: ["triggerId, interval, sequentialRuns, extra, actions: [{key, options}]"],
     sprites: ["id, path (loadFromMod) or source (load), options, fromMod"],

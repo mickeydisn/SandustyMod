@@ -186,7 +186,15 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
         // coined for: it reaches nothing at all — not the payload, not the context,
         // not a namespace — and answers from its own options. The one thing it does
         // with its result is hand it to the compiler.
-        "self-sufficient": 18,
+        //   18 → 19 with `math`, and the class is the interesting part rather than
+        //     the number. The obvious guess was `api`, because it calls `Math.round`
+        //     -- but `Math` is not the engine. The probe watches property access on
+        //     the host namespace, and `math` never touches it: it reads two options
+        //     and answers a number, which is the same shape as `compare` above.
+        //     Filing it as `api` would have meant "this action calls the game", and
+        //     clearing that class is this whole phase's job. A number that is not
+        //     the engine's must not go in it, or the class stops meaning anything.
+        "self-sufficient": 19,
         pure: 10,
     });
     assertEquals(Object.values(ACTION_CLASSES).length, ALL_KEYS.length, "total");
@@ -265,7 +273,15 @@ Deno.test("only `api` satisfies the rule, and the rest are the work to do", () =
     // justification for the action existing: a comparison is pure arithmetic and
     // anything it needed to reach for would be a bug in the config, not a
     // missing capability.
-    assertEquals(offRuleActions().length, 31);
+    //
+    // 31 → 32 with `math`, for exactly the same reason and it is worth being
+    // explicit that this is a decision rather than an accident. `math` calls
+    // `Math.round`, and the obvious move is to count that as reaching the engine.
+    // It does not: `Math` is a JavaScript builtin, present with or without
+    // Sandustry, so an action that used it is still self-sufficient. Putting it
+    // on the on-rule side would have satisfied this assertion and told a lie, in
+    // the same way the three buffer actions would have.
+    assertEquals(offRuleActions().length, 32);
     const off = offRuleActions();
     assertEquals(
         off.filter((a) => a.cls === "context-bound").map((a) => a.key).sort(),

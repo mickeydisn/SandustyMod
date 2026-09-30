@@ -342,6 +342,12 @@ export const ACTION_SCOPE: Record<string, readonly ScopeNeed[]> = {
     // Reads its options and nothing else — no payload, no context, no namespace.
     // Which is what makes it runnable in every slot, including `trigger`.
     compare: [],
+    // `math` likewise: it reads its own options and nothing else, so it needs
+    // nothing from a caller either. It is the reason a weight or yield rule can
+    // live in a config at all, and it has to be runnable in `trigger` to do that
+    // — a trigger is handed nothing, so anything the rule needs has to be in the
+    // step's own options.
+    math: [],
     // Reads its options and reaches `api.random`. So its scope is still `[]` —
     // scope records what it needs *from the caller*, and the engine namespace is
     // ambient, reaching for it costs the call site nothing. That is the same

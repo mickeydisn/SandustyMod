@@ -169,46 +169,123 @@ function tick(compiled: ReturnType<typeof compileTick>, cells: Map<string, strin
     return structure.data;
 }
 
-Deno.test("the generator picks a material each cycle, and only eats that one", () => {
-    // The rule the source mod's `pickMaterialIndex` implements. Pinned to gold it
-    // charged at gold's rate forever and the copper and sand links could never
-    // light — the material-link feature was dead on arrival while looking
-    // correctly wired.
+/**
+ * The `then` of the block that tests `varName`, anywhere in the tree.
+ *
+ * Descends into **both** branches. It used to follow only `else`, which was enough
+ * when the three material blocks chained through `else` (there is no `else if`),
+ * and wrong the moment a block was nested in a `then` — which is where the
+ * `nextGold`/`nextCopper`/`nextSand` blocks live, inside the spawn branch. A
+ * search that cannot see a block reports it as "never written", which reads as a
+ * config bug rather than a test that is not looking in the right place.
+ */
+function branchFor(steps: Step[], varName: string): Step[] {
+    for (const s of steps) {
+        if (s.key !== "if") continue;
+        if (s.options?.var === varName) return s.then ?? [];
+        const nested = branchFor(s.then ?? [], varName);
+        if (nested.length) return nested;
+        const inElse = branchFor(s.else ?? [], varName);
+        if (inElse.length) return inElse;
+    }
+    return [];
+}
+
+Deno.test("the material changes only when an artefact is generated", () => {
+    // The rule the source mod implements: `pickMaterialIndex` runs on the spawn
+    // cycle, not on the tick.
+    //
+    // The bug this pins: `randomInt` was the **first** step of the 200 ms tick, so
+    // the generator re-rolled its material five times a second. Because the
+    // material picks which link lights and how fast the charge climbs, the whole
+    // machine churned constantly -- and it looked correct in the panel, because
+    // every step was valid. Nothing offline can see a cadence; only the config's
+    // *shape* can.
     const proc = CONFIG.processes.find((p: { id: string }) => p.id === "artefact-generator-tick");
-    const pick = proc.steps.find((s: Step) => s.key === "randomInt");
-    assertEquals(pick, {
-        key: "randomInt",
-        options: { min: "0", max: "2" },
-        as: "pick",
-    });
-    // The pick has to be **stored**, or the three links have nothing to agree on
-    // and each one is deciding for itself.
+
+    // 1. No roll at the top of the tick. This is the assertion that would have
+    //    caught it, and it is the simplest one to read.
+    assertEquals(
+        proc.steps.some((s: Step) => s.key === "randomInt"),
+        false,
+        "the tick re-rolls the material on every pass, so it changes five times a " +
+            "second instead of once per artefact",
+    );
+
+    // 2. The tick *reads* the stored index, so the material persists between
+    //    spawns. Without this read the branches have nothing to agree on.
     assertEquals(
         proc.steps.some(
+            (s: Step) => s.key === "bufferRead" && s.options?.path === "materialIndex",
+        ),
+        true,
+        "the tick no longer reads materialIndex, so the branches cannot see a material",
+    );
+
+    // 3. The roll is inside the threshold branch -- the spawn branch.
+    const spawn = (proc.steps as Step[]).find(
+        (s: Step) => s.key === "if" && s.options?.var === "full",
+    );
+    assert(spawn, "the generator has no threshold branch to spawn from");
+    const roll = (spawn.then as Step[]).find((s: Step) => s.key === "randomInt");
+    assertEquals(roll?.options, { min: "0", max: "2" });
+    assertEquals(roll?.as, "pick", "the roll binds nothing, so it is discarded");
+    assertEquals(
+        (spawn.then as Step[]).some(
             (s: Step) =>
                 s.key === "bufferWrite" && s.options?.path === "materialIndex" &&
                 s.options?.value === "{{pick}}",
         ),
         true,
-        "the pick is never written to materialIndex, so no link can read it",
+        "the new material is rolled but never stored, so the next tick reads the old one",
     );
 
-    // Each material gets its own branch, and the branch eats *that* material.
-    // All three counted the same element, the choice would be cosmetic.
-    // Walks **recursively**, which is load-bearing: `if` has no `else if`, so
-    // copper's branch lives inside gold's `else` and sand's inside copper's.
-    // A top-level-only search finds gold and reports the other two as missing,
-    // which reads as "the branches were never written" rather than "the search
-    // did not descend".
-    const branchFor = (steps: Step[], varName: string): Step[] => {
-        for (const s of steps) {
-            if (s.key !== "if") continue;
-            if (s.options?.var === varName) return s.then ?? [];
-            const nested = branchFor(s.else ?? [], varName);
-            if (nested.length) return nested;
+    // 4. And the write happens nowhere else. A second `materialIndex` write
+    //    outside the spawn branch re-introduces the churn under another spelling.
+    const writesOutside: string[] = [];
+    const walk = (steps: Step[], inside: boolean) => {
+        for (const s of steps ?? []) {
+            const inSpawn = inside || (s.key === "if" && s.options?.var === "full");
+            if (s.key === "bufferWrite" && s.options?.path === "materialIndex" && !inSpawn) {
+                writesOutside.push(s.key);
+            }
+            walk(s.then ?? [], inSpawn);
+            walk(s.else ?? [], inSpawn);
         }
-        return [];
     };
+    walk(proc.steps, false);
+    assertEquals(writesOutside, [], "materialIndex is written outside the spawn branch");
+
+    // 5. The artefact is made of the *new* material, so "the element changes when
+    //    an artefact is generated" is true of the artefact too, not just the
+    //    generator. Mapped through compares because the pick is a number.
+    for (
+        const [flag, element] of [
+            ["nextGold", "gold"],
+            ["nextCopper", "copper"],
+            ["nextSand", "sand"],
+        ]
+    ) {
+        assertEquals(
+            branchFor(proc.steps, flag).some(
+                (s: Step) =>
+                    s.key === "bufferWrite" && s.options?.path === "emit-element" &&
+                    s.options?.value === element,
+            ),
+            true,
+            `the ${flag} branch never names ${element} as the emitted element`,
+        );
+    }
+});
+
+Deno.test("the generator eats only the material it picked", () => {
+    // Pinned to gold it charged at gold's rate forever and the copper and sand
+    // links could never light — the material-link feature was dead on arrival
+    // while looking correctly wired.
+    const proc = CONFIG.processes.find((p: { id: string }) => p.id === "artefact-generator-tick");
+
+    // Each material gets its own branch, and the branch eats *that* material.
+    // All three counting the same element would make the choice cosmetic.
     const seen = new Set<string>();
     for (
         const [flag, element] of [
@@ -258,6 +335,86 @@ Deno.test("the generator picks a material each cycle, and only eats that one", (
             s.options?.path?.startsWith("links-"),
     );
     assertEquals(cleared.length, 3, "the links are not all cleared before the pick");
+});
+
+Deno.test("each material charges at its own rate, and the rates really differ", () => {
+    // The rule the source mod implements: `progress += round(cells / mult)`.
+    //
+    // The bug this pins: all three branches added the raw cell count, so gold,
+    // copper and sand charged at **identical** speed. The `mult` was written to
+    // the structure's data bag and read by nothing — decoration on the tooltip,
+    // on a machine whose entire point is that the three materials differ.
+    const proc = CONFIG.processes.find((p: { id: string }) => p.id === "artefact-generator-tick");
+
+    // Each branch divides by its own multiplier, and the increment adds the
+    // result rather than the cell count. Both halves matter: dividing and then
+    // incrementing by `eaten` would compute the rate and throw it away.
+    const rate: Record<string, number> = {};
+    for (
+        const [flag, element, mult] of [
+            ["isGold", "gold", "1"],
+            ["isCopper", "copper", "0.5"],
+            ["isSand", "sand", "5"],
+        ] as const
+    ) {
+        const branch = branchFor(proc.steps, flag);
+        const m = branch.find((s: Step) => s.key === "math");
+        assert(m, `the ${flag} branch has no math step, so its rate is the raw cell count`);
+        assertEquals(
+            m.options,
+            { left: "{{eaten}}", op: "div", right: mult },
+            `${flag} does not charge at cells/${mult}`,
+        );
+        assertEquals(m.as, "charge", `the ${flag} rate is computed and then not used`);
+        assertEquals(
+            branch.some(
+                (s: Step) => s.key === "bufferIncrement" && s.options?.delta === "{{charge}}",
+            ),
+            true,
+            `${flag} increments by the cell count instead of its own rate`,
+        );
+        // Parsed to a number, not carried as the option's string: the three
+        // assertions at the end do arithmetic on it, and `"10" / "0.5"` in a test
+        // is a string concatenated rather than a number divided.
+        rate[element] = Number(mult);
+    }
+
+    // And the three multipliers are genuinely different, which is the whole claim.
+    // A test that only checked the steps exist would pass with three identical
+    // multipliers — and that is exactly the config that shipped.
+    assertEquals(new Set(Object.values(rate)).size, 3, "the three rates are not distinct");
+
+    // The ordering, written as the source's arithmetic so the direction of each
+    // one is checked rather than assumed: copper is worth twice a gold cell
+    // (`/ 0.5`), and five sand cells make a charge.
+    const charge = (cells: number, mult: number) => Math.round(cells / mult);
+    assertEquals(charge(10, rate.gold), 10);
+    assertEquals(charge(10, rate.copper), 20);
+    assertEquals(charge(10, rate.sand), 2);
+});
+
+Deno.test("every branch in the tick holds a list of steps", () => {
+    // A branch whose `then` is an object rather than an array compiles, validates,
+    // and renders in the panel as a block with nothing visible inside it — and does
+    // nothing in the game. That shape reached the config once, from a patch script
+    // that assigned a block where a list belonged, so it is checked here rather
+    // than left to be rediscovered by playing the game.
+    const bad: string[] = [];
+    const walk = (steps: Step[], where: string) => {
+        for (const s of steps ?? []) {
+            for (const k of ["then", "else"] as const) {
+                const v = (s as Record<string, unknown>)[k];
+                if (v === undefined) continue;
+                if (!Array.isArray(v)) {
+                    bad.push(`${where}/${s.key}.${k} is ${typeof v}, not a list`);
+                    continue;
+                }
+                walk(v as Step[], `${where}/${s.key}.${k}`);
+            }
+        }
+    };
+    for (const p of CONFIG.processes) walk(p.steps, p.id);
+    assertEquals(bad, [], `a branch is not a list: ${bad.join(", ")}`);
 });
 
 Deno.test("the generator spawns once it crosses 50, and resets", () => {
@@ -322,10 +479,22 @@ Deno.test("the artefact emits while it has something left, and removes itself af
         2,
         "the source emits 2 cells per tick",
     );
+    // It removes itself **only** when it is done, and not one tick earlier.
+    //
+    // The config had `removeStructure` inside the `hasMore` branch, so the artefact
+    // deleted itself on its first tick and never emitted anything. Asserting the
+    // exact contents of `else` would have caught that too, but it also breaks every
+    // time a "mark me done" line is added in front of it -- so what is asserted is
+    // the rule: present when finished, absent while working.
     assertEquals(
-        block.else.map((s: { key: string }) => s.key),
-        ["removeStructure"],
-        "having emitted everything, the artefact removes itself",
+        block.then.some((s: { key: string }) => s.key === "removeStructure"),
+        false,
+        "the artefact removes itself while it still has something to emit",
+    );
+    assertEquals(
+        block.else.at(-1)?.key,
+        "removeStructure",
+        "having emitted everything, the artefact does not remove itself last",
     );
     // The counter is what makes `hasMore` true at all, and a negative counter
     // would flip the branch the wrong way on the first tick.
@@ -386,20 +555,20 @@ Deno.test("every buffer path a step uses is one the config declares", () => {
  * Walks nested `if` blocks rather than indexing, so it keeps finding the right
  * branch when the nesting is rearranged — which is what a config author editing
  * the process in the panel will do.
+ *
+ * A named alias over `branchFor`, kept because a dozen assertions below are about
+ * *gold specifically*, and spelling `branchFor(steps, "isGold")` at each one buries
+ * what they are checking under the lookup. It used to carry its own copy of the
+ * walk — a version that followed only `else`, so it could not see a block nested
+ * in a `then`. Two copies of a search, one of them wrong, is the arrangement that
+ * eventually makes a test pass against a config it was not looking at.
  */
 function goldBranch(proc: { steps: Step[] }): Step[] {
-    const find = (steps: Step[], varName: string): Step[] | undefined => {
-        for (const s of steps) {
-            if (s.key !== "if") continue;
-            if (s.options?.var === varName) return s.then ?? [];
-            const nested = find(s.else ?? [], varName);
-            if (nested) return nested;
-        }
-        return undefined;
-    };
-    const outer = find(proc.steps, "isGold");
-    if (!outer) throw new Error("no branch on isGold — the material pick is unwired");
-    return outer;
+    const gold = branchFor(proc.steps, "isGold");
+    if (gold.length === 0) {
+        throw new Error("no branch on isGold — the material pick is unwired");
+    }
+    return gold;
 }
 
 Deno.test("the tick's steps are all real", () => {
@@ -432,7 +601,22 @@ Deno.test("the progress step is an increment by the count eaten", () => {
     // mod does with `min(MAX_PROGRESS, …)`, and it is why the tick needs no
     // arithmetic action.
     const slot = CONFIG.buffers.find((b: { path: string }) => b.path === "progress");
-    assertEquals(slot.max, 50, "the clamp is the slot's bound, so it has to be right");
+    // The clamp is no longer the charge target -- that is the placement field's
+    // `chargeTarget`, and the player chooses it per generator. The clamp is now
+    // only the **ceiling that has to be reachable**: a target above it would make
+    // the generator charge forever and never fill, which is a dead generator that
+    // still looks correct in the panel. The invariant this test was written to
+    // protect -- "the slot's own `max` is the clamp" -- is unchanged; what moved
+    // is which number is the target.
+    const target = CONFIG.structures
+        .find((s: { id: string }) => s.id.endsWith(":generator"))
+        .defaultData.chargeTarget;
+    assertEquals(target, 50, "and a freshly placed generator still charges for 50");
+    assertEquals(
+        slot.max,
+        200,
+        "the clamp is the slot's bound, so it has to be the highest reachable target",
+    );
     assertEquals(slot.min, 0, "and progress cannot go below zero");
     assertEquals(slot.default, 0, "and it starts at zero");
 
@@ -455,14 +639,27 @@ Deno.test("the progress step is an increment by the count eaten", () => {
         if (!s) throw new Error(`the gold branch has no "${key}" step`);
         return s;
     };
+    // The increment adds the **rate**, not the cell count. This assertion used to
+    // expect `delta: {{eaten}}`, which *was* the bug: all three materials then
+    // charged at the same speed and `mult` was decoration on the tooltip. The rate
+    // itself is checked in "each material charges at its own rate" — what matters
+    // here is that the number being added is the one the `math` step produced.
     assertEquals(must("bufferIncrement"), {
         key: "bufferIncrement",
-        options: { path: "progress", delta: "{{eaten}}" },
+        options: { path: "progress", delta: "{{charge}}" },
     });
-    // And the count that feeds it is the count of what was eaten.
+    // The chain that produces it: count the cells, then divide by the multiplier.
     const count = must("logicCount");
-    assertEquals(count.as, "eaten", "the count is not bound to the name the delta reads");
+    assertEquals(count.as, "eaten", "the count is not bound to the name the rate reads");
     assertEquals(count.options?.element, "gold", "and it counts the chosen material");
+    const rate = must("math");
+    assertEquals(rate.as, "charge", "the rate is not bound to the name the delta reads");
+    assertEquals(rate.options?.left, "{{eaten}}", "the rate is not of the count eaten");
+    assertEquals(rate.options?.op, "div", "the rate is not cells divided by the multiplier");
+    // Gold's multiplier is 1, so this division is a no-op — asserted anyway,
+    // because a config that dropped the `math` step for gold alone would still
+    // charge correctly, and the other two branches would be the only evidence.
+    assertEquals(rate.options?.right, "1");
     // The removal must name the **same** element, or the generator charges for
     // what it did not take — a leak that no assertion on the increment would catch.
     const remove = must("removeElement");
@@ -509,11 +706,38 @@ Deno.test("the tick's branches come back through the panel, not just the steps",
         list.reduce((n, s) =>
             n + (s.key === "if" ? 1 : 0) + countBlocks(s.then ?? []) +
             countBlocks(s.else ?? []), 0);
-    assertEquals(
-        countBlocks(steps),
-        4,
-        "the generator's threshold rule and three material branches are not all in the form",
-    );
+    // Asserted as "the blocks that must be here are here" rather than a count.
+    // A count is a tripwire that fires on every legitimate edit — it went 4 -> 7
+    // when the spawn branch grew its three element-mapping blocks, and 7 -> 12
+    // when the two placement fields added their five. The failure said nothing
+    // about what was actually wrong in either case. Naming the blocks says what
+    // the screen has to show.
+    for (
+        const varName of [
+            "isGold",
+            "isCopper",
+            "isSand",
+            "full",
+            "nextGold",
+            "nextCopper",
+            "nextSand",
+            // The two placement fields. `hasPref` and its three material
+            // branches decide what `idx` is; `hasTarget` picks between the
+            // chosen charge target and the literal 50. All five are `if` blocks
+            // the grid must render, or a step is invisible in the editor and
+            // one keystroke away from being dropped.
+            "hasPref",
+            "wantsGold",
+            "wantsCopper",
+            "wantsSand",
+            "hasTarget",
+        ]
+    ) {
+        assert(
+            branchFor(steps, varName).length > 0,
+            `the ${varName} block is missing from the form, so the grid shows one fewer if`,
+        );
+    }
 
     // And each branch must still hold its steps, not just exist.
     const branchSizes: number[] = [];

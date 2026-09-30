@@ -1,0 +1,10 @@
+# Tool output. `tools/*.ts` write these and nothing reads them back except the
+# other tools, in the documented order:
+#
+#   extract-api → extract-public-api (--mod) → extract-definitions
+#   → extract-object-graph → gen-reference → parameter-map → capability-map
+#
+# They are regenerated wholesale, so tracking them would only ever produce merge
+# noise. The root .gitignore already covers `build*/`.
+doc-bundel/
+doc/

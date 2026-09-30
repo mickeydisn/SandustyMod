@@ -41,6 +41,18 @@ const FIELDS: FieldSpec[] = [
         hint: "grouping heading in the game's settings screen",
     }),
     {
+        // Above the Binding block, with the other Identity fields it belongs to.
+        // Declared below `onUpKey`, it opened a second Identity box — the panel
+        // drew Identity / Binding / Identity for nine fields.
+        key: "subsectionJson",
+        label: "Subsection",
+        kind: "json",
+        section: "Identity",
+        jsonType: "object",
+        wide: true,
+        hint: "optional settings group: { title, titleKey, description, descriptionKey }",
+    },
+    {
         // KeyCode is a LooseString union, so this is a picker that offers
         // suggestions rather than a closed list — chords like
         // "Control+KeyC" are valid and cannot be enumerated ahead of time.
@@ -68,15 +80,6 @@ const FIELDS: FieldSpec[] = [
         section: "Binding",
         options: listAnyHandlerKeys,
         hint: `runs when the key comes back up. ${typesHintFor(() => listAnyHandlerKeys())}`,
-    },
-    {
-        key: "subsectionJson",
-        label: "Subsection",
-        kind: "json",
-        section: "Identity",
-        jsonType: "object",
-        wide: true,
-        hint: "optional settings group: { title, titleKey, description, descriptionKey }",
     },
     advField(),
 ];

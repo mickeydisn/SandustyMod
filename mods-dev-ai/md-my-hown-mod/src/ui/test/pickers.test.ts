@@ -132,7 +132,17 @@ Deno.test("the screens sit in the groups that were asked for, in order", () => {
         "terrains",
         "elements",
         "structures",
-        "items",
+        // `placementConfigs` is NOT here any more. It used to be, with a comment
+        // right here explaining that a placement config "is something a structure
+        // *has*, so it is read with the structures" — and then put it in the same
+        // list as the structures themselves. Being next to them in a group is not
+        // being read with them: it was its own screen, reached Content → Placement
+        // fields → Placement fields, with a title that named itself.
+        //
+        // It is now genuinely attached (see `./panel/attach.ts`), so it is drawn
+        // beneath the structures like `behaviors` and `signals`. The argument in
+        // the old comment was right; only the implementation contradicted it.
+        //
         // `buffers` is a Content tab and not an attached list, which is worth
         // stating because the two look alike in the code. An attached list is
         // something a structure *has* — a tooltip, a behaviour — and is drawn
@@ -140,6 +150,7 @@ Deno.test("the screens sit in the groups that were asked for, in order", () => {
         // mod and to no entry, so there is nothing for it to hang off and every
         // structure's process can reach it. That is what makes it a tab of its own
         // rather than a field on a structure.
+        "items",
         "buffers",
     ]);
     assertEquals(tabsOf("production"), ["contacts", "recipes"]);
@@ -168,7 +179,10 @@ Deno.test("the qualifying lists hang off the thing they qualify", () => {
     // tooltip of an element, or the functions behind an item's projectiles, should
     // not have to know that those live somewhere else entirely.
     assertEquals(attachedTo("elements"), ["interactions"]);
-    assertEquals(attachedTo("structures"), ["behaviors", "signals"]);
+    // Placement fields joins the other two structure qualifiers, and leads them:
+    // it describes the structure itself, where a behaviour and a signal are
+    // optional things hung off it.
+    assertEquals(attachedTo("structures"), ["placementConfigs", "behaviors", "signals"]);
     // The two "builds a value" catalogues sit with the entries they configure, in
     // the same order as the thing they configure.
     assertEquals(attachedTo("items"), [

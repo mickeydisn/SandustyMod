@@ -1223,8 +1223,11 @@ console.log("── bundled asset library picker ──");
     const all = listLibraryAssets();
     check("library is populated", all.length > 0, `${all.length} icons`);
     check(
+        // Still mod-relative (the engine loads it with `loadFromMod`), but no
+        // longer icons-only: the library is every bundled PNG under `assets/`,
+        // so structure art is selectable too.
         "library paths are mod-relative assets",
-        all.every((a) => a.path.startsWith("assets/icons/")),
+        all.every((a) => a.path.startsWith("assets/") && !a.path.includes("..")),
         all[0]?.path,
     );
     check(
@@ -2724,11 +2727,25 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
         badSize.length === 0,
         badSize.map((a) => a.name).join(" "),
     );
-    const not16 = assets.filter((a) => a.previewW !== 16 || a.previewH !== 16);
+    // Only the **icons** are 16×16 cells. The library is every bundled PNG, so it
+    // also carries structure art (`generator` is 48×16, the material tiles 32×16)
+    // — real assets at their real size. Asserting 16×16 over the whole list is
+    // what forced the generator to hide them in the first place. The size-vs-PNG
+    // agreement above is the invariant that actually protects the panel.
+    const icons = assets.filter((a) => a.path.startsWith("assets/icons/"));
+    const not16 = icons.filter((a) => a.previewW !== 16 || a.previewH !== 16);
     check(
         "every icon previews at 16×16",
         not16.length === 0,
         not16.map((a) => `${a.name} ${a.previewW}x${a.previewH}`).join(" "),
+    );
+    // And the library is not icons-only any more: the structure art has to be in
+    // here or the panel cannot save a sprite that points at it.
+    const nonIcons = assets.filter((a) => !a.path.startsWith("assets/icons/"));
+    check(
+        "non-icon bundled assets are listed too",
+        nonIcons.length > 0,
+        `${assets.length} assets, all under assets/icons/`,
     );
 
     // Nearest-neighbour is what keeps the art crisp when scaled up.

@@ -344,7 +344,12 @@ const FIELDS: FieldSpec[] = [
         "conveyors / launchers can move it",
     ),
     boolField("isGrabbable", "Grabbable", "Behaviour"),
-    boolField("visibleInPicker", "Visible in picker", "Flags", "true"),
+    // "Behaviour" rather than a one-field "Flags" box. It sat immediately after
+    // the two Behaviour toggles and gave elements a ninth section holding a
+    // single checkbox — a heading and a divider for one control. All three are
+    // the same question ("how does the world treat this element"), and
+    // `FLAGS` further down still classifies all three together.
+    boolField("visibleInPicker", "Visible in picker", "Behaviour", "true"),
     ...FLAMMABLE_FIELDS,
     ...COLLECTABLE_FIELDS,
     ...DATA_FIELDS,

@@ -64,6 +64,10 @@ const EXPECTED: Record<string, string[]> = {
         "interactions",
         "items",
         "modifiers",
+        // The engine has a first-class `registerPlacementConfig` and a typed
+        // `PlacementConfigDefinition`, so this is an engine object in `core/` —
+        // not a mod-owned one, even though the entry also carries a mod-local id.
+        "placementConfigs",
         "processing",
         "projectiles",
         "recipes",

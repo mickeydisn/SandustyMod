@@ -36,6 +36,7 @@ import { interactionDefinition } from "./core/interaction.ts";
 import { itemDefinition } from "./core/item.ts";
 import { modifierDefinition } from "./core/modifier.ts";
 import { processingDefinition } from "./core/processing.ts";
+import { placementConfigDefinition } from "./core/placement.ts";
 import { projectileDefinition } from "./core/projectile.ts";
 import { recipeDefinition } from "./core/recipe.ts";
 import { signalDefinition } from "./core/signal.ts";
@@ -60,6 +61,7 @@ import type { Definition, Tab } from "./types.ts";
  */
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
     behaviors: behaviorDefinition,
+    placementConfigs: placementConfigDefinition,
     buffers: bufferDefinition,
     customProcess: customProcessDefinition,
     categories: upgradeCategoryDefinition,

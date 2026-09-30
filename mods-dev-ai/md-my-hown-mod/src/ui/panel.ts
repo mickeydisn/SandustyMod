@@ -23,6 +23,7 @@ import {
     addOrUpdateInteraction,
     addOrUpdateItem,
     addOrUpdateModifier,
+    addOrUpdatePlacementConfig,
     addOrUpdateProcessing,
     addOrUpdateProjectile,
     addOrUpdateRecipe,
@@ -51,6 +52,7 @@ import {
     removeInteraction,
     removeItem,
     removeModifier,
+    removePlacementConfig,
     removeProcessing,
     removeProjectile,
     removeRecipe,
@@ -88,6 +90,7 @@ import {
     resolveAutoFill,
     resolveOptions,
     sectionsFor,
+    sectionsToReveal,
     shapeToText,
     type Tab,
     validateForm,
@@ -270,6 +273,7 @@ export const UPSERT: Partial<Record<Tab, UpsertFn>> = {
     excavation: addOrUpdateExcavationProfile,
     customProcess: addOrUpdateCustomProcess,
     behaviors: addOrUpdateStructureBehavior,
+    placementConfigs: addOrUpdatePlacementConfig,
     signals: addOrUpdateSignal,
     triggers: addOrUpdateTrigger,
     sprites: addOrUpdateSprite,
@@ -297,6 +301,7 @@ export const REMOVE: Partial<Record<Tab, RemoveFn>> = {
     excavation: removeExcavationProfile,
     customProcess: removeCustomProcess,
     behaviors: removeStructureBehavior,
+    placementConfigs: removePlacementConfig,
     signals: removeSignal,
     triggers: removeTrigger,
     sprites: removeSprite,
@@ -357,6 +362,15 @@ export function createPanelComponent(defaultMinimized = true) {
         const [form, setForm] = useState<Record<string, string>>({});
         const [editingId, setEditingId] = useState<string | null>(null);
         const [confirmId, setConfirmId] = useState<string | null>(null);
+        /**
+         * Field-group titles to render **open**, whatever the collapsed default.
+         *
+         * Cleared whenever a form opens, so an entry is always a fresh read: the
+         * set belongs to one entry, and section titles are reused across entries
+         * on the same tab ("Advanced", "Identity"), so leaving it alone would carry
+         * the previous entry's forced-open boxes into the next one.
+         */
+        const revealed = useRef<Set<string>>(new Set());
         /**
          * The list screen's own filter state.
          *
@@ -720,6 +734,7 @@ export function createPanelComponent(defaultMinimized = true) {
             setEditingId(null);
             setConfirmId(null);
             setCat(tab);
+            revealed.current = new Set();
             // `newEntryForm` applies the field defaults and then the definition's
             // own seed, so a tab whose first save needs a decision the author
             // never made (a structure's unlock node) does not need a special case
@@ -732,6 +747,7 @@ export function createPanelComponent(defaultMinimized = true) {
             setConfirmId(null);
             const id = typeof entry.id === "string" ? entry.id : null;
             setEditingId(id);
+            revealed.current = new Set();
             const next = entryToForm(tab, entry);
             // A tech's structure-derived unlocks live on the *structures*, not on
             // the node, so the form would open showing fewer unlocks than the game
@@ -1367,7 +1383,9 @@ export function createPanelComponent(defaultMinimized = true) {
                 { key: child, style: S.sectionBox },
                 h(
                     "div",
-                    { style: S.sectionTitle },
+                    // Same size as the screen's own title above it: these are
+                    // peer lists, not captions of the one above.
+                    { style: S.listHeadingRow },
                     childMeta.label,
                     h("span", { style: S.chipCount }, String(childRows.length)),
                 ),
@@ -1651,6 +1669,19 @@ export function createPanelComponent(defaultMinimized = true) {
             // out entirely — that is what keeps an entry with nothing hidden from
             // showing an empty "Advanced" heading.
             const sections = sectionsFor(cat, form);
+            // Sections to open **regardless** of the collapsed default: anything
+            // holding a validation error. Save is disabled while there is one,
+            // and a message about a field inside a closed box is a dead end — the
+            // reader is told what is wrong and shown no way to reach it.
+            //
+            // Latched into a ref rather than recomputed per render: see
+            // `sectionsToReveal`. A box forced open stays open while its contents
+            // are being fixed, instead of snapping shut the moment the field turns
+            // valid.
+            for (const title of sectionsToReveal(sections, errors)) {
+                revealed.current.add(title);
+            }
+            const revealedSet = revealed.current;
             const title = editingId ? `Edit ${meta.label}` : `New ${meta.label.toLowerCase()}`;
             return h(
                 "div",
@@ -1671,9 +1702,23 @@ export function createPanelComponent(defaultMinimized = true) {
                     : []),
                 ...sections.map((sec) =>
                     h(
-                        "div",
-                        { key: sec.title, style: S.sectionBox },
-                        h("div", { style: S.sectionTitle }, sec.title),
+                        "details",
+                        {
+                            key: sec.title,
+                            style: S.sectionBox,
+                            // Closed by default; `revealed` is the exception
+                            // below. Left as `false` for the rest, which is why
+                            // a click still works: React only writes an
+                            // attribute whose value changed, so the browser owns
+                            // the open state once the user has touched it.
+                            open: revealedSet.has(sec.title),
+                        },
+                        h(
+                            "summary",
+                            { style: S.sectionSummary },
+                            h("span", { style: S.sectionTitle }, sec.title),
+                            h("span", { style: S.sectionCount }, String(sec.fields.length)),
+                        ),
                         h("div", { style: S.fieldGrid }, ...sec.fields.map((f) => renderField(f))),
                     )
                 ),

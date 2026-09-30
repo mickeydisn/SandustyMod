@@ -15,6 +15,35 @@
  */
 import { defineActions, hostNs } from "../../core/types.ts";
 
+/**
+ * The two operands and the operator of a two-sided action, coerced.
+ *
+ * Both `compare` and `math` need exactly this, and the reason they need it is the
+ * same in both cases: **every value reaching an option has been through the
+ * engine, so it arrives as a string.** `"7" * "5"` is 35 but `"7" + "5"` is `"75"`,
+ * so a two-sided action that skipped `Number()` would answer a concatenated string
+ * for `add` and a correct number for `mul` — and the difference between arithmetic
+ * and string joining is invisible in a config, because both look like a number in
+ * the panel.
+ *
+ * Stated once so the two actions cannot drift on it. A copy in each was the
+ * arrangement this replaces: `compare` checked both sides for finiteness while
+ * `math` treats a bad left differently from a bad right, and a reader had no way
+ * to tell which of those was deliberate.
+ *
+ * Finiteness is **not** checked here. What counts as a bad operand differs — the
+ * left one is unrecoverable, the right one can fall back to the left — so each
+ * action decides, and the helper only hands over the numbers.
+ */
+function twoSided(options: unknown): { op: string; left: number; right: number } {
+    const o = (options ?? {}) as { left?: unknown; op?: unknown; right?: unknown };
+    return {
+        op: String(o.op ?? ""),
+        left: Number(o.left),
+        right: Number(o.right),
+    };
+}
+
 export const decideActions = defineActions({
     /**
      * A random integer in an inclusive range.
@@ -56,6 +85,67 @@ export const decideActions = defineActions({
     },
 
     /**
+     * Arithmetic on two numbers, answered as the step's return value.
+     *
+     * This is the action whose absence made every *rate* inexpressible.
+     * `compare` and `randomInt` can read numbers and choose between them, but
+     * nothing could do anything *to* one: a counter read back, used as-is. So a
+     * config that wanted "half a copper is worth a full unit" — the shape of every
+     * weight and yield rule in the game — had to either fake it with a literal
+     * (a lie that looks right) or leave the field out of the mod entirely.
+     *
+     * The concrete case this was added for: a generator that eats raw cells and
+     * charges at `round(cells / mult)`. With `mult: 0.5` copper, `mult: 5` sand,
+     * the three materials charge at genuinely different speeds; without it they
+     * all charged identically and the `mult` was decoration.
+     *
+     * ## `round` is the default, and deliberately so
+     *
+     * `div` rounds to the nearest whole number, matching the source mod's
+     * `Math.round(cells / mult)`. **Not** truncating, and not keeping the
+     * fraction: a charge meter is a whole number, so a fractional result is a
+     * value nothing can store. Rounding rather than truncating is the other half
+     * — `Math.floor` would make copper at `0.5` charge *twice* as fast as gold,
+     * the exact opposite of the rule, and the bug would be invisible because the
+     * generator still charged.
+     *
+     * `mul` does not round. It is exact for the integer factors a config writes,
+     * and rounding it would hide a real mistake (`0.5 * 3` should be a surprise).
+     *
+     * ## Failure answers `left`
+     *
+     * A non-numeric side, or an unknown operator, answers the left operand
+     * unchanged — the same "behave like the identity" answer `randomInt` gives for
+     * a reversed range. The alternative is throwing inside a tick, which in the
+     * game is a dead processor rather than a visible mistake.
+     */
+    math: {
+        role: "decide",
+        doc: "`left op right`, where op is + - * or /. Division rounds to the nearest whole number. Set both values.",
+        fn: (_payload, _ctx, options) => {
+            const { op, left, right } = twoSided(options);
+            if (!Number.isFinite(left)) return 0;
+            if (!Number.isFinite(right)) return left;
+            switch (op) {
+                case "add":
+                    return left + right;
+                case "sub":
+                    return left - right;
+                case "mul":
+                    return left * right;
+                case "div":
+                    // `/ 0` is left alone rather than turned into Infinity: Infinity
+                    // compares as "full" forever, so a generator would spawn every
+                    // tick with no sign of what was wrong.
+                    if (right === 0) return left;
+                    return Math.round(left / right);
+                default:
+                    return left;
+            }
+        },
+    },
+
+    /**
      * Compares two values and answers `1` or `0`.
      *
      * This is the action whose absence made a whole rule inexpressible. The `if`
@@ -81,11 +171,9 @@ export const decideActions = defineActions({
         role: "decide",
         doc: "Compares `left` and `right` with `op`. Answers 1 or 0. Set the options.",
         fn: (_payload, _ctx, options) => {
-            const o = options as { left?: unknown; op?: unknown; right?: unknown } | null;
-            const left = Number(o?.left);
-            const right = Number(o?.right);
+            const { op, left, right } = twoSided(options);
             if (!Number.isFinite(left) || !Number.isFinite(right)) return 1;
-            switch (String(o?.op ?? "")) {
+            switch (op) {
                 case "eq":
                     return left === right ? 1 : 0;
                 case "ne":

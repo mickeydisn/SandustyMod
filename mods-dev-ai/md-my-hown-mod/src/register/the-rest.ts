@@ -18,6 +18,7 @@ import {
     registerExcavationProfile,
     registerInputBinding,
     registerInteraction,
+    registerPlacementConfig,
     registerProcessing,
     registerProjectile,
     registerRecipe,
@@ -32,6 +33,7 @@ import {
 import { registerItems } from "./core/items.ts";
 import { mayRegister, registered } from "./registry.ts";
 import { joinedNetworkNames, reportEnergyNetworks } from "./custom/energy-network.ts";
+import { installPlacementLimits } from "./custom/placement-limit.ts";
 import { engineTechOf, techUnlockStructureIds } from "../ui/tech-link.ts";
 import { applyAllModifiers, compileProcess } from "../handler/index.ts";
 import {
@@ -237,6 +239,13 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
     // also the only place the set of *joined* networks can be read off the config.
     reportEnergyNetworks(config, joinedNetworkNames(config));
 
+    // After the structures are registered, because resolving each capped id to a
+    // `StructureRef` needs the definition to exist. Deliberately **not** guarded
+    // by the `registered` sets: this is one hook for the whole config, and it
+    // replaces the previous one on every pass, so a re-apply that added or
+    // removed a cap actually takes effect.
+    counts.placementLimits = installPlacementLimits(config);
+
     for (const e of config.excavationProfiles ?? []) {
         if (!e?.id || registered.excavationProfiles.has(e.id)) continue;
         registerExcavationProfile(e);
@@ -248,6 +257,21 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         registerStructureBehavior(b);
         registered.structureBehaviors.add(b.id);
         counts.structureBehaviors = (counts.structureBehaviors ?? 0) + 1;
+    }
+    // After structures, because the engine keys a placement config by the
+    // structure id it names — registering one first would point at a structure
+    // the player cannot yet place. The engine does not require the target to
+    // exist (it stores the definition in a plain `Map` and only reads it when the
+    // building is selected), so this ordering is about sanity, not correctness.
+    for (const p of config.placementConfigs ?? []) {
+        if (!p?.id || registered.placementConfigs.has(p.id)) continue;
+        registerPlacementConfig(p);
+        // Marked done even when the wrapper rejected it. A malformed entry is a
+        // permanent property of the saved config, so retrying it on every apply
+        // pass would log the same refusal forever; the panel is where a bad one
+        // is meant to be caught, and the wrapper already named the rule it broke.
+        registered.placementConfigs.add(p.id);
+        counts.placementConfigs = (counts.placementConfigs ?? 0) + 1;
     }
     for (const sg of config.signals ?? []) {
         if (!sg?.id || registered.signals.has(sg.id)) continue;
