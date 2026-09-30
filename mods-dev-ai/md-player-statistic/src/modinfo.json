@@ -1,0 +1,35 @@
+{
+    "manifestVersion": 1,
+    "id": "md-player-statistic",
+    "name": "Player Statistic",
+    "version": "0.1.0",
+    "apiVersion": 1,
+    "entry": "main.js",
+    "author": "MickeyDisn",
+    "description": "Player Statistic — event-driven KPI tracker. Counts structures placed/removed/moved, items used (vacuum, shoot, …), terrain dug, world-item pickups and resources collected. Configurable Home KPI cards. Select the tool to open the overlay; lock it to keep it open.",
+    "dependencies": [],
+    "loadOrder": 0,
+    "configSchema": {
+        "enabled": {
+            "type": "boolean",
+            "default": true,
+            "label": "Enabled",
+            "description": "Master switch. When off, the tool and overlay are not registered; event listeners are removed and storage is wiped."
+        },
+        "persistSession": {
+            "type": "boolean",
+            "default": true,
+            "label": "Persist session KPIs",
+            "description": "Keep session counters across game reloads. When off, session counters reset every load."
+        },
+        "historyMax": {
+            "type": "number",
+            "default": 20,
+            "min": 5,
+            "max": 50,
+            "step": 1,
+            "label": "History depth",
+            "description": "How many total-snapshot points to keep for sparklines (5–50)."
+        }
+    }
+}
