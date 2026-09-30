@@ -1,0 +1,1493 @@
+{
+  "version": 1,
+  "_README": [
+    "md-random-artefact, rebuilt declaratively in md-my-hown-mod.",
+    "",
+    "TWO RULES both the target mod forces, and both verified by running its",
+    "own validators against this file:",
+    "",
+    "1. Ids are SUFFIXES. md-my-hown-mod namespaces every entry as",
+    "   md-my-hown-mod:<suffix> (fullIdOf, src/ui/schema.ts:624) and its",
+    "   ID_PATTERN contains no colon. The source mod's md-random-artefact:",
+    "   ids cannot be spelled here at all, so they are renamed below. That is a",
+    "   real difference from the source, not cosmetic: these structures do not",
+    "   carry the original mod's id, and nothing else in that mod can find them.",
+    "",
+    "2. Data is stored as defaultData, NOT as the panel's dataFieldsJson list.",
+    "   entryToForm only ever reads defaultData. A config that stores the list",
+    "   instead imports cleanly and then registers an entry with no data at",
+    "   all -- measured, not assumed; the list form reads back empty.",
+    "",
+    "3. A sprite id IS the structure id. render.imageName must equal a loaded",
+    "   sprite id exactly or the structure draws nothing, and the two lists are",
+    "   written in different places. Keeping them equal by hand is how this file",
+    "   shipped a version where every material link pointed at a sprite that was",
+    "   never loaded.",
+    "",
+    "ASSETS are copied into md-my-hown-mod/assets/artefact/ and referenced with",
+    "`path` (mod-relative, resolved by loadFromMod) rather than `source` (an",
+    "absolute file:// URL), which is only needed for another mod's files.",
+    "terrain-collector.png is deliberately absent: the terrain generator is out",
+    "of scope.",
+    "",
+    "WHAT IS HERE: 5 structures, 5 sprites, 9 buffer slots, 1 processing entry",
+    "(the generator's tick), 3 signal senders (the material links), and the 4",
+    "processes they name. All of it compiles.",
+    "",
+    "WHAT IS PINNED, and why: the source mod picks a RANDOM material per cycle",
+    "and SEARCHES for a free cell to spawn an artefact in. This catalogue has no",
+    "random action and no free-cell search, so this version is deterministic. The",
+    "audit's section 3 says what that costs. The links read three separate",
+    "links.*Active flags rather than comparing materialIndex, because the engine",
+    "only asks a sender 'is this truthy' and 1 and 2 are both truthy.",
+    "",
+    "See random-artefact-audit.md for the full mapping and for the two things",
+    "this config cannot do."
+  ],
+  "sprites": [
+    {
+      "id": "md-my-hown-mod:generator",
+      "path": "assets/artefact/generator.png",
+      "_note": "Sprite ids are the structure ids on purpose: render.imageName must match a loaded sprite id exactly, and deriving one from the other makes that equality structural instead of a convention to keep in step by hand."
+    },
+    {
+      "id": "md-my-hown-mod:artefact",
+      "path": "assets/artefact/artefact.png"
+    },
+    {
+      "id": "md-my-hown-mod:material-gold",
+      "path": "assets/artefact/material-gold.png"
+    },
+    {
+      "id": "md-my-hown-mod:material-copper",
+      "path": "assets/artefact/material-copper.png"
+    },
+    {
+      "id": "md-my-hown-mod:material-sand",
+      "path": "assets/artefact/material-sand.png"
+    }
+  ],
+  "buffers": [
+    {
+      "id": "progress",
+      "path": "progress",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 200
+    },
+    {
+      "id": "active",
+      "path": "active",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "nb-creator-place",
+      "path": "nbCreatorPlace",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "nb-artefact-place",
+      "path": "nbArtefactPlace",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 64
+    },
+    {
+      "id": "material-index",
+      "path": "materialIndex",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 2
+    },
+    {
+      "id": "links-gold",
+      "path": "links-gold",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "links-copper",
+      "path": "links-copper",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "links-sand",
+      "path": "links-sand",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "remaining",
+      "path": "remaining",
+      "type": "number",
+      "default": 50,
+      "min": 0,
+      "max": 50
+    },
+    {
+      "path": "emit-remaining",
+      "id": "emit-remaining",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 5000,
+      "persist": true
+    },
+    {
+      "path": "emit-total",
+      "id": "emit-total",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 5000,
+      "persist": true
+    },
+    {
+      "path": "emit-element",
+      "id": "emit-element",
+      "type": "string",
+      "default": "sand",
+      "min": null,
+      "max": null,
+      "persist": true
+    }
+  ],
+  "structures": [
+    {
+      "id": "md-my-hown-mod:generator",
+      "name": "Artefact Generator",
+      "description": "Only one may be placed. Each cycle eats one material. When charged, click or power with a signal to summon an artefact (max 5 alive).",
+      "categoryKey": "special",
+      "order": 10,
+      "alwaysUnlocked": true,
+      "hideFromBuildMenu": false,
+      "shape": [
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "registerOptions": {
+        "useRawShape": true
+      },
+      "copyData": true,
+      "buildModes": [
+        {
+          "type": "single"
+        }
+      ],
+      "render": {
+        "imageName": "md-my-hown-mod:generator",
+        "size": {
+          "width": 16,
+          "height": 16
+        },
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "ui": {
+          "outline": true,
+          "imageName": "md-my-hown-mod:generator"
+        }
+      },
+      "defaultData": {
+        "progress": 0,
+        "max": 50,
+        "remaining": 50,
+        "material": "Gold",
+        "mult": 1,
+        "status": "charging",
+        "charged": 0,
+        "signalOn": 0,
+        "nbArtefact": 0,
+        "maxArtefacts": 5,
+        "chargeTarget": 50,
+        "matPref": "1"
+      },
+      "spritesheet": {
+        "frameSize": {
+          "width": 16,
+          "height": 16
+        },
+        "frames": 3
+      },
+      "tooltipHover": {
+        "type": "custom",
+        "dataFieldMessage": {
+          "message": "Charge {progress}/{max} · eating {material} ×{mult} · artefacts {nbArtefact}/{maxArtefacts}",
+          "fields": [
+            {
+              "param": "progress",
+              "field": "progress",
+              "fallback": 0,
+              "round": true
+            },
+            {
+              "param": "max",
+              "field": "max",
+              "fallback": 50,
+              "round": true
+            },
+            {
+              "param": "material",
+              "field": "material",
+              "fallback": "Gold"
+            },
+            {
+              "param": "mult",
+              "field": "mult",
+              "fallback": 1
+            },
+            {
+              "param": "nbArtefact",
+              "field": "nbArtefact",
+              "fallback": 0,
+              "round": true
+            },
+            {
+              "param": "maxArtefacts",
+              "field": "maxArtefacts",
+              "fallback": 5,
+              "round": true
+            }
+          ]
+        }
+      },
+      "maxPlaced": 1
+    },
+    {
+      "id": "md-my-hown-mod:artefact",
+      "name": "Random Artefact",
+      "description": "Mysterious structure that slowly produces a random element type, then vanishes.",
+      "categoryKey": "special",
+      "order": 99,
+      "alwaysUnlocked": false,
+      "hideFromBuildMenu": true,
+      "disallowPick": true,
+      "shape": [
+        [
+          0
+        ]
+      ],
+      "registerOptions": {
+        "useRawShape": true
+      },
+      "copyData": true,
+      "buildModes": [
+        {
+          "type": "single"
+        }
+      ],
+      "render": {
+        "imageName": "md-my-hown-mod:artefact",
+        "size": {
+          "width": 16,
+          "height": 16
+        },
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "ui": {
+          "outline": true,
+          "imageName": "md-my-hown-mod:artefact"
+        }
+      },
+      "defaultData": {
+        "elementType": "sand",
+        "remaining": 0,
+        "total": 0,
+        "progress": 0,
+        "max": 0,
+        "status": "booting",
+        "ready": 0
+      }
+    },
+    {
+      "id": "md-my-hown-mod:material-gold",
+      "name": "Artefact Gold Link",
+      "description": "Activates when the Artefact Generator is eating Gold. Outputs a signal while active.",
+      "categoryKey": "special",
+      "order": 50,
+      "alwaysUnlocked": true,
+      "shape": [
+        [
+          0
+        ]
+      ],
+      "registerOptions": {
+        "useRawShape": true
+      },
+      "copyData": true,
+      "buildModes": [
+        {
+          "type": "single"
+        }
+      ],
+      "render": {
+        "imageName": "md-my-hown-mod:material-gold",
+        "size": {
+          "width": 16,
+          "height": 16
+        },
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "ui": {
+          "outline": true,
+          "imageName": "md-my-hown-mod:material-gold"
+        }
+      },
+      "defaultData": {
+        "elementType": "gold",
+        "active": 0,
+        "mult": 1,
+        "status": "idle"
+      },
+      "spritesheet": {
+        "frameSize": {
+          "width": 16,
+          "height": 16
+        }
+      },
+      "tooltipHover": {
+        "type": "custom",
+        "dataFieldMessage": {
+          "message": "{elementType} ×{mult} — {status}",
+          "fields": [
+            {
+              "param": "elementType",
+              "field": "elementType",
+              "fallback": "Gold"
+            },
+            {
+              "param": "mult",
+              "field": "mult",
+              "fallback": 1
+            },
+            {
+              "param": "status",
+              "field": "status",
+              "fallback": "idle"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "md-my-hown-mod:material-copper",
+      "name": "Artefact Copper Link",
+      "description": "Activates when the Artefact Generator is eating Copper. Outputs a signal while active.",
+      "categoryKey": "special",
+      "order": 51,
+      "alwaysUnlocked": true,
+      "shape": [
+        [
+          0
+        ]
+      ],
+      "registerOptions": {
+        "useRawShape": true
+      },
+      "copyData": true,
+      "buildModes": [
+        {
+          "type": "single"
+        }
+      ],
+      "render": {
+        "imageName": "md-my-hown-mod:material-copper",
+        "size": {
+          "width": 16,
+          "height": 16
+        },
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "ui": {
+          "outline": true,
+          "imageName": "md-my-hown-mod:material-copper"
+        }
+      },
+      "defaultData": {
+        "elementType": "copper",
+        "active": 0,
+        "mult": 0.5,
+        "status": "idle"
+      },
+      "spritesheet": {
+        "frameSize": {
+          "width": 16,
+          "height": 16
+        }
+      },
+      "tooltipHover": {
+        "type": "custom",
+        "dataFieldMessage": {
+          "message": "{elementType} ×{mult} — {status}",
+          "fields": [
+            {
+              "param": "elementType",
+              "field": "elementType",
+              "fallback": "Copper"
+            },
+            {
+              "param": "mult",
+              "field": "mult",
+              "fallback": 1
+            },
+            {
+              "param": "status",
+              "field": "status",
+              "fallback": "idle"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "md-my-hown-mod:material-sand",
+      "name": "Artefact Sand Link",
+      "description": "Activates when the Artefact Generator is eating Sand. Outputs a signal while active.",
+      "categoryKey": "special",
+      "order": 52,
+      "alwaysUnlocked": true,
+      "shape": [
+        [
+          0
+        ]
+      ],
+      "registerOptions": {
+        "useRawShape": true
+      },
+      "copyData": true,
+      "buildModes": [
+        {
+          "type": "single"
+        }
+      ],
+      "render": {
+        "imageName": "md-my-hown-mod:material-sand",
+        "size": {
+          "width": 16,
+          "height": 16
+        },
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "ui": {
+          "outline": true,
+          "imageName": "md-my-hown-mod:material-sand"
+        }
+      },
+      "defaultData": {
+        "elementType": "sand",
+        "active": 0,
+        "mult": 5,
+        "status": "idle"
+      },
+      "spritesheet": {
+        "frameSize": {
+          "width": 16,
+          "height": 16
+        }
+      },
+      "tooltipHover": {
+        "type": "custom",
+        "dataFieldMessage": {
+          "message": "{elementType} ×{mult} — {status}",
+          "fields": [
+            {
+              "param": "elementType",
+              "field": "elementType",
+              "fallback": "Sand"
+            },
+            {
+              "param": "mult",
+              "field": "mult",
+              "fallback": 1
+            },
+            {
+              "param": "status",
+              "field": "status",
+              "fallback": "idle"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "signals": [
+    {
+      "id": "artefact-link-gold",
+      "kind": "senderType",
+      "target": "md-my-hown-mod:material-gold",
+      "processId": "artefact-link-gold-on"
+    },
+    {
+      "id": "artefact-link-copper",
+      "kind": "senderType",
+      "target": "md-my-hown-mod:material-copper",
+      "processId": "artefact-link-copper-on"
+    },
+    {
+      "id": "artefact-link-sand",
+      "kind": "senderType",
+      "target": "md-my-hown-mod:material-sand",
+      "processId": "artefact-link-sand-on"
+    }
+  ],
+  "processing": [
+    {
+      "id": "gen-tick",
+      "structureType": "md-my-hown-mod:generator",
+      "intervalMs": 200,
+      "processId": "artefact-generator-tick"
+    },
+    {
+      "id": "link-gold-tick",
+      "structureType": "md-my-hown-mod:material-gold",
+      "intervalMs": 200,
+      "processId": "artefact-link-gold-sync"
+    },
+    {
+      "id": "link-copper-tick",
+      "structureType": "md-my-hown-mod:material-copper",
+      "intervalMs": 200,
+      "processId": "artefact-link-copper-sync"
+    },
+    {
+      "id": "link-sand-tick",
+      "structureType": "md-my-hown-mod:material-sand",
+      "intervalMs": 200,
+      "processId": "artefact-link-sand-sync"
+    },
+    {
+      "id": "artefact-tick",
+      "structureType": "md-my-hown-mod:artefact",
+      "intervalMs": 150,
+      "processId": "artefact-emit"
+    }
+  ],
+  "triggers": [],
+  "elements": [],
+  "items": [],
+  "recipes": [],
+  "contacts": [],
+  "interactions": [],
+  "modifiers": [],
+  "terrains": [],
+  "techs": [],
+  "upgradeCategories": [],
+  "upgrades": [],
+  "projectiles": [],
+  "energyTypes": [],
+  "energyNetworks": [],
+  "unlockNodes": [],
+  "excavationProfiles": [],
+  "structureBehaviors": [],
+  "processes": [
+    {
+      "id": "artefact-generator-tick",
+      "name": "Artefact Generator — eat",
+      "scope": "processing",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "materialIndex"
+          },
+          "as": "rolled"
+        },
+        {
+          "key": "structureData",
+          "options": {
+            "key": "matPref"
+          },
+          "as": "pref"
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{pref}}",
+            "op": "gt",
+            "right": "0"
+          },
+          "as": "hasPref"
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{pref}}",
+            "op": "eq",
+            "right": "2"
+          },
+          "as": "wantsGold"
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{pref}}",
+            "op": "eq",
+            "right": "3"
+          },
+          "as": "wantsCopper"
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{pref}}",
+            "op": "eq",
+            "right": "4"
+          },
+          "as": "wantsSand"
+        },
+        {
+          "key": "if",
+          "options": {
+            "var": "hasPref"
+          },
+          "then": [
+            {
+              "key": "if",
+              "options": {
+                "var": "wantsGold"
+              },
+              "then": [
+                {
+                  "key": "math",
+                  "options": {
+                    "left": "0",
+                    "op": "add",
+                    "right": "0"
+                  },
+                  "as": "idx"
+                }
+              ]
+            },
+            {
+              "key": "if",
+              "options": {
+                "var": "wantsCopper"
+              },
+              "then": [
+                {
+                  "key": "math",
+                  "options": {
+                    "left": "1",
+                    "op": "add",
+                    "right": "0"
+                  },
+                  "as": "idx"
+                }
+              ]
+            },
+            {
+              "key": "if",
+              "options": {
+                "var": "wantsSand"
+              },
+              "then": [
+                {
+                  "key": "math",
+                  "options": {
+                    "left": "2",
+                    "op": "add",
+                    "right": "0"
+                  },
+                  "as": "idx"
+                }
+              ]
+            }
+          ],
+          "else": [
+            {
+              "key": "math",
+              "options": {
+                "left": "{{rolled}}",
+                "op": "add",
+                "right": "0"
+              },
+              "as": "idx"
+            }
+          ]
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{idx}}",
+            "op": "eq",
+            "right": "0"
+          },
+          "as": "isGold"
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{idx}}",
+            "op": "eq",
+            "right": "1"
+          },
+          "as": "isCopper"
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{idx}}",
+            "op": "eq",
+            "right": "2"
+          },
+          "as": "isSand"
+        },
+        {
+          "key": "bufferWrite",
+          "options": {
+            "path": "links-gold",
+            "value": "0"
+          }
+        },
+        {
+          "key": "bufferWrite",
+          "options": {
+            "path": "links-copper",
+            "value": "0"
+          }
+        },
+        {
+          "key": "bufferWrite",
+          "options": {
+            "path": "links-sand",
+            "value": "0"
+          }
+        },
+        {
+          "key": "if",
+          "options": {
+            "var": "isGold"
+          },
+          "then": [
+            {
+              "key": "bufferWrite",
+              "options": {
+                "path": "links-gold",
+                "value": "1"
+              }
+            },
+            {
+              "key": "logicCount",
+              "options": {
+                "element": "gold",
+                "dx": "2",
+                "dy": "2",
+                "size": "3"
+              },
+              "as": "eaten"
+            },
+            {
+              "key": "removeElement",
+              "options": {
+                "element": "gold",
+                "dx": "2",
+                "dy": "2",
+                "size": "3"
+              }
+            },
+            {
+              "key": "math",
+              "options": {
+                "left": "{{eaten}}",
+                "op": "div",
+                "right": "1"
+              },
+              "as": "charge"
+            },
+            {
+              "key": "bufferIncrement",
+              "options": {
+                "path": "progress",
+                "delta": "{{charge}}"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "material",
+                "value": "Gold",
+                "propagateToWorkers": "true"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "mult",
+                "numberValue": "1",
+                "propagateToWorkers": "true"
+              }
+            }
+          ]
+        },
+        {
+          "key": "if",
+          "options": {
+            "var": "isCopper"
+          },
+          "then": [
+            {
+              "key": "bufferWrite",
+              "options": {
+                "path": "links-copper",
+                "value": "1"
+              }
+            },
+            {
+              "key": "logicCount",
+              "options": {
+                "element": "copper",
+                "dx": "2",
+                "dy": "2",
+                "size": "3"
+              },
+              "as": "eaten"
+            },
+            {
+              "key": "removeElement",
+              "options": {
+                "element": "copper",
+                "dx": "2",
+                "dy": "2",
+                "size": "3"
+              }
+            },
+            {
+              "key": "math",
+              "options": {
+                "left": "{{eaten}}",
+                "op": "div",
+                "right": "0.5"
+              },
+              "as": "charge"
+            },
+            {
+              "key": "bufferIncrement",
+              "options": {
+                "path": "progress",
+                "delta": "{{charge}}"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "material",
+                "value": "Copper",
+                "propagateToWorkers": "true"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "mult",
+                "numberValue": "0.5",
+                "propagateToWorkers": "true"
+              }
+            }
+          ]
+        },
+        {
+          "key": "if",
+          "options": {
+            "var": "isSand"
+          },
+          "then": [
+            {
+              "key": "bufferWrite",
+              "options": {
+                "path": "links-sand",
+                "value": "1"
+              }
+            },
+            {
+              "key": "logicCount",
+              "options": {
+                "element": "sand",
+                "dx": "2",
+                "dy": "2",
+                "size": "3"
+              },
+              "as": "eaten"
+            },
+            {
+              "key": "removeElement",
+              "options": {
+                "element": "sand",
+                "dx": "2",
+                "dy": "2",
+                "size": "3"
+              }
+            },
+            {
+              "key": "math",
+              "options": {
+                "left": "{{eaten}}",
+                "op": "div",
+                "right": "5"
+              },
+              "as": "charge"
+            },
+            {
+              "key": "bufferIncrement",
+              "options": {
+                "path": "progress",
+                "delta": "{{charge}}"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "material",
+                "value": "Sand",
+                "propagateToWorkers": "true"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "mult",
+                "numberValue": "5",
+                "propagateToWorkers": "true"
+              }
+            }
+          ]
+        },
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "progress"
+          },
+          "as": "progress"
+        },
+        {
+          "key": "structureData",
+          "options": {
+            "key": "chargeTarget"
+          },
+          "as": "target"
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{target}}",
+            "op": "gt",
+            "right": "0"
+          },
+          "as": "hasTarget"
+        },
+        {
+          "key": "if",
+          "options": {
+            "var": "hasTarget"
+          },
+          "then": [
+            {
+              "key": "compare",
+              "options": {
+                "left": "{{progress}}",
+                "op": "gte",
+                "right": "{{target}}"
+              },
+              "as": "full"
+            }
+          ],
+          "else": [
+            {
+              "key": "compare",
+              "options": {
+                "left": "{{progress}}",
+                "op": "gte",
+                "right": "50"
+              },
+              "as": "full"
+            }
+          ]
+        },
+        {
+          "key": "if",
+          "options": {
+            "var": "full"
+          },
+          "then": [
+            {
+              "key": "bufferWrite",
+              "options": {
+                "path": "progress",
+                "value": "0"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "progress",
+                "numberValue": "0",
+                "propagateToWorkers": "true"
+              }
+            },
+            {
+              "key": "bufferWrite",
+              "options": {
+                "path": "emit-remaining",
+                "value": "500"
+              }
+            },
+            {
+              "key": "bufferWrite",
+              "options": {
+                "path": "emit-total",
+                "value": "500"
+              }
+            },
+            {
+              "key": "buildStructure",
+              "options": {
+                "structure": "artefact",
+                "dx": "5",
+                "dy": "0"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "status",
+                "value": "charging",
+                "propagateToWorkers": "true"
+              }
+            },
+            {
+              "key": "randomInt",
+              "options": {
+                "min": "0",
+                "max": "2"
+              },
+              "as": "pick"
+            },
+            {
+              "key": "bufferWrite",
+              "options": {
+                "path": "materialIndex",
+                "value": "{{pick}}"
+              }
+            },
+            {
+              "key": "compare",
+              "options": {
+                "left": "{{pick}}",
+                "op": "eq",
+                "right": "0"
+              },
+              "as": "nextGold"
+            },
+            {
+              "key": "compare",
+              "options": {
+                "left": "{{pick}}",
+                "op": "eq",
+                "right": "1"
+              },
+              "as": "nextCopper"
+            },
+            {
+              "key": "compare",
+              "options": {
+                "left": "{{pick}}",
+                "op": "eq",
+                "right": "2"
+              },
+              "as": "nextSand"
+            },
+            {
+              "key": "if",
+              "options": {
+                "var": "nextGold"
+              },
+              "then": [
+                {
+                  "key": "bufferWrite",
+                  "options": {
+                    "path": "emit-element",
+                    "value": "gold"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "if",
+              "options": {
+                "var": "nextCopper"
+              },
+              "then": [
+                {
+                  "key": "bufferWrite",
+                  "options": {
+                    "path": "emit-element",
+                    "value": "copper"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "if",
+              "options": {
+                "var": "nextSand"
+              },
+              "then": [
+                {
+                  "key": "bufferWrite",
+                  "options": {
+                    "path": "emit-element",
+                    "value": "sand"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "artefact-link-gold-on",
+      "name": "Artefact Gold Link — sender",
+      "scope": "signal",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "links-gold"
+          },
+          "as": "link"
+        },
+        {
+          "key": "signalOutput",
+          "options": {
+            "value": "{{link}}"
+          }
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "active",
+            "numberValue": "{{link}}",
+            "propagateToWorkers": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "artefact-link-copper-on",
+      "name": "Artefact Copper Link — sender",
+      "scope": "signal",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "links-copper"
+          },
+          "as": "link"
+        },
+        {
+          "key": "signalOutput",
+          "options": {
+            "value": "{{link}}"
+          }
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "active",
+            "numberValue": "{{link}}",
+            "propagateToWorkers": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "artefact-link-sand-on",
+      "name": "Artefact Sand Link — sender",
+      "scope": "signal",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "links-sand"
+          },
+          "as": "link"
+        },
+        {
+          "key": "signalOutput",
+          "options": {
+            "value": "{{link}}"
+          }
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "active",
+            "numberValue": "{{link}}",
+            "propagateToWorkers": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "artefact-emit",
+      "scope": "processing",
+      "label": "Artefact — emit elements",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "emit-remaining"
+          },
+          "as": "remaining"
+        },
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "emit-element"
+          },
+          "as": "element"
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "ready",
+            "numberValue": "1",
+            "propagateToWorkers": "true"
+          }
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "remaining",
+            "numberValue": "{{remaining}}",
+            "propagateToWorkers": "true"
+          }
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "elementType",
+            "value": "{{element}}",
+            "propagateToWorkers": "true"
+          }
+        },
+        {
+          "key": "compare",
+          "options": {
+            "left": "{{remaining}}",
+            "op": "gt",
+            "right": "0"
+          },
+          "as": "hasMore"
+        },
+        {
+          "key": "if",
+          "options": {
+            "var": "hasMore"
+          },
+          "then": [
+            {
+              "key": "createElement",
+              "options": {
+                "element": "{{element}}",
+                "dx": "1",
+                "dy": "0",
+                "size": "1"
+              }
+            },
+            {
+              "key": "createElement",
+              "options": {
+                "element": "{{element}}",
+                "dx": "-1",
+                "dy": "0",
+                "size": "1"
+              }
+            },
+            {
+              "key": "bufferIncrement",
+              "options": {
+                "path": "emit-remaining",
+                "delta": "-2"
+              }
+            },
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "status",
+                "value": "producing",
+                "propagateToWorkers": "true"
+              }
+            }
+          ],
+          "else": [
+            {
+              "key": "setStructureData",
+              "options": {
+                "key": "status",
+                "value": "done",
+                "propagateToWorkers": "true"
+              }
+            },
+            {
+              "key": "removeStructure"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "artefact-link-gold-sync",
+      "name": "Artefact Gold Link — per-tick sync",
+      "scope": "processing",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "links-gold"
+          },
+          "as": "link"
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "active",
+            "numberValue": "{{link}}",
+            "propagateToWorkers": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "artefact-link-copper-sync",
+      "name": "Artefact Copper Link — per-tick sync",
+      "scope": "processing",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "links-copper"
+          },
+          "as": "link"
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "active",
+            "numberValue": "{{link}}",
+            "propagateToWorkers": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "artefact-link-sand-sync",
+      "name": "Artefact Sand Link — per-tick sync",
+      "scope": "processing",
+      "steps": [
+        {
+          "key": "bufferRead",
+          "options": {
+            "path": "links-sand"
+          },
+          "as": "link"
+        },
+        {
+          "key": "setStructureData",
+          "options": {
+            "key": "active",
+            "numberValue": "{{link}}",
+            "propagateToWorkers": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "placementConfigs": [
+    {
+      "id": "generator-heat",
+      "structureId": "md-my-hown-mod:generator",
+      "fields": [
+        {
+          "type": "integer",
+          "id": "chargeTarget",
+          "label": "Charge target",
+          "min": 5,
+          "max": 200,
+          "default": 50
+        },
+        {
+          "type": "choice",
+          "id": "matPref",
+          "label": "Material",
+          "default": "1",
+          "options": [
+            {
+              "value": "1",
+              "label": "Random (cycles)"
+            },
+            {
+              "value": "2",
+              "label": "Gold only"
+            },
+            {
+              "value": "3",
+              "label": "Copper only"
+            },
+            {
+              "value": "4",
+              "label": "Sand only"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
