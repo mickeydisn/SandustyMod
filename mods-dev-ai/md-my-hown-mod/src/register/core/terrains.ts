@@ -10,7 +10,7 @@
  */
 import type { ModConfig } from "../../constants.ts";
 import { loadConfig } from "../../config/store.ts";
-import { registerTerrain } from "../../packages/mysandkit.ts";
+import { registerTerrain } from "../../packages/registrations.ts";
 import { mayRegister, registered } from "../registry.ts";
 
 /**

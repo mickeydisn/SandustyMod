@@ -23,7 +23,7 @@
  * The `declare const sandkit` is still the right way to see the host: the game
  * injects it into the mod scope, and it is not reliably on `globalThis`.
  */
-import { g } from "./host.ts";
+import { g } from "./packages/mysandkit.ts";
 
 declare const sandkit: {
     api: Record<string, any>;

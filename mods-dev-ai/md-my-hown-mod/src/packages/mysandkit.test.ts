@@ -233,7 +233,7 @@ Deno.test("a read the host does not have is empty, not a throw", () => {
 // that only counts calls cannot see this class of bug at all.
 Deno.test("processing.register carries structureType inside the definition", async () => {
     processingRegistrations.length = 0;
-    const { registerProcessing } = await import("./mysandkit.ts");
+    const { registerProcessing } = await import("./registrations.ts");
 
     registerProcessing({
         id: "gen-tick",
@@ -255,7 +255,7 @@ Deno.test("processing.register carries structureType inside the definition", asy
 
 Deno.test("processing.register uses the entry's own id, not the structure type", async () => {
     processingRegistrations.length = 0;
-    const { registerProcessing } = await import("./mysandkit.ts");
+    const { registerProcessing } = await import("./registrations.ts");
 
     registerProcessing({
         id: "gen-tick",
@@ -271,7 +271,7 @@ Deno.test("processing.register uses the entry's own id, not the structure type",
 
 Deno.test("a processing entry with no structureType is refused, not forwarded", async () => {
     processingRegistrations.length = 0;
-    const { registerProcessing } = await import("./mysandkit.ts");
+    const { registerProcessing } = await import("./registrations.ts");
 
     registerProcessing({ id: "broken", intervalMs: 200, process: () => {} } as never);
 

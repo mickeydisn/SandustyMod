@@ -40,7 +40,7 @@ globalThis.sandkit = {
     enums: {},
 };
 
-const { registerSprite } = await import("../../packages/mysandkit.ts");
+const { registerSprite } = await import("../../packages/registrations.ts");
 const { CATEGORY_META, MENU_GROUPS } = await import("../schema.ts");
 const { ATTACHED } = await import("../panel/attach.ts");
 

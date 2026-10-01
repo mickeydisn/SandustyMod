@@ -29,7 +29,7 @@ import {
     registerTrigger,
     registerUpgrade,
     registerUpgradeCategory,
-} from "../packages/mysandkit.ts";
+} from "../packages/registrations.ts";
 import { registerItems } from "./core/items.ts";
 import { mayRegister, registered } from "./registry.ts";
 import { joinedNetworkNames, reportEnergyNetworks } from "./custom/energy-network.ts";

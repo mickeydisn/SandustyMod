@@ -119,39 +119,14 @@ interface TerrainDataLike {
 /**
  * The `ns.terrains` surface this family uses.
  *
- * Declared for the reason `ElementWriter` is: the engine's `.d.ts` files are not in this
- * mod's dependency graph, so `sk()` gets a structural type.
- *
- * Members are optional because the availability table splits this namespace: `register`
- * and the `*WhenIdle` aliases are Main-only, the rest is Main + Worker. The `WhenIdle`
- * family is **deliberately not** wired — they are deprecated aliases of the deferred main
- * path, so an action reaching for them would be a worse spelling of the non-deferred one.
+ * Derived from the wrapper rather than re-declared. This used to be a local
+ * `TerrainsApi` interface, which asserted members the wrapper did not have — so
+ * `setHitPointsAtCell` was `undefined` at run time and the action returned
+ * `false` while still type-checking. Deriving the type from `api.terrains` means
+ * the compiler checks this file against the real surface, and it cannot drift
+ * from it again.
  */
-interface TerrainsApi {
-    getTypeAtCell?: (x: number, y: number) => number | null;
-    getDataAtCell?: (x: number, y: number) => TerrainDataLike | null;
-    isAtCell?: (x: number, y: number) => boolean;
-    /**
-     * The engine types this as `(cx, cy, terrainId: TerrainId)` — an **id only**, not a
-     * `TerrainRef` like `structures.isTypeAtCell` accepts. So a numeric handle is not a
-     * declared input here, and the declaration is widened to `string | number` to record
-     * the one case the action actually performs: a handle that made a round-trip through
-     * a string bind comes back as digits and is retried as a number.
-     *
-     * Widening the declared parameter is a deliberate mismatch with the engine's own
-     * `.d.ts`, not an accident. The alternative is to `String(Number(want))` and pass the
-     * same value twice, which is the version the structure family had before it was fixed
-     * — and the reason the engine's *runtime* tolerance is unverified either way. What is
-     * declared here is what this code sends, so the type error surfaces here rather than
-     * being hidden by a redundant cast.
-     */
-    isTypeAtCell?: (x: number, y: number, id: string | number) => boolean;
-    isCellIdTerrain?: (cellId: unknown) => boolean;
-    damageAtCell?: (x: number, y: number, damage: number) => void;
-    setHitPointsAtCell?: (x: number, y: number, hitPoints: number) => boolean;
-    getIdByType?: (type: number) => string;
-    getTypeById?: (id: string) => number;
-}
+type TerrainNamespace = typeof api.terrains;
 
 /** The terrain half of `ns.grid.mutate`'s writer (`grid.d.ts:193-221`). */
 interface TerrainWriter {
@@ -171,9 +146,17 @@ function refOf(options: TerrainOptions): string {
     return String(options.terrain ?? "");
 }
 
-/** `ns.terrains`, or `null` on a thread that does not have it. */
-function terrains(): TerrainsApi | null {
-    return (api?.terrains as TerrainsApi) ?? null;
+/**
+ * `ns.terrains`, or `null` on a thread that does not have it.
+ *
+ * **No cast.** This used to be `(api?.terrains as TerrainsApi)`, which asserted a
+ * shape the wrapper did not actually have — so `setHitPointsAtCell` and friends
+ * were `undefined` at run time and the action quietly returned `false`. The
+ * interface was documentation the compiler could not check; the wrapper in
+ * `host.ts` is the same surface and is real.
+ */
+function terrains() {
+    return api?.terrains ?? null;
 }
 
 /**
@@ -238,7 +221,7 @@ function writeShape(
     decide: (
         writer: TerrainWriter,
         cell: { x: number; y: number },
-        api: TerrainsApi,
+        api: TerrainNamespace,
     ) => boolean,
 ): boolean {
     const s = structure as StructureLike | null;
@@ -454,7 +437,7 @@ function writeState(
     structure: unknown,
     options: unknown,
     label: string,
-    act: (ns: TerrainsApi, cell: { x: number; y: number }) => boolean,
+    act: (ns: TerrainNamespace, cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = structure as StructureLike | null;
     const ns = terrains();

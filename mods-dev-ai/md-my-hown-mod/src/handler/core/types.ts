@@ -173,7 +173,7 @@ export type HandlerActionFn = (
  * `host.ts` is the same `api` object, minus the two registration helpers that
  * need the handler.
  */
-export { api } from "../../host.ts";
+export { api } from "../../packages/mysandkit.ts";
 
 export function hostApi(): Record<string, unknown> | undefined {
     // The injected parameter. Present in the real mod scope; absent in a worker
