@@ -248,6 +248,93 @@ export const api = {
             }
         },
         /**
+         * Set the particle velocity at a cell, **replacing** whatever was there.
+         *
+         * Not additive: `addVelocityAtCell` is the other one, and a caller that
+         * wants accumulation reaching for this would halve the speed on every
+         * step.
+         */
+        setVelocityAtCell(
+            x: number,
+            y: number,
+            velocity: { x: number; y: number },
+        ): void {
+            try {
+                g()?.api?.elements?.setVelocityAtCell?.(x, y, velocity);
+            } catch (e) {
+                console.warn(`${LOG} elements.setVelocityAtCell failed`, x, y, e);
+            }
+        },
+        /**
+         * Add to the particle velocity at a cell.
+         *
+         * `maxSpeed` is omitted entirely when it is zero, because the engine reads
+         * a present `0` as "clamp to a standstill" — a silent full stop rather
+         * than "no limit".
+         */
+        addVelocityAtCell(
+            x: number,
+            y: number,
+            velocity: { x: number; y: number },
+            maxSpeed?: number,
+        ): void {
+            try {
+                g()?.api?.elements?.addVelocityAtCell?.(
+                    x,
+                    y,
+                    velocity,
+                    maxSpeed ? { maxSpeed } : undefined,
+                );
+            } catch (e) {
+                console.warn(`${LOG} elements.addVelocityAtCell failed`, x, y, e);
+            }
+        },
+        /**
+         * Set a particle's remaining lifetime, in ticks.
+         *
+         * `updateMax` decides whether a live particle's existing maximum is
+         * rewritten too, which is why it is passed through rather than assumed.
+         */
+        setDurationAtCell(
+            x: number,
+            y: number,
+            n: number,
+            opts?: { updateMax?: boolean },
+        ): void {
+            try {
+                g()?.api?.elements?.setDurationAtCell?.(x, y, n, opts);
+            } catch (e) {
+                console.warn(`${LOG} elements.setDurationAtCell failed`, x, y, e);
+            }
+        },
+        /**
+         * Read or write one numbered data field on the element at a cell.
+         *
+         * `0` is a real field value and is returned as `0`, not as "no field":
+         * a caller writing a zero and a caller reading an absent field are doing
+         * different things, and conflating them loses the write.
+         */
+        getDataFieldAtCell(x: number, y: number, field: number): number | null {
+            try {
+                return g()?.api?.elements?.getDataFieldAtCell?.(x, y, field) ?? null;
+            } catch (e) {
+                console.warn(`${LOG} elements.getDataFieldAtCell failed`, x, y, e);
+                return null;
+            }
+        },
+        setDataFieldAtCell(
+            x: number,
+            y: number,
+            field: number,
+            value: number,
+        ): void {
+            try {
+                g()?.api?.elements?.setDataFieldAtCell?.(x, y, field, value);
+            } catch (e) {
+                console.warn(`${LOG} elements.setDataFieldAtCell failed`, x, y, e);
+            }
+        },
+        /**
          * The velocity vector at a cell.
          *
          * Typed as a `Vector2` — the engine's declaration widens this to
