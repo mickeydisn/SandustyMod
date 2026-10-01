@@ -1,57 +1,58 @@
-import type { HomeCardConfig, OriginFilter, ScanSnapshot, TabId } from "./types.ts";
+/**
+ * Panel state: the shared chrome state from `@sandmd/ui` plus the
+ * world-statistic fields (snapshot, filters, card list, graph selection).
+ */
+import { createPanelState } from "@sandmd/ui";
+import { hydrateFromStorage, store } from "./uiStore.ts";
 import { loadCards } from "./cards.ts";
-import {
-    hydrateFromStorage,
-    loadAlpha,
-    loadLocked,
-    loadMinimized,
-    loadPanelAutoMinutes,
-    loadPanelPos,
-    loadZoom,
-    type PanelPos,
-} from "./uiStore.ts";
+import type { HomeCardConfig, OriginFilter, ScanSnapshot } from "./types.ts";
 
-export const state = {
-    tab: "home" as TabId,
-    scanning: false,
-    snapshot: null as ScanSnapshot | null,
-    filter: "",
-    sortBy: "count" as "count" | "name" | "id",
-    origin: "all" as OriginFilter,
-    editingCards: false,
-    cards: loadCards() as HomeCardConfig[],
-    editFocusId: null as string | null,
+/** Mod-specific panel fields, merged alongside the shared chrome state. */
+export interface WordStatExtras {
+    scanning: boolean;
+    snapshot: ScanSnapshot | null;
+    filter: string;
+    sortBy: "count" | "name" | "id";
+    origin: OriginFilter;
+    cards: HomeCardConfig[];
     graphSelection: {
-        elements: [] as string[],
-        structures: [] as string[],
-        terrains: [] as string[],
+        elements: string[];
+        structures: string[];
+        terrains: string[];
+    };
+}
+
+const ctrl = createPanelState<WordStatExtras>({
+    store,
+    tab: "home",
+    extra: {
+        scanning: false,
+        snapshot: null,
+        filter: "",
+        sortBy: "count",
+        origin: "all",
+        cards: [],
+        graphSelection: { elements: [], structures: [], terrains: [] },
     },
-    minimized: loadMinimized(),
-    locked: loadLocked(),
-    /** Right-anchored position. */
-    pos: loadPanelPos() as PanelPos,
-    dragging: false,
-    zoom: loadZoom(),
-    alpha: loadAlpha(),
-    /** Override auto interval minutes (null → mod config). */
-    autoMinutes: loadPanelAutoMinutes() as number | null,
-};
+});
+
+export const state = ctrl.state;
+
+export function bump(): void {
+    ctrl.bump();
+}
+
+export function setRepaint(fn: ((v: number) => number) | null): void {
+    ctrl.setRepaint(fn as unknown as ((n: number) => void) | null);
+}
 
 export function bootFromStorage(): void {
     if (state.snapshot) return;
+    ctrl.loadChrome();
+    state.cards = loadCards();
     try {
         state.snapshot = hydrateFromStorage(state.cards);
     } catch (err) {
         console.warn("[md-word-statistic] hydrate failed", err);
     }
-}
-
-let repaint: ((fn: (v: number) => number) => void) | null = null;
-
-export function setRepaint(fn: ((v: number) => number) | null): void {
-    repaint = fn as any;
-}
-
-export function bump(): void {
-    repaint?.((v) => v + 1);
 }

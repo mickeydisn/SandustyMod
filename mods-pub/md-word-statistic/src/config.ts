@@ -1,22 +1,20 @@
 /**
  * Runtime mod settings from configSchema (api.settings).
  */
-import { api, safe } from "./api.ts";
-import { LOG, MOD_ID } from "./constants.ts";
+import { api, safe } from "@sandmd/ui";
+import { LOG, MOD_ID, SETTINGS } from "./constants.ts";
 import { loadPanelAutoMinutes } from "./uiStore.ts";
 
 export interface ModConfig {
     enabled: boolean;
     autoRefresh: boolean;
-    /** Minutes between auto scans (1–20). */
-    autoRefreshMinutes: number;
+    /** Minutes between auto scans — one data point per scan. */
+    timeRange: number;
+    /** Max stored data points (FIFO). */
+    maxCountSave: number;
+    /** Points rendered on sparklines / charts. */
+    historyMax: number;
 }
-
-const DEFAULTS: ModConfig = {
-    enabled: true,
-    autoRefresh: false,
-    autoRefreshMinutes: 10,
-};
 
 function readBool(name: string, fallback: boolean): boolean {
     const v = safe(() => api.settings.get(name));
@@ -40,13 +38,27 @@ function readNumber(name: string, fallback: number, min: number, max: number): n
 
 export function getConfig(): ModConfig {
     return {
-        enabled: readBool("enabled", DEFAULTS.enabled),
-        autoRefresh: readBool("autoRefresh", DEFAULTS.autoRefresh),
-        autoRefreshMinutes: readNumber(
-            "autoRefreshMinutes",
-            DEFAULTS.autoRefreshMinutes,
-            1,
-            20,
+        enabled: readBool("enabled", true),
+        autoRefresh: readBool("autoRefresh", false),
+        timeRange: readNumber(
+            "timeRange",
+            // Pre-`timeRange` installs stored the scan interval under this
+            // name; honour it so an upgrade does not reset everyone's cadence.
+            readNumber("autoRefreshMinutes", SETTINGS.timeRange.default, 1, SETTINGS.timeRange.max),
+            SETTINGS.timeRange.min,
+            SETTINGS.timeRange.max,
+        ),
+        maxCountSave: readNumber(
+            "maxCountSave",
+            SETTINGS.maxCountSave.default,
+            SETTINGS.maxCountSave.min,
+            SETTINGS.maxCountSave.max,
+        ),
+        historyMax: readNumber(
+            "historyMax",
+            SETTINGS.historyMax.default,
+            SETTINGS.historyMax.min,
+            SETTINGS.historyMax.max,
         ),
     };
 }
@@ -72,28 +84,42 @@ export function clearPanelAutoOverride(): void {
 
 export function intervalMs(): number {
     const panelMin = loadPanelAutoMinutes();
-    const mins = panelMin ?? getConfig().autoRefreshMinutes;
+    const mins = panelMin ?? getConfig().timeRange;
     return mins * 60 * 1000;
 }
 
 export function onConfigChange(cb: (cfg: ModConfig) => void): void {
+    configListeners.push(cb);
     safe(() => {
         api.settings.onChange?.((values: Record<string, unknown>) => {
-            if (
-                values &&
-                ("enabled" in values ||
-                    "autoRefresh" in values ||
-                    "autoRefreshMinutes" in values ||
-                    `${MOD_ID}.enabled` in values ||
-                    `${MOD_ID}.autoRefresh` in values ||
-                    `${MOD_ID}.autoRefreshMinutes` in values)
-            ) {
+            if (values && typeof values === "object") {
                 panelAutoOverride = null; // settings win
-                cb(getConfig());
-            } else {
-                cb(getConfig());
             }
+            cb(getConfig());
         });
     });
     console.log(`${LOG} config`, getConfig());
 }
+
+/**
+ * Write a setting back to the mod's bag.
+ *
+ * The local cache is not stored here (this mod re-reads on demand), but the
+ * host's `onChange` does not reliably fire for a mod-initiated write, so we
+ * notify listeners directly — otherwise the panel keeps showing the old value
+ * until the next reload.
+ */
+export function setSetting<K extends keyof ModConfig>(key: K, value: ModConfig[K]): void {
+    safe(() => api.settings?.set?.(key as string, value));
+    safe(() => api.settings?.set?.(`${MOD_ID}.${key as string}`, value));
+    configListeners.forEach((cb) => {
+        try {
+            cb(getConfig());
+        } catch (e) {
+            console.warn(`${LOG} config listener error`, e);
+        }
+    });
+}
+
+/** Listeners notified by both `onConfigChange` and `setSetting`. */
+const configListeners: Array<(cfg: ModConfig) => void> = [];

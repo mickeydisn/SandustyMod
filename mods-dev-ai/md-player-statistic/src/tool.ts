@@ -1,8 +1,23 @@
 /**
  * Register the Player Statistic tool item and the global overlay.
  * Overlay is visible only while this tool is the active hotbar item (or locked).
+ *
+ * ## `items.register` requires a *loaded* sprite — it is not optional
+ *
+ * The engine does, with no guard:
+ *
+ * ```js
+ * const n = e.sandkit.graphics[t.sprite.id];
+ * const o = n.texture;              // ← TypeError when the sprite is missing
+ * ```
+ *
+ * so a missing/failed `loadFromMod` does not degrade gracefully: it throws,
+ * the item is never registered, `inventory.addById` then throws reading
+ * `.cooldown` off the missing definition, the tool never reaches the hotbar,
+ * `isToolSelected()` is permanently false and the overlay can never open.
+ * We check the sprite up front and report it as the hard error it is.
  */
-import { api, h, React, safe, toast } from "./api.ts";
+import { api, ITEM_TYPE_TOOL, registerStatisticTool, safe } from "@sandmd/ui";
 import {
     DESC_KEY,
     ITEM_ID,
@@ -16,77 +31,89 @@ import {
 } from "./constants.ts";
 import { StatisticPanel } from "./panel.ts";
 
-export async function registerTool(): Promise<void> {
-    safe(() =>
-        api.i18n?.register?.("en", {
-            [NAME_KEY]: TOOL_NAME,
-            [DESC_KEY]: TOOL_DESC,
-        })
-    );
+let itemRegistered = false;
 
-    try {
-        await api.sprites?.loadFromMod?.(SPRITE_ID, SPRITE_PATH);
-    } catch (err) {
-        console.warn(`${LOG} sprite load failed (optional)`, err);
-    }
+/** True once `items.register` actually succeeded. */
+export function isToolRegistered(): boolean {
+    return itemRegistered;
+}
 
-    try {
-        api.items.register({
-            id: ITEM_ID,
-            nameKey: NAME_KEY,
-            descriptionKey: DESC_KEY,
-            name: TOOL_NAME,
-            description: TOOL_DESC,
-            sprite: { id: SPRITE_ID },
-            itemType: "tool",
-            energyCost: 0,
-            cooldown: { durationMs: 120 },
-        });
-    } catch (err) {
-        console.warn(`${LOG} items.register failed`, err);
-    }
-
-    try {
-        if (typeof api.player?.inventory?.hasById === "function") {
-            if (!api.player.inventory.hasById(ITEM_ID)) {
-                api.player.inventory.addById(ITEM_ID);
-            }
-        } else {
-            api.player?.inventory?.addById?.(ITEM_ID);
+/**
+ * Put the tool in the player's hotbar. Safe to call repeatedly.
+ * Returns true once the tool is known to be in the inventory.
+ *
+ * The mod boots at the main menu, where there is no player inventory yet, so
+ * the first attempt is a no-op. `game:ready` is only ever *listened to* in the
+ * engine — nothing emits it on the main thread — so we cannot depend on it.
+ * `main.ts` pairs this with a `game:started` listener plus a bounded retry.
+ */
+export function ensureToolInInventory(): boolean {
+    if (!itemRegistered) return false;
+    return safe(() => {
+        const inv = api.player?.inventory;
+        if (!inv) return false;
+        if (typeof inv.hasById === "function") {
+            if (inv.hasById(ITEM_ID)) return true;
+            inv.addById(ITEM_ID);
+            return inv.hasById(ITEM_ID);
         }
-    } catch (err) {
-        console.warn(`${LOG} inventory add failed`, err);
+        inv.addById?.(ITEM_ID);
+        return true;
+    }, false) === true;
+}
+
+let watchTimer: ReturnType<typeof setInterval> | null = null;
+let watchTicks = 0;
+const WATCH_INTERVAL_MS = 2000;
+/** ~3 minutes of retries — long enough to cover menu → world transitions. */
+const WATCH_MAX_TICKS = 90;
+
+/**
+ * Keep offering the tool until it lands in the hotbar, then stop so it costs
+ * nothing for the rest of the session.
+ */
+export function startInventoryWatch(): void {
+    stopInventoryWatch();
+    watchTicks = 0;
+    watchTimer = setInterval(() => {
+        if (ensureToolInInventory() || ++watchTicks >= WATCH_MAX_TICKS) {
+            stopInventoryWatch();
+        }
+    }, WATCH_INTERVAL_MS);
+}
+
+export function stopInventoryWatch(): void {
+    if (watchTimer != null) {
+        clearInterval(watchTimer);
+        watchTimer = null;
     }
+}
 
-    if (!h || !React) {
-        console.warn(`${LOG} sandkit.react missing — overlay unavailable`);
-        return;
-    }
-
-    try {
-        api.ui.overlays.register("global", OVERLAY_ID, () => StatisticPanel());
-    } catch (err) {
-        console.warn(`${LOG} overlays.register failed, trying ui.inject`, err);
-        safe(() => api.ui.inject?.(OVERLAY_ID, StatisticPanel));
-    }
-
-    try {
-        api.events.on("action:changed", () => {
-            safe(() => api.ui.overlays.update?.("global"));
-        });
-    } catch { /* */ }
-
-    toast(`${TOOL_NAME} ready`);
-    console.log(`${LOG} tool + overlay registered (${ITEM_ID})`);
+export async function registerTool(): Promise<void> {
+    const res = await registerStatisticTool({
+        log: LOG,
+        itemId: ITEM_ID,
+        overlayId: OVERLAY_ID,
+        spriteId: SPRITE_ID,
+        spritePath: SPRITE_PATH,
+        nameKey: NAME_KEY,
+        descKey: DESC_KEY,
+        toolName: TOOL_NAME,
+        toolDesc: TOOL_DESC,
+        render: StatisticPanel,
+        itemType: ITEM_TYPE_TOOL,
+        // A missing sprite is a hard error here: without it the tool silently
+        // never reaches the hotbar and the overlay can never open.
+        requireSprite: true,
+    });
+    itemRegistered = res.itemRegistered;
+    if (res.ok) ensureToolInInventory();
 }
 
 export function unregisterTool(): void {
     safe(() => api.ui.overlays?.unregister?.("global", OVERLAY_ID));
-    safe(() => api.items?.unregister?.(ITEM_ID));
-    // Best-effort inventory prune
-    safe(() => {
-        if (typeof api.player?.inventory?.removeById === "function") {
-            api.player.inventory.removeById(ITEM_ID);
-        }
-    });
+    // ⚠️ The runtime `api.items` facade exposes no `unregister`, and
+    // `player.inventory` exposes no `removeById` — the item definition and the
+    // hotbar entry therefore survive a disable. Only the overlay is torn down.
+    itemRegistered = false;
 }

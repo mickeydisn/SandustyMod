@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "serve": "python3 -m http.server 8080 --bind 127.0.0.1",
+    "serve:deno": "deno run --allow-net --allow-read https://deno.land/std@0.224.0/http/file_server.ts --port 8080"
+  }
+}

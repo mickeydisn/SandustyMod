@@ -116,7 +116,6 @@ export interface ScanSnapshot {
 /** Selected series for list-tab graphs. */
 export type GraphKind = "elements" | "structures" | "terrains";
 
-
 export interface ElementDefinition {
     id?: string;
     nameKey?: string;
@@ -147,7 +146,6 @@ export interface PickerOption {
     label: string;
     color: string;
 }
-
 
 /** One persisted refresh: raw id → count maps only. */
 export interface RawStatsSnapshot {

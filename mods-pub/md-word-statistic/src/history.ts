@@ -6,24 +6,18 @@
  *
  * Only raw id→count maps for elements, terrains, structures are stored.
  */
-import { api, safe } from "./api.ts";
+import { api, safe } from "@sandmd/ui";
 import { MOD_ID } from "./constants.ts";
-import type {
-    ElementRow,
-    RawStatsSnapshot,
-    StructureRow,
-    TerrainRow,
-} from "./types.ts";
+import type { ElementRow, RawStatsSnapshot, StructureRow, TerrainRow } from "./types.ts";
 
 export const STATS_REF_KEY = "statsReference";
 export const STATS_HISTORY_KEY = "statsHistory";
 
-/** Max stored refreshes in the history array (reference is separate). */
-export const HISTORY_LIMIT = 20;
+/** Fallback max stored refreshes when config cannot be read. */
+export const HISTORY_LIMIT = 120;
 
-/** Points shown on home card sparklines. */
-/** Card sparklines use the same depth as list charts. */
-export const CARD_GRAPH_POINTS = 20;
+/** Fallback points shown on home card sparklines. */
+export const CARD_GRAPH_POINTS = 30;
 
 function isRawMap(v: unknown): v is Record<string, number> {
     if (!v || typeof v !== "object" || Array.isArray(v)) return false;
@@ -88,10 +82,13 @@ export function saveHistory(list: RawStatsSnapshot[]): void {
 /**
  * Persist a new refresh:
  * - If no reference exists, store this snapshot as the permanent reference.
- * - Always append to history; if length > HISTORY_LIMIT, drop the oldest entries
- *   (never touches the reference).
+ * - Always append to history; if length > `maxDataPoints`, drop the oldest
+ *   entries (never touches the reference).
  */
-export function recordRefresh(snap: RawStatsSnapshot): {
+export function recordRefresh(
+    snap: RawStatsSnapshot,
+    maxDataPoints = HISTORY_LIMIT,
+): {
     reference: RawStatsSnapshot;
     history: RawStatsSnapshot[];
     isFirst: boolean;
@@ -103,9 +100,10 @@ export function recordRefresh(snap: RawStatsSnapshot): {
         saveReference(reference);
     }
 
+    const cap = Math.max(1, Math.floor(maxDataPoints));
     let history = loadHistory();
     history = [...history, snap];
-    while (history.length > HISTORY_LIMIT) {
+    while (history.length > cap) {
         history.shift(); // pop oldest
     }
     saveHistory(history);
@@ -113,7 +111,23 @@ export function recordRefresh(snap: RawStatsSnapshot): {
     return { reference, history, isFirst };
 }
 
-/** Count for an id in a raw map (exact + case-insensitive). */
+/**
+ * Start a fresh session: drop the stored trend, keep the reference baseline.
+ *
+ * The reference is the "where I started digging" snapshot that `% dug` is
+ * measured against, so it survives a session reset; only the history points
+ * collected during the session are discarded.
+ */
+export function resetSession(): void {
+    saveHistory([]);
+}
+
+/** Drop everything: both the trend and the reference baseline. */
+export function resetAll(): void {
+    saveHistory([]);
+    safe(() => api.storage.remove?.(MOD_ID, STATS_REF_KEY));
+}
+
 export function mapGet(map: Record<string, number> | undefined, id: string): number {
     if (!map) return 0;
     if (typeof map[id] === "number") return map[id];
@@ -147,7 +161,6 @@ export function diffFromReference(
     if (!reference) return null;
     return current - mapGet(reference[kind], id);
 }
-
 
 /**
  * Dig progress vs reference for terrain (digging game).

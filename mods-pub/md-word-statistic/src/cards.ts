@@ -3,7 +3,7 @@
  *
  * First item on a card is the primary: larger number + drives text/border color.
  */
-import { api, safe } from "./api.ts";
+import { api, safe } from "@sandmd/ui";
 import { MOD_ID } from "./constants.ts";
 import { listCataloguesForPicker } from "./data.ts";
 import type { CardItemKind, CardItemRef, HomeCardConfig } from "./types.ts";
@@ -12,7 +12,11 @@ export const CARDS_STORE_KEY = "homeCards";
 export const CARDS_SEEDED_KEY = "homeCardsSeeded";
 
 /** Desired default layout (ids resolved against live catalogue on first seed). */
-const DEFAULT_SPEC: { id: string; title: string; items: { kind: CardItemKind; id: string; aliases?: string[] }[] }[] = [
+const DEFAULT_SPEC: {
+    id: string;
+    title: string;
+    items: { kind: CardItemKind; id: string; aliases?: string[] }[];
+}[] = [
     {
         id: "card-gold",
         title: "Gold",
@@ -26,7 +30,11 @@ const DEFAULT_SPEC: { id: string; title: string; items: { kind: CardItemKind; id
         items: [
             { kind: "terrain", id: "dirt", aliases: ["dirt", "Dirt", "2"] },
             { kind: "element", id: "sand", aliases: ["sand", "Sand"] },
-            { kind: "element", id: "wetsand", aliases: ["wetsand", "wetSand", "wet_sand", "Wet Sand"] },
+            {
+                kind: "element",
+                id: "wetsand",
+                aliases: ["wetsand", "wetSand", "wet_sand", "Wet Sand"],
+            },
         ],
     },
     {
@@ -71,9 +79,10 @@ function resolveItemId(
     aliases: string[] | undefined,
     cats: ReturnType<typeof listCataloguesForPicker>,
 ): string | null {
-    const pool =
-        kind === "element" ? cats.elements
-        : kind === "terrain" ? cats.terrains
+    const pool = kind === "element"
+        ? cats.elements
+        : kind === "terrain"
+        ? cats.terrains
         : cats.structures;
     const candidates = [preferred, ...(aliases ?? [])].map(normalizeId);
     const byNorm = new Map(pool.map((r) => [normalizeId(r.id), r.id]));
@@ -111,19 +120,19 @@ export function buildValidatedDefaultCards(): HomeCardConfig[] {
         for (const it of spec.items) {
             const id = resolveItemId(it.kind, it.id, it.aliases, cats);
             if (id) items.push({ kind: it.kind, id });
-            else console.warn(`[md-word-statistic] default card skip ${it.kind}:${it.id} (not in catalogue)`);
+            else {console.warn(
+                    `[md-word-statistic] default card skip ${it.kind}:${it.id} (not in catalogue)`,
+                );}
         }
         if (items.length > 0) {
             out.push({ id: spec.id, title: spec.title, items });
         }
     }
-    return out.length > 0
-        ? out
-        : DEFAULT_SPEC.map((c) => ({
-            id: c.id,
-            title: c.title,
-            items: c.items.map((it) => ({ kind: it.kind, id: it.id })),
-        }));
+    return out.length > 0 ? out : DEFAULT_SPEC.map((c) => ({
+        id: c.id,
+        title: c.title,
+        items: c.items.map((it) => ({ kind: it.kind, id: it.id })),
+    }));
 }
 
 /** Load cards from mod storage, or seed validated defaults once. */

@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Own Mod — Documentation</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">MO</div>
+        <div>
+          <h1>My Own Mod</h1>
+          <div class="ver">md-my-hown-mod</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav-item active" data-section="graph" href="#graph">Relation graph</a>
+        <a class="nav-item" data-section="editor" href="#editor">Config editor</a>
+        <a class="nav-item" data-section="start" href="#start">Start here</a>
+        <a class="nav-item" data-section="content" href="#content">Content types</a>
+        <a class="nav-item" data-section="systems" href="#systems">Systems</a>
+        <a class="nav-item" data-section="handlers" href="#handlers">Handlers</a>
+      </nav>
+      <div class="sidebar-foot">JSON-driven Sandustry mod</div>
+    </aside>
+
+    <main class="main">
+      <div class="content">
+
+        <section id="graph" class="section graph-section active">
+          <div class="graph-toolbar">
+            <span class="title">How objects connect</span>
+            <button type="button" class="graph-btn primary" id="g-reset">Reset</button>
+            <button type="button" class="graph-btn" id="g-fit">Fit view</button>
+            <label class="graph-check"><input type="checkbox" id="g-only" /> Connected only</label>
+          </div>
+          <div class="graph-stage" id="g-stage">
+            <svg id="g-svg"></svg>
+            <div class="graph-hint">Scroll zoom · drag canvas · drag boxes · click a box to open its docs</div>
+          </div>
+        </section>
+
+        <section id="editor" class="section editor-section">
+          <div id="editor-root"></div>
+        </section>
+
+        <section id="start" class="section">
+
+          <h2>Start here</h2>
+          <p class="blurb">In-game JSON configurator for Sandustry — define elements, structures, recipes, handlers and more from a panel. Everything below is what you can put in storage JSON.</p>
+
+          <div class="page-toc" id="toc-start">
+            <a href="#start-overview">Overview</a>
+            <a href="#start-gs">Getting started</a>
+            <a href="#start-shape">Config shape</a>
+            <a href="#start-panel">The panel</a>
+          </div>
+
+          <article id="start-overview" class="block">
+            <h3>Overview</h3>
+            <p class="blurb">In-game configurator to define and register elements, structures, items, recipes, processing, contact reactions, and more — all via JSON stored in game storage.</p>
+
+          <div class="callout">
+            <strong>No item required.</strong> The panel is a movable, minimizable overlay (minimized by default). Open it from the chip that appears after the mod loads.
+          </div>
+          <div class="callout gold">
+            <strong>Style note.</strong> This documentation mirrors the in-game panel chrome (dark blue-grey panels, gold accent on active nav, system UI colours from the mod). Titles use a pixel font (Press Start 2P) for a Sandustry-like feel; body text stays readable with IBM Plex.
+          </div>
+
+          <h3>What this mod does</h3>
+          <p>You author game content entirely from a panel inside Sandustry. Every definition is saved as JSON in the mod’s storage. On load (and after edits) the mod registers those definitions with the sandkit API so they become real elements, buildings, tools, reactions, and behaviours in the world.</p>
+
+          <h3>Coverage (sandkit v0.5.7)</h3>
+          <div class="toc">
+            <a href="#elements">Elements</a>
+            <a href="#structures">Structures</a>
+            <a href="#items">Items</a>
+            <a href="#terrains">Terrains</a>
+            <a href="#contacts">Contacts</a>
+            <a href="#recipes">Recipes</a>
+            <a href="#processing">Processing</a>
+            <a href="#techs">Tech</a>
+            <a href="#upgrades">Upgrades</a>
+            <a href="#triggers">Triggers</a>
+            <a href="#signals">Signals</a>
+            <a href="#processes">Processes</a>
+            <a href="#buffers">Buffers</a>
+            <a href="#sprites">Sprites</a>
+          </div>
+
+          <h3>Menu groups</h3>
+          <p>The panel is organised into the same groups you see in the sidebar of this documentation:</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Group</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Content</strong></td><td>What the player sees: terrains, elements, structures, items, sprites, shared buffers</td></tr>
+                <tr><td><strong>Production</strong></td><td>How things transform: contact reactions, machine recipes, processors</td></tr>
+                <tr><td><strong>Tech</strong></td><td>Research, unlock gates, upgrades</td></tr>
+                <tr><td><strong>Actions</strong></td><td>Triggers, signals, hook modifiers, input bindings</td></tr>
+                <tr><td><strong>Energy</strong></td><td>Networks and structure energy nodes</td></tr>
+                <tr><td><strong>Handlers</strong></td><td>Atomic actions catalogue and named custom processes</td></tr>
+                <tr><td><strong>Graph / Data</strong></td><td>Relation map and raw JSON import/export</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </article>
+
+          <article id="start-gs" class="block">
+            <h3>Getting started</h3>
+            <p class="blurb">Enable the mod, open the panel, create your first element.</p>
+
+          <h3>1. Enable the mod</h3>
+          <p>In the game’s mod settings, turn <strong>Enabled</strong> on. The setting also controls whether the panel starts minimized.</p>
+
+          <h3>2. Open the panel</h3>
+          <p>A small chip appears (usually bottom-right). Click it to expand the overlay. The panel is near-fullscreen while open; the chip is what you drag when minimized.</p>
+
+          <h3>3. Create an entry</h3>
+          <ol>
+            <li>Pick a group and tab (e.g. <strong>Content → Elements</strong>).</li>
+            <li>Press <strong>+ New</strong>.</li>
+            <li>Fill the form. Required fields are marked.</li>
+            <li>Save. The entry is written to storage and registered with the engine.</li>
+          </ol>
+
+          <h3>4. IDs</h3>
+          <p>Every object needs a unique string <code>id</code>. Prefer a short prefix for your own content, e.g. <code>mdmy:dust</code> or <code>md-my-hown-mod:dust</code>. Both prefixes are treated as “this mod” by the panel filters.</p>
+
+          <div class="callout warn">
+            Changing an <code>id</code> after the object is used elsewhere (recipes, contacts, unlocks…) breaks those references. Prefer renaming the display <code>name</code> instead.
+          </div>
+          </article>
+
+          <article id="start-shape" class="block">
+            <h3>Config shape</h3>
+            <p class="blurb">The entire mod state is one JSON document stored under the key <code>config</code>.</p>
+
+<pre><code>{
+  "version": 1,
+  "elements": [ /* ElementConfig */ ],
+  "structures": [ /* StructureConfig */ ],
+  "items": [ /* ItemConfig */ ],
+  "terrains": [ /* TerrainConfig */ ],
+  "recipes": [ /* RecipeConfig */ ],
+  "processing": [ /* ProcessingConfig */ ],
+  "contacts": [ /* ContactReactionConfig */ ],
+  "interactions": [ /* InteractionConfig */ ],
+  "modifiers": [ /* ModifierConfig */ ],
+  "techs": [ /* TechConfig */ ],
+  "unlockNodes": [ /* UnlockNodeConfig */ ],
+  "upgradeCategories": [ /* UpgradeCategoryConfig */ ],
+  "upgrades": [ /* UpgradeConfig */ ],
+  "projectiles": [ /* ProjectileConfig */ ],
+  "excavationProfiles": [ /* ExcavationProfileConfig */ ],
+  "structureBehaviors": [ /* StructureBehaviorConfig */ ],
+  "placementConfigs": [ /* PlacementConfigConfig */ ],
+  "signals": [ /* SignalConfig */ ],
+  "triggers": [ /* TriggerConfig */ ],
+  "sprites": [ /* SpriteConfig */ ],
+  "inputBindings": [ /* InputBindingConfig */ ],
+  "energyTypes": [ /* EnergyTypeConfig */ ],
+  "energyNetworks": [ /* EnergyNetworkConfig */ ],
+  "buffers": [ /* BufferEntryConfig */ ],
+  "processes": [ /* CustomProcessConfig */ ]
+}</code></pre>
+
+          <p>Empty arrays are fine. Missing keys are filled with <code>[]</code> on load. Legacy <code>actions</code> arrays on signals / triggers / processing / etc. are automatically migrated into derived processes.</p>
+          </article>
+
+          <article id="start-panel" class="block">
+            <h3>The panel</h3>
+            <p class="blurb">How the UI is organised and how lists work.</p>
+
+          <h3>Navigation</h3>
+          <p>Top chips select a <strong>group</strong>. Under the group, tabs select a <strong>category</strong>. Most categories show a list of entries with <strong>+ New</strong>. Opening an entry (or creating one) opens the <strong>Edit</strong> form.</p>
+
+          <h3>Attached lists</h3>
+          <p>Some lists live under another object rather than as their own tab:</p>
+          <ul>
+            <li><strong>Tooltips</strong> → under Elements</li>
+            <li><strong>Placement fields</strong>, <strong>Behaviours</strong>, <strong>Signals</strong> → under Structures</li>
+            <li><strong>Excavation profiles</strong>, <strong>Projectiles</strong> → under Items</li>
+            <li><strong>Unlock nodes</strong> → under Tech nodes</li>
+            <li><strong>Upgrade categories</strong> / <strong>Upgrade actions</strong> → under Upgrades</li>
+          </ul>
+
+          <h3>Fixed catalogues</h3>
+          <p><strong>Excavation options</strong> and <strong>Projectile options</strong> are read-only lists written in code. They have no Edit form and no + New — they are reference catalogues for the presets the compiler understands.</p>
+
+          <h3>Filters</h3>
+          <p>Every list has a search box, owner chips (<em>This mod</em> / <em>Game</em>), and a toggle for hidden objects.</p>
+          </article>
+
+        </section>
+
+        <section id="content" class="section">
+
+          <h2>Content types</h2>
+          <p class="blurb">Everything you author as world content: matter, buildings, tools, sprites and storage buffers.</p>
+          <div class="page-toc">
+            <a href="#c-elements">Elements</a>
+            <a href="#c-terrains">Terrains</a>
+            <a href="#c-structures">Structures</a>
+            <a href="#c-items">Items</a>
+            <a href="#c-sprites">Sprites</a>
+            <a href="#c-buffers">Buffers</a>
+          </div>
+          <article id="c-elements" class="block"><h3>Elements</h3><p class="blurb">New simulation matter: powders, liquids, gases, solids… Registered via <code>api.elements.register</code>.</p>
+
+          <h3>Identity</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>id</code><span class="req">required</span></td><td>string</td><td>Unique element id. Engine assigns a numeric ElementType.</td></tr>
+                <tr><td><code>name</code></td><td>string</td><td>Display name. Auto-registers i18n when a plain string.</td></tr>
+                <tr><td><code>nameKey</code></td><td>string</td><td>i18n key alternative to <code>name</code>.</td></tr>
+                <tr><td><code>description</code></td><td>string</td><td>Tooltip / inspector text.</td></tr>
+                <tr><td><code>descriptionKey</code></td><td>string</td><td>i18n key for description.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Physics</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>matterType</code><span class="req">required</span></td><td>string | number</td><td>
+                  Phase / behaviour class.<br>
+                  <code>Solid=1</code> · <code>Liquid=2</code> · <code>Particle=3</code> · <code>Gas=4</code><br>
+                  <code>Static=5</code> · <code>Slushy=6</code> · <code>Wisp=7</code> · <code>Powder=8</code><br>
+                  Accepts name or numeric value (case-insensitive names).
+                </td></tr>
+                <tr><td><code>density</code><span class="req">required</span></td><td>number</td><td>Sink / float weight. Range 0–1000. Heavier sinks under lighter.</td></tr>
+                <tr><td><code>horizontalSpeed</code></td><td>number</td><td>Optional lateral spread rate.</td></tr>
+                <tr><td><code>duration</code></td><td>number</td><td>Base lifetime in seconds for transient elements. Empty = permanent.</td></tr>
+                <tr><td><code>durationRandom</code></td><td><code>{ min, max }</code></td><td>Random lifetime range (seconds). Only meaningful with <code>duration</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Appearance</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>metaColor</code></td><td>number</td><td>Packed 24-bit RGB integer for minimap / representative colour (e.g. <code>0xff8ad4</code> or <code>14540253</code>).</td></tr>
+                <tr><td><code>materialId</code></td><td>number</td><td>Numeric material id linking to a material shader / profile.</td></tr>
+                <tr><td><code>colors</code></td><td>object | array</td><td>
+                  Render colour scheme. Preferred shape:<br>
+                  <code>{ "variants": [[r,g,b,a], …] }</code><br>
+                  Each variant is a tint the engine picks at random per cell — ship 4–5 for a natural look. Alpha is kept (0–255).
+                </td></tr>
+                <tr><td><code>colors.variantFromDataField1</code></td><td>object</td><td>
+                  Drive colour from a data field: <code>rangeMin</code>, <code>rangeMax</code>, <code>invert</code>, <code>useGradient</code>.
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Behaviour flags</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>isTransportable</code></td><td>bool</td><td>Conveyors / launchers can move it. Default true in the panel.</td></tr>
+                <tr><td><code>isGrabbable</code></td><td>bool</td><td>Player can pick it up with grab tools.</td></tr>
+                <tr><td><code>hidden</code></td><td>bool</td><td>Hide from pickers and UI lists. Still simulated if present on the map.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Flammable (object, not boolean)</h3>
+          <div class="callout warn">
+            <strong>Important:</strong> <code>flammable: true</code> is silently ignored by the engine. The fire pass requires an <strong>object</strong>. An empty object <code>{}</code> means "burns and leaves nothing". Sub-keys control residue and fire lifetime.
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Sub-field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>outputElementId</code></td><td>string</td><td>Element written over the burnt cell. Empty = nothing left.</td></tr>
+                <tr><td><code>outputChance</code></td><td>number 0–1</td><td>Probability of writing the residue. Engine default is <strong>0.25</strong>, not 1.</td></tr>
+                <tr><td><code>inheritsDuration</code></td><td>bool</td><td>Spawned fire copies this cell&apos;s remaining lifetime.</td></tr>
+                <tr><td><code>durationMin</code> / <code>durationMax</code></td><td>number</td><td>Fire lifetime range in seconds. Empty = engine default.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Collectable (object, not boolean)</h3>
+          <div class="callout warn">
+            <strong>Important:</strong> Collectors look up <code>collectable.value</code>. A plain <code>true</code> is ignored — the element is never added to the collector table. Vanilla gold is <code>{ value: 2 }</code>.
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Sub-field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>value</code><span class="req">required</span></td><td>number</td><td>Weight the collector stores. Must be present; a bare <code>{}</code> collects nothing.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Per-cell data fields</h3>
+          <p>A cell has exactly <strong>four numbered slots</strong> (1–4). The panel stores them as a list of <code>{ name, slot, default }</code> where <code>name</code> is your label only — the engine only sees the slot number and default value.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>defaultDataFields</code></td><td>object / list</td><td>Initial values, e.g. <code>{ field1: 20 }</code> or structured list with named slots. Max 4 slots.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Other</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>interactions</code></td><td>array</td><td>Interaction descriptors. Prefer the dedicated <strong>Tooltips</strong> tab under Elements.</td></tr>
+                <tr><td><code>getExtraProps</code></td><td>function</td><td><strong>Not JSON-serialisable.</strong> Omit from stored config; only for runtime injection.</td></tr>
+                <tr><td><code>[key: string]</code></td><td>any</td><td>Passthrough for future / undocumented engine fields.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Example</h3>
+<pre><code>{
+  "id": "mdmy:dust",
+  "name": "Dust",
+  "matterType": "Powder",
+  "density": 1.1,
+  "metaColor": 14540253,
+  "colors": { "variants": [[200, 180, 160, 255]] }
+}</code></pre>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">referenced by <strong>Contacts</strong> (elementA / elementB / outputs)</span>
+            <span class="rel-chip">referenced by <strong>Recipes</strong> (input / output)</span>
+            <span class="rel-chip">referenced by <strong>Interactions</strong> (tooltips)</span>
+            <span class="rel-chip">referenced by <strong>Terrains</strong> (drop)</span>
+          </div></article>
+          <article id="c-terrains" class="block"><h3>Terrains</h3><p class="blurb">Diggable tiles: hit points, colour, drop output. Registered via <code>api.terrains.register</code>.</p>
+
+          <h3>Typical fields</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>id</code></td><td>Unique terrain id (required)</td></tr>
+                <tr><td><code>name</code> / <code>nameKey</code></td><td>Display name</td></tr>
+                <tr><td><code>hp</code></td><td>Hit points before the tile breaks</td></tr>
+                <tr><td><code>color</code> / <code>metaColor</code></td><td>Visual colour</td></tr>
+                <tr><td><code>drop</code> / <code>dropElement</code></td><td>Element produced when dug</td></tr>
+                <tr><td><code>hidden</code></td><td>Hide from pickers</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">produces <strong>Elements</strong> on dig</span>
+            <span class="rel-chip">can have <strong>Interactions</strong> (tooltips)</span>
+          </div></article>
+          <article id="c-structures" class="block"><h3>Structures</h3><p class="blurb">Buildable machines: shape, render, category, unlock gate. Registered via <code>api.structures.register</code>.</p>
+
+          <h3>Identity</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>id</code><span class="req">required</span></td><td>string</td><td>Unique structure type id.</td></tr>
+                <tr><td><code>name</code></td><td>string</td><td>Display name.</td></tr>
+                <tr><td><code>description</code> / <code>descriptionKey</code></td><td>string</td><td>Tooltip text or i18n key.</td></tr>
+                <tr><td><code>descriptionParams</code></td><td>object</td><td>Values interpolated into the description, e.g. <code>{ "count": 3 }</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Placement</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>categoryKey</code><span class="req">required</span></td><td>string</td><td>
+                  Build-menu category:<br>
+                  <code>blocks</code> · <code>logistics</code> · <code>production</code> · <code>economy</code> · <code>logic</code><br>
+                  <code>fluids</code> · <code>lighting</code> · <code>special</code> · <code>misc</code> · <code>thermal</code>
+                </td></tr>
+                <tr><td><code>order</code></td><td>number</td><td>Sort order inside the category (0–9999).</td></tr>
+                <tr><td><code>shape</code></td><td><code>number[][]</code></td><td>
+                  2D footprint. Engine normalises to exactly <strong>4×4</strong> of zeros and ones.
+                  <code>1</code> = occupied, <code>0</code> = empty. Default solid 4×4 if omitted.
+                </td></tr>
+                <tr><td><code>buildModes</code></td><td>array</td><td>
+                  Placement gesture modes. Each: <code>{ type, directions?, spanTiles? }</code>.<br>
+                  Types: <code>single</code> · <code>singleDirectional</code> · <code>line</code> ·
+                  <code>launcherRectUp</code> · <code>launcherRectSide</code> ·
+                  <code>rectangle</code> · <code>rectangleDirectional</code>.<br>
+                  <strong>spanTiles is only legal on <code>line</code></strong> — the engine throws otherwise.
+                  Directions: <code>horizontal</code> · <code>vertical</code> · <code>diagonal</code>.
+                </td></tr>
+                <tr><td><code>linkedClearance</code></td><td>string</td><td>
+                  How a multi-cell footprint is validated. Engine compares against exactly
+                  <code>"allOrNothing"</code> (or absent for per-cell).
+                </td></tr>
+                <tr><td><code>rejectWhenBlocked</code></td><td>bool</td><td>Refuse placement if any footprint cell is occupied.</td></tr>
+                <tr><td><code>blockGridType</code></td><td>string</td><td>Alias structure type for the block grid.</td></tr>
+                <tr><td><code>variants</code></td><td>array</td><td>
+                  Facing variants: <code>{ id, angles: number[] }</code>.
+                  Angles in degrees (−180…180); diagonals allowed.
+                </td></tr>
+                <tr><td><code>altOriginOffsetY</code></td><td>number</td><td>Alternate origin offset on Y.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Flags &amp; unlock</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>unlockNode</code></td><td>string</td><td>
+                  Unlock node that gates this structure. Every structure should name one.
+                  The built-in <code>default</code> node means available from the start.
+                  Required in the panel — empty is not offered.
+                </td></tr>
+                <tr><td><code>hideFromBuildMenu</code></td><td>bool</td><td>
+                  <strong>Mod-side only.</strong> There is no engine field for structure menu visibility.
+                  The mod filters its own lists on this flag. Does not hide from the game build menu by itself.
+                </td></tr>
+                <tr><td><code>alwaysUnlocked</code></td><td>bool</td><td>
+                  Inert on mod structures — the engine only reads it for vanilla ids.
+                  Prefer an unlock node set to the default/always node instead.
+                </td></tr>
+                <tr><td><code>disallowPick</code></td><td>bool</td><td>Prevent picking / demolishing.</td></tr>
+                <tr><td><code>maxPlaced</code></td><td>number</td><td>
+                  Live placement cap. <strong>Not an engine field</strong> — enforced by a
+                  <code>hooks.intercept("building:place")</code> that counts live instances via
+                  <code>forEachOfType</code>. Do not pass <code>maxCount</code> to
+                  <code>registerPlacementConfig</code> (that throws).
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Render</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>render.imageName</code></td><td>string</td><td>Sprite id from <code>api.sprites.load</code> / <code>loadFromMod</code>.</td></tr>
+                <tr><td><code>render.size</code></td><td><code>{ width, height }</code></td><td>Sprite size in pixels.</td></tr>
+                <tr><td><code>render.offset</code></td><td><code>{ x, y }</code></td><td>Draw offset.</td></tr>
+                <tr><td><code>render.ui</code></td><td>object</td><td>
+                  UI presentation: <code>size</code>, <code>width</code>/<code>height</code> (css),
+                  <code>offset</code>, <code>objectPosition</code>, <code>clipToBounds</code>, <code>imageName</code>.
+                </td></tr>
+                <tr><td><code>render.spritesheet</code></td><td>object</td><td>
+                  Animated spritesheet. <code>frameBuffer.key</code> must exist via workers.shared.
+                </td></tr>
+                <tr><td><code>drawKey</code></td><td>string</td><td>
+                  Key of a built-in custom draw function. <code>draw</code> itself is a JS function
+                  and cannot live in JSON — the config stores the key; apply swaps it at register time.
+                  <code>"default"</code> = no custom draw.
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Instance data</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>defaultData</code></td><td>object</td><td>Per-instance data bag, deep-cloned on place / register.</td></tr>
+                <tr><td><code>copyData</code></td><td>bool</td><td>
+                  <code>false</code> → blueprint copier skips instance data (<code>skipCopyData</code>).
+                  Default true.
+                </td></tr>
+                <tr><td><code>tooltipHover</code></td><td>object</td><td>
+                  Hover inspector, e.g. <code>{ type: "filter" }</code> or a custom
+                  <code>dataFieldMessage</code> with <code>messageKey</code> + field rows.
+                </td></tr>
+                <tr><td><code>registerOptions</code></td><td>object</td><td>
+                  Second arg to <code>structures.register</code>.
+                  <code>useRawShape: true</code> keeps shape cells as-is (no 1→Block normalisation).
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Attached under Structures</h3>
+          <ul>
+            <li><strong>Placement fields</strong> — hotbar sliders/pickers while holding the building (<code>registerPlacementConfig</code>)</li>
+            <li><strong>Behaviours</strong> — conveyor / launcher behaviour definitions</li>
+            <li><strong>Signals</strong> — click / signal handlers bound to the structure</li>
+          </ul>
+
+          <h3>Example</h3>
+<pre><code>{
+  "id": "mdmy:block",
+  "name": "Block",
+  "categoryKey": "blocks",
+  "shape": [[1,1],[1,1]],
+  "unlockNode": "default"
+}</code></pre>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">gated by <strong>Unlock nodes</strong></span>
+            <span class="rel-chip">uses <strong>Sprites</strong> (render.imageName)</span>
+            <span class="rel-chip">hosts <strong>Processing</strong>, <strong>Signals</strong>, <strong>Energy nodes</strong></span>
+            <span class="rel-chip">placement config → <strong>Placement fields</strong></span>
+          </div></article>
+          <article id="c-items" class="block"><h3>Items</h3><p class="blurb">Hotbar tools, weapons, consumables. Registered via <code>api.items.register</code>.</p>
+
+          <h3>Core fields</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>id</code><span class="req">required</span></td><td>Unique item id</td></tr>
+                <tr><td><code>itemType</code> / <code>type</code></td><td>Weapon · Tool · Consumable · Mod</td></tr>
+                <tr><td><code>name</code> / <code>description</code></td><td>Display strings</td></tr>
+                <tr><td><code>categoryKey</code></td><td>Inventory category</td></tr>
+                <tr><td><code>sprite</code><span class="req">required</span></td><td><code>{ id, type?: onehand|twohand|backhand, mount? }</code></td></tr>
+                <tr><td><code>cooldown</code></td><td>Number or cooldown object</td></tr>
+                <tr><td><code>processId</code></td><td>Custom process run on use (itemAction scope)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Attached under Items</h3>
+          <ul>
+            <li><strong>Excavation profiles</strong> — dig power + cell pattern</li>
+            <li><strong>Projectiles</strong> — sprite-driven projectiles and options</li>
+            <li><strong>Excavation options</strong> / <strong>Projectile options</strong> — fixed preset catalogues</li>
+          </ul>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">uses <strong>Sprites</strong></span>
+            <span class="rel-chip">can fire <strong>Projectiles</strong></span>
+            <span class="rel-chip">can use <strong>Excavation profiles</strong></span>
+            <span class="rel-chip">upgraded by <strong>Upgrades</strong></span>
+            <span class="rel-chip">runs a <strong>Process</strong> (itemAction)</span>
+          </div></article>
+          <article id="c-sprites" class="block"><h3>Sprites</h3><p class="blurb">Images loaded from the mod folder. Referenced by structures and items.</p>
+
+          <p>Each entry describes a sprite id that the engine can load via <code>api.sprites.load</code> / <code>loadFromMod</code>. Structures point at them with <code>render.imageName</code>; items with <code>sprite.id</code>.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">used by <strong>Structures</strong> (render)</span>
+            <span class="rel-chip">used by <strong>Items</strong> (sprite)</span>
+            <span class="rel-chip">used by <strong>Projectiles</strong></span>
+          </div></article>
+          <article id="c-buffers" class="block"><h3>Buffers</h3><p class="blurb">Shared slots every process in this mod can read and write.</p>
+
+          <p>A buffer slot is not one machine’s memory — it is a single value every process agrees on. Structure <code>data</code> bags are private; buffers are the cross-structure counter / flag store.</p>
+
+          <h3>Fields</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>path</code></td><td>Slot key (string)</td></tr>
+                <tr><td><code>type</code></td><td>Value type (number, boolean, …)</td></tr>
+                <tr><td><code>value</code></td><td>Initial value</td></tr>
+                <tr><td><code>min</code> / <code>max</code></td><td>Required for numbers — counters are always clamped</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>From a process use the Remember actions: <code>bufferRead</code>, <code>bufferWrite</code>, <code>bufferIncrement</code>. A path that no slot declares is a no-op on write and the type’s zero on read.</p></article>
+
+        </section>
+
+        <section id="systems" class="section">
+
+          <h2>Systems</h2>
+          <p class="blurb">Production rules, tech tree, input hooks, energy networks — how content interacts at runtime.</p>
+          <div class="page-toc">
+            <a href="#s-contacts">Contacts</a>
+            <a href="#s-recipes">Recipes</a>
+            <a href="#s-processing">Processors</a>
+            <a href="#s-techs">Tech nodes</a>
+            <a href="#s-unlock">Unlock nodes</a>
+            <a href="#s-upgrades">Upgrades</a>
+            <a href="#s-triggers">Triggers</a>
+            <a href="#s-signals">Signals</a>
+            <a href="#s-modifiers">Modifiers</a>
+            <a href="#s-inputs">Inputs</a>
+            <a href="#s-networks">Networks</a>
+            <a href="#s-energy">Energy</a>
+          </div>
+          <article id="s-contacts" class="block"><h3>Contact reactions</h3><p class="blurb">Element A + element B → two outputs. Registered via <code>api.reactions.registerContact</code>.</p>
+
+          <h3>Typical fields</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>id</code></td><td>Reaction id</td></tr>
+                <tr><td><code>elementA</code> / <code>elementB</code></td><td>Input element ids</td></tr>
+                <tr><td><code>outputA</code> / <code>outputB</code></td><td>Result element ids</td></tr>
+                <tr><td><code>chance</code></td><td>Probability 0–1</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">consumes / produces <strong>Elements</strong></span>
+          </div></article>
+          <article id="s-recipes" class="block"><h3>Machine recipes</h3><p class="blurb">Input → outputs for built-in machines (shaker, press, …).</p>
+
+          <h3>Typical fields</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>id</code></td><td>Recipe id</td></tr>
+                <tr><td><code>kind</code></td><td>Machine kind (e.g. <code>shaker</code>)</td></tr>
+                <tr><td><code>input</code></td><td>Input element id</td></tr>
+                <tr><td><code>output</code></td><td>Output element id (or list)</td></tr>
+                <tr><td><code>chance</code></td><td>Success probability</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Example</h3>
+<pre><code>{
+  "id": "mdmy:sand-to-dust",
+  "kind": "shaker",
+  "input": "sand",
+  "output": "mdmy:dust",
+  "chance": 0.8
+}</code></pre></article>
+          <article id="s-processing" class="block"><h3>Processors</h3><p class="blurb">Timed behaviour attached to a structure type. Runs a process on the processing call site.</p>
+
+          <p>Each entry names a structure type and a <code>processId</code> (or legacy <code>actions</code> array). The engine calls the compiled process with structure coordinates and a <code>commit</code> function for deferred cell mutations.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">attached to a <strong>Structure</strong></span>
+            <span class="rel-chip">runs a <strong>Process</strong> (processing scope)</span>
+          </div></article>
+          <article id="s-techs" class="block"><h3>Tech nodes</h3><p class="blurb">Research nodes: cost, branch, what they unlock.</p>
+
+          <p>Tech nodes form the research tree. They can unlock structures (via unlock nodes), items, or other content. Costs are usually gold / fluxite / energy currencies.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">unlocks content via <strong>Unlock nodes</strong></span>
+            <span class="rel-chip">gates <strong>Structures</strong> and other objects</span>
+          </div></article>
+          <article id="s-unlock" class="block"><h3>Unlock nodes</h3><p class="blurb">What each structure is gated behind: free from the start, or behind research.</p>
+
+          <p>Every structure should name an unlock node. The built-in <strong>default</strong> node means “unlocked from the start”. Custom nodes are linked to tech nodes so research grants the structures.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">referenced by <strong>Structures</strong> (<code>unlockNode</code>)</span>
+            <span class="rel-chip">granted by <strong>Tech nodes</strong></span>
+          </div></article>
+          <article id="s-upgrades" class="block"><h3>Upgrades</h3><p class="blurb">Item upgrade levels, categories, and the actions they run.</p>
+
+          <p>Upgrades are organised into categories. Each upgrade level can run a process (upgrade scope) when applied. Upgrade actions are the subset of atomic actions that only make sense at the upgrade call site.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">belongs to an <strong>Upgrade category</strong></span>
+            <span class="rel-chip">targets an <strong>Item</strong></span>
+            <span class="rel-chip">runs a <strong>Process</strong> (upgrade scope)</span>
+          </div></article>
+          <article id="s-triggers" class="block"><h3>Triggers</h3><p class="blurb">Interval callbacks (ticks). Run a process on a timer.</p>
+
+          <p>A trigger fires every N ticks and executes its process (trigger scope). Useful for global clocks, scanners, or ambient systems.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">runs a <strong>Process</strong> (trigger scope)</span>
+          </div></article>
+          <article id="s-signals" class="block"><h3>Signals</h3><p class="blurb">Structure click / signal handlers.</p>
+
+          <p>Bound to a structure type. When the player interacts (or a signal arrives), the process runs with structure coordinates and instance data.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">attached to a <strong>Structure</strong></span>
+            <span class="rel-chip">runs a <strong>Process</strong> (signal scope)</span>
+          </div></article>
+          <article id="s-modifiers" class="block"><h3>Hook modifiers</h3><p class="blurb">Intercept or modify engine hooks with a process.</p>
+
+          <p>Modifiers register against a hook id and run a process (modifier scope) that can inspect or alter the hook arguments.</p></article>
+          <article id="s-inputs" class="block"><h3>Input bindings</h3><p class="blurb">Custom key bindings that appear in the game’s settings.</p>
+
+          <p>Declare a binding id and label; the player can rebind it. Your processes or other code can then query whether the binding is pressed.</p></article>
+          <article id="s-networks" class="block"><h3>Energy networks</h3><p class="blurb">Named energy channels. The game ships one (<code>power</code>); add the ones you need.</p>
+
+          <p>Networks are simple named channels. Energy interactions on structures attach a conductor / storage node to a network.</p></article>
+          <article id="s-energy" class="block"><h3>Energy interactions</h3><p class="blurb">Attach a conductor or storage energy node to a structure.</p>
+
+          <h3>Relations</h3>
+          <div class="relations">
+            <span class="rel-chip">attached to a <strong>Structure</strong></span>
+            <span class="rel-chip">belongs to an <strong>Energy network</strong></span>
+          </div></article>
+
+        </section>
+
+        <section id="handlers" class="section">
+
+          <h2>Handlers &amp; processes</h2>
+          <p class="blurb">Custom processes are ordered lists of atomic actions. Every verb you can put in a process step is listed here.</p>
+          <div class="page-toc">
+            <a href="#h-processes">Custom processes</a>
+            <a href="#h-actions">Atomic actions</a>
+            <a href="#h-ids">IDs &amp; prefixes</a>
+          </div>
+          <article id="h-processes" class="block"><h3>Custom processes</h3><p class="blurb">Named, reusable handlers built from atomic actions. Edit once — every call site updates.</p>
+
+          <h3>Why processes exist</h3>
+          <p>Previously every signal, trigger, and processor stored its own <code>actions: [{ key, options }]</code> array. There was no way to name that behaviour or reuse it. A custom process is a first-class object with:</p>
+          <ul>
+            <li>an <code>id</code> and optional <code>name</code> / <code>doc</code></li>
+            <li>a <strong>scope</strong> (call site) that seeds the context</li>
+            <li>an ordered list of <strong>steps</strong> <code>{ key, options?, as? }</code></li>
+          </ul>
+
+          <h3>Fields</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><code>id</code></td><td>Process id</td></tr>
+                <tr><td><code>name</code></td><td>Display name</td></tr>
+                <tr><td><code>scope</code></td><td>signal · trigger · processing · itemAction · upgrade · behavior · modifier</td></tr>
+                <tr><td><code>steps</code></td><td>Array of action steps</td></tr>
+                <tr><td><code>doc</code></td><td>Author notes</td></tr>
+                <tr><td><code>derived</code></td><td>True if auto-migrated from a legacy actions array</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Scopes &amp; context seeds</h3>
+          <p>Each scope seeds a read-only context from what the engine actually passes at that call site:</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Scope</th><th>Context seeds (read-only)</th></tr></thead>
+              <tbody>
+                <tr><td><span class="tag tag-scope">processing</span></td><td>
+                  <code>structure.x</code>, <code>structure.y</code>, <code>structure.type</code>,
+                  <code>structure.data</code>, <code>context.getResolvedTypeAtCell</code>,
+                  <code>context.isCellEmptyAtCell</code>, <code>context.commit</code>
+                </td></tr>
+                <tr><td><span class="tag tag-scope">signal</span></td><td>
+                  <code>structure.x</code>, <code>structure.y</code>, <code>structure.type</code>,
+                  <code>structure.data</code>
+                </td></tr>
+                <tr><td><span class="tag tag-scope">trigger</span></td><td>
+                  <code>tick</code> (callback takes no other arguments)
+                </td></tr>
+                <tr><td><span class="tag tag-scope">itemAction</span></td><td>
+                  <code>state.x</code>, <code>state.y</code>, <code>action.type</code>
+                </td></tr>
+                <tr><td><span class="tag tag-scope">modifier</span></td><td>
+                  <code>args</code>, <code>ctx</code>
+                </td></tr>
+                <tr><td><span class="tag tag-scope">upgrade</span></td><td>
+                  <code>item.type</code>
+                </td></tr>
+                <tr><td><span class="tag tag-scope">behavior</span></td><td>
+                  <code>key</code>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Author variables (bound with <code>as:</code>) live in a separate writable namespace. Seeds cannot be overwritten.</p>
+
+          <h3>Call sites that reference a process</h3>
+          <div class="relations">
+            <span class="rel-chip"><strong>Signals</strong> → processId</span>
+            <span class="rel-chip"><strong>Triggers</strong> → processId</span>
+            <span class="rel-chip"><strong>Processing</strong> → processId</span>
+            <span class="rel-chip"><strong>Items</strong> (itemAction) → processId</span>
+            <span class="rel-chip"><strong>Upgrades</strong> → processId</span>
+            <span class="rel-chip"><strong>Modifiers</strong> → processId</span>
+          </div>
+
+          <div class="callout">
+            A definition stores a <strong>reference</strong> (<code>processId</code>), never a copy of the steps. Editing the process updates every use. The panel shows <code>used ×N</code> so the blast radius is visible.
+          </div></article>
+          <article id="h-actions" class="block"><h3>Atomic actions</h3>
+<div class="callout"><strong>Exhaustive action catalogue.</strong> Every key from <code>handler-registry.ts</code> with its parameters. Use these as process <code>steps[].key</code> and fill <code>options</code>.</div>
+<h4 id="role-sense">Sense — look, change nothing</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>bufferRead</code></td><td><code>path</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>countElements</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>countStructures</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>countTerrain</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>emptyCells</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>from</code> <span class="ed-muted">(text)</span>, <code>to</code> <span class="ed-muted">(text)</span>, <code>key</code> <span class="ed-muted">(text)</span>, <code>value</code> <span class="ed-muted">(text)</span>, <code>numberValue</code> <span class="ed-muted">(number)</span>, <code>propagateToWorkers</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>findFreeCell</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>getVelocity</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>hasStructure</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>hasTerrain</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>isBlockedByPlayer</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>isLauncher</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>isMyType</code></td><td>—</td></tr>
+<tr><td><code>isStructureEnabled</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>isStructureType</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>isTerrainType</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>readElement</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>mx</code> <span class="ed-muted">(number)</span>, <code>my</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>signalLog</code></td><td><code>value</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>structureData</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>key</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>structureInspect</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>structureReadData</code></td><td><code>field</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>structureType</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>terrainHitPoints</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>terrainType</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>terrainTypeHandle</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>triggerLog</code></td><td>—</td></tr>
+<tr><td><code>triggerScan</code></td><td><code>radius</code> <span class="ed-muted">(number)</span>, <code>min</code> <span class="ed-muted">(number)</span>, <code>max</code> <span class="ed-muted">(number)</span>, <code>left</code> <span class="ed-muted">(text)</span></td></tr>
+</tbody></table></div>
+<h4 id="role-decide">Decide — false skips rest of process</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>itemDefault</code></td><td><code>power</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>noop</code></td><td>—</td></tr>
+<tr><td><code>processorNoop</code></td><td>—</td></tr>
+<tr><td><code>upgradeScale</code></td><td><code>field</code> <span class="ed-muted">(text)</span>, <code>factor</code> <span class="ed-muted">(number)</span></td></tr>
+</tbody></table></div>
+<h4 id="role-act">Act — change cells / world</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>addVelocity</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>vx</code> <span class="ed-muted">(number)</span>, <code>vy</code> <span class="ed-muted">(number)</span>, <code>maxSpeed</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>buildStructure</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>createElement</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>createTerrain</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>damageTerrain</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>damage</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>itemExcavate</code></td><td><code>profileId</code> <span class="ed-muted">(text)</span>, <code>power</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>itemShoot</code></td><td><code>projectileId</code> <span class="ed-muted">(text)</span>, <code>power</code> <span class="ed-muted">(number)</span>, <code>speed</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>mapSpritesheetValue</code></td><td><code>value2</code> <span class="ed-muted">(number)</span>, <code>thresholds</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>processorConvert</code></td><td><code>to</code> <span class="ed-muted">(text)</span>, <code>chance</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>processorLift</code></td><td><code>x</code> <span class="ed-muted">(number)</span>, <code>y</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>pushStructure</code></td><td><code>propagateToWorkers</code> <span class="ed-muted">(bool)</span>, <code>skipShadow</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>removeStructure</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>removeStructures</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>preserveUnselectable</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>removeTerrain</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>skipShadow</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>replaceElement</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>replaceTerrain</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>setDuration</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>ticks</code> <span class="ed-muted">(number)</span>, <code>rearm</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>setSpritesheetByValue</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>value2</code> <span class="ed-muted">(number)</span>, <code>thresholds</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>setSpritesheetIndex</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>index</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>setStructureData</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>setStructureEnabled</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>enabled</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>setTerrainHitPoints</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>hitPoints</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>setVelocity</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>vx</code> <span class="ed-muted">(number)</span>, <code>vy</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>teleportElement</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>tx</code> <span class="ed-muted">(number)</span>, <code>ty</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>toParticle</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span>, <code>vx</code> <span class="ed-muted">(number)</span>, <code>vy</code> <span class="ed-muted">(number)</span>, <code>durationTicks</code> <span class="ed-muted">(number)</span>, <code>density</code> <span class="ed-muted">(number)</span>, <code>freeFalling</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>var</code></td><td>—</td></tr>
+</tbody></table></div>
+<h4 id="role-remember">Remember — persist state</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>bufferIncrement</code></td><td><code>path</code> <span class="ed-muted">(text)</span>, <code>delta</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>bufferWrite</code></td><td><code>path</code> <span class="ed-muted">(text)</span>, <code>value</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>processorCount</code></td><td>—</td></tr>
+<tr><td><code>processorLog</code></td><td>—</td></tr>
+<tr><td><code>structureWriteData</code></td><td><code>field</code> <span class="ed-muted">(text)</span>, <code>value</code> <span class="ed-muted">(text)</span>, <code>slot</code> <span class="ed-muted">(select)</span></td></tr>
+<tr><td><code>triggerTick</code></td><td>—</td></tr>
+<tr><td><code>upgradeAdd</code></td><td><code>field</code> <span class="ed-muted">(text)</span>, <code>amount</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>upgradeCountLevel</code></td><td><code>field</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>writeDataField</code></td><td><code>slot</code> <span class="ed-muted">(select)</span>, <code>slotValue</code> <span class="ed-muted">(text)</span></td></tr>
+</tbody></table></div>
+<h4 id="role-feel">Feel — player feedback</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>particles</code></td><td><code>name</code> <span class="ed-muted">(text)</span>, <code>count</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>toast</code></td><td><code>text</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>upgradeLog</code></td><td>—</td></tr>
+</tbody></table></div>
+<h4 id="role-connect">Connect — engine systems</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>energyBank</code></td><td><code>capacity</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>energyConductor</code></td><td><code>capacity</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>energyConsumePerRun</code></td><td><code>energyType</code> <span class="ed-muted">(text)</span>, <code>amountPerRun</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>energyDefault</code></td><td><code>capacity</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>energyGenerateWhileHeld</code></td><td><code>energyType</code> <span class="ed-muted">(text)</span>, <code>amountPerRun</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>energyNetwork</code></td><td><code>energyType</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>energyWire</code></td><td><code>capacity</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>identity</code></td><td>—</td></tr>
+<tr><td><code>logArgs</code></td><td>—</td></tr>
+<tr><td><code>logBuildingPayload</code></td><td>—</td></tr>
+<tr><td><code>techAppendUnlock</code></td><td><code>techId</code> <span class="ed-muted">(text)</span></td></tr>
+<tr><td><code>techGrantItem</code></td><td><code>itemId</code> <span class="ed-muted">(text)</span>, <code>count</code> <span class="ed-muted">(number)</span></td></tr>
+<tr><td><code>techSetUpgradeLevel</code></td><td><code>itemId</code> <span class="ed-muted">(text)</span>, <code>level</code> <span class="ed-muted">(number)</span></td></tr>
+</tbody></table></div>
+<h4 id="role-logic">Logic — range walks / loops</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>logicAll</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>logicAny</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>logicCount</code></td><td><code>dx</code> <span class="ed-muted">(number)</span>, <code>dy</code> <span class="ed-muted">(number)</span>, <code>size</code> <span class="ed-muted">(number)</span>, <code>footprint</code> <span class="ed-muted">(bool)</span></td></tr>
+<tr><td><code>logicForEach</code></td><td><code>to</code> <span class="ed-muted">(select)</span>, <code>when</code> <span class="ed-muted">(select)</span></td></tr>
+</tbody></table></div>
+<h4 id="role-block">Block — if / then / else</h4>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Parameters</th></tr></thead><tbody>
+<tr><td><code>if</code></td><td>condition (text); then[] / else[] branches</td></tr>
+</tbody></table></div>
+</article>
+          <article id="h-ids" class="block"><h3>IDs &amp; prefixes</h3><p class="blurb">How the mod attributes objects to itself vs the game.</p>
+
+          <p>Object ids that start with either of these prefixes are treated as belonging to this mod:</p>
+          <ul>
+            <li><code>md-my-hown-mod</code> — the package / mod id</li>
+            <li><code>mdmy</code> — the short author prefix used in config examples</li>
+          </ul>
+
+          <p>The panel’s “This mod” filter and the origin tags on list rows read that list. Prefer a consistent short prefix for everything you create.</p>
+
+          <div class="callout warn">
+            Never reuse a vanilla or another mod’s id. Collisions cause silent overwrites or registration failures depending on the engine path.
+          </div>
+
+          <h3>Storage keys</h3>
+          <p>The mod persists two keys under its storage bag:</p>
+          <ul>
+            <li><code>config</code> — the full ModConfig JSON</li>
+            <li><code>panel</code> — position, size, minimized state of the overlay</li>
+          </ul></article>
+
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <script src="js/schema.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

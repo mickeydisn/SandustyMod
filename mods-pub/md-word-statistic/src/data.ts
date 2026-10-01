@@ -5,8 +5,9 @@
  * Home cards resolve per-item counts with tolerant id matching (vanilla ids are
  * often all-lowercase: water, gold, wetsand, liquidgold, …).
  */
-import { api, root, safe } from "./api.ts";
+import { api, root, safe } from "@sandmd/ui";
 import { BUILT_IN, SCAN_CHUNK } from "./constants.ts";
+import { getConfig } from "./config.ts";
 import { loadCards } from "./cards.ts";
 import {
     buildRawSnapshot,
@@ -60,34 +61,29 @@ function colorFromMeta(
 
 /** Resolve terrain type → id / name / color from whatever the host exposes. */
 function resolveTerrainMeta(type: number): { id: string; name: string; color: string } {
-    const def = (safe(() => api.terrains.getDefinitionByType?.(type)) ?? {}) as TerrainDefinition & {
-        colour?: number;
-        displayName?: string;
-    };
-    const idRaw =
-        safe(() => api.terrains.getIdByType?.(type)) ??
+    const def = (safe(() => api.terrains.getDefinitionByType?.(type)) ?? {}) as
+        & TerrainDefinition
+        & {
+            colour?: number;
+            displayName?: string;
+        };
+    const idRaw = safe(() => api.terrains.getIdByType?.(type)) ??
         safe(() => api.terrains.getIdFromType?.(type)) ??
         def.id ??
         null;
-    const nameRaw =
-        safe(() => api.terrains.getNameByType?.(type)) ??
+    const nameRaw = safe(() => api.terrains.getNameByType?.(type)) ??
         def.name ??
         def.displayName ??
         def.nameKey ??
         null;
-    const colorRaw =
-        def.metaColor ??
+    const colorRaw = def.metaColor ??
         def.color ??
         def.colour ??
         safe(() => api.terrains.getColorByType?.(type)) ??
         safe(() => api.terrains.getMetaColorByType?.(type));
 
-    const id = idRaw != null && String(idRaw).trim() !== ""
-        ? String(idRaw)
-        : String(type);
-    const name = nameRaw != null && String(nameRaw).trim() !== ""
-        ? String(nameRaw)
-        : id;
+    const id = idRaw != null && String(idRaw).trim() !== "" ? String(idRaw) : String(type);
+    const name = nameRaw != null && String(nameRaw).trim() !== "" ? String(nameRaw) : id;
     const color = colorFromMeta(colorRaw as number | string | undefined, "#6a6a6a");
     return { id, name, color };
 }
@@ -104,7 +100,6 @@ function listTerrainTypes(): number[] {
     }
     return found;
 }
-
 
 function worldSize(): { w: number; h: number } {
     const dims = safe(() => api.grid?.getDimensions?.() ?? api.world?.getDimensions?.());
@@ -124,11 +119,13 @@ function canInteractAtCell(cx: number, cy: number): boolean {
     const auth = api.authorization;
     if (!auth) return true;
     let sawFalse = false;
-    for (const fn of [
-        () => auth.canGrabAtCell?.(cx, cy),
-        () => auth.canBuildAtCell?.(cx, cy),
-        () => auth.canUseToolAtCell?.(cx, cy),
-    ]) {
+    for (
+        const fn of [
+            () => auth.canGrabAtCell?.(cx, cy),
+            () => auth.canBuildAtCell?.(cx, cy),
+            () => auth.canUseToolAtCell?.(cx, cy),
+        ]
+    ) {
         const v = safe(fn);
         if (v === false) sawFalse = true;
     }
@@ -139,10 +136,11 @@ export function listElementDefs(): ElementRow[] {
     const types = safe(() => api.elements.getRegisteredTypes(), []) ?? [];
     return types
         .map((t: number) => {
-            const def = (safe(() => api.elements.getDefinitionByType(t)) ?? {}) as ElementDefinition;
+            const def = (safe(() =>
+                api.elements.getDefinitionByType(t)
+            ) ?? {}) as ElementDefinition;
             const id = def.id ?? String(t);
-            const name =
-                safe(() => api.elements.getNameByType?.(t)) ??
+            const name = safe(() => api.elements.getNameByType?.(t)) ??
                 def.name ??
                 def.nameKey ??
                 id;
@@ -165,8 +163,7 @@ export function listStructureDefs(): StructureRow[] {
         const d = def ?? {};
         const sid = typeof d.id === "string" ? d.id : id;
         if (!sid || rows.has(sid)) return;
-        const name =
-            d.name ??
+        const name = d.name ??
             safe(() => api.i18n?.getName?.(d) ?? null) ??
             d.nameKey ??
             sid;
@@ -215,7 +212,12 @@ export function listPickerOptions(
         out.push({ kind: "terrain", id: r.id, label: `${r.name} (${r.id})`, color: r.color });
     }
     for (const r of structures) {
-        out.push({ kind: "structure", id: r.id, label: `${r.name || r.id} (${r.id})`, color: "#8ab4f8" });
+        out.push({
+            kind: "structure",
+            id: r.id,
+            label: `${r.name || r.id} (${r.id})`,
+            color: "#8ab4f8",
+        });
     }
     return out;
 }
@@ -271,7 +273,10 @@ async function scanGrid(
                     if (isEmpty === true) empty += 1;
                 }
                 x += 1;
-                if (x >= w) { x = 0; y += 1; }
+                if (x >= w) {
+                    x = 0;
+                    y += 1;
+                }
             }
             onProgress?.(scanned, total);
             if (y < h) {
@@ -316,7 +321,7 @@ function expandAliases(id: string): string[] {
         fire: ["fire", "Fire"],
     };
     const extra = known[n];
-    if (extra) for (const e of extra) set.add(e);
+    if (extra) { for (const e of extra) set.add(e); }
     return [...set];
 }
 
@@ -335,16 +340,28 @@ function resolveItemStat(
     if (ref.kind === "element") {
         for (const r of elements) {
             if (norm(r.id) === target || norm(r.name) === target) {
-                count = r.count; label = r.name; color = r.color; break;
+                count = r.count;
+                label = r.name;
+                color = r.color;
+                break;
             }
         }
         if (count === 0) {
             for (const a of expandAliases(ref.id)) {
-                const t = safe(() => api.elements.getTypeFromId?.(a) ?? api.elements.getTypeById?.(a));
+                const t = safe(() =>
+                    api.elements.getTypeFromId?.(a) ?? api.elements.getTypeById?.(a)
+                );
                 if (typeof t === "number") {
                     const row = elements.find((r) => r.type === t);
-                    if (row) { count = row.count; label = row.name; color = row.color; break; }
-                    const def = safe(() => api.elements.getDefinitionByType?.(t)) as ElementDefinition | null;
+                    if (row) {
+                        count = row.count;
+                        label = row.name;
+                        color = row.color;
+                        break;
+                    }
+                    const def = safe(() => api.elements.getDefinitionByType?.(t)) as
+                        | ElementDefinition
+                        | null;
                     if (def) {
                         label = String(def.name ?? def.nameKey ?? def.id ?? ref.id);
                         color = colorFromMeta(def.metaColor, color);
@@ -356,9 +373,9 @@ function resolveItemStat(
         let matchedId = ref.id;
         for (const r of terrains) {
             if (
-                norm(r.id) === target
-                || norm(r.name) === target
-                || String(r.type) === ref.id.trim()
+                norm(r.id) === target ||
+                norm(r.name) === target ||
+                String(r.type) === ref.id.trim()
             ) {
                 count = r.count;
                 label = r.name;
@@ -369,7 +386,9 @@ function resolveItemStat(
         }
         if (count === 0) {
             for (const a of expandAliases(ref.id)) {
-                const ty = safe(() => api.terrains.getTypeFromId?.(a) ?? api.terrains.getTypeById?.(a));
+                const ty = safe(() =>
+                    api.terrains.getTypeFromId?.(a) ?? api.terrains.getTypeById?.(a)
+                );
                 if (typeof ty === "number") {
                     const row = terrains.find((r) => r.type === ty);
                     if (row) {
@@ -388,17 +407,35 @@ function resolveItemStat(
             }
         }
         return {
-            kind: ref.kind, id: matchedId, label: String(label), color, count, primary,
-            delta: null, series: [],
+            kind: ref.kind,
+            id: matchedId,
+            label: String(label),
+            color,
+            count,
+            primary,
+            delta: null,
+            series: [],
         };
     } else {
         for (const r of structures) {
             if (norm(r.id) === target || norm(r.name) === target) {
-                count = r.count; label = r.name || r.id; color = "#8ab4f8"; break;
+                count = r.count;
+                label = r.name || r.id;
+                color = "#8ab4f8";
+                break;
             }
         }
     }
-    return { kind: ref.kind, id: ref.id, label: String(label), color, count, primary, delta: null, series: [] };
+    return {
+        kind: ref.kind,
+        id: ref.id,
+        label: String(label),
+        color,
+        count,
+        primary,
+        delta: null,
+        series: [],
+    };
 }
 
 function attachHistoryToItem(
@@ -406,14 +443,16 @@ function attachHistoryToItem(
     reference: import("./types.ts").RawStatsSnapshot | null,
     history: import("./types.ts").RawStatsSnapshot[],
 ): CardItemStat {
-    const kindKey = item.kind === "element" ? "elements"
-        : item.kind === "terrain" ? "terrains" : "structures";
+    const kindKey = item.kind === "element"
+        ? "elements"
+        : item.kind === "terrain"
+        ? "terrains"
+        : "structures";
     const delta = diffFromReference(reference, item.count, kindKey, item.id);
     // Series for charts is built at render time via seriesForId (same path as list graphs).
-    const series = seriesForId(history, kindKey, item.id, CARD_GRAPH_POINTS);
+    const series = seriesForId(history, kindKey, item.id, getConfig().historyMax);
     return { ...item, delta, series };
 }
-
 
 export function resolveCards(
     configs: HomeCardConfig[],
@@ -434,8 +473,11 @@ export function resolveCards(
         if (reference) {
             let refTotal = 0;
             for (const it of items) {
-                const kindKey = it.kind === "element" ? "elements"
-                    : it.kind === "terrain" ? "terrains" : "structures";
+                const kindKey = it.kind === "element"
+                    ? "elements"
+                    : it.kind === "terrain"
+                    ? "terrains"
+                    : "structures";
                 refTotal += mapGet(reference[kindKey], it.id);
             }
             delta = total - refTotal;
@@ -466,7 +508,11 @@ export async function runScan(
     countStructures(structuresAll);
 
     const terrainAccum = new Map<number, number>();
-    const { scanned, authorized, skipped, empty } = await scanGrid(elementMap, terrainAccum, onProgress);
+    const { scanned, authorized, skipped, empty } = await scanGrid(
+        elementMap,
+        terrainAccum,
+        onProgress,
+    );
     const terrains = buildTerrainRows(terrainAccum);
 
     const elementsPresent = elementsAll.filter((r) => r.count > 0);
@@ -484,20 +530,35 @@ export async function runScan(
 
     // Persist raw stats (reference once, history FIFO ≤20)
     const raw = buildRawSnapshot(elementsAll, terrains, structuresAll, Date.now());
-    const { reference, history } = recordRefresh(raw);
+    const { reference, history } = recordRefresh(raw, getConfig().maxCountSave);
 
     const cards = resolveCards(
-        configs, elementsAll, structuresAll, terrains, reference, history,
+        configs,
+        elementsAll,
+        structuresAll,
+        terrains,
+        reference,
+        history,
     );
 
     const t1 = performance.now?.() ?? Date.now();
     return {
-        worldW: w, worldH: h, scannedCells: scanned,
-        authorizedCells: authorized, skippedAuthCells: skipped,
-        durationMs: Math.round(t1 - t0), at: Date.now(),
-        elements: elementsPresent, structures: structuresPresent, terrains,
-        totalElements, totalStructures, totalTerrains,
-        emptyCells: empty, emptyPercent, cards,
+        worldW: w,
+        worldH: h,
+        scannedCells: scanned,
+        authorizedCells: authorized,
+        skippedAuthCells: skipped,
+        durationMs: Math.round(t1 - t0),
+        at: Date.now(),
+        elements: elementsPresent,
+        structures: structuresPresent,
+        terrains,
+        totalElements,
+        totalStructures,
+        totalTerrains,
+        emptyCells: empty,
+        emptyPercent,
+        cards,
         statsReference: reference,
         statsHistory: history,
     };

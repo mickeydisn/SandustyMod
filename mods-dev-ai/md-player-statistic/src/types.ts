@@ -25,7 +25,7 @@ export type SettingsSchema = {
     };
 };
 
-export type TabId = "home" | "actions" | "items" | "terrain" | "config";
+export type TabId = "home" | "actions" | "terrain" | "move" | "keys" | "graber" | "config";
 
 /** One selectable KPI on a Home card. */
 export interface CardItemRef {
@@ -73,6 +73,11 @@ export type KpiMap = Record<string, number>;
 export interface KpiSnapshot {
     at: number;
     totals: KpiMap;
+    /**
+     * Session counters at this point. Optional because snapshots written
+     * before this existed only carry `totals`; readers fall back to it.
+     */
+    session?: KpiMap;
 }
 
 /** Live buffer state. */

@@ -1,13 +1,11 @@
 /**
- * Panel UI preferences in mod storage (not configSchema).
+ * Mod-side panel store: the shared `@sandmd/ui` prefs store plus the
+ * world-statistic snapshot hydration that rebuilds the panel from storage.
  */
-import { api, safe } from "./api.ts";
+import { createUiStore } from "@sandmd/ui";
 import { MOD_ID } from "./constants.ts";
 import { loadCards } from "./cards.ts";
-import {
-    loadHistory,
-    loadReference,
-} from "./history.ts";
+import { loadHistory, loadReference } from "./history.ts";
 import { listCataloguesForPicker, resolveCards } from "./data.ts";
 import type {
     ElementRow,
@@ -17,97 +15,28 @@ import type {
     TerrainRow,
 } from "./types.ts";
 
-export const UI_POS_KEY = "panelPosition";
-export const UI_MINI_KEY = "panelMinimized";
-export const UI_LOCK_KEY = "panelLocked";
-export const UI_ZOOM_KEY = "panelZoom";
-export const UI_ALPHA_KEY = "panelAlpha";
-export const UI_AUTO_MIN_KEY = "panelAutoMinutes";
+/** Position / zoom / opacity / lock / minimize / auto-refresh persistence. */
+export const store = createUiStore({ modId: MOD_ID, keyPrefix: "panel" });
 
-/** Right-anchored position (distance from viewport right / top). */
-export interface PanelPos {
-    right: number;
-    top: number;
-}
+export const UI_POS_KEY = store.posKey;
+export const UI_MINI_KEY = store.miniKey;
+export const UI_LOCK_KEY = store.lockKey;
+export const UI_ZOOM_KEY = store.zoomKey;
+export const UI_ALPHA_KEY = store.alphaKey;
+export const UI_AUTO_MIN_KEY = store.autoKey;
 
-const DEFAULT_POS: PanelPos = { right: 16, top: 80 };
-
-export function loadPanelPos(): PanelPos {
-    const raw = safe(() => api.storage.get(MOD_ID, UI_POS_KEY));
-    if (raw && typeof raw === "object") {
-        const o = raw as Record<string, unknown>;
-        // New shape
-        if (typeof o.right === "number" && typeof o.top === "number") {
-            return { right: o.right, top: o.top };
-        }
-        // Migrate old left/top → approximate right (assume ~40vw panel)
-        if (typeof o.left === "number" && typeof o.top === "number" && o.left >= 0) {
-            const vw = (globalThis as { innerWidth?: number }).innerWidth ?? 1280;
-            const right = Math.max(0, vw - o.left - vw * 0.4);
-            return { right, top: o.top };
-        }
-    }
-    return { ...DEFAULT_POS };
-}
-
-export function savePanelPos(pos: PanelPos): void {
-    safe(() => api.storage.set(MOD_ID, UI_POS_KEY, pos));
-}
-
-export function loadMinimized(): boolean {
-    return safe(() => api.storage.get(MOD_ID, UI_MINI_KEY)) === true;
-}
-
-export function saveMinimized(v: boolean): void {
-    safe(() => api.storage.set(MOD_ID, UI_MINI_KEY, v));
-}
-
-export function loadLocked(): boolean {
-    return safe(() => api.storage.get(MOD_ID, UI_LOCK_KEY)) === true;
-}
-
-export function saveLocked(v: boolean): void {
-    safe(() => api.storage.set(MOD_ID, UI_LOCK_KEY, v));
-}
-
-/** Panel scale 0.6 – 1.4 (default 1). */
-export function loadZoom(): number {
-    const v = safe(() => api.storage.get(MOD_ID, UI_ZOOM_KEY));
-    if (typeof v === "number" && Number.isFinite(v)) {
-        return Math.min(1.4, Math.max(0.6, v));
-    }
-    return 1;
-}
-
-export function saveZoom(v: number): void {
-    safe(() => api.storage.set(MOD_ID, UI_ZOOM_KEY, Math.min(1.4, Math.max(0.6, v))));
-}
-
-/** Opacity 0.35 – 1 (default 1). */
-export function loadAlpha(): number {
-    const v = safe(() => api.storage.get(MOD_ID, UI_ALPHA_KEY));
-    if (typeof v === "number" && Number.isFinite(v)) {
-        return Math.min(1, Math.max(0.35, v));
-    }
-    return 1;
-}
-
-export function saveAlpha(v: number): void {
-    safe(() => api.storage.set(MOD_ID, UI_ALPHA_KEY, Math.min(1, Math.max(0.35, v))));
-}
-
-/** Panel override for auto-refresh interval minutes (1–20); null = use mod config. */
-export function loadPanelAutoMinutes(): number | null {
-    const v = safe(() => api.storage.get(MOD_ID, UI_AUTO_MIN_KEY));
-    if (typeof v === "number" && Number.isFinite(v)) {
-        return Math.min(20, Math.max(1, Math.round(v)));
-    }
-    return null;
-}
-
-export function savePanelAutoMinutes(v: number): void {
-    safe(() => api.storage.set(MOD_ID, UI_AUTO_MIN_KEY, Math.min(20, Math.max(1, Math.round(v)))));
-}
+export const loadPanelPos = store.loadPanelPos;
+export const savePanelPos = store.savePanelPos;
+export const loadMinimized = store.loadMinimized;
+export const saveMinimized = store.saveMinimized;
+export const loadLocked = store.loadLocked;
+export const saveLocked = store.saveLocked;
+export const loadZoom = store.loadZoom;
+export const saveZoom = store.saveZoom;
+export const loadAlpha = store.loadAlpha;
+export const saveAlpha = store.saveAlpha;
+export const loadPanelAutoMinutes = store.loadAutoMinutes;
+export const savePanelAutoMinutes = store.saveAutoMinutes;
 
 function mapToElementRows(m: Record<string, number>): ElementRow[] {
     const cats = listCataloguesForPicker().elements;
@@ -118,9 +47,13 @@ function mapToElementRows(m: Record<string, number>): ElementRow[] {
         if (base) out.push({ ...base, count });
         else {
             out.push({
-                type: -1, id, name: id, color: "#8a8a8a",
+                type: -1,
+                id,
+                name: id,
+                color: "#8a8a8a",
                 mod: id.includes(":") ? id.split(":")[0]! : "(built-in)",
-                builtin: !id.includes(":"), count,
+                builtin: !id.includes(":"),
+                count,
             });
         }
     }
@@ -136,9 +69,12 @@ function mapToStructureRows(m: Record<string, number>): StructureRow[] {
         if (base) out.push({ ...base, count });
         else {
             out.push({
-                id, name: id,
+                id,
+                name: id,
                 mod: id.includes(":") ? id.split(":")[0]! : "(built-in)",
-                category: "", builtin: !id.includes(":"), count,
+                category: "",
+                builtin: !id.includes(":"),
+                count,
             });
         }
     }
@@ -178,8 +114,12 @@ function mapToTerrainRows(m: Record<string, number>): TerrainRow[] {
             }
         } catch { /* */ }
         out.push({
-            type, id, name: String(name), color,
-            builtin: !id.includes(":"), count,
+            type,
+            id,
+            name: String(name),
+            color,
+            builtin: !id.includes(":"),
+            count,
         });
     }
     return out.sort((a, b) => b.count - a.count);
@@ -215,14 +155,23 @@ export function hydrateFromStorage(cardConfigs?: HomeCardConfig[]): ScanSnapshot
     const cards = resolveCards(configs, elFull, stFull, terrains, reference, history);
 
     return {
-        worldW: 0, worldH: 0, scannedCells: 0,
-        authorizedCells: 0, skippedAuthCells: 0, durationMs: 0,
+        worldW: 0,
+        worldH: 0,
+        scannedCells: 0,
+        authorizedCells: 0,
+        skippedAuthCells: 0,
+        durationMs: 0,
         at: last.at,
-        elements, structures, terrains,
+        elements,
+        structures,
+        terrains,
         totalElements: elements.reduce((s, r) => s + r.count, 0),
         totalStructures: structures.reduce((s, r) => s + r.count, 0),
         totalTerrains: terrains.reduce((s, r) => s + r.count, 0),
-        emptyCells: 0, emptyPercent: 0, cards,
-        statsReference: reference, statsHistory: history,
+        emptyCells: 0,
+        emptyPercent: 0,
+        cards,
+        statsReference: reference,
+        statsHistory: history,
     };
 }

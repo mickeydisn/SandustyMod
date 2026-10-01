@@ -1,56 +1,39 @@
 /**
- * Persist panel position / zoom / opacity / lock / mini state.
+ * Panel preferences in mod storage (not configSchema).
+ *
+ * Delegates to the shared `@sandmd/ui` store. The key prefix is `ui` (not
+ * `panel`) so existing installs keep their persisted position and zoom.
  */
-import { api, safe } from "./api.ts";
+import { createUiStore } from "@sandmd/ui";
 import { MOD_ID } from "./constants.ts";
-import type { PanelPos } from "./types.ts";
+import type { PanelPos } from "@sandmd/ui";
 
-const POS_KEY = "ui_pos";
-const ZOOM_KEY = "ui_zoom";
-const ALPHA_KEY = "ui_alpha";
-const LOCK_KEY = "ui_lock";
-const MINI_KEY = "ui_mini";
+export const store = createUiStore({
+    modId: MOD_ID,
+    keyPrefix: "ui",
+    // This mod historically allowed a wider range than the shared default.
+    zoomRange: [0.4, 2.5],
+    alphaRange: [0.3, 1],
+    // Legacy saves used underscore-suffixed keys; keep reading those so an
+    // upgrade does not silently reset a player's panel position and zoom.
+    keys: {
+        pos: "ui_pos",
+        zoom: "ui_zoom",
+        alpha: "ui_alpha",
+        lock: "ui_lock",
+        mini: "ui_mini",
+    },
+});
 
-export function loadPos(): PanelPos {
-    const raw = safe(() => api.storage.get(MOD_ID, POS_KEY), null) as PanelPos | null;
-    if (raw && typeof raw.right === "number" && typeof raw.top === "number") return raw;
-    return { right: 16, top: 80 };
-}
+export const loadPos = store.loadPanelPos;
+export const savePanelPos = store.savePanelPos;
+export const loadZoom = store.loadZoom;
+export const saveZoom = store.saveZoom;
+export const loadAlpha = store.loadAlpha;
+export const saveAlpha = store.saveAlpha;
+export const loadLocked = store.loadLocked;
+export const saveLocked = store.saveLocked;
+export const loadMinimized = store.loadMinimized;
+export const saveMinimized = store.saveMinimized;
 
-export function savePanelPos(pos: PanelPos): void {
-    safe(() => api.storage.set(MOD_ID, POS_KEY, pos));
-}
-
-export function loadZoom(): number {
-    const v = safe(() => api.storage.get(MOD_ID, ZOOM_KEY), 1);
-    return typeof v === "number" && v > 0.4 && v < 2.5 ? v : 1;
-}
-
-export function saveZoom(z: number): void {
-    safe(() => api.storage.set(MOD_ID, ZOOM_KEY, z));
-}
-
-export function loadAlpha(): number {
-    const v = safe(() => api.storage.get(MOD_ID, ALPHA_KEY), 1);
-    return typeof v === "number" && v >= 0.3 && v <= 1 ? v : 1;
-}
-
-export function saveAlpha(a: number): void {
-    safe(() => api.storage.set(MOD_ID, ALPHA_KEY, a));
-}
-
-export function loadLocked(): boolean {
-    return !!safe(() => api.storage.get(MOD_ID, LOCK_KEY), false);
-}
-
-export function saveLocked(v: boolean): void {
-    safe(() => api.storage.set(MOD_ID, LOCK_KEY, v));
-}
-
-export function loadMinimized(): boolean {
-    return !!safe(() => api.storage.get(MOD_ID, MINI_KEY), false);
-}
-
-export function saveMinimized(v: boolean): void {
-    safe(() => api.storage.set(MOD_ID, MINI_KEY, v));
-}
+export type { PanelPos };

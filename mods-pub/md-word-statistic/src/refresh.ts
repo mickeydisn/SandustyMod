@@ -1,7 +1,7 @@
 /**
  * Shared refresh runner + optional auto-refresh timer.
  */
-import { api, safe, toast } from "./api.ts";
+import { api, safe, toast } from "@sandmd/ui";
 import { getAutoRefreshEnabled, getConfig, intervalMs } from "./config.ts";
 import { LOG } from "./constants.ts";
 import { runScan } from "./data.ts";

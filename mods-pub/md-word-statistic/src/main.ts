@@ -8,11 +8,7 @@
 import { getConfig, onConfigChange } from "./config.ts";
 import { LOG, VERSION } from "./constants.ts";
 import { removeToolItem, runCleanup, runDisableCleanup } from "./cleanup.ts";
-import {
-    bindAutoRefreshLifecycle,
-    reconfigureAutoRefresh,
-    stopAutoRefresh,
-} from "./refresh.ts";
+import { bindAutoRefreshLifecycle, reconfigureAutoRefresh, stopAutoRefresh } from "./refresh.ts";
 import { registerTool } from "./tool.ts";
 
 async function startEnabled(): Promise<void> {

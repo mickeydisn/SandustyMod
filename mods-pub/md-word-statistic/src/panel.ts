@@ -4,8 +4,33 @@
  * Home cards come first (resource groups with per-item counts). Cards are
  * editable and persisted via mod storage. Zero-count rows stay hidden in lists.
  */
-import { h, React } from "./api.ts";
-import { VERSION } from "./constants.ts";
+import {
+    CfgSection,
+    ChromeRows,
+    colorFromId,
+    COLORS,
+    formatCount,
+    formatDelta,
+    GraphBlock,
+    h,
+    Header,
+    isToolSelected,
+    KpiCard,
+    maxCount,
+    NumberRow,
+    posStyle,
+    React,
+    resolveSelection,
+    ROOT_CLASS,
+    SelectableList,
+    seriesColor,
+    startDrag,
+    styles,
+    Tabs,
+    toggleSelection,
+} from "@sandmd/ui";
+import type { KpiCardModel, StyleObj } from "@sandmd/ui";
+import { ITEM_ID, SETTINGS, VERSION } from "./constants.ts";
 import type {
     CardItemKind,
     CardItemRef,
@@ -16,28 +41,23 @@ import type {
     TabId,
     TerrainRow,
 } from "./types.ts";
+import { listCataloguesForPicker, listPickerOptions, resolveCards } from "./data.ts";
 import {
-    listCataloguesForPicker,
-    listPickerOptions,
-    resolveCards,
-} from "./data.ts";
-import { MultiLineChart, formatDelta, seriesColor } from "./graph.ts";
-import { digPercent, formatDigPct, mapGet, seriesForId, loadHistory, loadReference } from "./history.ts";
-import { emptyCard, loadCards, saveCards } from "./cards.ts";
+    digPercent,
+    formatDigPct,
+    loadHistory,
+    loadReference,
+    mapGet,
+    resetAll,
+    resetSession,
+    seriesForId,
+} from "./history.ts";
+import { buildValidatedDefaultCards, emptyCard, loadCards, saveCards } from "./cards.ts";
 import { bootFromStorage, bump, setRepaint, state } from "./state.ts";
-import { runRefresh, reconfigureAutoRefresh } from "./refresh.ts";
-import { getAutoRefreshEnabled, setPanelAutoRefresh } from "./config.ts";
-import {
-    saveAlpha,
-    saveLocked,
-    saveMinimized,
-    savePanelAutoMinutes,
-    savePanelPos,
-    saveZoom,
-} from "./uiStore.ts";
+import { reconfigureAutoRefresh, runRefresh } from "./refresh.ts";
+import { getAutoRefreshEnabled, setPanelAutoRefresh, setSetting } from "./config.ts";
+import { store } from "./uiStore.ts";
 import { getConfig } from "./config.ts";
-import { COLORS, styles } from "./styles.ts";
-import { isToolSelected } from "./select.ts";
 
 const TABS: { id: TabId; label: string }[] = [
     { id: "home", label: "Home" },
@@ -48,10 +68,16 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 function formatTime(ts: number): string {
-    try { return new Date(ts).toLocaleTimeString(); } catch { return "—"; }
+    try {
+        return new Date(ts).toLocaleTimeString();
+    } catch {
+        return "—";
+    }
 }
 
-function filterAndSort<T extends { id: string; name: string; count: number; builtin?: boolean; mod?: string }>(
+function filterAndSort<
+    T extends { id: string; name: string; count: number; builtin?: boolean; mod?: string },
+>(
     rows: T[],
     text: string,
     sortBy: "count" | "name" | "id",
@@ -75,12 +101,6 @@ function filterAndSort<T extends { id: string; name: string; count: number; buil
         return a.id.localeCompare(b.id);
     });
     return out;
-}
-
-function maxCount(rows: { count: number }[]): number {
-    let m = 1;
-    for (const r of rows) if (r.count > m) m = r.count;
-    return m;
 }
 
 export function StatisticPanel(): unknown {
@@ -109,10 +129,13 @@ export function StatisticPanel(): unknown {
             setTimeout(poll, 250);
         };
         const id = setTimeout(poll, 250);
-        return () => { alive = false; clearTimeout(id); };
+        return () => {
+            alive = false;
+            clearTimeout(id);
+        };
     }, []);
 
-    if (!isToolSelected() && !state.locked) return null;
+    if (!isToolSelected(ITEM_ID) && !state.locked) return null;
 
     const snap = state.snapshot;
     const scanning = state.scanning;
@@ -128,7 +151,7 @@ export function StatisticPanel(): unknown {
         bump();
     };
 
-    const setTab = (id: TabId): void => {
+    const setTab = (id: string): void => {
         state.tab = id;
         if (id !== "config") state.editingCards = false;
         bump();
@@ -183,61 +206,10 @@ export function StatisticPanel(): unknown {
         bump();
     };
 
-
-    const startDrag = (ev: any): void => {
-        if (ev.button != null && ev.button !== 0) return;
-        const target = ev.target as { closest?: (s: string) => unknown } | null;
-        if (target?.closest?.("button, input, select, textarea, a")) return;
-
-        const rootEl = (ev.currentTarget as { closest?: (s: string) => HTMLElement | null })
-            ?.closest?.(".md-word-stat-root");
-        const rect = rootEl?.getBoundingClientRect?.();
-        const vw = (globalThis as { innerWidth?: number }).innerWidth ?? 1280;
-        const startX = ev.clientX as number;
-        const startY = ev.clientY as number;
-        const origRight = rect
-            ? Math.max(0, vw - rect.right)
-            : state.pos.right;
-        const origTop = rect ? rect.top : state.pos.top;
-
-        state.dragging = true;
-        bump();
-
-        const onMove = (e2: any): void => {
-            const dx = (e2.clientX as number) - startX;
-            const dy = (e2.clientY as number) - startY;
-            // Move: right decreases when dragging right
-            state.pos = {
-                right: Math.max(0, origRight - dx),
-                top: Math.max(0, origTop + dy),
-            };
-            bump();
-        };
-        const onUp = (): void => {
-            state.dragging = false;
-            savePanelPos(state.pos);
-            bump();
-            globalThis.removeEventListener?.("pointermove", onMove);
-            globalThis.removeEventListener?.("pointerup", onUp);
-            globalThis.removeEventListener?.("pointercancel", onUp);
-        };
-        globalThis.addEventListener?.("pointermove", onMove);
-        globalThis.addEventListener?.("pointerup", onUp);
-        globalThis.addEventListener?.("pointercancel", onUp);
-        try { ev.preventDefault?.(); } catch { /* */ }
-    };
-
-    // Always right-anchored so mini/max keeps the right edge fixed
-    const posStyle: Record<string, string | number> = {
-        right: `${state.pos.right}px`,
-        top: `${state.pos.top}px`,
-        left: "auto",
-        transformOrigin: "top right",
-        transform: state.zoom !== 1 ? `scale(${state.zoom})` : undefined as unknown as string,
-        opacity: state.alpha,
-    };
-    if (state.zoom === 1) delete posStyle.transform;
-
+    // Always right-anchored so mini/max keeps the right edge fixed.
+    const chrome = { state, store, bump };
+    const onDrag = (ev: any): void => startDrag(ev, chrome);
+    const place = posStyle(state);
 
     // —— Mini widget (right-anchored, no title) ——
     if (state.minimized) {
@@ -245,10 +217,10 @@ export function StatisticPanel(): unknown {
         return e(
             "div",
             {
-                className: "md-word-stat-root",
+                className: ROOT_CLASS,
                 style: {
                     ...styles.rootMini,
-                    ...posStyle,
+                    ...place,
                     cursor: state.dragging ? "grabbing" : undefined,
                 },
             },
@@ -262,14 +234,16 @@ export function StatisticPanel(): unknown {
                         justifyContent: "flex-end",
                         gap: "6px",
                     },
-                    onPointerDown: startDrag,
+                    onPointerDown: onDrag,
                 },
                 e(
                     "button",
                     {
                         style: scanning ? styles.buttonDisabled : styles.buttonPrimary,
                         disabled: scanning,
-                        onClick: () => { void doRefresh(); },
+                        onClick: () => {
+                            void doRefresh();
+                        },
                     },
                     scanning ? "…" : "↻",
                 ),
@@ -280,7 +254,7 @@ export function StatisticPanel(): unknown {
                         title: "Expand",
                         onClick: () => {
                             state.minimized = false;
-                            saveMinimized(false);
+                            store.saveMinimized(false);
                             bump();
                         },
                     },
@@ -294,17 +268,23 @@ export function StatisticPanel(): unknown {
                     ? e("div", { style: { color: COLORS.dim, fontSize: 11 } }, "Scanning…")
                     : null,
                 cards.length === 0
-                    ? e("div", { style: { color: COLORS.dim, fontSize: 11 } },
-                        snap ? "No cards" : "No saved stats — refresh")
+                    ? e(
+                        "div",
+                        { style: { color: COLORS.dim, fontSize: 11 } },
+                        snap ? "No cards" : "No saved stats — refresh",
+                    )
                     : cards.map((g) => {
                         const trend = miniCardTrend(g);
                         const trendColor = trend == null || trend === 0
                             ? COLORS.dim
-                            : trend > 0 ? COLORS.good : COLORS.danger;
+                            : trend > 0
+                            ? COLORS.good
+                            : COLORS.danger;
                         const trendLabel = trend == null
                             ? "—"
-                            : trend > 0 ? `+${trend.toLocaleString()}`
-                            : trend.toLocaleString();
+                            : trend > 0
+                            ? `+${formatCount(trend)}`
+                            : formatCount(trend);
                         return e(
                             "div",
                             {
@@ -317,7 +297,7 @@ export function StatisticPanel(): unknown {
                             e("span", { style: styles.miniCardTitle }, g.title),
                             e("span", {
                                 style: { ...styles.miniCardSum, color: g.color },
-                            }, g.total.toLocaleString()),
+                            }, formatCount(g.total)),
                             e("span", {
                                 style: {
                                     fontSize: 10,
@@ -335,22 +315,16 @@ export function StatisticPanel(): unknown {
         );
     }
 
-
-    const header = e(
-        "div",
-        {
-            style: { ...styles.header, cursor: "grab" },
-            onPointerDown: startDrag,
-        },
-        e("span", { style: styles.dragHandle },
-            e("span", { style: styles.title }, "World Statistic"),
-        ),
-        e(
+    const header = Header(chrome, {
+        title: "World Statistic",
+        actions: e(
             "button",
             {
                 style: scanning ? styles.buttonDisabled : styles.buttonPrimary,
                 disabled: scanning || state.editingCards,
-                onClick: () => { void doRefresh(); },
+                onClick: () => {
+                    void doRefresh();
+                },
                 title: "Re-count authorized cells only",
             },
             scanning
@@ -359,49 +333,24 @@ export function StatisticPanel(): unknown {
                     : "Scanning…"
                 : "↻ Refresh",
         ),
-        e(
+    });
+
+    const tabs = Tabs({
+        tabs: TABS,
+        active: state.tab,
+        onSelect: setTab,
+        hidden: state.editingCards,
+        extra: e(
             "button",
             {
-                style: styles.button,
-                title: "Minimize",
-                onClick: () => {
-                    // Right edge stays fixed (pos uses right/top)
-                    state.minimized = true;
-                    saveMinimized(true);
-                    bump();
-                },
+                key: "edit-cards",
+                style: styles.tab,
+                onClick: () => openEditor(),
+                title: "Edit home cards",
             },
-            "—",
+            "✎ Cards",
         ),
-    );
-
-    const tabs = state.editingCards
-        ? null
-        : e(
-            "div",
-            { style: styles.tabs },
-            ...TABS.map((tab) =>
-                e(
-                    "button",
-                    {
-                        key: tab.id,
-                        style: state.tab === tab.id ? styles.tabActive : styles.tab,
-                        onClick: () => setTab(tab.id),
-                    },
-                    tab.label,
-                )
-            ),
-            e(
-                "button",
-                {
-                    key: "edit-cards",
-                    style: styles.tab,
-                    onClick: () => openEditor(),
-                    title: "Edit home cards",
-                },
-                "✎ Cards",
-            ),
-        );
+    });
 
     const toolbar = state.tab !== "home" && state.tab !== "config" && !state.editingCards
         ? e(
@@ -437,7 +386,10 @@ export function StatisticPanel(): unknown {
                     style: styles.select,
                     value: state.sortBy,
                     onChange: (ev: Event) => {
-                        state.sortBy = (ev.target as HTMLSelectElement).value as "count" | "name" | "id";
+                        state.sortBy = (ev.target as HTMLSelectElement).value as
+                            | "count"
+                            | "name"
+                            | "id";
                         bump();
                     },
                 },
@@ -460,8 +412,11 @@ export function StatisticPanel(): unknown {
             { style: styles.empty },
             e("div", { style: styles.spinner }, "Scanning world grid…"),
             progress.total > 0
-                ? e("div", { style: { marginTop: "8px", color: COLORS.dim } },
-                    `${progress.done.toLocaleString()} / ${progress.total.toLocaleString()} cells`)
+                ? e(
+                    "div",
+                    { style: { marginTop: "8px", color: COLORS.dim } },
+                    `${formatCount(progress.done)} / ${formatCount(progress.total)} cells`,
+                )
                 : null,
         );
     } else if (!snap) {
@@ -469,49 +424,46 @@ export function StatisticPanel(): unknown {
             "div",
             { style: styles.empty },
             e("div", null, "No data yet."),
-            e("div", { style: { marginTop: "10px", color: COLORS.dim } },
-                "Press ↻ Refresh to count authorized cells."),
+            e(
+                "div",
+                { style: { marginTop: "10px", color: COLORS.dim } },
+                "Press ↻ Refresh to count authorized cells.",
+            ),
         );
     } else if (state.tab === "home") {
         body = renderHome(e, snap);
     } else if (state.tab === "elements") {
         const rows = filterAndSort(snap.elements, state.filter, state.sortBy, state.origin);
-        body = e("div", null,
-            renderListGraph(e, "elements", rows),
-            renderElementList(e, rows),
-        );
+        body = e("div", null, renderListGraph(e, "elements", rows), renderElementList(e, rows));
     } else if (state.tab === "structures") {
         const rows = filterAndSort(snap.structures, state.filter, state.sortBy, state.origin);
-        body = e("div", null,
+        body = e(
+            "div",
+            null,
             renderListGraph(e, "structures", rows.map((r) => ({ ...r, color: colorFromId(r.id) }))),
             renderStructureList(e, rows),
         );
     } else {
         const rows = filterAndSort(snap.terrains, state.filter, state.sortBy, state.origin);
-        body = e("div", null,
-            renderListGraph(e, "terrains", rows),
-            renderTerrainList(e, rows),
-        );
+        body = e("div", null, renderListGraph(e, "terrains", rows), renderTerrainList(e, rows));
     }
-
 
     return e(
         "div",
         {
-            className: "md-word-stat-root",
+            className: ROOT_CLASS,
             style: {
                 ...styles.root,
-                ...posStyle,
+                ...place,
                 cursor: state.dragging ? "grabbing" : undefined,
             },
         },
-        header, tabs, toolbar,
+        header,
+        tabs,
+        toolbar,
         e("div", { style: styles.body }, body),
     );
 }
-
-
-
 
 /** Sum of card items in a raw snapshot (last vs N-1 trend). */
 function cardTotalInSnapshot(
@@ -521,8 +473,11 @@ function cardTotalInSnapshot(
     if (!snap) return 0;
     let s = 0;
     for (const it of items) {
-        const key = it.kind === "element" ? "elements"
-            : it.kind === "terrain" ? "terrains" : "structures";
+        const key = it.kind === "element"
+            ? "elements"
+            : it.kind === "terrain"
+            ? "terrains"
+            : "structures";
         s += mapGet(snap[key as "elements" | "terrains" | "structures"], it.id);
     }
     return s;
@@ -542,11 +497,13 @@ function renderConfigPanel(
     openEditor: () => void,
 ): unknown {
     const autoOn = getAutoRefreshEnabled();
-    const modMins = getConfig().autoRefreshMinutes;
+    const modMins = getConfig().timeRange;
     const mins = state.autoMinutes ?? modMins;
 
     const row = (label: string, control: unknown) =>
-        e("div", { style: styles.cfgRow },
+        e(
+            "div",
+            { style: styles.cfgRow },
             e("span", { style: styles.cfgLabel }, label),
             e("div", { style: styles.cfgControl }, control),
         );
@@ -554,80 +511,16 @@ function renderConfigPanel(
     return e(
         "div",
         { style: styles.cfgWrap },
-        e("div", { style: styles.groupTitle }, "Panel"),
-        row("Lock panel",
-            e("button", {
-                style: state.locked ? styles.buttonPrimary : styles.button,
-                onClick: () => {
-                    state.locked = !state.locked;
-                    saveLocked(state.locked);
-                    bump();
-                },
-            }, state.locked ? "🔒 Locked" : "🔓 Unlocked"),
-        ),
-        row("Zoom",
-            e("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-                e("button", {
-                    style: styles.button,
-                    onClick: () => {
-                        state.zoom = Math.max(0.6, Math.round((state.zoom - 0.1) * 10) / 10);
-                        saveZoom(state.zoom);
-                        bump();
-                    },
-                }, "−"),
-                e("span", { style: { minWidth: 40, textAlign: "center" } },
-                    `${Math.round(state.zoom * 100)}%`),
-                e("button", {
-                    style: styles.button,
-                    onClick: () => {
-                        state.zoom = Math.min(1.4, Math.round((state.zoom + 0.1) * 10) / 10);
-                        saveZoom(state.zoom);
-                        bump();
-                    },
-                }, "+"),
-                e("button", {
-                    style: styles.button,
-                    onClick: () => {
-                        state.zoom = 1;
-                        saveZoom(1);
-                        bump();
-                    },
-                }, "Reset"),
-            ),
-        ),
-        row("Opacity",
-            e("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-                e("button", {
-                    style: styles.button,
-                    onClick: () => {
-                        state.alpha = Math.max(0.35, Math.round((state.alpha - 0.05) * 100) / 100);
-                        saveAlpha(state.alpha);
-                        bump();
-                    },
-                }, "−"),
-                e("span", { style: { minWidth: 40, textAlign: "center" } },
-                    `${Math.round(state.alpha * 100)}%`),
-                e("button", {
-                    style: styles.button,
-                    onClick: () => {
-                        state.alpha = Math.min(1, Math.round((state.alpha + 0.05) * 100) / 100);
-                        saveAlpha(state.alpha);
-                        bump();
-                    },
-                }, "+"),
-                e("button", {
-                    style: styles.button,
-                    onClick: () => {
-                        state.alpha = 1;
-                        saveAlpha(1);
-                        bump();
-                    },
-                }, "Reset"),
-            ),
-        ),
-
+        ChromeRows({
+            state,
+            store,
+            bump,
+            zoomRange: [0.6, 1.4],
+            alphaRange: [0.35, 1],
+        }),
         e("div", { style: { ...styles.groupTitle, marginTop: 14 } }, "Auto refresh"),
-        row("Auto Refresh Enabled",
+        row(
+            "Auto Refresh Enabled",
             e("button", {
                 style: autoOn ? styles.buttonPrimary : styles.button,
                 onClick: () => {
@@ -638,39 +531,81 @@ function renderConfigPanel(
                 },
             }, autoOn ? "ON" : "OFF"),
         ),
-        row("Interval (min)",
-            e("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-                e("button", {
+        CfgSection("Tracking", 14),
+        NumberRow("Every", mins, {
+            min: SETTINGS.timeRange.min,
+            max: SETTINGS.timeRange.max,
+            step: SETTINGS.timeRange.step,
+            def: SETTINGS.timeRange.default,
+            suffix: " min",
+            onChange: (v) => {
+                // Keep the panel override and the mod setting in step; the
+                // override wins in intervalMs() until it is cleared.
+                state.autoMinutes = v;
+                store.saveAutoMinutes(v);
+                setSetting("timeRange", v);
+                reconfigureAutoRefresh();
+                bump();
+            },
+        }),
+        NumberRow("Max data points", getConfig().maxCountSave, {
+            min: SETTINGS.maxCountSave.min,
+            max: SETTINGS.maxCountSave.max,
+            step: SETTINGS.maxCountSave.step,
+            def: SETTINGS.maxCountSave.default,
+            onChange: (v) => {
+                setSetting("maxCountSave", v);
+                bump();
+            },
+        }),
+        NumberRow("Display points", getConfig().historyMax, {
+            min: SETTINGS.historyMax.min,
+            max: SETTINGS.historyMax.max,
+            step: SETTINGS.historyMax.step,
+            def: SETTINGS.historyMax.default,
+            onChange: (v) => {
+                setSetting("historyMax", v);
+                bump();
+            },
+        }),
+        e("div", { style: { ...styles.groupTitle, marginTop: 14 } }, "Data"),
+        e(
+            "div",
+            { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
+            e(
+                "button",
+                {
                     style: styles.button,
+                    title: "Drop the stored trend, keep the reference baseline",
                     onClick: () => {
-                        const cur = state.autoMinutes ?? modMins;
-                        state.autoMinutes = Math.max(1, cur - 1);
-                        savePanelAutoMinutes(state.autoMinutes);
-                        reconfigureAutoRefresh();
+                        resetSession();
+                        state.snapshot = { ...state.snapshot, statsHistory: [] } as never;
                         bump();
                     },
-                }, "−"),
-                e("span", { style: { minWidth: 36, textAlign: "center", fontWeight: 700 } },
-                    String(mins)),
-                e("button", {
-                    style: styles.button,
+                },
+                "Reset session",
+            ),
+            e(
+                "button",
+                {
+                    style: { ...styles.button, color: COLORS.danger },
+                    title: "Drop the trend and the reference baseline",
                     onClick: () => {
-                        const cur = state.autoMinutes ?? modMins;
-                        state.autoMinutes = Math.min(20, cur + 1);
-                        savePanelAutoMinutes(state.autoMinutes);
-                        reconfigureAutoRefresh();
+                        resetAll();
+                        state.snapshot = null;
                         bump();
                     },
-                }, "+"),
-                e("span", { style: { color: COLORS.dim, fontSize: 10 } }, "1–20"),
+                },
+                "Wipe all data",
             ),
         ),
-
     );
 }
 
-
-function renderHome(e: (...args: unknown[]) => unknown, snap: NonNullable<typeof state.snapshot>): unknown {
+function renderHome(
+    e: (...args: unknown[]) => unknown,
+    snap: NonNullable<typeof state.snapshot>,
+): unknown {
     const cards = snap.cards ?? [];
     return e(
         "div",
@@ -706,10 +641,17 @@ function seriesFromHistory(
         id,
         label,
         color,
-        values: seriesForId(history, kind, id, 20),
+        values: seriesForId(history, kind, id, getConfig().historyMax),
     };
 }
 
+/**
+ * Home-tab card. Maps this mod's card model onto the shared `KpiCard`, so it
+ * renders exactly like `md-player-statistic`'s cards.
+ *
+ * Each item gets a compact inline sparkline built from the live history —
+ * the same source the list tabs graph from, so the two always agree.
+ */
 function renderResourceCard(
     e: (...args: unknown[]) => unknown,
     g: {
@@ -730,65 +672,24 @@ function renderResourceCard(
         }[];
     },
 ): unknown {
-    // Live history — same source as list graphs
+    void e;
     const history = state.snapshot?.statsHistory ?? loadHistory();
+    const displayPoints = getConfig().historyMax;
 
-    return e(
-        "div",
-        {
-            key: g.id,
-            style: {
-                ...styles.groupCard,
-                borderColor: g.color,
-                boxShadow: `inset 3px 0 0 ${g.color}`,
-            },
-        },
-        e("div", { style: { ...styles.cardLabel, color: g.color } }, g.title),
-        e("div", { style: { ...styles.cardValue, color: g.color } },
-            g.total.toLocaleString()),
-        e(
-            "div",
-            { style: styles.itemList },
-            ...g.items.map((it, i) => {
-                // ONE series only → same Y domain as list with this item alone selected
-                const series = [
-                    seriesFromHistory(
-                        history,
-                        kindKeyOfItem(it.kind),
-                        it.id,
-                        it.label,
-                        it.color || g.color || seriesColor(i),
-                    ),
-                ];
-                return e(
-                    "div",
-                    {
-                        key: `${it.kind}:${it.id}`,
-                        style: styles.itemBlockTight,
-                    },
-                    e(
-                        "div",
-                        { style: it.primary ? styles.itemRowPrimary : styles.itemRow },
-                        e("span", {
-                            style: { ...styles.swatch, background: it.color, width: 8, height: 8 },
-                        }),
-                        e("span", { style: styles.grow }, it.label),
-                        e("span", {
-                            style: {
-                                color: it.primary ? g.color : COLORS.text,
-                                fontWeight: it.primary ? 700 : 500,
-                                fontVariantNumeric: "tabular-nums",
-                            },
-                        }, it.count.toLocaleString()),
-                    ),
-                    // Same MultiLineChart as list (single series = same axis as list with that item checked)
-                    e("div", { style: styles.sparkWrap },
-                        MultiLineChart(series, { width: 520, height: 100, compact: true }),
-                    ),
-                );
-            }),
-        ),
-    );
+    const model: KpiCardModel = {
+        id: g.id,
+        title: g.title,
+        color: g.color,
+        total: g.total,
+        delta: g.delta,
+        items: g.items.map((it, i) => ({
+            label: it.label,
+            count: it.count,
+            color: it.color || g.color || seriesColor(i),
+            series: seriesForId(history, kindKeyOfItem(it.kind), it.id, displayPoints),
+        })),
+    };
+    return KpiCard(model);
 }
 
 function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
@@ -853,22 +754,40 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
         e(
             "div",
             { style: styles.editorHeader },
-            e("div", { style: { color: COLORS.accent, fontWeight: 700, fontSize: 14 } },
-                "Edit home cards"),
-            e("div", { style: { color: COLORS.dim, fontSize: 11, marginTop: 4, lineHeight: 1.45 } },
-                "Choose which resources appear on the Home tab. The first item on a card is primary "
-                + "(larger weight for the card color). Pick elements, terrains, or structures from the lists."),
+            e(
+                "div",
+                { style: { color: COLORS.accent, fontWeight: 700, fontSize: 14 } },
+                "Edit home cards",
+            ),
+            e(
+                "div",
+                { style: { color: COLORS.dim, fontSize: 11, marginTop: 4, lineHeight: 1.45 } },
+                "Choose which resources appear on the Home tab. The first item on a card is primary " +
+                    "(larger weight for the card color). Pick elements, terrains, or structures from the lists.",
+            ),
         ),
         e(
             "div",
             { style: styles.editorBar },
             e("span", { style: { flex: 1 } }),
             e("button", { style: styles.button, onClick: addCard }, "+ New card"),
-            e("button", { style: styles.button, onClick: () => {
-                state.editingCards = false;
-                state.cards = loadCards();
-                bump();
-            } }, "Cancel"),
+            e("button", {
+                style: styles.button,
+                title: "Restore the default home cards",
+                onClick: () => {
+                    state.cards = buildValidatedDefaultCards();
+                    saveCards(state.cards);
+                    bump();
+                },
+            }, "Reset defaults"),
+            e("button", {
+                style: styles.button,
+                onClick: () => {
+                    state.editingCards = false;
+                    state.cards = loadCards();
+                    bump();
+                },
+            }, "Cancel"),
             e("button", {
                 style: styles.buttonPrimary,
                 onClick: () => {
@@ -876,7 +795,9 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                     state.editingCards = false;
                     if (state.snapshot) {
                         const fullEl = listCataloguesForPicker().elements;
-                        const countById = new Map(state.snapshot.elements.map((r) => [r.id, r.count]));
+                        const countById = new Map(
+                            state.snapshot.elements.map((r) => [r.id, r.count]),
+                        );
                         for (const r of fullEl) r.count = countById.get(r.id) ?? 0;
                         for (const r of state.snapshot.elements) {
                             if (!fullEl.some((x) => x.id === r.id)) fullEl.push(r);
@@ -920,8 +841,11 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                         },
                         e("span", { style: { color: COLORS.accent } }, open ? "▾" : "▸"),
                         e("span", { style: styles.grow }, card.title || "(untitled)"),
-                        e("span", { style: { color: COLORS.dim } },
-                            `${card.items.length} item${card.items.length === 1 ? "" : "s"}`),
+                        e(
+                            "span",
+                            { style: { color: COLORS.dim } },
+                            `${card.items.length} item${card.items.length === 1 ? "" : "s"}`,
+                        ),
                         e("button", {
                             style: styles.dangerBtn,
                             onClick: (ev: Event) => {
@@ -945,8 +869,11 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                                     });
                                 },
                             }),
-                            e("div", { style: { ...styles.fieldLabel, marginTop: 10 } },
-                                "Items (first = primary size & color)"),
+                            e(
+                                "div",
+                                { style: { ...styles.fieldLabel, marginTop: 10 } },
+                                "Items (first = primary size & color)",
+                            ),
                             e(
                                 "div",
                                 { style: styles.itemList },
@@ -955,7 +882,9 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                                         "div",
                                         {
                                             key: `${it.kind}:${it.id}:${idx}`,
-                                            style: idx === 0 ? styles.itemRowPrimary : styles.itemRow,
+                                            style: idx === 0
+                                                ? styles.itemRowPrimary
+                                                : styles.itemRow,
                                         },
                                         e("span", {
                                             style: {
@@ -963,7 +892,11 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                                                 minWidth: 14,
                                             },
                                         }, idx === 0 ? "★" : String(idx + 1)),
-                                        e("span", { style: { color: COLORS.dim, minWidth: 64 } }, it.kind),
+                                        e(
+                                            "span",
+                                            { style: { color: COLORS.dim, minWidth: 64 } },
+                                            it.kind,
+                                        ),
                                         e("span", { style: styles.grow }, it.id),
                                         e("button", {
                                             style: styles.button,
@@ -982,44 +915,72 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                                     )
                                 ),
                             ),
-                            e("div", { style: styles.addRow },
-                                e("select", {
-                                    style: styles.select,
-                                    id: `add-kind-${card.id}`,
-                                    defaultValue: "element",
-                                },
+                            e(
+                                "div",
+                                { style: styles.addRow },
+                                e(
+                                    "select",
+                                    {
+                                        style: styles.select,
+                                        id: `add-kind-${card.id}`,
+                                        defaultValue: "element",
+                                    },
                                     e("option", { value: "element" }, "Element"),
                                     e("option", { value: "terrain" }, "Terrain"),
                                     e("option", { value: "structure" }, "Structure"),
                                 ),
-                                e("select", {
-                                    style: { ...styles.select, flex: 1 },
-                                    id: `add-id-${card.id}`,
-                                    defaultValue: "",
-                                },
+                                e(
+                                    "select",
+                                    {
+                                        style: { ...styles.select, flex: 1 },
+                                        id: `add-id-${card.id}`,
+                                        defaultValue: "",
+                                    },
                                     e("option", { value: "" }, "— pick item —"),
                                     ...elementOpts.map((o) =>
-                                        e("option", { key: `e:${o.id}`, value: `element::${o.id}` }, `E · ${o.label}`)),
+                                        e(
+                                            "option",
+                                            { key: `e:${o.id}`, value: `element::${o.id}` },
+                                            `E · ${o.label}`,
+                                        )
+                                    ),
                                     ...terrainOpts.map((o) =>
-                                        e("option", { key: `t:${o.id}`, value: `terrain::${o.id}` }, `T · ${o.label}`)),
+                                        e(
+                                            "option",
+                                            { key: `t:${o.id}`, value: `terrain::${o.id}` },
+                                            `T · ${o.label}`,
+                                        )
+                                    ),
                                     ...structureOpts.map((o) =>
-                                        e("option", { key: `s:${o.id}`, value: `structure::${o.id}` }, `S · ${o.label}`)),
+                                        e("option", {
+                                            key: `s:${o.id}`,
+                                            value: `structure::${o.id}`,
+                                        }, `S · ${o.label}`)
+                                    ),
                                 ),
                                 e("button", {
                                     style: styles.buttonPrimary,
                                     onClick: () => {
                                         const sel = (globalThis as any).document
-                                            ?.getElementById?.(`add-id-${card.id}`) as HTMLSelectElement | null;
+                                            ?.getElementById?.(`add-id-${card.id}`) as
+                                                | HTMLSelectElement
+                                                | null;
                                         const val = sel?.value ?? "";
                                         if (!val) return;
-                                        const [kind, id] = val.split("::") as [CardItemKind, string];
+                                        const [kind, id] = val.split("::") as [
+                                            CardItemKind,
+                                            string,
+                                        ];
                                         if (kind && id) addItem(card.id, kind, id);
                                         if (sel) sel.value = "";
                                     },
                                 }, "Add"),
                             ),
-                            e("div", { style: { color: COLORS.dim, fontSize: 10, marginTop: 6 } },
-                                "Primary item (★) sets the big number and the card border/text color."),
+                            e(
+                                "div",
+                                { style: { color: COLORS.dim, fontSize: 10, marginTop: 6 } },
+                                "Primary item (★) sets the big number and the card border/text color.",
+                            ),
                         )
                         : null,
                 );
@@ -1028,177 +989,180 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
     );
 }
 
+// —— Selectable list + graph (shared with md-player-statistic via @sandmd/ui) ——
 
-function defaultTopIds(rows: { id: string; count: number }[], n = 3): string[] {
-    return rows.slice().sort((a, b) => b.count - a.count).slice(0, n).map((r) => r.id);
+type ListTab = "elements" | "structures" | "terrains";
+
+/**
+ * Rows last handed to each list tab. The graph's top-N default needs them at
+ * toggle time, which happens in a different render pass than the list itself.
+ */
+const lastRows: Record<ListTab, { id: string; count: number }[]> = {
+    elements: [],
+    structures: [],
+    terrains: [],
+};
+
+function selectionOf(tab: ListTab): string[] {
+    return resolveSelection(state.graphSelection[tab], lastRows[tab], 3);
 }
 
-/** Stable pseudo-random color from id (for structures without metaColor). */
-function colorFromId(id: string): string {
-    let h = 0;
-    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-    const hue = h % 360;
-    const sat = 55 + (h % 25);
-    const light = 55 + (h % 15);
-    return `hsl(${hue} ${sat}% ${light}%)`;
-}
-
-function ensureGraphDefaults(
-    tab: "elements" | "structures" | "terrains",
-    rows: { id: string; count: number }[],
-): string[] {
-    const cur = state.graphSelection[tab];
-    if (cur.length > 0) return cur;
-    // Auto top-3 until user ticks something
-    return defaultTopIds(rows, 3);
-}
-
-function toggleGraphId(tab: "elements" | "structures" | "terrains", id: string, rows: { id: string; count: number }[]): void {
-    let cur = state.graphSelection[tab];
-    // First explicit toggle: seed from current defaults so we don't clear top-3 unexpectedly
-    if (cur.length === 0) {
-        cur = defaultTopIds(rows, 3);
-    }
-    if (cur.includes(id)) {
-        state.graphSelection[tab] = cur.filter((x) => x !== id);
-    } else {
-        state.graphSelection[tab] = [...cur, id];
-    }
+function toggleOf(tab: ListTab, id: string): void {
+    state.graphSelection[tab] = toggleSelection(state.graphSelection[tab], id, lastRows[tab], 3);
     bump();
 }
 
 function renderListGraph(
     e: (...args: unknown[]) => unknown,
-    tab: "elements" | "structures" | "terrains",
+    tab: ListTab,
     rows: { id: string; name: string; count: number; color?: string }[],
 ): unknown {
+    lastRows[tab] = rows;
     const history = state.snapshot?.statsHistory ?? loadHistory();
-    const ids = ensureGraphDefaults(tab, rows);
-
-    const series = ids.map((id, i) => {
+    const series = selectionOf(tab).map((id, i) => {
         const row = rows.find((r) => r.id === id);
         const color = row?.color || (tab === "structures" ? colorFromId(id) : seriesColor(i));
         return seriesFromHistory(history, tab, id, row?.name ?? id, color);
     });
-
-    return e(
-        "div",
-        { style: styles.graphBlock },
-        e("div", { style: styles.groupTitle },
-            "History (last 20) · tick rows below to choose series"),
-        MultiLineChart(series, 520, 130),
-    );
+    return GraphBlock({
+        title: `History (last ${getConfig().historyMax}) · tick rows below to choose series`,
+        series,
+    });
 }
+
+const META_COL: StyleObj = {
+    color: COLORS.dim,
+    maxWidth: "110px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
 
 function renderElementList(e: (...args: unknown[]) => unknown, rows: ElementRow[]): unknown {
-    if (rows.length === 0) return e("div", { style: styles.empty }, "No elements match (count > 0).");
+    lastRows.elements = rows;
     const max = maxCount(rows);
-    const selected = ensureGraphDefaults("elements", rows);
-    return e("div", { style: styles.list },
-        ...rows.map((r) => {
-            const on = selected.includes(r.id);
-            return e("div", { key: r.id, style: styles.row },
-                e("input", {
-                    type: "checkbox",
-                    checked: on,
-                    style: styles.rowCheck,
-                    title: "Show on graph",
-                    onChange: () => toggleGraphId("elements", r.id, rows),
-                }),
+    return SelectableList({
+        rows: rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            count: r.count,
+            color: r.color,
+            meta: r.mod,
+        })),
+        selected: selectionOf("elements"),
+        onToggle: (id) => toggleOf("elements", id),
+        emptyText: "No elements match (count > 0).",
+        // Keeps the numeric element-type column the generic row layout lacks.
+        renderRow: (r, checkbox) => {
+            const el = rows.find((x) => x.id === r.id);
+            return e(
+                "div",
+                { key: r.id, style: styles.row },
+                checkbox,
                 e("div", { style: { ...styles.swatch, background: r.color } }),
-                e("span", {
-                    style: { color: COLORS.dim, minWidth: "28px" },
-                    title: r.id,
-                }, r.type >= 0 ? String(r.type) : "—"),
-                e("span", { style: styles.grow, title: `${r.id} (type ${r.type})` }, r.name),
-                e("span", { style: { color: COLORS.dim, maxWidth: "110px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.mod),
-                e("div", { style: styles.barTrack },
-                    e("div", { style: { ...styles.barFill, width: `${Math.max(2, Math.round((100 * r.count) / max))}%` } })),
-                e("span", { style: styles.count }, r.count.toLocaleString()),
+                e(
+                    "span",
+                    { style: { color: COLORS.dim, minWidth: "28px" }, title: r.id },
+                    el && el.type >= 0 ? String(el.type) : "—",
+                ),
+                e("span", { style: styles.grow, title: `${r.id} (type ${el?.type})` }, r.name),
+                e("span", { style: META_COL }, r.meta),
+                e(
+                    "div",
+                    { style: styles.barTrack },
+                    e("div", {
+                        style: {
+                            ...styles.barFill,
+                            width: `${Math.max(2, Math.round((100 * r.count) / max))}%`,
+                        },
+                    }),
+                ),
+                e("span", { style: styles.count }, formatCount(r.count)),
             );
-        }),
-    );
+        },
+    });
 }
 
-function renderStructureList(e: (...args: unknown[]) => unknown, rows: StructureRow[]): unknown {
-    if (rows.length === 0) return e("div", { style: styles.empty }, "No structures match (count > 0).");
-    const max = maxCount(rows);
-    const selected = ensureGraphDefaults("structures", rows);
-    return e("div", { style: styles.list },
-        ...rows.map((r) => {
-            const on = selected.includes(r.id);
-            const color = colorFromId(r.id);
-            return e("div", { key: r.id, style: styles.row },
-                e("input", {
-                    type: "checkbox",
-                    checked: on,
-                    style: styles.rowCheck,
-                    title: "Show on graph",
-                    onChange: () => toggleGraphId("structures", r.id, rows),
-                }),
-                e("div", { style: { ...styles.swatch, background: color } }),
-                e("span", { style: styles.grow, title: r.id }, r.name || r.id),
-                e("span", { style: { color: COLORS.dim, maxWidth: "90px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.category || "—"),
-                e("span", { style: { color: COLORS.dim, maxWidth: "110px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.mod),
-                e("div", { style: styles.barTrack },
-                    e("div", { style: { ...styles.barFill, background: color, width: `${Math.max(2, Math.round((100 * r.count) / max))}%` } })),
-                e("span", { style: styles.count }, r.count.toLocaleString()),
-            );
-        }),
-    );
+function renderStructureList(
+    e: (...args: unknown[]) => unknown,
+    rows: StructureRow[],
+): unknown {
+    lastRows.structures = rows;
+    return SelectableList({
+        rows: rows.map((r) => ({
+            id: r.id,
+            name: r.name || r.id,
+            count: r.count,
+            color: colorFromId(r.id),
+            meta: r.mod,
+        })),
+        selected: selectionOf("structures"),
+        onToggle: (id) => toggleOf("structures", id),
+        emptyText: "No structures match (count > 0).",
+    });
 }
 
 function renderTerrainList(e: (...args: unknown[]) => unknown, rows: TerrainRow[]): unknown {
-    if (rows.length === 0) return e("div", { style: styles.empty }, "No terrains on authorized cells.");
-    const max = maxCount(rows);
-    const selected = ensureGraphDefaults("terrains", rows);
+    lastRows.terrains = rows;
     const reference = state.snapshot?.statsReference ?? loadReference();
-    return e("div", { style: styles.list },
-        e("div", { style: { ...styles.row, color: COLORS.dim, fontSize: 10, borderBottom: `1px solid ${COLORS.border}` } },
-            e("span", { style: { width: 14 } }),
-            e("span", { style: { width: 12 } }),
-            e("span", { style: { minWidth: 28 } }, "#"),
-            e("span", { style: styles.grow }, "Terrain"),
-            e("span", { style: { minWidth: 72, textAlign: "right" } }, "count"),
-            e("span", { style: { minWidth: 88, textAlign: "right" } }, "% dug vs ref"),
-        ),
-        ...rows.map((r) => {
-            const on = selected.includes(r.id);
+    const max = maxCount(rows);
+    return SelectableList({
+        rows: rows.map((r) => ({ id: r.id, name: r.name, count: r.count, color: r.color })),
+        selected: selectionOf("terrains"),
+        onToggle: (id) => toggleOf("terrains", id),
+        emptyText: "No terrains on authorized cells.",
+        // Keeps the "% dug vs reference" trailing column.
+        renderRow: (r, checkbox) => {
+            const tr = rows.find((x) => x.id === r.id);
             const refN = reference ? mapGet(reference.terrains, r.id) : 0;
             const pct = reference ? digPercent(refN || null, r.count) : null;
-            const dugColor = pct == null ? COLORS.dim
-                : pct >= 50 ? COLORS.good
-                : pct >= 10 ? COLORS.warn
+            const dugColor = pct == null
+                ? COLORS.dim
+                : pct >= 50
+                ? COLORS.good
+                : pct >= 10
+                ? COLORS.warn
                 : COLORS.dim;
-            return e("div", { key: `${r.type}:${r.id}`, style: styles.row },
-                e("input", {
-                    type: "checkbox",
-                    checked: on,
-                    style: styles.rowCheck,
-                    title: "Show on graph",
-                    onChange: () => toggleGraphId("terrains", r.id, rows),
-                }),
+            return e(
+                "div",
+                { key: `${tr?.type ?? 0}:${r.id}`, style: styles.row },
+                checkbox,
                 e("div", { style: { ...styles.swatch, background: r.color } }),
-                e("span", { style: { color: COLORS.dim, minWidth: "28px" } }, String(r.type)),
+                e(
+                    "span",
+                    { style: { color: COLORS.dim, minWidth: "28px" } },
+                    String(tr?.type ?? "—"),
+                ),
                 e("span", { style: styles.grow, title: r.id }, r.name),
-                e("div", { style: styles.barTrack },
-                    e("div", { style: { ...styles.barFill, width: `${Math.max(2, Math.round((100 * r.count) / max))}%` } })),
-                e("span", { style: styles.count }, r.count.toLocaleString()),
-                e("span", {
-                    style: {
-                        minWidth: 88,
-                        textAlign: "right",
-                        color: dugColor,
-                        fontWeight: 600,
-                        fontVariantNumeric: "tabular-nums",
-                        fontSize: 11,
+                e(
+                    "div",
+                    { style: styles.barTrack },
+                    e("div", {
+                        style: {
+                            ...styles.barFill,
+                            width: `${Math.max(2, Math.round((100 * r.count) / max))}%`,
+                        },
+                    }),
+                ),
+                e("span", { style: styles.count }, formatCount(r.count)),
+                e(
+                    "span",
+                    {
+                        style: {
+                            minWidth: 88,
+                            textAlign: "right",
+                            color: dugColor,
+                            fontWeight: 600,
+                            fontVariantNumeric: "tabular-nums",
+                            fontSize: 11,
+                        },
+                        title: reference
+                            ? `ref ${formatCount(refN)} → now ${formatCount(r.count)}`
+                            : "No reference yet — refresh once to set baseline",
                     },
-                    title: reference
-                        ? `ref ${refN.toLocaleString()} → now ${r.count.toLocaleString()}`
-                        : "No reference yet — refresh once to set baseline",
-                }, formatDigPct(pct)),
+                    formatDigPct(pct),
+                ),
             );
-        }),
-    );
+        },
+    });
 }
-

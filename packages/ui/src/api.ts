@@ -1,6 +1,8 @@
 /**
  * Typed sandkit handle + small helpers.
- * Self-contained — no workspace package imports so the mod is drop-in.
+ *
+ * The mod bundles this module in, so `sandkit` is resolved at load time from
+ * the host's global scope.
  */
 import type { PanelReact } from "./types.ts";
 

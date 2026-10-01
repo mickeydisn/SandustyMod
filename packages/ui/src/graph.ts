@@ -7,6 +7,7 @@
  */
 import { h } from "./api.ts";
 import { COLORS } from "./styles.ts";
+import { formatCount } from "./section.ts";
 
 export interface SeriesLine {
     id: string;
@@ -114,7 +115,13 @@ export function Sparkline(
             height,
             viewBox: `0 0 ${width} ${height}`,
             preserveAspectRatio: "none",
-            style: { display: "block", width: "100%", height: `${height}px`, margin: 0, padding: 0 },
+            style: {
+                display: "block",
+                width: "100%",
+                height: `${height}px`,
+                margin: 0,
+                padding: 0,
+            },
         },
         e("polygon", {
             fill: color,
@@ -199,20 +206,29 @@ export function MultiLineChart(
     const innerH = height - top - bottom;
 
     const yAt = (v: number) => top + innerH - ((v - min) / span) * innerH;
-    const xAt = (i: number, len: number) =>
-        left + (i / Math.max(len - 1, 1)) * innerW;
+    const xAt = (i: number, len: number) => left + (i / Math.max(len - 1, 1)) * innerW;
 
     const gridLines = [0, 0.5, 1].map((t) => {
         const v = min + span * (1 - t);
         const y = top + innerH * t;
-        return e("g", { key: `g${t}` },
+        return e(
+            "g",
+            { key: `g${t}` },
             e("line", {
-                x1: left, x2: width - right, y1: y, y2: y,
-                stroke: "#1e2736", strokeWidth: 1,
+                x1: left,
+                x2: width - right,
+                y1: y,
+                y2: y,
+                stroke: "#1e2736",
+                strokeWidth: 1,
             }),
             e("text", {
-                x: left - 4, y: y + 3, fill: COLORS.dim, fontSize: 9, textAnchor: "end",
-            }, Math.round(v).toLocaleString()),
+                x: left - 4,
+                y: y + 3,
+                fill: COLORS.dim,
+                fontSize: 9,
+                textAnchor: "end",
+            }, formatCount(v, 0)),
         );
     });
 
@@ -233,27 +249,34 @@ export function MultiLineChart(
     });
 
     const legend = series.map((s, si) =>
-        e("div", {
-            key: s.id,
-            style: {
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                marginRight: 10,
-                fontSize: 10,
-                color: COLORS.text,
+        e(
+            "div",
+            {
+                key: s.id,
+                style: {
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    marginRight: 10,
+                    fontSize: 10,
+                    color: COLORS.text,
+                },
             },
-        },
             e("span", {
                 style: {
-                    width: 8, height: 8, borderRadius: 2,
+                    width: 8,
+                    height: 8,
+                    borderRadius: 2,
                     background: s.color || seriesColor(si),
                     display: "inline-block",
                 },
             }),
             e("span", null, s.label),
-            e("span", { style: { color: COLORS.dim } },
-                s.values.length ? `(${s.values[s.values.length - 1]!.toLocaleString()})` : ""),
+            e(
+                "span",
+                { style: { color: COLORS.dim } },
+                s.values.length ? `(${formatCount(s.values[s.values.length - 1]!)})` : "",
+            ),
         )
     );
 
@@ -276,8 +299,14 @@ export function MultiLineChart(
         }, svg);
     }
 
-    return e("div", { style: { width: "100%" } },
-        e("div", { style: { marginBottom: 4, display: "flex", flexWrap: "wrap", gap: 4 } }, ...legend),
+    return e(
+        "div",
+        { style: { width: "100%" } },
+        e(
+            "div",
+            { style: { marginBottom: 4, display: "flex", flexWrap: "wrap", gap: 4 } },
+            ...legend,
+        ),
         svg,
     );
 }
@@ -285,5 +314,5 @@ export function MultiLineChart(
 export function formatDelta(d: number | null): string {
     if (d === null) return "—";
     if (d === 0) return "±0";
-    return d > 0 ? `+${d.toLocaleString()}` : d.toLocaleString();
+    return d > 0 ? `+${formatCount(d)}` : formatCount(d);
 }

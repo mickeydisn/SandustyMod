@@ -19,6 +19,14 @@ export const LOG = `[${MOD_ID}]`;
 /** Tool item id (hotbar). */
 export const ITEM_ID = `${MOD_ID}:tool`;
 
+/**
+ * `ItemType.Tool` from the sandkit enums.
+ *
+ * The enum is numeric (`Weapon = 1, Tool = 2, Consumable = 3, Mod = 4`) and the
+ * engine branches on `itemType === SP.Tool`, so the string `"tool"` is never
+ * equal to it and the item gets filed under the generic "items" category.
+ */
+
 /** Overlay id under the global zone. */
 export const OVERLAY_ID = `${MOD_ID}:overlay`;
 
@@ -33,12 +41,11 @@ export const NAME_KEY = `mods|${MOD_ID}|tool|name`;
 export const DESC_KEY = `mods|${MOD_ID}|tool|desc`;
 
 export const TOOL_NAME = "Player Statistic";
-export const TOOL_DESC =
-    "<b>Player Statistic</b> — live KPI tracker of your actions.<br/>" +
+export const TOOL_DESC = "<b>Player Statistic</b> — live KPI tracker of your actions.<br/>" +
     "Counts <i>structures placed / removed / moved</i>, <i>items used</i>, " +
     "<i>terrain dug</i>, <i>pickups</i> and <i>resources collected</i>.<br/>" +
     "Home <b>KPI cards</b> are fully configurable.<br/>" +
-    "<span style=\"opacity:0.85\">Select the tool to open the overlay · lock it to keep it open.</span>";
+    '<span style="opacity:0.85">Select the tool to open the overlay · lock it to keep it open.</span>';
 
 /** Every api.storage key this mod writes. */
 export const STORAGE_KEYS = [
@@ -60,12 +67,36 @@ export const SETTINGS = {
         type: "boolean",
         default: true,
     },
+    /** Points rendered on sparklines / charts. */
     historyMax: {
         type: "number",
-        default: 20,
+        default: 30,
         min: 5,
-        max: 50,
+        max: 200,
         step: 1,
+    },
+    /**
+     * Sample interval in minutes — one data point is recorded every N minutes.
+     * A point holds the totals for *every* KPI, so this is the resolution of
+     * the whole time series.
+     */
+    timeRange: {
+        type: "number",
+        default: 2,
+        min: 1,
+        max: 1440,
+        step: 1,
+    },
+    /**
+     * Max stored data points. Once full, the oldest point is dropped (FIFO),
+     * so total storage stays bounded no matter how long the game runs.
+     */
+    maxCountSave: {
+        type: "number",
+        default: 120,
+        min: 10,
+        max: 2000,
+        step: 10,
     },
 } as const satisfies SettingsSchema;
 
@@ -77,7 +108,18 @@ export type KpiCategory =
     | "items_used"
     | "terrain_destroyed"
     | "world_items_picked"
-    | "resources_collected";
+    | "resources_collected"
+    | "keys_pressed"
+    | "distance_walked"
+    | "collisions"
+    | "graber_uses"
+    | "graber_resources"
+    | "graber_elements"
+    | "vacuum_uses"
+    | "vacuum_cells";
+
+/** Engine item id of the built-in grabber tool. */
+export const GRABBER_ITEM_ID = "grabber";
 
 export const KPI_CATEGORIES: { id: KpiCategory; label: string; color: string }[] = [
     { id: "structures_placed", label: "Structures placed", color: "#4ade80" },
@@ -87,4 +129,22 @@ export const KPI_CATEGORIES: { id: KpiCategory; label: string; color: string }[]
     { id: "terrain_destroyed", label: "Terrain dug", color: "#a78bfa" },
     { id: "world_items_picked", label: "World items picked", color: "#34d399" },
     { id: "resources_collected", label: "Resources collected", color: "#f472b6" },
+    { id: "keys_pressed", label: "Keys pressed", color: "#22d3ee" },
+    { id: "distance_walked", label: "Distance walked", color: "#38bdf8" },
+    { id: "collisions", label: "Collisions", color: "#f97316" },
+    { id: "graber_uses", label: "Graber uses", color: "#fb923c" },
+    { id: "graber_resources", label: "Graber collected", color: "#a78bfa" },
+    { id: "graber_elements", label: "Elements grabbed", color: "#2dd4bf" },
+    { id: "vacuum_uses", label: "Vacuum uses", color: "#818cf8" },
+    { id: "vacuum_cells", label: "Vacuum head", color: "#c084fc" },
 ];
+
+/**
+ * Unit suffix shown in the panel. Absent = plain count.
+ *
+ * `distance_walked` has no unit on purpose: it is a scaled figure
+ * (pixels ÷ cellSize ÷ 4), not a grid step, so labelling it "cells" would lie.
+ */
+export const KPI_UNITS: Partial<Record<KpiCategory, string>> = {
+    vacuum_cells: "cells",
+};

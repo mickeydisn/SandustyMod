@@ -1,0 +1,8 @@
+{
+    "name": "@sandmd/ui",
+    "exports": "./index.ts",
+    "compilerOptions": {
+        "lib": ["deno.window", "dom"],
+        "strict": true
+    }
+}

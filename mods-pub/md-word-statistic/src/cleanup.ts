@@ -1,13 +1,10 @@
 /**
  * Orphan / inventory / storage cleanup — always available; full wipe when disabled.
  */
-import { api, root, safe } from "./api.ts";
+import { api, root, safe } from "@sandmd/ui";
 import { allCardStorageKeys } from "./cards.ts";
 import { ITEM_ID, LOG, MOD_ID, OVERLAY_ID } from "./constants.ts";
-import {
-    STATS_HISTORY_KEY,
-    STATS_REF_KEY,
-} from "./history.ts";
+import { STATS_HISTORY_KEY, STATS_REF_KEY } from "./history.ts";
 import {
     UI_ALPHA_KEY,
     UI_AUTO_MIN_KEY,
@@ -109,8 +106,12 @@ export function wipeModStorage(reason: string): void {
         const had = safe(() => api.storage.get(MOD_ID, key));
         if (had !== undefined && had !== null) {
             safe(() => api.storage.set(MOD_ID, key, null));
-            safe(() => (api.storage as { remove?: (m: string, k: string) => void }).remove?.(MOD_ID, key));
-            safe(() => (api.storage as { delete?: (m: string, k: string) => void }).delete?.(MOD_ID, key));
+            safe(() =>
+                (api.storage as { remove?: (m: string, k: string) => void }).remove?.(MOD_ID, key)
+            );
+            safe(() =>
+                (api.storage as { delete?: (m: string, k: string) => void }).delete?.(MOD_ID, key)
+            );
             removed++;
         }
     }

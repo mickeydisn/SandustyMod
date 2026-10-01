@@ -16,7 +16,7 @@ export const COLORS = {
     tabActive: "#1a2740",
     rowHover: "rgba(255, 231, 0, 0.04)",
     bar: "#3d5a80",
-    barFill: "#ffe700"
+    barFill: "#ffe700",
 };
 
 export const styles: Record<string, StyleObj> = {
@@ -278,6 +278,56 @@ export const styles: Record<string, StyleObj> = {
         color: COLORS.dim,
         fontSize: "11px",
     },
+    /**
+     * Compact KPI card (home tab). `cardTitle` + `cardTotal` + a session delta,
+     * then one `row` per tracked item with its own sparkline.
+     *
+     * These back the same card in both statistic mods, so the home tabs look
+     * identical.
+     */
+    cardTitle: {
+        fontWeight: 700,
+        fontSize: "11px",
+        color: COLORS.dim,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+        marginBottom: "4px",
+    },
+    cardTotal: {
+        fontSize: "22px",
+        fontWeight: 800,
+        fontVariantNumeric: "tabular-nums",
+        lineHeight: 1.15,
+    },
+    cardDelta: {
+        fontSize: "11px",
+        fontWeight: 600,
+        fontVariantNumeric: "tabular-nums",
+    },
+    /** Truncating label in a card row / list row. */
+    rowLabel: {
+        flex: 1,
+        minWidth: 0,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+    },
+    /** Right-aligned tabular count in a card row / list row. */
+    rowCount: {
+        fontWeight: 700,
+        fontVariantNumeric: "tabular-nums",
+        minWidth: "48px",
+        textAlign: "right",
+    },
+    /** Settings-tab group heading (the tracking / cards / data sections). */
+    sectionTitle: {
+        fontWeight: 700,
+        fontSize: "11px",
+        color: COLORS.dim,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+        margin: "8px 0 4px",
+    },
     list: {
         display: "flex",
         flexDirection: "column",
@@ -535,5 +585,4 @@ export const styles: Record<string, StyleObj> = {
         border: "1px solid #2a3548",
         borderRadius: "8px",
     },
-
 };

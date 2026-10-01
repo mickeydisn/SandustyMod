@@ -24,14 +24,27 @@ export const NAME_KEY = `mods|${MOD_ID}|tool|name`;
 export const DESC_KEY = `mods|${MOD_ID}|tool|desc`;
 
 export const TOOL_NAME = "World Statistic";
-export const TOOL_DESC =
-    "<b>World Statistic</b> — live census of your dig site.<br/>" +
+export const TOOL_DESC = "<b>World Statistic</b> — live census of your dig site.<br/>" +
     "Count <i>elements</i>, <i>terrains</i> and <i>structures</i> on authorized cells only.<br/>" +
     "Home <b>resource cards</b>, history graphs, dig&nbsp;% vs baseline, auto-refresh.<br/>" +
-    "<span style=\"opacity:0.85\">Select the tool to open the overlay · lock it to keep it open.</span>";
+    '<span style="opacity:0.85">Select the tool to open the overlay · lock it to keep it open.</span>';
 
 /** Label for built-in (non-mod) ids. */
 export const BUILT_IN = "(built-in)";
 
 /** How many cells to process per animation frame during a grid scan. */
 export const SCAN_CHUNK = 4096;
+
+/**
+ * Mirror of configSchema. The three history settings match
+ * `md-player-statistic` exactly so the two mods read the same way:
+ *
+ * - `timeRange`      — one data point every N minutes (the scan interval)
+ * - `maxCountSave`   — max stored data points (FIFO)
+ * - `historyMax`     — how many points are rendered
+ */
+export const SETTINGS = {
+    timeRange: { type: "number", default: 2, min: 1, max: 1440, step: 1 },
+    maxCountSave: { type: "number", default: 120, min: 10, max: 2000, step: 10 },
+    historyMax: { type: "number", default: 30, min: 5, max: 200, step: 1 },
+} as const;

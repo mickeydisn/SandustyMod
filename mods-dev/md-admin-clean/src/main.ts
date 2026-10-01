@@ -37,7 +37,13 @@ function main(): void {
     runDisableCleanup("md-big-brother", "Clean", []);
     runDisableCleanup("buffer-controls", "Clean", []);
     runDisableCleanup("md-channel-pads", "Clean", []);
+
     runDisableCleanup("md-buffer-process", "Clean", []);
+    runDisableCleanup("md-excavated-all", "Clean", []);
+    runDisableCleanup("md-my-hown-mod", "Clean", []);
+    runDisableCleanup("md-random-artefact", "Clean", []);
+    runDisableCleanup("hiden-word-2", "Clean", []);
+
     // ────────────────────────────────────────────────────────────────────────
 
     safe(() => sandkit.api.ui.toast(`${MOD_ID} enabled`, {}));

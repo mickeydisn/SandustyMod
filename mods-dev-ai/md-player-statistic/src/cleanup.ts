@@ -1,9 +1,9 @@
 /**
  * Prune tool item / wipe mod storage on disable.
  */
-import { api, safe } from "./api.ts";
+import { api, safe } from "@sandmd/ui";
 import { flush } from "./buffer.ts";
-import { ITEM_ID, LOG, MOD_ID, STORAGE_KEYS } from "./constants.ts";
+import { LOG, MOD_ID, STORAGE_KEYS } from "./constants.ts";
 import { unbindEvents } from "./events.ts";
 import { unregisterTool } from "./tool.ts";
 
@@ -23,7 +23,7 @@ export function runDisableCleanup(reason: string): void {
     }
     // Also try host per-mod bag wipe if available
     safe(() => {
-        const bag = api.storage?.get?.(MOD_ID);
+        const bag = api.storage?.getAll?.(MOD_ID);
         if (bag && typeof bag === "object") {
             for (const k of Object.keys(bag)) {
                 api.storage.remove(MOD_ID, k);
@@ -31,11 +31,10 @@ export function runDisableCleanup(reason: string): void {
         }
     });
 
-    // Prefix scan player inventory for our item
-    safe(() => {
-        const inv = api.player?.inventory;
-        if (typeof inv?.removeById === "function") inv.removeById(ITEM_ID);
-    });
+    // ⚠️ The runtime `player.inventory` facade exposes only `hasById` /
+    // `addById` / `addFromId` — there is no `removeById`, so the hotbar entry
+    // cannot be pruned from a mod. The item definition likewise has no
+    // `items.unregister`. Both survive a disable; only the overlay is removed.
 
     console.log(`${LOG} disable cleanup complete (${reason})`);
 }

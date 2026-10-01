@@ -22,14 +22,32 @@
             "label": "Auto refresh",
             "description": "After the world is ready, run a scan once and then on the interval below. Can also be toggled in the panel."
         },
-        "autoRefreshMinutes": {
+        "timeRange": {
             "type": "number",
-            "default": 10,
+            "default": 2,
             "min": 1,
-            "max": 20,
+            "max": 1440,
             "step": 1,
-            "label": "Auto refresh interval (minutes)",
-            "description": "Minutes between automatic scans when Auto refresh is on (1\u201320)."
+            "label": "Every N min",
+            "description": "Record one data point every N minutes when Auto refresh is on. Replaces the old 'autoRefreshMinutes' setting, whose value is still honoured."
+        },
+        "maxCountSave": {
+            "type": "number",
+            "default": 120,
+            "min": 10,
+            "max": 2000,
+            "step": 10,
+            "label": "Max data points",
+            "description": "Max stored data points. When full the oldest point is dropped, so storage stays bounded."
+        },
+        "historyMax": {
+            "type": "number",
+            "default": 30,
+            "min": 5,
+            "max": 200,
+            "step": 1,
+            "label": "Display points",
+            "description": "How many data points to render on sparklines and charts (5–200)."
         }
     }
 }

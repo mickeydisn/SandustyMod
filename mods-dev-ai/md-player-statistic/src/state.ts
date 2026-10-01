@@ -1,51 +1,47 @@
 /**
- * Mutable panel state shared between event buffer and React overlay.
+ * Mutable panel state shared between the event buffer and the React overlay.
+ *
+ * The chrome fields come from the shared `@sandmd/ui` state factory; the
+ * resolved Home cards are the only mod-specific addition.
  */
-import {
-    loadAlpha,
-    loadLocked,
-    loadMinimized,
-    loadPos,
-    loadZoom,
-} from "./uiStore.ts";
+import { createPanelState } from "@sandmd/ui";
+import { store } from "./uiStore.ts";
+import { getConfig } from "./config.ts";
 import { loadCards, resolveCards } from "./buffer.ts";
-import type { CardStat, HomeCardConfig, PanelPos, TabId } from "./types.ts";
+import type { CardStat, HomeCardConfig } from "./types.ts";
 
-export const state = {
-    tab: "home" as TabId,
-    locked: false,
-    minimized: false,
-    pos: { right: 16, top: 80 } as PanelPos,
-    zoom: 1,
-    alpha: 1,
-    dragging: false,
-    editingCards: false,
-    editFocusId: null as string | null,
-    cards: [] as HomeCardConfig[],
+/** Mod-specific panel fields, merged alongside the shared chrome state. */
+export interface PlayerStatExtras {
+    cards: HomeCardConfig[];
     /** Resolved card stats (recomputed on bump). */
-    resolvedCards: [] as CardStat[],
-    /** Force React re-render. */
-    _repaint: null as null | ((n: number) => void),
-    _tick: 0,
-};
-
-export function bootFromStorage(): void {
-    state.pos = loadPos();
-    state.zoom = loadZoom();
-    state.alpha = loadAlpha();
-    state.locked = loadLocked();
-    state.minimized = loadMinimized();
-    state.cards = loadCards();
-    state.resolvedCards = resolveCards(state.cards);
+    resolvedCards: CardStat[];
+    /** Ids plotted per KPI category on that tab's history graph. */
+    graphSelection: Record<string, string[]>;
 }
 
-export function setRepaint(fn: ((n: number) => void) | null): void {
-    state._repaint = fn;
+const ctrl = createPanelState<PlayerStatExtras>({
+    store,
+    tab: "home",
+    extra: { cards: [], resolvedCards: [], graphSelection: {} },
+    recompute: (st) => {
+        st.resolvedCards = resolveCards(st.cards, getConfig().historyMax);
+    },
+    loadExtra: (st) => {
+        st.cards = loadCards();
+    },
+});
+
+export const state = ctrl.state;
+
+export function bootFromStorage(): void {
+    ctrl.loadChrome();
 }
 
 /** Bump tick + re-resolve cards so the panel refreshes. */
 export function bump(): void {
-    state.resolvedCards = resolveCards(state.cards);
-    state._tick += 1;
-    state._repaint?.(state._tick);
+    ctrl.bump();
+}
+
+export function setRepaint(fn: ((n: number) => void) | null): void {
+    ctrl.setRepaint(fn);
 }

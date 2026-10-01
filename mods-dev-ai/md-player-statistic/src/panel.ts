@@ -4,7 +4,32 @@
  * Home cards show configurable KPI groups. Other tabs list per-category
  * breakdowns from the live event buffer (no world scan).
  */
-import { h, React } from "./api.ts";
+import {
+    CfgSection,
+    ChromeRows,
+    colorFromId,
+    COLORS,
+    formatCount,
+    GraphBlock,
+    h,
+    Header,
+    Hint,
+    isToolSelected,
+    KpiCard,
+    MiniHeader,
+    NumberRow,
+    posStyle,
+    React,
+    resolveSelection,
+    ROOT_CLASS,
+    SelectableList,
+    startDrag,
+    styles,
+    Tabs,
+    toggleSelection,
+    toIntervals,
+} from "@sandmd/ui";
+import type { ListRow } from "@sandmd/ui";
 import {
     buffer,
     defaultCards,
@@ -15,24 +40,20 @@ import {
     resetSession,
     saveCards,
 } from "./buffer.ts";
-import { KPI_CATEGORIES, VERSION } from "./constants.ts";
-import { isToolSelected } from "./select.ts";
+import { ITEM_ID, KPI_CATEGORIES, KPI_UNITS, SETTINGS, VERSION } from "./constants.ts";
+import type { KpiCategory } from "./constants.ts";
+import { getConfig, setSetting } from "./config.ts";
 import { bootFromStorage, bump, setRepaint, state } from "./state.ts";
-import { COLORS, styles } from "./styles.ts";
 import type { HomeCardConfig, TabId } from "./types.ts";
-import {
-    saveAlpha,
-    saveLocked,
-    saveMinimized,
-    savePanelPos,
-    saveZoom,
-} from "./uiStore.ts";
+import { store } from "./uiStore.ts";
 
 const TABS: { id: TabId; label: string }[] = [
     { id: "home", label: "Home" },
-    { id: "actions", label: "Actions" },
-    { id: "items", label: "Items" },
-    { id: "terrain", label: "Terrain" },
+    { id: "actions", label: "Structures" },
+    { id: "terrain", label: "Dig" },
+    { id: "move", label: "Move" },
+    { id: "keys", label: "Keys" },
+    { id: "graber", label: "Graber" },
     { id: "config", label: "⚙️" },
 ];
 
@@ -44,36 +65,147 @@ function formatTime(ts: number): string {
     }
 }
 
-function maxCount(rows: { count: number }[]): number {
-    let m = 1;
-    for (const r of rows) if (r.count > m) m = r.count;
-    return m;
+// —— Selectable list + graph (shared with md-word-statistic via @sandmd/ui) ——
+
+/** Rows for one KPI category: its sub-keys as selectable list rows. */
+function kpiRows(cat: string): ListRow[] {
+    // One stable colour per sub-key, so the swatch and its graph line agree.
+    return listSubKeys(cat).map((r) => ({
+        id: r.key,
+        name: r.key,
+        count: r.count,
+        color: colorFromId(r.key),
+    }));
 }
 
-function sparkline(series: number[], color: string): unknown {
-    if (!series.length || !h) return null;
-    const w = 64;
-    const ht = 18;
-    const mx = Math.max(1, ...series);
-    const pts = series
-        .map((v, i) => {
-            const x = (i / Math.max(1, series.length - 1)) * w;
-            const y = ht - (v / mx) * (ht - 2) - 1;
-            return `${x},${y}`;
-        })
-        .join(" ");
-    return h(
-        "svg",
-        { width: w, height: ht, style: { display: "block", flexShrink: 0 } },
-        h("polyline", {
-            points: pts,
-            fill: "none",
-            stroke: color,
-            strokeWidth: 1.5,
-            strokeLinejoin: "round",
-            strokeLinecap: "round",
-        }),
+/**
+ * Per-interval activity for one sub-key, oldest → newest.
+ *
+ * These are lifetime accumulators, so plotting the raw totals would just be a
+ * rising ramp. Graphs and sparklines plot how much happened in each sampling
+ * interval instead — see `toIntervals` in `@sandmd/ui`.
+ *
+ * One extra point is read beyond `displayPoints` so the first displayed
+ * interval still has a predecessor to subtract.
+ */
+function kpiSeries(cat: string, subKey: string, session = false): number[] {
+    const key = subKey ? `${cat}::${subKey}` : cat;
+    const points = getConfig().historyMax;
+    return toIntervals(
+        buffer.history
+            .slice(-(points + 1))
+            .map((s) => {
+                if (session) {
+                    // Snapshots written before session capture have no
+                    // `session` map, so fall back to the lifetime totals.
+                    const src = s.session ?? s.totals;
+                    return src[key] ?? 0;
+                }
+                return s.totals[key] ?? 0;
+            }),
     );
+}
+
+function selectionOf(cat: string, rows: ListRow[]): string[] {
+    return resolveSelection(state.graphSelection[cat] ?? [], rows, 3);
+}
+
+function toggleOf(cat: string, id: string, rows: ListRow[]): void {
+    state.graphSelection[cat] = toggleSelection(
+        state.graphSelection[cat] ?? [],
+        id,
+        rows,
+        3,
+    );
+    bump();
+}
+
+/**
+ * One KPI category rendered the way World Statistic renders its list tabs: a
+ * heading with the running total, a history graph, and a checkbox list whose
+ * ticks pick the plotted series.
+ *
+ * `session` switches the graph to the **session** counters instead of the
+ * lifetime totals. Categories with no sub-keys — distance walked, collisions,
+ * graber uses — have nothing to break down, so plotting lifetime totals would
+ * show the whole career on one axis; `session` is what makes those graphable
+ * per sampling interval and is what the Move tab asks for.
+ */
+function KpiSection(
+    cat: string,
+    opts: { marginTop?: number; session?: boolean } = {},
+): unknown {
+    const e = h;
+    if (!e) return null;
+    const { marginTop = 0, session = false } = opts;
+    const meta = KPI_CATEGORIES.find((c) => c.id === cat);
+    const color = meta?.color ?? COLORS.dim;
+    const total = getCount(cat);
+    const rows = kpiRows(cat);
+
+    // Single-value category: synthesise one row so the graph still renders.
+    const single: ListRow[] = rows.length > 0 ? rows : [{
+        id: cat,
+        name: session ? "This session" : "Total",
+        count: session ? getCount(cat, null, "session") : total,
+        color,
+    }];
+
+    const tickable = rows.length > 0;
+    const selected = selectionOf(cat, single);
+    const perInterval = getConfig().timeRange;
+
+    return e(
+        "div",
+        { style: { marginBottom: 16 } },
+        e(
+            "div",
+            { style: { ...styles.groupTitle, marginTop } },
+            `${meta?.label ?? cat} · ${
+                formatKpi(cat, session ? getCount(cat, null, "session") : total)
+            }`,
+        ),
+        e(
+            "div",
+            null,
+            GraphBlock({
+                title: `${session ? "This session" : "Lifetime"} · per ${perInterval} min · ` +
+                    `last ${getConfig().historyMax}` +
+                    (tickable ? " · tick rows to choose series" : ""),
+                emptyText: tickable
+                    ? undefined
+                    : `No data points yet — one is recorded every ${perInterval} min. ` +
+                        "Play a little and the graph fills in.",
+                series: selected.map((id) => ({
+                    id,
+                    label: id,
+                    color: colorFromId(id),
+                    values: kpiSeries(cat, id === cat ? "" : id, session),
+                })),
+            }),
+            tickable
+                ? SelectableList({
+                    rows: single,
+                    selected,
+                    onToggle: (id) => toggleOf(cat, id, single),
+                    emptyText: "None yet",
+                })
+                : null,
+        ),
+    );
+}
+
+/** A list tab: one `KpiSection` per category, stacked. */
+function KpiTabBody(cats: string[]): unknown {
+    const e = h;
+    if (!e) return null;
+    return e("div", null, ...cats.map((c, i) => KpiSection(c, { marginTop: i === 0 ? 0 : 8 })));
+}
+
+/** Format a KPI for display, rounding and appending its unit when it has one. */
+function formatKpi(cat: string, n: number): string {
+    const unit = KPI_UNITS[cat as KpiCategory];
+    return unit ? `${formatCount(n)} ${unit}` : formatCount(n);
 }
 
 export function StatisticPanel(): unknown {
@@ -108,66 +240,18 @@ export function StatisticPanel(): unknown {
         };
     }, []);
 
-    if (!isToolSelected() && !state.locked) return null;
+    if (!isToolSelected(ITEM_ID) && !state.locked) return null;
 
-    const setTab = (id: TabId): void => {
+    const setTab = (id: string): void => {
         state.tab = id;
         if (id !== "config") state.editingCards = false;
         bump();
     };
 
-    const startDrag = (ev: any): void => {
-        if (ev.button != null && ev.button !== 0) return;
-        const target = ev.target as { closest?: (s: string) => unknown } | null;
-        if (target?.closest?.("button, input, select, textarea, a")) return;
-
-        const rootEl = (ev.currentTarget as { closest?: (s: string) => HTMLElement | null })
-            ?.closest?.(".md-player-stat-root");
-        const rect = rootEl?.getBoundingClientRect?.();
-        const vw = (globalThis as { innerWidth?: number }).innerWidth ?? 1280;
-        const startX = ev.clientX as number;
-        const startY = ev.clientY as number;
-        const origRight = rect ? Math.max(0, vw - rect.right) : state.pos.right;
-        const origTop = rect ? rect.top : state.pos.top;
-
-        state.dragging = true;
-        bump();
-
-        const onMove = (e2: any): void => {
-            const dx = (e2.clientX as number) - startX;
-            const dy = (e2.clientY as number) - startY;
-            state.pos = {
-                right: Math.max(0, origRight - dx),
-                top: Math.max(0, origTop + dy),
-            };
-            bump();
-        };
-        const onUp = (): void => {
-            state.dragging = false;
-            savePanelPos(state.pos);
-            bump();
-            globalThis.removeEventListener?.("pointermove", onMove);
-            globalThis.removeEventListener?.("pointerup", onUp);
-            globalThis.removeEventListener?.("pointercancel", onUp);
-        };
-        globalThis.addEventListener?.("pointermove", onMove);
-        globalThis.addEventListener?.("pointerup", onUp);
-        globalThis.addEventListener?.("pointercancel", onUp);
-        try {
-            ev.preventDefault?.();
-        } catch { /* */ }
-    };
-
-    const posStyle: Record<string, string | number> = {
-        right: `${state.pos.right}px`,
-        top: `${state.pos.top}px`,
-        left: "auto",
-        transformOrigin: "top right",
-        opacity: state.alpha,
-    };
-    if (state.zoom !== 1) {
-        posStyle.transform = `scale(${state.zoom})`;
-    }
+    // Always right-anchored so mini/max keeps the right edge fixed.
+    const chrome = { state, store, bump };
+    const onDrag = (ev: any): void => startDrag(ev, chrome);
+    const place = posStyle(state);
 
     // —— Mini widget ——
     if (state.minimized) {
@@ -175,39 +259,14 @@ export function StatisticPanel(): unknown {
         return e(
             "div",
             {
-                className: "md-player-stat-root",
+                className: ROOT_CLASS,
                 style: {
                     ...styles.rootMini,
-                    ...posStyle,
+                    ...place,
                     cursor: state.dragging ? "grabbing" : undefined,
                 },
             },
-            e(
-                "div",
-                {
-                    style: {
-                        ...styles.header,
-                        padding: "6px 8px",
-                        cursor: "grab",
-                        justifyContent: "flex-end",
-                        gap: "6px",
-                    },
-                    onPointerDown: startDrag,
-                },
-                e(
-                    "button",
-                    {
-                        style: styles.button,
-                        title: "Expand",
-                        onClick: () => {
-                            state.minimized = false;
-                            saveMinimized(false);
-                            bump();
-                        },
-                    },
-                    "□",
-                ),
-            ),
+            MiniHeader(chrome),
             e(
                 "div",
                 { style: styles.miniBody },
@@ -215,18 +274,16 @@ export function StatisticPanel(): unknown {
                     ? e("div", { style: { color: COLORS.dim, fontSize: 11 } }, "No cards")
                     : cards.map((g) => {
                         const trend = g.delta;
-                        const trendColor =
-                            trend == null || trend === 0
-                                ? COLORS.dim
-                                : trend > 0
-                                ? COLORS.good
-                                : COLORS.danger;
-                        const trendLabel =
-                            trend == null
-                                ? "—"
-                                : trend > 0
-                                ? `+${trend.toLocaleString()}`
-                                : trend.toLocaleString();
+                        const trendColor = trend == null || trend === 0
+                            ? COLORS.dim
+                            : trend > 0
+                            ? COLORS.good
+                            : COLORS.danger;
+                        const trendLabel = trend == null
+                            ? "—"
+                            : trend > 0
+                            ? `+${formatCount(trend)}`
+                            : formatCount(trend);
                         return e(
                             "div",
                             {
@@ -240,7 +297,7 @@ export function StatisticPanel(): unknown {
                             e(
                                 "span",
                                 { style: { ...styles.miniCardSum, color: g.color } },
-                                g.total.toLocaleString(),
+                                formatCount(g.total),
                             ),
                             e(
                                 "span",
@@ -264,60 +321,9 @@ export function StatisticPanel(): unknown {
     }
 
     // —— Full panel ——
-    const header = e(
-        "div",
-        {
-            style: { ...styles.header, cursor: "grab" },
-            onPointerDown: startDrag,
-        },
-        e(
-            "span",
-            { style: styles.dragHandle },
-            e("span", { style: styles.title }, "Player Statistic"),
-        ),
-        e(
-            "button",
-            {
-                style: styles.button,
-                title: state.locked ? "Unlock panel" : "Lock panel open",
-                onClick: () => {
-                    state.locked = !state.locked;
-                    saveLocked(state.locked);
-                    bump();
-                },
-            },
-            state.locked ? "🔒" : "🔓",
-        ),
-        e(
-            "button",
-            {
-                style: styles.button,
-                title: "Minimize",
-                onClick: () => {
-                    state.minimized = true;
-                    saveMinimized(true);
-                    bump();
-                },
-            },
-            "—",
-        ),
-    );
+    const header = Header(chrome, { title: "Player Statistic" });
 
-    const tabs = e(
-        "div",
-        { style: styles.tabs },
-        ...TABS.map((t) =>
-            e(
-                "button",
-                {
-                    key: t.id,
-                    style: state.tab === t.id ? styles.tabActive : styles.tab,
-                    onClick: () => setTab(t.id),
-                },
-                t.label,
-            ),
-        ),
-    );
+    const tabs = Tabs({ tabs: TABS, active: state.tab, onSelect: setTab });
 
     let body: unknown = null;
 
@@ -332,59 +338,7 @@ export function StatisticPanel(): unknown {
                     { style: { color: COLORS.dim, fontSize: 12 } },
                     "No KPI cards — open ⚙️ to configure.",
                 )
-                : cards.map((g) =>
-                    e(
-                        "div",
-                        {
-                            key: g.id,
-                            style: { ...styles.card, borderLeftColor: g.color },
-                        },
-                        e("div", { style: styles.cardTitle }, g.title),
-                        e(
-                            "div",
-                            { style: { display: "flex", alignItems: "baseline", gap: 4 } },
-                            e(
-                                "span",
-                                { style: { ...styles.cardTotal, color: g.color } },
-                                g.total.toLocaleString(),
-                            ),
-                            g.delta != null && g.delta !== 0
-                                ? e(
-                                    "span",
-                                    {
-                                        style: {
-                                            ...styles.cardDelta,
-                                            color: g.delta > 0 ? COLORS.good : COLORS.danger,
-                                        },
-                                    },
-                                    g.delta > 0
-                                        ? `+${g.delta.toLocaleString()} session`
-                                        : `${g.delta.toLocaleString()} session`,
-                                )
-                                : null,
-                        ),
-                        e(
-                            "div",
-                            { style: { marginTop: 6 } },
-                            ...g.items.map((it) =>
-                                e(
-                                    "div",
-                                    {
-                                        key: `${it.category}:${it.key}`,
-                                        style: styles.row,
-                                    },
-                                    e("span", { style: styles.rowLabel }, it.label),
-                                    sparkline(it.series, it.color),
-                                    e(
-                                        "span",
-                                        { style: { ...styles.rowCount, color: it.color } },
-                                        it.count.toLocaleString(),
-                                    ),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
+                : cards.map((g) => KpiCard(g)),
             e(
                 "div",
                 { style: { color: COLORS.dim, fontSize: 11, marginTop: 8 } },
@@ -392,213 +346,98 @@ export function StatisticPanel(): unknown {
             ),
         );
     } else if (state.tab === "actions") {
-        const cats = [
+        body = KpiTabBody([
             "structures_placed",
             "structures_removed",
             "structures_moved",
-        ] as const;
-        body = e(
-            "div",
-            null,
-            ...cats.map((cat) => {
-                const meta = KPI_CATEGORIES.find((c) => c.id === cat)!;
-                const total = getCount(cat);
-                const subs = listSubKeys(cat);
-                const mx = maxCount(subs);
-                return e(
-                    "div",
-                    { key: cat },
-                    e(
-                        "div",
-                        { style: styles.sectionTitle },
-                        `${meta.label} · ${total.toLocaleString()}`,
-                    ),
-                    subs.length === 0
-                        ? e("div", { style: { color: COLORS.dim, fontSize: 11 } }, "None yet")
-                        : subs.map((s) =>
-                            e(
-                                "div",
-                                { key: s.key, style: styles.row },
-                                e("span", { style: styles.rowLabel }, s.key),
-                                e(
-                                    "div",
-                                    { style: styles.barTrack },
-                                    e("div", {
-                                        style: {
-                                            ...styles.barFill,
-                                            width: `${Math.round((100 * s.count) / mx)}%`,
-                                            background: meta.color,
-                                        },
-                                    }),
-                                ),
-                                e(
-                                    "span",
-                                    { style: { ...styles.rowCount, color: meta.color } },
-                                    s.count.toLocaleString(),
-                                ),
-                            ),
-                        ),
-                );
-            }),
-        );
-    } else if (state.tab === "items") {
-        const total = getCount("items_used");
-        const subs = listSubKeys("items_used");
-        const mx = maxCount(subs);
-        const color = KPI_CATEGORIES.find((c) => c.id === "items_used")!.color;
-        body = e(
-            "div",
-            null,
-            e(
-                "div",
-                { style: styles.sectionTitle },
-                `Items used · ${total.toLocaleString()}`,
-            ),
-            subs.length === 0
-                ? e("div", { style: { color: COLORS.dim, fontSize: 11 } }, "None yet")
-                : subs.map((s) =>
-                    e(
-                        "div",
-                        { key: s.key, style: styles.row },
-                        e("span", { style: styles.rowLabel }, s.key),
-                        e(
-                            "div",
-                            { style: styles.barTrack },
-                            e("div", {
-                                style: {
-                                    ...styles.barFill,
-                                    width: `${Math.round((100 * s.count) / mx)}%`,
-                                    background: color,
-                                },
-                            }),
-                        ),
-                        e(
-                            "span",
-                            { style: { ...styles.rowCount, color } },
-                            s.count.toLocaleString(),
-                        ),
-                    ),
-                ),
-            e(
-                "div",
-                { style: { ...styles.sectionTitle, marginTop: 12 } },
-                `World items picked · ${getCount("world_items_picked").toLocaleString()}`,
-            ),
-            ...listSubKeys("world_items_picked").map((s) =>
-                e(
-                    "div",
-                    { key: `wip-${s.key}`, style: styles.row },
-                    e("span", { style: styles.rowLabel }, s.key),
-                    e(
-                        "span",
-                        { style: styles.rowCount },
-                        s.count.toLocaleString(),
-                    ),
-                ),
-            ),
-            e(
-                "div",
-                { style: { ...styles.sectionTitle, marginTop: 12 } },
-                `Resources collected · ${getCount("resources_collected").toLocaleString()}`,
-            ),
-            ...listSubKeys("resources_collected").map((s) =>
-                e(
-                    "div",
-                    { key: `rc-${s.key}`, style: styles.row },
-                    e("span", { style: styles.rowLabel }, s.key),
-                    e(
-                        "span",
-                        { style: styles.rowCount },
-                        s.count.toLocaleString(),
-                    ),
-                ),
-            ),
-        );
+        ]);
     } else if (state.tab === "terrain") {
-        const total = getCount("terrain_destroyed");
-        const subs = listSubKeys("terrain_destroyed");
-        const mx = maxCount(subs);
-        const color = KPI_CATEGORIES.find((c) => c.id === "terrain_destroyed")!.color;
+        body = KpiTabBody(["terrain_destroyed"]);
+    } else if (state.tab === "move") {
         body = e(
             "div",
             null,
-            e(
-                "div",
-                { style: styles.sectionTitle },
-                `Terrain dug · ${total.toLocaleString()}`,
+            KpiSection("distance_walked", { session: true }),
+            KpiSection("collisions", { marginTop: 8, session: true }),
+            Hint(
+                "Distance is accumulated from player:moved and scaled down by 4 " +
+                    "beyond cell size — it is a relative figure, not a cell count. " +
+                    "Teleports and zone changes are excluded. Collisions count " +
+                    "distinct bumps into terrain or structures, not collision sub-steps.",
             ),
-            subs.length === 0
-                ? e("div", { style: { color: COLORS.dim, fontSize: 11 } }, "None yet")
-                : subs.map((s) =>
-                    e(
-                        "div",
-                        { key: s.key, style: styles.row },
-                        e("span", { style: styles.rowLabel }, s.key),
-                        e(
-                            "div",
-                            { style: styles.barTrack },
-                            e("div", {
-                                style: {
-                                    ...styles.barFill,
-                                    width: `${Math.round((100 * s.count) / mx)}%`,
-                                    background: color,
-                                },
-                            }),
-                        ),
-                        e(
-                            "span",
-                            { style: { ...styles.rowCount, color } },
-                            s.count.toLocaleString(),
-                        ),
-                    ),
-                ),
+        );
+    } else if (state.tab === "keys") {
+        body = e(
+            "div",
+            null,
+            KpiSection("keys_pressed"),
+            Hint(
+                "Key presses only — held-key auto-repeat is not counted, and " +
+                    "typing into this panel's own inputs is ignored.",
+            ),
+        );
+    } else if (state.tab === "graber") {
+        body = e(
+            "div",
+            null,
+            KpiSection("graber_uses", { session: true }),
+            KpiSection("graber_elements", { marginTop: 8 }),
+            KpiSection("graber_resources", { marginTop: 8 }),
+            CfgSection("Vacuum", 14),
+            KpiSection("vacuum_uses"),
+            KpiSection("vacuum_cells", { marginTop: 8 }),
+            Hint(
+                "Elements grabbed is read from the cell at the moment of collection, " +
+                    "so it is what was physically picked up; Grabber collected is the " +
+                    "resource the engine credited. Vacuum head is the size of the " +
+                    "vacuum pattern at the moment it fired. A grab that collects " +
+                    "nothing is not a use.",
+            ),
         );
     } else if (state.tab === "config") {
         body = e(
             "div",
-            null,
-            e("div", { style: styles.sectionTitle }, "Panel"),
-            e(
-                "div",
-                { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 } },
-                e(
-                    "label",
-                    { style: { display: "flex", alignItems: "center", gap: 4, fontSize: 12 } },
-                    "Zoom",
-                    e("input", {
-                        type: "range",
-                        min: 0.6,
-                        max: 1.4,
-                        step: 0.05,
-                        value: state.zoom,
-                        onChange: (ev: any) => {
-                            state.zoom = Number(ev.target.value);
-                            saveZoom(state.zoom);
-                            bump();
-                        },
-                        style: { width: 80 },
-                    }),
-                ),
-                e(
-                    "label",
-                    { style: { display: "flex", alignItems: "center", gap: 4, fontSize: 12 } },
-                    "Opacity",
-                    e("input", {
-                        type: "range",
-                        min: 0.4,
-                        max: 1,
-                        step: 0.05,
-                        value: state.alpha,
-                        onChange: (ev: any) => {
-                            state.alpha = Number(ev.target.value);
-                            saveAlpha(state.alpha);
-                            bump();
-                        },
-                        style: { width: 80 },
-                    }),
-                ),
-            ),
-            e("div", { style: styles.sectionTitle }, "KPI cards"),
+            { style: styles.cfgWrap },
+            ChromeRows({
+                state,
+                store,
+                bump,
+                zoomRange: [0.4, 2.5],
+                alphaRange: [0.3, 1],
+            }),
+            CfgSection("Tracking", 14),
+            NumberRow("Every", getConfig().timeRange, {
+                min: SETTINGS.timeRange.min,
+                max: SETTINGS.timeRange.max,
+                step: SETTINGS.timeRange.step,
+                def: SETTINGS.timeRange.default,
+                suffix: " min",
+                onChange: (v) => {
+                    setSetting("timeRange", v);
+                    bump();
+                },
+            }),
+            NumberRow("Max data points", getConfig().maxCountSave, {
+                min: SETTINGS.maxCountSave.min,
+                max: SETTINGS.maxCountSave.max,
+                step: SETTINGS.maxCountSave.step,
+                def: SETTINGS.maxCountSave.default,
+                onChange: (v) => {
+                    setSetting("maxCountSave", v);
+                    bump();
+                },
+            }),
+            NumberRow("Display points", getConfig().historyMax, {
+                min: SETTINGS.historyMax.min,
+                max: SETTINGS.historyMax.max,
+                step: SETTINGS.historyMax.step,
+                def: SETTINGS.historyMax.default,
+                onChange: (v) => {
+                    setSetting("historyMax", v);
+                    bump();
+                },
+            }),
+            CfgSection("KPI cards", 14),
             e(
                 "div",
                 { style: { display: "flex", gap: 6, marginBottom: 8 } },
@@ -657,11 +496,7 @@ export function StatisticPanel(): unknown {
                                 "div",
                                 { style: { color: COLORS.dim, fontSize: 11, marginTop: 4 } },
                                 card.items
-                                    .map((it) =>
-                                        it.key
-                                            ? `${it.category}::${it.key}`
-                                            : it.category,
-                                    )
+                                    .map((it) => it.key ? `${it.category}::${it.key}` : it.category)
                                     .join(" · ") || "(empty)",
                             ),
                             e(
@@ -702,7 +537,7 @@ export function StatisticPanel(): unknown {
                                     "Delete",
                                 ),
                             ),
-                        ),
+                        )
                     ),
                     e(
                         "button",
@@ -780,10 +615,10 @@ export function StatisticPanel(): unknown {
     return e(
         "div",
         {
-            className: "md-player-stat-root",
+            className: ROOT_CLASS,
             style: {
                 ...styles.root,
-                ...posStyle,
+                ...place,
                 cursor: state.dragging ? "grabbing" : undefined,
             },
         },

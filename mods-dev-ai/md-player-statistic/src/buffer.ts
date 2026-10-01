@@ -2,7 +2,7 @@
  * Live KPI buffer — accumulates counts from player events.
  * Totals are lifetime; session is resettable; history is a rolling window.
  */
-import { api, safe } from "./api.ts";
+import { api, safe, toIntervals } from "@sandmd/ui";
 import { KPI_CATEGORIES, LOG, MOD_ID, SETTINGS } from "./constants.ts";
 import type { HomeCardConfig, KpiBuffer, KpiMap, KpiSnapshot } from "./types.ts";
 
@@ -86,14 +86,25 @@ export function flush(): void {
     saveMap(SESSION_KEY, buffer.session);
 }
 
-/** Take a history snapshot of current totals (for sparklines). */
-export function pushHistory(maxDepth = SETTINGS.historyMax.default as number): void {
+/**
+ * Take one history snapshot of current totals.
+ *
+ * `maxDataPoints` bounds what is kept: once the history is full the oldest
+ * point is dropped (FIFO), so storage stays bounded however long the game
+ * runs. Every point holds the totals for *all* KPIs, so this one cap bounds
+ * the whole time series.
+ */
+export function pushHistory(maxDataPoints = SETTINGS.maxCountSave.default as number): void {
     const snap: KpiSnapshot = {
         at: Date.now(),
         totals: { ...buffer.totals },
+        // Session counters too, so a category with no sub-keys (distance,
+        // collisions) can still be graphed per session rather than lifetime.
+        session: { ...buffer.session },
     };
     buffer.history.push(snap);
-    while (buffer.history.length > maxDepth) buffer.history.shift();
+    const cap = Math.max(1, Math.floor(maxDataPoints));
+    while (buffer.history.length > cap) buffer.history.shift();
     saveHistory(buffer.history);
 }
 
@@ -159,7 +170,13 @@ export function listSubKeys(category: string): { key: string; count: number }[] 
     return out;
 }
 
-/** Default Home cards when none are configured. */
+/**
+ * Default Home cards when none are configured.
+ *
+ * `items_used` has no default card on purpose — the Items tab was removed.
+ * The KPI is still tracked, so anyone who had it on a card keeps it; the card
+ * editor can add it back.
+ */
 export function defaultCards(): HomeCardConfig[] {
     return [
         {
@@ -172,11 +189,6 @@ export function defaultCards(): HomeCardConfig[] {
             ],
         },
         {
-            id: "card-items",
-            title: "Items & tools",
-            items: [{ category: "items_used", key: "" }],
-        },
-        {
             id: "card-dig",
             title: "Digging",
             items: [{ category: "terrain_destroyed", key: "" }],
@@ -187,6 +199,23 @@ export function defaultCards(): HomeCardConfig[] {
             items: [
                 { category: "world_items_picked", key: "" },
                 { category: "resources_collected", key: "" },
+            ],
+        },
+        {
+            id: "card-graber",
+            title: "Graber",
+            items: [
+                { category: "graber_uses", key: "" },
+                { category: "graber_elements", key: "" },
+            ],
+        },
+        {
+            id: "card-activity",
+            title: "Activity",
+            items: [
+                { category: "distance_walked", key: "" },
+                { category: "collisions", key: "" },
+                { category: "keys_pressed", key: "" },
             ],
         },
     ];
@@ -203,7 +232,10 @@ export function saveCards(cards: HomeCardConfig[]): void {
 }
 
 /** Resolve cards against current buffer for the panel. */
-export function resolveCards(cards: HomeCardConfig[]): import("./types.ts").CardStat[] {
+export function resolveCards(
+    cards: HomeCardConfig[],
+    displayPoints = SETTINGS.historyMax.default as number,
+): import("./types.ts").CardStat[] {
     const catMeta = new Map(KPI_CATEGORIES.map((c) => [c.id, c]));
     return cards.map((cfg) => {
         const items = cfg.items.map((ref, i) => {
@@ -214,9 +246,13 @@ export function resolveCards(cards: HomeCardConfig[]): import("./types.ts").Card
             const color = meta?.color ?? "#94a3b8";
             const count = getCount(ref.category, ref.key || null, "totals");
             const sessionCount = getCount(ref.category, ref.key || null, "session");
-            const series = buffer.history
-                .slice(-10)
-                .map((s) => s.totals[kpiKey(ref.category, ref.key || null)] ?? 0);
+            // Lifetime accumulators — plot the per-interval change, not the
+            // running total, or every sparkline is just a rising ramp.
+            const series = toIntervals(
+                buffer.history
+                    .slice(-(displayPoints + 1))
+                    .map((s) => s.totals[kpiKey(ref.category, ref.key || null)] ?? 0),
+            );
             return {
                 category: ref.category,
                 key: ref.key,
