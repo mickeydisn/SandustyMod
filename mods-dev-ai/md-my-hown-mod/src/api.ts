@@ -21,7 +21,9 @@
  *   (React, enums), and it re-resolves on every call.
  *
  * The `declare const sandkit` is still the right way to see the host: the game
- * injects it into the mod scope, and it is not reliably on `globalThis`.
+ * injects it into the mod scope, and it is not reliably on `globalThis`. It is the
+ * one remaining raw read in the mod, and it is here for a specific reason — see
+ * `React` below.
  */
 import { g } from "./packages/mysandkit.ts";
 
@@ -81,15 +83,16 @@ export function toast(msg: string): void {
 /**
  * The host handle, resolved on **every** call.
  *
- * A delegate to `g()` in `host.ts`, which is the one place that knows the
+ * A delegate to `g()` in `packages/mysandkit.ts`, which is the one place that knows
  * resolution order: the injected `sandkit` first, then `globalThis`. This used to
- * be a third independent copy of that order — alongside `mysandkit.ts` and
- * `handler/core/types.ts` — and none of the three held the others to it, so a
- * change to one silently did not apply to the others.
+ * Used to be a third independent copy of that order — alongside `mysandkit.ts`
+ * and `handler/core/types.ts` — and none of the three held the others to it, so a
+ * change to one silently did not apply to the others. Both of the others now
+ * delegate here, so this is the only copy left.
  *
  * Only the places that genuinely need the raw host (React, enums) should call
- * this. Engine calls go through the wrapper in `host.ts`, which types them and
- * contains their failures.
+ * this. Engine calls go through the wrapper in `packages/mysandkit.ts`, which
+ * types them and contains their failures.
  */
 export function getSandkit(): typeof sandkit | any {
     return g() ?? null;

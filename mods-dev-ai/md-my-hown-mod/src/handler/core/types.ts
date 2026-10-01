@@ -1,13 +1,7 @@
-// deno-lint-ignore-file no-explicit-any -- `hostNs` below is the action system's one
-// deliberate cast, and every action file reaches the engine through it precisely so
-// that no other file has to write one. The comment above that function explains it.
-
-/**
- * The sandbox the host injects. Declared here rather than pulled from the engine's
- * `.d.ts` files, which are not part of this mod's dependency graph — see the note
- * on `hostApi` below, which is the only thing that reads it.
- */
-declare const sandkit: any;
+// deno-lint-ignore-file no-explicit-any -- `hostNs` below is the action system's
+// one deliberate cast, and every action file reaches the engine through it
+// precisely so that no other file has to write one. The comment above that
+// function explains it.
 
 /**
  * The vocabulary every action file speaks.
@@ -157,48 +151,38 @@ export type HandlerActionFn = (
  * action's logic without ever asking whether the real host was reachable.
  *
  * `globalThis` is kept as a **fallback**, not discarded: it is what the worker
- * scope and any test harness provide, and `mysandkit.ts`'s `g()` resolves the same
- * two sources in the same order. Reading through a helper rather than
- * `(globalThis as any).sandkit` also means a missing host produces `undefined`
- * instead of a TypeError — the difference between an action that no-ops and one
- * that throws mid-process.
+ * scope and any test harness provide. Both sources are consulted, in that order,
+ * by `g()` in `packages/mysandkit.ts` — which is the **only** place that order is
+ * written down. This function used to be a second copy of it, which is exactly the
+ * failure mode above: a fix applied to one copy did not apply to the other, and
+ * nothing reported the divergence. Reading through the wrapper also means a
+ * missing host produces `undefined` instead of a TypeError — the difference
+ * between an action that no-ops and one that throws mid-process.
+ */
 /**
  * The engine interface, re-exported for the action files.
  *
- * From `../../host.ts` — the leaf — and **not** from `packages/mysandkit.ts`.
- * That file imports `handler/custom-process` and `handler/excavation-option` to
- * compile stored processes, and `handler-registry.ts` initialises `process.ts`
- * state at load, so importing it from here closes the cycle and throws
+ * From `packages/mysandkit.ts` — the leaf — and **not** through any handler
+ * barrel. That file must stay free of `handler/` imports: it needs the handler
+ * to compile stored processes, and `handler-registry.ts` initialises `process.ts`
+ * state at load, so an import from here closes the cycle and throws
  * `Cannot access 'BLOCK_KEY' before initialization` before any action runs.
- * `host.ts` is the same `api` object, minus the two registration helpers that
- * need the handler.
  */
 export { api } from "../../packages/mysandkit.ts";
+// Also imported as a value, because a re-export creates no local binding and
+// `hostApi` below reads `api.raw`. Same module as the re-export, so the
+// dependency graph is unchanged.
+import { api } from "../../packages/mysandkit.ts";
 
 export function hostApi(): Record<string, unknown> | undefined {
-    // The injected parameter. Present in the real mod scope; absent in a worker
-    // test, hence the guard rather than a bare reference.
-    try {
-        if (typeof sandkit !== "undefined" && sandkit) {
-            const api = (sandkit as { api?: Record<string, unknown> }).api;
-            if (api) return api;
-        }
-    } catch {
-        // not injected in this scope — fall through
-    }
-    try {
-        // The `unknown` hop is what the first cast did not need and this one
-        // does. The buffer package imports the real `@sandmd/sandkit`, which puts
-        // a **typed** `sandkit` global in scope for the whole program — and
-        // `SandkitApi` has no string index signature, so casting it straight to
-        // `{ api?: Record<string, unknown> }` is now an error rather than a
-        // widening. Going through `unknown` says what is actually meant: this
-        // mod reads the host structurally, not by its declared type.
-        return (globalThis as unknown as { sandkit?: { api?: Record<string, unknown> } })
-            .sandkit?.api;
-    } catch {
-        return undefined;
-    }
+    // A delegate, not a second implementation. The `unknown` hop is what the cast
+    // needs: the buffer package imports the real `@sandmd/sandkit`, which puts a
+    // **typed** `sandkit` global in scope for the whole program, and `SandkitApi`
+    // has no string index signature — so casting it straight to
+    // `{ api?: Record<string, unknown> }` is an error rather than a widening.
+    // Going through `unknown` says what is actually meant: this mod reads the host
+    // structurally, not by its declared type.
+    return api.raw as Record<string, unknown> | undefined;
 }
 
 /**

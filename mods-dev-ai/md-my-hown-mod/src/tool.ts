@@ -38,8 +38,12 @@ export function mountPanel(): void {
     const a = skApi.raw;
     if (!a) {
         console.error(`${LOG} sandkit.api missing — panel unavailable`, {
-            hasDeclare: typeof sk !== "undefined",
-            global: !!(globalThis as any).sandkit,
+            // `g()` is the single place that knows the resolution order, so asking
+            // it whether it answered is accurate. Reading `globalThis.sandkit`
+            // here reported `false` in the real game even when the host was
+            // present, because the host is a `new Function` parameter rather than
+            // a global — a diagnostic that could only ever mislead.
+            resolved: !!getSandkit(),
         });
         return;
     }

@@ -99,6 +99,87 @@ export const api = {
                 g()?.api?.storage?.remove?.(MOD_ID, key);
             } catch { /* ignore */ }
         },
+        /**
+         * `ensure`/`remove` for a mod id other than this one.
+         *
+         * The four methods above are the only storage calls in the mod, and every
+         * one of them names *this* mod, so hard-coding `MOD_ID` is right. The one
+         * exception is the disable-cleanup path, which is handed a mod id by its
+         * caller and must not be silently rewritten to this one — wiping
+         * `md-my-hown-mod`'s own keys when asked to wipe someone else's is a
+         * data-loss bug, and the mod id is the only thing that distinguishes the
+         * two cases.
+         */
+        ensureFor(modId: string) {
+            try {
+                g()?.api?.storage?.ensure?.(modId);
+            } catch (e) {
+                console.warn(`${LOG} storage.ensureFor failed`, modId, e);
+            }
+        },
+        removeFor(modId: string, key: string) {
+            try {
+                g()?.api?.storage?.remove?.(modId, key);
+            } catch (e) {
+                console.warn(`${LOG} storage.removeFor failed`, modId, key, e);
+            }
+        },
+    },
+    /**
+     * The host's settings namespace.
+     *
+     * Two things about the engine's shape are easy to get wrong and were both
+     * wrong here before this wrapper existed:
+     *
+     * - `settings.get(fieldId)` takes **one** argument. Passing `(modId, key)` —
+     *   which mirrors `storage.get` — makes the engine read a field named after
+     *   the mod id alone, which never exists. The field id is `"<modId>.<key>"`.
+     * - `settings.onChange(callback)` takes **one** argument. Calling it as
+     *   `onChange(modId, callback)` passed the mod id *as the callback*, so the
+     *   engine threw on subscribe or on the first invocation, and the caller's
+     *   `catch` turned that into a subscription that silently never fires.
+     *
+     * So the signatures below take the pieces and do the joining, which is the
+     * only place the mod id is namespaced.
+     */
+    settings: {
+        /** The raw value of one field, or `undefined` when unreadable. */
+        get(fieldId: string): unknown {
+            try {
+                return g()?.api?.settings?.get?.(fieldId);
+            } catch (e) {
+                console.warn(`${LOG} settings.get failed`, fieldId, e);
+                return undefined;
+            }
+        },
+        /** Subscribe to any settings change. Returns an unsubscribe, if the engine gave one. */
+        onChange(cb: () => void): (() => void) | undefined {
+            try {
+                const unsub = g()?.api?.settings?.onChange?.(cb);
+                return typeof unsub === "function" ? unsub : undefined;
+            } catch (e) {
+                console.warn(`${LOG} settings.onChange failed`, e);
+                return undefined;
+            }
+        },
+    },
+    /**
+     * The host's live player state.
+     *
+     * Only the disable-cleanup path reads this, and only to drop entries this mod
+     * owns. It is exposed as one read-only getter rather than a set of mutators
+     * because that is the whole of what the mod needs — nothing here should be
+     * writing player state directly, and a getter cannot be used to.
+     */
+    state: {
+        get store(): Record<string, any> | undefined {
+            try {
+                return g()?.state?.store as Record<string, any> | undefined;
+            } catch (e) {
+                console.warn(`${LOG} state.store failed`, e);
+                return undefined;
+            }
+        },
     },
     elements: {
         register(def: ElementConfig): { elementType?: number } | undefined {
@@ -1322,12 +1403,20 @@ export const api = {
      *
      * `intercept` returns the engine's own unsubscribe, passed through
      * unchanged, so a caller can detach and re-install — which is the only way
-     * a rule driven by a config can actually *change* when the config is
-     * re-applied. `apply.ts` reaches into `globalThis` for the same calls; that
-     * duplication is left alone here rather than folded in, because it is not
-     * what this change is about.
+     * `apply.ts` needs both the `intercept` and `modify` forms and has to know
+     * when the namespace is missing so it can refuse rather than claim success —
+     * so both live here, and `hasHooks` answers the second question without
+     * exposing the namespace.
      */
     hooks: {
+        /** Whether the host exposes a hooks namespace at all. */
+        hasHooks(): boolean {
+            try {
+                return !!g()?.api?.hooks;
+            } catch {
+                return false;
+            }
+        },
         intercept(
             id: string,
             fn: (args: never, context: { cancel?: () => void }) => unknown,
@@ -1337,6 +1426,23 @@ export const api = {
                 return g()?.api?.hooks?.intercept?.(id, fn, opts);
             } catch (e) {
                 console.error(`${LOG} hooks.intercept failed`, id, e);
+                return undefined;
+            }
+        },
+        /**
+         * `modify` is the second of the engine's two hook modes. It cannot cancel
+         * a process the way `intercept` can — it edits its arguments — which is
+         * why the two are separate methods rather than one with a flag.
+         */
+        modify(
+            id: string,
+            fn: (args: never, context: { cancel?: () => void }) => unknown,
+            opts?: Record<string, unknown>,
+        ): unknown {
+            try {
+                return g()?.api?.hooks?.modify?.(id, fn, opts);
+            } catch (e) {
+                console.error(`${LOG} hooks.modify failed`, id, e);
                 return undefined;
             }
         },

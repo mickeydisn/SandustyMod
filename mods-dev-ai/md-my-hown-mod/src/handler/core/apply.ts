@@ -9,22 +9,12 @@
  * Returns unsubscribe functions so teardown can clean up.
  */
 import { LOG, type ModifierConfig } from "../../constants.ts";
+import { api } from "../../packages/mysandkit.ts";
 import { resolveModifier } from "../actions/index.ts";
 
 type Unsub = () => void;
 
 const active: Map<string, Unsub> = new Map();
-
-function getHooksApi(): {
-    intercept?: (id: string, fn: Function, opts?: unknown) => unknown;
-    modify?: (id: string, fn: Function, opts?: unknown) => unknown;
-} | null {
-    try {
-        return (globalThis as any).sandkit?.api?.hooks ?? null;
-    } catch {
-        return null;
-    }
-}
 
 function wrapUnsub(ret: unknown): Unsub {
     if (typeof ret === "function") return ret as Unsub;
@@ -72,8 +62,11 @@ export function applyModifier(entry: ModifierConfig): boolean {
     // Detach previous for same id
     detachModifier(entry.id);
 
-    const hooks = getHooksApi();
-    if (!hooks) {
+    // `api.hooks` rather than a local copy of the resolution order. This file used
+    // to read `(globalThis as any).sandkit?.api?.hooks` directly, which is
+    // `undefined` in the real mod scope — the host is a `new Function` parameter,
+    // not a global — so every modifier silently failed to attach.
+    if (!api.hooks.hasHooks()) {
         console.warn(`${LOG} modifier ${entry.id}: sandkit.api.hooks unavailable`);
         return false;
     }
@@ -82,13 +75,17 @@ export function applyModifier(entry: ModifierConfig): boolean {
 
     try {
         if (useKind === "intercept") {
-            if (typeof hooks.intercept !== "function") {
+            const unsub = wrapUnsub(
+                api.hooks.intercept(
+                    entry.hookId,
+                    (handler as { fn: Function }).fn as never,
+                    opts,
+                ),
+            );
+            if (!unsub) {
                 console.warn(`${LOG} hooks.intercept missing`);
                 return false;
             }
-            const unsub = wrapUnsub(
-                hooks.intercept(entry.hookId, (handler as { fn: Function }).fn, opts),
-            );
             active.set(entry.id, unsub);
             console.log(
                 `${LOG} modifier ${entry.id}: intercept → ${entry.hookId} (${entry.handlerKey})`,
@@ -97,13 +94,17 @@ export function applyModifier(entry: ModifierConfig): boolean {
         }
 
         if (useKind === "modify") {
-            if (typeof hooks.modify !== "function") {
+            const unsub = wrapUnsub(
+                api.hooks.modify(
+                    entry.hookId,
+                    (handler as { fn: Function }).fn as never,
+                    opts,
+                ),
+            );
+            if (!unsub) {
                 console.warn(`${LOG} hooks.modify missing`);
                 return false;
             }
-            const unsub = wrapUnsub(
-                hooks.modify(entry.hookId, (handler as { fn: Function }).fn, opts),
-            );
             active.set(entry.id, unsub);
             console.log(
                 `${LOG} modifier ${entry.id}: modify → ${entry.hookId} (${entry.handlerKey})`,
