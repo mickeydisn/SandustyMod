@@ -102,19 +102,8 @@ export function makeDrawnSprite(
             
             if (image.complete === false) return true;
 
-            const rendering = (api.raw as
-                | {
-                    rendering?: {
-                        getGridMetrics?: () => { cellSize?: number };
-                        getDrawPositionAtCell?: (
-                            x: number,
-                            y: number,
-                        ) => { x: number; y: number };
-                    };
-                }
-                | undefined)?.rendering;
-            const cellSize = rendering?.getGridMetrics?.()?.cellSize ?? 4;
-            const at = rendering?.getDrawPositionAtCell?.(structure.x, structure.y) ??
+            const cellSize = api.rendering.getGridMetrics()?.cellSize ?? 4;
+            const at = api.rendering.getDrawPositionAtCell(structure.x, structure.y) ??
                 { x: structure.x * cellSize, y: structure.y * cellSize };
 
             ctx.save();

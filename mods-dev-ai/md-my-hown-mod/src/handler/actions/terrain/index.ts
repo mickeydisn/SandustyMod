@@ -49,9 +49,6 @@ interface TerrainDataLike {
 }
 
 
-type TerrainNamespace = typeof api.terrains;
-
-
 interface TerrainWriter {
     createAtCell: (x: number, y: number, type: string | number, options?: unknown) => void;
     replaceAtCell: (x: number, y: number, type: string | number, options?: unknown) => void;
@@ -67,15 +64,6 @@ function num(value: unknown, fallback = 0): number {
 
 function refOf(options: TerrainOptions): string {
     return String(options.terrain ?? "");
-}
-
-
-function terrains() {
-    
-    
-    
-    
-    return (api.raw as { terrains?: TerrainNamespace } | undefined)?.terrains ?? null;
 }
 
 
@@ -120,26 +108,14 @@ function writeShape(
     decide: (
         writer: TerrainWriter,
         cell: { x: number; y: number },
-        api: TerrainNamespace,
     ) => boolean,
 ): boolean {
     const s = structure as StructureLike | null;
-    
-    
-    
-    const mutate = api?.grid?.mutate;
+    const mutate = api.grid.mutate;
     if (!s) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: no structure on this thread, so ` +
                 "nothing was written",
-        );
-        return false;
-    }
-    const ns = terrains();
-    if (!ns) {
-        console.warn(
-            `[md-my-hown-mod:process] ${label}: no api.terrains on this thread, so the ` +
-                "batch had nothing to decide against",
         );
         return false;
     }
@@ -148,7 +124,7 @@ function writeShape(
     let queued = 0;
     if (!mutate((writer: { terrains: TerrainWriter }) => {
         for (const cell of cells) {
-            if (decide(writer.terrains, cell, ns)) queued++;
+            if (decide(writer.terrains, cell)) queued++;
         }
     })) {
         console.warn(
@@ -168,15 +144,14 @@ export const terrainSenseActions = defineActions({
         doc: "Reads the terrain id at a cell. Empty means no terrain. Bind it with As.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = terrains();
-            if (!s || typeof ns?.getTypeAtCell !== "function") return "";
+            if (!s) return "";
             const o = (options ?? {}) as TerrainOptions;
             const cell = firstCell(s, o, "terrainType");
             if (!cell) return "";
-            const type = ns.getTypeAtCell(cell.x, cell.y);
+            const type = api.terrains.getTypeAtCell(cell.x, cell.y);
             if (type === null || type === undefined) return "";
-            if (typeof ns.getIdByType === "function") {
-                const id = ns.getIdByType(type);
+{
+                const id = api.terrains.getIdByType(type);
                 if (id !== undefined && id !== null && id !== "") return String(id);
             }
             return String(type);
@@ -189,10 +164,9 @@ export const terrainSenseActions = defineActions({
         doc: "True when the cell holds terrain. Bind it with As.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = terrains();
-            if (!s || typeof ns?.isAtCell !== "function") return false;
+            if (!s) return false;
             const cell = firstCell(s, (options ?? {}) as TerrainOptions, "hasTerrain");
-            return cell ? ns.isAtCell(cell.x, cell.y) === true : false;
+            return cell ? api.terrains.isAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -203,18 +177,17 @@ export const terrainSenseActions = defineActions({
             "handle from Terrain type.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = terrains();
             const o = (options ?? {}) as TerrainOptions;
             const want = refOf(o);
-            if (!s || !want || typeof ns?.isTypeAtCell !== "function") return false;
+            if (!s || !want) return false;
             const cell = firstCell(s, o, "isTerrainType");
             if (!cell) return false;
-            if (ns.isTypeAtCell(cell.x, cell.y, want) === true) return true;
+            if (api.terrains.isTypeAtCell(cell.x, cell.y, want) === true) return true;
             
             
             
             if (!/^\d+$/.test(want)) return false;
-            return ns.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
+            return api.terrains.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
         },
     },
 
@@ -225,12 +198,11 @@ export const terrainSenseActions = defineActions({
             "Bind it to watch a wall wear down.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = terrains();
             const o = (options ?? {}) as TerrainOptions;
-            if (!s || !ns || typeof ns.getDataAtCell !== "function") return -1;
+            if (!s) return -1;
             const cell = firstCell(s, o, "terrainHitPoints");
             if (!cell) return -1;
-            const data = ns.getDataAtCell(cell.x, cell.y);
+            const data = api.terrains.getDataAtCell(cell.x, cell.y);
             if (!data) return -1;
             const hp = data.hitPoints ?? data.hp;
             return typeof hp === "number" && Number.isFinite(hp) ? hp : -1;
@@ -244,12 +216,11 @@ export const terrainSenseActions = defineActions({
             "-1 when there is none.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = terrains();
-            if (!s || !ns || typeof ns.getDataAtCell !== "function") return -1;
+            if (!s) return -1;
             const o = (options ?? {}) as TerrainOptions;
             const cell = firstCell(s, o, "terrainTypeHandle");
             if (!cell) return -1;
-            const type = ns.getDataAtCell(cell.x, cell.y)?.cellType;
+            const type = api.terrains.getDataAtCell(cell.x, cell.y)?.cellType;
             return typeof type === "number" && Number.isFinite(type) ? type : -1;
         },
     },
@@ -260,12 +231,11 @@ export const terrainSenseActions = defineActions({
         doc: "Counts cells holding terrain in the region. Bind it to size a footprint.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = terrains();
-            if (!s || typeof ns?.isAtCell !== "function") return 0;
+            if (!s) return 0;
             const o = (options ?? {}) as TerrainOptions;
             let found = 0;
             for (const cell of regionCells(s, o, "countTerrain")) {
-                if (ns.isAtCell(cell.x, cell.y)) found++;
+                if (api.terrains.isAtCell(cell.x, cell.y)) found++;
             }
             return found;
         },
@@ -278,13 +248,12 @@ function writeState(
     structure: unknown,
     options: unknown,
     label: string,
-    act: (ns: TerrainNamespace, cell: { x: number; y: number }) => boolean,
+    act: (cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = structure as StructureLike | null;
-    const ns = terrains();
-    if (!s || !ns) {
+    if (!s) {
         console.warn(
-            `[md-my-hown-mod:process] ${label}: api.terrains is not on this thread, so ` +
+            `[md-my-hown-mod:process] ${label}: no structure on this thread, so ` +
                 "nothing was written",
         );
         return false;
@@ -292,7 +261,7 @@ function writeState(
     const o = (options ?? {}) as TerrainOptions;
     let wrote = false;
     for (const cell of regionCells(s, o, label)) {
-        if (act(ns, cell)) wrote = true;
+        if (act(cell)) wrote = true;
     }
     return wrote;
 }
@@ -310,10 +279,10 @@ export const terrainActActions = defineActions({
                 console.warn("[md-my-hown-mod:process] createTerrain: no terrain type set");
                 return false;
             }
-            return writeShape(structure, options, "createTerrain", (writer, cell, ns) => {
+            return writeShape(structure, options, "createTerrain", (writer, cell) => {
                 
                 
-                if (typeof ns.isAtCell === "function" && ns.isAtCell(cell.x, cell.y)) {
+if (api.terrains.isAtCell(cell.x, cell.y)) {
                     return false;
                 }
                 writer.createAtCell(cell.x, cell.y, want, mutationOptions(o));
@@ -367,8 +336,7 @@ export const terrainActActions = defineActions({
                 );
                 return false;
             }
-            return writeState(structure, options, "damageTerrain", (ns, cell) => {
-                if (typeof ns.damageAtCell !== "function") return false;
+            return writeState(structure, options, "damageTerrain", (cell) => {
                 return api.terrains.damageAtCell(cell.x, cell.y, amount);
             });
         },
@@ -388,8 +356,7 @@ export const terrainActActions = defineActions({
                 );
                 return false;
             }
-            return writeState(structure, options, "setTerrainHitPoints", (ns, cell) => {
-                if (typeof ns.setHitPointsAtCell !== "function") return false;
+            return writeState(structure, options, "setTerrainHitPoints", (cell) => {
                 return api.terrains.setHitPointsAtCell(cell.x, cell.y, hp);
             });
         },

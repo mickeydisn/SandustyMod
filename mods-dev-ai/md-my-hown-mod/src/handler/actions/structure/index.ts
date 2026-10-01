@@ -35,13 +35,12 @@ export const structureSenseActions = defineActions({
             "an id by hand.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
-            if (!s || typeof ns?.getAtCell !== "function") return "";
+            if (!s) return "";
             const o = (options ?? {}) as StructureOptions;
             
             
             
-            const type = at(ns, s, o, "structureType")?.type;
+            const type = at(s, o, "structureType")?.type;
             return type === undefined || type === null ? "" : String(type);
         },
     },
@@ -52,10 +51,9 @@ export const structureSenseActions = defineActions({
         doc: "True when a structure has been built at the cell. Bind it with As.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
-            if (!s || typeof ns?.hasBuiltAtCell !== "function") return false;
+            if (!s) return false;
             const cell = firstCell(s, (options ?? {}) as StructureOptions, "hasStructure");
-            return cell ? ns.hasBuiltAtCell(cell.x, cell.y) === true : false;
+            return cell ? api.structures.hasBuiltAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -66,17 +64,16 @@ export const structureSenseActions = defineActions({
             "a handle from Structure type.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
             const o = (options ?? {}) as StructureOptions;
             const want = refOf(o);
-            if (!s || !want || typeof ns?.isTypeAtCell !== "function") return false;
+            if (!s || !want) return false;
             const cell = firstCell(s, o, "isStructureType");
             if (!cell) return false;
-            if (ns.isTypeAtCell(cell.x, cell.y, want) === true) return true;
+            if (api.structures.isTypeAtCell(cell.x, cell.y, want) === true) return true;
             
             
             if (!/^\d+$/.test(want)) return false;
-            return ns.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
+            return api.structures.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
         },
     },
 
@@ -87,10 +84,9 @@ export const structureSenseActions = defineActions({
             "about the instance the process is running on.",
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
-            const ns = structures();
             const want = refOf((options ?? {}) as StructureOptions);
-            if (!s || !want || typeof ns?.isType !== "function") return false;
-            return ns.isType(s, want) === true;
+            if (!s || !want) return false;
+            return api.structures.isType(s, want) === true;
         },
     },
 
@@ -100,11 +96,10 @@ export const structureSenseActions = defineActions({
         doc: "True when a player has blocked building at the cell.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
-            if (!s || typeof ns?.isBlockedByPlayerAtCell !== "function") return false;
+            if (!s) return false;
             const o = (options ?? {}) as StructureOptions;
             const cell = firstCell(s, o, "isBlockedByPlayer");
-            return cell ? ns.isBlockedByPlayerAtCell(cell.x, cell.y) === true : false;
+            return cell ? api.structures.isBlockedByPlayerAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -114,10 +109,9 @@ export const structureSenseActions = defineActions({
         doc: "True when the cell is a structure launcher.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
-            if (!s || typeof ns?.isLauncherAtCell !== "function") return false;
+            if (!s) return false;
             const cell = firstCell(s, (options ?? {}) as StructureOptions, "isLauncher");
-            return cell ? ns.isLauncherAtCell(cell.x, cell.y) === true : false;
+            return cell ? api.structures.isLauncherAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -127,11 +121,10 @@ export const structureSenseActions = defineActions({
         doc: "True when processing is enabled at the cell. Bind it to gate later steps.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
-            if (!s || typeof ns?.processing?.isEnabledAtCell !== "function") return false;
+            if (!s) return false;
             const o = (options ?? {}) as StructureOptions;
             const cell = firstCell(s, o, "isStructureEnabled");
-            return cell ? ns.processing.isEnabledAtCell(cell.x, cell.y) === true : false;
+            return cell ? api.structures.processing.isEnabledAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -142,12 +135,11 @@ export const structureSenseActions = defineActions({
             "before building.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
-            if (!s || typeof ns?.hasBuiltAtCell !== "function") return 0;
+            if (!s) return 0;
             const o = (options ?? {}) as StructureOptions;
             let found = 0;
             for (const cell of regionCells(s, o, "countStructures")) {
-                if (ns.hasBuiltAtCell(cell.x, cell.y)) found++;
+                if (api.structures.hasBuiltAtCell(cell.x, cell.y)) found++;
             }
             return found;
         },
@@ -160,11 +152,10 @@ export const structureSenseActions = defineActions({
             "with As. Returns the empty string when the key is absent.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
             const o = (options ?? {}) as StructureOptions;
             const key = String(o.key ?? "");
-            if (!s || !key || !ns) return "";
-            const value = at(ns, s, o, "structureData")?.data?.[key];
+            if (!s || !key) return "";
+            const value = at(s, o, "structureData")?.data?.[key];
             return value === undefined || value === null ? "" : String(value);
         },
     },
@@ -182,8 +173,7 @@ export const structureActActions = defineActions({
                 console.warn("[md-my-hown-mod:process] buildStructure: no structure type set");
                 return false;
             }
-            return writeEach(structure, options, "buildStructure", (ns, cell) => {
-                if (typeof ns.buildAtCell !== "function") return false;
+            return writeEach(structure, options, "buildStructure", (cell) => {
                 return api.structures.buildAtCell(cell.x, cell.y, want);
             });
         },
@@ -195,8 +185,7 @@ export const structureActActions = defineActions({
         doc: "Removes the structure at the cell. Use Remove structures to clear a whole " +
             "region in one call.",
         fn: (structure, _context, options) => {
-            return writeEach(structure, options, "removeStructure", (ns, cell) => {
-                if (typeof ns.removeAtCell !== "function") return false;
+            return writeEach(structure, options, "removeStructure", (cell) => {
                 return api.structures.removeAtCell(
                     cell.x,
                     cell.y,
@@ -213,8 +202,7 @@ export const structureActActions = defineActions({
             "this to Remove structure over an area.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const ns = structures();
-            if (!s || typeof ns?.removeAtCells !== "function") {
+            if (!s) {
                 console.warn(
                     "[md-my-hown-mod:process] removeStructures: api.structures." +
                         "removeAtCells is not on this thread, so nothing was removed",
@@ -234,8 +222,7 @@ export const structureActActions = defineActions({
         doc: "Enables or disables processing at the cell.",
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
-            return writeEach(structure, options, "setStructureEnabled", (ns, cell) => {
-                if (typeof ns.processing?.setEnabledAtCell !== "function") return false;
+            return writeEach(structure, options, "setStructureEnabled", (cell) => {
                 return api.structures.processing.setEnabledAtCell(
                     cell.x,
                     cell.y,
@@ -252,16 +239,11 @@ export const structureActActions = defineActions({
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
             const frame = num(o.index, 0);
-            return writeEach(structure, options, "setSpritesheetIndex", (ns, cell) => {
-                if (typeof ns.setSpritesheetIndexAtCell === "function") {
-                    return api.structures.setSpritesheetIndexAtCell(cell.x, cell.y, frame);
-                }
-                if (typeof ns.setSpritesheetIndex === "function") {
-                    const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
-                    if (!found) return false;
-                    return api.structures.setSpritesheetIndex(found, frame);
-                }
-                return false;
+            return writeEach(structure, options, "setSpritesheetIndex", (cell) => {
+                if (api.structures.setSpritesheetIndexAtCell(cell.x, cell.y, frame)) return true;
+                const found = api.structures.getAtCell(cell.x, cell.y) ?? null;
+                if (!found) return false;
+                return api.structures.setSpritesheetIndex(found, frame);
             });
         },
     },
@@ -282,25 +264,24 @@ export const structureActActions = defineActions({
                 );
                 return false;
             }
-            return writeEach(structure, options, "setSpritesheetByValue", (ns, cell) => {
-                if (typeof ns.setSpritesheetIndexByValueAtCell === "function") {
-                    return api.structures.setSpritesheetIndexByValueAtCell(
+            return writeEach(structure, options, "setSpritesheetByValue", (cell) => {
+                if (
+                    api.structures.setSpritesheetIndexByValueAtCell(
                         cell.x,
                         cell.y,
                         value,
                         thresholds,
-                    );
+                    )
+                ) {
+                    return true;
                 }
-                if (typeof ns.setSpritesheetIndexByValue === "function") {
-                    const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
-                    if (!found) return false;
-                    return api.structures.setSpritesheetIndexByValue(
-                        found,
-                        value,
-                        thresholds,
-                    );
-                }
-                return false;
+                const found = api.structures.getAtCell(cell.x, cell.y) ?? null;
+                if (!found) return false;
+                return api.structures.setSpritesheetIndexByValue(
+                    found,
+                    value,
+                    thresholds,
+                );
             });
         },
     },
@@ -317,11 +298,10 @@ export const structureActActions = defineActions({
                 console.warn("[md-my-hown-mod:process] setStructureData: no key set");
                 return false;
             }
-            return writeEach(structure, options, "setStructureData", (ns, cell) => {
-                if (typeof ns.updateData !== "function") return false;
-                const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
+            return writeEach(structure, options, "setStructureData", (cell) => {
+                const found = api.structures.getAtCell(cell.x, cell.y) ?? null;
                 if (!found) return false;
-                ns.updateData(found, partial, {
+                api.structures.updateData(found, partial, {
                     propagateToWorkers: o.propagateToWorkers === true,
                 });
                 return true;
@@ -336,8 +316,7 @@ export const structureActActions = defineActions({
             "that edits the data bag in place.",
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
-            const ns = structures();
-            if (!s || typeof ns?.update !== "function") return false;
+            if (!s) return false;
             const o = (options ?? {}) as StructureOptions;
             return api.structures.update(s, { propagateToWorkers: o.propagateToWorkers === true });
         },
@@ -352,12 +331,11 @@ export const structurePureActions = defineActions({
             "would pick. Thresholds are comma-separated, ascending.",
         fn: (_structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
-            const ns = structures();
             const thresholds = thresholdsOf(o);
-            if (thresholds.length === 0 || typeof ns?.mapValueToSpritesheetIndex !== "function") {
+            if (thresholds.length === 0) {
                 return -1;
             }
-            const frame = ns.mapValueToSpritesheetIndex(float(o.value2, 0), thresholds);
+            const frame = api.structures.mapValueToSpritesheetIndex(float(o.value2, 0), thresholds);
             return Number.isFinite(frame) ? num(frame, -1) : -1;
         },
     },
@@ -429,14 +407,6 @@ function refOf(options: StructureOptions): string {
 }
 
 
-type StructuresNamespace = typeof api.structures;
-
-
-function structures(): StructuresNamespace | null {
-    return (api.raw as { structures?: StructuresNamespace } | undefined)?.structures ?? null;
-}
-
-
 function regionCells(
     structure: StructureLike | null,
     options: StructureOptions,
@@ -467,17 +437,15 @@ function firstCell(
 
 
 function at(
-    ns: StructuresNamespace,
     structure: StructureLike | null,
     options: StructureOptions,
     label: string,
 ): StructureRecord | null {
     
     
-    if (typeof ns.getAtCell !== "function") return null;
     const cell = firstCell(structure, options, label);
     if (!cell) return null;
-    return ns.getAtCell(cell.x, cell.y) ?? null;
+    return api.structures.getAtCell(cell.x, cell.y) ?? null;
 }
 
 
@@ -516,13 +484,12 @@ function writeEach(
     structure: unknown,
     options: unknown,
     label: string,
-    act: (ns: StructuresNamespace, cell: { x: number; y: number }) => boolean,
+    act: (cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = (structure ?? null) as StructureLike | null;
-    const ns = structures();
-    if (!s || !ns) {
+    if (!s) {
         console.warn(
-            `[md-my-hown-mod:process] ${label}: api.structures is not on this thread, so ` +
+            `[md-my-hown-mod:process] ${label}: no structure on this thread, so ` +
                 "nothing was written",
         );
         return false;
@@ -530,7 +497,7 @@ function writeEach(
     const o = (options ?? {}) as StructureOptions;
     let wrote = false;
     for (const cell of regionCells(s, o, label)) {
-        if (act(ns, cell)) wrote = true;
+        if (act(cell)) wrote = true;
     }
     return wrote;
 }

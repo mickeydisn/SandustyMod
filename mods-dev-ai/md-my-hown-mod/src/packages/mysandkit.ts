@@ -117,6 +117,28 @@ export const api = {
             }
         },
     },
+    rendering: {
+        getGridMetrics(): { cellSize?: number } | undefined {
+            try {
+                return g()?.api?.rendering?.getGridMetrics?.() as
+                    | { cellSize?: number }
+                    | undefined;
+            } catch (e) {
+                console.warn(`${LOG} rendering.getGridMetrics failed`, e);
+                return undefined;
+            }
+        },
+        getDrawPositionAtCell(cx: number, cy: number): { x: number; y: number } | undefined {
+            try {
+                return g()?.api?.rendering?.getDrawPositionAtCell?.(cx, cy) as
+                    | { x: number; y: number }
+                    | undefined;
+            } catch (e) {
+                console.warn(`${LOG} rendering.getDrawPositionAtCell failed`, cx, cy, e);
+                return undefined;
+            }
+        },
+    },
     elements: {
         register(def: ElementConfig): { elementType?: number } | undefined {
             try {
@@ -314,6 +336,22 @@ export const api = {
                 return true;
             } catch (e) {
                 console.warn(`${LOG} elements.removeAtCellWhenIdle failed`, x, y, e);
+                return false;
+            }
+        },
+        convertToParticleAtCell(
+            x: number,
+            y: number,
+            velocity: { x: number; y: number },
+            options?: unknown,
+        ): boolean {
+            try {
+                const ns = g()?.api?.elements;
+                if (typeof ns?.convertToParticleAtCell !== "function") return false;
+                ns.convertToParticleAtCell(x, y, velocity, options);
+                return true;
+            } catch (e) {
+                console.warn(`${LOG} elements.convertToParticleAtCell failed`, x, y, e);
                 return false;
             }
         },

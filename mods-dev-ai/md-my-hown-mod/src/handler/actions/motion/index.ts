@@ -50,15 +50,6 @@ function flag(value: unknown): boolean {
 }
 
 
-function elements() {
-    
-    
-    
-    
-    return (api.raw as { elements?: { [k: string]: any } } | undefined)?.elements;
-}
-
-
 function vectorOf(options: MotionOptions): Vector2 {
     return { x: num(options.vx), y: num(options.vy) };
 }
@@ -85,17 +76,14 @@ function regionCells(
 
 
 
-type ElementsNs = Record<string, any>;
-
 function overRegion(
     structure: unknown,
     options: unknown,
     label: string,
-    call: (ns: ElementsNs, cell: { x: number; y: number }) => boolean,
+    call: (cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = (structure ?? null) as StructureLike | null;
-    const ns = elements();
-    if (!s || !ns) {
+    if (!s) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: this thread has no api.elements, so nothing ` +
                 "was changed",
@@ -104,7 +92,7 @@ function overRegion(
     }
     let touched = 0;
     for (const cell of regionCells(s, (options ?? {}) as MotionOptions, label)) {
-        if (call(ns, cell)) touched++;
+        if (call(cell)) touched++;
     }
     return touched > 0;
 }
@@ -146,14 +134,13 @@ export const motionActions = defineActions({
         fn: (structure, _context, options) => {
             try {
                 const s = (structure ?? null) as StructureLike | null;
-                const ns = elements();
-                if (!s || !ns?.findFreeCellInStructure) return -1;
+                if (!s) return -1;
                 const o = (options ?? {}) as MotionOptions;
                 const own = shapeSize(s.shape);
                 
                 
                 const side = Math.max(1, Math.trunc(num(o.size, Math.max(own.width, own.height))));
-                const found = ns.findFreeCellInStructure(
+                const found = api.elements.findFreeCellInStructure(
                     num(s.x),
                     num(s.y),
                     side,
@@ -183,7 +170,7 @@ export const motionActions = defineActions({
                 structure,
                 options,
                 "setVelocity",
-                (_ns, cell) => api.elements.setVelocityAtCell(cell.x, cell.y, { x: v.x, y: v.y }),
+                (cell) => api.elements.setVelocityAtCell(cell.x, cell.y, { x: v.x, y: v.y }),
             );
         },
     },
@@ -197,7 +184,7 @@ export const motionActions = defineActions({
             const o = (options ?? {}) as MotionOptions;
             const v = vectorOf(o);
             const max = num(o.maxSpeed, 0);
-            return overRegion(structure, options, "addVelocity", (_ns, cell) =>
+            return overRegion(structure, options, "addVelocity", (cell) =>
                 
                 
                 api.elements.addParticleVelocityAtCell(cell.x, cell.y, v, max));
@@ -217,7 +204,7 @@ export const motionActions = defineActions({
                 structure,
                 options,
                 "setDuration",
-                (_ns, cell) =>
+                (cell) =>
                     api.elements.setDurationAtCell(cell.x, cell.y, ticks, { updateMax: rearm }),
             );
         },
@@ -231,8 +218,7 @@ export const motionActions = defineActions({
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             const o = (options ?? {}) as MotionOptions;
-            const ns = elements();
-            if (!s || typeof ns?.teleportBetweenCells !== "function") {
+            if (!s) {
                 console.warn(
                     "[md-my-hown-mod:process] teleportElement: this thread has no " +
                         "teleportBetweenCells, so nothing moved",
@@ -264,10 +250,11 @@ export const motionActions = defineActions({
             "what actually launches material — setVelocity alone will not move sand.",
         fn: (structure, _context, options) => {
             const v = vectorOf((options ?? {}) as MotionOptions);
-            return overRegion(structure, options, "toParticle", (ns, cell) => {
-                if (typeof ns.convertToParticleAtCell !== "function") return false;
-                ns.convertToParticleAtCell(cell.x, cell.y, { x: v.x, y: v.y });
-                return true;
+            return overRegion(structure, options, "toParticle", (cell) => {
+                return api.elements.convertToParticleAtCell(cell.x, cell.y, {
+                    x: v.x,
+                    y: v.y,
+                });
             });
         },
     },

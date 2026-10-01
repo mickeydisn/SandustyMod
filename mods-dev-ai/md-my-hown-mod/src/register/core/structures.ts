@@ -50,22 +50,12 @@ function safeCanvas(ctx: NonNullable<DrawCtx["ctx"]>): void {
 
 
 function gridMetrics(): { cellSize: number } {
-    const m = (api.raw as
-        | { rendering?: { getGridMetrics?: () => { cellSize?: number } } }
-        | undefined)?.rendering?.getGridMetrics?.();
-    return { cellSize: m?.cellSize ?? 4 };
+    return { cellSize: api.rendering.getGridMetrics()?.cellSize ?? 4 };
 }
 
 
 function drawPosAt(x: number, y: number): { x: number; y: number } {
-    const p = (api.raw as
-        | {
-            rendering?: {
-                getDrawPositionAtCell?: (cx: number, cy: number) => { x: number; y: number };
-            };
-        }
-        | undefined)?.rendering?.getDrawPositionAtCell?.(x, y);
-    return p ?? { x: x * 4, y: y * 4 };
+    return api.rendering.getDrawPositionAtCell(x, y) ?? { x: x * 4, y: y * 4 };
 }
 
 
