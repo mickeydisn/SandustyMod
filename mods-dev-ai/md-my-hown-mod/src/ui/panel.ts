@@ -167,6 +167,10 @@ import { renderHelp } from "./panel/help.ts";
 import { renderConfigMap } from "./config-map.ts";
 import { DEFAULT_UNLOCK_NODE, techUnlockStructureIds, unlockLine } from "./tech-link.ts";
 import { renderDraws } from "./panel/draws.ts";
+// The in-game pixel editor, from `./sprite-editor/`. A component rather than a
+// `render*` function: it keeps a module-level session (pixels, undo, view) that
+// has to outlive a re-render of the panel — see `sprite-editor/tab.ts`.
+import { getDrawTab as getSpriteEditorTab } from "../sprite-editor/index.ts";
 // The process index, installed once the config loads. `validateField` and the option
 // controls are called with a form and no config, so a process reference is checked
 // against this rather than against a list threaded through every call.
@@ -2012,6 +2016,8 @@ export function createPanelComponent(defaultMinimized = true) {
                     // answer twice.
                     cat === "json"
                         ? renderJson()
+                        : cat === "spriteEditor"
+                        ? h(getSpriteEditorTab(), { onChange: refresh })
                         : HANDLER_SCREENS[cat as keyof typeof HANDLER_SCREENS]
                         ? HANDLER_SCREENS[cat as keyof typeof HANDLER_SCREENS]({
                             h: h as never,

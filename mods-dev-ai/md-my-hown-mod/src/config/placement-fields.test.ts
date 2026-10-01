@@ -28,7 +28,7 @@ import { assertEquals } from "jsr:@std/assert";
 import { decideActions } from "../handler/actions/decide/index.ts";
 
 const CONFIG_PATH = new URL(
-    "../../__home/md-random-artefact/config/random-artefact.json",
+    "../../md-random-artefact/config/random-artefact.json",
     import.meta.url,
 );
 
@@ -41,7 +41,7 @@ interface Step {
 }
 
 const CONFIG_URL = new URL(
-    "../../../__home/md-random-artefact/config/random-artefact.json",
+    "../../../md-random-artefact/config/random-artefact.json",
     import.meta.url,
 );
 const CONFIG = JSON.parse(await Deno.readTextFile(CONFIG_URL)) as {

@@ -162,7 +162,7 @@ Deno.test("the screens sit in the groups that were asked for, in order", () => {
     assertEquals(tabsOf("tech"), ["techs", "upgrades"]);
     assertEquals(tabsOf("actions"), ["triggers", "inputs", "processing", "modifiers"]);
     assertEquals(tabsOf("energy"), ["networks", "energy"]);
-    assertEquals(tabsOf("assets"), ["sprites", "draws"]);
+    assertEquals(tabsOf("assets"), ["sprites", "spriteEditor", "draws"]);
     // What is left in Handlers is what has no owner to be drawn under: the
     // action vocabulary, and the named processes built from it. The two "builds a
     // value" catalogues and the upgrade-action list each configure one specific
@@ -246,7 +246,7 @@ Deno.test("Sprites and Custom draw are listed apart, not merged", () => {
     // They are different things that happen to both be visual: an image the mod
     // loads, and a function that paints a structure. One screen would hide one
     // of them.
-    assertEquals(tabsOf("assets"), ["sprites", "draws"]);
+    assertEquals(tabsOf("assets"), ["sprites", "spriteEditor", "draws"]);
     assert(tabsOf("assets").includes("sprites"));
     assert(tabsOf("assets").includes("draws"));
 });

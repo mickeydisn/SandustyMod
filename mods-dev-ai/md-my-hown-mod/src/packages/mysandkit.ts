@@ -1329,6 +1329,23 @@ export async function registerSprite(def: import("../constants.ts").SpriteConfig
         const sprites = g()?.api?.sprites;
         if (!sprites) return;
         const opts = def.options ?? {};
+        // A drawn sprite is a base64 PNG in `source`, not a file. Handing it to
+        // `loadFromMod` would look for a mod asset at that string and fail
+        // silently, leaving the id registered with no texture.
+        //
+        // Imported here rather than at the top: the editor pulls in `api.ts`,
+        // which reads `sandkit.api` at module load, and most callers of this
+        // module are not in a host at all — the config tests and the migration
+        // tools. A static import made those fail to load for a code path they
+        // never take. It also keeps the editor off the boot path for the
+        // overwhelmingly common config that has no drawn sprites in it.
+        if (typeof def.source === "string" && def.source.startsWith("data:")) {
+            const { registerDataUrlSprite } = await import(
+                "../sprite-editor/register.ts"
+            );
+            await registerDataUrlSprite(def.id, def.source, opts);
+            return;
+        }
         if (def.path && (def.fromMod !== false)) {
             await sprites.loadFromMod?.(def.id, def.path, opts);
         } else if (def.source || def.path) {

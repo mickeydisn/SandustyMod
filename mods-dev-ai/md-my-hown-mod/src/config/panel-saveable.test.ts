@@ -58,7 +58,7 @@ const { DEFAULT_UNLOCK_NODE } = await import("../ui/tech-link.ts");
 const CONFIG = JSON.parse(
     await Deno.readTextFile(
         new URL(
-            "../../../__home/md-random-artefact/config/random-artefact.json",
+            "../../../md-random-artefact/config/random-artefact.json",
             import.meta.url,
         ),
     ),

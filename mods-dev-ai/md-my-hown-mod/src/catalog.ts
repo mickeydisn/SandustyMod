@@ -2,7 +2,7 @@
  * Live catalogues for form pickers: game registries + this mod's stored config.
  */
 import { api, getSandkit, safe } from "./api.ts";
-import { configIsHidden } from "./constants.ts";
+import { configIsHidden, humanise } from "./constants.ts";
 import { loadConfig } from "./config/store.ts";
 import type { Tab } from "./ui/schema.ts";
 import type { ListRow } from "./ui/definition/types.ts";
@@ -463,6 +463,12 @@ export const DRAW_FUNCTIONS: DrawFnMeta[] = [
         doc: "Handles the frame without drawing it, so the structure is invisible but still placed and still simulates.",
         passthrough: false,
     },
+    {
+        key: "drawnSprite",
+        label: "Draw an edited sprite",
+        doc: "Paints the sprite named by Image name directly from the bytes saved in this mod, so a sprite drawn in the Sprite editor shows even if the game would not load it as a file.",
+        passthrough: false,
+    },
 ];
 
 /** Option list for the `draw` field. */
@@ -702,9 +708,19 @@ export function listSpriteIds(): Opt[] {
     for (const sp of loadConfig().sprites ?? []) {
         if (!sp?.id) continue;
         const lib = LIBRARY_ICONS.find((i) => i.path === sp.path);
+        // A drawn sprite (the Sprite editor) is base64 PNG in `source`, not a
+        // `path` — and so has no `lib` match and may not be in the game's registry
+        // at all. It is still selectable, and it is still the only thing that shows
+        // up when a structure uses the `drawnSprite` draw key, so it is marked
+        // rather than left looking like an ordinary bundled asset.
+        const drawn = typeof sp.source === "string" && sp.source.startsWith("data:");
         map.set(sp.id, {
             value: sp.id,
-            label: lib ? `${sp.id} → ${lib.name}` : `${sp.id} (this mod)`,
+            label: drawn
+                ? `${sp.id} (drawn)`
+                : lib
+                ? `${sp.id} → ${lib.name}`
+                : `${sp.id} (this mod)`,
             source: "mod",
         });
     }
@@ -1083,13 +1099,45 @@ export function discoverElements(): NativeObject[] {
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/**
+ * The display name of a built-in item, recovered from its `ItemId` enum value.
+ *
+ * `ItemId` is name→number and exposes no reverse map, so a built-in id *is* a
+ * number: 2 is the grabber, 8 the rocket launcher. Nothing else on the definition
+ * carries a name for it — `ItemDefinition` is typed with no `name` field at all —
+ * so the member name is the only name there is, and without this the item screen
+ * lists every built-in tool as a bare numeral.
+ */
+function builtInItemName(rawId: unknown): string | undefined {
+    const n = typeof rawId === "number"
+        ? rawId
+        : typeof rawId === "string" && rawId.trim() !== "" && Number.isFinite(Number(rawId))
+        ? Number(rawId)
+        : undefined;
+    if (n === undefined || !Number.isFinite(n)) return undefined;
+    for (const member of enumNames("ItemId")) {
+        if (enumValue("ItemId", member) === n) return humanise(member);
+    }
+    return undefined;
+}
+
 /** Game items, read via the documented `getRegisteredIds` + `getDefinitionById` pair. */
 export function discoverItems(): NativeObject[] {
     const out = new Map<string, NativeObject>();
-    for (const id of api.items?.getRegisteredIds?.() ?? []) {
-        if (typeof id !== "string" || !id) continue;
-        const def = api.items?.getDefinitionById?.(id);
-        out.set(id, { id, origin: "game", label: labelOf(def?.name) ?? id, native: def });
+    for (const rawId of api.items?.getRegisteredIds?.() ?? []) {
+        if (rawId === null || rawId === undefined || rawId === "") continue;
+        // A built-in id is a number, and was dropped here by a `typeof id !== "string"`
+        // guard — so the game never actually had a name to show in the first place.
+        const id = String(rawId);
+        const def = safe(() => api.items?.getDefinitionById?.(rawId as never));
+        out.set(id, {
+            id,
+            origin: "game",
+            // A mod item carries its own `name`; a built-in one does not, and falls
+            // through to the enum member name, and only then to the raw id.
+            label: labelOf(def?.name) ?? builtInItemName(rawId) ?? id,
+            native: def,
+        });
     }
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }

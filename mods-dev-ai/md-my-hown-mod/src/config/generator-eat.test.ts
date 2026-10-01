@@ -55,7 +55,7 @@ const { ProcessRegistry } = await import("../handler/custom-process/registry.ts"
 const { entryToForm, validateForm } = await import("../ui/schema.ts");
 
 const CONFIG_URL = new URL(
-    "../../../__home/md-random-artefact/config/random-artefact.json",
+    "../../../md-random-artefact/config/random-artefact.json",
     import.meta.url,
 );
 

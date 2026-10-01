@@ -25,6 +25,7 @@ import {
     entryVisibility,
     HIDDEN_FIELD,
     type HiddenCategory,
+    humanise,
     OWN_ID_PREFIXES,
 } from "../../constants.ts";
 import * as S from "../styles.ts";
@@ -194,12 +195,6 @@ const ALWAYS_SKIP = [
     "onBreak",
     "onDamage",
 ];
-
-/** `isGrabbable` → "Is grabbable", for the catch-all's labels. */
-function humanise(k: string): string {
-    const spaced = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
-    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
 
 /** An expanded row's detail rows: curated fields first, then the rest. Exported so it is testable. */
 export function detailRows(

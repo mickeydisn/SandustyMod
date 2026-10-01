@@ -75,15 +75,32 @@ globalThis.sandkit = {
                     ? { id: "mdmy.furnace", name: "Furnace", category: "production" }
                     : { id: "mdmy.furnace", name: "Furnace", category: "production" },
         },
-        items: { list: () => [] },
+        // `getRegisteredIds` is the *older* SDK's route; the live declaration omits
+        // it, but the item screen is built on it, so it is stood up here. A
+        // built-in id is a number, and a built-in definition carries no `name`.
+        items: {
+            list: () => [],
+            getRegisteredIds: () => [2, 8, "mdmy.probe", 999],
+            getDefinitionById: (id: unknown) =>
+                id === "mdmy.probe" ? { name: "Probe" } : { itemType: "Tool" },
+        },
         sprites: { list: () => [] },
     },
     react: { createElement: () => null },
     enums: {
         ElementType: { Sand: 1, Water: 2, Steam: 3, ResolvedPointer: 90, InternalHelper: 91 },
         CellType: { Dirt: 1, Stone: 2, Unregistered: 5 },
-        // `ItemId` is string-valued: the *value* is the id.
-        ItemId: { Drill: "drill", Saw: "saw", mystery: 7 },
+        // `ItemId` is string-valued: the *value* is the id. The numeric members
+        // are the real ones — `SandustryTypes`' ItemId is Shovel=1, Grabber=2,
+        // RocketLauncher=8, … and carries no name anywhere — and they are here
+        // too so the built-in path is exercised rather than assumed away.
+        ItemId: {
+            Drill: "drill",
+            Saw: "saw",
+            mystery: 7,
+            Grabber: 2,
+            RocketLauncher: 8,
+        },
         // A built-in structure type, so the enum pass in `listStructures` has
         // something to emit — and therefore something to tag.
         StructureType: { Furnace: 12, Conveyor: 13 },
@@ -270,4 +287,35 @@ Deno.test("a game element is tagged game even when the mod also declares one", (
     // about, must not be swept in with it.
     assertEquals(listElements().find((o) => o.value === "Sand")?.source, "game");
     assertEquals(listElements().find((o) => o.value === "mdmy.acid")?.source, "mod");
+});
+// ── the item screen's built-ins ──────────────────────────────────────────────
+//
+// `discoverItems` backs the item list, and a built-in item used to arrive there
+// as a bare numeral: `getRegisteredIds` hands back *numbers* (2 = the grabber),
+// a `typeof id !== "string"` guard threw every one of them away, and the ones
+// that survived had no `name` on the definition to fall back to.
+
+Deno.test("a built-in item is listed, and named", async () => {
+    const { discoverItems } = await import("../../catalog.ts");
+    const byId = new Map(discoverItems().map((i) => [i.id, i.label]));
+
+    // Not dropped for being a number — that is the whole set of built-ins.
+    assertEquals(byId.has("2"), true, "the built-in with id 2 was dropped");
+    assertEquals(byId.get("2"), "Grabber");
+    // The member name is humanised rather than pasted as `RocketLauncher`.
+    assertEquals(byId.get("8"), "Rocket Launcher");
+});
+
+Deno.test("a mod item keeps its own name over the enum", async () => {
+    const { discoverItems } = await import("../../catalog.ts");
+    const byId = new Map(discoverItems().map((i) => [i.id, i.label]));
+    assertEquals(byId.get("mdmy.probe"), "Probe");
+});
+
+Deno.test("an id no enum member explains falls back to itself", async () => {
+    const { discoverItems } = await import("../../catalog.ts");
+    const byId = new Map(discoverItems().map((i) => [i.id, i.label]));
+    // 999 is not in ItemId. Inventing a name here would be worse than saying
+    // "999", which at least cannot be mistaken for a real tool.
+    assertEquals(byId.get("999"), "999");
 });

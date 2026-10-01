@@ -17,7 +17,17 @@
     },
     "fmt": {
         "exclude": [
-            "src/generated"
+            "src/generated",
+            "src/sprite-editor"
+        ]
+    },
+    "lint": {
+        // Vendored third-party package, copied whole from sprite-editor-package/
+        // so it can be refreshed by replacing the folder. Its `any` and `window`
+        // use is inherent — a canvas overlay talking to a dynamically-typed host
+        // API — and linting it says nothing about this mod's own code.
+        "exclude": [
+            "src/sprite-editor"
         ]
     },
     "exclude": [

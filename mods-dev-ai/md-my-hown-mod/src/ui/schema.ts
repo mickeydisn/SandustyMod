@@ -126,6 +126,15 @@ export type Tab =
     /** Catalogue of the engine's draw functions — no configKey, no storage. */
     | "draws"
     /**
+     * The in-game pixel editor (`./sprite-editor/`) — no configKey, no storage.
+     *
+     * **Its own tab rather than a tab of `draws`.** The two sound alike and are
+     * unrelated: `draws` is a *read-only catalogue* of the engine's draw
+     * functions, and this is the editor that paints sprite pixels. Filing the
+     * editor under a screen called "Custom draw" would read as a mode of it.
+     */
+    | "spriteEditor"
+    /**
      * The HandlerAction catalogue — no configKey, renders its own body.
      *
      * **A first-class tab, not a mode of another screen.** Two tabs in one menu
@@ -340,6 +349,10 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         label: "Custom draw",
         blurb: "What the engine can paint, and which of it this mod uses.",
     },
+    spriteEditor: {
+        label: "Sprite editor",
+        blurb: "Draw a sprite pixel by pixel and save it as a game asset.",
+    },
     json: { label: "JSON", blurb: "Full config: inspect, export, import." },
     help: {
         label: "Graph",
@@ -419,7 +432,7 @@ export const MENU_GROUPS: MenuGroup[] = [
         key: "assets",
         label: "Assets",
         hint: "Images, and the code that paints them",
-        categories: ["sprites", "draws"],
+        categories: ["sprites", "spriteEditor", "draws"],
     },
     {
         key: "handlers",

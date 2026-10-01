@@ -1,0 +1,67 @@
+diff --git a/src/packages/mysandkit.ts b/src/packages/mysandkit.ts
+index e0efbdd..dfce60a 100644
+--- a/src/packages/mysandkit.ts
++++ b/src/packages/mysandkit.ts
+@@ -12,6 +12,7 @@ import {
+     type ContactReactionConfig,
+     type InteractionConfig,
+ } from "../constants.ts";
++import { registerDataUrlSprite } from "../sprite-editor/register.ts";
+ 
+ declare const sandkit: any;
+ const g = () => {
+@@ -599,6 +600,11 @@ export async function registerSprite(def: import("../constants.ts").SpriteConfig
+         const sprites = g()?.api?.sprites;
+         if (!sprites) return;
+         const opts = def.options ?? {};
++        // drawn sprites (sprite-editor) carry a base64 PNG in `source`
++        if (typeof def.source === "string" && def.source.startsWith("data:")) {
++            await registerDataUrlSprite(def.id, def.source, opts);
++            return;
++        }
+         if (def.path && (def.fromMod !== false)) {
+             await sprites.loadFromMod?.(def.id, def.path, opts);
+         } else if (def.source || def.path) {
+diff --git a/src/ui/panel.ts b/src/ui/panel.ts
+index 7de1be4..776e2be 100644
+--- a/src/ui/panel.ts
++++ b/src/ui/panel.ts
+@@ -57,6 +57,7 @@ import { api as skApi } from "../packages/mysandkit.ts";
+ import { api, React as HostReact } from "../api.ts";
+ import { isToolSelected } from "../select.ts";
+ import { fieldsForTab, type FieldDef, type Opt } from "../catalog.ts";
++import { getDrawTab } from "../sprite-editor/index.ts";
+ const apiMerged = skApi; // storage still via mysandkit
+ 
+ import * as S from "./styles.ts";
+@@ -70,7 +71,7 @@ export function forceExpandPanel(): void {
+     console.log("[md-my-hown-mod] forceExpandPanel #" + expandRequest);
+ }
+ 
+-type Tab = "elements" | "structures" | "items" | "recipes" | "processing" | "contacts" | "interactions" | "modifiers" | "terrains" | "techs" | "upgrades" | "projectiles" | "energy" | "excavation" | "behaviors" | "signals" | "triggers" | "sprites" | "json";
++type Tab = "elements" | "structures" | "items" | "recipes" | "processing" | "contacts" | "interactions" | "modifiers" | "terrains" | "techs" | "upgrades" | "projectiles" | "energy" | "excavation" | "behaviors" | "signals" | "triggers" | "sprites" | "draw" | "json";
+ 
+ type Props = {
+     defaultMinimized?: boolean;
+@@ -608,7 +609,7 @@ export function createPanelComponent(defaultMinimized = true) {
+                     React.createElement(
+                         "div",
+                         { style: S.tabs },
+-                        (["elements", "structures", "items", "recipes", "processing", "contacts", "interactions", "modifiers", "terrains", "techs", "upgrades", "projectiles", "energy", "excavation", "behaviors", "signals", "triggers", "sprites", "json"] as Tab[]).map((t) =>
++                        (["elements", "structures", "items", "recipes", "processing", "contacts", "interactions", "modifiers", "terrains", "techs", "upgrades", "projectiles", "energy", "excavation", "behaviors", "signals", "triggers", "sprites", "draw", "json"] as Tab[]).map((t) =>
+                             React.createElement(
+                                 "button",
+                                 {
+@@ -627,8 +628,10 @@ export function createPanelComponent(defaultMinimized = true) {
+                         React.createElement("button", { style: S.btnPrimary, onClick: applyNow }, "Apply to game"),
+                         React.createElement("button", { style: S.btn, onClick: refresh }, "Reload"),
+                     ),
+-                    // JSON editor
+-                    tab === "json"
++                    // Draw (sprite editor)
++                    tab === "draw"
++                        ? React.createElement(getDrawTab(), { onChange: refresh })
++                        : tab === "json"
+                         ? React.createElement(
+                             "div",
+                             null,

@@ -254,7 +254,7 @@ Deno.test("the config's placement definition reaches registerPlacementConfig", a
     const cfg = JSON.parse(
         await Deno.readTextFile(
             new URL(
-                "../../../__home/md-random-artefact/config/random-artefact.json",
+                "../../../md-random-artefact/config/random-artefact.json",
                 import.meta.url,
             ),
         ),
@@ -296,7 +296,7 @@ Deno.test("a definition nested under a structure registers nothing", async () =>
     const cfg = JSON.parse(
         await Deno.readTextFile(
             new URL(
-                "../../../__home/md-random-artefact/config/random-artefact.json",
+                "../../../md-random-artefact/config/random-artefact.json",
                 import.meta.url,
             ),
         ),

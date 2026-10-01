@@ -47,6 +47,19 @@ export const SETTINGS = {
     panelMinimized: { type: "boolean", default: true },
 } as const satisfies SettingsSchema;
 
+/**
+ * `isGrabbable` → `Is grabbable`; `RocketLauncher` → `Rocket Launcher`.
+ *
+ * Lives here because two unrelated layers need it and neither may import the
+ * other: the list panel labels its catch-all fields, and the catalog recovers a
+ * built-in item's only display name from its `ItemId` member. Two copies of this
+ * rule would drift apart.
+ */
+export function humanise(k: string): string {
+    const spaced = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 export const OVERLAY_ID = `${MOD_ID}:panel`;
 
 /** Shown in the panel's error chip, and in the mount-failure toast. */

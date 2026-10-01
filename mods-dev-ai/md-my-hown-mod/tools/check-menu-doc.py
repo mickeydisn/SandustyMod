@@ -12,7 +12,7 @@ ATTACH = "src/ui/panel/attach.ts"
 DOC = "MENU.md"
 
 # Tabs that are one screen rather than a list of entries.
-SCREENS = {"draws", "help", "map", "json"}
+SCREENS = {"draws", "spriteEditor", "help", "map", "json"}
 # Lists whose contents are written in code: no entry to add, edit or delete.
 FIXED = {"excavationOption", "projectileOption"}
 

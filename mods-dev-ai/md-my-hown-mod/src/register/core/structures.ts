@@ -20,6 +20,7 @@ import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
 import { loadConfig } from "../../config/store.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { isAlwaysUnlocked } from "../../ui/tech-link.ts";
+import { makeDrawnSprite } from "./drawn-sprite.ts";
 import { mayRegister, registered } from "../registry.ts";
 
 /**
@@ -197,6 +198,20 @@ export function resolveDraw(st: StructureConfig): StructureConfig {
     };
     if (drawKey === "hidden") return { ...base, draw: hidden };
     if (drawKey === "outline") return { ...base, draw: makeOutline(ctx) };
+    if (drawKey === "drawnSprite") {
+        // The sprite is named by `render.imageName`, the same field the engine's own
+        // sprite path reads. Reusing it means the config needs no new key: the id
+        // points at a `sprites` entry, and this draws it from the bytes in the config.
+        const imageName = st.render?.imageName;
+        return {
+            ...base,
+            draw: makeDrawnSprite(
+                typeof imageName === "string" ? imageName : undefined,
+                ctx.wCells,
+                ctx.hCells,
+            ),
+        };
+    }
     return base;
 }
 

@@ -47,6 +47,8 @@ export type Tab =
     | "modifiers"
     | "inputs"
     | "draws"
+    /** The sprite editor. **Must match `Tab` in `../schema.ts`** — edit that one. */
+    | "spriteEditor"
     /** The HandlerAction catalogue. **Must match `Tab` in `../schema.ts`** — edit that one. */
     | "action"
     | "projectileOption"

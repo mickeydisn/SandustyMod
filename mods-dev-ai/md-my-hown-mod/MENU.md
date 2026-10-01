@@ -183,11 +183,18 @@ Assets:
 Assets:Sprites:
 Assets:Sprites:Sprites
 Assets:Sprites:Sprites:Edit
+Assets:Sprite editor
 Assets:Custom draw
 ```
 
-`Custom draw` is one screen — it reports what the engine can paint and which of it this mod uses, so
-there is nothing to add or edit.
+`Sprite editor` and `Custom draw` are each one screen — there is nothing to add or edit in either.
+They are unrelated despite the names: `Sprite editor` is a pixel editor that saves what it draws as
+an entry of the `Sprites` list, and `Custom draw` reports what the engine's draw functions can do
+and which of them this mod uses.
+
+`Sprite editor` is a separate screen rather than a part of `Custom draw` for the same reason — the
+names collide, and filing one under the other would read as a mode of it. A sprite it draws is a
+normal `Sprites` entry, so it is exported with the config and registered by `applyConfig()`.
 
 ## Handlers
 
@@ -236,16 +243,16 @@ exports and imports the whole config.
 
 ## Totals
 
-|                    | Count                                          |
-| ------------------ | ---------------------------------------------- |
-| Groups             | 9                                              |
-| Tabs               | 22                                             |
-| Single screens     | 4 — `Custom draw`, `Graph`, `Map`, `JSON`      |
-| Lists              | 29                                             |
-| Editable           | 27 — each has an `Edit` panel                  |
-| Fixed, no `Edit`   | 2 — `Excavation options`, `Projectile options` |
-| Editable, attached | 9 — drawn under another list                   |
-| Editable, own tab  | 18 — reached from a tab                        |
+|                    | Count                                                      |
+| ------------------ | ---------------------------------------------------------- |
+| Groups             | 9                                                          |
+| Tabs               | 23                                                         |
+| Single screens     | 5 — `Custom draw`, `Sprite editor`, `Graph`, `Map`, `JSON` |
+| Lists              | 29                                                         |
+| Editable           | 27 — each has an `Edit` panel                              |
+| Fixed, no `Edit`   | 2 — `Excavation options`, `Projectile options`             |
+| Editable, attached | 9 — drawn under another list                               |
+| Editable, own tab  | 18 — reached from a tab                                    |
 
 Every editable list is the same three things: the entries, `+ New`, and an `Edit` panel per entry.
 Back returns to the list, and the sub-nav returns to the list a child list was reached from.

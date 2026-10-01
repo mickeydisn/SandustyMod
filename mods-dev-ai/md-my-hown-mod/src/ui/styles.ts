@@ -167,6 +167,20 @@ export const row: React.CSSProperties = {
     border: "1px solid rgba(80, 95, 130, 0.35)",
 };
 
+/**
+ * A strip of buttons above a form — `New`, `Import`, the sprite editor's own row.
+ *
+ * Wraps rather than scrolling: the row's width is the panel's width, and a
+ * horizontally scrolling toolbar hides its right-hand buttons behind a gesture
+ * the user has no reason to know they need.
+ */
+export const toolbar: React.CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 6,
+};
+
 export const rowId: React.CSSProperties = {
     flex: 1,
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
