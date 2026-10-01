@@ -208,7 +208,7 @@ function footprintSeeds(structure: unknown): Record<string, unknown> {
         
         
         
-        const lookup = api?.structures?.getDefinitionByType;
+        const lookup = api.structures.getDefinitionByType;
         
         
         

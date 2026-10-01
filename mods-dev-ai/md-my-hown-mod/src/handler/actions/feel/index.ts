@@ -11,7 +11,7 @@ export const feelActions = defineActions({
             const text = (options as { text?: string } | null)?.text;
             if (!text) return;
             try {
-                api?.ui?.toast?.(text);
+                api.ui.toast(text);
             } catch (e) {
                 console.warn("[md-my-hown-mod:feel] toast failed", e);
             }
@@ -27,7 +27,7 @@ export const feelActions = defineActions({
             const p = payload as { x?: number; y?: number } | null;
             if (!p || !o.name || p.x === undefined || p.y === undefined) return;
             try {
-                api?.effects?.createParticlesAtWorld?.(p.x, p.y, { count: o.count ?? 1 });
+                api.effects.createParticlesAtWorld(p.x, p.y, { count: o.count ?? 1 });
             } catch (e) {
                 console.warn("[md-my-hown-mod:feel] particles failed", e);
             }

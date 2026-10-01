@@ -1,4 +1,3 @@
-
 import {
     type ContactReactionConfig,
     type ElementConfig,
@@ -11,14 +10,16 @@ import {
     type StructureConfig,
 } from "../constants.ts";
 
-
 import { placementConfigPayload, placementConfigProblem } from "../config/placement.ts";
 
 declare const sandkit: any;
+
+type SignalHandler = (...args: unknown[]) => unknown;
+
 export const g = () => {
     try {
         if (typeof sandkit !== "undefined" && sandkit) return sandkit;
-    } catch {  }
+    } catch {}
     return (globalThis as any).sandkit ?? (globalThis as any).__sandkit;
 };
 export const api = {
@@ -40,7 +41,7 @@ export const api = {
     toast(msg: string, opts?: Record<string, unknown>) {
         try {
             g()?.api?.ui?.toast?.(msg, opts ?? {});
-        } catch {  }
+        } catch {}
     },
     storage: {
         ensure() {
@@ -66,9 +67,9 @@ export const api = {
         remove(key: string) {
             try {
                 g()?.api?.storage?.remove?.(MOD_ID, key);
-            } catch {  }
+            } catch {}
         },
-        
+
         ensureFor(modId: string) {
             try {
                 g()?.api?.storage?.ensure?.(modId);
@@ -84,9 +85,8 @@ export const api = {
             }
         },
     },
-    
+
     settings: {
-        
         get(fieldId: string): unknown {
             try {
                 return g()?.api?.settings?.get?.(fieldId);
@@ -95,7 +95,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         onChange(cb: () => void): (() => void) | undefined {
             try {
                 const unsub = g()?.api?.settings?.onChange?.(cb);
@@ -106,7 +106,7 @@ export const api = {
             }
         },
     },
-    
+
     state: {
         get store(): Record<string, any> | undefined {
             try {
@@ -162,7 +162,7 @@ export const api = {
                 console.error(`${LOG} elements.addInteractionInfo failed`, e);
             }
         },
-        
+
         addElementToDiscoveries(elementType: number) {
             try {
                 const d = g()?.api?.discoveries;
@@ -172,7 +172,7 @@ export const api = {
                 console.error(`${LOG} discoveries.addElement failed`, e);
             }
         },
-        
+
         getTypeById(id: string): number | undefined {
             try {
                 return g()?.api?.elements?.getTypeById?.(id);
@@ -180,15 +180,7 @@ export const api = {
                 return undefined;
             }
         },
-        
-        
-        
-        
-        
-        
-        
 
-        
         getRegisteredTypes(): number[] {
             try {
                 return g()?.api?.elements?.getRegisteredTypes?.() ?? [];
@@ -197,7 +189,7 @@ export const api = {
                 return [];
             }
         },
-        
+
         getDefinitionByType(t: number): Record<string, unknown> | undefined {
             try {
                 return g()?.api?.elements?.getDefinitionByType?.(t) as
@@ -208,7 +200,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getIdByType(t: number): string | undefined {
             try {
                 return g()?.api?.elements?.getIdByType?.(t) as string | undefined;
@@ -217,7 +209,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getNameByType(t: number): string | undefined {
             try {
                 return g()?.api?.elements?.getNameByType?.(t) as string | undefined;
@@ -226,7 +218,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getResolvedTypeAtCell(x: number, y: number): number | undefined {
             try {
                 return g()?.api?.elements?.getResolvedTypeAtCell?.(x, y);
@@ -235,7 +227,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getTypeAtCell(x: number, y: number): number | null {
             try {
                 return g()?.api?.elements?.getTypeAtCell?.(x, y) ?? null;
@@ -244,7 +236,7 @@ export const api = {
                 return null;
             }
         },
-        
+
         getTypeFromId(id: string): number | null {
             try {
                 return g()?.api?.elements?.getTypeFromId?.(id) ?? null;
@@ -253,7 +245,7 @@ export const api = {
                 return null;
             }
         },
-        
+
         isTypeAtCell(x: number, y: number, type: number): boolean {
             try {
                 return g()?.api?.elements?.isTypeAtCell?.(x, y, type) === true;
@@ -262,7 +254,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         setVelocityAtCell(
             x: number,
             y: number,
@@ -278,7 +270,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         addParticleVelocityAtCell(
             x: number,
             y: number,
@@ -296,7 +288,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         setDurationAtCell(
             x: number,
             y: number,
@@ -305,8 +297,7 @@ export const api = {
         ): boolean {
             try {
                 const ns = g()?.api?.elements;
-                
-                
+
                 if (typeof ns?.setDurationAtCell !== "function") return false;
                 ns.setDurationAtCell(x, y, n, opts);
                 return true;
@@ -315,7 +306,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         removeAtCell(x: number, y: number, options?: unknown): boolean {
             try {
                 const ns = g()?.api?.elements;
@@ -375,25 +366,21 @@ export const api = {
                 console.warn(`${LOG} elements.setDataFieldAtCell failed`, x, y, e);
             }
         },
-        
+
         getVelocityAtCell(x: number, y: number): { x: number; y: number } | null {
             try {
                 const v = g()?.api?.elements?.getVelocityAtCell?.(x, y) as
                     | { x?: number; y?: number }
                     | null
                     | undefined;
-                
-                
-                
-                
-                
+
                 return v ? { x: v.x ?? 0, y: v.y ?? 0 } : null;
             } catch (e) {
                 console.warn(`${LOG} elements.getVelocityAtCell failed`, x, y, e);
                 return null;
             }
         },
-        
+
         teleportBetweenCells(
             fromX: number,
             fromY: number,
@@ -403,10 +390,7 @@ export const api = {
             try {
                 const ns = g()?.api?.elements;
                 if (typeof ns?.teleportBetweenCells !== "function") return false;
-                
-                
-                
-                
+
                 ns.teleportBetweenCells(fromX, fromY, toX, toY);
                 return true;
             } catch (e) {
@@ -414,7 +398,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         findFreeCellInStructure(
             x: number,
             y: number,
@@ -429,9 +413,8 @@ export const api = {
             }
         },
     },
-    
+
     grid: {
-        
         isCellEmptyAtCell(x: number, y: number): boolean | undefined {
             try {
                 return g()?.api?.grid?.isCellEmptyAtCell?.(x, y);
@@ -466,7 +449,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         excavateAtCell(
             x: number,
             y: number,
@@ -481,17 +464,17 @@ export const api = {
             }
         },
     },
-    
+
     player: {
-        
         inventory: {
-            
             addById(
                 itemId: string,
                 amount = 1,
             ): boolean {
                 try {
-                    g()?.api?.player?.inventory?.addById?.(itemId, amount);
+                    const ns = g()?.api?.player?.inventory;
+                    if (typeof ns?.addById !== "function") return false;
+                    ns.addById(itemId, amount);
                     return true;
                 } catch (e) {
                     console.warn(`${LOG} player.inventory.addById failed`, itemId, e);
@@ -500,7 +483,6 @@ export const api = {
             },
         },
         buildings: {
-            
             unlockById(structureId: string): boolean {
                 try {
                     const fn = g()?.api?.player?.buildings?.unlockById;
@@ -512,7 +494,7 @@ export const api = {
                     return false;
                 }
             },
-            
+
             removeById(structureId: string): boolean {
                 try {
                     const fn = g()?.api?.player?.buildings?.removeById;
@@ -527,7 +509,19 @@ export const api = {
         },
     },
     structures: {
-        
+        registerPlacementConfig(definition: unknown): boolean {
+            try {
+                const ns = g()?.api?.structures as
+                    | { registerPlacementConfig?: (definition: unknown) => unknown }
+                    | undefined;
+                if (typeof ns?.registerPlacementConfig !== "function") return false;
+                ns.registerPlacementConfig(definition);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} structures.registerPlacementConfig failed`, e);
+                return false;
+            }
+        },
         updateDefinition(
             idOrType: string | number,
             partial: Record<string, unknown>,
@@ -539,7 +533,7 @@ export const api = {
                 console.error(`${LOG} structures.updateDefinition failed`, idOrType, e);
             }
         },
-        
+
         getRegisteredTypes(): number[] {
             try {
                 return g()?.api?.structures?.getRegisteredTypes?.() ?? [];
@@ -548,7 +542,7 @@ export const api = {
                 return [];
             }
         },
-        
+
         getUnlockedTypes(): number[] {
             try {
                 return g()?.api?.structures?.getUnlockedTypes?.() ?? [];
@@ -557,7 +551,7 @@ export const api = {
                 return [];
             }
         },
-        
+
         getTypeName(t: number): string | undefined {
             try {
                 return g()?.api?.structures?.getTypeName?.(t) as string | undefined;
@@ -598,7 +592,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         getAtCell(x: number, y: number): Record<string, unknown> | null {
             try {
                 return g()?.api?.structures?.getAtCell?.(x, y) ?? null;
@@ -615,7 +609,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         isTypeAtCell(x: number, y: number, ref: string | number): boolean {
             try {
                 return g()?.api?.structures?.isTypeAtCell?.(x, y, ref) === true;
@@ -624,7 +618,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         isType(structure: unknown, ref: string): boolean {
             try {
                 return g()?.api?.structures?.isType?.(structure, ref) === true;
@@ -671,7 +665,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         removeAtCells(
             positions: { x: number; y: number }[],
             options?: unknown,
@@ -776,7 +770,7 @@ export const api = {
                 return 0;
             }
         },
-        
+
         processing: {
             register(structureType: string | number, def: Record<string, unknown>): void {
                 try {
@@ -786,7 +780,7 @@ export const api = {
                     console.error(`${LOG} structures.processing.register failed`, e);
                 }
             },
-            
+
             isEnabledAtCell(x: number, y: number): boolean {
                 try {
                     return g()?.api?.structures?.processing?.isEnabledAtCell?.(x, y) === true;
@@ -799,9 +793,7 @@ export const api = {
                 try {
                     const ns = g()?.api?.structures?.processing;
                     if (typeof ns?.setEnabledAtCell !== "function") return false;
-                    
-                    
-                    
+
                     ns.setEnabledAtCell(x, y, enabled);
                     return true;
                 } catch (e) {
@@ -842,7 +834,7 @@ export const api = {
                 console.error(`${LOG} structures.addVariant failed`, e);
             }
         },
-        
+
         getAvailableTypes(): Set<number | string> {
             try {
                 return g()?.api?.structures?.getAvailableTypes?.() ?? new Set();
@@ -851,7 +843,7 @@ export const api = {
                 return new Set();
             }
         },
-        
+
         getDefinitionByType(ref: number | string): Record<string, unknown> | undefined {
             try {
                 return (g()?.api?.structures?.getDefinitionByType?.(ref) ?? undefined) as
@@ -862,7 +854,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getIdByType(t: number): string | undefined {
             try {
                 return g()?.api?.structures?.getIdByType?.(t) as string | undefined;
@@ -871,7 +863,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getTypeById(id: string): number | string {
             try {
                 const s = g()?.api?.structures as
@@ -886,7 +878,7 @@ export const api = {
                 return id;
             }
         },
-        
+
         countOfType(ref: number | string): number | null {
             try {
                 const fn = g()?.api?.structures?.forEachOfType as
@@ -912,7 +904,7 @@ export const api = {
                 console.error(`${LOG} items.register failed`, def.id, e);
             }
         },
-        
+
         updateDefinition(idOrType: string | number, partial: Record<string, unknown>): void {
             try {
                 g()?.api?.items?.updateDefinition?.(idOrType, partial);
@@ -920,7 +912,7 @@ export const api = {
                 console.error(`${LOG} items.updateDefinition failed`, idOrType, e);
             }
         },
-        
+
         getRegisteredIds(): string[] {
             try {
                 return (g()?.api?.items?.getRegisteredIds?.() ?? []) as string[];
@@ -929,7 +921,7 @@ export const api = {
                 return [];
             }
         },
-        
+
         getDefinitionById(id: string): Record<string, unknown> | undefined {
             try {
                 return (g()?.api?.items?.getDefinitionById?.(id) ?? undefined) as
@@ -940,7 +932,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getRegistered(): Record<string, unknown>[] {
             try {
                 return g()?.api?.items?.getRegistered?.() ?? [];
@@ -966,8 +958,35 @@ export const api = {
             }
         },
     },
-    
+
     tech: {
+        registerDefinition(id: string, body: Record<string, unknown>): boolean {
+            try {
+                const ns = g()?.api?.tech;
+                const fn = ns?.registerDefinition ?? ns?.addDefinition;
+                if (typeof fn !== "function") return false;
+                fn.call(ns, id, body);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} tech.registerDefinition failed`, id, e);
+                return false;
+            }
+        },
+        registerNode(
+            id: string,
+            body: Record<string, unknown>,
+            opts: Record<string, unknown>,
+        ): boolean {
+            try {
+                const ns = g()?.api?.tech;
+                if (typeof ns?.registerNode !== "function") return false;
+                ns.registerNode(id, body, opts);
+                return true;
+            } catch (e) {
+                console.warn(`${LOG} tech.registerNode failed`, id, e);
+                return false;
+            }
+        },
         updateDefinition(id: string, partial: Record<string, unknown>): void {
             try {
                 g()?.api?.tech?.updateDefinition?.(id, partial);
@@ -975,9 +994,8 @@ export const api = {
                 console.error(`${LOG} tech.updateDefinition failed`, id, e);
             }
         },
-        
+
         conservatory: {
-            
             appendUnlock(techId: string, unlocks: Record<string, unknown>): boolean {
                 try {
                     const ns = g()?.api?.tech?.conservatory;
@@ -992,7 +1010,17 @@ export const api = {
         },
     },
     terrains: {
-        
+        register(def: Record<string, unknown>): boolean {
+            try {
+                const ns = g()?.api?.terrains;
+                if (typeof ns?.register !== "function") return false;
+                ns.register(def);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} terrains.register failed`, def.id, e);
+                return false;
+            }
+        },
         getDataAtCell(x: number, y: number): Record<string, unknown> | null {
             try {
                 return (g()?.api?.terrains?.getDataAtCell?.(x, y) as
@@ -1004,7 +1032,7 @@ export const api = {
                 return null;
             }
         },
-        
+
         getHitPointsAtCell(x: number, y: number): number | null {
             const data = api.terrains.getDataAtCell(x, y) as
                 | { hitPoints?: unknown; hp?: unknown }
@@ -1013,7 +1041,7 @@ export const api = {
             const hp = data.hitPoints ?? data.hp;
             return typeof hp === "number" ? hp : null;
         },
-        
+
         getTypeAtCell(x: number, y: number): number | null {
             try {
                 return g()?.api?.terrains?.getTypeAtCell?.(x, y) ?? null;
@@ -1022,7 +1050,7 @@ export const api = {
                 return null;
             }
         },
-        
+
         isAtCell(x: number, y: number): boolean {
             try {
                 return g()?.api?.terrains?.isAtCell?.(x, y) === true;
@@ -1031,7 +1059,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         isTypeAtCell(x: number, y: number, id: string | number): boolean {
             try {
                 return g()?.api?.terrains?.isTypeAtCell?.(x, y, id) === true;
@@ -1048,7 +1076,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         damageAtCell(x: number, y: number, damage: number): boolean {
             try {
                 const ns = g()?.api?.terrains;
@@ -1060,7 +1088,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         setHitPointsAtCell(x: number, y: number, hitPoints: number): boolean {
             try {
                 const ns = g()?.api?.terrains;
@@ -1071,7 +1099,7 @@ export const api = {
                 return false;
             }
         },
-        
+
         getTypeById(id: string): number | null {
             try {
                 return g()?.api?.terrains?.getTypeById?.(id) ?? null;
@@ -1087,7 +1115,7 @@ export const api = {
                 console.error(`${LOG} terrains.updateDefinition failed`, idOrType, e);
             }
         },
-        
+
         getIdByType(t: number): string | undefined {
             try {
                 return g()?.api?.terrains?.getIdByType?.(t) as string | undefined;
@@ -1096,7 +1124,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getDefinitionByType(t: number): Record<string, unknown> | undefined {
             try {
                 return g()?.api?.terrains?.getDefinitionByType?.(t) as
@@ -1109,6 +1137,28 @@ export const api = {
         },
     },
     upgrades: {
+        register(def: Record<string, unknown>): boolean {
+            try {
+                const ns = g()?.api?.upgrades;
+                if (typeof ns?.register !== "function") return false;
+                ns.register(def);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} upgrades.register failed`, def.id, e);
+                return false;
+            }
+        },
+        registerCategory(def: Record<string, unknown>): boolean {
+            try {
+                const ns = g()?.api?.upgrades;
+                if (typeof ns?.registerCategory !== "function") return false;
+                ns.registerCategory(def);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} upgrades.registerCategory failed`, def.id, e);
+                return false;
+            }
+        },
         updateDefinition(
             itemId: string,
             upgradeId: string,
@@ -1120,7 +1170,7 @@ export const api = {
                 console.error(`${LOG} upgrades.updateDefinition failed`, itemId, upgradeId, e);
             }
         },
-        
+
         setLevelById(itemId: string, upgradeId: string, level: number): void {
             try {
                 g()?.api?.upgrades?.setLevelById?.(itemId, upgradeId, level);
@@ -1166,7 +1216,6 @@ export const api = {
             register(zone: string, id: string, component: unknown, opts?: Record<string, unknown>) {
                 try {
                     {
-                        
                         const React = g()?.react;
                         const render = typeof component === "function" && component.length === 0
                             ? component
@@ -1180,25 +1229,20 @@ export const api = {
             unregister(zone: string, id: string) {
                 try {
                     g()?.api?.ui?.overlays?.unregister?.(zone, id);
-                } catch {  }
+                } catch {}
             },
         },
-        
+
         toast(message: string): void {
             try {
                 (g()?.api?.ui?.toast as ((m: string) => void) | undefined)?.(message);
             } catch (e) {
-                
-                
-                
-                
                 console.warn(`${LOG} ui.toast failed`, message, e);
             }
         },
     },
-    
+
     hooks: {
-        
         hasHooks(): boolean {
             try {
                 return !!g()?.api?.hooks;
@@ -1218,7 +1262,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         modify(
             id: string,
             fn: (args: never, context: { cancel?: () => void }) => unknown,
@@ -1245,10 +1289,10 @@ export const api = {
         register(locale: string, map: Record<string, string>) {
             try {
                 g()?.api?.i18n?.register?.(locale, map);
-            } catch {  }
+            } catch {}
         },
     },
-    
+
     assets: {
         getUrl(path: string): string | undefined {
             try {
@@ -1259,7 +1303,7 @@ export const api = {
             }
         },
     },
-    
+
     sprites: {
         load(id: string, path: string, options?: Record<string, unknown>): unknown {
             try {
@@ -1277,7 +1321,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         raw(): Record<string, any> | undefined {
             try {
                 return g()?.api?.sprites as Record<string, any> | undefined;
@@ -1286,7 +1330,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         namespace(): string | undefined {
             try {
                 return g()?.api?.sprites?.namespace?.() as string | undefined;
@@ -1295,7 +1339,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         getRegistered(): string[] {
             try {
                 return g()?.api?.sprites?.getRegistered?.() ?? [];
@@ -1304,7 +1348,7 @@ export const api = {
                 return [];
             }
         },
-        
+
         getLoaded(): string[] {
             try {
                 return g()?.api?.sprites?.getLoaded?.() ?? [];
@@ -1330,9 +1374,8 @@ export const api = {
             }
         },
     },
-    
+
     input: {
-        
         getMouseCellPosition(): { x: number; y: number } | null {
             try {
                 return (g()?.api?.input?.getMouseCellPosition?.() as
@@ -1356,8 +1399,40 @@ export const api = {
             }
         },
     },
-    
+
     signals: {
+        registerTarget(
+            kind: "targets" | "interactables" | "sender",
+            target: string,
+            handler: (...args: unknown[]) => unknown,
+        ): boolean {
+            try {
+                const sig = g()?.api?.signals as
+                    | {
+                        targets?: { register?: (t: string, h: SignalHandler) => void };
+                        interactables?: { register?: (t: string, h: SignalHandler) => void };
+                        registerSenderType?: (t: string, h: SignalHandler) => void;
+                    }
+                    | undefined;
+                if (!sig) return false;
+                if (kind === "targets") {
+                    if (typeof sig.targets?.register !== "function") return false;
+                    sig.targets.register(target, handler);
+                    return true;
+                }
+                if (kind === "interactables") {
+                    if (typeof sig.interactables?.register !== "function") return false;
+                    sig.interactables.register(target, handler);
+                    return true;
+                }
+                if (typeof sig.registerSenderType !== "function") return false;
+                sig.registerSenderType(target, handler);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} signals.registerTarget failed`, kind, target, e);
+                return false;
+            }
+        },
         setOutputAtCell(x: number, y: number, value: boolean): void {
             try {
                 g()?.api?.signals?.setOutputAtCell?.(x, y, value);
@@ -1366,7 +1441,7 @@ export const api = {
             }
         },
     },
-    
+
     energy: {
         registerType(
             structureId: string,
@@ -1379,7 +1454,7 @@ export const api = {
                 console.warn(`${LOG} energy.registerType failed`, structureId, e);
             }
         },
-        
+
         addAtCell(x: number, y: number, amount: number): void {
             try {
                 g()?.api?.energy?.addAtCell?.(x, y, amount);
@@ -1387,7 +1462,7 @@ export const api = {
                 console.warn(`${LOG} energy.addAtCell failed`, x, y, e);
             }
         },
-        
+
         consume(amount: number, options?: Record<string, unknown>): number {
             try {
                 return g()?.api?.energy?.consume?.(amount, options ?? {}) as number;
@@ -1397,7 +1472,7 @@ export const api = {
             }
         },
     },
-    
+
     effects: {
         createParticlesAtWorld(
             x: number,
@@ -1410,7 +1485,7 @@ export const api = {
                 console.warn(`${LOG} effects.createParticlesAtWorld failed`, x, y, e);
             }
         },
-        
+
         includes(effect: string): boolean {
             try {
                 return g()?.api?.effects?.includes?.(effect) === true;
@@ -1420,8 +1495,19 @@ export const api = {
             }
         },
     },
-    
+
     projectiles: {
+        register(def: Record<string, unknown>): boolean {
+            try {
+                const ns = g()?.api?.projectiles;
+                if (typeof ns?.register !== "function") return false;
+                ns.register(def);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} projectiles.register failed`, def.id, e);
+                return false;
+            }
+        },
         createBlueprintFromId(id: string): unknown {
             try {
                 return g()?.api?.projectiles?.createBlueprintFromId?.(id);
@@ -1430,7 +1516,7 @@ export const api = {
                 return undefined;
             }
         },
-        
+
         spawnAtWorld(x: number, y: number, angle: number, blueprint: unknown): void {
             try {
                 g()?.api?.projectiles?.spawnAtWorld?.(x, y, angle, blueprint);
@@ -1439,14 +1525,81 @@ export const api = {
             }
         },
     },
-    
+
     random: {
-        int(min: number, max: number): number {
+        int(min: number, max: number): number | undefined {
             try {
-                return g()?.api?.random?.int?.(min, max) as number;
+                return g()?.api?.random?.int?.(min, max) as number | undefined;
             } catch (e) {
                 console.warn(`${LOG} random.int failed`, min, max, e);
                 return min;
+            }
+        },
+    },
+
+    excavation: {
+        registerProfile(id: string, payload: unknown): boolean {
+            try {
+                const ns = g()?.api?.excavation;
+                if (typeof ns?.registerProfile !== "function") return false;
+                ns.registerProfile(id, payload);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} excavation.registerProfile failed`, id, e);
+                return false;
+            }
+        },
+    },
+
+    triggers: {
+        register(triggerId: string, options: Record<string, unknown>): boolean {
+            try {
+                const ns = g()?.api?.triggers;
+                if (typeof ns?.register !== "function") return false;
+                ns.register(triggerId, options);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} triggers.register failed`, triggerId, e);
+                return false;
+            }
+        },
+    },
+
+    structureBehaviors: {
+        registerConveyorType(id: string, options: unknown): boolean {
+            try {
+                const grouped = g()?.api?.structureBehaviors as
+                    | { registerConveyorType?: (id: string, options: unknown) => void }
+                    | undefined;
+                if (typeof grouped?.registerConveyorType === "function") {
+                    grouped.registerConveyorType(id, options);
+                    return true;
+                }
+                const ns = g()?.api?.conveyors;
+                if (typeof ns?.registerType !== "function") return false;
+                ns.registerType(id, options);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} registerConveyorType failed`, id, e);
+                return false;
+            }
+        },
+        registerLauncherType(payload: unknown): boolean {
+            try {
+                const grouped = g()?.api?.structureBehaviors as
+                    | { registerLauncherType?: (payload: unknown) => void }
+                    | undefined;
+                if (typeof grouped?.registerLauncherType === "function") {
+                    grouped.registerLauncherType(payload);
+                    return true;
+                }
+                const ns = g()?.api?.launchers;
+                if (typeof ns?.registerType !== "function") return false;
+                ns.registerType(payload);
+                return true;
+            } catch (e) {
+                console.error(`${LOG} registerLauncherType failed`, e);
+                return false;
             }
         },
     },
@@ -1463,20 +1616,18 @@ const MATTER_MAP: Record<string, number> = {
     powder: 8,
 };
 
-
 function resolveMatterType(v: string | number | undefined): number | undefined {
     if (v === undefined || v === null) return undefined;
     if (typeof v === "number" && Number.isFinite(v)) return v;
     if (typeof v === "string") {
         const lower = v.trim().toLowerCase();
         if (lower in MATTER_MAP) return MATTER_MAP[lower];
-        
+
         if (/^\d+$/.test(lower)) return Number(lower);
         const enums = g()?.enums?.MatterType;
         if (enums) {
             const cap = v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
-            
-            
+
             const viaEnum = enums[cap];
             if (typeof viaEnum === "number") return viaEnum;
         }
@@ -1491,10 +1642,6 @@ export function resolveElementRef(
     if (v === undefined) return undefined;
     if (typeof v === "number") return v;
     if (typeof v === "string") {
-        
-        
-        
-        
         const t = api.elements.getTypeById?.(v);
         return t !== undefined ? t : v;
     }
@@ -1507,7 +1654,6 @@ function resolveStructureType(v: string | number): string | number {
     if (typeof v === "string" && enums && v in enums) return enums[v];
     return v;
 }
-
 
 export function resolveTerrainRef(
     v: string | number | null | undefined,
@@ -1529,7 +1675,6 @@ function resolveItemType(v: string | number | undefined): number | string {
     return enums?.Mod ?? "Mod";
 }
 
-
 function isConsumableType(v: string | number | undefined): boolean {
     if (v === "Consumable" || v === "consumable") return true;
     if (typeof v === "number") return v === g()?.enums?.ItemType?.Consumable;
@@ -1540,16 +1685,13 @@ function registerI18n(map: Record<string, string>) {
     if (Object.keys(map).length) api.i18n.register("en", map);
 }
 
-
 const NEUTRAL_VARIANT: [number, number, number, number] = [204, 204, 204, 255];
-
 
 function variantFromMetaColor(metaColor: unknown): [number, number, number, number] {
     if (typeof metaColor !== "number" || !Number.isFinite(metaColor)) return NEUTRAL_VARIANT;
     const packed = Math.max(0, Math.min(0xffffff, Math.floor(metaColor)));
     return [(packed >> 16) & 255, (packed >> 8) & 255, packed & 255, 255];
 }
-
 
 export function normalizeElementPatch(entry: Record<string, unknown>): Record<string, unknown> {
     const out: Record<string, unknown> = { ...entry };
@@ -1575,15 +1717,7 @@ function normalizeElement(def: ElementConfig): Record<string, unknown> {
     const out: Record<string, unknown> = { ...def, id, name, nameKey };
     const mt = resolveMatterType(def.matterType as string | number | undefined);
     if (mt !== undefined) out.matterType = mt;
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     const rawColors = def.colors as { variants?: unknown } | number[][] | undefined;
     const rawVariants = Array.isArray(rawColors) ? rawColors : rawColors?.variants;
     if (Array.isArray(rawVariants) && rawVariants.length > 0) {
@@ -1591,10 +1725,6 @@ function normalizeElement(def: ElementConfig): Record<string, unknown> {
             ? { variants: rawVariants }
             : { ...rawColors, variants: rawVariants };
     } else {
-        
-        
-        
-        
         out.colors = Array.isArray(rawColors) || !rawColors
             ? { variants: [variantFromMetaColor(def.metaColor)] }
             : { ...rawColors, variants: [variantFromMetaColor(def.metaColor)] };
@@ -1638,7 +1768,6 @@ function normalizeStructure(def: StructureConfig): Record<string, unknown> & {
     return { ...out, registerOptions };
 }
 
-
 export interface CompiledItemAction {
     fn: unknown;
     skipped: string[];
@@ -1649,7 +1778,6 @@ export interface CompiledItemAction {
 }
 
 let compileItemAction: ((def: Record<string, unknown>) => CompiledItemAction) | null = null;
-
 
 export function setItemActionCompiler(
     fn: (def: Record<string, unknown>) => CompiledItemAction,
@@ -1676,11 +1804,6 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
         out.descriptionKey = `items|${id}|description`;
     }
 
-    
-    
-    
-    
-    
     if (!compileItemAction) {
         throw new Error(
             `${LOG} items.register needs the process compiler; nothing called ` +
@@ -1695,11 +1818,7 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
             );
         }
         out.handleAction = compiled.fn as never;
-        
-        
-        
-        
-        
+
         if (compiled.source.kind === "process") out.processId = compiled.source.id;
         else if (compiled.source.kind === "legacy") out.actions = compiled.source.refs;
         out.options = {
@@ -1708,14 +1827,6 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
             itemType: def.itemType ?? "Mod",
         };
     } else {
-        
-        
-        
-        
-        
-        
-        
-        
         for (const k of ["actions", "handlerKey", "onUpgradeKey"]) delete out[k];
         delete out.options;
     }

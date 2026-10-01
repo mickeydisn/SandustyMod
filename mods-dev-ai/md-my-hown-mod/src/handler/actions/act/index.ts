@@ -87,8 +87,7 @@ export const actActions = defineActions({
                 return;
             }
             try {
-                const grid = api?.grid;
-                grid?.excavateAtCell?.(
+                api.grid.excavateAtCell(
                     at.x,
                     at.y,
                     { x: o.vx ?? 0, y: o.vy ?? 0 },
@@ -128,8 +127,7 @@ export const actActions = defineActions({
                 
                 
                 
-                const projectiles = api?.projectiles;
-                const blueprint = projectiles?.createBlueprintFromId?.(o.projectileId);
+                const blueprint = api.projectiles.createBlueprintFromId(o.projectileId);
                 if (!blueprint) {
                     console.warn(
                         `[md-my-hown-mod:act] itemShoot: no projectile registered as ` +
@@ -143,7 +141,7 @@ export const actActions = defineActions({
                 
                 
                 const angle = vx === 0 && vy === 0 ? 0 : Math.atan2(vy, vx);
-                projectiles?.spawnAtWorld?.(at.x, at.y, angle, blueprint);
+                api.projectiles.spawnAtWorld(at.x, at.y, angle, blueprint);
             } catch (e) {
                 console.warn("[md-my-hown-mod:act] shoot failed", e);
             }

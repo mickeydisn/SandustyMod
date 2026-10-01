@@ -1,27 +1,37 @@
-
 import { compileExcavationProfile } from "../handler/excavation-option/index.ts";
 import {
     type ContactReactionConfig,
     type ElementConfig,
+    type EnergyTypeConfig,
+    type ExcavationProfileConfig,
+    type InputBindingConfig,
     type InteractionConfig,
     type ItemConfig,
     LOG,
     MOD_ID,
+    type PlacementConfigConfig,
     type ProcessingConfig,
+    type ProjectileConfig,
     type RecipeConfig,
+    type SignalConfig,
+    type SpriteConfig,
+    type StructureBehaviorConfig,
     type StructureConfig,
+    type TechConfig,
+    type TerrainConfig,
+    type TriggerConfig,
+    type UpgradeCategoryConfig,
+    type UpgradeConfig,
 } from "../constants.ts";
 import { compileEntryProcess } from "../handler/custom-process/index.ts";
 import { placementConfigPayload, placementConfigProblem } from "../config/placement.ts";
 import {
     api,
     type CompiledItemAction,
-    g,
     resolveElementRef,
     resolveTerrainRef,
     setItemActionCompiler,
 } from "./mysandkit.ts";
-
 
 setItemActionCompiler(
     (def) => compileEntryProcess(def, "itemAction") as unknown as CompiledItemAction,
@@ -37,7 +47,6 @@ const RECIPE_MACHINES = new Set([
     "snowmaker",
     "smelter",
 ]);
-
 
 function resolveRecipeBody(r: RecipeConfig, machine: string): Record<string, unknown> {
     const body: Record<string, unknown> = { ...r };
@@ -109,10 +118,6 @@ export function registerRecipe(r: RecipeConfig): void {
 }
 
 export function registerProcessing(p: ProcessingConfig): void {
-    
-    
-    
-    
     const { id, handlerKey: _hk, ...rest } = p as
         & Record<string, unknown>
         & ProcessingConfig;
@@ -127,16 +132,7 @@ export function registerProcessing(p: ProcessingConfig): void {
         );
         return;
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     api.structures.processing.register(id ?? `${structureType}:process`, rest);
 }
 
@@ -159,36 +155,27 @@ export function registerInteraction(ix: InteractionConfig): void {
     api.elements.addInteractionInfo(el as string | number, ix.interaction);
 }
 
-
-
-export function registerTerrain(def: import("../constants.ts").TerrainConfig): void {
+export function registerTerrain(def: TerrainConfig): void {
     try {
         const id = String(def.id);
         const out: Record<string, unknown> = { ...def, id };
         if (def.name && !def.nameKey) out.nameKey = `terrains|${id}|name`;
-        g()?.api?.terrains?.register?.(out);
+        api.terrains.register(out);
     } catch (e) {
         console.error(`${LOG} terrains.register failed`, def.id, e);
     }
 }
 
-export function registerTech(def: import("../constants.ts").TechConfig): void {
+export function registerTech(def: TechConfig): void {
     try {
         const id = String(def.id);
         const { parentId, preferredPosition, ...body } = def as any;
-        const apiTech = g()?.api?.tech;
-        if (!apiTech) return;
-        if (typeof apiTech.registerDefinition === "function") {
-            apiTech.registerDefinition(id, body);
-        } else if (typeof apiTech.addDefinition === "function") {
-            apiTech.addDefinition(id, body);
+        if (!api.tech.registerDefinition(id, body)) {
+            console.warn(`${LOG} tech ${def.id}: no registerDefinition on this build`);
+            return;
         }
-        if (parentId != null && typeof apiTech.registerNode === "function") {
-            try {
-                apiTech.registerNode(id, body, { parentId, preferredPosition });
-            } catch (e) {
-                console.warn(`${LOG} tech.registerNode failed`, id, e);
-            }
+        if (parentId != null) {
+            api.tech.registerNode(id, body, { parentId, preferredPosition });
         }
     } catch (e) {
         console.error(`${LOG} tech.register failed`, def.id, e);
@@ -196,57 +183,40 @@ export function registerTech(def: import("../constants.ts").TechConfig): void {
 }
 
 export function registerUpgradeCategory(
-    def: import("../constants.ts").UpgradeCategoryConfig,
+    def: UpgradeCategoryConfig,
 ): void {
     try {
         const { onUpgradeKey, id: _id, ...rest } = def as any;
-        
-        
-        
-        
-        
+
         const body: Record<string, unknown> = { ...rest, id: def.id };
         if (!body.name && !body.nameKey) {
             body.name = def.id;
             body.nameKey = `upgrades|${def.id}|name`;
         }
-        g()?.api?.upgrades?.registerCategory?.(body);
+        api.upgrades.registerCategory(body);
     } catch (e) {
         console.error(`${LOG} upgrades.registerCategory failed`, def.id, e);
     }
 }
 
-export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): void {
+export function registerUpgrade(def: UpgradeConfig): void {
     try {
         const { id: _id, ...rest } = def as Record<string, unknown>;
-        
-        
-        
-        
-        
-        
+
         const compiled = compileEntryProcess(rest, "upgrade");
         if (compiled.skipped.length) {
             console.warn(`${LOG} upgrade ${def.id}: unknown action ${compiled.skipped.join(", ")}`);
         }
-        g()?.api?.upgrades?.register?.({ ...rest, onUpgrade: compiled.fn });
+        api.upgrades.register({ ...rest, onUpgrade: compiled.fn });
     } catch (e) {
         console.error(`${LOG} upgrades.register failed`, def.id, e);
     }
 }
 
-
 export function registerInputBinding(
-    def: import("../constants.ts").InputBindingConfig,
+    def: InputBindingConfig,
 ): void {
     try {
-        const input = g()?.api?.input;
-        if (!input?.registerBinding) {
-            console.warn(`${LOG} input.registerBinding unavailable — ${def.id} stored only`);
-            return;
-        }
-        
-        
         const handlers: Record<string, Function> = {};
         if (typeof def.onDownKey === "function") handlers.down = def.onDownKey;
         if (typeof def.onUpKey === "function") handlers.up = def.onUpKey;
@@ -259,7 +229,7 @@ export function registerInputBinding(
         if (def.displayNameKey) definition.displayNameKey = def.displayNameKey;
         if (def.subsection) definition.subsection = def.subsection;
 
-        input.registerBinding(
+        api.input.registerBinding(
             def.id,
             def.defaultKeys ?? [],
             definition as never,
@@ -269,10 +239,10 @@ export function registerInputBinding(
     }
 }
 
-export function registerProjectile(def: import("../constants.ts").ProjectileConfig): void {
+export function registerProjectile(def: ProjectileConfig): void {
     try {
         const out: Record<string, unknown> = { ...def };
-        
+
         if (typeof out.getOptions !== "function") {
             const opts = def.options ?? {};
             out.getOptions = () => ({ ...opts });
@@ -280,17 +250,14 @@ export function registerProjectile(def: import("../constants.ts").ProjectileConf
         if (!out.sprite || !(out.sprite as any).id) {
             out.sprite = { id: `${def.id}-sprite`, ...(def.sprite as object || {}) };
         }
-        g()?.api?.projectiles?.register?.(out);
+        api.projectiles.register(out);
     } catch (e) {
         console.error(`${LOG} projectiles.register failed`, def.id, e);
     }
 }
 
-export function registerEnergyType(def: import("../constants.ts").EnergyTypeConfig): void {
+export function registerEnergyType(def: EnergyTypeConfig): void {
     try {
-        
-        
-        
         const type = def.type;
         if (type !== "conductor" && type !== "storage") {
             console.warn(
@@ -300,27 +267,24 @@ export function registerEnergyType(def: import("../constants.ts").EnergyTypeConf
             );
             return;
         }
-        g()?.api?.energy?.registerType?.(def.structureId, type, def.options ?? {});
+        api.energy.registerType(
+            def.structureId,
+            type as "conductor" | "storage",
+            def.options ?? {},
+        );
     } catch (e) {
         console.error(`${LOG} energy.registerType failed`, def.id, e);
     }
 }
 
 export function registerExcavationProfile(
-    def: import("../constants.ts").ExcavationProfileConfig,
+    def: ExcavationProfileConfig,
 ): void {
     try {
-        
-        
         const { id, power, pattern, options, terrainRules } = def as typeof def & {
             terrainRules?: unknown;
         };
-        
-        
-        
-        
-        
-        
+
         const { patch, key, problem } = compileExcavationProfile(def as Record<string, unknown>);
         if (problem) {
             console.warn(`${LOG} excavation profile ${id}: ${problem} — using the stored power`);
@@ -333,8 +297,6 @@ export function registerExcavationProfile(
             pattern,
         };
         if (Array.isArray(terrainRules) && terrainRules.length > 0) {
-            
-            
             payload.terrainRules = terrainRules.map((raw) => {
                 const r = (raw ?? {}) as Record<string, unknown>;
                 const cellType = resolveTerrainRef(
@@ -350,47 +312,27 @@ export function registerExcavationProfile(
                 return out;
             });
         }
-        g()?.api?.excavation?.registerProfile?.(id, payload);
+        api.excavation.registerProfile(id, payload);
     } catch (e) {
         console.error(`${LOG} excavation.registerProfile failed`, def.id, e);
     }
 }
 
-
 export function registerStructureBehavior(
-    def: import("../constants.ts").StructureBehaviorConfig,
+    def: StructureBehaviorConfig,
 ): void {
     try {
-        const api = g()?.api;
-        if (!api) {
-            console.warn(`${LOG} sandkit api unavailable`);
-            return;
-        }
         const kind = String(def.kind || "").toLowerCase();
         const payload = def.definition ?? def;
-        const grouped = (api as { structureBehaviors?: Record<string, unknown> })
-            .structureBehaviors;
         if (kind === "conveyor") {
             const id = String((payload as { id?: string })?.id ?? def.id);
-            
-            
+
             const options = (payload as { options?: unknown })?.options ?? payload;
-            if (typeof grouped?.registerConveyorType === "function") {
-                (grouped.registerConveyorType as (a: string, b: unknown) => void)(
-                    id,
-                    options,
-                );
-            } else if (typeof api.conveyors?.registerType === "function") {
-                api.conveyors.registerType(id, options);
-            } else {
+            if (!api.structureBehaviors.registerConveyorType(id, options)) {
                 console.warn(`${LOG} no conveyor registration method`, def.id);
             }
         } else if (kind === "launcher") {
-            if (typeof grouped?.registerLauncherType === "function") {
-                (grouped.registerLauncherType as (a: unknown) => void)(payload);
-            } else if (typeof api.launchers?.registerType === "function") {
-                api.launchers.registerType(payload);
-            } else {
+            if (!api.structureBehaviors.registerLauncherType(payload)) {
                 console.warn(`${LOG} no launcher registration method`, def.id);
             }
         } else {
@@ -401,57 +343,50 @@ export function registerStructureBehavior(
     }
 }
 
-
 export function registerPlacementConfig(
-    def: import("../constants.ts").PlacementConfigConfig,
+    def: PlacementConfigConfig,
 ): void {
     const problem = placementConfigProblem(def);
     if (problem) {
-        
         console.error(`${LOG} placement config "${def?.id ?? "?"}" rejected: ${problem}`);
         return;
     }
     try {
-        const api = g()?.api;
-        if (!api) {
-            console.warn(`${LOG} sandkit api unavailable`);
-            return;
-        }
-        const structures = api.structures as {
-            registerPlacementConfig?: (definition: unknown) => unknown;
-        } | undefined;
-        if (typeof structures?.registerPlacementConfig !== "function") {
+        if (!api.structures.registerPlacementConfig(placementConfigPayload(def))) {
             console.warn(`${LOG} no registerPlacementConfig on this build`, def.id);
-            return;
         }
-        structures.registerPlacementConfig(placementConfigPayload(def));
     } catch (e) {
-        
-        
         console.error(`${LOG} placement config failed`, def.id, e);
     }
 }
 
 export function registerSignal(
-    def: import("../constants.ts").SignalConfig,
+    def: SignalConfig,
     handler?: Function,
 ): void {
     try {
         const kind = String(def.kind || "targets").toLowerCase();
-        const sig = g()?.api?.signals;
-        if (!sig) return;
         if (!handler) {
             console.warn(`${LOG} signal ${def.id}: no handler — stored only`);
             return;
         }
-        if (kind === "targets") {
-            sig.targets?.register?.(def.target, handler);
-        } else if (kind === "interactables") {
-            sig.interactables?.register?.(def.target, handler);
-        } else if (kind === "sendertype" || kind === "sender") {
-            sig.registerSenderType?.(def.target, handler);
-        } else {
+        const asKind = kind === "targets" || kind === "interactables"
+            ? kind
+            : kind === "sendertype" || kind === "sender"
+            ? "sender"
+            : null;
+        if (asKind === null) {
             console.warn(`${LOG} signal ${def.id}: unknown kind ${def.kind}`);
+            return;
+        }
+        if (
+            !api.signals.registerTarget(
+                asKind,
+                def.target,
+                handler as (...args: unknown[]) => unknown,
+            )
+        ) {
+            console.warn(`${LOG} signal ${def.id}: no ${asKind}.register on this build`);
         }
     } catch (e) {
         console.error(`${LOG} signals.register failed`, def.id, e);
@@ -459,7 +394,7 @@ export function registerSignal(
 }
 
 export function registerTrigger(
-    def: import("../constants.ts").TriggerConfig,
+    def: TriggerConfig,
     handler?: Function,
 ): void {
     try {
@@ -468,7 +403,7 @@ export function registerTrigger(
             console.warn(`${LOG} trigger ${def.id}: no handler — stored only`);
             return;
         }
-        g()?.api?.triggers?.register?.(tid, {
+        api.triggers.register(tid, {
             interval: def.interval ?? 60,
             sequentialRuns: def.sequentialRuns ?? 1,
             extra: def.extra ?? {},
@@ -479,19 +414,10 @@ export function registerTrigger(
     }
 }
 
-export async function registerSprite(def: import("../constants.ts").SpriteConfig): Promise<void> {
+export async function registerSprite(def: SpriteConfig): Promise<void> {
     try {
         const opts = def.options ?? {};
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
         if (typeof def.source === "string" && def.source.startsWith("data:")) {
             const { registerDataUrlSprite } = await import(
                 "../sprite-editor/register.ts"
@@ -502,10 +428,6 @@ export async function registerSprite(def: import("../constants.ts").SpriteConfig
         if (def.path && (def.fromMod !== false)) {
             await api.sprites.loadFromMod(def.id, def.path, opts);
         } else {
-            
-            
-            
-            
             const source = def.source ?? def.path;
             if (source === undefined) {
                 console.warn(`${LOG} sprite ${def.id}: need path or source`);

@@ -24,7 +24,7 @@ export const decideActions = defineActions({
             if (!Number.isFinite(lo)) return 0;
             if (!Number.isFinite(hi) || hi < lo) return Math.trunc(lo);
             try {
-                return api?.random?.int?.(Math.trunc(lo), Math.trunc(hi)) ??
+                return api.random.int(Math.trunc(lo), Math.trunc(hi)) ??
                     Math.trunc(lo);
             } catch {
                 return Math.trunc(lo);

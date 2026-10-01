@@ -1,5 +1,5 @@
 
-import { g } from "./packages/mysandkit.ts";
+import { api, g } from "./packages/mysandkit.ts";
 
 declare const sandkit: {
     api: Record<string, any>;
@@ -34,7 +34,7 @@ export function safe<T>(fn: () => T, fallback: T | null = null): T | null {
 }
 
 export function toast(msg: string): void {
-    safe(() => getSandkit()?.api?.ui?.toast?.(msg, {}));
+    api.toast(msg);
 }
 
 

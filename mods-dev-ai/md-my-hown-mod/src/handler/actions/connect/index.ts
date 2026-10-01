@@ -16,7 +16,7 @@ export const connectActions = defineActions({
             if (!Number.isFinite(x) || !Number.isFinite(y)) return;
             const value = (options as { value?: unknown } | null)?.value;
             try {
-                api?.signals?.setOutputAtCell?.(x, y, Boolean(value));
+                api.signals.setOutputAtCell(x, y, Boolean(value));
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] signal output failed", e);
             }
@@ -33,7 +33,7 @@ export const connectActions = defineActions({
             try {
                 
                 
-                api?.energy?.consume?.(amount, { allOrNothing: false });
+                api.energy.consume(amount, { allOrNothing: false });
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] energy consume failed", e);
             }
@@ -49,7 +49,7 @@ export const connectActions = defineActions({
             const p = payload as { x?: number; y?: number } | null;
             if (!p || !amount || p.x === undefined || p.y === undefined) return;
             try {
-                api?.energy?.addAtCell?.(p.x, p.y, amount);
+                api.energy.addAtCell(p.x, p.y, amount);
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] energy generate failed", e);
             }
@@ -101,9 +101,9 @@ export const connectActions = defineActions({
                 
                 
                 
-                const add = api?.player?.inventory?.addById;
-                if (typeof add !== "function") return;
-                for (let i = 0; i < Math.max(1, o.count ?? 1); i++) add(o.itemId);
+                for (let i = 0; i < Math.max(1, o.count ?? 1); i++) {
+                    api.player.inventory.addById(o.itemId);
+                }
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] grant item failed", e);
             }
@@ -122,7 +122,7 @@ export const connectActions = defineActions({
             };
             if (!o.itemId || !o.upgradeId) return;
             try {
-                api?.upgrades?.setLevelById?.(o.itemId, o.upgradeId, o.level ?? 1);
+                api.upgrades.setLevelById(o.itemId, o.upgradeId, o.level ?? 1);
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] set upgrade level failed", e);
             }

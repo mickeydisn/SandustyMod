@@ -115,7 +115,7 @@ export function anchorFor(payload: unknown): Anchor {
     if (x !== undefined && y !== undefined) return { x, y, source: "payload" };
 
     try {
-        const cursor = api?.input?.getMouseCellPosition?.();
+        const cursor = api.input.getMouseCellPosition();
         const cx = coord(readProp(cursor, "x"));
         const cy = coord(readProp(cursor, "y"));
         if (cx !== undefined && cy !== undefined) return { x: cx, y: cy, source: "cursor" };

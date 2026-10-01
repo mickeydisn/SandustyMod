@@ -1,4 +1,3 @@
-
 import { api } from "./mysandkit.ts";
 
 export type SettingDef =
@@ -34,8 +33,6 @@ function parseValue(def: SettingDef, raw: unknown): unknown {
         case "string":
             return typeof raw === "string" ? raw : String(raw ?? def.default);
         default:
-            
-            
             return (def as { default?: unknown }).default;
     }
 }
@@ -47,12 +44,7 @@ export function readSettings<S extends SettingsSchema>(
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(schema)) {
         const def = schema[key];
-        
-        
-        
-        
-        
-        
+
         let raw = api.settings.get(`${modId}.${key}`);
         if (raw === undefined) raw = api.settings.get(key);
         out[key] = parseValue(def, raw);
@@ -60,11 +52,7 @@ export function readSettings<S extends SettingsSchema>(
     return out as ParsedSettings<S>;
 }
 
-
 export function readSettingRaw(modId: string, key: string): unknown {
-    
-    
-    
     return api.settings.get(`${modId}.${key}`);
 }
 
@@ -73,12 +61,6 @@ export function onSettingsChange<S extends SettingsSchema>(
     schema: S,
     cb: (cfg: ParsedSettings<S>) => void,
 ): () => void {
-    
-    
-    
-    
-    
-    
     const unsub = api.settings.onChange(() => {
         cb(readSettings(modId, schema));
     });
@@ -93,19 +75,18 @@ export function safe(fn: () => void): void {
     }
 }
 
-
 export function runCleanup(modId: string, reason: string): void {
     console.log(`[modkit] runCleanup ${modId} (${reason})`);
     const state = api.state.store;
     if (!state) return;
-    
+
     const buildings = state.player?.buildings;
     if (buildings && typeof buildings === "object") {
         for (const k of Object.keys(buildings)) {
             if (k.startsWith(modId)) delete buildings[k];
         }
     }
-    
+
     const inv = state.player?.inventory;
     if (Array.isArray(inv)) {
         for (let i = inv.length - 1; i >= 0; i--) {
@@ -125,9 +106,6 @@ export function runDisableCleanup(
 }
 
 export function wipeModStorage(modId: string, keys: readonly string[]): void {
-    
-    
-    
     api.storage.ensureFor(modId);
     for (const k of keys) {
         api.storage.removeFor(modId, k);

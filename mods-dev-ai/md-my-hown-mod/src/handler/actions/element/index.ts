@@ -192,14 +192,6 @@ export interface ElementWriter {
 }
 
 
-function elementsApi():
-    | { remove?: (x: number, y: number, options?: unknown) => void }
-    | undefined {
-    const remove = api.elements.removeAtCellWhenIdle ?? api.elements.removeAtCell;
-    return { remove };
-}
-
-
 export function writeCells(
     structure: unknown,
     context: unknown,
@@ -550,15 +542,7 @@ export const elementActions = defineActions({
                         writer.removeAtCell(cell.x, cell.y, {});
                         return true;
                     }
-                    const api = elementsApi();
-                    if (typeof api?.remove !== "function") {
-                        console.warn(
-                            "[md-my-hown-mod:process] emptyCells: neither the batch " +
-                                "writer nor api.elements can remove, so nothing was removed",
-                        );
-                        return false;
-                    }
-                    api.remove(cell.x, cell.y, {});
+                    api.elements.removeAtCellWhenIdle(cell.x, cell.y, {});
                     return true;
                 },
             );
@@ -599,15 +583,7 @@ export const elementActions = defineActions({
                         writer.removeAtCell(cell.x, cell.y, {});
                         return true;
                     }
-                    const api = elementsApi();
-                    if (typeof api?.remove !== "function") {
-                        console.warn(
-                            "[md-my-hown-mod:process] removeElement: neither the batch " +
-                                "writer nor api.elements can remove, so nothing was removed",
-                        );
-                        return false;
-                    }
-                    api.remove(cell.x, cell.y, {});
+                    api.elements.removeAtCellWhenIdle(cell.x, cell.y, {});
                     return true;
                 },
             );

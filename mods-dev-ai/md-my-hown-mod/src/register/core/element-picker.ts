@@ -1,4 +1,5 @@
 
+import { api } from "../../packages/mysandkit.ts";
 import { configIsHidden, LOG } from "../../constants.ts";
 
 
@@ -6,18 +7,6 @@ const hiddenTypes = new Set<number>();
 
 let installed = false;
 let detach: (() => void) | null = null;
-
-
-function getHooksApi(): {
-    modify?: (id: string, fn: (args: unknown) => void, opts?: unknown) => unknown;
-} | null {
-    try {
-        return (globalThis as { sandkit?: { api?: { hooks?: unknown } } }).sandkit?.api?.hooks ??
-            null;
-    } catch {
-        return null;
-    }
-}
 
 export function noteElementVisibility(
     type: number | undefined,
@@ -34,11 +23,7 @@ export function installElementPickerVisibility(): number {
     installed = true;
     if (hiddenTypes.size === 0) return 0;
 
-    const modify = getHooksApi()?.modify;
-    if (typeof modify !== "function") {
-        
-        
-        
+    if (!api.hooks.hasHooks()) {
         console.warn(
             `${LOG} element picker: hooks.modify unavailable — ` +
                 `${hiddenTypes.size} element(s) hidden in the panel but still in the vacuum`,
@@ -46,7 +31,7 @@ export function installElementPickerVisibility(): number {
         return 0;
     }
 
-    const ret = modify(
+    const ret = api.hooks.modify(
         "vacuum:element:prepare",
         (args: unknown) => {
             
