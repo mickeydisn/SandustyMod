@@ -7,7 +7,6 @@ import { loadPanelAutoMinutes } from "./uiStore.ts";
 
 export interface ModConfig {
     enabled: boolean;
-    autoRefresh: boolean;
     /** Minutes between auto scans — one data point per scan. */
     timeRange: number;
     /** Max stored data points (FIFO). */
@@ -39,7 +38,6 @@ function readNumber(name: string, fallback: number, min: number, max: number): n
 export function getConfig(): ModConfig {
     return {
         enabled: readBool("enabled", true),
-        autoRefresh: readBool("autoRefresh", false),
         timeRange: readNumber(
             "timeRange",
             // Pre-`timeRange` installs stored the scan interval under this
@@ -63,23 +61,16 @@ export function getConfig(): ModConfig {
     };
 }
 
-/** In-panel override for autoRefresh (mirrors setting when possible). */
-let panelAutoOverride: boolean | null = null;
-
-export function getAutoRefreshEnabled(): boolean {
-    if (panelAutoOverride !== null) return panelAutoOverride;
-    return getConfig().autoRefresh;
-}
-
-export function setPanelAutoRefresh(on: boolean): void {
-    panelAutoOverride = on;
-    // Best-effort write back so next load matches
-    safe(() => api.settings.set?.("autoRefresh", on));
-    safe(() => api.settings.set?.(`${MOD_ID}.autoRefresh`, on));
-}
-
-export function clearPanelAutoOverride(): void {
-    panelAutoOverride = null;
+/**
+ * Auto refresh has no switch: it always runs.
+ *
+ * `autoRefresh` used to be a boolean setting that defaulted to *off*, so a fresh
+ * install never scanned on a timer until the player found the toggle. The value
+ * is still read from storage by older saves, but nothing consults it — a stored
+ * `false` must not keep the interval stopped.
+ */
+export function autoRefreshAlwaysOn(): true {
+    return true;
 }
 
 export function intervalMs(): number {
@@ -92,9 +83,7 @@ export function onConfigChange(cb: (cfg: ModConfig) => void): void {
     configListeners.push(cb);
     safe(() => {
         api.settings.onChange?.((values: Record<string, unknown>) => {
-            if (values && typeof values === "object") {
-                panelAutoOverride = null; // settings win
-            }
+            void values;
             cb(getConfig());
         });
     });

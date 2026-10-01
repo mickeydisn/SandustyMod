@@ -41,7 +41,7 @@ import type {
     TabId,
     TerrainRow,
 } from "./types.ts";
-import { listCataloguesForPicker, listPickerOptions, resolveCards } from "./data.ts";
+import { listCataloguesForPicker, listPickerOptions } from "./data.ts";
 import {
     digPercent,
     formatDigPct,
@@ -55,7 +55,7 @@ import {
 import { buildValidatedDefaultCards, emptyCard, loadCards, saveCards } from "./cards.ts";
 import { bootFromStorage, bump, setRepaint, state } from "./state.ts";
 import { reconfigureAutoRefresh, runRefresh } from "./refresh.ts";
-import { getAutoRefreshEnabled, setPanelAutoRefresh, setSetting } from "./config.ts";
+import { setSetting } from "./config.ts";
 import { store } from "./uiStore.ts";
 import { getConfig } from "./config.ts";
 
@@ -144,13 +144,6 @@ export function StatisticPanel(): unknown {
         await runRefresh("manual");
     };
 
-    const toggleAuto = (): void => {
-        const next = !getAutoRefreshEnabled();
-        setPanelAutoRefresh(next);
-        reconfigureAutoRefresh();
-        bump();
-    };
-
     const setTab = (id: string): void => {
         state.tab = id;
         if (id !== "config") state.editingCards = false;
@@ -168,38 +161,9 @@ export function StatisticPanel(): unknown {
     const closeEditor = (save: boolean): void => {
         if (save) {
             saveCards(state.cards);
-            // Re-resolve card stats against last scan without full rescan
-            if (state.snapshot) {
-                const { elements, structures, terrains } = state.snapshot;
-                // elements in snapshot are present-only; re-list for labels
-                const cats = listCataloguesForPicker();
-                const elMap = new Map(cats.elements.map((r) => [r.id, r]));
-                for (const r of elements) {
-                    const base = elMap.get(r.id);
-                    if (base) base.count = r.count;
-                    else elMap.set(r.id, r);
-                }
-                const trMap = new Map(terrains.map((r) => [r.id, r]));
-                for (const r of cats.terrains) {
-                    if (!trMap.has(r.id)) trMap.set(r.id, r);
-                }
-                const ref = state.snapshot.statsReference ?? loadReference();
-                const hist = state.snapshot.statsHistory?.length
-                    ? state.snapshot.statsHistory
-                    : loadHistory();
-                state.snapshot = {
-                    ...state.snapshot,
-                    cards: resolveCards(
-                        state.cards,
-                        [...elMap.values()],
-                        structures.length ? structures : cats.structures,
-                        [...trMap.values()],
-                        ref,
-                        hist,
-                    ),
-                };
-            }
         } else {
+            // Discard reverts to the stored list, so Save is the only path that
+            // writes. Cards are recomputed on bump, so no extra resolve is needed.
             state.cards = loadCards();
         }
         state.editingCards = false;
@@ -340,16 +304,6 @@ export function StatisticPanel(): unknown {
         active: state.tab,
         onSelect: setTab,
         hidden: state.editingCards,
-        extra: e(
-            "button",
-            {
-                key: "edit-cards",
-                style: styles.tab,
-                onClick: () => openEditor(),
-                title: "Edit home cards",
-            },
-            "✎ Cards",
-        ),
     });
 
     const toolbar = state.tab !== "home" && state.tab !== "config" && !state.editingCards
@@ -403,7 +357,7 @@ export function StatisticPanel(): unknown {
     let body: unknown;
 
     if (state.editingCards) {
-        body = renderCardEditor(e);
+        body = renderCardEditor(e, closeEditor);
     } else if (state.tab === "config") {
         body = renderConfigPanel(e, openEditor);
     } else if (scanning && !snap) {
@@ -496,17 +450,8 @@ function renderConfigPanel(
     e: (...args: unknown[]) => unknown,
     openEditor: () => void,
 ): unknown {
-    const autoOn = getAutoRefreshEnabled();
     const modMins = getConfig().timeRange;
     const mins = state.autoMinutes ?? modMins;
-
-    const row = (label: string, control: unknown) =>
-        e(
-            "div",
-            { style: styles.cfgRow },
-            e("span", { style: styles.cfgLabel }, label),
-            e("div", { style: styles.cfgControl }, control),
-        );
 
     return e(
         "div",
@@ -518,20 +463,7 @@ function renderConfigPanel(
             zoomRange: [0.6, 1.4],
             alphaRange: [0.35, 1],
         }),
-        e("div", { style: { ...styles.groupTitle, marginTop: 14 } }, "Auto refresh"),
-        row(
-            "Auto Refresh Enabled",
-            e("button", {
-                style: autoOn ? styles.buttonPrimary : styles.button,
-                onClick: () => {
-                    const next = !getAutoRefreshEnabled();
-                    setPanelAutoRefresh(next);
-                    reconfigureAutoRefresh();
-                    bump();
-                },
-            }, autoOn ? "ON" : "OFF"),
-        ),
-        CfgSection("Tracking", 14),
+        CfgSection("Auto refresh", 14),
         NumberRow("Every", mins, {
             min: SETTINGS.timeRange.min,
             max: SETTINGS.timeRange.max,
@@ -568,6 +500,31 @@ function renderConfigPanel(
                 bump();
             },
         }),
+        CfgSection("KPI cards", 14),
+        e(
+            "div",
+            { style: { display: "flex", gap: 6, marginBottom: 8 } },
+            e(
+                "button",
+                {
+                    style: styles.buttonPrimary,
+                    onClick: () => openEditor(),
+                },
+                "Edit cards",
+            ),
+            e(
+                "button",
+                {
+                    style: styles.button,
+                    onClick: () => {
+                        state.cards = buildValidatedDefaultCards();
+                        saveCards(state.cards);
+                        bump();
+                    },
+                },
+                "Reset defaults",
+            ),
+        ),
         e("div", { style: { ...styles.groupTitle, marginTop: 14 } }, "Data"),
         e(
             "div",
@@ -611,7 +568,11 @@ function renderHome(
         "div",
         { style: styles.homeWrap },
         cards.length === 0
-            ? e("div", { style: styles.empty }, "No cards configured. Click ✎ Cards.")
+            ? e(
+                "div",
+                { style: styles.empty },
+                "No cards configured. Use Edit cards in the Config tab.",
+            )
             : e(
                 "div",
                 { style: styles.groupGrid },
@@ -692,7 +653,21 @@ function renderResourceCard(
     return KpiCard(model);
 }
 
-function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
+/**
+ * Picker kind per card id.
+ *
+ * The kind dropdown used to be inert: it rendered, but the item dropdown always
+ * listed every element, terrain and structure at once with `E · / T · / S ·`
+ * prefixes, so choosing "Terrain" still offered elements. This remembers the
+ * pick per card so the list can be filtered instead. Module-level like
+ * `lastRows` — it is render scratch state, not something worth persisting.
+ */
+const pickerKind: Record<string, CardItemKind> = {};
+
+function renderCardEditor(
+    e: (...args: unknown[]) => unknown,
+    closeEditor: (save: boolean) => void,
+): unknown {
     const cats = listCataloguesForPicker();
     // Merge terrains from last snapshot so ids found on map appear
     const snapTerrains = state.snapshot?.terrains ?? [];
@@ -703,6 +678,11 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
     const elementOpts = options.filter((o) => o.kind === "element");
     const terrainOpts = options.filter((o) => o.kind === "terrain");
     const structureOpts = options.filter((o) => o.kind === "structure");
+
+    const optsForKind = (kind: CardItemKind) =>
+        kind === "element" ? elementOpts : kind === "terrain" ? terrainOpts : structureOpts;
+
+    const kindOf = (cardId: string): CardItemKind => pickerKind[cardId] ?? "element";
 
     const updateCard = (id: string, patch: Partial<HomeCardConfig>): void => {
         state.cards = state.cards.map((c) => c.id === id ? { ...c, ...patch } : c);
@@ -782,44 +762,11 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
             }, "Reset defaults"),
             e("button", {
                 style: styles.button,
-                onClick: () => {
-                    state.editingCards = false;
-                    state.cards = loadCards();
-                    bump();
-                },
+                onClick: () => closeEditor(false),
             }, "Cancel"),
             e("button", {
                 style: styles.buttonPrimary,
-                onClick: () => {
-                    saveCards(state.cards);
-                    state.editingCards = false;
-                    if (state.snapshot) {
-                        const fullEl = listCataloguesForPicker().elements;
-                        const countById = new Map(
-                            state.snapshot.elements.map((r) => [r.id, r.count]),
-                        );
-                        for (const r of fullEl) r.count = countById.get(r.id) ?? 0;
-                        for (const r of state.snapshot.elements) {
-                            if (!fullEl.some((x) => x.id === r.id)) fullEl.push(r);
-                        }
-                        const ref = state.snapshot.statsReference ?? loadReference();
-                        const hist = state.snapshot.statsHistory?.length
-                            ? state.snapshot.statsHistory
-                            : loadHistory();
-                        state.snapshot = {
-                            ...state.snapshot,
-                            cards: resolveCards(
-                                state.cards,
-                                fullEl,
-                                state.snapshot.structures,
-                                state.snapshot.terrains,
-                                ref,
-                                hist,
-                            ),
-                        };
-                    }
-                    bump();
-                },
+                onClick: () => closeEditor(true),
             }, "Save"),
         ),
         e(
@@ -827,6 +774,9 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
             { style: styles.editorList },
             ...state.cards.map((card) => {
                 const open = state.editFocusId === card.id;
+                // Read once per render so the two dropdowns and the Add handler
+                // all agree on which group is showing.
+                const kind = kindOf(card.id);
                 return e(
                     "div",
                     { key: card.id, style: styles.editorCard },
@@ -923,7 +873,12 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                                     {
                                         style: styles.select,
                                         id: `add-kind-${card.id}`,
-                                        defaultValue: "element",
+                                        value: kind,
+                                        onChange: (ev: Event) => {
+                                            pickerKind[card.id] = (ev.target as HTMLSelectElement)
+                                                .value as CardItemKind;
+                                            bump();
+                                        },
                                     },
                                     e("option", { value: "element" }, "Element"),
                                     e("option", { value: "terrain" }, "Terrain"),
@@ -932,30 +887,22 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                                 e(
                                     "select",
                                     {
+                                        // Keyed by kind so switching group remounts
+                                        // the list; otherwise the old pick stays
+                                        // selected in a dropdown that no longer
+                                        // contains it, and Add would use a stale id.
+                                        key: `add-id-${card.id}:${kind}`,
                                         style: { ...styles.select, flex: 1 },
                                         id: `add-id-${card.id}`,
                                         defaultValue: "",
                                     },
                                     e("option", { value: "" }, "— pick item —"),
-                                    ...elementOpts.map((o) =>
+                                    ...optsForKind(kind).map((o) =>
                                         e(
                                             "option",
-                                            { key: `e:${o.id}`, value: `element::${o.id}` },
-                                            `E · ${o.label}`,
+                                            { key: o.id, value: `${kind}::${o.id}` },
+                                            o.label,
                                         )
-                                    ),
-                                    ...terrainOpts.map((o) =>
-                                        e(
-                                            "option",
-                                            { key: `t:${o.id}`, value: `terrain::${o.id}` },
-                                            `T · ${o.label}`,
-                                        )
-                                    ),
-                                    ...structureOpts.map((o) =>
-                                        e("option", {
-                                            key: `s:${o.id}`,
-                                            value: `structure::${o.id}`,
-                                        }, `S · ${o.label}`)
                                     ),
                                 ),
                                 e("button", {
@@ -967,11 +914,11 @@ function renderCardEditor(e: (...args: unknown[]) => unknown): unknown {
                                                 | null;
                                         const val = sel?.value ?? "";
                                         if (!val) return;
-                                        const [kind, id] = val.split("::") as [
+                                        const [picked, id] = val.split("::") as [
                                             CardItemKind,
                                             string,
                                         ];
-                                        if (kind && id) addItem(card.id, kind, id);
+                                        if (picked && id) addItem(card.id, picked, id);
                                         if (sel) sel.value = "";
                                     },
                                 }, "Add"),

@@ -111,15 +111,7 @@ export type KpiCategory =
     | "resources_collected"
     | "keys_pressed"
     | "distance_walked"
-    | "collisions"
-    | "graber_uses"
-    | "graber_resources"
-    | "graber_elements"
-    | "vacuum_uses"
-    | "vacuum_cells";
-
-/** Engine item id of the built-in grabber tool. */
-export const GRABBER_ITEM_ID = "grabber";
+    | "collisions";
 
 export const KPI_CATEGORIES: { id: KpiCategory; label: string; color: string }[] = [
     { id: "structures_placed", label: "Structures placed", color: "#4ade80" },
@@ -132,19 +124,13 @@ export const KPI_CATEGORIES: { id: KpiCategory; label: string; color: string }[]
     { id: "keys_pressed", label: "Keys pressed", color: "#22d3ee" },
     { id: "distance_walked", label: "Distance walked", color: "#38bdf8" },
     { id: "collisions", label: "Collisions", color: "#f97316" },
-    { id: "graber_uses", label: "Graber uses", color: "#fb923c" },
-    { id: "graber_resources", label: "Graber collected", color: "#a78bfa" },
-    { id: "graber_elements", label: "Elements grabbed", color: "#2dd4bf" },
-    { id: "vacuum_uses", label: "Vacuum uses", color: "#818cf8" },
-    { id: "vacuum_cells", label: "Vacuum head", color: "#c084fc" },
 ];
 
 /**
  * Unit suffix shown in the panel. Absent = plain count.
  *
- * `distance_walked` has no unit on purpose: it is a scaled figure
- * (pixels ÷ cellSize ÷ 4), not a grid step, so labelling it "cells" would lie.
+ * Empty by design: `distance_walked` has no unit on purpose — it is a scaled
+ * figure (pixels ÷ cellSize ÷ 4), not a grid step, so labelling it "cells" would
+ * lie. A category is added here only when its figure really is a unit.
  */
-export const KPI_UNITS: Partial<Record<KpiCategory, string>> = {
-    vacuum_cells: "cells",
-};
+export const KPI_UNITS: Partial<Record<KpiCategory, string>> = {};

@@ -8,19 +8,22 @@ accumulates counters from live player events into an in-memory buffer and persis
 
 ## Features
 
-| Tab            | Content                                                                                            |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| **Home**       | Configurable KPI cards (structures / dig / loot / graber / activity) with session Δ and sparklines |
-| **Structures** | Structures placed · removed · moved — history graph + selectable list                              |
-| **Dig**        | Terrain cells destroyed, by terrain **name** — graph + selectable list                             |
-| **Move**       | Distance walked and collisions — teleports excluded                                                |
-| **Keys**       | Key presses — graph + selectable list, breakdown by key                                            |
-| **Graber**     | Grabber uses, and what it collected — graph + selectable list by resource                          |
-| **⚙️**         | Panel chrome, **Tracking** settings, card editor, reset session / wipe all                         |
+| Tab            | Content                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| **Home**       | Configurable KPI cards (structures / dig / items / activity) with session Δ and sparklines |
+| **Structures** | Structures placed · removed · moved — history graph + selectable list                      |
+| **Items**      | Every item use, broken down by item — history graph + selectable list                      |
+| **Dig**        | Terrain cells destroyed, by terrain **name** — graph + selectable list                     |
+| **Move**       | Distance walked and collisions — teleports excluded                                        |
+| **Keys**       | Key presses — graph + selectable list, breakdown by key                                    |
+| **⚙️**         | Panel chrome, **Tracking** settings, card editor, reset session / wipe all                 |
 
 - **No world scan** — counters come only from sandkit events.
 - **Live buffer** — `totals` (lifetime) + `session` (resettable) + rolling history for sparklines.
 - **Configurable cards** — pick any category (and optional sub-key) for Home cards.
+- **Graph series selection** — a list defaults to its top 3 rows. Tick to add a row, untick to drop
+  one, or press **◉** on a row to plot that metric alone. Solo is not a mode: ticking another row
+  afterwards widens the selection again.
 - **Bounded storage** — `timeRange` caps the history window, `maxCountSave` caps distinct sub-keys
   per data point, so neither can grow without limit.
 - **Lock / mini mode** — keep the panel open when switching tools; compact card strip.
@@ -40,14 +43,14 @@ steps (which only happen after a reset or wipe) clamp to zero.
 > reduces terrain, placing raises structures — so the absolute value is the meaningful quantity and
 > a delta would be misleading.
 
-### Removed: the Items tab
+### Card editing
 
-The **Items** tab and the default "Items & tools" card were removed. The underlying KPIs —
-`items_used`, `world_items_picked`, `resources_collected` — are **still tracked**, so cards you
-configured yourself keep working with their data intact, and the card editor can add `items_used`
-back to any card.
+The **⚙️** tab's **Edit cards** button replaces the panel with a full-screen editor — `+ New card`,
+`Reset defaults`, `Cancel`, `Save`. Each card is collapsible: a title, an ordered item list (the
+first item is the card's primary number and colour), and a picker that offers **every** KPI
+category. Cancel discards; Save persists.
 
-Only the tab and the default card are gone.
+Management matches `md-word-statistic` so both mods work the same way.
 
 ## Tracked events
 
@@ -112,71 +115,7 @@ card uses a compact `MiniSparkline` instead.
 The world mod's reference snapshot is the "where I started digging" baseline that `% dug` is
 measured against, so **Reset session deliberately keeps it** — only **Wipe all** discards it.
 
-## Grabber tracking
-
-| KPI                | Meaning                                                        |
-| ------------------ | -------------------------------------------------------------- |
-| `graber_uses`      | One per grabber use                                            |
-| `graber_elements`  | **What was grabbed** — element/terrain id, plus how many cells |
-| `graber_resources` | Which resource the engine credited, keyed by resource          |
-
-`graber_elements` is resolved from a **pre-cache**, not read at collection time.
-
-`resource:collection:prepare` turned out **not** to be on the grabber's path. The scraped
-`jojo5.quickgrab` mod patches the grabber's own collection loop, which fills an internal slot matrix
-directly (`matrix[b + 2]` occupancy, `shared.sim.elementData.type[…]` for particles, terrain type
-otherwise). That `prepare` hook lives in the `resource:collection` helper the _vacuum_ uses — which
-is why hooking it recorded nothing.
-
-So while the grabber is held, a 200 ms tick snapshots the element in a bounded window (13×13, capped
-at 400 cells) around `input.getMouseCellPosition()`, and the `resource:collected` event resolves the
-element from that snapshot. Only documented APIs are used. The cache is cleared the moment the
-grabber is no longer held, and released on disable.
-
-Resolution falls back in order — cache → live cell lookup → `resourceId` — so the section can never
-silently come up empty: a failure shows up as a named row instead of nothing.
-
-### Vacuum
-
-| KPI            | Meaning                                               |
-| -------------- | ----------------------------------------------------- |
-| `vacuum_uses`  | One per vacuum activation                             |
-| `vacuum_cells` | Head size at the moment it fired, summed — in `cells` |
-
-The vacuum has **dedicated hooks**, so unlike the grabber it needs no polling and no attribution
-window:
-
-- `vacuum:prepare` fires **once per activation** and carries the head `pattern` (`number[][]`),
-  which yields both the use count and the head size in cells.
-- `vacuum:element:prepare` fires **per element considered** — far too frequent to count raw (the
-  same problem as the collision hook at ~135/s), so it is deliberately unused.
-
-There is **no grabber event and no grabber hook**. `api.hooks` has no grabber id, and `item:use` is
-emitted from the ability/use-definition resolver
-(`kind: "instant" | "sustained" | "chargeThenFire"`) — so it only fires for items that declare
-_uses_ with an energy cost. The grabber is a plain tool with `energyCost: 0` and no use definition,
-which is why filtering `item:use` on the grabber recorded nothing.
-
-A use is therefore recorded if **any** of three signals fires:
-
-| Signal                              | Mechanism                                   |
-| ----------------------------------- | ------------------------------------------- |
-| `action:start` hook                 | fires when the grabber action begins        |
-| `item:use` hook                     | inert today; correct if a use def is added  |
-| `api.tools.grabber.isLoaded()` poll | rising edge = the grabber holds a selection |
-
-All three funnel through one debounced counter (350 ms), so a single grab counts once however many
-signals saw it, while a burst of real grabs still counts each one. The `isLoaded()` poll is the
-safety net — the only signal backed by a documented API rather than a hook.
-
-`graber_resources` comes from the `resource:collected` event, attributed to the grabber only within
-1.5s of a use, so a collection made by something else is never miscounted.
-
-`api.tools.grabber.isActive()` is deliberately **not** used: it is engine-internal state set only by
-the real input path, and it stays `false` when the tool is selected programmatically — which is what
-made the old gate useless.
-
-### Keyboard & movement
+## Keyboard & movement
 
 Neither has a first-class KPI event, so `src/activity.ts` reads them directly.
 

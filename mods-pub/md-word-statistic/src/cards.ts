@@ -4,11 +4,17 @@
  * First item on a card is the primary: larger number + drives text/border color.
  */
 import { api, safe } from "@sandmd/ui";
-import { MOD_ID } from "./constants.ts";
+import { LOG, MOD_ID } from "./constants.ts";
 import { listCataloguesForPicker } from "./data.ts";
 import type { CardItemKind, CardItemRef, HomeCardConfig } from "./types.ts";
 
 export const CARDS_STORE_KEY = "homeCards";
+/**
+ * Written by older versions, which seeded the default cards into storage on
+ * first load. `loadCards` no longer writes anything, so nothing creates this
+ * key any more — it stays listed in {@link allCardStorageKeys} so the disable
+ * wipe still clears it from existing saves.
+ */
 export const CARDS_SEEDED_KEY = "homeCardsSeeded";
 
 /** Desired default layout (ids resolved against live catalogue on first seed). */
@@ -135,29 +141,39 @@ export function buildValidatedDefaultCards(): HomeCardConfig[] {
     }));
 }
 
-/** Load cards from mod storage, or seed validated defaults once. */
+/**
+ * Load the card config from mod storage, falling back to the defaults.
+ *
+ * Read-only on purpose. This used to write the validated defaults straight back
+ * to storage, which is a data-loss hazard now that the config is also read on
+ * the boot scan — before the panel has mounted: a store that is not readable yet
+ * would overwrite a real layout with defaults, and a catalogue that has only
+ * half registered its mods would persist a default set with items already
+ * dropped from it. The defaults are rebuilt from `DEFAULT_SPEC` on every load
+ * anyway, so there is nothing to gain from writing them. Only the player's own
+ * Save and "Reset defaults" write.
+ *
+ * A stored empty array is honoured: clearing every card in the editor is a
+ * deliberate choice and has to survive a reload instead of falling back to the
+ * default set.
+ */
 export function loadCards(): HomeCardConfig[] {
-    const raw = safe(() => api.storage.get(MOD_ID, CARDS_STORE_KEY));
-    if (Array.isArray(raw) && raw.length > 0 && raw.every(isValidCard)) {
-        return raw.map((c) => ({
-            id: c.id,
-            title: c.title,
-            items: c.items.map((it) => ({
-                kind: it.kind as CardItemKind,
-                id: String(it.id).trim(),
-            })),
-        }));
+    const raw = safe(() => api.storage.get(MOD_ID, CARDS_STORE_KEY), null);
+    if (Array.isArray(raw)) {
+        if (raw.length === 0) return [];
+        if (raw.every(isValidCard)) {
+            return raw.map((c) => ({
+                id: c.id,
+                title: c.title,
+                items: c.items.map((it) => ({
+                    kind: it.kind as CardItemKind,
+                    id: String(it.id).trim(),
+                })),
+            }));
+        }
+        console.warn(`${LOG} stored card config is malformed — using defaults`);
     }
-
-    // First time (or invalid): validate ids against catalogue and persist
-    const defaults = buildValidatedDefaultCards();
-    safe(() => api.storage.set(MOD_ID, CARDS_STORE_KEY, defaults));
-    safe(() => api.storage.set(MOD_ID, CARDS_SEEDED_KEY, true));
-    return defaults.map((c) => ({
-        id: c.id,
-        title: c.title,
-        items: c.items.map((it) => ({ ...it })),
-    }));
+    return buildValidatedDefaultCards();
 }
 
 export function saveCards(cards: HomeCardConfig[]): void {

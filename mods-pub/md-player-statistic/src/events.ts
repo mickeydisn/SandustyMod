@@ -22,15 +22,12 @@
  *
  * See `ENGINE_NOTES.md` for the emit sites these claims come from.
  */
-import { api, safe } from "@sandmd/ui";
+import { api, root, safe } from "@sandmd/ui";
 import { bumpKpi } from "./buffer.ts";
 import { LOG } from "./constants.ts";
-import { bindGrabber, unbindGrabber } from "./graber.ts";
 
 type Unsub = (() => void) | void;
 const unsubs: Unsub[] = [];
-/** `api.hooks.*` unsubscribes, released alongside the event listeners. */
-const hookUnsubs: Unsub[] = [];
 
 function on(eventId: string, handler: (payload: any) => void): void {
     const u = safe(() => api.events.on(eventId, handler));
@@ -53,6 +50,91 @@ function structureIdOf(payload: any): string {
     const raw = payload?.structureType ?? payload?.structure?.type ??
         payload?.structureId ?? payload?.structure?.id ?? payload?.type;
     return raw == null ? "unknown" : String(raw);
+}
+
+/**
+ * Turn a numeric structure or item type into the name a person would recognise.
+ *
+ * ## Why the panel shows bare numbers
+ *
+ * `building:placed` and `item:used` report a built-in's **type value** — a
+ * number — because that is the engine's runtime handle. Terrain avoided this:
+ * `terrainName` resolves `cellType` to an id at record time via
+ * `api.terrains.getIdByType`, so a dug `12` is stored as `"Stone"`.
+ *
+ * Structures and items had no equivalent, so `String(12)` went into the buffer
+ * and the panel listed "12" where a name belongs. `StructureType` and `ItemId`
+ * are both name→number enums with no reverse map, so the member name is
+ * recovered by scanning the enum, exactly as the catalog does.
+ *
+ * Resolution is at **display** time, not record time, on purpose: the counts
+ * already in a player's buffer were stored as numbers, and resolving when the
+ * event fires would leave every existing row still reading "12". Resolving here
+ * fixes history as well as new events, and the raw key stays the row `id` so
+ * graph series and selection keep working.
+ *
+ * A mod-registered structure or item has a string id, and that id *is* its
+ * identity here — it is not run through the enum, so nothing is renamed.
+ */
+
+/** `api.enums.ItemId` under whichever name the host exposes it. */
+function enumMap(name: string): Record<string, unknown> {
+    const e = safe(() => (root as { enums?: Record<string, unknown> }).enums?.[name], null);
+    return e && typeof e === "object" ? (e as Record<string, unknown>) : {};
+}
+
+/** `GrapplingHook` → `Grappling hook`; `ConveyorLeft` → `Conveyor left`. */
+function humanise(k: string): string {
+    const spaced = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** The enum member name for a numeric value, or undefined if the enum has no such member. */
+function memberNameFor(enumName: string, value: number): string | undefined {
+    for (const [member, v] of Object.entries(enumMap(enumName))) {
+        if (v === value) return member;
+    }
+    return undefined;
+}
+
+/** A built-in's registered name, when the host keeps one on the definition. */
+function definedName(get: () => unknown): string | undefined {
+    const n = safe(() => {
+        const def = get() as { name?: unknown } | undefined;
+        return typeof def?.name === "string" ? def.name : undefined;
+    }, undefined);
+    return typeof n === "string" && n.trim() ? n : undefined;
+}
+
+/**
+ * A display name for one sub-key of a KPI category.
+ *
+ * Returns the key unchanged when nothing better is known, so an unresolvable id
+ * still reads as itself rather than as a blank row or an invented name.
+ */
+export function displayNameFor(category: string, key: string): string {
+    // A non-numeric key is already an id (a mod structure, a mod item, or a
+    // terrain already resolved at record time) and is its own label.
+    if (key.trim() === "" || !/^\d+$/.test(key)) return key;
+    const n = Number(key);
+
+    if (category.startsWith("structures_")) {
+        return definedName(() => api.structures?.getDefinitionByType?.(n)) ??
+            (() => {
+                const m = memberNameFor("StructureType", n);
+                return m ? humanise(m) : key;
+            })();
+    }
+
+    if (category === "items_used") {
+        return definedName(() => api.items?.getDefinitionById?.(n)) ??
+            (() => {
+                const m = memberNameFor("ItemId", n);
+                return m ? humanise(m) : key;
+            })();
+    }
+
+    return key;
 }
 
 export function bindEvents(): void {
@@ -98,30 +180,15 @@ export function bindEvents(): void {
         bumpKpi("resources_collected", String(id), amount);
     });
 
-    // —— Grabber (uses + per-resource), driven by api.hooks ——
-    bindGrabber(on, (unsub) => {
-        hookUnsubs.push(unsub);
-    });
-
-    console.log(
-        `${LOG} event listeners bound (${unsubs.length} unsubs, ` +
-            `${hookUnsubs.length} hook unsubs tracked)`,
-    );
+    console.log(`${LOG} event listeners bound (${unsubs.length} unsubs)`);
 }
 
 export function unbindEvents(): void {
-    unbindGrabber();
     for (const u of unsubs) {
         try {
             u?.();
         } catch { /* */ }
     }
     unsubs.length = 0;
-    for (const u of hookUnsubs) {
-        try {
-            u?.();
-        } catch { /* */ }
-    }
-    hookUnsubs.length = 0;
     console.log(`${LOG} event listeners unbound`);
 }

@@ -69,6 +69,27 @@ export function readSettings<S extends SettingsSchema>(
     return out as ParsedSettings<S>;
 }
 
+/**
+ * The raw value of one setting field, or `undefined` when it cannot be read.
+ *
+ * `readSettings` cannot be used for this because it *defaults* every field, so
+ * "the player set this to false" and "we could not read it" arrive as the same
+ * `false`. Anything that decides whether to **destroy** stored data needs those
+ * two kept apart, so it reads through here instead.
+ */
+export function readSettingRaw(modId: string, key: string): unknown {
+    const api = (globalThis as unknown as { sandkit: { api: any } }).sandkit?.api;
+    if (!api?.settings?.get) return undefined;
+    // The engine namespaces a mod's fields by its `modinfo.json` id, so this is
+    // `"<modId>.<key>"`. The bare `key` is a *global* field belonging to no mod,
+    // and reading it here would let an unrelated setting decide this mod's fate.
+    try {
+        return api.settings.get(`${modId}.${key}`);
+    } catch {
+        return undefined;
+    }
+}
+
 export function onSettingsChange<S extends SettingsSchema>(
     modId: string,
     schema: S,

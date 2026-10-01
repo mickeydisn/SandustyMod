@@ -43,6 +43,7 @@ import {
 import { ITEM_ID, KPI_CATEGORIES, KPI_UNITS, SETTINGS, VERSION } from "./constants.ts";
 import type { KpiCategory } from "./constants.ts";
 import { getConfig, setSetting } from "./config.ts";
+import { displayNameFor } from "./events.ts";
 import { bootFromStorage, bump, setRepaint, state } from "./state.ts";
 import type { HomeCardConfig, TabId } from "./types.ts";
 import { store } from "./uiStore.ts";
@@ -50,10 +51,10 @@ import { store } from "./uiStore.ts";
 const TABS: { id: TabId; label: string }[] = [
     { id: "home", label: "Home" },
     { id: "actions", label: "Structures" },
+    { id: "items", label: "Items" },
     { id: "terrain", label: "Dig" },
     { id: "move", label: "Move" },
     { id: "keys", label: "Keys" },
-    { id: "graber", label: "Graber" },
     { id: "config", label: "⚙️" },
 ];
 
@@ -70,9 +71,11 @@ function formatTime(ts: number): string {
 /** Rows for one KPI category: its sub-keys as selectable list rows. */
 function kpiRows(cat: string): ListRow[] {
     // One stable colour per sub-key, so the swatch and its graph line agree.
+    // `id` stays the raw key: it is the selection key and indexes the series, so
+    // renaming the label must not disturb either. Only `name` is resolved.
     return listSubKeys(cat).map((r) => ({
         id: r.key,
-        name: r.key,
+        name: displayNameFor(cat, r.key),
         count: r.count,
         color: colorFromId(r.key),
     }));
@@ -121,15 +124,30 @@ function toggleOf(cat: string, id: string, rows: ListRow[]): void {
 }
 
 /**
+ * Plot one row and nothing else.
+ *
+ * The checkbox is additive, so narrowing a busy category to a single metric
+ * meant unticking the rest by hand. Solo replaces the whole selection with the
+ * one id. Because the result is non-empty it survives `resolveSelection`, which
+ * would otherwise snap an empty selection back to the top-3 default — and
+ * ticking another row afterwards still adds to it, so solo is a starting point
+ * rather than a mode you have to leave.
+ */
+function soloOf(cat: string, id: string): void {
+    state.graphSelection[cat] = [id];
+    bump();
+}
+
+/**
  * One KPI category rendered the way World Statistic renders its list tabs: a
  * heading with the running total, a history graph, and a checkbox list whose
  * ticks pick the plotted series.
  *
  * `session` switches the graph to the **session** counters instead of the
- * lifetime totals. Categories with no sub-keys — distance walked, collisions,
- * graber uses — have nothing to break down, so plotting lifetime totals would
- * show the whole career on one axis; `session` is what makes those graphable
- * per sampling interval and is what the Move tab asks for.
+ * lifetime totals. Categories with no sub-keys — distance walked, collisions —
+ * have nothing to break down, so plotting lifetime totals would show the whole
+ * career on one axis; `session` is what makes those graphable per sampling
+ * interval and is what the Move tab asks for.
  */
 function KpiSection(
     cat: string,
@@ -189,10 +207,309 @@ function KpiSection(
                     selected,
                     onToggle: (id) => toggleOf(cat, id, single),
                     emptyText: "None yet",
+                    // ◉ plots just this row. Filled while it is the only series,
+                    // hollow otherwise — the count column already shows how
+                    // many rows are on the graph.
+                    trailing: (r) =>
+                        e(
+                            "button",
+                            {
+                                style: {
+                                    ...styles.button,
+                                    color: selected.length === 1 && selected[0] === r.id
+                                        ? COLORS.accent
+                                        : COLORS.dim,
+                                },
+                                title: "Plot only this metric",
+                                onClick: () => soloOf(cat, r.id),
+                            },
+                            "◉",
+                        ),
                 })
                 : null,
         ),
     );
+}
+
+/**
+ * Card editor — replaces the whole panel body while open.
+ *
+ * Modelled on `md-word-statistic`'s editor so both mods are managed the same
+ * way: the config tab's "Edit cards" button swaps the body for this, and the
+ * bar at the top is the only way out (Cancel discards, Save persists).
+ *
+ * The item picker lists every KPI category rather than one hardcoded category,
+ * so a card can hold any mix — `world_items_picked` and `resources_collected`
+ * were previously reachable from no UI at all.
+ */
+function renderCardEditor(
+    e: (...args: unknown[]) => unknown,
+    closeEditor: (save: boolean) => void,
+): unknown {
+    const updateCard = (id: string, patch: Partial<HomeCardConfig>): void => {
+        state.cards = state.cards.map((c) => c.id === id ? { ...c, ...patch } : c);
+        bump();
+    };
+
+    const removeCard = (id: string): void => {
+        state.cards = state.cards.filter((c) => c.id !== id);
+        if (state.editFocusId === id) state.editFocusId = state.cards[0]?.id ?? null;
+        bump();
+    };
+
+    const addCard = (): void => {
+        // Starts empty rather than pre-seeded, so the picker drives the first
+        // item and the ★ primary is chosen rather than assumed.
+        const c: HomeCardConfig = { id: `card-${Date.now()}`, title: "New card", items: [] };
+        state.cards = [...state.cards, c];
+        state.editFocusId = c.id;
+        bump();
+    };
+
+    const moveItem = (cardId: string, index: number, dir: -1 | 1): void => {
+        const card = state.cards.find((c) => c.id === cardId);
+        if (!card) return;
+        const j = index + dir;
+        if (j < 0 || j >= card.items.length) return;
+        const items = card.items.slice();
+        const tmp = items[index]!;
+        items[index] = items[j]!;
+        items[j] = tmp;
+        updateCard(cardId, { items });
+    };
+
+    const removeItem = (cardId: string, index: number): void => {
+        const card = state.cards.find((c) => c.id === cardId);
+        if (!card) return;
+        updateCard(cardId, { items: card.items.filter((_, i) => i !== index) });
+    };
+
+    const addItem = (cardId: string, category: string): void => {
+        if (!category) return;
+        const card = state.cards.find((c) => c.id === cardId);
+        if (!card) return;
+        // One line per category: a card shows a category total, so a repeat
+        // would render the same number twice.
+        if (card.items.some((it) => it.category === category && !it.key)) return;
+        updateCard(cardId, { items: [...card.items, { category, key: "" }] });
+    };
+
+    /** Category id → human label, falling back to the id itself. */
+    const labelOf = (cat: string): string => KPI_CATEGORIES.find((c) => c.id === cat)?.label ?? cat;
+
+    const head = e(
+        "div",
+        { style: styles.editorHeader },
+        e(
+            "div",
+            { style: { color: COLORS.accent, fontWeight: 700, fontSize: 14 } },
+            "Edit home cards",
+        ),
+        e(
+            "div",
+            { style: { color: COLORS.dim, fontSize: 11, marginTop: 4, lineHeight: 1.45 } },
+            "Choose which KPIs appear on the Home tab. The first item on a card is primary " +
+                "(larger weight for the card colour). Pick any category from the list.",
+        ),
+    );
+
+    const bar = e(
+        "div",
+        { style: styles.editorBar },
+        e("span", { style: { flex: 1 } }),
+        e("button", { style: styles.button, onClick: addCard }, "+ New card"),
+        e(
+            "button",
+            {
+                style: styles.button,
+                title: "Restore the default home cards",
+                onClick: () => {
+                    // Memory only — Save is the sole writer, so Cancel still
+                    // discards this and Cancel after Save would not be
+                    // reachable anyway.
+                    state.cards = defaultCards();
+                    bump();
+                },
+            },
+            "Reset defaults",
+        ),
+        e("button", { style: styles.button, onClick: () => closeEditor(false) }, "Cancel"),
+        e("button", { style: styles.buttonPrimary, onClick: () => closeEditor(true) }, "Save"),
+    );
+
+    const itemRow = (cardId: string, idx: number): unknown => {
+        const it = state.cards.find((c) => c.id === cardId)!.items[idx]!;
+        return e(
+            "div",
+            {
+                key: `${it.category}:${it.key}:${idx}`,
+                style: idx === 0 ? styles.itemRowPrimary : styles.itemRow,
+            },
+            e(
+                "span",
+                {
+                    style: {
+                        color: idx === 0 ? COLORS.accent : COLORS.dim,
+                        minWidth: 14,
+                    },
+                },
+                idx === 0 ? "★" : String(idx + 1),
+            ),
+            e(
+                "span",
+                { style: { color: COLORS.dim, minWidth: 140 } },
+                labelOf(it.category),
+            ),
+            e(
+                "span",
+                {
+                    style: {
+                        color: COLORS.dim,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                    },
+                },
+                it.key ? displayNameFor(it.category, it.key) : "total",
+            ),
+            e(
+                "button",
+                {
+                    style: styles.button,
+                    disabled: idx === 0,
+                    onClick: () => moveItem(cardId, idx, -1),
+                },
+                "↑",
+            ),
+            e(
+                "button",
+                {
+                    style: styles.button,
+                    disabled: idx === state.cards.find((c) => c.id === cardId)!.items.length - 1,
+                    onClick: () => moveItem(cardId, idx, 1),
+                },
+                "↓",
+            ),
+            e(
+                "button",
+                { style: styles.dangerBtn, onClick: () => removeItem(cardId, idx) },
+                "×",
+            ),
+        );
+    };
+
+    const cardBody = (card: HomeCardConfig): unknown =>
+        e(
+            "div",
+            { style: styles.editorCardBody },
+            e("label", { style: styles.fieldLabel }, "Title"),
+            e("input", {
+                style: styles.input,
+                type: "text",
+                value: card.title,
+                onChange: (ev: Event) => {
+                    updateCard(card.id, {
+                        title: (ev.target as HTMLInputElement).value,
+                    });
+                },
+            }),
+            e(
+                "div",
+                { style: { ...styles.fieldLabel, marginTop: 10 } },
+                "Items (first = primary size & colour)",
+            ),
+            e(
+                "div",
+                { style: styles.itemList },
+                ...card.items.map((_, idx) => itemRow(card.id, idx)),
+            ),
+            addRow(card),
+            e(
+                "div",
+                { style: { color: COLORS.dim, fontSize: 10, marginTop: 6 } },
+                "Primary item (★) sets the big number and the card border/text colour.",
+            ),
+        );
+
+    /** Picker row: choose a KPI category, then add it to this card. */
+    const addRow = (card: HomeCardConfig): unknown =>
+        e(
+            "div",
+            { style: styles.addRow },
+            e(
+                "select",
+                {
+                    style: { ...styles.select, flex: 1 },
+                    id: `add-cat-${card.id}`,
+                    defaultValue: "",
+                },
+                e("option", { value: "" }, "— pick a KPI —"),
+                ...KPI_CATEGORIES.map((c) => e("option", { key: c.id, value: c.id }, c.label)),
+            ),
+            e(
+                "button",
+                {
+                    style: styles.buttonPrimary,
+                    onClick: () => {
+                        // The <select> is uncontrolled, so the chosen value is
+                        // read back from the DOM on click rather than held in
+                        // state — same trick the world-statistic editor uses.
+                        const sel = globalThis.document
+                            ?.getElementById?.(`add-cat-${card.id}`) as
+                                | HTMLSelectElement
+                                | null;
+                        const val = sel?.value ?? "";
+                        if (!val) return;
+                        addItem(card.id, val);
+                        if (sel) sel.value = "";
+                    },
+                },
+                "Add",
+            ),
+        );
+
+    const list = e(
+        "div",
+        { style: styles.editorList },
+        ...state.cards.map((card) => {
+            const open = state.editFocusId === card.id;
+            return e(
+                "div",
+                { key: card.id, style: styles.editorCard },
+                e(
+                    "div",
+                    {
+                        style: styles.editorCardHead,
+                        onClick: () => {
+                            state.editFocusId = open ? null : card.id;
+                            bump();
+                        },
+                    },
+                    e("span", { style: { color: COLORS.accent } }, open ? "▾" : "▸"),
+                    e("span", { style: styles.grow }, card.title || "(untitled)"),
+                    e(
+                        "span",
+                        { style: { color: COLORS.dim } },
+                        `${card.items.length} item${card.items.length === 1 ? "" : "s"}`,
+                    ),
+                    e(
+                        "button",
+                        {
+                            style: styles.dangerBtn,
+                            onClick: (ev: Event) => {
+                                ev.stopPropagation();
+                                removeCard(card.id);
+                            },
+                        },
+                        "Delete",
+                    ),
+                ),
+                open ? cardBody(card) : null,
+            );
+        }),
+    );
+
+    return e("div", { style: styles.editor }, head, bar, list);
 }
 
 /** A list tab: one `KpiSection` per category, stacked. */
@@ -245,6 +562,29 @@ export function StatisticPanel(): unknown {
     const setTab = (id: string): void => {
         state.tab = id;
         if (id !== "config") state.editingCards = false;
+        bump();
+    };
+
+    /**
+     * Card editing replaces the whole body, so the entry point always parks on
+     * the config tab first — that is where the editor returns to on Cancel or
+     * Save. Cards are re-read from storage on entry so an abandoned edit never
+     * becomes the thing you reopen onto.
+     */
+    const openEditor = (): void => {
+        state.tab = "config";
+        state.cards = loadCards();
+        state.editingCards = true;
+        state.editFocusId = state.cards[0]?.id ?? null;
+        bump();
+    };
+
+    const closeEditor = (save: boolean): void => {
+        // Discard reverts to the stored list, so Save is the only path that
+        // writes. Cards are recomputed on bump, so no extra resolve is needed.
+        if (save) saveCards(state.cards);
+        else state.cards = loadCards();
+        state.editingCards = false;
         bump();
     };
 
@@ -323,11 +663,18 @@ export function StatisticPanel(): unknown {
     // —— Full panel ——
     const header = Header(chrome, { title: "Player Statistic" });
 
-    const tabs = Tabs({ tabs: TABS, active: state.tab, onSelect: setTab });
+    const tabs = Tabs({
+        tabs: TABS,
+        active: state.tab,
+        onSelect: setTab,
+        hidden: state.editingCards,
+    });
 
     let body: unknown = null;
 
-    if (state.tab === "home") {
+    if (state.editingCards) {
+        body = renderCardEditor(e, closeEditor);
+    } else if (state.tab === "home") {
         const cards = state.resolvedCards;
         body = e(
             "div",
@@ -351,6 +698,18 @@ export function StatisticPanel(): unknown {
             "structures_removed",
             "structures_moved",
         ]);
+    } else if (state.tab === "items") {
+        body = e(
+            "div",
+            null,
+            KpiSection("items_used"),
+            Hint(
+                "One count per use, broken down by item — graph over time on the " +
+                    "left, selectable list on the right. A built-in item reported as a " +
+                    "numeric id is resolved to its name; an id the game does not " +
+                    "publish, such as a modded item, is shown as the id itself.",
+            ),
+        );
     } else if (state.tab === "terrain") {
         body = KpiTabBody(["terrain_destroyed"]);
     } else if (state.tab === "move") {
@@ -374,24 +733,6 @@ export function StatisticPanel(): unknown {
             Hint(
                 "Key presses only — held-key auto-repeat is not counted, and " +
                     "typing into this panel's own inputs is ignored.",
-            ),
-        );
-    } else if (state.tab === "graber") {
-        body = e(
-            "div",
-            null,
-            KpiSection("graber_uses", { session: true }),
-            KpiSection("graber_elements", { marginTop: 8 }),
-            KpiSection("graber_resources", { marginTop: 8 }),
-            CfgSection("Vacuum", 14),
-            KpiSection("vacuum_uses"),
-            KpiSection("vacuum_cells", { marginTop: 8 }),
-            Hint(
-                "Elements grabbed is read from the cell at the moment of collection, " +
-                    "so it is what was physically picked up; Grabber collected is the " +
-                    "resource the engine credited. Vacuum head is the size of the " +
-                    "vacuum pattern at the moment it fired. A grab that collects " +
-                    "nothing is not a use.",
             ),
         );
     } else if (state.tab === "config") {
@@ -445,13 +786,9 @@ export function StatisticPanel(): unknown {
                     "button",
                     {
                         style: styles.buttonPrimary,
-                        onClick: () => {
-                            state.editingCards = !state.editingCards;
-                            if (state.editingCards) state.cards = loadCards();
-                            bump();
-                        },
+                        onClick: () => openEditor(),
                     },
-                    state.editingCards ? "Done editing" : "Edit cards",
+                    "Edit cards",
                 ),
                 e(
                     "button",
@@ -466,111 +803,6 @@ export function StatisticPanel(): unknown {
                     "Reset defaults",
                 ),
             ),
-            state.editingCards
-                ? e(
-                    "div",
-                    null,
-                    ...state.cards.map((card, ci) =>
-                        e(
-                            "div",
-                            {
-                                key: card.id,
-                                style: {
-                                    ...styles.card,
-                                    borderLeftColor: COLORS.accent,
-                                    marginBottom: 8,
-                                },
-                            },
-                            e("input", {
-                                style: styles.input,
-                                value: card.title,
-                                onChange: (ev: any) => {
-                                    state.cards[ci] = {
-                                        ...card,
-                                        title: String(ev.target.value),
-                                    };
-                                    bump();
-                                },
-                            }),
-                            e(
-                                "div",
-                                { style: { color: COLORS.dim, fontSize: 11, marginTop: 4 } },
-                                card.items
-                                    .map((it) => it.key ? `${it.category}::${it.key}` : it.category)
-                                    .join(" · ") || "(empty)",
-                            ),
-                            e(
-                                "div",
-                                { style: { display: "flex", gap: 4, marginTop: 6 } },
-                                e(
-                                    "button",
-                                    {
-                                        style: styles.button,
-                                        onClick: () => {
-                                            const next: HomeCardConfig = {
-                                                ...card,
-                                                items: [
-                                                    ...card.items,
-                                                    {
-                                                        category: "items_used",
-                                                        key: "",
-                                                    },
-                                                ],
-                                            };
-                                            state.cards[ci] = next;
-                                            bump();
-                                        },
-                                    },
-                                    "+ item",
-                                ),
-                                e(
-                                    "button",
-                                    {
-                                        style: styles.button,
-                                        onClick: () => {
-                                            state.cards = state.cards.filter(
-                                                (_, i) => i !== ci,
-                                            );
-                                            bump();
-                                        },
-                                    },
-                                    "Delete",
-                                ),
-                            ),
-                        )
-                    ),
-                    e(
-                        "button",
-                        {
-                            style: { ...styles.buttonPrimary, marginTop: 4 },
-                            onClick: () => {
-                                state.cards = [
-                                    ...state.cards,
-                                    {
-                                        id: `card-${Date.now()}`,
-                                        title: "New card",
-                                        items: [{ category: "items_used", key: "" }],
-                                    },
-                                ];
-                                bump();
-                            },
-                        },
-                        "+ Add card",
-                    ),
-                    e(
-                        "button",
-                        {
-                            style: { ...styles.buttonPrimary, marginTop: 6, marginLeft: 6 },
-                            onClick: () => {
-                                saveCards(state.cards);
-                                state.editingCards = false;
-                                bump();
-                            },
-                        },
-                        "Save cards",
-                    ),
-                )
-                : null,
             e("div", { style: styles.sectionTitle }, "Data"),
             e(
                 "div",

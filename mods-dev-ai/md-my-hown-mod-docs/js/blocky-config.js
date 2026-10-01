@@ -285,12 +285,53 @@
         this.appendValueInput("COND")
           .setCheck(["Tag", "Boolean", "Number", "String", "Value"])
           .appendField("if");
+        this.appendDummyInput()
+          .appendField("else?")
+          .appendField(new Blockly.FieldCheckbox("FALSE"), "HAS_ELSE");
         this.appendStatementInput("THEN").setCheck("Step").appendField("then");
         this.appendStatementInput("ELSE").setCheck("Step").appendField("else");
         this.setPreviousStatement(true, "Step");
         this.setNextStatement(true, "Step");
         this.setColour(ROLE_HUE.block);
-        this.setTooltip("Plug a tag (or value) here. Tag → options.var.");
+        this.setTooltip("if without else: uncheck else?. Condition plug → options.var.");
+        this.setOnChange(function (ev) {
+          if (!this.workspace || this.isInFlyout) return;
+          const has = this.getFieldValue("HAS_ELSE") === "TRUE";
+          const elseIn = this.getInput("ELSE");
+          if (elseIn) elseIn.setVisible(has);
+          if (!has && elseIn && elseIn.connection) {
+            const t = elseIn.connection.targetBlock();
+            if (t) t.dispose(false);
+          }
+        });
+      },
+    };
+
+    /** for-each cell in range → logicForEach (write element) */
+    Blockly.Blocks["md_loop"] = {
+      init: function () {
+        this.appendDummyInput().appendField("for each cell");
+        this.appendDummyInput()
+          .appendField("size")
+          .appendField(new Blockly.FieldNumber(1, 1), "SIZE");
+        this.appendDummyInput()
+          .appendField("write ⌗element")
+          .appendField(new Blockly.FieldDropdown(() => contentCatalog("element")), "TO");
+        this.appendDummyInput()
+          .appendField("when ⌗element")
+          .appendField(
+            new Blockly.FieldDropdown(() => {
+              const o = contentCatalog("element");
+              return [["(any)", ""]].concat(o);
+            }),
+            "WHEN"
+          );
+        this.setPreviousStatement(true, "Step");
+        this.setNextStatement(true, "Step");
+        this.setColour(ROLE_HUE.logic);
+        this.setTooltip(
+          "logicForEach — writes element at every cell in range. sandkit.api.elements + grid."
+        );
       },
     };
 
@@ -408,7 +449,8 @@
               this.setNextStatement(true, "Step");
             }
             this.setColour(hue);
-            this.setTooltip(doc);
+            const apis = (schema.ACTION_APIS && schema.ACTION_APIS[key]) || [];
+            this.setTooltip(doc + (apis.length ? "\nAPI: " + apis.join(", ") : ""));
           },
         };
       });
@@ -433,6 +475,7 @@
         colour: String(ROLE_HUE.block),
         contents: [
           { kind: "block", type: "md_if" },
+          { kind: "block", type: "md_loop" },
           { kind: "block", type: "md_op" },
           { kind: "block", type: "md_lit_number" },
           { kind: "block", type: "md_lit_text" },
@@ -592,12 +635,28 @@
         varName = valueToSteps(cond, prior);
         prior.forEach((s) => steps.push(s));
       }
-      steps.push({
+      const thenSteps = statementChain(block.getInputTargetBlock("THEN"));
+      const hasElse = block.getFieldValue("HAS_ELSE") === "TRUE";
+      const elseSteps = hasElse ? statementChain(block.getInputTargetBlock("ELSE")) : [];
+      const ifStep = {
         key: "if",
         options: { var: varName },
-        then: statementChain(block.getInputTargetBlock("THEN")),
-        else: statementChain(block.getInputTargetBlock("ELSE")),
-      });
+        then: thenSteps,
+      };
+      if (hasElse && elseSteps.length) ifStep.else = elseSteps;
+      else if (hasElse) ifStep.else = [];
+      steps.push(ifStep);
+      return;
+    }
+
+    if (block.type === "md_loop") {
+      const opts = {
+        size: Number(block.getFieldValue("SIZE") || 1),
+        to: block.getFieldValue("TO") || "",
+      };
+      const when = block.getFieldValue("WHEN") || "";
+      if (when) opts.when = when;
+      steps.push({ key: "logicForEach", options: opts });
       return;
     }
 
@@ -653,6 +712,10 @@
       const b = ws.newBlock("md_if");
       b.initSvg();
       b.render();
+      const hasElse = Array.isArray(step.else);
+      try {
+        b.setFieldValue(hasElse ? "TRUE" : "FALSE", "HAS_ELSE");
+      } catch (_) {}
       const v = (step.options && step.options.var) || "";
       if (v) {
         if (!state.tags.includes(v)) state.tags.push(v);
@@ -667,7 +730,19 @@
         } catch (_) {}
       }
       attachStack(b, "THEN", step.then || [], ws);
-      attachStack(b, "ELSE", step.else || [], ws);
+      if (hasElse) attachStack(b, "ELSE", step.else || [], ws);
+      return b;
+    }
+    if (step.key === "logicForEach") {
+      const b = ws.newBlock("md_loop");
+      b.initSvg();
+      b.render();
+      const o = step.options || {};
+      try {
+        if (o.size != null) b.setFieldValue(String(o.size), "SIZE");
+        if (o.to || o.element) b.setFieldValue(String(o.to || o.element), "TO");
+        if (o.when) b.setFieldValue(String(o.when), "WHEN");
+      } catch (_) {}
       return b;
     }
 
@@ -757,6 +832,27 @@
     });
   }
 
+
+  function renderTagList() {
+    const el = $("#by-tag-list");
+    if (!el) return;
+    syncTagsFromWorkspace(state.workspace);
+    if (!state.tags.length) {
+      el.innerHTML = '<span class="ed-muted">No tags yet</span>';
+      return;
+    }
+    el.innerHTML = state.tags
+      .map((t) => '<button type="button" class="by-tag-chip" data-tag="' + escapeHtml(t) + '">' + escapeHtml(t) + "</button>")
+      .join("");
+    $$(".by-tag-chip", el).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        // ensure tag exists; user can drag tag ref from toolbox
+        const name = btn.dataset.tag;
+        if (name && !state.tags.includes(name)) state.tags.push(name);
+      });
+    });
+  }
+
   function disposeWs() {
     if (state.workspace) {
       try {
@@ -794,10 +890,12 @@
     } catch (e) {
       console.warn(e);
     }
+    renderTagList();
 
     state.workspace.addChangeListener((ev) => {
       if (ev.type === Blockly.Events.FINISHED_LOADING) return;
       syncTagsFromWorkspace(state.workspace);
+      renderTagList();
       if (onChange) {
         try {
           onChange(workspaceToSteps(state.workspace));
@@ -934,7 +1032,16 @@
         </div>
         <button type="button" class="graph-btn primary" id="by-save">Save</button>
       </div>
-      <div id="by-blockly" class="by-blockly-host"></div>
+      <div class="by-work-row">
+        <div id="by-blockly" class="by-blockly-host"></div>
+        <aside class="by-tag-panel" id="by-tag-panel">
+          <div class="by-tag-head">Tags</div>
+          <div class="by-tag-list" id="by-tag-list"></div>
+          <p class="by-tag-hint">Tags are process variables. <code>set … as tag</code> writes; <code>if [tag]</code> reads. Same name = same group.</p>
+          <div class="by-tag-head" style="margin-top:12px">sandkit.api</div>
+          <p class="by-tag-hint">Actions bind to <a href="https://github.com/sandustry-modding/SandustryTypes/tree/main/src/sandkit/api" target="_blank" rel="noopener">SandustryTypes / sandkit/api</a> via hostNs in the mod.</p>
+        </aside>
+      </div>
       <details class="ed-raw"><summary>Raw steps JSON</summary><textarea id="by-raw" rows="8"></textarea></details>`;
 
     $("#by-raw").value = JSON.stringify(entry.steps, null, 2);

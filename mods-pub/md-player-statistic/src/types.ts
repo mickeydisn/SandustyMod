@@ -25,7 +25,7 @@ export type SettingsSchema = {
     };
 };
 
-export type TabId = "home" | "actions" | "terrain" | "move" | "keys" | "graber" | "config";
+export type TabId = "home" | "actions" | "items" | "terrain" | "move" | "keys" | "config";
 
 /** One selectable KPI on a Home card. */
 export interface CardItemRef {

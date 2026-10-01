@@ -25,7 +25,8 @@ selected, a centered overlay opens with four tabs.
 - **Mini mode** — compact card strip with live totals and trend Δ vs the previous scan.
 - **Lock** the panel to keep it open when you switch tools; position, zoom and opacity are
   remembered per world.
-- **Auto refresh** — scan after load then on a timer (1–20 min, default 10).
+- **Auto refresh** — always on: scan after load, then on a timer (1–1440 min, default 2). Only the
+  master **Enabled** switch turns it off.
 - Counts respect **authorization**: cells you cannot interact with are skipped.
 
 ## Item, overlay & sprite
@@ -62,9 +63,9 @@ keys from `uiStore.ts` (`UI_POS_KEY`, `UI_ZOOM_KEY`, `UI_ALPHA_KEY`, `UI_LOCK_KE
 ## Settings
 
 Uses the shared settings pattern (see `mods-dev` / `mods-progress`): `configSchema` in
-`modinfo.json` → typed `SETTINGS` → `readSettings` / `onSettingsChange` from `@sandmd/modkit`
-(pub mods read `api.settings` directly). Disabling a mod runs a prune/orphan/storage cleanup
-over everything prefixed with its id.
+`modinfo.json` → typed `SETTINGS` → `readSettings` / `onSettingsChange` from `@sandmd/modkit` (pub
+mods read `api.settings` directly). Disabling a mod runs a prune/orphan/storage cleanup over
+everything prefixed with its id.
 
 Per-key values for this mod:
 [`doc/doc_ia/MOD_SETTINGS.md`](../../doc/doc_ia/MOD_SETTINGS.md#md-word-statistic).

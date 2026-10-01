@@ -40,7 +40,7 @@ function main(): void {
 
     runDisableCleanup("md-buffer-process", "Clean", []);
     runDisableCleanup("md-excavated-all", "Clean", []);
-    runDisableCleanup("md-my-hown-mod", "Clean", []);
+    // runDisableCleanup("md-my-hown-mod", "Clean", []);
     runDisableCleanup("md-random-artefact", "Clean", []);
     runDisableCleanup("hiden-word-2", "Clean", []);
 

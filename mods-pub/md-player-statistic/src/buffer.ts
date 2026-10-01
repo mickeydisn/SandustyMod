@@ -173,9 +173,9 @@ export function listSubKeys(category: string): { key: string; count: number }[] 
 /**
  * Default Home cards when none are configured.
  *
- * `items_used` has no default card on purpose — the Items tab was removed.
- * The KPI is still tracked, so anyone who had it on a card keeps it; the card
- * editor can add it back.
+ * `world_items_picked` and `resources_collected` used to share a "Loot" card here.
+ * They are still tracked and still have their own default card editor entries —
+ * no tab shows them — so a card is the only place they can be seen.
  */
 export function defaultCards(): HomeCardConfig[] {
     return [
@@ -194,20 +194,9 @@ export function defaultCards(): HomeCardConfig[] {
             items: [{ category: "terrain_destroyed", key: "" }],
         },
         {
-            id: "card-loot",
-            title: "Loot",
-            items: [
-                { category: "world_items_picked", key: "" },
-                { category: "resources_collected", key: "" },
-            ],
-        },
-        {
-            id: "card-graber",
-            title: "Graber",
-            items: [
-                { category: "graber_uses", key: "" },
-                { category: "graber_elements", key: "" },
-            ],
+            id: "card-items",
+            title: "Items",
+            items: [{ category: "items_used", key: "" }],
         },
         {
             id: "card-activity",
@@ -221,9 +210,37 @@ export function defaultCards(): HomeCardConfig[] {
     ];
 }
 
+/**
+ * Saved cards outlive the categories they name.
+ *
+ * A card is only meaningful while every KPI it lists still exists. The grabber
+ * tab and its five categories are gone, but a player who had the default card
+ * set has `card-graber` sitting in storage — and `resolveCards` degrades
+ * gracefully on an unknown category, so it would render as a permanently-zero
+ * grey box labelled `graber_uses` rather than fail loudly. That is worse than
+ * the card simply being gone, so it is dropped on read.
+ */
+function withoutDeadCategories(cards: HomeCardConfig[]): HomeCardConfig[] {
+    const known = new Set(KPI_CATEGORIES.map((c) => c.id));
+    const out: HomeCardConfig[] = [];
+    for (const card of cards) {
+        if (!card || !Array.isArray(card.items)) continue;
+        const items = card.items.filter((it) => it && known.has(it.category as never));
+        // A card left with nothing is an empty box; drop it too.
+        if (items.length === 0) continue;
+        out.push({ ...card, items });
+    }
+    return out;
+}
+
 export function loadCards(): HomeCardConfig[] {
     const raw = safe(() => api.storage.get(MOD_ID, CARDS_KEY), null);
-    if (Array.isArray(raw) && raw.length > 0) return raw as HomeCardConfig[];
+    if (Array.isArray(raw) && raw.length > 0) {
+        const live = withoutDeadCategories(raw as HomeCardConfig[]);
+        // Only fall back to the defaults if the user was left with nothing at all —
+        // an empty screen is worse than a fresh default layout.
+        if (live.length > 0) return live;
+    }
     return defaultCards();
 }
 
