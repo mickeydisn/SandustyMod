@@ -1,30 +1,15 @@
-/**
- * The **terrain** list panel.
- *
- * A terrain is a diggable tile, and the two things worth seeing are its
- * **colour** — terrains are the one object the player reads by colour rather
- * than by name — and its **hit points**, which is what says whether a tool can
- * cut it at all.
- *
- * The colour is the interesting part, and it is not always where it looks. A
- * terrain may state its colour three ways: a packed `0xRRGGBB`, an HSL triple,
- * or both. The list reads all three and prefers whichever is present, because a
- * swatch that is empty for half the terrains is worse than no swatch column — it
- * makes the row look broken rather than unusual.
- *
- * Ground truth: `doc/doc-tech/06-registering-terrains.md`.
- */
+
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverTerrains } from "../../catalog.ts";
 import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
-/** Read a field from the engine's definition, falling back to the mod's entry. */
+
 function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
 }
 
-/** `#rrggbb` from a packed int, a hex string, or an `[h,s,l]` triple. */
+
 function swatch(ctx: ListRenderCtx): string | undefined {
     const packed = field(ctx, "color");
     if (typeof packed === "number" && Number.isFinite(packed)) {
@@ -41,13 +26,13 @@ function swatch(ctx: ListRenderCtx): string | undefined {
             return `hsl(${Math.round(hh * 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`;
         }
     }
-    // The stored colour is usually already normalised to `#rrggbb` on the row
-    // by the discovery pass; this is the fallback for a mod entry with no
-    // colour at all.
+    
+    
+    
     return ctx.row.color;
 }
 
-/** Swatch, name, id, hit points — the four things that identify a terrain. */
+
 function inlineRender(ctx: ListRenderCtx): unknown {
     const { h, row } = ctx;
     const color = swatch(ctx);
@@ -66,18 +51,12 @@ function inlineRender(ctx: ListRenderCtx): unknown {
     );
 }
 
-/**
- * The expanded detail.
- *
- * `materialId` and `excavationRequirements` are in here rather than on the line
- * because they are the two that decide *how* a terrain is dug, and a user
- * comparing their ore against the game's is looking for exactly those.
- */
+
 const DETAILS: DetailSpec = {
     fields: [
-        // `hp` and `hitPoints` are the same fact under two names, engine-side and
-        // config-side. `hp` wins because that is the engine's spelling, and a row
-        // showing the engine's value is the reason this block exists.
+        
+        
+        
         { key: "hp", label: "Hit points" },
         { key: "materialId", label: "Material id" },
         { key: "isBuilding", label: "Counts as a building" },
@@ -90,13 +69,13 @@ const DETAILS: DetailSpec = {
         {
             key: "colorHSL",
             label: "Colour",
-            // A hue is not a colour a person can act on; the packed value is
-            // shown instead, which is what the swatch above is drawn from.
+            
+            
             pick: (s) => s.colorHSL ?? s.metaColor,
         },
     ],
-    // `hitPoints` is the config-side spelling of `hp`; `colorPattern` and
-    // `colorGradient` are render payloads, not facts to read.
+    
+    
     skip: [
         "hitPoints",
         "colorPattern",

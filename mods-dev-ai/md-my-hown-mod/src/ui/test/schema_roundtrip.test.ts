@@ -1,15 +1,11 @@
-/**
- * Round-trip test for the schema mapping layer.
- *   deno run -A src/ui/schema_roundtrip.test.ts
- * Stubs the host sandkit surface so the pure form⇄entry logic can run headless.
- */
-// @ts-nocheck
+
+
 const store: Record<string, unknown> = {};
 globalThis.sandkit = {
     api: {
-        // NOTE: the real host signature is (modId, key) / (modId, key, value) —
-        // it namespaces per mod. The stub must match, or every test that reads
-        // stored config silently sees an empty one and passes vacuously.
+        
+        
+        
         storage: {
             ensure: () => {},
             get: (_modId: string, k: string) => store[k],
@@ -60,14 +56,14 @@ function check(name: string, cond: boolean, detail = "") {
     }
 }
 
-/** entry → form → entry, asserting no field is lost. */
+
 function roundTrip(cat: string, entry: Record<string, unknown>) {
     const form = entryToForm(cat, entry);
     const back = formToEntry(cat, form);
     for (const [k, v] of Object.entries(entry)) {
         const got = back[k];
-        // `shape` is intentionally normalised to a 4×4 0/1 grid, so compare the
-        // round-tripped value against its normalised form rather than the raw input.
+        
+        
         const want = k === "shape" ? normalizeShape(v) : v;
         const same = JSON.stringify(got) === JSON.stringify(want);
         check(`${cat}.${k}`, same, `expected ${JSON.stringify(want)} got ${JSON.stringify(got)}`);
@@ -85,30 +81,30 @@ roundTrip("elements", {
     duration: 3.5,
     metaColor: 0xff8ad4,
     colors: { variants: [[255, 138, 212, 255]] },
-    // Objects, not booleans. The engine's fire pass gates on
-    // `typeof flammable === "object"`, so the `true` this fixture used to hold
-    // burned the element and silently left no residue.
+    
+    
+    
     flammable: {
         outputElementId: "md-my-hown-mod:mdmy.element.ash",
         outputChance: 0.5,
         fireInheritsDuration: true,
         duration: [0.05, 0.3],
     },
-    // Likewise `{ value }`: the collector's lookup is built from
-    // `collectable?.value`, which is `undefined` on a boolean.
+    
+    
     collectable: { value: 2 },
-    // The four data slots, in the engine's own `fieldN` keys — the list shows
-    // them as `{ name, slot, default }` and the name is not stored, so a
-    // round trip back from this record brings unnamed rows. What matters here is
-    // that the **keys and numbers** survive, which is what `register` receives.
+    
+    
+    
+    
     defaultDataFields: { field1: 0, field2: 20, field4: 7 },
 });
 
 {
-    // The lossy direction, checked as a claim rather than left to be discovered:
-    // an element row's name is the author's label and the engine never sees it,
-    // so it cannot come back. Asserting that here is what stops someone later
-    // "fixing" the round trip by inventing a label that was never stored.
+    
+    
+    
+    
     const { form } = roundTrip("elements", { defaultDataFields: { field2: 20 } });
     const rows = JSON.parse(form.dataFieldsJson as string);
     check(
@@ -129,8 +125,8 @@ roundTrip("structures", {
     categoryKey: "production",
     order: 5,
     buildModes: [{ type: "line", directions: ["horizontal", "vertical"], spanTiles: 4 }],
-    // Shapes are normalised to a 4×4 grid of 0/1 (see normalizeShape), so a
-    // 2×2 fixture must come back padded rather than preserved verbatim.
+    
+    
     shape: [[1, 0], [1, 1]],
     render: { imageName: "sprites:crusher" },
     disallowPick: true,
@@ -159,7 +155,7 @@ roundTrip("contacts", {
     id: "md-my-hown-mod:mdmy.contact.acid",
     inputA: "mdmy.element.acid",
     inputB: "mdmy.element.metal",
-    outputA: null, // consumed
+    outputA: null, 
     outputB: "mdmy.element.gas",
     orientation: "vertical",
 });
@@ -189,12 +185,12 @@ roundTrip("upgrades", {
     upgrade: { id: "lvl2", maxLevel: 3, costs: [100, 250, 500], oneOff: true },
 });
 
-// The engine throws `TypeError("Structure build mode spanTiles is only valid for
-// line modes.")`, so the form must not be able to produce that pairing.
+
+
 {
     const f = formDefaults("structures");
     f.idSuffix = "conveyor";
-    // The build modes are a list now, so the rule is checked per row.
+    
     f.buildModesJson = JSON.stringify([{ type: "rectangle", spanTiles: 3 }]);
     check(
         "a span on a non-line mode is rejected (the engine throws)",
@@ -207,9 +203,9 @@ roundTrip("upgrades", {
         !validateForm("structures", f).buildModesJson,
     );
 
-    // A second mode must survive the round trip. It used not to: the form
-    // collapsed buildModes to [0], so a line mode added alongside a single
-    // mode was dropped on save without a word.
+    
+    
+    
     const two: Record<string, string> = {
         ...f,
         buildModesJson: JSON.stringify([{ type: "single" }, { type: "line", spanTiles: 4 }]),
@@ -221,11 +217,11 @@ roundTrip("upgrades", {
         JSON.stringify(entry.buildModes),
     );
 
-    // ── `defaultData`: the list and the box are one stored key ──────────────
-    //
-    // Two form fields, one engine key, and the rule that decides between them.
-    // Each case below is a way an author can leave the structure, and the answer
-    // has to be the *same* one every time or the value moves under them.
+    
+    
+    
+    
+    
 
     const listOnly = formToEntry("structures", {
         ...f,
@@ -240,9 +236,9 @@ roundTrip("upgrades", {
         JSON.stringify(listOnly.defaultData),
     );
 
-    // The list is used when it accounts for every key the box holds. Here it does
-    // not — `other` is in the box and in no row — so the box is written untouched.
-    // The alternative, "the list always wins", silently deleted `other`.
+    
+    
+    
     const both = formToEntry("structures", {
         ...f,
         dataFieldsJson: JSON.stringify([{ key: "charge", type: "number", default: 5 }]),
@@ -254,8 +250,8 @@ roundTrip("upgrades", {
         JSON.stringify(both.defaultData),
     );
 
-    // ...and when it *is* complete, the list is the one that is written, so a value
-    // the author typed as a row is not read back out of the box as a string.
+    
+    
     const complete = formToEntry("structures", {
         ...f,
         dataFieldsJson: JSON.stringify([{ key: "charge", type: "bool", default: "true" }]),
@@ -267,8 +263,8 @@ roundTrip("upgrades", {
         JSON.stringify(complete.defaultData),
     );
 
-    // A blank list is not an empty one — that is what lets the box keep working
-    // for the shapes a row cannot hold.
+    
+    
     const boxOnly = formToEntry("structures", {
         ...f,
         dataFieldsJson: "",
@@ -280,8 +276,8 @@ roundTrip("upgrades", {
         JSON.stringify(boxOnly.defaultData),
     );
 
-    // Neither filled deletes the key rather than storing `{}`. An empty object is
-    // a different value from an absent one, and the register step has no use for it.
+    
+    
     const neither = formToEntry("structures", {
         ...f,
         dataFieldsJson: "",
@@ -289,9 +285,9 @@ roundTrip("upgrades", {
     }) as { defaultData?: unknown };
     check("neither filled removes defaultData", !("defaultData" in neither));
 
-    // A value the list cannot represent stays out of the list, so the box remains
-    // the only place it is visible — and saving does not turn it into
-    // "[object Object]".
+    
+    
+    
     const mixed = roundTrip("structures", { defaultData: { charge: 1, nested: { a: 1 } } });
     const mixedRows = JSON.parse(mixed.form.dataFieldsJson as string);
     check(
@@ -314,8 +310,8 @@ roundTrip("upgrades", {
         !!validateForm("structures", badRows).dataFieldsJson,
     );
 
-    // spanTiles off a line mode would make the engine throw on register, so
-    // the parser drops it rather than letting it reach the game.
+    
+    
     const stripped = parseBuildModes(JSON.stringify([{ type: "rectangle", spanTiles: 3 }]));
     check(
         "spanTiles is stripped from a non-line mode",
@@ -349,18 +345,18 @@ roundTrip("structures", {
     blockGridType: "mdmy.structure.press",
     skipCopyData: true,
     defaultData: { throughput: 2 },
-    // `draw` is a function on the engine side and cannot live in JSON, so the
-    // stored form is a key that apply.ts swaps for the real function. The old
-    // fixture wrote a `{ kind: "ghost" }` object, which the engine would have
-    // treated as a non-function and silently stopped drawing for.
+    
+    
+    
+    
 
     drawKey: "hidden",
     shape: [[1]],
 });
 
-// `colorHSL` is a [number, number, number] tuple, so the form uses three
-// number controls gated by a toggle. Without the gate an untouched form would
-// emit 0,0,0 and paint every terrain black.
+
+
+
 {
     const f = formDefaults("terrains");
     f.idSuffix = "ore";
@@ -424,9 +420,9 @@ roundTrip("categories", {
     requirement: { techId: "mdmy.tech.t1" },
 });
 
-// The engine guard is `if (!t.id || !t.name && !t.nameKey) throw`, so a
-// category with neither must not be submittable. Before this tab existed the
-// only way to create one was hand-editing JSON, so the throw was unavoidable.
+
+
+
 {
     const f = formDefaults("categories");
     f.idSuffix = "tools";
@@ -456,8 +452,8 @@ roundTrip("triggers", {
     id: "md-my-hown-mod:mdmy.trigger.tick",
     interval: 60,
     sequentialRuns: 1,
-    // A process is an ordered list. Two actions, and the same one twice, so the
-    // fixture proves order and repetition survive rather than just the happy path.
+    
+    
     actions: [
         { key: "triggerLog" },
         { key: "triggerScan" },
@@ -482,9 +478,9 @@ roundTrip("processing", {
     id: "md-my-hown-mod:mdmy.process.crusher",
     structureType: "mdmy.structure.crusher",
     intervalMs: 100,
-    // `processorConvert`'s `to` is the case that used to be unreachable: the
-    // engine never delivered the options, so a required field was ignored. With
-    // the process binding them, the options round-trip with the action.
+    
+    
+    
     actions: [{ key: "processorConvert", options: { to: "mdmy.element.glass" } }],
 });
 
@@ -504,18 +500,18 @@ roundTrip("behaviors", {
 roundTrip("projectiles", {
     id: "md-my-hown-mod:mdmy.proj.bolt",
     sprite: { id: "sprites:bolt" },
-    // A projectile holds **one** option, not a process. This used to be a two-entry
-    // `actions` list whose returns were merged into the projectile's config — a
-    // configuration no one designed, and the reason the split exists.
+    
+    
+    
     option: { key: "projectileHeavy" },
     options: { damage: 10 },
 });
 
 console.log("── a pre-split handlerKey is no longer a process ──");
 {
-    // End to end on a real tab. An entry written before the split holds
-    // `handlerKey`; it now loads as *no* process, and saving leaves the key
-    // alone rather than translating it.
+    
+    
+    
     const before = {
         id: "md-my-hown-mod:mdmy.signal.legacy",
         kind: "interactables",
@@ -523,28 +519,28 @@ console.log("── a pre-split handlerKey is no longer a process ──");
         handlerKey: "structureWriteData",
     };
     const form = entryToForm("signals", before);
-    // It loads as *empty*, so the author is not shown a handler that never runs.
+    
     check(
         "a pre-split handlerKey reads as no process",
         parseActionRefs(form.actionsJson).length === 0,
         form.actionsJson ?? "(absent)",
     );
     const back = formToEntry("signals", form);
-    // No `actions` is written — there is nothing to write.
+    
     check(
         "and no process is created",
         back.actions === undefined,
         JSON.stringify(back.actions),
     );
-    // The stale key is left where it was. The form does not claim it, so the
-    // passthrough carries it: removing it would destroy data over an edit that
-    // never looked at that field.
+    
+    
+    
     check(
         "the stale key is left untouched",
         back.handlerKey === "structureWriteData",
         String(back.handlerKey),
     );
-    // Everything else is untouched.
+    
     check(
         "the rest of the entry survives",
         back.kind === "interactables" && back.target === "mdmy.structure.button",
@@ -557,13 +553,13 @@ console.log("── unknown fields are preserved ──");
         id: "md-my-hown-mod:mdmy.mod.speed",
         hookId: "onTick",
         kind: "modify",
-        // The modifier slot's actions live in `MODIFIER_ACTIONS`, the third registry.
+        
         actions: [{ key: "logArgs" }],
         notes: "test",
     });
 }
 {
-    // A field the form does not know must survive Edit→Save untouched.
+    
     const form = entryToForm("structures", {
         id: "md-my-hown-mod:mdmy.structure.x",
         name: "X",
@@ -583,7 +579,7 @@ console.log("── unknown fields are preserved ──");
     );
 }
 {
-    // Code callbacks must never be written into JSON storage.
+    
     const form = entryToForm("behaviors", {
         id: "md-my-hown-mod:mdmy.behavior.fn",
         kind: "conveyor",
@@ -595,9 +591,9 @@ console.log("── unknown fields are preserved ──");
 
 console.log("── a behaviour's structure ids live in the definition, edited as pickers ──");
 {
-    // The engine wants `{ id }` for a conveyor and `{ upType, leftType,
-    // rightType }` for a launcher. The form shows those as pickers, so they
-    // have to survive being lifted out and merged back in.
+    
+    
+    
     const conveyor = entryToForm("behaviors", {
         id: "md-my-hown-mod:mdmy.behavior.belt",
         kind: "conveyor",
@@ -616,7 +612,7 @@ console.log("── a behaviour's structure ids live in the definition, edited a
         backConveyor.definition?.id === "md-my-hown-mod:mdmy.structure.belt",
         JSON.stringify(backConveyor.definition),
     );
-    // The rest of the payload must survive the merge, not be replaced by it.
+    
     check(
         "conveyor keeps the rest of the payload",
         backConveyor.definition?.speed === 2,
@@ -651,9 +647,9 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
 }
 {
-    // Every option the engine's worker handler reads is transcribed into the
-    // form in `core/behavior.ts`. This is the test that says the transcription
-    // is still complete, by name.
+    
+    
+    
     const controls = fieldsFor("behaviors").map((f) => f.key);
     for (
         const [opt, control] of [
@@ -677,16 +673,16 @@ console.log("── a behaviour's structure ids live in the definition, edited a
             controls.join(","),
         );
     }
-    // The launcher's own velocity is a second control, not a shared one: the
-    // engine reads a launcher's as [x,y] and a conveyor's as {x,y}, so one
-    // control cannot hold both.
+    
+    
+    
     check(
         "the launcher velocity has its own control",
         controls.includes("launcherVelocity"),
         controls.join(","),
     );
-    // `runWith` is a closed set in the engine, so a free text box would be a
-    // typo generator: anything but 'left' silently becomes 'right'.
+    
+    
     check(
         "runWith is a picker, not a text box",
         fieldsFor("behaviors").find((f) => f.key === "runWith")?.kind === "select",
@@ -715,9 +711,9 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
     check("conveyor reads skipQueued", full.skipQueued === "true", String(full.skipQueued));
     const back = formToEntry("behaviors", full) as { definition?: Record<string, unknown> };
-    // An object, not a tuple. The engine reads a conveyor's `velocity` as
-    // {x,y} and a launcher's as [x,y], so a swap here type-checks and then does
-    // nothing at runtime.
+    
+    
+    
     check(
         "a conveyor's velocity stays a {x,y} object",
         JSON.stringify(back.definition?.velocity) === '{"x":1,"y":0}',
@@ -759,7 +755,7 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     const lBack = formToEntry("behaviors", lForm) as {
         definition?: Record<string, unknown>;
     };
-    // A tuple — the mirror of the conveyor check above.
+    
     check(
         "a launcher's velocity stays a [x,y] tuple",
         JSON.stringify(lBack.definition?.velocity) === "[0,-2]",
@@ -777,10 +773,10 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
 }
 {
-    // The three states of a bool, because the engine's test is `=== undefined`
-    // rather than falsiness: one present option is what makes the worker store
-    // the whole options object, so both an invented and a dropped `false` change
-    // how the conveyor runs.
+    
+    
+    
+    
     const withBool = (skipQueued?: boolean) =>
         formToEntry("behaviors", {
             kind: "conveyor",
@@ -812,8 +808,8 @@ console.log("── a behaviour's structure ids live in the definition, edited a
         yes.definition?.skipQueued === true,
         JSON.stringify(yes.definition),
     );
-    // The hard one. A Yes/No control cannot tell `false` from blank, so this has
-    // to survive in the raw box or a save would quietly remove it.
+    
+    
     const no = withBool(false);
     check(
         "an explicit false survives a save",
@@ -822,8 +818,8 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
 }
 {
-    // `0` is a value. A truthiness check would drop it and the engine's `?? 1`
-    // would replace it with 1 — a silently different launcher.
+    
+    
     const zero = formToEntry("behaviors", {
         kind: "launcher",
         upType: "md-my-hown-mod:mdmy.structure.up",
@@ -836,8 +832,8 @@ console.log("── a behaviour's structure ids live in the definition, edited a
         zero.definition?.softDropVelocity === 0,
         JSON.stringify(zero.definition),
     );
-    // And a kind switch must not leave the other kind's fields behind, or the
-    // engine reads launcher keys off a conveyor.
+    
+    
     const switched = formToEntry("behaviors", {
         kind: "conveyor",
         structureId: "md-my-hown-mod:mdmy.structure.belt",
@@ -854,25 +850,25 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
 }
 {
-    // `flammable` and `collectable` are objects in the engine and were plain
-    // checkboxes here. The engine reads them like this:
-    //
-    //   flammable:   if ("object" == typeof s) { … }   → a boolean is dropped
-    //   collectable: table.set(type, n?.value)          → a boolean has no value
-    //
-    // Both were silent: the element burned, or the collector skipped it, and
-    // nothing anywhere said so.
+    
+    
+    
+    
+    
+    
+    
+    
     const fields = fieldsFor("elements");
 
-    // The parent toggles must gate the attributes behind them, which is the
-    // whole point: an unrevealed object is a field nobody can find.
+    
+    
     for (
         const [on, hidden] of [
             ["flammableOn", "flammableOutputId"],
             ["collectableOn", "collectableValue"],
         ] as const
     ) {
-        // The parent is the one that must exist; the `when` is on the child.
+        
         check(`${on} exists`, fields.some((f) => f.key === on), on);
         const child = fields.find((f) => f.key === hidden);
         check(`${hidden} is gated on ${on}`, Boolean(child?.when), hidden);
@@ -896,24 +892,24 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     const build = (form: Record<string, string>) =>
         formToEntry("elements", form) as Record<string, unknown>;
 
-    // Off: no key at all. Not `{}` — the engine's gate is truthiness, so an empty
-    // object would still be flammable.
+    
+    
     check("an off element has no flammable", store({}).flammableOn !== "true", "toggled on");
     check(
         "an off element writes no flammable",
         build({ ...store({}) }).flammable === undefined,
         JSON.stringify(build({ ...store({}) }).flammable),
     );
-    // On with nothing filled in: burns and leaves nothing behind. A real state,
-    // and the one the old checkbox was trying to express.
+    
+    
     const bare = build({ ...store({}), flammableOn: "true" });
     check(
         "on with nothing set burns with no residue",
         JSON.stringify(bare.flammable) === "{}",
         JSON.stringify(bare.flammable),
     );
-    // On with the full object: every key survives, and the pair comes back as a
-    // tuple because that is the shape the engine samples.
+    
+    
     const fullForm = store({
         flammable: {
             outputElementId: "mdmy.element.ash",
@@ -949,29 +945,29 @@ console.log("── a behaviour's structure ids live in the definition, edited a
             }),
         JSON.stringify(full.flammable),
     );
-    // A fixed lifetime is a bare number, not a one-element tuple. The engine
-    // branches on `Array.isArray`.
+    
+    
     const fixed = build({ ...store({}), flammableOn: "true", flammableDurationMin: "1.2" });
     check(
         "a lone lifetime stays a number",
         fixed.flammable?.duration === 1.2,
         JSON.stringify(fixed.flammable),
     );
-    // `0` is a real chance. A truthiness test would drop it and the engine's
-    // `?? 0.25` would replace it.
+    
+    
     const zero = build({ ...store({}), flammableOn: "true", flammableOutputChance: "0" });
     check(
         "a zero output chance is kept",
         zero.flammable?.outputChance === 0,
         JSON.stringify(zero.flammable),
     );
-    // The pre-split booleans are read as *off*, and the key is dropped on save.
-    // They never reached the engine — the fire pass gates on
-    // `typeof flammable === "object"` and the collector's lookup on
-    // `collectable?.value` — so honouring them would put the panel in a state
-    // that looks configured and is not. The form now owns both keys, so a stale
-    // boolean is removed rather than left to sit in the entry beside a key that
-    // means the same thing and is the only one the engine reads.
+    
+    
+    
+    
+    
+    
+    
     check(
         "a bare flammable boolean is not read as on",
         store({ flammable: true }).flammableOn !== "true",
@@ -1003,10 +999,10 @@ console.log("── a behaviour's structure ids live in the definition, edited a
         JSON.stringify(build(gold).collectable) === '{"value":2}',
         JSON.stringify(build(gold).collectable),
     );
-    // On but no value: the collector's guard is `!= null`, so this would be
-    // configured and inert. `validate` blocks it — checked below.
-    // `validateForm` seeds nothing, so the fields the rule does not read are
-    // passed as they would actually arrive: a form the panel built.
+    
+    
+    
+    
     const blank = validateForm("elements", {
         ...formDefaults("elements"),
         collectableOn: "true",
@@ -1016,8 +1012,8 @@ console.log("── a behaviour's structure ids live in the definition, edited a
         Boolean(blank.collectableValue),
         JSON.stringify(blank),
     );
-    // And the save path, called directly, must not paper over it by inventing a
-    // number. `{}` is inert and says so; `{ value: 0 }` would look configured.
+    
+    
     const blankSave = build({ ...store({}), collectableOn: "true" });
     check(
         "a blank collector value is not invented",
@@ -1036,7 +1032,7 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
     const off = validateForm("elements", { ...formDefaults("elements") });
     check("an element that is not collectable is fine", !off.collectableValue, JSON.stringify(off));
-    // And the min/max rule the new lifetime pair needs.
+    
     const range = validateForm("elements", {
         ...formDefaults("elements"),
         flammableOn: "true",
@@ -1050,8 +1046,8 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
 }
 {
-    // The trap: a stale `id` sitting in the JSON must not beat the picker. If
-    // the box won, choosing a structure would silently do nothing.
+    
+    
     const form = entryToForm("behaviors", {
         id: "md-my-hown-mod:mdmy.behavior.belt",
         kind: "conveyor",
@@ -1066,7 +1062,7 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
 }
 {
-    // Clearing the picker must clear the id, not leave the old one behind.
+    
     const form = entryToForm("behaviors", {
         id: "md-my-hown-mod:mdmy.behavior.belt",
         kind: "conveyor",
@@ -1081,7 +1077,7 @@ console.log("── a behaviour's structure ids live in the definition, edited a
     );
 }
 {
-    // A launcher must not leave a conveyor's `id` behind when the kind changes.
+    
     const form = entryToForm("behaviors", {
         id: "md-my-hown-mod:mdmy.behavior.x",
         kind: "conveyor",
@@ -1127,10 +1123,10 @@ console.log("── validation blocks bad input ──");
 {
     const form = formDefaults("elements");
     form.idSuffix = "good";
-    // The passthrough is a real field again, but a conditional one: it appears
-    // only when the stored entry actually holds a key the form cannot show, so
-    // a plain form offers nothing. That is the difference between a box the user
-    // never sees and one they see on every entry and learn to skip.
+    
+    
+    
+    
     check(
         "the passthrough is offered",
         fieldsFor("elements").map((f) => f.key).includes("advancedJson"),
@@ -1143,8 +1139,8 @@ console.log("── validation blocks bad input ──");
     );
 }
 {
-    // The colour-variant list, against the exact tuples a shipping mod stores
-    // (`__scraped-mods/workshop/3790149867`).
+    
+    
     const sh = await import("../schema.ts");
     const raw = JSON.stringify([
         [153, 207, 184, 255],
@@ -1167,8 +1163,8 @@ console.log("── validation blocks bad input ──");
     );
     check(
         "a 3-tuple defaults to opaque rather than being dropped",
-        // The engine docs say [r,g,b,a], but a hand-written 3 is a natural
-        // mistake and dropping the whole row loses the colour silently.
+        
+        
         sh.variantsToHexList("[[10,20,30]]")[0] === "#0a141eff",
     );
     check(
@@ -1223,9 +1219,9 @@ console.log("── bundled asset library picker ──");
     const all = listLibraryAssets();
     check("library is populated", all.length > 0, `${all.length} icons`);
     check(
-        // Still mod-relative (the engine loads it with `loadFromMod`), but no
-        // longer icons-only: the library is every bundled PNG under `assets/`,
-        // so structure art is selectable too.
+        
+        
+        
         "library paths are mod-relative assets",
         all.every((a) => a.path.startsWith("assets/") && !a.path.includes("..")),
         all[0]?.path,
@@ -1240,8 +1236,8 @@ console.log("── bundled asset library picker ──");
     );
 }
 {
-    // Search is a case-insensitive substring match. Uses a real asset picked from
-    // the catalog so the test does not depend on any particular icon existing.
+    
+    
     const sample = listLibraryAssets()[0];
     check("catalog has a sample asset", !!sample?.name, "catalog empty");
     const upper = sample.name.toUpperCase();
@@ -1257,7 +1253,7 @@ console.log("── bundled asset library picker ──");
     check("query is trimmed", searchLibraryAssets(`  ${sample.name}  `).length > 0);
 }
 {
-    // A picked asset must validate as a library field…
+    
     const asset = listLibraryAssets()[0];
     const form = formDefaults("sprites");
     form.idSuffix = autoGraphicsKey(asset.name).replace("sprites:", "");
@@ -1266,7 +1262,7 @@ console.log("── bundled asset library picker ──");
     check("picked asset validates", !errs.path, JSON.stringify(errs));
 }
 {
-    // …and a hand-typed / imported path must be rejected.
+    
     const form = formDefaults("sprites");
     form.idSuffix = "some-asset";
     form.path = "assets/icons/does-not-exist-2x2.png";
@@ -1276,14 +1272,14 @@ console.log("── bundled asset library picker ──");
     check("path traversal rejected", !!validateForm("sprites", form).path);
 }
 {
-    // Missing path is still "required".
+    
     const form = formDefaults("sprites");
     form.idSuffix = "some-asset";
     form.path = "";
     check("empty asset path rejected", !!validateForm("sprites", form).path);
 }
 {
-    // autoGraphicsKey derives the engine graphics key from the asset name.
+    
     check(
         "autoGraphicsKey namespaces",
         autoGraphicsKey("my-icon") === "sprites:my-icon",
@@ -1291,8 +1287,8 @@ console.log("── bundled asset library picker ──");
     );
 }
 {
-    // resolveAutoFill: fill when empty, replace our own previous value, never
-    // clobber a hand-typed one.
+    
+    
     check("fills empty field", resolveAutoFill("", undefined, "sprites:a") === "sprites:a");
     check(
         "fills undefined field",
@@ -1312,7 +1308,7 @@ console.log("── bundled asset library picker ──");
     );
 }
 {
-    // The sprite form must actually expose a library field bound to the graphics key.
+    
     const pathField = fieldsFor("sprites").find((f) => f.key === "path");
     check("sprite path is a library field", pathField?.kind === "library", pathField?.kind);
     check(
@@ -1352,7 +1348,7 @@ console.log("── excavation terrain rules ──");
     check("valid rule accepted", !validateForm("excavation", form).terrainRulesJson);
     form.terrainRulesJson = JSON.stringify([]);
     check("empty rule list accepted", !validateForm("excavation", form).terrainRulesJson);
-    // An empty list must not create a spurious empty array in storage.
+    
     const empty = formToEntry("excavation", form);
     check(
         "empty rules are not stored",
@@ -1432,11 +1428,11 @@ console.log("── tech unlocks are declarative ──");
 }
 
 console.log("── a picker and its companion box are a read/write contract ──");
-// `currencyType` and `branch` are free strings in TechDefinition, so the panel
-// offers a picker *and* a text box. The pair only works if both halves agree on
-// `__custom__`: a stored value the picker does not list must move into the box
-// on read and back out on write. If either half stops understanding the
-// sentinel, the literal string "__custom__" is persisted as the currency.
+
+
+
+
+
 {
     const form = entryToForm("techs", {
         id: "md-my-hown-mod:t",
@@ -1460,8 +1456,8 @@ console.log("── a picker and its companion box are a read/write contract ─
         JSON.stringify(formToEntry("techs", form).currencyType),
     );
 
-    // The reverse direction: an author who picks a real option must not get the
-    // companion box's leftovers.
+    
+    
     const picked = formToEntry("techs", { ...form, currencyType: "gold" });
     check(
         "a picked option wins over the companion box",
@@ -1471,11 +1467,11 @@ console.log("── a picker and its companion box are a read/write contract ─
 }
 
 console.log("── an upgrade category requirement is stored, never read ──");
-// `registerCategory` keeps `requirement` and nothing in the repo reads it. The
-// raw box is jsonType "object", so an *object* requirement survives a save and a
-// bare string does not — the control shows a stored string but drops it on save.
-// Preserved deliberately: the alternative is to start writing a value that a
-// decade of saves never wrote, which is a behaviour change, not a refactor.
+
+
+
+
+
 {
     const withObj = entryToForm("categories", {
         id: "md-my-hown-mod:c",
@@ -1505,7 +1501,7 @@ console.log("── an upgrade category requirement is stored, never read ──
         JSON.stringify(formToEntry("categories", withStr).requirement),
     );
 
-    // A hand-picked tech id *is* written, which is the one path that works.
+    
     const picked = formToEntry("categories", {
         ...withStr,
         requirementTechId: "t9",
@@ -1541,8 +1537,8 @@ console.log("── item fields are type-aware ──");
         name: "Gun",
         itemType: "Weapon",
         projectileId: "mdmy.proj.bolt",
-        // `sprite.type` has a form default ("onehand"), so it materialises on save
-        // even when the stored entry omits it — the sprite id must still survive.
+        
+        
         sprite: { id: "sprites:bolt", type: "onehand" },
     });
     check(
@@ -1560,10 +1556,10 @@ console.log("── item fields are type-aware ──");
 console.log("── handler pickers are domain-scoped and described ──");
 {
     const H = await import("../../handler/actions/index.ts");
-    // Under the names `catalog.ts` actually reads. It is loaded before
-    // `handler/index.ts`, so it cannot import the catalogue and goes through this
-    // global instead — and it still uses the pre-role spellings. The stub has to
-    // match what the reader asks for, not what the module prefers to publish.
+    
+    
+    
+    
     globalThis.__mdHandlers = {
         listAnyHandlerKeys: () => Object.keys(H.ANY_ACTIONS),
         listProcessorKeys: () => Object.keys(H.PROCESSING_ACTIONS),
@@ -1586,13 +1582,13 @@ console.log("── handler pickers are domain-scoped and described ──");
             opts.some((o) => o.value === expectSome),
             JSON.stringify(opts.map((o) => o.value)),
         );
-        // A picker's key must be a **real action**, whichever registry holds it. The
-        // check used to be `in H.ANY_ACTIONS` alone, which passed only because every
-        // signal action happened to be `payload`-signed. Now that the slots are
-        // derived, a signal can legitimately offer a `processing`-signed action such as
-        // `readElement` — which is the point of the fix, not a defect. The union is the
-        // honest question, and the comment further down (on the processor picker) already
-        // argues exactly this.
+        
+        
+        
+        
+        
+        
+        
         const real = new Set([
             ...Object.keys(H.ANY_ACTIONS),
             ...Object.keys(H.PROCESSING_ACTIONS),
@@ -1609,10 +1605,10 @@ console.log("── handler pickers are domain-scoped and described ──");
             opts[0]?.label,
         );
     }
-    // The projectile picker is listed **separately** because its keys are not in
-    // `ANY_ACTIONS` — they are `ProjectileOptionFn`s, and asserting they resolve
-    // as actions is precisely the confusion this split removed. So the check is the
-    // opposite one: they must exist as options, and not as actions.
+    
+    
+    
+    
     {
         const PROJ = await import("../../handler/projectile-option/index.ts");
         const pj = cat.listProjectileHandlerKeys();
@@ -1635,11 +1631,11 @@ console.log("── handler pickers are domain-scoped and described ──");
     }
     const proc = cat.listDescribedProcessorKeys();
     check("processor picker non-empty", proc.length > 0, `${proc.length}`);
-    // Checked against the **whole catalogue**, not `PROCESSING_ACTIONS`. A call site
-    // is not a signature: the `processing` slot legitimately holds actions of all
-    // three — `processorLift` and `toast` can both be a process step, they just take
-    // different argument lists. Asserting against one registry would call 13 of the
-    // 19 offered keys "fabricated".
+    
+    
+    
+    
+    
     const everyAction = new Set(H.actionKeys());
     check(
         "processor picker keys all exist",
@@ -1659,10 +1655,10 @@ console.log("── handler pickers are domain-scoped and described ──");
     check("handlerDoc unknown is undefined", cat.handlerDoc("nope") === undefined);
 
     for (const c of ["signals", "triggers", "processing"]) {
-        // The single `handlerKey` select is gone, and so is the inline `actions`
-        // array. These tabs now declare a **process reference** — one id, not a list —
-        // which is the whole of D5/D6: the program lives in one place and these tabs
-        // name it.
+        
+        
+        
+        
         const proc = fieldsFor(c).find((f) => f.key === "processId");
         check(
             `${c} declares a process reference`,
@@ -1679,9 +1675,9 @@ console.log("── handler pickers are domain-scoped and described ──");
         );
     }
     check(
-        // The one tab that does **not** store a process. It stores a single
-        // `option`, and that is asserted positively below: a projectile quietly
-        // growing back an `actionList` field is the regression this guards.
+        
+        
+        
         "projectiles declare a single option, not a process",
         !!fieldsFor("projectiles").find((f) =>
             f.key === "optionKey" && f.kind === "projectileOption"
@@ -1700,8 +1696,8 @@ console.log("── handler pickers are domain-scoped and described ──");
 
 console.log("── no fabricated engine fields (6.1) ──");
 {
-    // `unlockedBy` was exposed as a structure field but exists in NO sandkit
-    // .d.ts. Guard against that class of invention recurring.
+    
+    
     check(
         "structures dropped unlockedBy",
         !fieldsFor("structures").some((f) => f.key === "unlockedBy"),
@@ -1722,7 +1718,7 @@ console.log("── no fabricated engine fields (6.1) ──");
         round.back.alwaysUnlocked === true,
         JSON.stringify(round.back.alwaysUnlocked),
     );
-    // and the JSON schema hints no longer advertise it
+    
     const { FIELD_HELP } = await import("../../constants.ts");
     check(
         "field help omits unlockedBy",
@@ -1735,10 +1731,10 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
 {
     const reg = await import("../../handler/core/handler-registry.ts");
     const hooks = await import("../../handler/actions/index.ts");
-    // `resolveAction` lives in process.ts — it is the resolver registration uses, and
-    // it is the one that also unwraps `MODIFIER_ACTIONS`; see the note on it.
+    
+    
 
-    // Every callable reachable from JSON must be described exactly once.
+    
     const real = [
         ...Object.keys(hooks.ANY_ACTIONS),
         ...Object.keys(hooks.PROCESSING_ACTIONS),
@@ -1752,19 +1748,19 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     check("no phantom handler in the registry", phantom.length === 0, phantom.join(" "));
     check("no duplicate registry rows", dupes.length === 0, dupes.join(" "));
 
-    // 9.3 — every handler reads a documented description.
+    
     const docs = hooks.ACTION_DOCS;
     const undoc = known.filter((k) => !docs[k]);
     check("every handler is documented", undoc.length === 0, undoc.join(" "));
 
-    // 7.3 / 9.6 — no consumable handler ships.
+    
     check(
         "itemConsume is gone (ActionType has no Consumable)",
         !("itemConsume" in hooks.ANY_ACTIONS),
     );
     check("itemConsume is not in the registry", !known.includes("itemConsume"));
 
-    // Every slot is non-empty, and the old hand-kept lists are reproduced.
+    
     const slots = [
         "signal",
         "trigger",
@@ -1779,22 +1775,22 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     const keys = (s: typeof slots[number]) => reg.handlersForSlot(s).map((m) => m.key);
     const sameSet = (a: string[], b: string[]) =>
         a.slice().sort().join() === b.slice().sort().join();
-    // The `signal` slot is no longer a hand-kept list, and asserting one would have
-    // hidden exactly the bug it is here to catch: the slots were once a hand-written
-    // column, 71 of 84 entries disagreed with their own measured needs, and 50 were
-    // pinned to `processing` alone. A signal click offered 15 actions where the scope
-    // model said 77. The old list was the symptom nobody could see.
-    //
-    // So the claim is the **rule**, taken from the same `slotsForEntry` the registry
-    // uses — not re-derived here, because a test that re-implements the rule it checks
-    // can agree with a broken implementation and disagree with a fixed one.
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const { needsOf, CALL_SITE_SCOPE } = await import("../../handler/core/scope.ts");
     const needs = (k: string) => needsOf(k);
     const signalProvides = CALL_SITE_SCOPE.signal;
     const byKey = (k: string) => reg.HANDLER_META.find((m) => m.key === k)!;
-    // The rule, from the same `slotsForEntry` the registry itself uses — not
-    // re-derived here, because a test that re-implements the rule it is checking can
-    // agree with a broken implementation and disagree with a fixed one.
+    
+    
+    
     check(
         "signal slot holds exactly the actions a signal delivers",
         sameSet(
@@ -1803,8 +1799,8 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         ),
         keys("signal").join(" "),
     );
-    // And, read straight off the scope model, the part a reader can check by eye: a
-    // signal delivers a position, a data bag and a cell read, and **not** a commit.
+    
+    
     check(
         "no signal action needs something a signal does not deliver",
         keys("signal").every((k) =>
@@ -1814,31 +1810,31 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
             !needs(k).every((n) => n === "ret" || signalProvides[n as never] === true)
         ).join(" "),
     );
-    // The named witnesses, because "the whole set matches" says nothing about *which*
-    // set and a reader should not have to diff 67 keys to see the point.
+    
+    
     for (
         const k of [
-            "readElement", // needs a position and a read — a click has both
-            "logicCount", // a walk needs a position and nothing else
-            "itemExcavate", // the cursor is the cell, so a tool can dig
-            "processorCount", // a processing-signed action, offered because needs allow it
+            "readElement", 
+            "logicCount", 
+            "itemExcavate", 
+            "processorCount", 
         ]
     ) {
         check(`signal offers ${k}`, keys("signal").includes(k), keys("signal").join(" "));
     }
-    // …and the ones it must not: a commit write cannot happen from a click, because
-    // `api.grid.mutate` reads its batch through the `StructureProcessingContext` that
-    // only `process()` supplies.
+    
+    
+    
     check(
         "signal offers no commit-writing action",
         keys("signal").every((k) => !needs(k).includes("commit")),
         keys("signal").filter((k) => needs(k).includes("commit")).join(" "),
     );
-    // The four read-only walks are in there because a `signal` delivers a position and
-    // a walk needs only a position: they read through the ambient `api.elements` /
-    // `api.terrains` readers, not the context. `logicForEach` is **absent**, and that is
-    // the interesting half — a structure can ask about the cells around it and cannot
-    // rewrite them there.
+    
+    
+    
+    
+    
     check(
         "the walks split by scope: readers reach signal, the writer does not",
         ["logicAny", "logicAll", "logicCount", "logicSum"].every((k) =>
@@ -1846,12 +1842,12 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         ) && !keys("signal").includes("logicForEach"),
         keys("signal").filter((k) => k.startsWith("logic")).join(" ") || "none",
     );
-    // The `projectile` slot is **gone**, and that is the point of the split rather
-    // than a gap in the list above. It used to hold the seven presets plus `noop`.
-    // Those are `ProjectileOptionFn`s now, chosen from a `projectileOption` field
-    // and served by `compileProjectile`. Asserted as an absence on purpose: the
-    // failure this guards is a `projectile` `HandlerSlot` quietly returning, which
-    // would let a projectile hold a list of options again.
+    
+    
+    
+    
+    
+    
     check(
         "no projectile HandlerSlot exists",
         !("projectile" in reg.HANDLER_SLOT_LABELS),
@@ -1861,12 +1857,12 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         "no action may claim a projectile slot",
         reg.HANDLER_META.every((m: { slots: string[] }) => !m.slots.includes("projectile")),
     );
-    // `triggerScan` used to be asserted here as a trigger handler. It is now on
-    // `processing` and the assertion is gone, because keeping it would have meant
-    // pinning the bug: it reads `payload.x`/`.y`, and the engine calls a trigger
-    // callback with no arguments at all, so on that slot it could only ever return
-    // early. The check below replaces it — it asks the *scope* question, which is
-    // the one that actually decides legality, rather than re-listing a name.
+    
+    
+    
+    
+    
+    
     {
         const { canRunAt, needsOf } = await import("../../handler/core/scope.ts");
         const overOffered = reg.handlersForSlot("trigger")
@@ -1887,10 +1883,10 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
                 canRunAt("triggerScan", "processing"),
         );
     }
-    // Every slot resolves through `resolveAction`, which spans all three
-    // registries. The real invariant is "every offered key resolves".
-    // Imported dynamically like everything else here: this file sets the
-    // `sandkit` stub at module top level, before anything is loaded.
+    
+    
+    
+    
     const { resolveAction } = await import("../../handler/core/process.ts");
     const unresolved = keys("processing").filter((k) => !resolveAction(k));
     check(
@@ -1899,7 +1895,7 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         unresolved.join(" "),
     );
 
-    // 9.5 — a type can never be offered in a slot it cannot serve.
+    
     const mismatch = reg.HANDLER_META.filter((m) => m.slots.length === 0);
     check(
         "every handler declares at least one slot",
@@ -1921,7 +1917,7 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         projInProcessing.join(" "),
     );
 
-    // 9.3 — parameter validation.
+    
     const write = reg.handlerMeta("structureWriteData")!;
     check(
         "both required params reported when missing",
@@ -1932,9 +1928,9 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         "valid params produce no errors",
         reg.validateHandlerParams(write, { field: "charge", value: "5" }).length === 0,
     );
-    // `energyDefault`, not a former excavation preset: `capacity` carries all three
-    // constraints this is about — a `def`, a `min`, and `int` — so the assertions
-    // below test the registry, not whichever action happens to own the field today.
+    
+    
+    
     const withConstraints = reg.handlerMeta("energyDefault")!;
     check(
         "int constraint enforced",
@@ -1960,28 +1956,28 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
         Object.keys(reg.buildHandlerOptions(withConstraints, { capacity: "" })).length === 0,
     );
 
-    // 9.5 — reachability scan over a stored config. The fixtures use the split
-    // `actions` shape, which is the only one the scan reads: a pre-split
-    // `handlerKey` is not a process and contributes no usage, so building a
-    // reachability fixture out of one would test nothing.
+    
+    
+    
+    
     const cfg = {
         signals: [{ id: "s1", actions: [{ key: "structureWriteData" }] }],
-        triggers: [{ id: "t1", actions: [{ key: "techGrantItem" }] }], // tech handler in a trigger slot
+        triggers: [{ id: "t1", actions: [{ key: "techGrantItem" }] }], 
         items: [{ id: "i1", actions: [{ key: "itemShoot" }] }],
     };
     const bad = reg.unreachableHandlers(cfg);
-    // **One** again, and the second is gone for the right reason.
-    //
-    // This used to be two: `itemShoot` in the `itemAction` slot was flagged unreachable
-    // because `CALL_SITE_SCOPE.itemAction` claimed `pos: false` — "handleAction delivers
-    // no position". That was true of the *argument* (the engine state) and false of the
-    // *call site*: `api.input.getMouseCellPosition()` is ambient (`input.d.ts:37`), and
-    // `anchorFor` in `handler/core/cell-region.ts` reads it. So a Weapon was reported as
-    // unable to shoot from a Weapon.
-    //
-    // `techGrantItem` in a trigger is untouched by any of that and remains the one real
-    // mismatch: a trigger is called with no arguments at all, so nothing that reads the
-    // payload can run there. That is what this check is for.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     check("the one mismatched slot is flagged unreachable", bad.length === 1, JSON.stringify(bad));
     check(
         "the tech handler is it",
@@ -2001,7 +1997,7 @@ console.log("── typed handler registry (9.1 / 9.5 / 9.6) ──");
     );
     check("usage index covers item actions", idx.itemShoot?.[0]?.id === "i1", JSON.stringify(idx));
 
-    // 9.4 — scopes are declared for every handler.
+    
     check(
         "every handler declares a scope",
         reg.HANDLER_META.every((m) => !!reg.HANDLER_SCOPE_LABELS[m.scope]),
@@ -2019,13 +2015,13 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
     const reg = await import("../../handler/core/handler-registry.ts");
     const att = await import("../panel/attach.ts");
 
-    // Two tabs, one menu group. This is the point of the restructure: they are
-    // siblings in the sub-nav rather than a mode behind a switcher drawn *below* it.
-    //
-    // `projectileOption` and `upgradeAction` are checked as *reachable* but no
-    // longer as Handlers tabs: both qualify one specific entry elsewhere, so they
-    // are drawn under it. The point of the test is that each is a real screen with
-    // a real label and no entry form of its own, wherever it is reached from.
+    
+    
+    
+    
+    
+    
+    
     for (const t of ["action", "projectileOption", "upgradeAction"] as const) {
         check(`${t} is a known tab`, t in sch.CATEGORY_META);
         check(
@@ -2042,17 +2038,17 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
         );
         check(`${t} has no entry form`, sch.fieldsFor(t).length === 0);
     }
-    // The two that are still tabs, and only those — a third would be a different
-    // feature. `customProcess` is the fourth screen in the group and the one
-    // deliberate exception: a named process is a thing you author and reference
-    // everywhere, not a browser over something else, so it keeps a tab.
+    
+    
+    
+    
     check(
         "the Handlers group holds exactly Actions and Processes",
         sch.MENU_GROUPS.find((g) => g.key === "handlers")?.categories.join() ===
             "action,customProcess",
     );
-    // The two that moved are attached to the thing they configure, which is the
-    // only thing that makes them reachable now.
+    
+    
     check(
         "Projectile options hang off Items",
         att.parentOf("projectileOption" as never) === "items",
@@ -2075,10 +2071,10 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
     );
     check("initial tab state is collapsed", hp.initialHandlersState().open === null);
 
-    // defaultParams seeds the form from declared defaults.
-    // `energyDefault`, not a former excavation preset: `capacity` carries all three
-    // constraints this is about — a `def`, a `min`, and `int` — so the assertions
-    // below test the registry, not whichever action happens to own the field today.
+    
+    
+    
+    
     const withConstraints = reg.handlerMeta("energyDefault")!;
     check(
         "defaultParams uses declared defaults",
@@ -2090,7 +2086,7 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
         hp.defaultParams(reg.handlerMeta("structureWriteData")!).field === undefined,
     );
 
-    // The screen renders against a config, and shows a reachability warning.
+    
     const el = (t: string, p: unknown, ...c: unknown[]) => ({ t, p, c });
     const node = hp.renderActions({
         h: el as never,
@@ -2104,23 +2100,23 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
         onCopy: () => {},
     }) as { t: string; c: unknown[] };
     const flat = JSON.stringify(node);
-    // **No screen title.** This asserted `flat.includes("Handlers")` and used to
-    // pass. The sub-nav chip above already reads "Actions", so a "Handlers" heading
-    // under it named the menu *group* while the chip named the *screen* — two labels
-    // for one thing, stacked. Asserted as an absence because the regression is
-    // someone re-adding it: a duplicate label is invisible in a smoke test and
-    // obvious on screen.
+    
+    
+    
+    
+    
+    
     check(
         "the actions screen has no duplicate title",
         !flat.includes('"Handlers"'),
         flat.slice(0, 200),
     );
 
-    // The tab no longer groups on the **API axis**. That axis could not group
-    // anything useful: `api` lives on `globalThis`, so every call site has it and
-    // it says nothing about where an action can run — and most call none, which
-    // put four fifths of the catalogue under one heading. It is a flat
-    // alphabetical list now, filtered on axes that each answer a real question.
+    
+    
+    
+    
+    
     {
         const {
             ACTION_DOMAIN_LABELS,
@@ -2128,17 +2124,17 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
             ACTION_EFFECT_LABELS,
         } = await import("../../handler/core/action-class.ts");
         const { CALL_SITE_SCOPE, SCOPE_NEED_LABELS } = await import("../../handler/core/scope.ts");
-        // **Every domain an action actually has** is offered — not every domain
-        // that happens to be declared.
-        //
-        // This used to iterate `Object.values(ACTION_DOMAIN_LABELS)`, which is a
-        // list of *possible* values being read as a list of *present* ones. It
-        // passed for as long as the two coincided, and then asserted two chips
-        // that filter to nothing: `projectiles` (dead since the options became
-        // their own type) and `tech` (dead the moment the upgrade-only actions
-        // took 6 of its 7 rows into their own tab). A chip that yields an empty
-        // list reads as "your search found nothing", so the test was protecting
-        // the bug.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         const { HANDLER_META, isOnlyAtSlot } = await import(
             "../../handler/core/handler-registry.ts"
         );
@@ -2168,16 +2164,16 @@ console.log("── the two handler tabs are reachable and wired (9.2) ──");
             );
         }
         check("handlers tab is searchable", flat.includes("Search"));
-        // The toggle names both of its states, so the control is legible without
-        // having to be clicked into its other state first.
+        
+        
         check(
             "handlers tab has an in-use toggle that names both states",
             flat.includes("In use only") && flat.includes("hide the ones nothing uses"),
         );
     }
 
-    // …and the two halves are both there, because the whole point is two halves:
-    // the catalogue of actions, and the processes that are actually using them.
+    
+    
     check("the action half is labelled", flat.includes("Actions"));
     check("the process half is labelled", flat.includes("Processes in use"));
     check(
@@ -2191,12 +2187,12 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
 {
     const reg = await import("../../handler/core/handler-registry.ts");
     const cat = await import("../../catalog.ts");
-    // `resolveAction` is the resolver registration uses, and the one that unwraps
-    // `MODIFIER_ACTIONS` — `resolveAnyHandler` misses that third registry's shape.
+    
+    
     const { resolveAction } = await import("../../handler/core/process.ts");
     const sch = await import("../schema.ts");
 
-    // ActionType has no Consumable, so no handler may be offered for one.
+    
     check("Consumable offers no use action", reg.itemActionHandlersFor("Consumable").length === 0);
     check(
         "catalog returns none for Consumable",
@@ -2210,29 +2206,29 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     check("Weapon offers a use action", cat.listItemActionHandlerKeys("Weapon").length > 0);
     check("Mod offers a use action", cat.listItemActionHandlerKeys("Mod").length > 0);
 
-    // Each type only sees handlers it can actually dispatch to.
-    //
-    // `itemExcavate` and `itemShoot` are **not** in any of these lists any more.
-    // They read `payload.x` / `payload.y`, and `handleAction(state, action)`
-    // delivers no position — so in the `itemAction` slot they returned early every
-    // time while looking correctly configured. `canRunAt` now refuses that
-    // combination, and the corrected slots are `signal` / `processing` / `modifier`,
-    // which do hand over a structure. The assertions below are the honest
-    // consequence: a Tool or Weapon gets actions that can actually run there.
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const toolKeys = cat.listItemActionHandlerKeys("Tool").map((o) => o.value);
     const weaponKeys = cat.listItemActionHandlerKeys("Weapon").map((o) => o.value);
     const modKeys = cat.listItemActionHandlerKeys("Mod").map((o) => o.value);
     const allItem = [...toolKeys, ...weaponKeys, ...modKeys];
-    // The dig and shoot actions **are** offered now, each to the item type it belongs
-    // to, and this assertion would have caught the original bug from the other end.
-    //
-    // They were absent because `CALL_SITE_SCOPE.itemAction` said `pos: false` and
-    // `canRunAt` believed it — so a Tool was offered no way to dig and a Weapon no way
-    // to shoot, while the panel showed an item context carrying an x and a y.
-    //
-    // An item use does have a position: the engine hands over its state, and
-    // `api.input.getMouseCellPosition()` ("the cell under the cursor", `input.d.ts:37`)
-    // is ambient — which is what `anchorFor` in `handler/core/cell-region.ts` reads.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     check(
         "a Tool is offered the dig action",
         toolKeys.includes("itemExcavate"),
@@ -2243,15 +2239,15 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         weaponKeys.includes("itemShoot"),
         weaponKeys.join(" "),
     );
-    // …and they stay type-gated, which is the whole reason they carry `itemTypes`: a
-    // dig is a Tool's job and a shot is a Weapon's.
+    
+    
     check("a Weapon is not offered the dig action", !weaponKeys.includes("itemExcavate"));
     check("a Tool is not offered the shoot action", !toolKeys.includes("itemShoot"));
-    // The dig presets are **not** here any more. They were `itemAction` actions that
-    // returned a value, and `itemAction` discards it — so a Tool was offered five
-    // entries that could do nothing. They are `ExcavationOptionFn`s now, chosen on
-    // an *excavation profile* rather than on an item, which is where a profile's
-    // power and flags belong.
+    
+    
+    
+    
+    
     check(
         "a Tool is offered no excavation preset",
         !toolKeys.some((k) => k.startsWith("excavation")),
@@ -2271,13 +2267,13 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         allItem.every((k) => !!resolveAction(k)),
     );
 
-    // The process field is form-aware the way the old picker was: it hides itself
-    // for a Consumable, because `ActionType` has no Consumable to dispatch through.
-    //
-    // It declares **no `options`**, and that is the real change: a list of actions
-    // cannot be narrowed by `itemType` through a select. Asserting `resolveOptions`
-    // here would compare two empty lists and pass for the wrong reason. The
-    // per-type narrowing now lives in `itemActionHandlersFor`, checked below.
+    
+    
+    
+    
+    
+    
+    
     const field = sch.fieldsFor("items").find((f) => f.key === "processId")!;
     check("item declares a process reference", field?.kind === "processRef");
     check("the process field offers no dropdown options", !field.options);
@@ -2285,31 +2281,31 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     check("field is shown for Tool", field.when?.({ itemType: "Tool" }) === true);
     check("field is hidden when no type chosen", field.when?.({}) === false);
 
-    // The narrowing itself, where it moved to.
+    
     const { itemActionHandlersFor } = await import("../../handler/core/handler-registry.ts");
     const toolKeys2 = itemActionHandlersFor("Tool").map((m) => m.key);
     const weaponKeys2 = itemActionHandlersFor("Weapon").map((m) => m.key);
-    // `itemShoot` used to be the Weapon-only action, and the five `excavation*`
-    // presets used to be the Tool-only ones. Neither is in an item slot now: the
-    // first needs a position and `handleAction` delivers none, and the second were
-    // value-returning actions on that same void slot. What is left is `noop` and
-    // `toast`, both of which need nothing from the payload — so the two lists are
-    // legitimately **equal** now, and saying so is the honest assertion.
+    
+    
+    
+    
+    
+    
     check(
         "actions follow the itemType",
         toolKeys2.includes("toast") && weaponKeys2.includes("toast"),
         `tool=${toolKeys2.join(" ")} weapon=${weaponKeys2.join(" ")}`,
     );
-    // `itemShoot` is the Weapon-only action and `itemExcavate` the Tool-only one, and
-    // both are **in** an item slot again.
-    //
-    // They were not, and this is the third assertion written to pin that: the first said
-    // `itemAction` delivers no position, the second re-slotted the two actions away from
-    // it, and this one confirmed they had gone. All three described one wrong cell.
-    //
-    // An item use has a position — `api.input.getMouseCellPosition()` is ambient
-    // (`input.d.ts:37`) and `anchorFor` reads it — and `itemTypes` is what keeps them
-    // apart, so the per-type narrowing is the claim worth making here.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     check(
         "a Tool is offered the dig action and not the shoot",
         toolKeys2.includes("itemExcavate") &&
@@ -2323,7 +2319,7 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
     );
     check("a Consumable gets no action at all", itemActionHandlersFor("Consumable").length === 0);
 
-    // Round-trip: the process survives entry → form → entry.
+    
     const rt = roundTrip("items", {
         id: "md-my-hown-mod:mdmy.item.pick",
         name: "Pick",
@@ -2337,7 +2333,7 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         JSON.stringify(rt.back.actions),
     );
 
-    // A Consumable must never persist one, even if the form hands us one.
+    
     const consumed = formToEntry("items", {
         idSuffix: "juice",
         name: "Juice",
@@ -2350,8 +2346,8 @@ console.log("── item use actions are type-gated (7.4 / 9.7) ──");
         consumed.processId === undefined,
         JSON.stringify(consumed.processId),
     );
-    // …and switching back to a Tool restores it, which is why the rule is applied
-    // on the way to the entry rather than by blanking the control.
+    
+    
     const backToTool = formToEntry("items", {
         idSuffix: "juice",
         name: "Juice",
@@ -2372,7 +2368,7 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
     const cat = await import("../../catalog.ts");
     const f = (k: string) => sch.fieldsFor("techs").find((x) => x.key === k)!;
 
-    // 8.1 / 8.2 — currency + branch are pickers with a custom escape hatch.
+    
     for (const k of ["currencyType", "branch"]) check(`${k} is a select`, f(k).kind === "select");
     check("currencyType has a custom box", f("currencyTypeCustom").kind === "text");
     check("branch has a custom box", f("branchCustom").kind === "text");
@@ -2389,8 +2385,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         f("branchCustom").when?.({ branch: "__custom__" }) === true,
     );
 
-    // The fabricated hardcoded currency/branch names are gone; options are
-    // derived from the config, and "gold" survives (the one id the .d.ts names).
+    
+    
     const curs = cat.listCurrencyTypes().map((o) => o.value);
     const brs = cat.listTechBranches().map((o) => o.value);
     check("gold is offered", curs.includes("gold"), curs.join(" "));
@@ -2407,13 +2403,13 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         brs.join(" "),
     );
 
-    // 8.3 / 8.4 — requires + parentId are multi-selects over configured techs.
+    
     check("requires is a multiselect", f("requires").kind === "multiselect");
     check("parentId is a select", f("parentId").kind === "select");
     check("unlockStructures is a multiselect", f("unlockStructures").kind === "multiselect");
     check("unlockItems is a multiselect", f("unlockItems").kind === "multiselect");
 
-    // multiselect round-trips as a real string[]
+    
     const rt = roundTrip("techs", {
         id: "md-my-hown-mod:mdmy.tech.tier2",
         name: "Tier 2",
@@ -2432,8 +2428,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         JSON.stringify(rt.back.unlocks),
     );
 
-    // A tech can never require itself: the picker excludes the edited node.
-    // Seed the store first, otherwise the list is empty and the check is vacuous.
+    
+    
     const seed = (techs: unknown[]) => {
         store.config = { ...(store.config ?? {}), techs };
     };
@@ -2448,7 +2444,7 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
     ]);
     const allIds = cat.listTechIds().map((o) => o.value);
     check("tech list is populated from the config", allIds.length === 2, allIds.join(" "));
-    // The form carries the id suffix, not the ":tail" — use the realistic value.
+    
     const ids = cat.listTechIds("mdmy.tech.tier2").map((o) => o.value);
     check(
         "self is excluded from the tech list",
@@ -2461,7 +2457,7 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         ids.join(" "),
     );
 
-    // Branch + currency options come from the config just seeded.
+    
     check(
         "branch options derive from the config",
         cat.listTechBranches().map((o) => o.value).includes("industry"),
@@ -2474,8 +2470,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         cat.listCurrencyTypes().map((o) => o.value).join(" "),
     );
 
-    // Guard the over-exclusion trap: a sibling whose id merely *starts* with the
-    // excluded tail must stay selectable.
+    
+    
     seed([
         { id: "md-my-hown-mod:mdmy.tech.tier2", name: "Tier 2" },
         { id: "md-my-hown-mod:mdmy.tech.tier2b", name: "Tier 2b" },
@@ -2493,7 +2489,7 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
     );
     seed([]);
 
-    // Free-text customs survive a round trip through the companion box.
+    
     const cur = roundTrip("techs", {
         id: "md-my-hown-mod:mdmy.tech.custom",
         name: "Custom",
@@ -2529,8 +2525,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         })(),
     );
 
-    // Setting __custom__ with an empty box clears the value rather than storing
-    // the literal sentinel.
+    
+    
     const cleared = formToEntry("techs", {
         idSuffix: "c",
         name: "C",
@@ -2546,12 +2542,12 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
 }
 
 {
-    // ── unlock nodes ─────────────────────────────────────────────────────────
-    //
-    // The category that decides whether a structure needs research, and whether a
-    // "tech" node really becomes an in-game tech node. Both halves are round-trip
-    // tested because the two kinds write disjoint sets of fields, and a field
-    // read by one kind but not written back is silent data loss.
+    
+    
+    
+    
+    
+    
 
     console.log("── unlock nodes: the required owner of every structure's gate ──");
 
@@ -2571,8 +2567,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         ],
     };
 
-    // The picker is never empty: the built-in default is always first, so a
-    // structure can always name something even with no nodes configured.
+    
+    
     const opts = cat.listUnlockNodes().map((o) => o.value);
     check(
         "the default node is always offered",
@@ -2622,9 +2618,9 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         name: "Free",
         kind: "always",
     });
-    // The "always" kind writes no research fields at all, so a stale cost from a
-    // previous edit must not survive as a second, competing source for how the
-    // structure becomes available.
+    
+    
+    
     check(
         "an 'always' node keeps no research fields",
         free.back.cost === undefined && free.back.parentId === undefined,
@@ -2636,8 +2632,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         JSON.stringify(free.back.kind),
     );
 
-    // The borrow is exclusive: an engine tech keeps its own definition, so a cost
-    // typed alongside a borrow would be a second source for the same node.
+    
+    
     const borrowed = formToEntry("unlockNodes", {
         idSuffix: "borrowed",
         name: "Borrowed",
@@ -2657,8 +2653,8 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         JSON.stringify(borrowed.cost),
     );
 
-    // A structure's link is the required field, and it is read in full so a
-    // dangling node stays visible and repairable rather than being dropped.
+    
+    
     const st = roundTrip("structures", {
         id: "md-my-hown-mod:crusher",
         unlockNode: "md-my-hown-mod:unlock.tier1",
@@ -2678,10 +2674,10 @@ console.log("── tech fields are selectors, not free text (Phase 8) ──");
         String(dangling.unlockNode),
     );
 
-    // The last link in the chain: what the node resolves to at registration. A
-    // form that round-trips perfectly is still worthless if the engine never sees
-    // the structures, so the built tech's `unlocks.structures` is checked here
-    // rather than only in the unit tests.
+    
+    
+    
+    
     const built = tl.engineTechOf(store.config.unlockNodes[0], store.config);
     check(
         "a 'tech' node resolves to an engine tech carrying its structures",
@@ -2697,7 +2693,7 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
     const assets = cat.listLibraryAssets();
     check("library is populated", assets.length > 0, String(assets.length));
 
-    // Every entry must carry a usable preview, or the tile renders blank.
+    
     const noPreview = assets.filter((a) => !a.preview?.startsWith("data:image/png;base64,"));
     check(
         "every asset has a PNG data URL preview",
@@ -2705,7 +2701,7 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
         noPreview.map((a) => a.name).join(" "),
     );
 
-    // The declared pixel size must match the real PNG header, and be 16×16.
+    
     const decode = (d: string) => {
         const bin = atob(d.replace(/^data:image\/png;base64,/, ""));
         const bytes = new Uint8Array(bin.length);
@@ -2727,11 +2723,11 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
         badSize.length === 0,
         badSize.map((a) => a.name).join(" "),
     );
-    // Only the **icons** are 16×16 cells. The library is every bundled PNG, so it
-    // also carries structure art (`generator` is 48×16, the material tiles 32×16)
-    // — real assets at their real size. Asserting 16×16 over the whole list is
-    // what forced the generator to hide them in the first place. The size-vs-PNG
-    // agreement above is the invariant that actually protects the panel.
+    
+    
+    
+    
+    
     const icons = assets.filter((a) => a.path.startsWith("assets/icons/"));
     const not16 = icons.filter((a) => a.previewW !== 16 || a.previewH !== 16);
     check(
@@ -2739,8 +2735,8 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
         not16.length === 0,
         not16.map((a) => `${a.name} ${a.previewW}x${a.previewH}`).join(" "),
     );
-    // And the library is not icons-only any more: the structure art has to be in
-    // here or the panel cannot save a sprite that points at it.
+    
+    
     const nonIcons = assets.filter((a) => !a.path.startsWith("assets/icons/"));
     check(
         "non-icon bundled assets are listed too",
@@ -2748,14 +2744,14 @@ console.log("── asset previews are real 16×16 pixels (Phase 10) ──");
         `${assets.length} assets, all under assets/icons/`,
     );
 
-    // Nearest-neighbour is what keeps the art crisp when scaled up.
+    
     check(
         "sprite scaling is pixelated",
         styles.spritePixel.imageRendering === "pixelated",
         String(styles.spritePixel.imageRendering),
     );
 
-    // Searching still works with the heavier entries.
+    
     check(
         "search still matches by name",
         cat.searchLibraryAssets("alien").some((a) => a.name === "icon-alien"),
@@ -2775,14 +2771,14 @@ console.log("── handler registry is documented and API-verified ──");
         PROCESSING_ACTIONS,
     } = await import("../../handler/actions/index.ts");
 
-    // Every action must be documented, or the UI shows a bare key.
-    //
-    // `ACTION_DOCS` is now one merged map over **all three** signatures — it used
-    // to be three separate ones (`ANY_HANDLER_DOCS` / `PROCESS_HANDLER_DOCS` /
-    // `CODE_HANDLER_DOCS`) and these two loops were per-registry. So the "docs must
-    // not describe actions that no longer exist" direction has to check against the
-    // whole catalogue, not one registry at a time; checking each separately would
-    // report every modifier action as a phantom.
+    
+    
+    
+    
+    
+    
+    
+    
     const live = new Set([
         ...Object.keys(ANY_ACTIONS),
         ...Object.keys(PROCESSING_ACTIONS),
@@ -2795,25 +2791,25 @@ console.log("── handler registry is documented and API-verified ──");
         check(`ACTION_DOCS live: ${key}`, live.has(key), "no such action");
     }
 
-    // Handlers that used non-existent engine APIs must be gone for good.
+    
     const removed = [
-        "techUnlockStructure", // called api.tech.unlock — does not exist
-        "techGrantUpgrade", // called api.upgrades.apply — does not exist
-        "energyGenerator", // producer role is not part of registerType
-        "energyConsumer", // consumer role is not part of registerType
-        "energyFromTool", // replaced by energyGenerateWhileHeld
-        "energyFromProcessor", // replaced by energyConsumePerRun
+        "techUnlockStructure", 
+        "techGrantUpgrade", 
+        "energyGenerator", 
+        "energyConsumer", 
+        "energyFromTool", 
+        "energyFromProcessor", 
     ];
     for (const key of removed) {
         check(`removed: ${key}`, !(key in ANY_ACTIONS), "still registered");
     }
 
-    // The verified replacements must exist.
+    
     for (const key of ["techAppendUnlock", "techSetUpgradeLevel", "energyConductor"]) {
         check(`added: ${key}`, key in ANY_ACTIONS, "missing");
     }
 
-    // `commit(mutations)` takes ONE argument, not (x, y, type).
+    
     const commits: unknown[][] = [];
     const ctx = {
         getResolvedTypeAtCell: () => 7,
@@ -2825,10 +2821,10 @@ console.log("── handler registry is documented and API-verified ──");
     PROCESSING_ACTIONS.processorConvert?.({ x: 1, y: 2 }, ctx, { to: 9 });
     check("processorConvert commit arity", commits[0]?.length === 1, `args=${commits[0]?.length}`);
 
-    // `drillTierDamage` is a number (0–1000), not a boolean flag — the one place the
-    // engine's seven `ExcavateOptions` fields is not boolean, and therefore the one a
-    // generic "all flags are switches" assumption gets wrong. Checked on the option,
-    // which is where the value now lives: it is no longer an action's return.
+    
+    
+    
+    
     const EXC = await import("../../handler/excavation-option/index.ts");
     const drill = EXC.EXCAVATION_OPTIONS.excavationDrill?.({});
     check(
@@ -2836,15 +2832,15 @@ console.log("── handler registry is documented and API-verified ──");
         typeof drill?.options?.drillTierDamage === "number",
         String(drill?.options?.drillTierDamage),
     );
-    // And the whole `options` bag is nested under `options`, not flattened, because
-    // that is the shape `registerProfile` takes.
+    
+    
     check(
         "the flags sit under options, not at the top level",
         drill?.power === 8 && drill.options?.fromDrill === true,
         JSON.stringify(drill),
     );
 
-    // Energy handlers must only emit documented registerType options.
+    
     const allowed = new Set(["capacity", "energyType"]);
     for (
         const key of [
@@ -2864,7 +2860,7 @@ console.log("── handler registry is documented and API-verified ──");
         );
     }
 
-    // Modifiers keep their own registry + keys.
+    
     check("MODIFIER_ACTIONS non-empty", Object.keys(MODIFIER_ACTIONS).length > 0);
 }
 
@@ -2878,7 +2874,7 @@ console.log("── schema matches the real engine contracts ──");
             : (f?.options ?? []).map((o) => o.value);
     };
 
-    // energy: only conductor/storage are legal registerType roles.
+    
     const roles = optValues("energy", "type");
     check(
         "energy roles are conductor/storage",
@@ -2891,26 +2887,26 @@ console.log("── schema matches the real engine contracts ──");
     check("energy exposes network (energyType)", keysOf("energy").includes("energyType"));
     check("energy drops excludeFromNetwork", !keysOf("energy").includes("excludeFromNetwork"));
 
-    // terrains: `fog` is not a documented terrain property.
+    
     check("terrain has no fog field", !keysOf("terrains").includes("fog"));
     check("terrain still exposes flammable", keysOf("terrains").includes("flammable"));
 
-    // processing: keyed by structureType only — no instance mode exists.
+    
     const p = keysOf("processing");
     check("processing has no mode field", !p.includes("mode"));
     check("processing has no structureId field", !p.includes("structureId"));
     check("processing keys on structureType", p.includes("structureType"));
     check("processing has intervalMs", p.includes("intervalMs"));
-    // A process **reference** now, not the inline list. The program itself is on the
-    // Processes tab; this tab only names it.
+    
+    
     check("processing declares a process reference", p.includes("processId"));
 
-    // sprites: the path is a library field, and there is no hand-typed pattern.
+    
     const spritePath = fieldsFor("sprites").find((f) => f.key === "path");
     check("sprite path is library kind", spritePath?.kind === "library");
     check("sprite path has no manual pattern", !spritePath?.pattern);
 
-    // the World/Tech split: research must not sit under World any more.
+    
     const groups = MENU_GROUPS.map((g) => ({ key: g.key, cats: g.categories }));
     const techGroup = groups.find((g) => g.key === "tech");
     check("there is a Tech group", !!techGroup);
@@ -2921,15 +2917,15 @@ console.log("── schema matches the real engine contracts ──");
     const worldGroup = groups.find((g) => g.key === "world");
     check("World no longer holds techs", !worldGroup?.cats.includes("techs"));
     check("World no longer holds upgrades", !worldGroup?.cats.includes("upgrades"));
-    // every category must be reachable: in exactly one menu group, or attached
-    // under one. A tab that is neither is a screen nobody can open.
+    
+    
     const allCats = groups.flatMap((g) => g.cats);
     const attached = Object.values(ATTACHED).flat();
     const orphans = Object.keys(CATEGORY_META).filter(
         (k) => !allCats.includes(k as never) && !attached.includes(k as never),
     );
     check("no category is orphaned", orphans.length === 0, JSON.stringify(orphans));
-    // and no tab may be both a menu chip and an attached list, or it renders twice
+    
     const doubled = allCats.filter((c) => attached.includes(c as never));
     check("no category is both a chip and an attachment", doubled.length === 0, doubled.join(","));
 }
@@ -2956,8 +2952,8 @@ if (fail > 0) Deno.exit(1);
 
 console.log("── hover tooltip is a structured editor, not a JSON box ──");
 {
-    // The documented shape, taken from two shipping mods
-    // (`__scraped-mods/workshop/3784291891`, `3792792689`).
+    
+    
     const f = formDefaults("structures");
     f.idSuffix = "reader";
     f.tooltipMessageKey = "structures|reader|status";
@@ -2981,8 +2977,8 @@ console.log("── hover tooltip is a structured editor, not a JSON box ──"
         JSON.stringify(entry.tooltipHover),
     );
 
-    // `Number("")` is 0, and data field 0 does not exist, so the tooltip would
-    // be bound to nothing and silently never render.
+    
+    
     const blank = formDefaults("structures");
     blank.idSuffix = "reader";
     blank.tooltipMessageKey = "structures|reader|status";
@@ -3004,8 +3000,8 @@ console.log("── hover tooltip is a structured editor, not a JSON box ──"
     const noneEntry = formToEntry("structures", none) as { tooltipHover?: unknown };
     check("no message key means no tooltip at all", noneEntry.tooltipHover === undefined);
 
-    // An unrepresentable stored object (valueLabels, two field rows) must
-    // survive rather than be rebuilt into something the author did not write.
+    
+    
     const exotic = entryToForm("structures", {
         id: "md-my-hown-mod:mdmy.structure.reader",
         tooltipHover: {
@@ -3042,8 +3038,8 @@ console.log("── an upgrade category's requirement is a pass-through, labelle
         JSON.stringify(entry.requirement),
     );
 
-    // A non-string requirement (a hand-edited config, or one from before the
-    // picker existed) falls back to the raw box rather than being dropped.
+    
+    
     const legacy = entryToForm("categories", {
         id: "md-my-hown-mod:mdmy.upgradeCategory.power",
         name: "Power",

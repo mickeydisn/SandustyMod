@@ -1,30 +1,4 @@
-/**
- * Host sandkit handle.
- *
- * ## Why this file no longer exports `api`
- *
- * It used to end with `export const api = sandkit.api as any` — a value
- * evaluated **once, when this module is first imported**. Every consumer then
- * held that one snapshot, so a host injected after import left them reading
- * `undefined` forever, and because every call was optional-chained it degraded
- * to an empty list or a `null` rather than an error. Pickers rendered empty and
- * nothing said why.
- *
- * That is the same failure already recorded in `handler/core/types.ts`, where a
- * `globalThis`-only read made every processing action silently no-op.
- *
- * So there is no `api` and no `root` here any more:
- *
- * - engine calls go through `packages/mysandkit.ts`, which resolves the host
- *   *per call* and wraps each one in try/catch;
- * - `getSandkit()` below is for the few places that genuinely need the raw host
- *   (React, enums), and it re-resolves on every call.
- *
- * The `declare const sandkit` is still the right way to see the host: the game
- * injects it into the mod scope, and it is not reliably on `globalThis`. It is the
- * one remaining raw read in the mod, and it is here for a specific reason — see
- * `React` below.
- */
+
 import { g } from "./packages/mysandkit.ts";
 
 declare const sandkit: {
@@ -35,12 +9,7 @@ declare const sandkit: {
     enums?: any;
 };
 
-/**
- * Minimal structural type for the host React build.
- *
- * The game injects its own React copy; we cannot import the real types, but we
- * DO need the hooks to be generic so `useState<PanelState>(...)` type-checks.
- */
+
 export interface HostReactType {
     createElement: (...args: unknown[]) => unknown;
     useState: <S>(initial: S | (() => S)) => [S, (v: S | ((prev: S) => S)) => void];
@@ -50,19 +19,7 @@ export interface HostReactType {
     useMemo: <T>(fn: () => T, deps?: readonly unknown[]) => T;
 }
 
-/**
- * The host React build.
- *
- * The one deliberately eager read left in this file, and it is kept for a
- * concrete reason: `h` has to be a *bound* function, so React cannot be resolved
- * per call without turning 100+ `HostReact.useState(...)` call sites into
- * `hostReact().useState(...)`. React is present before any mod component mounts,
- * so the snapshot is taken long before it is needed.
- *
- * The engine api above was the opposite case — it is called during boot, during
- * discovery, and from the worker — which is exactly why it could not be
- * snapshotted.
- */
+
 export const React = (sandkit as { react?: HostReactType }).react;
 export const h = React?.createElement?.bind(React) as
     | ((...args: unknown[]) => unknown)
@@ -80,20 +37,7 @@ export function toast(msg: string): void {
     safe(() => getSandkit()?.api?.ui?.toast?.(msg, {}));
 }
 
-/**
- * The host handle, resolved on **every** call.
- *
- * A delegate to `g()` in `packages/mysandkit.ts`, which is the one place that knows
- * resolution order: the injected `sandkit` first, then `globalThis`. This used to
- * Used to be a third independent copy of that order — alongside `mysandkit.ts`
- * and `handler/core/types.ts` — and none of the three held the others to it, so a
- * change to one silently did not apply to the others. Both of the others now
- * delegate here, so this is the only copy left.
- *
- * Only the places that genuinely need the raw host (React, enums) should call
- * this. Engine calls go through the wrapper in `packages/mysandkit.ts`, which
- * types them and contains their failures.
- */
+
 export function getSandkit(): typeof sandkit | any {
     return g() ?? null;
 }

@@ -1,12 +1,4 @@
-/**
- * The `ElementInteraction` union, split into form fields and put back together.
- *
- * The engine stores this object verbatim, so the two directions that matter are
- * "a kind only emits the fields it actually has" and "an object the form does
- * not model is never quietly rewritten". Both are checked here, because the
- * failure mode is silent: a re-composed object that dropped a field would still
- * register cleanly and just do less than the author asked for.
- */
+
 import { assert, assertEquals } from "jsr:@std/assert";
 import {
     composeInteraction,
@@ -19,8 +11,8 @@ import {
 const kinds = INTERACTION_KINDS.map((k) => k.kind);
 
 Deno.test("every kind in the union is offered", () => {
-    // The seven from `elements.d.ts`. A kind missing here is one the user
-    // literally cannot create.
+    
+    
     assertEquals(kinds.sort(), [
         "custom",
         "destroyer",
@@ -40,8 +32,8 @@ Deno.test("every kind explains itself", () => {
 });
 
 Deno.test("an empty form stores nothing", () => {
-    // Otherwise a blank entry would gain `{ kind: "" }` and the engine would be
-    // handed an object matching no union member.
+    
+    
     assertEquals(composeInteraction({}), undefined);
 });
 
@@ -56,8 +48,8 @@ Deno.test("a flag-only kind emits nothing but its discriminator", () => {
 });
 
 Deno.test("a flag-only kind ignores fields belonging to another kind", () => {
-    // This is the whole point of the rebuild: no more "why is my tooltip asking
-    // about items" because one flat box held everything.
+    
+    
     assertEquals(
         composeInteraction({
             interactionKind: "flammable",
@@ -77,7 +69,7 @@ Deno.test("the structure kind emits structures", () => {
 });
 
 Deno.test("an empty id list is omitted, not stored as []", () => {
-    // `structures: []` would show an empty tooltip row in game.
+    
     assertEquals(
         composeInteraction({ interactionKind: "structure", structures: "  ,  " }),
         { kind: "structure" },
@@ -96,7 +88,7 @@ Deno.test("tooltip metadata is only built for kinds that use it", () => {
         assertEquals(out.textKey, "mods|acid|burns", kind);
         assertEquals(out.visibleWhen, { dataField: 2, equals: 1 }, kind);
     }
-    // And not for the others.
+    
     assertEquals(
         composeInteraction({
             interactionKind: "destroyer",
@@ -110,7 +102,7 @@ Deno.test("tooltip metadata is only built for kinds that use it", () => {
 });
 
 Deno.test("a half-filled visibility rule is not written", () => {
-    // `{ visibleWhen: { dataField: NaN } }` would be worse than no rule.
+    
     assertEquals(
         composeInteraction({
             interactionKind: "custom",
@@ -172,13 +164,13 @@ Deno.test("a fully modelled object is not flagged", () => {
 });
 
 Deno.test("an unknown kind still round-trips its extra fields", () => {
-    // The engine may add an eighth kind. The form must not rewrite it into
-    // `{ kind: "custom" }` on the next save.
+    
+    
     const stored = { kind: "brandNewKind", payload: [1, 2, 3] };
     const { fields, unmodelled } = splitInteraction(stored);
     assertEquals(fields.interactionKind, "brandNewKind");
     assert(unmodelled);
-    // compose declines, which is the signal to keep the original verbatim.
+    
     assertEquals(composeInteraction(fields), undefined);
 });
 
@@ -188,8 +180,8 @@ Deno.test("an empty or missing object splits to nothing", () => {
 });
 
 Deno.test("the visibility modes cover exactly the two the engine reads", () => {
-    // The interaction metadata uses visibleWhen / crossedOutWhen and nothing
-    // else, so a fourth option would be invented.
+    
+    
     assertEquals(
         DATA_FIELD_MODES.map((m) => m.value),
         ["", "visibleWhen", "crossedOutWhen"],

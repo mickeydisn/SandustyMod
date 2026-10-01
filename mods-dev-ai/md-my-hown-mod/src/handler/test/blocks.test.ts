@@ -1,17 +1,5 @@
-/**
- * `if` blocks: IF/THEN/ELSE in a process.
- *
- * The claim under test is narrow and load-bearing. A block **branches**; it never
- * **computes**. Its condition is the truthiness of a variable an earlier step already
- * bound, so the "no test-and-return in a config" rule survives the addition of a
- * conditional — there is still no way to *write* a test, only to branch on one.
- *
- * Every test here watches a **real** engine call. A spy wrapped around the compiler
- * would pass whatever the branches did, and the whole question is which arm ran.
- *
- * @module
- */
-import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+
+import { assert, assertEquals } from "https:
 import {
     BLOCK_KEY,
     compileProcess,
@@ -23,7 +11,7 @@ import {
 } from "../core/process.ts";
 import { formatActionRefs, parseActionRefs } from "../../ui/definition/actions-field.ts";
 
-/** A block ref, spelled the way a config would spell it. */
+
 function block(
     test: string,
     then: HandlerActionRef[],
@@ -34,17 +22,7 @@ function block(
         : { key: BLOCK_KEY, options: { var: test }, then };
 }
 
-/**
- * Run a process against a fake engine and report the `toast` messages it produced.
- *
- * `toast` is the witness because its whole body is one engine call — so "did this
- * branch run" has exactly one honest answer, read off the call the action really made.
- *
- * The engine is complete enough for the *conditions* to be measurements rather than
- * assertions about the fake: every cell reads as `water`, so `logicCount` over a 3×3
- * really is 9, and `countEmpty` really is 0. A thinner fake would have made both
- * return the same number and the true/false cases would have been testing the stub.
- */
+
 function toastsOf(refs: HandlerActionRef[]): string[] {
     const seen: string[] = [];
     const g = globalThis as { sandkit?: unknown };
@@ -65,14 +43,14 @@ function toastsOf(refs: HandlerActionRef[]): string[] {
     return seen;
 }
 
-/** A `toast` step. Its option is `text` — the action reads no `message`. */
+
 const says = (text: string): HandlerActionRef => ({
     key: "toast",
     options: { text },
 });
 
 Deno.test("a true condition runs `then` and never `else`", () => {
-    // `logicCount` over a 3×3 returns 9 — truthy.
+    
     const ran = toastsOf([
         { key: "logicCount", as: "flag", options: { element: "water", size: 3 } },
         block(
@@ -85,9 +63,9 @@ Deno.test("a true condition runs `then` and never `else`", () => {
 });
 
 Deno.test("a falsy condition runs `else` and never `then`", () => {
-    // `countEmpty` answers 0 with no engine present, which is falsy. Same slot, same
-    // shape of action, a different answer — so the false case is a real measurement
-    // rather than a hand-forced one.
+    
+    
+    
     const ran = toastsOf([
         { key: "countEmpty", as: "flag", options: { size: 1 } },
         block(
@@ -100,9 +78,9 @@ Deno.test("a falsy condition runs `else` and never `then`", () => {
 });
 
 Deno.test("a variable that was never bound takes `else` rather than throwing", () => {
-    // An unbound name is a *missing binding*, not a false claim, and the compiler
-    // cannot tell those apart. A branch that quietly did nothing beats a tick that
-    // threw — and `else` still runs, so the process is not silently dead.
+    
+    
+    
     const ran = toastsOf([
         block(
             "neverBound",
@@ -124,8 +102,8 @@ Deno.test("a block with only a `then` runs nothing when false", () => {
 });
 
 Deno.test("blocks nest, and the branch is decided at every level", () => {
-    // Outer true, inner false: only the inner `else` runs. Deciding at the top alone
-    // would take the inner `then` and get this exactly backwards.
+    
+    
     const ran = toastsOf([
         { key: "logicCount", as: "outer", options: { element: "water", size: 3 } },
         block("outer", [
@@ -141,8 +119,8 @@ Deno.test("blocks nest, and the branch is decided at every level", () => {
 });
 
 Deno.test("both arms are compiled, so an action in `else` is not reported missing", () => {
-    // Compiling only the taken branch would make the *other* arm's actions look
-    // unresolved — so a typo in `else` would be reported against a working `then`.
+    
+    
     const compiled = compileProcess(
         [block("x", [{ key: "processorNoop" }], [{ key: "processorLog" }])],
         "processing",
@@ -151,7 +129,7 @@ Deno.test("both arms are compiled, so an action in `else` is not reported missin
 });
 
 Deno.test("nesting past the cap is reported rather than overflowing the stack", () => {
-    // Built outward so the deepest block really is the deepest.
+    
     let inner: HandlerActionRef[] = [{ key: "processorNoop" }];
     for (let i = 0; i < MAX_BLOCK_DEPTH + 4; i++) inner = [block("v", inner)];
     const failures: ProcessFailure[] = [];
@@ -163,8 +141,8 @@ Deno.test("nesting past the cap is reported rather than overflowing the stack", 
 });
 
 Deno.test("a block with no `var` is refused, not guessed", () => {
-    // Picking a branch for a block that cannot say what it is testing is the same
-    // class of silent win as the `mx`/`size` conflict.
+    
+    
     const failures: ProcessFailure[] = [];
     compileProcess(
         [{ key: BLOCK_KEY, then: [{ key: "processorNoop" }] }],
@@ -187,7 +165,7 @@ Deno.test("branches on a plain action are reported and dropped", () => {
 });
 
 Deno.test("a process with a block counts as using the context", () => {
-    // A block reads a name, so the panel must not say "this process shares nothing".
+    
     assertEquals(
         compileProcess(
             [{ key: "noop", as: "a" }, block("a", [{ key: "processorNoop" }])],
@@ -208,7 +186,7 @@ Deno.test("flattenRefs reaches every branch, so the panel counts them all", () =
         block("x", [{ key: "b" }], [block("y", [{ key: "c" }])]),
     ];
     assertEquals(flattenRefs(refs).map((r) => r.key), ["a", "if", "b", "if", "c"]);
-    // A block is a compiler node, not an action, so it is never counted as one.
+    
     assertEquals(flattenRefs(refs).filter((r) => isBlock(r)).length, 2);
 });
 
@@ -219,14 +197,14 @@ Deno.test("a block survives the panel round trip, both arms intact", () => {
             says("dry"),
         ]),
     ];
-    // The text is the panel's only editor for this, so a branch that did not come back
-    // would be a branch the author wrote and silently lost.
+    
+    
     assertEquals(parseActionRefs(formatActionRefs(refs)), refs);
 });
 
 Deno.test("an empty arm round-trips as absent, not as an empty list", () => {
-    // `{"then": []}` must not come back as a present-but-empty key, or a second round
-    // trip would add one on every save.
+    
+    
     const parsed = parseActionRefs(formatActionRefs([block("x", [{ key: "a" }])]));
     assertEquals(parsed[0].else, undefined);
 });

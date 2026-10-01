@@ -1,33 +1,11 @@
-/**
- * Mount the configurator panel.
- *
- * The panel used to be reached through a hotbar item: it registered a tool, added
- * it to the player's inventory, registered a global overlay, and then returned
- * `null` from every render unless that item happened to be the active selection.
- * So the panel's existence depended on game state the author had to arrange before
- * they could edit anything — and an author who had picked a different tool had no
- * way back to the configurator at all.
- *
- * It is now a plain injected component, mounted once at boot (the mdadmin pattern
- * in `mods-dev/md-admin-element`). `api.ui.inject` takes a custom mount id and
- * returns an unmount function; the panel renders itself minimized, and the chip is
- * the way in.
- *
- * **No teardown, on purpose.** `inject` hands back an unmount fn and it is
- * discarded. The mod is either enabled at boot — and then the panel is there for
- * the session, like any HUD — or it is not, and nothing is mounted at all. The
- * `enabled` setting still prunes stored config when switched off, but that is
- * `runDisableCleanup`'s job in `main.ts` and has nothing to do with the panel: the
- * alternative is a half-torn-down screen that is still on screen and no longer
- * able to save.
- */
+
 import { getSandkit, h, React, safe, toast } from "./api.ts";
 import { api as skApi } from "./packages/mysandkit.ts";
 import { LOG, MOD_ID, OVERLAY_ID, SETTINGS, TOOL_NAME } from "./constants.ts";
 import { readSettings } from "./packages/modkit.ts";
 import { ConfiguratorPanel } from "./ui/panel.ts";
 
-/** Guards against a second mount if this is somehow called again. */
+
 let mounted = false;
 
 export function mountPanel(): void {
@@ -38,11 +16,11 @@ export function mountPanel(): void {
     const a = skApi.raw;
     if (!a) {
         console.error(`${LOG} sandkit.api missing — panel unavailable`, {
-            // `g()` is the single place that knows the resolution order, so asking
-            // it whether it answered is accurate. Reading `globalThis.sandkit`
-            // here reported `false` in the real game even when the host was
-            // present, because the host is a `new Function` parameter rather than
-            // a global — a diagnostic that could only ever mislead.
+            
+            
+            
+            
+            
             resolved: !!getSandkit(),
         });
         return;
@@ -55,14 +33,14 @@ export function mountPanel(): void {
         return;
     }
 
-    // Does a fresh install start as a chip or wide open? Read once, here, and
-    // handed to the component — the reader's own stored choice overrides it after
-    // the first launch either way.
+    
+    
+    
     const startMinimized = readSettings(MOD_ID, SETTINGS).panelMinimized !== false;
 
-    // `inject` is the documented way to mount a component under a custom id, and
-    // it returns an unmount function — deliberately discarded. See the note on
-    // teardown below.
+    
+    
+    
     const dispose = safe(() =>
         a.ui?.inject?.(OVERLAY_ID, (() => ConfiguratorPanel(startMinimized)) as never)
     );
@@ -72,21 +50,21 @@ export function mountPanel(): void {
                 startMinimized ? "minimized" : "open"
             }`,
         );
-        // The engine mounts overlays once the UI is live, so an early mount can
-        // land on nothing. A failed mount is silent, which makes a short retry
-        // cheaper than a panel that simply never appears.
+        
+        
+        
         const bump = () => safe(() => a.ui.overlays?.update?.("global"));
         setTimeout(bump, 300);
         setTimeout(bump, 1500);
         try {
             a.events?.on?.("game:ready", bump);
-        } catch { /* events unavailable — the retries above are the fallback */ }
+        } catch {  }
         return;
     }
 
-    // `inject` is not the only spelling: builds that predate it expose the overlay
-    // slot registry instead. Registering there is equivalent from the author's
-    // side — the render function always returns the panel, with no selection gate.
+    
+    
+    
     try {
         safe(() => a.ui.overlays?.unregister?.("global", OVERLAY_ID));
         a.ui.overlays.register(
@@ -101,7 +79,7 @@ export function mountPanel(): void {
         setTimeout(bump, 1500);
         try {
             a.events?.on?.("action:changed", bump);
-        } catch { /* events unavailable */ }
+        } catch {  }
     } catch (err) {
         console.warn(`${LOG} panel mount failed — no ui.inject, no overlays.register`, err);
         toast(`${TOOL_NAME}: could not open the panel — see console`);

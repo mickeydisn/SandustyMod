@@ -1,16 +1,4 @@
-/**
- * The **structure** object definition.
- *
- * A structure is the most constrained object the panel authors and the one with
- * the most of its own vocabulary: a 4×4 footprint grid, a *list* of build modes
- * (where the engine throws on `spanTiles` off a line mode), a block-grid
- * reference, and an unlock-node relation that the field itself cannot explain.
- * All of that is structure-only, so all of it lives here — the schema, the two
- * widgets the generic form renderer has no idea how to draw, the shape codecs,
- * and the save path that has to undo the form's flattening.
- *
- * Ground truth: `doc/doc-tech/09-structures-register.md`.
- */
+
 import {
     listBuildModeTypes,
     listDrawFunctions,
@@ -46,19 +34,19 @@ import type {
     PanelContext,
 } from "../types.ts";
 
-// ── The 4×4 footprint ────────────────────────────────────────────────────────
-// The engine normalises an unknown structure id to a 4×4 block when no shape is
-// given, and rejects anything that is not exactly 4 rows of 4 zeros and ones.
-// So this is not a general grid editor with a size setting — it is one shape.
+
+
+
+
 
 const SHAPE_SIZE = 4;
 
-/** A full 4×4 grid of `fill`. */
+
 export function emptyShape(fill: 0 | 1 = 0): number[][] {
     return Array.from({ length: SHAPE_SIZE }, () => Array<number>(SHAPE_SIZE).fill(fill));
 }
 
-/** Coerce any stored shape into a valid 4×4 0/1 matrix. Bad input is clamped, not rejected. */
+
 export function normalizeShape(raw: unknown): number[][] {
     const grid = emptyShape(0);
     if (!Array.isArray(raw)) return grid;
@@ -73,12 +61,12 @@ export function normalizeShape(raw: unknown): number[][] {
     return grid;
 }
 
-/** Serialise for the form field (compact one-row-per-line JSON). */
+
 export function shapeToText(raw: unknown): string {
     return JSON.stringify(normalizeShape(raw));
 }
 
-/** Human summary shown under the grid. */
+
 export function describeShape(raw: unknown): string {
     const grid = normalizeShape(raw);
     const filled = grid.flat().filter((v) => v === 1).length;
@@ -87,7 +75,7 @@ export function describeShape(raw: unknown): string {
     return `custom — ${filled} of 16 cells occupied`;
 }
 
-/** 4×4 footprint field: visual grid editor instead of a raw JSON textarea. */
+
 function shapeField(): FieldSpec {
     return {
         key: "shapeJson",
@@ -95,30 +83,17 @@ function shapeField(): FieldSpec {
         kind: "shape",
         section: "Placement",
         wide: true,
-        // A new structure starts as a solid block, matching the engine default.
-        // Stated as a field default rather than a special case in formDefaults,
-        // so the shape rule is next to the field it applies to.
+        
+        
+        
         def: shapeToText(emptyShape(1)),
         hint: "1 = occupied cell, 0 = empty. Use the buttons for solid / empty / clear.",
     };
 }
 
-// ── Build modes ──────────────────────────────────────────────────────────────
 
-/**
- * Turn the build-modes editor's text into engine `buildModes[]`.
- *
- * Two things the engine cares about, which a naive pass-through gets wrong:
- *
- *  - `spanTiles` is only legal on a `"line"` mode. The engine's own validator
- *    throws `TypeError` otherwise, so it is dropped here rather than at load
- *    time, where the user would only find out by reloading the game.
- *  - `directions` belongs to each mode, but the form shows one set of direction
- *    checkboxes, so it is written onto every mode.
- *
- * An unparseable value yields `[]` and the field's own error reports the bad
- * JSON. Guessing here would overwrite the user's text with something else.
- */
+
+
 export function parseBuildModes(
     raw: string | undefined,
     directions: string[] = [],
@@ -148,9 +123,9 @@ export function parseBuildModes(
     return out;
 }
 
-// ── Hover tooltip ────────────────────────────────────────────────────────────
 
-/** Build a `StructureTooltipHover` from the controls, or `undefined` when no key is set. */
+
+
 export function composeTooltipHover(
     f: Record<string, string>,
 ): Record<string, unknown> | undefined {
@@ -167,28 +142,23 @@ export function composeTooltipHover(
     };
 }
 
-/** Can the `tooltipHover` controls express this object? If not, the raw box is shown. */
+
 export function tooltipHoverIsComplete(raw: string | undefined): boolean {
     const obj = parseObjectOrUndefined(raw);
-    if (!obj) return true; // nothing stored, nothing to warn about
+    if (!obj) return true; 
     const msg = (obj as { dataFieldMessage?: Record<string, unknown> }).dataFieldMessage;
     if (!msg) return false;
-    if (typeof msg.message === "string") return false; // a literal, not a key
+    if (typeof msg.message === "string") return false; 
     const fields = Array.isArray(msg.fields) ? msg.fields : [];
-    if (fields.length !== 1) return false; // the form has exactly one field row
+    if (fields.length !== 1) return false; 
     const only = fields[0] as Record<string, unknown>;
     if ("valueLabels" in only || "valueKeys" in only) return false;
     return Object.keys(only).every((k) => ["field", "param", "fallback"].includes(k));
 }
 
-// ── The schema ───────────────────────────────────────────────────────────────
 
-/**
- * Every structure field, in panel order.
- *
- * Order is layout as well as content: `sectionsFor` groups consecutive fields by
- * their `section`, so moving one field here moves a section boundary.
- */
+
+
 const FIELDS: FieldSpec[] = [
     idField(),
     textField("name", "Name", "Identity", true, { maxLength: NAME_MAX }),
@@ -199,7 +169,7 @@ const FIELDS: FieldSpec[] = [
         hint: "used when no plain description is set",
     }),
     {
-        // engine type: Record<string, string | number>
+        
         key: "descriptionParamsJson",
         label: "Description parameters",
         kind: "json",
@@ -209,10 +179,10 @@ const FIELDS: FieldSpec[] = [
         hint: 'values interpolated into the description, e.g. { "count": 3 }',
     },
     {
-        // The engine compares this against exactly one string,
-        // `"allOrNothing"`. It was a text box, so a typo read as `undefined`
-        // and silently behaved as "per cell" — a switch wearing a text box's
-        // clothes. See catalog.listLinkedClearance.
+        
+        
+        
+        
         key: "linkedClearance",
         label: "Linked clearance",
         kind: "select",
@@ -221,14 +191,14 @@ const FIELDS: FieldSpec[] = [
         hint: "how a multi-cell footprint is validated against the cells under it",
     },
     {
-        // Build-menu placement: which category the structure is filed under and
-        // where it sorts inside it. These were their own one-row "Build menu"
-        // section wedged **between** two runs of "Placement", so the panel drew
-        // "Placement / Build menu / Placement / Flags / Placement / Render / Grid /
-        // Render / Grid" — eleven boxes for twenty-six fields, four of them
-        // repeating a title the reader had already scrolled past. `sectionsFor`
-        // groups *consecutive* fields by section, so the only way to get one
-        // "Placement" is to have one run of them.
+        
+        
+        
+        
+        
+        
+        
+        
         key: "categoryKey",
         label: "Build category",
         kind: "select",
@@ -244,12 +214,12 @@ const FIELDS: FieldSpec[] = [
         hint: "sort inside the category",
     }),
     {
-        // engine: `ot(t.buildModes)` → `Array.isArray(e) && e.forEach(rt)`,
-        // and `rt` throws `spanTiles` unless `type === "line"`. The engine
-        // takes a LIST and a structure may legitimately have several (a
-        // line mode for dragging a run, plus a single mode for one node).
-        // The form held exactly one, so extra modes were dropped on save
-        // without a word. Now it is a real repeating list.
+        
+        
+        
+        
+        
+        
         key: "buildModesJson",
         label: "Build modes",
         kind: "buildModes",
@@ -269,24 +239,24 @@ const FIELDS: FieldSpec[] = [
         hint: "refuse placement if any footprint cell is occupied",
     },
     shapeField(),
-    // The menu-visibility lever. `alwaysUnlocked` is gone: the engine reads it in
-    // exactly one place, iterating a `const` literal of the *vanilla* structures,
-    // which has no assignment site a mod id can enter. The **unlock node** is the
-    // lever instead — an entry the author names and edits: an "always" node says
-    // the same thing, legibly and shared between structures.
-    //
-    // **This flag is mod-layer, not an engine field.** A scan of all 762 bundle
-    // chunks found no menu-visibility option for structures at all — the only
-    // `hidden` in the engine is a CSS property and `isHidden` is React's. An
-    // earlier comment here said the build menu "does honour" it and cited
-    // bundel.js 7493921.js; that file does not exist in this bundle and the name
-    // appears nowhere in it, so both the claim and the citation were wrong. What
-    // the flag actually does is filter the mod's own list — see `HIDDEN_FIELD` in
-    // ../../panel/list.ts, which reads it under this name.
-    //
-    // It used to be spelled `hideFromBuildMenu`. That spelling is still honoured
-    // as a fallback so existing configs keep filtering as their author intended,
-    // but new writes use this one.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     boolField(
         "hideFromBuildMenu",
         "Hide from build menu",
@@ -295,13 +265,13 @@ const FIELDS: FieldSpec[] = [
         "unhide to list it — a structure with no unlock tech is available from the start",
     ),
     {
-        // Every structure names a node, so the picker never offers an empty
-        // "— none —": "available from the start" is a *node you can see and
-        // edit*, not an absent field that quietly means the same thing.
-        //
-        // The current value is re-added when it is not in the list, so a link to
-        // a deleted node survives the round trip as a visible "(missing node)"
-        // option rather than silently reverting the structure.
+        
+        
+        
+        
+        
+        
+        
         key: "unlockNode",
         label: "Unlock node",
         kind: "select",
@@ -319,7 +289,7 @@ const FIELDS: FieldSpec[] = [
     },
     boolField("disallowPick", "Disallow pick", "Flags"),
     {
-        // engine type: StructureTooltipHover — { type: "custom", dataFieldMessage }
+        
         key: "tooltipHoverJson",
         label: "Hover tooltip",
         kind: "json",
@@ -329,7 +299,7 @@ const FIELDS: FieldSpec[] = [
         hint: "custom tooltip driven by structure data fields",
     },
     {
-        // engine type: StructureVariant[] — { id: StructureRef; angles: number[] }[]
+        
         key: "variantsJson",
         label: "Variants",
         kind: "json",
@@ -347,12 +317,12 @@ const FIELDS: FieldSpec[] = [
         hint: "render.imageName (load a sprite first)",
     },
     {
-        // `draw` is a callback: `T(id, fn)`, called as
-        // `fn(session, instance, {tilemap, ctx, useTilemap, placing, opts})`,
-        // where returning `false` falls through to the normal sprite render.
-        // It cannot be stored as JSON, so the config holds a key that
-        // apply.ts resolves. This was previously a free JSON box that
-        // nothing ever read, so a value set here did nothing at all.
+        
+        
+        
+        
+        
+        
         key: "drawKey",
         label: "Custom draw",
         kind: "select",
@@ -363,33 +333,33 @@ const FIELDS: FieldSpec[] = [
             "draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game.",
     },
     {
-        // engine: registerStructureType(blockGridType ?? id), then
-        // registerStructureTypeAlias(id, blockGridType) when it differs.
-        //
-        // Not a grid *setting* — it names which block grid the structure
-        // joins. Two real uses, and the second is the one that bites:
-        //
-        //  1. Share one grid with another structure (value = its id).
-        //  2. Give a LARGE structure its own grid by setting it to its own
-        //     id. `__scraped-mods/workshop/3791498201` documents this: a
-        //     20x20 Resource Silo omitted it and behaved as a 1-cell unit
-        //     with a hover tooltip that only resolved at the origin cell.
-        //     "Every reference mod that omitted blockGridType only ever used
-        //     shapes up to 8x8." So above 8x8 it is not optional.
-        //
-        // Left empty is only safe for a small structure.
-        //
-        // Sits *after* `drawKey`, not before it, so "Render" is one
-        // uninterrupted run and "Grid" starts here. The two used to interleave
-        // (Render, Grid, Render, Grid) and the panel drew the same two titles
-        // twice, separated by one field each.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         key: "blockGridType",
         label: "Block grid type",
         kind: "select",
         section: "Grid",
-        // Not filtered by the id being edited, unlike the "share with
-        // another" pickers: setting this to the structure's OWN id is the
-        // documented fix for a large footprint, so it must be offered.
+        
+        
+        
         options: listStructures,
         emptyHint:
             "no other structures exist yet — save this one first, then pick its own id from the list.",
@@ -397,8 +367,8 @@ const FIELDS: FieldSpec[] = [
             "leave empty only for a footprint of 8x8 or smaller. Above that, set this to the structure's OWN id: without it a large structure places as a single 1-cell unit and its hover tooltip only resolves at the origin cell. Point it at a DIFFERENT structure to share that structure's grid instead.",
     },
     {
-        // engine: !1 === t.copyData && (t.skipCopyData = !0) — setting copyData
-        // to false is enough, so this is offered as the clearer spelling
+        
+        
         key: "skipCopyData",
         label: "Skip data copy",
         kind: "bool",
@@ -408,11 +378,11 @@ const FIELDS: FieldSpec[] = [
             "do not copy grid data on placement (the engine also sets this when copyData is false)",
     },
     {
-        // engine deep-clones: t.defaultData = JSON.parse(JSON.stringify(...)),
-        // then on placement `instance.data = clone(defaultData)`. So this is
-        // the data object every placed copy starts with — NOT anything to do
-        // with elements, which is what the old label suggested. The hover
-        // tooltip reads it back through dataField1..4.
+        
+        
+        
+        
+        
         key: "defaultDataJson",
         label: "Data for each placed copy",
         kind: "json",
@@ -423,25 +393,25 @@ const FIELDS: FieldSpec[] = [
             "the data object every placed copy starts with; the hover tooltip reads dataField1..4 back out of it. Unrelated to elements.",
     },
     {
-        // The same value again, one row per key, and the reason this list exists
-        // where the element one is a list too: `defaultData` is a free object, so
-        // the difficulty is not *how many* fields there are but that each one has a
-        // type, and typing them by hand in a JSON box means reading the quotes
-        // right on every row. `"5"` and `5` store differently and only one of them
-        // survives a comparison in a process.
-        //
-        // The box stays above it, not beside it, on purpose. `defaultData`
-        // legitimately holds shapes a row cannot — a nested object, an array — and
-        // a list that rejected those would make them unreachable rather than
-        // merely awkward.
-        //
-        // The rule between them is in `writeStructureDefaultData` and it is not
-        // simply "the list wins": that would delete a nested value on every re-save,
-        // because such a value has no row and the list would replace the object
-        // around it. The list is used only when it accounts for every key the box
-        // holds, and the box is written untouched otherwise. The hint says "when
-        // both are filled" rather than promising a priority, because whether the
-        // list is used at all depends on that.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         key: "dataFieldsJson",
         label: "Data fields",
         kind: "json",
@@ -457,9 +427,9 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-// ── Round trip ───────────────────────────────────────────────────────────────
 
-/** Stored entry → form strings, for the whole structure. */
+
+
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
     read.put("description", read.str(e.description));
@@ -468,8 +438,8 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("linkedClearance", read.str(e.linkedClearance));
     read.put("categoryKey", read.str(e.categoryKey));
     read.put("order", read.num(e.order));
-    // The whole list round-trips. A single-mode form, plus loose dirH/dirV/dirD
-    // booleans, loses every mode after the first.
+    
+    
     const modes = (Array.isArray(e.buildModes) ? e.buildModes : []) as Record<
         string,
         unknown
@@ -481,33 +451,33 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     if (dirs.includes("vertical")) read.put("dirV", "true");
     if (dirs.includes("diagonal")) read.put("dirD", "true");
     read.put("shapeJson", e.shape === undefined ? undefined : shapeToText(e.shape));
-    // `alwaysUnlocked` is deliberately absent. The control was removed (the
-    // engine ignores it on a mod structure — `apply.ts` reads it only while
-    // iterating a literal of the *vanilla* structures), and the unlock node
-    // replaced it. Listing it here or reading it into the form would claim
-    // ownership the panel no longer has, and the stored value would be dropped
-    // on the next edit instead of falling into the passthrough.
-    // The hidden flag, under the one name the entry uses, always into the live
-    // form key. A config still carrying the brief `hiddenFromTheMenu` spelling
-    // is not honoured: that name existed for one build of this mod, and reading
-    // it here meant an entry that had not been touched in a long time reported
-    // a visibility choice the current form would then rewrite.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     if (typeof e.hideFromBuildMenu === "boolean") {
         read.put("hideFromBuildMenu", String(e.hideFromBuildMenu));
     }
     if (typeof e.disallowPick === "boolean") read.put("disallowPick", String(e.disallowPick));
-    // Read in full, including a link to a node that no longer exists: a
-    // dangling node is resolved to "available from the start" at apply time, so
-    // dropping it here would silently repair the structure behind the user's
-    // back. It stays visible and repairable instead.
+    
+    
+    
+    
     read.put("unlockNode", read.str(e.unlockNode) || DEFAULT_UNLOCK_NODE);
     if (typeof e.rejectWhenBlocked === "boolean") {
         read.put("rejectWhenBlocked", String(e.rejectWhenBlocked));
     }
     read.put("tooltipHoverJson", read.json(e.tooltipHover));
-    // Split the documented shape into controls, keeping the object so an
-    // unrepresentable one (valueLabels, a literal message, several field
-    // rows) is still recoverable.
+    
+    
+    
     {
         const th = e.tooltipHover as
             | { dataFieldMessage?: { messageKey?: string; fields?: unknown[] } }
@@ -533,15 +503,15 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
         read.put("skipCopyData", String(e.skipCopyData));
     }
     read.put("defaultDataJson", read.json(e.defaultData));
-    // The list is derived from the same stored object rather than read from a
-    // second key — there is only ever one `defaultData`. A stored value that is
-    // not a row-shaped primitive (a nested object, an array) becomes no row and
-    // stays visible in the box, which is the honest split: the list shows what it
-    // can represent and the box shows the rest, and neither claims the other's.
+    
+    
+    
+    
+    
     read.put("dataFieldsJson", read.json(structureRecordToFields(e.defaultData)));
 }
 
-/** Form strings → stored entry, for the whole structure. */
+
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
     w.setStr("description", w.opt("description"));
@@ -550,8 +520,8 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     const descriptionParams = w.optJson<Record<string, unknown>>("descriptionParamsJson");
     if (descriptionParams) w.setRaw("descriptionParams", descriptionParams);
     w.setBool("rejectWhenBlocked", w.optBool("rejectWhenBlocked"));
-    // Rebuild the documented shape from the controls, unless the stored object
-    // held something they cannot express — then keep it verbatim.
+    
+    
     const existingHover = parseObjectOrUndefined(form.tooltipHoverJson);
     const hover = composeTooltipHover(form);
     if (hover) {
@@ -566,7 +536,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     if (variants) w.setRaw("variants", variants);
     w.setStr("categoryKey", w.opt("categoryKey"));
     w.setNum("order", w.optNum("order"));
-    // Directions live on every mode; the booleans drive the first one.
+    
     const dirs: string[] = [];
     if (w.optBool("dirH")) dirs.push("horizontal");
     if (w.optBool("dirV")) dirs.push("vertical");
@@ -577,8 +547,8 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     if (shape) w.setRaw("shape", normalizeShape(shape));
     w.setBool("hideFromBuildMenu", w.optBool("hideFromBuildMenu"));
     w.setBool("disallowPick", w.optBool("disallowPick"));
-    // Omitted means "available from the start" at apply time, so an empty
-    // picker is a valid save and is not written as an empty string.
+    
+    
     w.setStr("unlockNode", w.opt("unlockNode"));
     const image = w.opt("imageName");
     if (image) w.setRaw("render", { imageName: image });
@@ -589,31 +559,13 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     writeStructureDefaultData(w);
 }
 
-/**
- * The list and the box are one stored key, and this is where they are reconciled.
- *
- * The tempting rule is "the list wins", and it loses data. A `defaultData` holding
- * a nested object reads back as a list of only the flat rows, and re-saving it
- * with the list winning replaces the whole object with those rows — the nested
- * value is gone, and the author never touched it. That is the worst failure this
- * pair of fields could have: silent, on a value they could see in the box.
- *
- * So the list is only allowed to win when it is **complete** — when every key in
- * the box is also a row in the list. That covers the two ordinary cases (a list
- * alone, and a list plus a box the list accounts for) and refuses exactly the one
- * that would destroy something. When the list is incomplete the box is written
- * instead, untouched, and the author keeps both: the rows they can read and the
- * nested value they cannot.
- *
- * A `del` when neither is filled, because an empty `defaultData` is a different
- * stored value from an absent one and the register step has no use for it.
- */
+
 function writeStructureDefaultData(w: EntryWriter): void {
     const rows = w.optJson<StructureDataField[]>("dataFieldsJson");
     const box = w.optJson<Record<string, unknown>>("defaultDataJson");
     if (rows?.length) {
         const { record, problems } = structureFieldsToRecord(rows);
-        if (problems.length) return; // `validate` has already refused these
+        if (problems.length) return; 
         if (!box || Object.keys(box).every((k) => k in record)) {
             w.setRaw("defaultData", record);
             return;
@@ -623,9 +575,9 @@ function writeStructureDefaultData(w: EntryWriter): void {
     else w.del("defaultData");
 }
 
-/** Rules no single field can express: the engine throws on `spanTiles` off a line mode. */
+
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
-    if (errors.buildModesJson) return; // its own error already explains it
+    if (errors.buildModesJson) return; 
     const raw = form.buildModesJson?.trim();
     if (!raw) return;
     try {
@@ -639,26 +591,12 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
             }
         });
     } catch {
-        // the json control reports the parse error
+        
     }
     validateStructureDataFields(form, errors);
 }
 
-/**
- * Two rules on the field list, both of which the engine would store and then
- * misreport on:
- *
- *   - a row needs a key, because the key **is** what a process passes to
- *     `structureData`; a nameless field cannot be addressed at all;
- *   - two rows cannot share one key, because the second would overwrite the first
- *     and the list would keep showing both as if they were separate.
- *
- * The `type` is not checked, and that is the difference from the element list. It
- * is recorded rather than enforced: `defaultData` is stored verbatim, so a value
- * that is not the type the row claims is still stored, still readable, and is the
- * author's own business — the type exists to make the row readable, not to police
- * what the engine accepts.
- */
+
 function validateStructureDataFields(
     form: Record<string, string>,
     errors: Record<string, string>,
@@ -674,7 +612,7 @@ function validateStructureDataFields(
         }
         rows = parsed as StructureDataField[];
     } catch {
-        // The json control owns the syntax error.
+        
         return;
     }
     const { problems } = structureFieldsToRecord(rows);
@@ -682,7 +620,7 @@ function validateStructureDataFields(
     errors.dataFieldsJson = problems.map((p) => `row ${p.row + 1}: ${p.reason}`).join("; ");
 }
 
-/** Parse a 4×4 matrix from text; returns null when not exactly 4 rows of 4. */
+
 function parseShape(text: string): number[][] | null {
     let parsed: unknown;
     try {
@@ -698,7 +636,7 @@ function parseShape(text: string): number[][] | null {
     return parsed as number[][];
 }
 
-/** Validate one structure-only field kind. The 4×4 rule lives here: only a structure has a shape. */
+
 function validateField(field: FieldSpec, value: string): string | undefined {
     if (field.kind !== "shape") return undefined;
     return parseShape(value) === null
@@ -706,9 +644,9 @@ function validateField(field: FieldSpec, value: string): string | undefined {
         : undefined;
 }
 
-// ── The section panel ────────────────────────────────────────────────────────
 
-/** 4×4 footprint editor, since the engine only accepts a 4×4 matrix of 0/1. */
+
+
 function renderShape(ctx: FieldContext): unknown {
     const { h, field, value, error } = ctx;
     const grid = normalizeShape(safeJson(value) ?? emptyShape(1));
@@ -759,17 +697,7 @@ function renderShape(ctx: FieldContext): unknown {
     );
 }
 
-/**
- * `buildModes[]` editor — one row per build mode.
- *
- * The engine takes a **list** (`Array.isArray(e) && e.forEach(rt)`) and a
- * structure may have several: a line mode for dragging out a pipe run plus a
- * single mode for dropping one node. A single-mode form drops the rest on save —
- * silently, leaving a structure that behaves in a way the form never describes.
- *
- * `spanTiles` is per-row because the engine validates it per mode and throws:
- * `rt` rejects `spanTiles` on any `type` other than `"line"`.
- */
+
 function renderBuildModes(ctx: FieldContext): unknown {
     const { h, field, value, locked } = ctx;
     let rows: Record<string, unknown>[] = [];
@@ -777,7 +705,7 @@ function renderBuildModes(ctx: FieldContext): unknown {
         const parsed = JSON.parse(value || "[]");
         if (Array.isArray(parsed)) rows = parsed;
     } catch {
-        // raw value stays; validation reports it
+        
     }
     const writeRows = (next: Record<string, unknown>[]) =>
         ctx.setField(field.key, JSON.stringify(next));
@@ -813,9 +741,9 @@ function renderBuildModes(ctx: FieldContext): unknown {
                                     if (nextType === "line") {
                                         return { ...r, type: nextType };
                                     }
-                                    // spanTiles is meaningless off a line mode, and
-                                    // leaving it behind would make the engine throw
-                                    // on register.
+                                    
+                                    
+                                    
                                     const { spanTiles: _drop, ...rest } = r;
                                     return { ...rest, type: nextType };
                                 }),
@@ -875,7 +803,7 @@ function renderBuildModes(ctx: FieldContext): unknown {
     );
 }
 
-/** The unlock relation, said in words. The picker names the node but not its kind or cost. */
+
 function renderHeader(ctx: PanelContext): unknown {
     return ctx.h(
         "div",
@@ -884,7 +812,7 @@ function renderHeader(ctx: PanelContext): unknown {
     );
 }
 
-/** The control for a structure-only field kind, or `null` for the generic ones the panel already draws. */
+
 function renderField(ctx: FieldContext): unknown {
     switch (ctx.field.kind) {
         case "shape":
@@ -896,18 +824,9 @@ function renderField(ctx: FieldContext): unknown {
     }
 }
 
-// ── The definition ───────────────────────────────────────────────────────────
 
-/**
- * Stored keys this form owns.
- *
- * Everything else round-trips through the passthrough, so a key the engine
- * understands but this form has no control for survives an edit instead of being
- * dropped. `render` and `imageName` are both listed because the stored shape is
- * `render.imageName` and the form drives the sprite from one control; `draw` and
- * `spanTiles` are the *engine* spellings of `drawKey` and the mode list, listed
- * so a config carrying either is claimed rather than carried twice.
- */
+
+
 const FORM_COVERED = [
     "name",
     "description",
@@ -944,11 +863,11 @@ export const structureDefinition: Definition = {
     formToEntry,
     validate,
     validateField,
-    // A structure must name an unlock node, so a new one starts on the built-in
-    // default rather than on nothing. Without this the required field opens
-    // empty and blocks the first save on a rule the author never chose —
-    // "available from the start" is a decision, and this is where it is pre-made
-    // rather than assumed.
+    
+    
+    
+    
+    
     onNewEntry: (form) => {
         form.unlockNode = DEFAULT_UNLOCK_NODE;
     },

@@ -1,17 +1,5 @@
-// @ts-nocheck
-/**
- * Smoke tests for the two new screens.
- *
- * `renderHelp` and `renderConfigMap` are close to a thousand lines of element
- * construction, and element construction is exactly where a typo becomes a
- * white screen at runtime rather than a build error — everything is `any` by
- * the time it reaches `React.createElement`.
- *
- * So these do not assert on the output's *content*. They assert that rendering
- * completes, on an empty config and a populated one, and that the strings the
- * user is meant to read actually reach the output. That is the failure worth
- * guarding: a screen that throws, or one that silently renders nothing.
- */
+
+
 import { assert, assertEquals } from "jsr:@std/assert";
 
 globalThis.sandkit = {
@@ -45,7 +33,7 @@ const { HANDLER_META, HANDLER_TYPE_BLURBS, HANDLER_TYPE_LABELS } = await import(
     "../../handler/core/handler-registry.ts"
 );
 
-/** A `createElement` stand-in that records the tree so it can be searched. */
+
 function fakeH() {
     const seen = [];
     const h = (tag, props, ...children) => {
@@ -58,7 +46,7 @@ function fakeH() {
     return h;
 }
 
-/** Every string under `node`, so a subtree can be searched on its own. */
+
 function textOf(node) {
     const parts = [];
     const walk = (n) => {
@@ -95,9 +83,9 @@ const noop = () => {};
 Deno.test("the help screen renders on an empty config", () => {
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
-    // The bar is deliberately low: the screen is now the graph and its table,
-    // not a page of prose. Whether it drew everything is checked by the arrow
-    // count below, which is a real invariant rather than a rounded-up count.
+    
+    
+    
     assert(h.seen.length > 30, `only ${h.seen.length} elements — suspiciously few`);
 });
 
@@ -108,7 +96,7 @@ Deno.test("the help screen renders on a populated config", () => {
 });
 
 Deno.test("a clean config reports no breakage and does not cry wolf", () => {
-    // a *clean* config — POPULATED deliberately contains a broken reference
+    
     const h = fakeH();
     renderHelp({
         h,
@@ -120,9 +108,9 @@ Deno.test("a clean config reports no breakage and does not cry wolf", () => {
         onCopy: noop,
     });
     const text = h.text();
-    // The clean case is carried by the header chip ("N relations"), not by a
-    // banner. A "nothing is wrong" panel is noise on a screen otherwise
-    // entirely about what *is* wrong, so it went with the rest of the prose.
+    
+    
+    
     assert(
         text.includes("relations"),
         `the header does not report a clean config:\n${text.slice(0, 200)}`,
@@ -142,14 +130,14 @@ Deno.test("the help screen names a broken reference", () => {
 });
 
 Deno.test("the help screen names the kinds that own entries", () => {
-    // Help no longer documents fields (that was a stale copy of the engine docs
-    // that read as authoritative while being wrong), so the only thing it
-    // asserts is the shape of the graph.
-    //
-    // The labels come from CATEGORY_META and are what the user navigates by, so
-    // they have to be there. Only kinds that actually point at something are
-    // nodes — "Triggers" is deliberately not in this list, because a trigger
-    // names a handler rather than another entry, and there is no node for that.
+    
+    
+    
+    
+    
+    
+    
+    
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     const text = h.text();
@@ -159,9 +147,9 @@ Deno.test("the help screen names the kinds that own entries", () => {
 });
 
 Deno.test("the help screen is a graph, not a copy of the docs", () => {
-    // The field tables and the opening paragraphs were removed deliberately.
-    // This pins that decision, so they cannot quietly come back as a second,
-    // drifting source of truth — or as a wall of text above the picture.
+    
+    
+    
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     const text = h.text();
@@ -174,10 +162,10 @@ Deno.test("the help screen is a graph, not a copy of the docs", () => {
 });
 
 Deno.test("the relation table says what each edge is worth", () => {
-    // The table replaced a plain edge list. It has to carry the five things
-    // that decide whether a relation matters — and in particular the two counts,
-    // because a relation the engine declares and nothing in your config uses
-    // looks identical to one you rely on unless something says otherwise.
+    
+    
+    
+    
     const h = fakeH();
     renderHelp({ h, cfg: POPULATED, onGoTo: noop, onCopy: noop });
     const text = h.text();
@@ -187,9 +175,9 @@ Deno.test("the relation table says what each edge is worth", () => {
 });
 
 Deno.test("the graph is grouped into the same columns as the menu", () => {
-    // Grouping is what makes the picture readable: without it twenty nodes are
-    // a flat field of boxes. The groups must be the *menu's* groups, or the two
-    // would have to be learned separately and could disagree.
+    
+    
+    
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     const text = h.text();
@@ -203,9 +191,9 @@ Deno.test("the help screen draws an svg and one arrow per relation", () => {
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     assert(h.seen.some((n) => n.tag === "svg"), "no svg layer for the arrows");
-    // Each edge is drawn as one group holding a line and its two heads, so
-    // "one arrow per relation" stays a fact you can count rather than something
-    // you have to re-derive from how many paths an arrowhead happens to use.
+    
+    
+    
     const edges = h.seen.filter((n) =>
         n.tag === "g" && String(n.props?.key ?? "").endsWith("-edge")
     );
@@ -218,28 +206,28 @@ Deno.test("the help screen draws an svg and one arrow per relation", () => {
 });
 
 Deno.test("every arrow leaves by the top or bottom and never through a side", () => {
-    // The rule, and the reason it exists: an arrow attaches to a box's top or
-    // bottom edge. Depth puts the target above, so a link between two kinds in the
-    // same group would otherwise have to run *sideways* along the row, skimming
-    // the boxes between it — and a head pointing at a box's flank is easy to
-    // mistake for belonging to its neighbour.
-    //
-    // There is exactly one exception, and it is checked rather than waved through:
-    // two kinds at the *same height* in *different* groups. Those are the same
-    // slot-row in neighbouring columns — every group's first box sits at the same
-    // y — so the direct line would cut straight through the columns between them.
-    // That one case leaves by a side and comes back in by the other, which is the
-    // transpose of the dip-under-the-row it replaced. `sideways` below is the
-    // count, and it has to stay at zero for everything else.
-    //
-    // Deliberately *not* asserting that no arrow crosses a box. With the columns
-    // side by side that is not achievable, and it was never the requirement: a link
-    // from a shallow group up to a deep one passes over the columns in between.
-    // The only ways to stop it are to give up the edge rule, or to route every long
-    // link the long way around the outside of the diagram. The arrows are painted
-    // *under* the boxes, so a crossing hides behind the column it passes rather
-    // than being drawn across a heading — a much smaller cost than a diagram where
-    // every arrowhead is ambiguous about which box it belongs to.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     const g = buildGraph({});
@@ -247,8 +235,8 @@ Deno.test("every arrow leaves by the top or bottom and never through a side", ()
     const onHorizontalEdge = (b: typeof boxes[0], x: number, y: number) =>
         x >= b.x && x <= b.x + b.w &&
         (Math.abs(y - b.y) < 1.5 || Math.abs(y - (b.y + b.h)) < 1.5);
-    // The one allowed exception: a same-height link between two groups, which
-    // leaves and arrives on a side edge.
+    
+    
     const onVerticalEdge = (b: typeof boxes[0], x: number, y: number) =>
         y >= b.y && y <= b.y + b.h &&
         (Math.abs(x - b.x) < 1.5 || Math.abs(x - (b.x + b.w)) < 1.5);
@@ -260,13 +248,13 @@ Deno.test("every arrow leaves by the top or bottom and never through a side", ()
     for (const n of h.seen) {
         if (n.tag !== "path") continue;
         const p = String(n.props?.d ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number);
-        if (!p || p.length !== 8) continue; // the line; heads are two points
+        if (!p || p.length !== 8) continue; 
         const [x1, y1, , , , , x2, y2] = p;
-        // A self-reference is a ring standing above its box: both ends level with
-        // each other, just above one box's top edge. Scoped to the box it
-        // surrounds — an earlier version compared against the topmost box in the
-        // graph, which only caught a ring on the first row and let every other one
-        // be reported as a line through a box.
+        
+        
+        
+        
+        
         const ringHost = boxes.find(
             (b) =>
                 Math.abs(y1 - y2) < 1 && y1 < b.y && b.y - y1 < 40 &&
@@ -277,14 +265,14 @@ Deno.test("every arrow leaves by the top or bottom and never through a side", ()
             rings++;
             continue;
         }
-        // A same-height link is allowed to leave by a side, but *only* then. Any
-        // other link that arrives sideways is the bug this whole rule exists for.
+        
+        
         const sidewaysOk = sameHeightPair(p) &&
             boxes.some((b) => onVerticalEdge(b, x1, y1)) &&
             boxes.some((b) => onVerticalEdge(b, x2, y2));
         if (sidewaysOk) sideways++;
-        // The rule itself: each end sits on a box's top or bottom edge, unless it
-        // is the same-height case above.
+        
+        
         if (!sidewaysOk) {
             assert(
                 boxes.some((b) => onHorizontalEdge(b, x1, y1)),
@@ -299,7 +287,7 @@ Deno.test("every arrow leaves by the top or bottom and never through a side", ()
     }
     assert(checked > 10, `only ${checked} arrows were checked`);
     assert(rings > 0, "no self-reference was drawn as a ring, so the hard case is not being seen");
-    // The exception has to be the rare one, or the rule is not really the rule.
+    
     assert(
         sideways < checked / 3,
         `${sideways} of ${checked} arrows left by a side — the same-height case should be the exception`,
@@ -307,18 +295,18 @@ Deno.test("every arrow leaves by the top or bottom and never through a side", ()
 });
 
 Deno.test("an arrow joins the two facing edges, never running back through a box", () => {
-    // The rule above only checked that an end sits on *some* horizontal edge, which
-    // is not enough. An end on the edge facing *away* from the other box still
-    // satisfies that check, and the line then leaves backwards through its own
-    // source box and arrives at the target's far side — so the arrowhead points
-    // up through B while the line entered its base. That is what the ends looked
-    // like when the depth axis was transposed and the ternary was left as it was
-    // for the old left-to-right ordering.
-    //
-    // So this asserts the stronger property directly: the source end is on the
-    // edge facing the target, and the target end is on the edge facing the
-    // source. Only the same-height case is exempt, and it is checked separately to
-    // be a genuine side exit.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     const g = buildGraph({});
@@ -328,7 +316,7 @@ Deno.test("an arrow joins the two facing edges, never running back through a box
         if (n.tag !== "path") continue;
         const p = String(n.props?.d ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number);
         if (!p || p.length !== 8) continue;
-        if (Math.abs(p[1] - p[7]) < 1.5) continue; // same height: a side exit
+        if (Math.abs(p[1] - p[7]) < 1.5) continue; 
         horizontalArrows.push(p);
     }
     assert(horizontalArrows.length > 10, `only ${horizontalArrows.length} stacked arrows`);
@@ -336,8 +324,8 @@ Deno.test("an arrow joins the two facing edges, never running back through a box
     let facing = 0;
     for (const p of horizontalArrows) {
         const [x1, y1, , , , , x2, y2] = p;
-        // Both ends must belong to a *pair of distinct* boxes, and each must sit on
-        // the edge of its box that faces the other box.
+        
+        
         const src = g.nodes.find(
             (b) =>
                 x1 >= b.x && x1 <= b.x + b.w &&
@@ -348,12 +336,12 @@ Deno.test("an arrow joins the two facing edges, never running back through a box
                 x2 >= b.x && x2 <= b.x + b.w &&
                 (Math.abs(y2 - b.y) < 1.5 || Math.abs(y2 - (b.y + b.h)) < 1.5),
         );
-        if (!src || !dst || src === dst) continue; // ring, or a shared edge
+        if (!src || !dst || src === dst) continue; 
         const srcOnTop = Math.abs(y1 - src.y) < 1.5;
         const dstOnTop = Math.abs(y2 - dst.y) < 1.5;
-        // Which of the two is vertically higher. Comparing `y` is enough and is
-        // exact: the only stacked case is two boxes in the same slot, where the
-        // rows are `slotStepH` apart, so there is no near-tie to worry about.
+        
+        
+        
         const targetAbove = dst.y < src.y;
         assertEquals(
             srcOnTop,
@@ -375,59 +363,59 @@ Deno.test("an arrow joins the two facing edges, never running back through a box
 });
 
 Deno.test("a self-reference is drawn as a ring above its box", () => {
-    // `techs` requiring other `techs` has no distance to cross. A ring is the
-    // honest shape, and it has to sit clear of the box it belongs to.
+    
+    
     const g = buildGraph({});
     const self = g.edges.filter((e) => e.from === e.to);
     assert(self.length > 0, "the fixture has no self-references");
     const techs = g.nodes.find((n) => n.cat === "techs");
     assert(techs, "there is no techs node to loop on");
-    // A ring is drawn at `a.y - 18`, so the whole shape is above the box.
+    
     assert(techs.y > 0, "the techs node is at the very top, leaving no room for a ring");
 });
 
 Deno.test("the graph reads top-to-bottom: a box is never above what it references", () => {
-    // The property the whole layout exists to guarantee. If it ever fails, the
-    // arrow points the wrong way and the picture is actively misleading rather
-    // than just untidy.
-    //
-    // Equal depth is allowed and must be: terrains and items reference each
-    // other, so they sit in one cycle and share a slot. A cycle has no honest
-    // order inside it, and inventing one would be a lie — so for those, only the
-    // depth claim is made, and the arrow is drawn between them as the geometry
-    // actually falls.
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const g = buildGraph({});
     let strict = 0;
     for (const e of g.edges) {
         const a = g.nodes.find((n) => n.cat === e.from);
         const b = g.nodes.find((n) => n.cat === e.to);
-        if (!a || !b || a.cat === b.cat) continue; // a self-loop has no order
+        if (!a || !b || a.cat === b.cat) continue; 
         assert(
             a.depth >= b.depth,
             `${e.from} → ${e.to}: the source (depth ${a.depth}) is above its target (depth ${b.depth})`,
         );
-        if (a.depth === b.depth) continue; // a cycle — no order to assert
+        if (a.depth === b.depth) continue; 
         strict++;
         assert(
             a.y > b.y,
             `${e.from} → ${e.to}: the source is not drawn below its target`,
         );
     }
-    // The strict case has to be the common one, or this test is barely checking
-    // anything. Most relations are not inside a cycle.
+    
+    
     assert(strict > 10, `only ${strict} edges are strictly below their target`);
 });
 
 Deno.test("kinds that reference each other share a depth", () => {
-    // A cycle has no honest order inside it, so the layout must not invent one.
-    // If this ever fails, some kind in a cycle is being drawn as though it
-    // depended on something it is in fact mutually dependent with.
+    
+    
+    
     const g = buildGraph({});
     const byCat = new Map(g.nodes.map((n) => [n.cat, n]));
-    // terrains → items and items → terrains are both real relations here.
+    
     const terrains = byCat.get("terrains");
     const items = byCat.get("items");
-    if (!terrains || !items) return; // the fixture changed; nothing to assert
+    if (!terrains || !items) return; 
     const bothWays = g.edges.some((e) => e.from === "terrains" && e.to === "items") &&
         g.edges.some((e) => e.from === "items" && e.to === "terrains");
     if (!bothWays) return;
@@ -439,9 +427,9 @@ Deno.test("kinds that reference each other share a depth", () => {
 });
 
 Deno.test("groups are ordered by the shallowest box in each", () => {
-    // The request, and the reason it helps: the groups that only feed the graph
-    // come first, and a group that purely consumes lands to the right of what
-    // it consumes, so most arrows are short instead of criss-crossing.
+    
+    
+    
     const g = buildGraph({});
     for (let i = 1; i < g.columns.length; i++) {
         assert(
@@ -453,11 +441,11 @@ Deno.test("groups are ordered by the shallowest box in each", () => {
 });
 
 Deno.test("the groups are columns, side by side, and do not overlap", () => {
-    // Groups stand as columns beside each other rather than stacking as rows, and
-    // each carries its name as a heading across the top. The heading is the part
-    // worth stating: as rows the name had to fit a strip at the left and the
-    // longest one had nowhere to go, which is why this layout came back to
-    // columns.
+    
+    
+    
+    
+    
     const g = buildGraph({});
     for (let i = 1; i < g.columns.length; i++) {
         const prev = g.columns[i - 1];
@@ -466,10 +454,10 @@ Deno.test("the groups are columns, side by side, and do not overlap", () => {
             cur.x >= prev.x + prev.w,
             `${cur.label} overlaps ${prev.label} — group columns must not overlap`,
         );
-        // And each really is a column: taller than it is wide.
+        
         assert(cur.w < cur.h, `${cur.label} is wider than it is tall, so it is a row`);
     }
-    // Every node sits inside the column it belongs to.
+    
     for (const n of g.nodes) {
         const c = g.columns.find((x) => x.key === n.group);
         assert(c, `${n.cat} has no group column`);
@@ -479,9 +467,9 @@ Deno.test("the groups are columns, side by side, and do not overlap", () => {
 });
 
 Deno.test("two kinds in one group never overlap", () => {
-    // Depth is the row now, so two kinds at the same depth in the same column
-    // would land on top of each other. The layout is the one thing not
-    // re-checked at render time, so it is checked here.
+    
+    
+    
     const g = buildGraph({});
     for (const col of g.columns) {
         const members = g.nodes.filter((n) => n.group === col.key);
@@ -498,7 +486,7 @@ Deno.test("two kinds in one group never overlap", () => {
             }
         }
     }
-    // And every node is inside the canvas.
+    
     for (const n of g.nodes) {
         assert(n.y + n.h <= g.height, `${n.cat} is drawn below the canvas`);
         assert(n.x + n.w <= g.width, `${n.cat} is drawn past the right edge`);
@@ -506,7 +494,7 @@ Deno.test("two kinds in one group never overlap", () => {
 });
 
 Deno.test("every details has a summary", () => {
-    // The whole point of the object list is that it stays scannable.
+    
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: noop });
     assertEquals(
@@ -516,9 +504,9 @@ Deno.test("every details has a summary", () => {
     );
 });
 
-// ── the two fixed catalogues ─────────────────────────────────────────────────
 
-/** Both "builds a value" catalogues, and the presets each one is supposed to list. */
+
+
 const FIXED_CATALOGUES = [
     {
         kind: "projectileOption",
@@ -532,7 +520,7 @@ const FIXED_CATALOGUES = [
     },
 ];
 
-/** The props a catalogue needs. Nothing is read from the config here. */
+
 function fixedProps(h) {
     return {
         h,
@@ -546,20 +534,20 @@ function fixedProps(h) {
 
 for (const { kind, name, presets } of FIXED_CATALOGUES) {
     Deno.test(`${name} shows the list, and it starts open`, () => {
-        // The section exists to show which options ship. Wrapping the list in a
-        // closed disclosure would hide the only thing it has to say, so it is open
-        // on arrival and the summary is there to collapse it.
+        
+        
+        
         const h = fakeH();
         renderFixedCatalogue(kind, fixedProps(h));
         const details = h.seen.find((n) => n.tag === "details");
         assert(details, `${name} is not in a <details>`);
         assertEquals(details.props.open, true, `${name} starts closed`);
-        // Every preset is named, so the list is the list and not a placeholder.
+        
         const text = h.text();
         for (const key of Object.keys(presets)) {
             assert(text.includes(key), `${name} does not list ${key}`);
         }
-        // The count is on the summary, which stays visible whether or not it is open.
+        
         const summary = h.seen.find((n) => n.tag === "summary");
         assert(summary, `${name} has no <summary>`);
         assert(
@@ -569,13 +557,13 @@ for (const { kind, name, presets } of FIXED_CATALOGUES) {
     });
 
     Deno.test(`${name} offers nothing to add, remove or edit`, () => {
-        // These presets are written in code and compiled once. A `+ New`, a `Del`
-        // or an `Edit` would create an entry that nothing compiles or reads, so
-        // the absence is pinned: it is the property that makes the section fixed.
-        //
-        // Asserted on the *labels*, not on a button count. The `In use only` chip
-        // is a button too, and it is legitimate — it narrows what is shown and
-        // changes nothing. What is forbidden is a button that writes.
+        
+        
+        
+        
+        
+        
+        
         const h = fakeH();
         renderFixedCatalogue(kind, fixedProps(h));
         const labels = h.seen.filter((n) => n.tag === "button").flatMap((n) =>
@@ -587,16 +575,16 @@ for (const { kind, name, presets } of FIXED_CATALOGUES) {
                 `${name} offers a "${forbidden}" button`,
             );
         }
-        // And nothing in the section writes to the config: the only input is the
-        // search box, so a stray save path would show up here.
+        
+        
         const inputs = h.seen.filter((n) => n.tag === "input");
         assertEquals(inputs.length, 1, `${name} draws ${inputs.length} inputs`);
         assertEquals(inputs[0].props.placeholder, "Search options…");
     });
 
     Deno.test(`${name} counts what is in use`, () => {
-        // "In use only" is only useful if "in use" is derived from the config, so
-        // a section that is inline still has to read the entries above it.
+        
+        
         const h = fakeH();
         const key = Object.keys(presets)[0];
         const cfg = kind === "projectileOption"
@@ -609,12 +597,12 @@ for (const { kind, name, presets } of FIXED_CATALOGUES) {
 }
 
 Deno.test("both fixed catalogues resolve to the screen they live in", () => {
-    // They are sections of Items now, not screens. A stale panel state naming one
-    // — saved while these did have their own screen — must land on Items, not on
-    // an empty list with no way back.
+    
+    
+    
     assertEquals(resolveCat("projectileOption"), "items");
     assertEquals(resolveCat("excavationOption"), "items");
-    // And a real tab is untouched by that rule.
+    
     assertEquals(resolveCat("items"), "items");
     assertEquals(resolveCat("projectiles"), "projectiles");
 });
@@ -638,9 +626,9 @@ Deno.test("the map screen renders a populated config", () => {
     assert(h.seen.some((n) => n.tag === "svg"), "no arrow layer");
 });
 
-// Match the headline, not the phrase. "point at nothing" also appears in
-// the orphan note's prose, so a substring check would pass with no banner
-// at all — and fail on a config that merely has orphans.
+
+
+
 const BANNER = /\d+ references? points? at nothing/;
 
 Deno.test("the map screen flags broken references and orphans", () => {
@@ -669,8 +657,8 @@ Deno.test("a healthy config shows neither banner", () => {
 });
 
 Deno.test("an orphaned config shows the orphan note but not the banner", () => {
-    // The inverse of the case above. Worth its own test because the two
-    // banners are independent, and one firing must not mask the other.
+    
+    
     const h = fakeH();
     renderConfigMap({
         h,
@@ -684,7 +672,7 @@ Deno.test("an orphaned config shows the orphan note but not the banner", () => {
 });
 
 Deno.test("the banner is grammatical with exactly one broken reference", () => {
-    // "1 reference point at nothing" is the kind of thing that ships.
+    
     const h = fakeH();
     renderConfigMap({
         h,
@@ -700,8 +688,8 @@ Deno.test("the banner is grammatical with exactly one broken reference", () => {
 });
 
 Deno.test("both screens defer copying to the caller", () => {
-    // The clipboard is a panel concern; a screen that reaches for it directly
-    // cannot show the fallback toast when it is blocked.
+    
+    
     let copied = 0;
     const h = fakeH();
     renderHelp({ h, cfg: {}, onGoTo: noop, onCopy: () => copied++ });
@@ -715,8 +703,8 @@ Deno.test("both screens defer copying to the caller", () => {
 });
 
 Deno.test("every handler type has a label and a blurb to show", () => {
-    // The Handlers screen groups by type; a type with no blurb renders an empty
-    // line where the explanation should be.
+    
+    
     for (const m of HANDLER_META) {
         assert(HANDLER_TYPE_LABELS[m.type], `${m.type} has no label`);
         assert(HANDLER_TYPE_BLURBS[m.type], `${m.type} has no blurb`);

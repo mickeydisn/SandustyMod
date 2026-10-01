@@ -1,24 +1,10 @@
-/**
- * The drawn-sprite draw function, driven against a fake canvas.
- *
- *     deno test --allow-read --allow-env src/ui/test/drawn-sprite.test.ts
- *
- * This answers the one question the sprite integration turned on: a sprite drawn in
- * the editor is a base64 PNG in the config, **not a file the game can load**.
- * `api.sprites.load` is documented for paths, so whether it accepts a data URL is
- * unknown until someone runs the game. These tests pin the part that has to work
- * either way — the mod paints the bytes itself, so it does not depend on the engine's
- * sprite registry at all.
- *
- * The signature and the canvas calls come from a shipping mod
- * (`__scraped-mods/workshop/3791498201`), not from inference.
- */
-// @ts-nocheck: the `sandkit` shim below has no declared type.
+
+
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const PNG = "data:image/png;base64,iVBORw0KGgo=";
 
-/** The config `loadConfig()` will hand back; tests rewrite `sprites` on it. */
+
 const cfg: Record<string, unknown> = { sprites: [] };
 
 let cellSize = 4;
@@ -50,7 +36,7 @@ globalThis.sandkit = {
 const { resolveDraw } = await import("../../register/core/structures.ts");
 const { clearDrawnSpriteCache } = await import("../../register/core/drawn-sprite.ts");
 
-/** A recording canvas. Starts *dirty*, the way a tool effect leaves it. */
+
 function imgCtx() {
     const calls: string[] = [];
     return {
@@ -72,16 +58,16 @@ function imgCtx() {
     };
 }
 
-/** How many `Image`s have been constructed since the last reset. */
+
 let made = 0;
-/** Install an `Image` that "decodes" instantly, and start counting. */
+
 function fakeImage() {
     made = 0;
     (globalThis as { Image?: unknown }).Image = class {
         onload?: () => void;
         onerror?: () => void;
         src = "";
-        /** Decodes on assignment, as a cached browser image does. */
+        
         complete = true;
         width = 16;
         height = 16;
@@ -91,7 +77,7 @@ function fakeImage() {
     };
 }
 
-/** One drawn sprite in the config, and a clean cache. */
+
 function given(spriteId = "t:crate", source: unknown = PNG) {
     clearDrawnSpriteCache();
     cfg.sprites = source ? [{ id: spriteId, source }] : [];
@@ -103,7 +89,7 @@ function cleanUp() {
     (globalThis as { Image?: unknown }).Image = undefined;
 }
 
-/** The `draw` for one structure bound to a sprite id. */
+
 function drawFor(imageName: string | undefined, st: Record<string, unknown> = {}) {
     return resolveDraw({
         id: "a",
@@ -117,9 +103,9 @@ Deno.test("a drawn sprite is painted from the config, not the sprite registry", 
     fakeImage();
     const ctx = imgCtx();
     drawFor("t:crate")(null, { x: 0, y: 0 }, { ctx });
-    // The engine's registry is never consulted: this is a canvas draw of bytes the
-    // mod read out of the config itself. If `sprites.load` never accepted the data
-    // URL, this is the only copy — which is the whole reason the key exists.
+    
+    
+    
     assert(
         ctx.calls.some((c: string) => c.startsWith("drawImage")),
         `nothing was painted: ${ctx.calls.join(", ")}`,
@@ -132,9 +118,9 @@ Deno.test("the sprite is stretched over the footprint, in pixels", () => {
     given();
     fakeImage();
     const ctx = imgCtx();
-    // 2 rows x 3 cols at cellSize 4 -> 12 wide by 8 high. `shape` is rows-of-columns,
-    // so reading the axes the other way round is right for a square footprint and
-    // silently wrong for every other one.
+    
+    
+    
     drawFor("t:crate", {
         shape: [
             [1, 1, 1],
@@ -152,7 +138,7 @@ Deno.test("a re-draw of the same sprite reuses the decoded image", () => {
     given();
     fakeImage();
     const draw = drawFor("t:crate");
-    // Per frame, per structure. Building an Image here would allocate forever.
+    
     for (let i = 0; i < 5; i++) draw(null, { x: 0, y: 0 }, { ctx: imgCtx() });
     assertEquals(made, 1, "the image was rebuilt on a later frame");
     cleanUp();
@@ -163,8 +149,8 @@ Deno.test("redrawing a sprite in the editor replaces the cached image", () => {
     fakeImage();
     const draw = drawFor("t:crate");
     draw(null, { x: 0, y: 0 }, { ctx: imgCtx() });
-    // Same id, different pixels. Without the source in the cache key the world
-    // would keep showing the first version drawn, and nothing would say so.
+    
+    
     cfg.sprites = [{ id: "t:crate", source: `${PNG}REDRAWN` }];
     draw(null, { x: 0, y: 0 }, { ctx: imgCtx() });
     assertEquals(made, 2, "the edited sprite was not picked up");
@@ -177,13 +163,13 @@ Deno.test("the frame is claimed even while the image is still loading", () => {
         onload?: () => void;
         onerror?: () => void;
         src = "";
-        /** An image assigned a src but not yet decoded. */
+        
         complete = false;
     };
     const ctx = imgCtx();
-    // True, not false: returning false would let the engine draw `render.imageName`
-    // underneath, which is the double-draw this key exists to avoid whenever
-    // `sprites.load` *did* accept the data URL.
+    
+    
+    
     assertEquals(drawFor("t:crate")(null, { x: 0, y: 0 }, { ctx }), true);
     assertEquals(ctx.calls, [], "it painted something without an image");
     cleanUp();
@@ -199,9 +185,9 @@ Deno.test("a sprite id that is not in the config claims the frame and paints not
 });
 
 Deno.test("a drawn sprite with no image name does not claim the frame", () => {
-    // No id at all is a config that has not picked a sprite yet, which is a
-    // different thing from a bad id: the engine should still draw whatever `render`
-    // describes, so this has to fall through.
+    
+    
+    
     given();
     fakeImage();
     assertEquals(drawFor(undefined)(null, { x: 0, y: 0 }, { ctx: imgCtx() }), false);
@@ -211,16 +197,16 @@ Deno.test("a drawn sprite with no image name does not claim the frame", () => {
 Deno.test("it survives having no renderer API", () => {
     given();
     fakeImage();
-    // `api.raw` is a live getter over `sandkit.api`, so removing the key here really
-    // does leave the draw function with no renderer to talk to — which is the whole
-    // point, since a throw in here takes the render loop with it.
+    
+    
+    
     const host = (globalThis as { sandkit: { api: Record<string, unknown> } }).sandkit.api;
     const had = host.rendering;
     host.rendering = undefined;
     try {
         const ctx = imgCtx();
         assertEquals(drawFor("t:crate")(null, { x: 0, y: 0 }, { ctx }), true);
-        // Falls back to cell x cellSize, so the sprite still lands somewhere sensible.
+        
         assertEquals(
             ctx.calls.find((c: string) => c.startsWith("drawImage")),
             "drawImage(0,0,4,4)",
@@ -232,8 +218,8 @@ Deno.test("it survives having no renderer API", () => {
 });
 
 Deno.test("it normalises the canvas it inherits", () => {
-    // Without this the sprite renders solid black and keeps repainting that way,
-    // with nothing to explain it. This is the real mod's own warning.
+    
+    
     given();
     fakeImage();
     const ctx = imgCtx();

@@ -1,42 +1,21 @@
-/**
- * The **excavation profile** object definition.
- *
- * A profile is what a tool digs with: a power, the cells a dig removes
- * (`pattern`, a rectangular 0/1 matrix), and a per-terrain rule list. It is the
- * only object with two controls of its own, and both earn it:
- *
- *   - `pattern` is a grid of 0/1 with its own shape rules (rectangular, 0/1),
- *     which the generic `matrix` json check shares but a definition states for
- *     itself;
- *   - `terrainRules` is a repeating row editor whose rows are
- *     `{ cellType, damage, outputElementType }` — a shape no textarea should
- *     ever ask a person to hand-write.
- *
- * The `terrainRules` widget and the field that carries it must both live in the
- * same file. A register layer that drops `terrainRules` on the floor, with a form
- * that has no field for it, makes the control unreachable from both ends.
- * Both halves live here, in the one file that has to be read to change
- * either.
- *
- * Ground truth: `doc/doc-artifacts/doc.api/shared/api.excavation.md`.
- */
 
-// ── The schema ───────────────────────────────────────────────────────────────
+
+
 
 const FIELDS: FieldSpec[] = [
     idField(),
-    // The one option, and not an `actionList`. These five presets used to be
-    // actions, and could not work as one — they returned a value into a slot that
-    // discards it. See `./excavation-option-field.ts`.
+    
+    
+    
     excavationOptionField(),
     numField("power", "Power", "Profile", {
         required: true,
         min: 0,
         max: 1000,
         def: "10",
-        // Hidden while an option is chosen, because that is exactly when the engine
-        // reads the option's power instead. Still read and written either way, so
-        // clearing the option restores it.
+        
+        
+        
         when: (f) => !(f[OPTIONS_FORM_KEY] ?? "").trim(),
     }),
     {
@@ -45,10 +24,10 @@ const FIELDS: FieldSpec[] = [
         kind: "json",
         section: "Profile",
         jsonType: "object",
-        // Hidden rather than absent: the control renders these as real inputs, and
-        // `isActive` is checked before a field is drawn *and* before it is
-        // validated, so this is the supported way to have a validated but
-        // unrendered field.
+        
+        
+        
+        
         when: () => false,
     },
     {
@@ -77,17 +56,17 @@ const FIELDS: FieldSpec[] = [
         section: "Profile",
         jsonType: "object",
         wide: true,
-        // Hidden for the same reason `power` is: the chosen option's `options` is
-        // what reaches the engine.
+        
+        
         when: (f) => !(f[OPTIONS_FORM_KEY] ?? "").trim(),
         hint: "{ fromGun?, fromDrill?, drillTierDamage? (0–1000), forceRemoveAll?, … }",
         placeholder: '{ "fromDrill": true }',
     },
 ];
 
-// ── Round trip ───────────────────────────────────────────────────────────────
 
-/** Stored entry → form strings, for the whole profile. */
+
+
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("power", read.num(e.power));
     readExcavationOption(read, e);
@@ -96,39 +75,31 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("optionsJson", read.json(e.options));
 }
 
-/** Form strings → stored entry, for the whole profile. */
+
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     writeExcavationOption(w);
     w.setNum("power", w.optNum("power"));
     const pattern = w.optJson<number[][]>("patternJson");
     if (pattern) w.setRaw("pattern", pattern);
-    // Only written when there is at least one rule: an empty array is not a
-    // profile that treats every terrain the same, it is a profile carrying a
-    // list the engine has to check and find nothing in.
+    
+    
+    
     const rules = w.optJson<Record<string, unknown>[]>("terrainRulesJson");
     if (rules && rules.length > 0) w.setRaw("terrainRules", rules);
     const options = w.optJson<Record<string, unknown>>("optionsJson");
     if (options) w.setRaw("options", options);
 }
 
-// ── The terrain-rule row editor ───────────────────────────────────────────────
 
-/**
- * Repeating `{ cellType, damage, outputElementType }` rows.
- *
- * The two ids are stored as ids here and resolved to runtime handles by
- * `registerExcavationProfile`, so the pickers offer the *names* and the engine
- * is the one that resolves them. An empty damage or drop **deletes** the key
- * rather than writing an empty string, because a rule carrying `damage: ""` is
- * a rule the engine has to reject.
- */
+
+
 function renderTerrainRules(ctx: FieldContext): unknown {
     const { h, field, value, setField } = ctx;
     let rows: Record<string, unknown>[] = [];
     try {
         const parsed = JSON.parse(value || "[]");
         if (Array.isArray(parsed)) rows = parsed;
-    } catch { /* raw value stays; validation reports it */ }
+    } catch {  }
     const writeRows = (next: Record<string, unknown>[]) =>
         setField(field.key, JSON.stringify(next, null, 2));
     const terrains = listTerrains();
@@ -228,7 +199,7 @@ function renderTerrainRules(ctx: FieldContext): unknown {
     );
 }
 
-/** A rectangular grid of 0/1, which is what a dig pattern has to be. */
+
 function validateMatrix(value: unknown): string | undefined {
     if (!Array.isArray(value) || value.length === 0) {
         return "must be a non-empty array of rows";
@@ -245,24 +216,11 @@ function validateMatrix(value: unknown): string | undefined {
     return undefined;
 }
 
-/**
- * Validate one excavation-only field kind.
- *
- * Both rules are here rather than in the generic validator for the same reason
- * the widget is: only a profile has either. `matrix` states what a dig pattern
- * must be, and `terrainRules` states that a rule naming no terrain matches
- * nothing at all — which is a rule the author has to notice, not one the engine
- * will complain about.
- *
- * Both branches are reached with an *empty* value too — `validateField` asks the
- * definition before answering "required" — so neither may assume the text
- * parses. An empty required pattern is simply "required", and an empty
- * `terrainRules` is simply no rules.
- */
+
 function validateField(field: FieldSpec, value: string): string | undefined {
     if (field.kind === "terrainRules") {
         const text = value.trim();
-        if (!text) return undefined; // no rules at all — the profile is uniform
+        if (!text) return undefined; 
         let parsed: unknown;
         try {
             parsed = JSON.parse(text);
@@ -286,12 +244,12 @@ function validateField(field: FieldSpec, value: string): string | undefined {
     }
     if (field.kind === "json" && field.jsonType === "matrix") {
         const text = value.trim();
-        // Empty is the generic "required"'s business.
+        
         if (!text) return undefined;
-        // This definition is asked *before* the generic `json` case runs, so
-        // unparseable text reaches here first. A validator that throws takes the
-        // whole panel down, so the parse is guarded and reported like any other
-        // syntax error — the generic case will say the same thing a moment later.
+        
+        
+        
+        
         try {
             return validateMatrix(JSON.parse(text));
         } catch (e) {
@@ -301,27 +259,16 @@ function validateField(field: FieldSpec, value: string): string | undefined {
     return undefined;
 }
 
-/**
- * The control for whichever excavation-only kind this field is, or `null` for
- * the generic ones the panel already knows how to draw.
- */
+
 function renderField(ctx: FieldContext): unknown {
     if (ctx.field.kind === "terrainRules") return renderTerrainRules(ctx);
     if (ctx.field.kind === "excavationOption") return renderExcavationOption(ctx);
     return null;
 }
 
-// ── The definition ───────────────────────────────────────────────────────────
 
-/**
- * Stored keys this form owns.
- *
- * `pattern`, `terrainRules` and `options` are the stored key names, listed as
- * themselves; `patternJson`, `terrainRulesJson` and `optionsJson` are the
- * *controls* for them and are deliberately absent, so the real keys do not also
- * fall through the passthrough as duplicates. `OPTION_COVERED` brings the option's
- * own key.
- */
+
+
 const FORM_COVERED = ["power", "pattern", "terrainRules", "options", ...OPTION_COVERED];
 
 export const excavationDefinition: Definition = {
@@ -331,8 +278,8 @@ export const excavationDefinition: Definition = {
     entryToForm,
     formToEntry,
     validateField,
-    // No `validate`: every rule is either per-field (power's range, the matrix
-    // and terrainRules shapes above) or a `required` flag.
+    
+    
     panel: { renderField },
 };
 import {

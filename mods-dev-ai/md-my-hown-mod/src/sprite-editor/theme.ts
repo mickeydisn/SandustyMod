@@ -1,7 +1,4 @@
-/**
- * sprite-editor / theme — inline styles (the mod has no external CSS).
- * Colours follow the original Grid Editor (amber accent) on the panel's dark blue-grey.
- */
+
 type CSS = Record<string, string | number | undefined>;
 
 export const C = {
@@ -23,7 +20,7 @@ const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
 export const win: CSS = {
     position: "fixed",
-    zIndex: 100001, // above the configurator panel (100000)
+    zIndex: 100001, 
     display: "flex",
     flexDirection: "column",
     background: C.bg,

@@ -1,18 +1,8 @@
-/**
- * End-to-end check that the definitions actually drive the panel.
- *
- * The unit tests assert the codecs; this asserts the *wiring* — that `schema.ts`
- * and `panel.ts` read each definition rather than keeping their own copy of it.
- * A refactor that moved the code but left a stale duplicate behind would pass
- * every existing test and still show the old behaviour, so these checks are
- * deliberately about identity and delegation, not about output.
- *
- * Run with: deno run -A tools/verify-definition.ts
- */
+
 const ROOT = new URL("../src/", import.meta.url).pathname;
 
-// The catalog reads the host `sandkit` global at import time, so it has to exist
-// before any import that reaches it resolves — same stub shape the ui tests use.
+
+
 const store: Record<string, unknown> = {};
 (globalThis as Record<string, unknown>).sandkit = {
     api: {
@@ -66,7 +56,7 @@ const ok = (cond: boolean, what: string) => {
     if (!cond) failures.push(what);
 };
 
-// 1. the registry is what `schema.ts` asks
+
 const SERVED = {
     structures: structureDefinition,
     elements: elementDefinition,
@@ -101,8 +91,8 @@ ok(
     }`,
 );
 
-// 2. the schema comes from the definition, by identity — a stale copy in
-//    `schema.ts` would be equal in content but not the same array
+
+
 const fields = S.fieldsFor("structures");
 ok(
     fields === structureDefinition.fields,
@@ -135,7 +125,7 @@ ok(
 ok(trFields.some((f: { key: string }) => f.key === "colorHSLOn"), "no colorHSLOn toggle");
 ok(trFields.some((f: { key: string }) => f.key === "materialId"), "no materialId field");
 
-// 3. a new structure is seeded, and starts as a solid block
+
 const form = S.newEntryForm("structures");
 ok(
     form.unlockNode === "md-my-hown-mod:unlock.default",
@@ -147,10 +137,10 @@ ok(
     "the shape default is not a solid 4×4",
 );
 
-// 4. the definition claims its own kinds and nothing else.
-//
-// `h` must return something truthy: a definition's widget *is* its `h(...)` call,
-// so a stub that returns `null` would make every owned kind look unowned.
+
+
+
+
 const node = (tag: string) => ({ tag });
 const ctx = (kind: string) =>
     ({
@@ -167,7 +157,7 @@ ok(renderField(ctx("shape")) !== null, "the definition did not render `shape`");
 ok(renderField(ctx("buildModes")) !== null, "the definition did not render `buildModes`");
 ok(renderField(ctx("text")) === null, "the definition claimed a generic kind");
 
-// 5. cross-field validation comes from the definition
+
 const spanOnPoint = { ...form, buildModesJson: JSON.stringify([{ type: "single", spanTiles: 3 }]) };
 ok(
     !!S.validateForm("structures", spanOnPoint).buildModesJson,
@@ -179,14 +169,14 @@ ok(
     "a legal line mode was rejected",
 );
 
-// 6. the 4×4 rule is the definition's, not the generic one
+
 ok(
     !!S.validateForm("structures", { ...form, shapeJson: "[[1,1],[0]]" }).shapeJson,
     "a bad shape passed",
 );
 ok(!S.validateForm("structures", form).shapeJson, "the default shape failed its own rule");
 
-// 7. a full round trip preserves what the engine reads
+
 const stored = {
     id: "md-my-hown-mod:silo",
     name: "Silo",
@@ -216,11 +206,11 @@ ok(
     JSON.stringify(back.shape) === JSON.stringify(stored.shape),
     `shape → ${JSON.stringify(back.shape)}`,
 );
-// The mode *list* and each mode's own fields round-trip. `directions` does not,
-// and is not expected to: the form has one set of direction checkboxes that
-// drives every mode, so a stored `["horizontal"]` is rewritten to whatever the
-// boxes say. That is the documented behaviour of the editor, unchanged by this
-// refactor — asserted here so a future change to it is a deliberate one.
+
+
+
+
+
 const modes = back.buildModes as { type: string; spanTiles?: number }[];
 ok(
     JSON.stringify(modes?.map((m) => ({ type: m.type, spanTiles: m.spanTiles }))) ===
@@ -241,7 +231,7 @@ ok(
 );
 ok(back.skipCopyData === true, `skipCopyData → ${back.skipCopyData}`);
 
-// 8. every build mode survives — the bug the repeating list was written for
+
 const multi = { id: "x", buildModes: [{ type: "line", spanTiles: 2 }, { type: "single" }] };
 const multiBack = S.formToEntry(
     "structures",
@@ -252,14 +242,14 @@ ok(
     "a second build mode was dropped on save",
 );
 
-// 9. a key the form has no control for still round-trips
+
 const withExtra = S.formToEntry(
     "structures",
     S.entryToForm("structures", { ...stored, someEngineKey: 42 }),
 ) as Record<string, unknown>;
 ok(withExtra.someEngineKey === 42, "an unmodelled engine key was dropped on save");
 
-// 10. clearing a field removes the key rather than persisting a blank
+
 const cleared = S.formToEntry("structures", {
     ...S.entryToForm("structures", stored),
     blockGridType: "",
@@ -269,7 +259,7 @@ ok(
     `a cleared field persisted as ${JSON.stringify(cleared.blockGridType)}`,
 );
 
-// 11. the element round trip: the two shapes the form flattens and re-nests
+
 const elForm = S.newEntryForm("elements");
 const elStored = {
     id: "md-my-hown-mod:goo",
@@ -289,9 +279,9 @@ const elBack = S.formToEntry("elements", S.entryToForm("elements", elStored)) as
 >;
 ok(elBack.id === elStored.id, `element id → ${elBack.id}`);
 ok(elBack.matterType === "liquid", `element matterType → ${elBack.matterType}`);
-// the packed colour is the part that cannot be compared as a string
+
 ok(elBack.metaColor === 0xff8800, `element metaColor → ${elBack.metaColor}`);
-// the form holds a flat `[[r,g,b,a]]`; the engine wants it wrapped
+
 ok(
     JSON.stringify(elBack.colors) === JSON.stringify(elStored.colors),
     `element colors → ${JSON.stringify(elBack.colors)}`,
@@ -302,14 +292,14 @@ ok(
 );
 ok(elBack.flammable === true, `element flammable → ${elBack.flammable}`);
 
-// 11b. a stored metaColor wider than 24 bits still reads back as a 6-digit hex.
-//
-// The engine packs a colour into the low 24 bits, but a hand-edited config can
-// hold a full 32-bit value (0xff0000ff) or a signed one. Read unmasked, that
-// renders as a 7-digit hex, which the `color` field rule rejects — so merely
-// opening and saving the entry would be impossible. This is the one place where
-// "the value looks wrong to a human" and "the editor bricks the entry" are the
-// same bug, so it is asserted rather than left to the mask looking correct.
+
+
+
+
+
+
+
+
 for (const storedColor of [0x1000000, 0xff0000ff, 0x11223344, -1]) {
     const read = S.entryToForm("elements", { metaColor: storedColor }).metaColor;
     ok(
@@ -319,7 +309,7 @@ for (const storedColor of [0x1000000, 0xff0000ff, 0x11223344, -1]) {
     );
 }
 
-// 12. the element's cross-field rule — the one `validateForm` used to special-case
+
 ok(
     !!S.validateForm("elements", {
         ...elForm,
@@ -339,8 +329,8 @@ ok(
     "a legal lifetime range was rejected",
 );
 
-// 13. a bare `colors` array — what a hand-written config may hold — is read and
-//     re-wrapped rather than dropped
+
+
 const bareColors = S.formToEntry("elements", {
     ...S.entryToForm("elements", { colors: [[1, 2, 3, 4]] }),
 }) as Record<string, unknown>;
@@ -349,14 +339,14 @@ ok(
     `a bare colors array → ${JSON.stringify(bareColors.colors)}`,
 );
 
-// 14. an unmodelled element key still round-trips
+
 const elExtra = S.formToEntry("elements", {
     ...S.entryToForm("elements", { ...elStored, someEngineKey: 7 }),
 }) as Record<string, unknown>;
 ok(elExtra.someEngineKey === 7, "an unmodelled element key was dropped on save");
 
-// 15. the item round trip: two controls write one `sprite` object, and
-//     `cooldownMs` is stored as `cooldown`
+
+
 const itStored = {
     id: "md-my-hown-mod:pick",
     name: "Pick",
@@ -384,9 +374,9 @@ ok(
     `item sprite → ${JSON.stringify(itBack.sprite)}`,
 );
 
-// 16. a Consumable never persists a use action — ActionType has no Consumable,
-//     so the engine would never call it. The rule is in the save path, not the
-//     `when` predicate, because the form still carries the old value.
+
+
+
 const consumable = S.formToEntry("items", {
     ...S.entryToForm("items", { ...itStored, itemType: "Consumable" }),
 }) as Record<string, unknown>;
@@ -394,14 +384,14 @@ ok(
     consumable.actions === undefined,
     `a Consumable persisted a process: ${JSON.stringify(consumable.actions)}`,
 );
-// …and the rest of the item is untouched by that rule
+
 ok(
     JSON.stringify(consumable.sprite) === JSON.stringify(itStored.sprite),
     "the Consumable rule disturbed the sprite",
 );
 
-// 17. the handler survives a round trip back to a type that can use one, because
-//     it is read into the form even while the control is hidden
+
+
 const backToTool = S.formToEntry("items", {
     ...S.entryToForm("items", { ...itStored, itemType: "Consumable" }),
     itemType: "Tool",
@@ -411,7 +401,7 @@ ok(
     `switching Consumable → Tool lost the process: ${JSON.stringify(backToTool.actions)}`,
 );
 
-// 18. the item's `when` predicates: each control belongs to one item type only
+
 const newItem = S.newEntryForm("items");
 const whenOf = (key: string, form: Record<string, string>) =>
     itFields.find((f: { key: string }) => f.key === key)!.when?.(form) ?? true;
@@ -428,14 +418,14 @@ ok(
 ok(whenOf("cooldownMs", { ...newItem, itemType: "Tool" }), "no cooldown on a Tool");
 ok(!whenOf("cooldownMs", { ...newItem, itemType: "Mod" }), "a Mod has a cooldown");
 
-// 19. an unmodelled item key still round-trips
+
 const itExtra = S.formToEntry("items", {
     ...S.entryToForm("items", { ...itStored, someEngineKey: 11 }),
 }) as Record<string, unknown>;
 ok(itExtra.someEngineKey === 11, "an unmodelled item key was dropped on save");
 
-// 20. the terrain round trip: an HSL triple becomes three controls and back, and
-//     a `{ elementType, chance }` drop becomes two controls and back
+
+
 const trStored = {
     id: "md-my-hown-mod:stone",
     name: "Stone",
@@ -471,8 +461,8 @@ ok(
     `terrain output → ${JSON.stringify(trBack.output)}`,
 );
 
-// 21. the HSL toggle is derived from the stored array, not stored beside it, so
-//     a terrain can never show the toggle on with no colour behind it
+
+
 const hslRead = S.entryToForm("terrains", { colorHSL: [10, 0.5, 0.7] });
 ok(hslRead.colorHSLOn === "true", "a stored colorHSL did not switch the toggle on");
 ok(
@@ -480,8 +470,8 @@ ok(
     "the toggle is on for a terrain with no stored colour",
 );
 
-// 22. …and the save path honours it: the three numbers are written only when the
-//     toggle is on, so an untouched form cannot emit a 0,0,0 black terrain
+
+
 const noHsl = S.formToEntry("terrains", {
     ...S.entryToForm("terrains", { colorHSL: [10, 0.5, 0.7] }),
     colorHSLOn: "false",
@@ -490,8 +480,8 @@ ok(
     !("colorHSL" in noHsl),
     `turning the HSL toggle off left the colour as ${JSON.stringify(noHsl.colorHSL)}`,
 );
-// a half-filled triple is not written at all — a 1- or 2-tuple is a different
-// colour, not a half-specified one
+
+
 const halfHsl = S.formToEntry("terrains", {
     ...S.entryToForm("terrains", { colorHSL: [10, 0.5, 0.7] }),
     colorHSLLightness: "",
@@ -501,7 +491,7 @@ ok(
     `a partially filled HSL was written as ${JSON.stringify(halfHsl.colorHSL)}`,
 );
 
-// 23. a drop chance with no element is not a drop
+
 const chanceOnly = S.formToEntry("terrains", {
     ...S.entryToForm("terrains", { output: { elementType: "md-my-hown-mod:pebble", chance: 0.5 } }),
     outputElement: "",
@@ -511,21 +501,21 @@ ok(
     `a drop chance with no element was written as ${JSON.stringify(chanceOnly.output)}`,
 );
 
-// 24. the `fog` decision: a stored key the form has no control for must survive
-//     through the passthrough rather than being claimed and dropped
+
+
 const foggy = S.formToEntry("terrains", {
     ...S.entryToForm("terrains", { ...trStored, fog: true }),
 }) as Record<string, unknown>;
 ok(foggy.fog === true, "a stored `fog` was dropped — the form does not model it");
 
-// 25. an unmodelled terrain key still round-trips
+
 const trExtra = S.formToEntry("terrains", {
     ...S.entryToForm("terrains", { ...trStored, someEngineKey: 5 }),
 }) as Record<string, unknown>;
 ok(trExtra.someEngineKey === 5, "an unmodelled terrain key was dropped on save");
 
-// 26. the recipe round trip. The machine id decides the output *shape*, so each
-//     of the three shapes is checked — this is the whole content of a recipe.
+
+
 const rcList = {
     id: "md-my-hown-mod:iron",
     kind: "smelter",
@@ -542,14 +532,14 @@ ok(
     JSON.stringify(rcBack.outputs) === JSON.stringify(rcList.outputs),
     `recipe outputs → ${JSON.stringify(rcBack.outputs)}`,
 );
-// A list machine must not gain `output`. (`chance` and `minimumDownwardVelocity`
-// are *not* asserted absent: the form seeds them from their field defaults, and
-// the save path has always written whatever the form holds regardless of the
-// machine. That is pre-existing editor behaviour, unchanged here — asserting it
-// either way would pin down something this refactor did not decide.)
+
+
+
+
+
 ok(!("output" in rcBack), `a list recipe gained a single output: ${rcBack.output}`);
 
-// the shaker shape: two lists, no single output
+
 const rcShaker = {
     id: "md-my-hown-mod:sand",
     kind: "shaker",
@@ -571,7 +561,7 @@ ok(
     "a shaker recipe also wrote the single `outputs` list",
 );
 
-// the planterBox shape: one element + a chance, no list
+
 const rcPlanter = {
     id: "md-my-hown-mod:seed",
     kind: "planterBox",
@@ -592,7 +582,7 @@ ok(
     "a planterBox recipe also wrote an `outputs` list",
 );
 
-// 27. the `outputs` rules, which the definition now owns
+
 const rcBase = { ...S.newEntryForm("recipes"), machine: "smelter" };
 ok(
     S.validateForm("recipes", rcBase).outputs === "add at least one output",
@@ -629,12 +619,12 @@ ok(
     "a 256-row output list was accepted — the engine caps one at 255",
 );
 
-// 28. the contact's null output — the one value that is not a value
+
 const ctStored = {
     id: "md-my-hown-mod:react",
     inputA: "md-my-hown-mod:water",
     inputB: "md-my-hown-mod:fire",
-    outputA: null, // consumed, not unset — the engine's "nothing comes out of A"
+    outputA: null, 
     outputB: "md-my-hown-mod:steam",
     orientation: "any",
 };
@@ -647,7 +637,7 @@ ok(
     `a consumed input stopped being null: ${JSON.stringify(ctBack.outputA)}`,
 );
 ok(ctBack.outputB === ctStored.outputB, `contact outputB → ${ctBack.outputB}`);
-// …and an *empty* output is still "unset", not null: the two must not collapse
+
 const ctEmpty = S.formToEntry("contacts", {
     ...S.entryToForm("contacts", ctStored),
     outputA: "",
@@ -657,12 +647,12 @@ ok(
     `an emptied output was written as ${JSON.stringify(ctEmpty.outputA)}`,
 );
 
-// 29. the behaviour's split between named pickers and the raw payload
-//
-// Compared key-by-key, not with `JSON.stringify`: the round trip *rebuilds*
-// `definition` (raw box first, then the named ids), so the key order changes
-// even when every value is identical. String comparison would report that as a
-// failure and hide the real one.
+
+
+
+
+
+
 const sameObject = (a: unknown, b: unknown): boolean => {
     if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
         return a === b;
@@ -709,8 +699,8 @@ ok(
     sameObject(bhLauncherBack.definition, bhLauncher.definition),
     `launcher definition → ${JSON.stringify(bhLauncherBack.definition)}`,
 );
-// a conveyor must not write the launcher's three keys, even if the form still
-// carries them from before a kind switch
+
+
 const bhSwitched = S.formToEntry("behaviors", {
     ...S.entryToForm("behaviors", bhLauncher),
     kind: "conveyor",
@@ -723,9 +713,9 @@ ok(
 );
 ok(bhDef.id === "md-my-hown-mod:belt", `conveyor id → ${bhDef.id}`);
 
-// 30. the excavation round trip, including the rule list that was previously
-//     unreachable (the register layer dropped `terrainRules` on the floor and
-//     the form had no field for it)
+
+
+
 const exStored = {
     id: "md-my-hown-mod:dig",
     power: 25,
@@ -752,7 +742,7 @@ ok(
     JSON.stringify(exBack.options) === JSON.stringify(exStored.options),
     `excavation options → ${JSON.stringify(exBack.options)}`,
 );
-// an empty rule list is not written at all
+
 const exNoRules = S.formToEntry("excavation", {
     ...S.entryToForm("excavation", exStored),
     terrainRulesJson: "[]",
@@ -762,7 +752,7 @@ ok(
     `an empty rule list was written as ${JSON.stringify(exNoRules.terrainRules)}`,
 );
 
-// 31. the profile's own rules — the matrix and the terrain-rule shape
+
 const exForm = S.newEntryForm("excavation");
 ok(
     !S.validateForm("excavation", { ...exForm, patternJson: "[[1,1],[0,1]]" }).patternJson,
@@ -798,17 +788,17 @@ ok(
     }).terrainRulesJson,
     "a legal terrain rule was rejected",
 );
-// an empty required pattern is "required", and must not throw on the way there —
-// the definition is asked about the empty value before the generic answer
+
+
 ok(
     S.validateForm("excavation", exForm).patternJson === "required",
     `an empty required pattern gave ${S.validateForm("excavation", exForm).patternJson}`,
 );
 
-// 32. the projectile round trip, and the option-wins rule
-// A projectile holds **one** option, not a process. The stored shape is an
-// object — `{ key, params }` — and the legacy keys that used to carry it
-// (`getOptionsKey`, and the short-lived `actions` list) must not survive a save.
+
+
+
+
 const pjStored = {
     id: "md-my-hown-mod:bolt",
     sprite: { id: "sprites:bolt" },
@@ -827,8 +817,8 @@ ok(
     JSON.stringify(pjBack.option) === JSON.stringify({ key: "projectileFast" }),
     `projectile option → ${JSON.stringify(pjBack.option)}`,
 );
-// Both legacy spellings are migrated *and* removed, so a saved entry can never
-// hold two competing references whose resolution would come down to lookup order.
+
+
 ok(
     pjBack.getOptionsKey === undefined,
     `projectile getOptionsKey left behind → ${pjBack.getOptionsKey}`,
@@ -841,8 +831,8 @@ ok(
     JSON.stringify(pjBack.options) === JSON.stringify(pjStored.options),
     `projectile options → ${JSON.stringify(pjBack.options)}`,
 );
-// the static options are *hidden* behind an option but still carried, so
-// clearing the option restores them instead of leaving a projectile bare
+
+
 const pjFields = S.fieldsFor("projectiles");
 const pjWhen = pjFields.find((f: { key: string }) => f.key === "optionsJson")!.when!;
 ok(
@@ -862,7 +852,7 @@ ok(
     "clearing the handler lost the static options it was overriding",
 );
 
-// 33. the signal round trip
+
 const sgStored = {
     id: "md-my-hown-mod:click",
     kind: "interactables",
@@ -880,11 +870,11 @@ ok(
     JSON.stringify(sgBack.actions) === JSON.stringify([{ key: "onClick" }]),
     `signal process → ${JSON.stringify(sgBack.actions)}`,
 );
-// The migration, asserted where the probe already stands: a pre-split entry comes
-// back as a one-action process, and the key it came from is gone.
+
+
 ok(sgBack.handlerKey === undefined, `signal handlerKey left behind → ${sgBack.handlerKey}`);
 
-// 34. the tech round trip, and the two picker/text pairs
+
 const tStored = {
     id: "md-my-hown-mod:t1",
     name: "Automation",
@@ -912,10 +902,10 @@ ok(
     `tech requires → ${JSON.stringify(tBack.requires)}`,
 );
 
-// A value outside the picker's list must survive as a *value*, not as the
-// sentinel. This is the pair's whole reason to exist: `currencyType` is a free
-// string in the engine, and a config that used one the picker does not list must
-// not be rewritten to `__custom__` on the next save.
+
+
+
+
 const tOddForm = S.entryToForm("techs", {
     ...tStored,
     currencyType: "bits",
@@ -932,7 +922,7 @@ ok(
 const tOdd = S.formToEntry("techs", tOddForm) as Record<string, unknown>;
 ok(tOdd.currencyType === "bits", `an unlisted currency became ${tOdd.currencyType}`);
 ok(tOdd.branch === "science", `an unlisted branch became ${tOdd.branch}`);
-// an empty unlocks list is not written at all
+
 const tNoUnlocks = S.formToEntry("techs", {
     ...tOddForm,
     unlockStructures: "",
@@ -943,7 +933,7 @@ ok(
     `an empty unlocks was written as ${JSON.stringify(tNoUnlocks.unlocks)}`,
 );
 
-// 35. the upgrade-category round trip, and the name-or-nameKey rule
+
 const catForm = S.newEntryForm("categories");
 ok(
     !!S.validateForm("categories", catForm).name,
@@ -967,15 +957,15 @@ const catBack = S.formToEntry(
     S.entryToForm("categories", catStored),
 ) as Record<string, unknown>;
 ok(catBack.name === "Tools", `category name → ${catBack.name}`);
-// The requirement does **not** survive a save, and never has. Reading puts a
-// string requirement into the raw box as bare text; saving parses that box as
-// JSON *looking for an object*, and a bare string is not one, so it comes back
-// undefined and nothing is written. Verified identical on the pre-refactor
-// tree, so this is preserved behaviour rather than a regression — but it means
-// the "Requirement (stored only)" control is write-only in practice.
-//
-// Asserted as-is rather than "fixed" here: changing it would alter what a save
-// writes, which is a behaviour decision, not a refactor.
+
+
+
+
+
+
+
+
+
 const catFormRead = S.entryToForm("categories", catStored);
 ok(
     catFormRead.requirementTechId === "__custom__" &&
@@ -994,14 +984,14 @@ ok(
     `a non-string category requirement → ${JSON.stringify(catObj.requirement)}`,
 );
 
-// 36. the upgrade round trip: five controls, one nested object
+
 const upStored = {
     id: "md-my-hown-mod:up",
     itemId: "md-my-hown-mod:drill",
     categoryId: "tools",
     upgrade: { id: "lvl2", nameKey: "up.name", maxLevel: 4, costs: [10, 20, 30, 40] },
-    // Pre-split shape on purpose: the upgrade tab stored its handler under
-    // `onUpgradeKey`, and this probe is the migration.
+    
+    
     onUpgradeKey: "onUp",
 };
 const upBack = S.formToEntry("upgrades", S.entryToForm("upgrades", upStored)) as Record<
@@ -1010,21 +1000,21 @@ const upBack = S.formToEntry("upgrades", S.entryToForm("upgrades", upStored)) as
 >;
 ok(upBack.itemId === upStored.itemId, `upgrade itemId → ${upBack.itemId}`);
 ok(upBack.categoryId === "tools", `upgrade categoryId → ${upBack.categoryId}`);
-// The upgrade tab stored its handler under `onUpgradeKey`. It is now a process,
-// and the migration is asserted here rather than a passthrough of the old key.
+
+
 ok(
     JSON.stringify(upBack.actions) === JSON.stringify([{ key: "onUp" }]),
     `upgrade process → ${JSON.stringify(upBack.actions)}`,
 );
 ok(upBack.onUpgradeKey === undefined, `upgrade onUpgradeKey left behind → ${upBack.onUpgradeKey}`);
-// `oneOff` is *added* to the payload: the field's default is "false" and the
-// save writes whatever the form holds. Also pre-existing and unchanged — asserted
-// so that any future change to it is deliberate.
+
+
+
 ok(
     (upBack.upgrade as { oneOff?: boolean }).oneOff === false,
     `oneOff was not written from the field default: ${JSON.stringify(upBack.upgrade)}`,
 );
-// the four nested fields themselves round-trip
+
 const upPayload = upBack.upgrade as Record<string, unknown>;
 for (const k of ["id", "nameKey", "maxLevel", "costs"]) {
     ok(
@@ -1033,7 +1023,7 @@ for (const k of ["id", "nameKey", "maxLevel", "costs"]) {
         `upgrade.${k} → ${JSON.stringify(upPayload[k])}`,
     );
 }
-// `__custom__` is a picker affordance and must never reach the stored config
+
 const upCustom = S.formToEntry("upgrades", {
     ...S.entryToForm("upgrades", upStored),
     categoryId: "__custom__",
@@ -1043,7 +1033,7 @@ ok(
     `__custom__ was persisted as the category: ${JSON.stringify(upCustom.categoryId)}`,
 );
 
-// 37. the network round trip — an id and a label, and nothing else
+
 const netBack = S.formToEntry("networks", {
     ...S.entryToForm("networks", { id: "md-my-hown-mod:power", name: "Power grid" }),
 }) as Record<string, unknown>;
@@ -1053,7 +1043,7 @@ ok(
     "a network leaked a passthrough key it owns",
 );
 
-// 38. the energy round trip: three controls, one nested `options` object
+
 const enStored = {
     id: "md-my-hown-mod:e",
     structureId: "md-my-hown-mod:battery",
@@ -1070,7 +1060,7 @@ ok(
     JSON.stringify(enBack.options) === JSON.stringify(enStored.options),
     `energy options → ${JSON.stringify(enBack.options)}`,
 );
-// an entry with no options must not gain an empty one
+
 const enNoOpts = S.formToEntry("energy", {
     ...S.entryToForm("energy", { id: "e", structureId: "s", type: "conductor" }),
     capacity: "",
@@ -1082,7 +1072,7 @@ ok(
     `an empty options was written as ${JSON.stringify(enNoOpts.options)}`,
 );
 
-// 39. the trigger round trip — and `triggerId`, which has no control at all
+
 const trgStored = {
     id: "md-my-hown-mod:t",
     triggerId: "md-my-hown-mod:clock",
@@ -1106,9 +1096,9 @@ ok(
     JSON.stringify(trgBack.extra) === JSON.stringify(trgStored.extra),
     `trigger extra → ${JSON.stringify(trgBack.extra)}`,
 );
-// `triggerId` has no control, so it rides the passthrough rather than being
-// claimed by the form. It used to be in `formCovered`, which meant the
-// passthrough skipped it *and* nothing wrote it — so every save deleted it.
+
+
+
 ok(
     trgBack.triggerId === trgStored.triggerId,
     `triggerId → ${JSON.stringify(trgBack.triggerId)}`,
@@ -1118,7 +1108,7 @@ ok(
     "a stored triggerId is not offered as a passthrough, so nothing can carry it",
 );
 
-// 40. the input round trip — an empty key list is not written
+
 const inBindStored = {
     id: "md-my-hown-mod:b",
     displayName: "Toggle",
@@ -1150,7 +1140,7 @@ ok(
     `an unbound binding wrote defaultKeys: ${JSON.stringify(inBindNoKeys.defaultKeys)}`,
 );
 
-// 41. processing — the structure type survives as both a string and a number
+
 const prBack = S.formToEntry("processing", {
     ...S.entryToForm("processing", { id: "p", structureType: "md-my-hown-mod:mill" }),
 }) as Record<string, unknown>;
@@ -1164,10 +1154,10 @@ ok(
     `a numeric structure type was not read: ${prNum.structureType}`,
 );
 
-// 42. interactions — an unmodelled descriptor is kept verbatim, not re-composed
-// This is the whole point of the tab: re-composing would rewrite a descriptor
-// this panel does not fully understand into a shape it does, which is a data
-// loss that looks like a successful edit.
+
+
+
+
 const ixOdd = {
     id: "md-my-hown-mod:ix",
     elementId: "md-my-hown-mod:slime",
@@ -1181,7 +1171,7 @@ ok(
     JSON.stringify(ixBack.interaction) === JSON.stringify(ixOdd.interaction),
     `an unmodelled interaction was rewritten as ${JSON.stringify(ixBack.interaction)}`,
 );
-// …while a fully-modelled one *is* re-composed from the visible fields
+
 const ixPlain = {
     id: "md-my-hown-mod:ix",
     elementId: "md-my-hown-mod:slime",
@@ -1196,11 +1186,11 @@ ok(
     `a modelled interaction → ${JSON.stringify(ixPlainBack.interaction)}`,
 );
 
-// 43. unlock nodes — the two modes write disjoint field sets
-// A node that borrows an engine tech keeps that tech's own definition, so a cost
-// typed beside it would be a second source for the same node. A node that is
-// "always" writes no research fields at all, so a stale cost cannot survive an
-// edit as a competing claim on how a structure becomes available.
+
+
+
+
+
 const unBorrow = S.formToEntry("unlockNodes", {
     ...S.entryToForm("unlockNodes", {
         id: "md-my-hown-mod:un",
@@ -1228,8 +1218,8 @@ ok(
     !("cost" in unAlways) && !("requires" in unAlways),
     `an "always" node wrote research fields: ${JSON.stringify(unAlways)}`,
 );
-// The toggle is only rendered for a tech node, so a form can hold it on an
-// "always" node — and must not then attach a tech to it.
+
+
 const unToggle = S.formToEntry("unlockNodes", {
     ...S.entryToForm("unlockNodes", { id: "md-my-hown-mod:un", name: "Free", kind: "always" }),
     kind: "always",
@@ -1240,7 +1230,7 @@ ok(
     !("techId" in unToggle),
     `an "always" node with a stale toggle borrowed a tech: ${JSON.stringify(unToggle.techId)}`,
 );
-// a real tech node round-trips its research fields
+
 const unBuild = S.formToEntry("unlockNodes", {
     ...S.entryToForm("unlockNodes", {
         id: "md-my-hown-mod:un",
@@ -1260,7 +1250,7 @@ ok(
     `built node requires → ${JSON.stringify(unBuild.requires)}`,
 );
 
-// 44. modifiers — an undocumented hook id survives via the companion box
+
 const moBack = S.formToEntry("modifiers", {
     ...S.entryToForm("modifiers", {
         id: "md-my-hown-mod:mo",
@@ -1284,7 +1274,7 @@ ok(
 const moOdd = S.formToEntry("modifiers", moOddForm) as Record<string, unknown>;
 ok(moOdd.hookId === "notdocumented:thing", `an undocumented hook became ${moOdd.hookId}`);
 
-// 45. sprites — a path, a flag, and nothing else
+
 const spBack = S.formToEntry("sprites", {
     ...S.entryToForm("sprites", {
         id: "sprites:crusher",
@@ -1294,7 +1284,7 @@ const spBack = S.formToEntry("sprites", {
 }) as Record<string, unknown>;
 ok(spBack.path === "assets/icons/crusher.png", `sprite path → ${spBack.path}`);
 ok(spBack.fromMod === true, `sprite fromMod → ${spBack.fromMod}`);
-// `source` and `options` are claimed by nobody, so they must pass through
+
 const spExtra = S.formToEntry("sprites", {
     ...S.entryToForm("sprites", {
         id: "sprites:c",
@@ -1308,27 +1298,27 @@ ok(
     `a sprite lost an unowned field: ${JSON.stringify(spExtra)}`,
 );
 
-// 46. no definition claims a key that nothing handles
-//
-// `formCovered` is a promise: "this form owns these stored keys". The passthrough
-// skips every claimed key, so a key that is claimed but read by neither
-// `entryToForm` nor written by `formToEntry` is deleted on the next save — and
-// nothing looks wrong, because the entry renders and saves without error.
-//
-// That is the shape of the bugs this check was written for: a trigger's
-// `triggerId` (claimed, no control, silently deleted) and a category's
-// `requirement` (claimed, read into a control that could not save it back).
-//
-// A claimed key counts as handled if any of these holds, because `formCovered`
-// means two slightly different things and a probe can only see one:
-//
-//   - it reaches a control on the way in, or comes back out on the way out;
-//   - it IS a control — a claimed key that is also a declared field is owned by
-//     construction (an unlock node's `cost`);
-//   - it lives inside a composed control — a structure's `dirH` is a checkbox
-//     folded into `buildModes[].directions`, and its `shape` is edited through a
-//     `shapeJson` box, so neither is a top-level entry key nor a field of the
-//     same name. Listed rather than guessed.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const KEYS_INSIDE_A_COMPOSED_CONTROL = new Set([
     "buildModes",
     "spanTiles",
@@ -1336,56 +1326,43 @@ const KEYS_INSIDE_A_COMPOSED_CONTROL = new Set([
     "dirV",
     "dirD",
     "shape",
-    // A HandlerProcess. `actions` is the stored key, `actionsJson` is the one
-    // control, and `writeActions` builds the whole array — so no probe looking for
-    // a field named `actions`, or for a literal mention of it, can see the pairing.
-    // The same shape as `shape` / `shapeJson` above, which is why it lives here
-    // rather than in a new exemption.
+    
+    
+    
+    
+    
     "actions",
 ]);
 
-/**
- * Claimed on purpose, with no control, and dropped on purpose.
- *
- * A structure's `draw` is the engine's *callback* field: the host sets it to a
- * function, and `passthroughOf` already refuses to carry functions. `drawKey` is
- * the serialisable spelling — a picker over the built-in draw functions whose own
- * hint says a hand-typed value is ignored by the game. So a `draw` that reaches
- * the JSON store at all is a string the engine does not read, and mapping it
- * onto `drawKey` would be guessing at an intent. Claiming it keeps a dead key
- * from also being carried twice.
- *
- * Listed rather than fixed: this check is about *accidental* orphans, and this is
- * the one claim in the panel that is deliberate.
- */
+
 const CLAIMED_TO_SUPPRESS = new Set([
     "draw",
-    // The three pre-split process keys. `ACTIONS_COVERED` claims all of them on
-    // every one of the seven tabs, and `writeActions` deletes all of them on save —
-    // deliberately, so a tab cannot be left holding a legacy key it no longer reads.
-    //
-    // So these are "claimed, with no control, and dropped on purpose", which is
-    // exactly what this set is for. Without them here the check reads the *family*
-    // as seven unrelated orphans and fails on the two names a given tab never used.
+    
+    
+    
+    
+    
+    
+    
     "handlerKey",
     "getOptionsKey",
     "onUpgradeKey",
 ]);
 
-// The write probe fills every control, with enums and shapes set to legal
-// values — a form whose `kind` is "7" legitimately takes no conditional branch,
-// which says nothing about whether a key is orphaned.
+
+
+
 const PROBE_ENUMS: Record<string, string> = { kind: "tech", type: "storage" };
 for (const [tab, def] of Object.entries(DEFINITIONS)) {
     const t = tab as never;
     const controlKeys = new Set(S.fieldsFor(t).map((f) => f.key));
     for (const key of def.formCovered) {
-        // read: one distinctive marker, on its own, so attribution is exact
+        
         const marker = `orphan-probe-${key}`;
         const readForm = S.entryToForm(t, { id: "md-my-hown-mod:probe", [key]: marker });
         const isRead = Object.values(readForm).some((v) => String(v).includes(marker));
 
-        // written: a fully-filled form must produce the key in the entry
+        
         const full = S.newEntryForm(t);
         for (const f of S.fieldsFor(t)) {
             if (f.kind === "bool") full[f.key] = "true";

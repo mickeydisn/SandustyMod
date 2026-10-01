@@ -1,41 +1,26 @@
-/**
- * sprite-editor / register — hand a drawn sprite (base64 PNG) to the game.
- *
- * `api.sprites.load(id, path, options?)` is documented for paths, not for
- * data URLs, so this tries, in order:
- *   1. load(id, "data:image/png;base64,…")
- *   2. load(id, blob: URL created from the same bytes)
- * and verifies with `sprites.getById(id)` when that method exists.
- */
+
 import { api as skApi } from "../packages/mysandkit.ts";
 import { LOG } from "../constants.ts";
 import { dataUrlToBlob } from "./codec.ts";
 
 export interface RegisterResult {
     ok: boolean;
-    /** which strategy worked: "data-url" | "blob-url" */
+    
     via?: string;
     error?: string;
 }
 
-/** blob URLs we created, so a re-save can release the previous one */
+
 const blobUrls = new Map<string, string>();
 
-/**
- * The engine's `sprites` namespace.
- *
- * `raw()` rather than a wrapped method: this file needs `load`, `getById` and
- * `list` itself and already knows their shapes, so a wrapper per call would add
- * indirection without adding safety. The wrapper still owns the resolution order
- * and the failure containment, which is the part that matters here.
- */
+
 function spritesApi(): any {
     return skApi.sprites.raw();
 }
 
 function isLoaded(sprites: any, id: string): boolean {
     try {
-        if (typeof sprites.getById !== "function") return true; // cannot verify -> trust load()
+        if (typeof sprites.getById !== "function") return true; 
         const s = sprites.getById(id);
         return s !== null && s !== undefined;
     } catch {

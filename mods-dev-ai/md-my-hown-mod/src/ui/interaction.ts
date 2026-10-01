@@ -1,19 +1,4 @@
-/**
- * Element interactions: the `kind` union, split into ordinary form fields.
- *
- * `addInteractionInfo` stores the object **verbatim** — no validation, no
- * coercion — but the shape is a discriminated union of seven kinds
- * (`elements.d.ts`), and a single free JSON box made the user hand-write that
- * discriminator plus only the fields their kind actually has. So the form now
- * offers the union properly: pick a `kind`, get that kind's fields.
- *
- * `interactionJson` stays the stored form, so the round trip is lossless: an
- * object the form does not recognise passes through untouched rather than being
- * flattened into a `kind` it was not.
- *
- * Lives apart from `schema.ts` because it is a self-contained piece of logic
- * with its own invariants, not a field list.
- */
+
 
 export type InteractionKind =
     | "destroyer"
@@ -54,17 +39,17 @@ export const INTERACTION_KINDS: { kind: InteractionKind; label: string; blurb: s
     },
 ];
 
-/** Kinds whose only extra fields are tooltip metadata. */
+
 export const TOOLTIP_KINDS: InteractionKind[] = ["structure", "custom"];
 
-/** How the tooltip's visibility is decided. */
+
 export const DATA_FIELD_MODES: { value: string; label: string }[] = [
     { value: "", label: "Always show" },
     { value: "visibleWhen", label: "Show only when a data field equals a value" },
     { value: "crossedOutWhen", label: "Show, but crossed out, when a data field equals a value" },
 ];
 
-/** Keys the split form models. Anything else means the object is not fully round-trippable. */
+
 const KNOWN = new Set([
     "kind",
     "items",
@@ -76,12 +61,7 @@ const KNOWN = new Set([
     "onlyWhenTranslated",
 ]);
 
-/**
- * Rebuild an interaction object from the split form fields.
- *
- * Returns `undefined` when there is nothing to store, so an untouched form does
- * not write an empty interaction onto the element.
- */
+
 export function composeInteraction(
     f: Record<string, string>,
 ): Record<string, unknown> | undefined {
@@ -106,9 +86,9 @@ export function composeInteraction(
         if (f.tipTextKey?.trim()) out.textKey = f.tipTextKey.trim();
         const mode = f.tipVisibility ?? "";
         if (mode === "visibleWhen" || mode === "crossedOutWhen") {
-            // `Number("")` is 0, not NaN, so an untouched control would otherwise
-            // write `dataField: 0` — not a real field (they are 1–4), so the rule
-            // would silently never match. `equals` is allowed to be 0.
+            
+            
+            
             const field = Number(f.tipDataField);
             const equals = Number(f.tipDataFieldEquals);
             if (
@@ -123,14 +103,7 @@ export function composeInteraction(
     return out;
 }
 
-/**
- * Split a stored interaction object back into the form fields.
- *
- * `unmodelled` is true when the object holds a key the split form has no field
- * for. The round trip then keeps the original JSON verbatim instead of
- * re-composing it, so a kind this form has never heard of survives a save
- * rather than being quietly rewritten.
- */
+
 export function splitInteraction(
     interaction: Record<string, unknown> | undefined,
 ): { fields: Record<string, string>; unmodelled: boolean } {

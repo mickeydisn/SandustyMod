@@ -1,17 +1,4 @@
-/**
- * "Custom draw" — what the engine can paint, and which of it this mod uses.
- *
- * This screen is a *view*, not a form. `draw` is a function the engine calls;
- * it cannot be typed into a text box, and the config does not hold a draw
- * function per entry. What it holds is a `drawKey` naming one of the entries in
- * `DRAW_FUNCTIONS`, and the mod resolves that name to a real function. So there
- * is nothing to create here — inventing a "draw" row would produce an entry the
- * engine never sees.
- *
- * Which makes the useful question the only question: *what are my options, and
- * which am I using?* So the list is the catalogue with a live count against
- * each, and a "not used yet" note where the count is zero.
- */
+
 import { DRAW_FUNCTIONS } from "../../catalog.ts";
 import * as S from "../styles.ts";
 
@@ -26,7 +13,7 @@ interface StructureRow {
     drawKey?: string;
 }
 
-/** Ids of the structures currently naming this draw key. */
+
 export function usageOf(cfg: Record<string, unknown>, key: string): string[] {
     const structures = (cfg?.structures ?? []) as StructureRow[];
     return structures
@@ -34,14 +21,7 @@ export function usageOf(cfg: Record<string, unknown>, key: string): string[] {
         .map((s) => String(s.id ?? "?"));
 }
 
-/**
- * Draw keys in use that this build has no entry for.
- *
- * A structure can hold a name this build does not know — an old config, or one
- * hand-edited. Those are the most likely to be quietly doing nothing, so they
- * are surfaced rather than folded into a count that only adds up for the keys we
- * do recognise.
- */
+
 export function unknownDrawKeys(cfg: Record<string, unknown>): string[] {
     const known = new Set(DRAW_FUNCTIONS.map((d) => d.key));
     const structures = (cfg?.structures ?? []) as StructureRow[];

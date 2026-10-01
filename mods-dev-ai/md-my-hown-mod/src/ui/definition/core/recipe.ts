@@ -1,37 +1,20 @@
-/**
- * The **recipe** object definition.
- *
- * A recipe is what one of the game's eight built-in machines does with an
- * input: an id (`smelter`, `planterBox`, `kineticPress`, `shaker`, …) plus the
- * outputs that machine produces. The machine id is not decoration — it decides
- * *which* output fields exist. A planterBox takes a single element and a chance;
- * a shaker takes an array above and an array below; a kineticPress additionally
- * requires the input to be falling at a minimum speed. So the schema is a set
- * of `when` predicates over one field, and the save path has to write whichever
- * shape the chosen machine expects.
- *
- * It owns the `outputs` kind outright — the repeating `{ elementType, chance }`
- * row editor, its rules, and the 255-row cap. Nothing else in the panel has
- * that kind, so the generic renderer has no reason to know it.
- *
- * Ground truth: `doc/doc-artifacts/doc.api/shared/api.recipes.md`.
- */
+
 import { listElements, listRecipeMachines } from "../../../catalog.ts";
 import { type RecipeOutputEntry } from "../../../constants.ts";
 import * as S from "../../styles.ts";
 import { advField, elSelect, idField, numField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
 
-/** Machines whose output is a single element, not a list. */
+
 const SINGLE_OUTPUT_MACHINES = ["planterBox"];
 
-/** Machines that drop one list above the machine and another below it. */
+
 const isShaker = (f: Record<string, string>) => f.machine === "shaker";
 
-/** True when the single-element output controls apply. */
+
 const isSingleOutput = (f: Record<string, string>) => SINGLE_OUTPUT_MACHINES.includes(f.machine);
 
-// ── The schema ───────────────────────────────────────────────────────────────
+
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -104,17 +87,17 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-// ── Round trip ───────────────────────────────────────────────────────────────
 
-/** Stored entry → form strings, for the whole recipe. */
+
+
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
-    // Stored as `kind`; the form calls it `machine`, because "kind" reads as a
-    // type tag in every other tab and this one is a specific machine id.
+    
+    
     read.put("machine", read.str(e.kind));
     read.put("input", read.str(e.input) ?? read.num(e.input));
-    // A single-element machine stores `output` + `chance`; a list machine
-    // stores `outputs` and has no `chance`. All of them are read, and the `when`
-    // predicates decide which controls that actually shows.
+    
+    
+    
     read.put("outputElement", read.str(e.output) ?? read.num(e.output));
     read.put("outputChance", read.num(e.chance));
     read.put("outputs", read.json(e.outputs));
@@ -123,23 +106,16 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("minVelocity", read.num(e.minimumDownwardVelocity));
 }
 
-/**
- * Form strings → stored entry, for the whole recipe.
- *
- * `_form` is unused: every read goes through the writer, which already carries
- * the form. The parameter stays because the `Definition` contract has one
- * signature, so a definition that needs a raw form value the writer does not
- * expose (structure reads `form.tooltipHoverJson` for that) can still ask.
- */
+
 function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setStr("kind", w.opt("machine"));
     w.setStr("input", w.opt("input"));
     w.setStr("output", w.opt("outputElement"));
     w.setNum("chance", w.optNum("outputChance"));
-    // Each list is written only if present, and the three are independent: a
-    // shaker fills above and below, everyone else fills the one list. Writing
-    // whichever is non-empty keeps a machine switch from leaving the previous
-    // machine's output array behind as a second, competing source.
+    
+    
+    
+    
     const outs = w.optJson<RecipeOutputEntry[]>("outputs");
     if (outs) w.setRaw("outputs", outs);
     const above = w.optJson<RecipeOutputEntry[]>("outputsAbove");
@@ -149,16 +125,9 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setNum("minimumDownwardVelocity", w.optNum("minVelocity"));
 }
 
-// ── The outputs row editor ───────────────────────────────────────────────────
 
-/**
- * The repeating `{ elementType, chance }` row editor.
- *
- * `elementType` and `chance` are stored as numbers on the way in and ids on the
- * way out, so the list is a genuine "N of these, each with this probability" —
- * a shape a single select plus a single chance cannot express, and the reason
- * this control exists rather than two more dropdowns.
- */
+
+
 function renderOutputs(ctx: FieldContext): unknown {
     const { h, field, value, locked, setField } = ctx;
     const style = ctx.error ? S.inputError : S.input;
@@ -166,7 +135,7 @@ function renderOutputs(ctx: FieldContext): unknown {
     try {
         const parsed = JSON.parse(value || "[]");
         if (Array.isArray(parsed)) rows = parsed;
-    } catch { /* raw value stays in the form; validation reports it */ }
+    } catch {  }
     const writeRows = (next: { elementType?: string; chance?: number }[]) =>
         setField(field.key, JSON.stringify(next, null, 2));
     const elements = listElements();
@@ -234,20 +203,13 @@ function renderOutputs(ctx: FieldContext): unknown {
     );
 }
 
-/**
- * Validate one `outputs` row list.
- *
- * These rules live here rather than in the generic validator because only a
- * recipe has an `outputs` list — the engine caps one at 255 rows and requires
- * every row to name an element and a chance in 0–1, none of which the generic
- * `json` rule can know.
- */
+
 function validateField(field: FieldSpec, value: string): string | undefined {
     if (field.kind !== "outputs") return undefined;
-    // An empty list is not a JSON syntax error to report — it is a required
-    // list with no rows in it, and "add at least one output" is what the author
-    // has to do about it. (An empty textarea parses to nothing, so the check has
-    // to come before `JSON.parse` or the message would be about brackets.)
+    
+    
+    
+    
     if (!value.trim()) return "add at least one output";
     let parsed: unknown;
     try {
@@ -274,26 +236,15 @@ function validateField(field: FieldSpec, value: string): string | undefined {
     return undefined;
 }
 
-/**
- * The control for whichever recipe-only kind this field is, or `null` for the
- * generic ones the panel already knows how to draw.
- */
+
 function renderField(ctx: FieldContext): unknown {
     if (ctx.field.kind !== "outputs") return null;
     return renderOutputs(ctx);
 }
 
-// ── The definition ───────────────────────────────────────────────────────────
 
-/**
- * Stored keys this form owns.
- *
- * `outputs`, `outputsAbove` and `outputsBelow` are the stored key names, so
- * they are listed as themselves; `machine`, `outputElement`, `outputChance` and
- * `minVelocity` are *control* names for `kind`, `output`, `chance` and
- * `minimumDownwardVelocity`, and are deliberately absent — claiming them would
- * leave the real keys falling through the passthrough as duplicates.
- */
+
+
 const FORM_COVERED = [
     "kind",
     "input",
@@ -312,8 +263,8 @@ export const recipeDefinition: Definition = {
     entryToForm,
     formToEntry,
     validateField,
-    // No `validate`: the machine's own requirements are all per-field — each
-    // output control is `required` and gated by a `when` — so there is nothing
-    // left that needs two fields at once.
+    
+    
+    
     panel: { renderField },
 };

@@ -1,12 +1,5 @@
-// @ts-nocheck
-/**
- * Tests for the relation graph.
- *
- * The dangling-reference detection is the point of this module: it finds the
- * entries that register cleanly and then quietly do nothing in-game, which is
- * the single most confusing failure this mod can have. The layout is worth
- * testing too, but only for the property that matters — it is stable.
- */
+
+
 import { assert, assertEquals } from "jsr:@std/assert";
 
 globalThis.sandkit = {
@@ -77,8 +70,8 @@ Deno.test("a reference to a deleted object is reported", () => {
 });
 
 Deno.test("a reference into a kind with no entries is not called dangling", () => {
-    // It may legitimately point at a built-in the mod does not own, so calling
-    // it broken would be a false alarm on every fresh config.
+    
+    
     const g = buildGraph({
         terrains: [{ id: "md-my-hown-mod:sand", outputElement: "sand:0" }],
     });
@@ -101,9 +94,9 @@ Deno.test("a self-referencing tech tree still draws its edge", () => {
     const g = buildGraph({
         techs: [{ id: "a", parentId: "b" }, { id: "b" }],
     });
-    // Matched by field, not by the category pair. techs now has two edges to
-    // techs (parentId and requires), and picking the first one by category pair
-    // silently tested whichever happened to be declared first.
+    
+    
+    
     const self = g.edges.find(
         (e: { from: string; to: string; field: string }) =>
             e.from === "techs" && e.to === "techs" && e.field === "parentId",
@@ -114,10 +107,10 @@ Deno.test("a self-referencing tech tree still draws its edge", () => {
 });
 
 Deno.test("the built-in default node resolves rather than reading as dangling", () => {
-    // It is virtual — not stored — but a structure legitimately points at it, and
-    // "Unlock by default" is the *safe* state. Reporting it as a broken link would
-    // train the user to ignore the dangling marker, which is the one thing the
-    // marker is for.
+    
+    
+    
+    
     const g = buildGraph({
         structures: [{ id: "s1", unlockNode: "md-my-hown-mod:unlock.default" }],
         unlockNodes: [],
@@ -129,10 +122,10 @@ Deno.test("the built-in default node resolves rather than reading as dangling", 
 });
 
 Deno.test("a node that really is missing is still reported", () => {
-    // The fix above must not have made the dangling case disappear.
-    //
-    // `live` stays 1 *and* `dangling` is 1: a reference was made and it points at
-    // nothing. `live` on its own would read as a working link.
+    
+    
+    
+    
     const g = buildGraph({
         structures: [{ id: "s1", unlockNode: "md-my-hown-mod:unlock.gone" }],
         unlockNodes: [],
@@ -144,13 +137,13 @@ Deno.test("a node that really is missing is still reported", () => {
 });
 
 Deno.test("techs.requires and techs.parentId are separate edges", () => {
-    // They are genuinely different things — a parent grid line vs a
-    // prerequisite list — and the graph draws one edge per field, so they must
-    // not be merged or the user cannot tell which is broken.
-    //
-    // Scoped to `from === "techs"`: an unlock node declares the same two fields for
-    // the tech it *builds*, so an unscoped filter would match those too and the
-    // assertion would be about the wrong edges.
+    
+    
+    
+    
+    
+    
+    
     const g = buildGraph({
         techs: [{ id: "a", parentId: "b", requires: "c" }, { id: "b" }, { id: "c" }],
         unlockNodes: [],
@@ -168,10 +161,10 @@ Deno.test("techs.requires and techs.parentId are separate edges", () => {
 });
 
 Deno.test("an unlock node's own edges are separate from the tech edges", () => {
-    // A node's `requires`/`parentId` describe the tech it *builds*, so they are
-    // filed against `unlockNodes`. Merging them into the techs pair would draw one
-    // arrow where there are two different relationships, and a break in either would
-    // be reported against the wrong thing.
+    
+    
+    
+    
     const g = buildGraph({
         techs: [{ id: "t" }],
         unlockNodes: [{ id: "u", parentId: "t", requires: "r" }],
@@ -188,13 +181,13 @@ Deno.test("an unlock node's own edges are separate from the tech edges", () => {
     ]);
 });
 
-// ── energy networks ──────────────────────────────────────────────────────────
+
 
 Deno.test("a reference to a game id is not reported as dangling", () => {
-    // The pickers offer the game's own elements, so pointing at one is the
-    // normal case — not a broken reference. Before this, `known` held only the
-    // mod's own entries, so a reaction on the game's "Sand" was flagged the
-    // moment the mod had one element of its own.
+    
+    
+    
+    
     const d = findDangling(
         {
             contacts: [{ id: "c", inputA: "Sand", inputB: "mdmy.acid" }],
@@ -210,7 +203,7 @@ Deno.test("a reference to a game id is not reported as dangling", () => {
 });
 
 Deno.test("a reference to nothing at all is still reported", () => {
-    // The fix above must not turn the check off.
+    
     const d = findDangling(
         { contacts: [{ id: "c", inputA: "Unobtainium" }], elements: [{ id: "mdmy.acid" }] },
         () => new Set(["Sand"]),
@@ -220,8 +213,8 @@ Deno.test("a reference to nothing at all is still reported", () => {
 });
 
 Deno.test("a hidden game id resolves, so pointing at one is not an alarm", () => {
-    // A mod that deliberately targets an internal element has a working
-    // reference; flagging it would invite the user to "fix" something correct.
+    
+    
     const d = findDangling(
         { contacts: [{ id: "c", inputA: "_resolved" }], elements: [] },
         () => new Set(["_resolved"]),
@@ -230,8 +223,8 @@ Deno.test("a hidden game id resolves, so pointing at one is not an alarm", () =>
 });
 
 Deno.test("with no host available, nothing built-in is invented", () => {
-    // An unavailable host must degrade to config-only rather than report every
-    // built-in as broken.
+    
+    
     const d = findDangling(
         { contacts: [{ id: "c", inputA: "Sand" }], elements: [] },
         () => new Set(),
@@ -240,8 +233,8 @@ Deno.test("with no host available, nothing built-in is invented", () => {
 });
 
 Deno.test("the layout is stable for the same config", () => {
-    // Stability is the whole reason this is a fixed layout and not a force
-    // simulation: a node that moves when nothing changed is useless to aim at.
+    
+    
     const one = buildGraph({ elements: [{ id: "x" }] });
     const two = buildGraph({ elements: [{ id: "x" }] });
     assertEquals(
@@ -298,12 +291,12 @@ Deno.test("the text export is readable on an empty config", () => {
     assert(!text.includes("DANGLING"), "an empty config should be clean");
 });
 
-// ── grouping, neighbours, filtering ──────────────────────────────────────────
+
 
 Deno.test("every graph node lands in the column its menu group names", () => {
-    // The whole readability win of the grouped layout depends on this: if a
-    // node is in a different column from its menu group, the picture and the
-    // menu tell the user two different stories about the same thing.
+    
+    
+    
     const g = buildGraph({});
     const home = new Map<string, string>();
     for (const m of MENU_GROUPS) for (const c of m.categories) home.set(c, m.label);
@@ -316,9 +309,9 @@ Deno.test("every graph node lands in the column its menu group names", () => {
 });
 
 Deno.test("a kind the menu forgets still appears, in its own column", () => {
-    // Dropping it would hide a real relation. The graph has to be able to show
-    // something the menu does not yet know about, or adding a kind to
-    // `relations.ts` alone would make it invisible.
+    
+    
+    
     const g = buildGraph({});
     const inMenu = new Set(MENU_GROUPS.flatMap((m) => m.categories));
     const homeless = g.nodes.filter((n) => !inMenu.has(n.cat));
@@ -331,15 +324,15 @@ Deno.test("a kind the menu forgets still appears, in its own column", () => {
 });
 
 Deno.test("group bands never overlap, whichever way they are laid out", () => {
-    // A group must be clear of every other group on *both* axes. Checking one
-    // axis is not enough, and checking only the axis the layout currently uses
-    // is how the last transpose slipped past: this test used to assert `y` while
-    // the groups were rows, so when they became columns it still passed on a
-    // layout where they were all stacked at the same `y` and only the width kept
-    // them apart. The overlap that matters is a *rectangle* overlap.
-    //
-    // So: assert the real invariant (no two group rectangles intersect), and let
-    // the separate orientation test below say which way the bands run.
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const g = buildGraph({});
     for (let i = 0; i < g.columns.length; i++) {
         for (let j = i + 1; j < g.columns.length; j++) {
@@ -356,16 +349,16 @@ Deno.test("group bands never overlap, whichever way they are laid out", () => {
 });
 
 Deno.test("groups are columns, side by side, taller than they are wide", () => {
-    // The layout, stated once so a change to it is deliberate. A group is a
-    // *column*: it runs down the picture beside the others, ordered left-to-right
-    // by how shallow its shallowest kind is, and the group's name is a heading
-    // across the top of it.
-    //
-    // The name being a top heading is what makes a column legible here. As rows
-    // the name had to fit in a strip at the left, and the longest one had nowhere
-    // to go — which is the reason this layout was transposed away from columns in
-    // the first place. A column is at least one node wide, so the heading gets
-    // the whole width of the top of its own column.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const g = buildGraph({});
     assert(g.columns.length > 1, "the fixture needs more than one group to be meaningful");
     for (let i = 1; i < g.columns.length; i++) {
@@ -375,24 +368,24 @@ Deno.test("groups are columns, side by side, taller than they are wide", () => {
             cur.x >= prev.x + prev.w,
             `${cur.label} overlaps ${prev.label} — group columns must sit beside each other`,
         );
-        // And each really is a column: taller than it is wide.
+        
         assert(cur.h > cur.w, `${cur.label} is wider than it is tall, so it is a row`);
     }
-    // Every group starts at the same top, so the headings line up.
+    
     const tops = new Set(g.columns.map((c) => c.y));
     assertEquals(tops.size, 1, `the columns do not share a top edge: ${[...tops]}`);
 });
 
 Deno.test("every box in a group shares one x, with a margin either side", () => {
-    // A group is a single vertical stack, not a grid: all of its boxes sit in the
-    // same column, left-aligned to one `x`. Same-depth kinds — the ones a cycle
-    // puts at one level — were the reason the layout used to fan them out
-    // sideways, but a slot is a *row*, so they stack vertically instead and the
-    // fan was never needed.
-    //
-    // The margin matters as much as the alignment: without it a one-box-wide
-    // column is just the box with a dashed border drawn along its own edge, and
-    // the boundary stops reading as a container.
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const g = buildGraph({});
     for (const c of g.columns) {
         const members = g.nodes.filter((n) => n.group === c.key);
@@ -409,7 +402,7 @@ Deno.test("every box in a group shares one x, with a margin either side", () => 
         assert(left > 0 && right > 0, `${c.label} has a box flush against its boundary`);
         assertEquals(left, right, `${c.label} is not centred: ${left} left, ${right} right`);
     }
-    // And no two groups can collide by sharing an x, since each is a fixed width.
+    
     for (let i = 1; i < g.columns.length; i++) {
         const prev = g.columns[i - 1];
         const cur = g.columns[i];
@@ -418,9 +411,9 @@ Deno.test("every box in a group shares one x, with a margin either side", () => 
 });
 
 Deno.test("a node sits inside its own group column, clear of the heading", () => {
-    // The layout is the one thing not re-checked at render time, so it is
-    // checked here. A node outside its column would be drawn across the dashed
-    // boundary; a node over the heading would hide the group's name.
+    
+    
+    
     const g = buildGraph({});
     for (const n of g.nodes) {
         const c = g.columns.find((x) => x.key === n.group);
@@ -428,7 +421,7 @@ Deno.test("a node sits inside its own group column, clear of the heading", () =>
         assert(n.x >= c.x && n.x + n.w <= c.x + c.w, `${n.cat} is outside its column`);
         assert(n.y >= c.y + 20, `${n.cat} is drawn over its own group heading`);
     }
-    // And every node is inside the canvas.
+    
     for (const n of g.nodes) {
         assert(n.y + n.h <= g.height, `${n.cat} is drawn below the canvas`);
         assert(n.x + n.w <= g.width, `${n.cat} is drawn past the right edge`);
@@ -436,8 +429,8 @@ Deno.test("a node sits inside its own group column, clear of the heading", () =>
 });
 
 Deno.test("nodes keep their position when the config changes", () => {
-    // The fixed layout exists so a picture can be aimed at. If adding an entry
-    // moved a node, the feature would be worse than useless.
+    
+    
     const a = buildGraph({});
     const b = buildGraph({ elements: [{ id: "x" }], recipes: [{ id: "r", in: "x" }] });
     const at = (g: typeof a, cat: string) => {
@@ -453,9 +446,9 @@ Deno.test("neighbours include both directions and the kind itself", () => {
     const g = buildGraph({});
     const n = neighboursOf(g, "elements");
     assert(n.has("elements"), "the kind itself is missing — the selected node would vanish");
-    // Something must point at elements, and elements must point at something.
+    
     assert(n.size > 1, "elements has no neighbours at all");
-    // A leaf that only ever receives references still has to be findable.
+    
     const all = graphCategories();
     for (const cat of all) {
         assert(neighboursOf(g, cat).has(cat), `${cat} is not in its own neighbour set`);
@@ -463,9 +456,9 @@ Deno.test("neighbours include both directions and the kind itself", () => {
 });
 
 Deno.test("filtering to a kind re-lays it out, keeping it and its neighbours", () => {
-    // The filter now goes *into* the layout rather than over the top of it, so
-    // the kept kinds are re-derived and re-packed instead of being left marooned
-    // in one corner of a diagram sized for everything.
+    
+    
+    
     const g = buildGraph({});
     const keep = neighboursOf(g, "elements");
     const f = buildGraph({}, keep);
@@ -474,15 +467,15 @@ Deno.test("filtering to a kind re-lays it out, keeping it and its neighbours", (
         assert(keep.has(e.from) && keep.has(e.to), "an edge survived with an endpoint hidden");
     }
     assert(f.nodes.length < g.nodes.length, "the filter removed nothing");
-    // And it is genuinely smaller, so the panel is not sized for what is hidden.
+    
     assert(f.width <= g.width, "a filtered graph is wider than the whole one");
     assert(f.height <= g.height, "a filtered graph is taller than the whole one");
 });
 
 Deno.test("a filtered graph re-derives depth from what is left", () => {
-    // The point of re-flowing: a kind's column reflects only the references
-    // actually on screen. A kind that references nothing has nothing under it,
-    // so it belongs in the first column — where in the full graph it need not be.
+    
+    
+    
     const g = buildGraph({});
     const f = buildGraph({}, neighboursOf(g, "terrains"));
     assert(f.nodes.length > 1, "the fixture is not a neighbourhood");
@@ -495,8 +488,8 @@ Deno.test("a filtered graph re-derives depth from what is left", () => {
 });
 
 Deno.test("no filter is the whole graph, not an empty one", () => {
-    // "All" is a non-empty string, and a filter that treated it as a kind name
-    // would empty the screen. This is the regression guard for exactly that.
+    
+    
     const g = buildGraph({});
     const f = buildGraph({}, null);
     assertEquals(f.nodes.length, g.nodes.length);
@@ -504,8 +497,8 @@ Deno.test("no filter is the whole graph, not an empty one", () => {
 });
 
 Deno.test("an empty filter set renders an empty graph, not a crash", () => {
-    // "Filtering to nothing is a normal state" — it has to produce something the
-    // screen can draw, not throw on an empty node list.
+    
+    
     const f = buildGraph({}, new Set());
     assertEquals(f.nodes.length, 0);
     assertEquals(f.edges.length, 0);
@@ -513,8 +506,8 @@ Deno.test("an empty filter set renders an empty graph, not a crash", () => {
 });
 
 Deno.test("filtering keeps the dangling report for what is still visible", () => {
-    // A broken reference is the most important thing on the screen. Narrowing
-    // the view must not quietly drop the ones that are still on it.
+    
+    
     const cfg = { terrains: [{ id: "t1", outputElement: "gone" }] };
     const broken = findDangling(cfg, () => new Set(["Sand"]));
     assert(broken.length > 0, "the fixture has nothing broken");

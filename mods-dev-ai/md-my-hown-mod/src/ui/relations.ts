@@ -1,46 +1,26 @@
-/**
- * The relations between the mod's own objects.
- *
- * The engine has a 40-edge type graph (`doc-bundel/object-graph.json`) but that
- * is *engine* types, and it does not answer the question a user actually has:
- * which of my own entries point at which? A trigger that references a signal
- * that no longer exists is the most common way a mod like this breaks, and
- * nothing on screen says so.
- *
- * So the table is written out by hand rather than derived, because each row is a
- * claim about a specific field on a specific form — and a claim like that
- * deserves to be checked. `relations.test.ts` verifies every field named here
- * really exists in the form it is filed under and really belongs to that
- * category, so the table cannot quietly rot.
- */
+
 import type { Tab } from "./schema.ts";
 
 export interface Relation {
-    /** The object that holds the reference. */
+    
     from: Tab;
-    /** The form field that holds it. */
+    
     field: string;
-    /** The kind of object it points at. */
+    
     to: Tab;
-    /** Plain-language explanation, for the Help screen. */
+    
     note: string;
-    /**
-     * `required` — the engine rejects the registration without it.
-     * `optional` — omitting it is valid and simply does nothing.
-     */
+    
     strength: "required" | "optional";
-    /**
-     * True when the field holds more than one id (a `string[]` such as
-     * `outputs` or `unlocks`). The live graph expands each one separately.
-     */
+    
     many?: boolean;
 }
 
 export const RELATIONS: Relation[] = [
-    // ── production ──────────────────────────────────────────────────────────
-    // ── recipes: the inputs and every output stream ─────────────────────────
-    // These were the worst gap: a recipe's whole job is to name things, and the
-    // graph showed only one of the five places it does.
+    
+    
+    
+    
     {
         from: "recipes",
         field: "input",
@@ -137,7 +117,7 @@ export const RELATIONS: Relation[] = [
         strength: "required",
     },
 
-    // ── world ───────────────────────────────────────────────────────────────
+    
     {
         from: "terrains",
         field: "outputElement",
@@ -162,7 +142,7 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
 
-    // ── items: everything a tool points at ─────────────────────────────────
+    
     {
         from: "items",
         field: "excavationProfileId",
@@ -185,7 +165,7 @@ export const RELATIONS: Relation[] = [
         strength: "optional",
     },
 
-    // ── structures: what a machine is made of ───────────────────────────────
+    
     {
         from: "structures",
         field: "imageName",
@@ -210,7 +190,7 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
 
-    // ── tech & upgrades ─────────────────────────────────────────────────────
+    
     {
         from: "techs",
         field: "unlockStructures",
@@ -220,9 +200,9 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
     {
-        // The required owner of the link. The engine only ever reads the *tech*
-        // side, so this is the panel's own handle — and the side an author reasons
-        // from ("this one is behind research").
+        
+        
+        
         from: "structures",
         field: "unlockNode",
         to: "unlockNodes",
@@ -231,9 +211,9 @@ export const RELATIONS: Relation[] = [
         many: false,
     },
     {
-        // A node either builds a tech of its own or borrows one. The borrow is the
-        // only link *out* of a node, and omitting it would leave a borrowed node
-        // looking like a self-contained one in the graph.
+        
+        
+        
         from: "unlockNodes",
         field: "techId",
         to: "techs",
@@ -242,10 +222,10 @@ export const RELATIONS: Relation[] = [
         many: false,
     },
     {
-        // Read-only in the graph's terms: the link is stored on each structure and
-        // this row is the reverse view of it. Declared so the graph can show what a
-        // node holds back, and marked optional because the *authoritative* edge is
-        // the structure → node one above.
+        
+        
+        
+        
         from: "unlockNodes",
         field: "gatesStructures",
         to: "structures",
@@ -254,9 +234,9 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
     {
-        // A self-built node places itself in the tech grid. Declared against the
-        // category it is read from, which is `unlockNodes` and not `techs` — the
-        // engine tech it produces is a *result*, not the thing being edited.
+        
+        
+        
         from: "unlockNodes",
         field: "parentId",
         to: "techs",
@@ -319,7 +299,7 @@ export const RELATIONS: Relation[] = [
         strength: "optional",
     },
 
-    // ── systems ─────────────────────────────────────────────────────────────
+    
     {
         from: "signals",
         field: "target",
@@ -334,14 +314,14 @@ export const RELATIONS: Relation[] = [
         note: "The structure that carries this energy node.",
         strength: "required",
     },
-    // ── structure behaviours ──
-    //
-    // `api.structureBehaviors` takes *structure ids*, not handler keys: a
-    // conveyor is registered against one structure, a launcher against three
-    // (`upType` / `leftType` / `rightType`). They sit inside the behaviour's
-    // `definition` object because that is the shape the engine wants, but they
-    // are ordinary references and belong in the graph like any other — a typo
-    // here means a conveyor that quietly transports nothing.
+    
+    
+    
+    
+    
+    
+    
+    
     {
         from: "behaviors",
         field: "structureId",
@@ -349,14 +329,14 @@ export const RELATIONS: Relation[] = [
         note: "The structure this conveyor moves items for.",
         strength: "required",
     },
-    // ── placement configs ──
-    //
-    // The one reference a placement config has. It is the field the engine keys
-    // the whole definition by — `registerPlacementConfig` stores the entry in a
-    // `Map` under this id and only reads it while that building is selected — so
-    // a typo here produces a config that validates, registers, and is then never
-    // shown to the player. Required for the same reason it is required for a
-    // behaviour: the engine throws without it.
+    
+    
+    
+    
+    
+    
+    
+    
     {
         from: "placementConfigs",
         field: "structureId",
@@ -394,12 +374,12 @@ export const RELATIONS: Relation[] = [
     },
 ];
 
-/** Every relation declared by a category, in table order. */
+
 export function relationsOf(cat: Tab): Relation[] {
     return RELATIONS.filter((r) => r.from === cat);
 }
 
-/** The categories something points at, deduplicated and in table order. */
+
 export function targetsOf(cat: Tab): Tab[] {
     return [...new Set(RELATIONS.filter((r) => r.from === cat).map((r) => r.to))];
 }

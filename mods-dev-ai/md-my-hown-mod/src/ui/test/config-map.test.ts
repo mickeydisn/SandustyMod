@@ -1,12 +1,5 @@
-// @ts-nocheck
-/**
- * Tests for the instance map.
- *
- * Two things matter here beyond the obvious. First, a broken reference must be
- * *drawn*, not dropped — it is the reason the screen exists, so silently
- * omitting it would make the picture lie. Second, an entry that nothing
- * references is worth telling the user about, since it is usually a typo.
- */
+
+
 import { assert, assertEquals } from "jsr:@std/assert";
 
 globalThis.sandkit = {
@@ -73,7 +66,7 @@ Deno.test("a reference to nothing is kept and marked broken", () => {
 
 Deno.test("an entry nothing points at is reported as an orphan", () => {
     const m = buildInstanceMap(BASE);
-    // water is referenced by the terrain; ash is referenced by nothing
+    
     assertEquals(m.orphans, ["elements:md-my-hown-mod:ash"]);
 });
 
@@ -144,7 +137,7 @@ Deno.test("the layout is stable for the same config", () => {
 });
 
 Deno.test("a kind with no entries gets no column", () => {
-    // An empty column is noise; the Help screen already lists every kind.
+    
     const m = buildInstanceMap({ elements: [{ id: "a" }] });
     assertEquals(m.columns.length, 1);
 });

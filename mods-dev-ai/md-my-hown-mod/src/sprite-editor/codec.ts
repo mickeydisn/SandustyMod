@@ -1,9 +1,4 @@
-/**
- * sprite-editor / codec — PixelDoc <-> PNG data URL (base64), image loading.
- *
- * The stored form of a sprite is `data:image/png;base64,....` : a plain JSON
- * string, so it lives happily inside the mod's JSON config.
- */
+
 import { createDoc, type PixelDoc } from "./engine.ts";
 
 export const PNG_PREFIX = "data:image/png;base64,";
@@ -19,7 +14,7 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement {
     return c;
 }
 
-/** Encode pixels as a base64 PNG data URL. */
+
 export function docToDataUrl(doc: PixelDoc): string {
     const c = makeCanvas(doc.width, doc.height);
     const ctx = c.getContext("2d")!;
@@ -27,10 +22,10 @@ export function docToDataUrl(doc: PixelDoc): string {
     return c.toDataURL("image/png");
 }
 
-/** data URL -> Blob (no fetch needed, works offline / in any sandbox). */
+
 export function dataUrlToBlob(url: string): Blob {
     const comma = url.indexOf(",");
-    const meta = url.slice(5, comma); // "image/png;base64"
+    const meta = url.slice(5, comma); 
     const mime = meta.split(";")[0] || "image/png";
     const bin = atob(url.slice(comma + 1));
     const bytes = new Uint8Array(bin.length);
@@ -55,21 +50,18 @@ function imageToDoc(img: HTMLImageElement): PixelDoc {
     const ctx = c.getContext("2d")!;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, 0, 0);
-    const px = ctx.getImageData(0, 0, w, h).data; // throws SecurityError if the canvas is tainted
+    const px = ctx.getImageData(0, 0, w, h).data; 
     const d = createDoc(w, h);
     d.data.set(px);
     return d;
 }
 
-/**
- * Load any image URL (data:, blob:, http(s):, file:, game/mod asset URL) into
- * pixels. Falls back to fetch()->blob when a cross-origin canvas would be tainted.
- */
+
 export async function loadUrlToDoc(url: string): Promise<PixelDoc> {
     try {
         return imageToDoc(await loadImage(url, true));
     } catch (e1) {
-        // 2nd chance: read bytes ourselves, decode from a same-origin blob URL
+        
         try {
             const blob = url.startsWith("data:")
                 ? dataUrlToBlob(url)
@@ -90,7 +82,7 @@ export async function loadUrlToDoc(url: string): Promise<PixelDoc> {
     }
 }
 
-/** Read a user-picked PNG file. */
+
 export function fileToDoc(file: Blob): Promise<PixelDoc> {
     return new Promise((resolve, reject) => {
         const fr = new FileReader();
@@ -100,7 +92,7 @@ export function fileToDoc(file: Blob): Promise<PixelDoc> {
     });
 }
 
-/** Trigger a browser download of a data URL (used by "Export PNG"). */
+
 export function downloadDataUrl(filename: string, url: string): void {
     const a = document.createElement("a");
     a.href = url;

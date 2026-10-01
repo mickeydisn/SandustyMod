@@ -1,15 +1,4 @@
-/**
- * sprite-editor / tab — the "draw" section of the configurator panel.
- *
- *  - lists every sprite created with the editor (thumbnail, id, size, frames)
- *  - New sprite · Import PNG · load an existing asset from the `sprites`
- *    collection / any mod path into the editor
- *  - Edit / Duplicate / Delete
- *  - hosts the editor window (ONE sprite at a time)
- *
- * The open EditSession lives at module level: switching tab, minimising the
- * panel or deselecting the tool never loses pixels or undo history.
- */
+
 import { React as HostReact, toast } from "../api.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
 import { addOrUpdateSprite } from "../config/store.ts";
@@ -29,7 +18,7 @@ import {
     uniqueSpriteId,
 } from "./store.ts";
 
-// ── session that survives UI unmounts ────────────────────────────────────
+
 let currentSession: EditSession | null = null;
 export function getCurrentSession(): EditSession | null {
     return currentSession;
@@ -59,7 +48,7 @@ function baseName(path: string): string {
 
 let _Tab: any = null;
 
-/** Memoised component (stable identity → stable hooks). */
+
 export function getDrawTab(): (props: { onChange?: () => void }) => any {
     if (_Tab) return _Tab;
     const React: any = HostReact;
@@ -112,7 +101,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
             refresh();
         };
 
-        // ── creators ─────────────────────────────────────────────────────
+        
         const createNew = () => {
             if (!canOpen()) return;
             const id = normalizeSpriteId(newName);
@@ -138,7 +127,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
             }
         };
 
-        /** Load any image URL into the editor as a NEW (not yet saved) sprite. */
+        
         const openFromUrl = async (url: string, id: string, origin: string, replaces?: string) => {
             if (!canOpen()) return;
             try {
@@ -163,12 +152,12 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
             }
         };
 
-        /** Edit an entry of the existing (file-based) asset collection. */
+        
         const editFileSprite = (e: SpriteConfig) => {
             const url = e.source
                 ? String(e.source)
                 : skApi.assets.getUrl(String(e.path)) ?? String(e.path);
-            // same id + replaces => saving converts the file entry into an editable drawn one
+            
             void openFromUrl(url, e.id, `asset ${e.path ?? e.id}`, e.id);
         };
 
@@ -179,7 +168,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
             void openFromUrl(url, uniqueSpriteId(baseName(p)), p);
         };
 
-        // ── row actions ──────────────────────────────────────────────────
+        
         const duplicate = (e: DrawnSprite) => {
             const id = uniqueSpriteId(`${e.id}-copy`);
             const copy: DrawnSprite = { ...e, id, updatedAt: Date.now() };
@@ -205,7 +194,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
             refresh();
         };
 
-        // ── save handed to the editor ────────────────────────────────────
+        
         const onSave = async (s: EditSession): Promise<boolean> => {
             const r = await saveSession(s);
             if (!r.ok) {
@@ -223,7 +212,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
             return true;
         };
 
-        // ── UI ───────────────────────────────────────────────────────────
+        
         const row = (e: DrawnSprite) =>
             h(
                 "div",

@@ -1,13 +1,4 @@
-/**
- * Attach / detach `hooks.intercept` and `hooks.modify` from ModifierConfig entries.
- *
- * This is the one place that genuinely talks to the *engine's* hook system rather
- * than to the action catalogue, and the reason `src/hooks/` no longer exists as a
- * name: a modifier is a call site, not a category of behaviour. The actions it
- * runs live in `../actions/connect/` under the `modifier` signature.
- *
- * Returns unsubscribe functions so teardown can clean up.
- */
+
 import { LOG, type ModifierConfig } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { resolveModifier } from "../actions/index.ts";
@@ -21,9 +12,7 @@ function wrapUnsub(ret: unknown): Unsub {
     return () => {};
 }
 
-/**
- * Apply one modifier entry. Returns true if a live hook was attached.
- */
+
 export function applyModifier(entry: ModifierConfig): boolean {
     if (entry.enabled === false) {
         console.log(`${LOG} modifier ${entry.id}: disabled, skip`);
@@ -50,7 +39,7 @@ export function applyModifier(entry: ModifierConfig): boolean {
         return false;
     }
 
-    // Kind mismatch guard
+    
     const kind = entry.kind ?? handler.kind;
     if (kind !== handler.kind) {
         console.warn(
@@ -59,13 +48,13 @@ export function applyModifier(entry: ModifierConfig): boolean {
     }
     const useKind = handler.kind;
 
-    // Detach previous for same id
+    
     detachModifier(entry.id);
 
-    // `api.hooks` rather than a local copy of the resolution order. This file used
-    // to read `(globalThis as any).sandkit?.api?.hooks` directly, which is
-    // `undefined` in the real mod scope — the host is a `new Function` parameter,
-    // not a global — so every modifier silently failed to attach.
+    
+    
+    
+    
     if (!api.hooks.hasHooks()) {
         console.warn(`${LOG} modifier ${entry.id}: sandkit.api.hooks unavailable`);
         return false;

@@ -1,6 +1,4 @@
-/**
- * Persistent JSON configuration store — all categories including contacts & interactions.
- */
+
 import {
     type BufferEntryConfig,
     type ContactReactionConfig,
@@ -33,8 +31,8 @@ import {
 } from "../constants.ts";
 import { api } from "../packages/mysandkit.ts";
 
-// The migration below needs the derived-process id and the step shape, and only
-// those two — importing the feature's barrel would drag the compiler in with it.
+
+
 import { derivedProcessId } from "../handler/custom-process/registry.ts";
 import type { ProcessStep } from "../handler/custom-process/types.ts";
 import type { HandlerSlot } from "../handler/core/handler-registry.ts";
@@ -70,22 +68,14 @@ function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
         sprites: Array.isArray(raw?.sprites) ? raw!.sprites! : [],
         inputBindings: Array.isArray(raw?.inputBindings) ? raw!.inputBindings! : [],
         processes: Array.isArray(raw?.processes) ? raw!.processes! : [],
-        // `buffers` is the one list that did not exist before this version, so a
-        // stored config predating it has no key at all. `Array.isArray` is false
-        // for `undefined`, which is exactly the "absent" answer wanted here.
+        
+        
+        
         buffers: Array.isArray(raw?.buffers) ? raw!.buffers! : [],
     };
 }
 
-/**
- * The definitions that hold a legacy `actions` array, and the slot each sits in.
- *
- * Written out rather than derived from `SLOTS_BY_CATEGORY`, because the migration
- * needs the **reverse** direction of a table the handler registry owns — and importing
- * that here would pull the whole action catalogue into the config loader, which runs
- * before any of it is meant to. A test checks this list against the registry's
- * `SLOT_LOCATION`, so the two cannot drift silently.
- */
+
 const LEGACY_SLOTS: readonly [string, HandlerSlot][] = [
     ["signals", "signal"],
     ["triggers", "trigger"],
@@ -95,34 +85,7 @@ const LEGACY_SLOTS: readonly [string, HandlerSlot][] = [
     ["items", "itemAction"],
 ];
 
-/**
- * Convert a definition's legacy `actions` array into a referenced process.
- *
- * **Why this exists.** A definition used to store its program inline:
- * `actions: [{ key, options }]`. It now stores `processId` (D5, D6). Rather than
- * dropping the old data, each array becomes a **derived** process — id
- * `<entryId>#process` — and the entry is rewritten to reference it. Nothing the author
- * wrote is lost, and the behaviour is identical, because a derived process's steps
- * *are* that array.
- *
- * ## The three rules
- *
- * 1. **Only for an entry that has no `processId`.** An entry that already references
- *    something is left completely alone — its `actions` is stale data from an earlier
- *    save, and overwriting the reference would be the destructive choice.
- * 2. **Only for a non-empty array.** An entry with `actions: []` is a definition with
- *    no program, which is a legitimate state, and inventing a process for it would
- *    give the panel a row that does nothing.
- * 3. **One derived process per entry, never shared.** The id carries the entry id, so
- *    two entries cannot collide — and if they did, deleting one definition would
- *    silently change another's behaviour.
- *
- * ## Idempotence
- *
- * Running this twice must change nothing the second time, because `loadConfig` runs on
- * every boot. The first run gives the entry a `processId` and drops its `actions`, so
- * rule 1 excludes it from the second.
- */
+
 export function migrateLegacyActions(
     cfg: ModConfig,
 ): { changed: number; config: ModConfig } {
@@ -133,26 +96,26 @@ export function migrateLegacyActions(
     for (const [category, slot] of LEGACY_SLOTS) {
         const entries = out[category as keyof ModConfig] as unknown;
         if (!Array.isArray(entries)) continue;
-        // The list is copied before any entry is touched, and each entry is copied
-        // **only if it changes**. A shallow `{ ...cfg }` is not enough: the entries are
-        // the same objects, so writing `processId` through one would edit the caller's
-        // config — and the caller's config can be `DEFAULT_CONFIG`, a module-level
-        // singleton every other call shares. One migrated test would then leave every
-        // later test seeing a half-migrated default.
+        
+        
+        
+        
+        
+        
         const list = entries as unknown[];
         let copied = false;
         for (let i = 0; i < list.length; i++) {
             const original = list[i] as Record<string, unknown> | null;
             if (!original || typeof original !== "object") continue;
-            // Rule 1: already references something — leave it entirely alone.
+            
             if (typeof original.processId === "string" && original.processId) continue;
-            // Rule 2: an empty array is "no program", not "a program that is empty".
+            
             if (!Array.isArray(original.actions) || original.actions.length === 0) continue;
 
             const entryId = String(original.id ?? "");
             if (!entryId) continue;
             const processId = derivedProcessId(entryId);
-            // Rule 3: never overwrite an existing process, even on an id collision.
+            
             if (known.has(processId)) continue;
 
             const steps = original.actions
@@ -178,10 +141,10 @@ export function migrateLegacyActions(
             });
             known.add(processId);
 
-            // Copy-on-write, and the copy is **assigned back to `out`** rather than
-            // spliced in place. Splicing would have been the obvious thing and is
-            // wrong: `out[category]` is the caller's own array, so a splice is a
-            // mutation of it.
+            
+            
+            
+            
             if (!copied) {
                 out[category as keyof ModConfig] = [...list] as never;
                 copied = true;
@@ -197,9 +160,9 @@ export function migrateLegacyActions(
 
 export function loadConfig(): ModConfig {
     api.storage.ensure();
-    // The migration is applied on **load**, not on save, so a config written by any
-    // build of the mod is converted exactly once and every reader — the panel, the
-    // register path, the usage scan — sees the same shape.
+    
+    
+    
     return migrateLegacyActions(
         ensureArrays(api.storage.get<Partial<ModConfig>>(CONFIG_KEY)),
     ).config;
@@ -221,7 +184,7 @@ export function loadPanelState(defaultMinimized = true): PanelState {
     api.storage.ensure();
     const raw = api.storage.get<Partial<PanelState>>(PANEL_KEY);
     return {
-        x: typeof raw?.x === "number" ? raw.x : -1, // -1 => use right/bottom CSS
+        x: typeof raw?.x === "number" ? raw.x : -1, 
         y: typeof raw?.y === "number" ? raw.y : -1,
         minimized: typeof raw?.minimized === "boolean" ? raw.minimized : defaultMinimized,
         width: typeof raw?.width === "number" ? raw.width : 440,
@@ -434,10 +397,10 @@ export function addOrUpdateUnlockNode(entry: UnlockNodeConfig): ModConfig {
 export function removeUnlockNode(id: string): ModConfig {
     const cfg = loadConfig();
     cfg.unlockNodes = removeById(cfg.unlockNodes, id);
-    // Structures pointed at the deleted node are moved to the built-in default
-    // rather than left dangling: a dangling link reads as *unlocked* at apply
-    // time, so the structures would silently jump from "needs research" to
-    // "available immediately" while the panel still claimed they were gated.
+    
+    
+    
+    
     cfg.structures = (cfg.structures ?? []).map((s) =>
         s?.unlockNode === id ? { ...s, unlockNode: DEFAULT_UNLOCK_NODE } : s
     );
@@ -451,14 +414,7 @@ export function removeEnergyNetwork(id: string): ModConfig {
     return cfg;
 }
 
-/**
- * Save a buffer slot, or replace the one with the same id.
- *
- * The two are the same operation on purpose. A slot is addressed by `id` in the
- * config and by `path` at runtime, and an author editing bounds or a default has
- * to be able to do it without thinking about which of the two they are changing —
- * so this matches on `id`, exactly like every other list in this store.
- */
+
 export function addOrUpdateBufferEntry(entry: BufferEntryConfig): ModConfig {
     const cfg = loadConfig();
     cfg.buffers = upsert(cfg.buffers, entry);
@@ -466,20 +422,7 @@ export function addOrUpdateBufferEntry(entry: BufferEntryConfig): ModConfig {
     return cfg;
 }
 
-/**
- * Drop a buffer slot.
- *
- * Nothing is rewritten on the way out, and that is a deliberate difference from
- * `removeUnlockNode`. A node has referents in other lists, so deleting one has to
- * repoint them or they dangle. A slot has referents in *action options* — a
- * `bufferWrite` naming a path that no longer exists — and there is no honest
- * rewrite for those: the process is the author's, and silently deleting a step
- * from it would be a worse surprise than the step reading back its default.
- *
- * So a dangling `path` reads the slot's declared default, or the type's zero
- * when the slot is gone entirely. The write is dropped and reported, not
- * silently absorbed. See `problemFor` in the buffer store.
- */
+
 export function removeBufferEntry(id: string): ModConfig {
     const cfg = loadConfig();
     cfg.buffers = removeById(cfg.buffers, id);
@@ -487,13 +430,7 @@ export function removeBufferEntry(id: string): ModConfig {
     return cfg;
 }
 
-/**
- * Save one custom process, by id.
- *
- * `upsert`, like every other list here — a process is edited under the same id it was
- * created with, which is the whole point of the reference model: editing it changes
- * every definition that names it rather than creating a second one.
- */
+
 export function addOrUpdateCustomProcess(
     entry: import("../handler/custom-process/types.ts").CustomProcessConfig,
 ): ModConfig {
@@ -503,19 +440,7 @@ export function addOrUpdateCustomProcess(
     return cfg;
 }
 
-/**
- * Delete one process, and **un-reference** it.
- *
- * A definition left naming a deleted process would fail to compile on the next boot
- * and register as a machine that does nothing — a silent breakage caused by editing a
- * different screen. So every definition pointing at it has the key removed, and the
- * entry is left as a machine with no program, which is a real state the panel already
- * knows how to show.
- *
- * The alternative — refusing the delete while anything uses it — would make a process
- * undeletable until its author went and unhooked it from six screens, which is the
- * wrong trade for a config editor.
- */
+
 export function removeCustomProcess(id: string): ModConfig {
     const cfg = loadConfig();
     cfg.processes = removeById(cfg.processes, id);

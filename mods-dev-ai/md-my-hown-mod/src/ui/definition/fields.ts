@@ -1,29 +1,11 @@
-/**
- * Field factories shared by every object definition.
- *
- * Nearly every tab opens with an id, a name and a description, and nearly every
- * tab ends with the passthrough box. Those are the same three fields 24 times
- * over, so they are written once here. What is *not* here is anything specific
- * to one object — a structure's 4×4 shape, an element's colour variants. Those
- * live in the definition that owns them, because a helper named after the thing
- * it is for is one nobody moves when that thing changes.
- */
+
 import { listElements } from "../../catalog.ts";
 import { MOD_ID } from "../../constants.ts";
 import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../../handler/core/handler-registry.ts";
 import type { Opt } from "../../catalog.ts";
 import type { FieldSpec } from "./types.ts";
 
-/**
- * Name the handler types a slot accepts, as part of the field's own hint.
- *
- * A dropdown filtered to one item type is short on purpose, and a short list
- * with no explanation reads as a broken picker. Naming the types turns "why is
- * this list so small" into "because this is the list for that type".
- *
- * Takes a thunk rather than the options so the hint can be built inside a
- * `FieldSpec` literal without freezing the list at schema-construction time.
- */
+
 export function typesHintFor(pick: () => Opt[]): string {
     const types = handlerTypesForKeys(pick().map((o) => o.value));
     if (types.length === 0) {
@@ -41,7 +23,7 @@ export const SPRITE_ID_MSG = "key, or namespace:key — e.g. sprites:crusher";
 export const NAME_MAX = 64;
 export const DESC_MAX = 200;
 
-/** The mod-namespaced id field, stored as `md-my-hown-mod:<suffix>`. */
+
 export function idField(): FieldSpec {
     return {
         key: "idSuffix",
@@ -56,10 +38,7 @@ export function idField(): FieldSpec {
     };
 }
 
-/**
- * Sprite ids are engine graphics keys ("sprites:crusher"), not mod-namespaced
- * ids — so this field accepts an optional "namespace:key" and is stored verbatim.
- */
+
 export function spriteIdField(): FieldSpec {
     return {
         key: "idSuffix",
@@ -74,25 +53,10 @@ export function spriteIdField(): FieldSpec {
     };
 }
 
-/**
- * The form key that carries every stored field the form has no control for.
- *
- * Named rather than spelled out because three places have to agree on it: the
- * field that declares it, the panel that decides whether to show its section,
- * and the label that names what is being carried.
- */
+
 export const PASSTHROUGH_KEY = "advancedJson";
 
-/**
- * The stored keys a passthrough blob is carrying, or `[]` when it carries none.
- *
- * Takes the raw textarea text rather than a parsed object, because that is what
- * the panel has at hand on every render — and a render must never throw. So
- * anything that is not a JSON *object* reads as carrying nothing: an empty box
- * (`""` is what a form saves for "not set"), a half-typed value, an array, a
- * bare number, `null`. Showing a count of keys for a value that cannot be
- * merged would be claiming a guarantee the save path does not make.
- */
+
 export function passthroughKeysOf(raw: string | undefined): string[] {
     const text = (raw ?? "").trim();
     if (text === "") return [];
@@ -100,28 +64,13 @@ export function passthroughKeysOf(raw: string | undefined): string[] {
     try {
         parsed = JSON.parse(text);
     } catch {
-        return []; // mid-edit or hand-typed nonsense — not a carried object yet
+        return []; 
     }
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return [];
     return Object.keys(parsed as Record<string, unknown>).sort();
 }
 
-/**
- * The passthrough box, and the only place the panel asks a user to hand-write
- * engine JSON.
- *
- * It is deliberately last: the normal path is a form control, and this exists
- * for the fields the form does not have. It says so on its face — the names
- * being carried, and an explicit note that typing here is a last resort —
- * because the old label ("Extra fields (JSON)") read like an authoring field
- * and invited people to put things there that the form would then fight over.
- *
- * It is also **conditional**, which is the part that is easy to get wrong in
- * both directions. Shown always, it is twelve copies of a box whose own hint
- * says "you do not need to touch this". Never shown, you cannot tell "nothing
- * is hidden" from "my fields are gone" — exactly the moment you need to know.
- * So it appears when it has something in it, and names it.
- */
+
 export function advField(): FieldSpec {
     return {
         key: PASSTHROUGH_KEY,
@@ -167,14 +116,7 @@ export function numField(
     return { key, label, kind: "number", section, step: 1, int: true, ...extra };
 }
 
-/**
- * A select over the engine's element ids.
- *
- * Several objects point *at* an element rather than holding one — a recipe's
- * input, a contact's two reactants, an interaction's subject — and each wants
- * the same picker. Written once here so those definitions do not each re-spell
- * it, and so a change to the options reaches all of them.
- */
+
 export function elSelect(
     key: string,
     label: string,
@@ -185,14 +127,7 @@ export function elSelect(
     return { key, label, kind: "select", section, required, options: listElements, hint };
 }
 
-/**
- * Decide whether a library pick may overwrite a companion field (e.g. the
- * graphics key auto-derived from a picked asset).
- *
- * Returns the value to store, or `null` to leave the field alone. A hand-typed
- * value is never clobbered: we only write when the field is empty or still holds
- * the value we ourselves generated on a previous pick (`lastAuto`).
- */
+
 export function resolveAutoFill(
     current: string | undefined,
     lastAuto: string | undefined,
@@ -203,7 +138,7 @@ export function resolveAutoFill(
     return derived;
 }
 
-/** Graphics key auto-derived from a bundled asset name, e.g. "icon-alien" → "sprites:icon-alien". */
+
 export function autoGraphicsKey(assetName: string): string {
     return `sprites:${assetName}`;
 }

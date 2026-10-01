@@ -1,21 +1,4 @@
-/**
- * Structure registration, drawing, and unlocking.
- *
- * A structure needs three things before it is really in the game, and they used
- * to be scattered through `apply.ts`:
- *
- * 1. **Registration** — worker-scoped, like elements (see `registry.ts`), so it
- *    has to happen inside the boot window or it never reaches the simulation.
- * 2. **A draw function** — the config stores a *key* like `"outline"`, and a
- *    string is not drawable. It has to become a real function at registration
- *    time, or the structure registers and then silently never draws.
- * 3. **Unlocking** — registered is not the same as reachable. A structure is
- *    only in the build menu if it is in `player.buildings`, a separate push.
- *
- * Keeping them together is the point: (3) is easy to forget, and a structure
- * that is registered but not unlocked is a control that does nothing — the exact
- * failure `alwaysUnlocked` already turned out to be.
- */
+
 import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
 import { loadConfig } from "../../config/store.ts";
 import { api } from "../../packages/mysandkit.ts";
@@ -23,29 +6,7 @@ import { isAlwaysUnlocked } from "../../ui/tech-link.ts";
 import { makeDrawnSprite } from "./drawn-sprite.ts";
 import { mayRegister, registered } from "../registry.ts";
 
-/**
- * The built-in `draw` functions, keyed as they are in the config.
- *
- * `structures.register` does `T(id, def.draw)` and the render loop then calls
- * it as `fn(session, instance, {tilemap, ctx, useTilemap, placing, opts})`,
- * where returning `false` falls through to the normal sprite render. A *string*
- * would not throw — it would simply stop drawing — which is why the config
- * stores a key and this is where the key becomes a function.
- *
- * Every renderer here is written against the API a shipping mod actually uses
- * (`__scraped-mods/workshop/3791498201`): `context.ctx`, `structure.x/.y`,
- * `structure.data`, `api.rendering.getGridMetrics()` and
- * `api.rendering.getDrawPositionAtCell()`. Nothing here is guessed.
- *
- * The canvas-state reset in `safeCanvas` is not optional. That mod's comment is
- * worth quoting because it is a trap that produces no error:
- *
- *   "Tool/weapon effects can leave temporary canvas state active while custom
- *    structure draw callbacks run. If inherited, filters/compositing can make
- *    the silo sprite render solid black and keep repainting that way."
- *
- * The camera transform is deliberately NOT reset — the engine still needs it.
- */
+
 type DrawCtx = {
     ctx?: {
         save(): void;
@@ -65,42 +26,29 @@ type DrawCtx = {
     placing?: boolean;
 };
 
-/** What a draw function needs to know about the structure it is drawing. */
+
 export interface DrawContext {
-    /** Footprint width in cells, from the registered `shape`. */
+    
     wCells: number;
-    /** Footprint height in cells, from the registered `shape`. */
+    
     hCells: number;
 }
 
-/**
- * Normalise the canvas state a custom draw callback inherits.
- *
- * Anything left dirty by a tool or weapon effect tints the structure, and in
- * practice renders it solid black with no error to explain why. Deliberately
- * leaves the transform alone — the engine's camera transform is still required.
- */
+
 function safeCanvas(ctx: NonNullable<DrawCtx["ctx"]>): void {
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
     try {
         ctx.filter = "none";
-    } catch { /* older canvas impls */ }
+    } catch {  }
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
     ctx.shadowColor = "rgba(0,0,0,0)";
 }
 
-/**
- * Cell size in pixels, from the host's render API.
- *
- * Read through `api.raw`, because the mod's own `api` wrapper is a curated
- * subset of the host surface and does not carry `rendering`. Falls back to 4 —
- * the engine's own default — so a host without it still draws at the right
- * scale rather than not at all.
- */
+
 function gridMetrics(): { cellSize: number } {
     const m = (api.raw as
         | { rendering?: { getGridMetrics?: () => { cellSize?: number } } }
@@ -108,7 +56,7 @@ function gridMetrics(): { cellSize: number } {
     return { cellSize: m?.cellSize ?? 4 };
 }
 
-/** Top-left pixel of a cell, in world space. */
+
 function drawPosAt(x: number, y: number): { x: number; y: number } {
     const p = (api.raw as
         | {
@@ -120,18 +68,10 @@ function drawPosAt(x: number, y: number): { x: number; y: number } {
     return p ?? { x: x * 4, y: y * 4 };
 }
 
-/** Consume the frame without drawing: placed, simulates, invisible. */
+
 const hidden = () => true;
 
-/**
- * Stroke a 1px outline around the footprint, then let the engine draw the
- * sprite as normal.
- *
- * Returning `false` is the documented way to say "I have not handled this
- * frame", so the outline sits on top of the normal render rather than replacing
- * it. Useful for seeing a footprint's true extent, which a large structure's
- * sprite can make ambiguous.
- */
+
 function makeOutline({ wCells, hCells }: DrawContext) {
     return (
         _session: unknown,
@@ -156,41 +96,32 @@ function makeOutline({ wCells, hCells }: DrawContext) {
                 Math.max(1, hCells * cellSize) - 1,
             );
             ctx.restore();
-        } catch { /* never break the render loop */ }
-        // false = the engine still draws the sprite underneath.
+        } catch {  }
+        
         return false;
     };
 }
 
-/**
- * Build the draw function for a stored `drawKey`.
- *
- * `default` (and anything unknown) means "no custom draw", so the key is
- * dropped rather than passed through — registering a passthrough function would
- * cost a lookup per structure per frame for no benefit.
- *
- * Exported for `draw.test.ts`, which checks the key→function mapping without
- * standing up a structure.
- */
+
 export function resolveDraw(st: StructureConfig): StructureConfig {
-    // `unlockTech` is ours, not the engine's, and the engine has no use for it —
-    // it reads the same relation off the *tech* as `unlocks.structures`. Stripped
-    // here, in the one place every structure passes through, rather than in the
-    // save path where a new caller would forget.
+    
+    
+    
+    
     const { drawKey } = st;
-    // The two mod-only rewrites, so `drawKey` handling below has one `base` to
-    // spread rather than three subtly different objects.
+    
+    
     const base = withSelectionGuard(withoutModOnlyKeys(st));
     if (!drawKey || drawKey === "default") return base;
-    // The footprint is only known here, at registration, so it is closed over
-    // rather than looked up per frame.
-    //
-    // `shape` is `[row][col]`: the outer array is rows, the inner is columns.
-    // So the *width* in cells is `shape[0].length` and the *height* is
-    // `shape.length`. Getting these the wrong way round produces an outline
-    // that is right for a square footprint and silently wrong for every other
-    // one, which is why the axis is spelled out here rather than left to a
-    // reader.
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const shape = Array.isArray(st.shape) ? st.shape : [];
     const ctx: DrawContext = {
         wCells: Math.max(1, shape[0]?.length || 1),
@@ -199,9 +130,9 @@ export function resolveDraw(st: StructureConfig): StructureConfig {
     if (drawKey === "hidden") return { ...base, draw: hidden };
     if (drawKey === "outline") return { ...base, draw: makeOutline(ctx) };
     if (drawKey === "drawnSprite") {
-        // The sprite is named by `render.imageName`, the same field the engine's own
-        // sprite path reads. Reusing it means the config needs no new key: the id
-        // points at a `sprites` entry, and this draws it from the bytes in the config.
+        
+        
+        
         const imageName = st.render?.imageName;
         return {
             ...base,
@@ -215,66 +146,20 @@ export function resolveDraw(st: StructureConfig): StructureConfig {
     return base;
 }
 
-/**
- * Strip the fields that exist for this mod and mean nothing to the engine.
- *
- * `maxPlaced` is a mod-layer rule enforced by `custom/placement-limit.ts`; the
- * engine has no `maxPlaced` and never will (see that file's header). Forwarding
- * it would put a key the game does not understand into a definition object it
- * persists and hands back.
- *
- * `unlockTech` is ours too, and the engine has no use for it — it reads the same
- * relation off the *tech* as `unlocks.structures`. Stripped here, in the one
- * place every structure passes through, rather than in the save path where a new
- * caller would forget.
- */
+
 function withoutModOnlyKeys(st: StructureConfig): StructureConfig {
     const { drawKey: _draw, maxPlaced: _cap, unlockNode: _node, ...rest } = st;
     return rest;
 }
 
-/**
- * `disallowPick` in the config is `disallowSelection` in the engine.
- *
- * The config name is the readable one; the engine's is the one that works, and
- * the two have to meet here or not at all. Passing the config's spelling
- * through was a **silent** failure — the engine does not reject an unknown
- * definition key, it just never reads it, so the structure stayed fully
- * pickable, movable and copyable while the config said it was not. That is the
- * worst shape of bug: the config asserts a protection that does not exist.
- *
- * The engine reads this flag in three places (all found in the bundle, none in
- * the shipped `.d.ts` — it is an undeclared field):
- *
- *  - bundel 5251:579  `if (n.copiedStructure && u.disallowSelection) return null`
- *    — rejects the copy/clone-structure flow.
- *  - bundel 79329:202 the marquee selection filter
- *    `!(…?.disallowSelection) && …` — the grabber can never pick it up or move it.
- *  - bundel 40443:414 `if (c.preserveUnselectable) { if (…?.disallowSelection) return true }`
- *    — survives a clear / demolish-by-marquee.
- *
- * The three hook-based guards the original mod tried and documented as inert are
- * listed in its own `artefact.ts`: `building:clearShape` only fires for
- * `dynamicShape` definitions, and `structures:removed:prepare` / `:moved:prepare`
- * run *after* the store filter has already dropped the structure, so editing
- * their payload changes nothing.
- *
- * The flag is only ever **added**, never forced off: an absent `disallowPick`
- * must not write `disallowSelection: false`, because a structure whose
- * definition was extended elsewhere could have it set already.
- */
+
 function withSelectionGuard(st: StructureConfig): StructureConfig {
     if (st.disallowPick !== true) return st;
     const { disallowPick: _ours, ...rest } = st;
     return { ...rest, disallowSelection: true } as StructureConfig;
 }
 
-/**
- * Register every structure in `cfg`, then put them in front of the player.
- *
- * Safe to call repeatedly: ids already in the shared guard are skipped, so a
- * boot pass and a later panel "Apply" cannot register the same structure twice.
- */
+
 export function registerStructures(cfg?: ModConfig): number {
     const config = cfg ?? loadConfig();
     let n = 0;
@@ -286,94 +171,67 @@ export function registerStructures(cfg?: ModConfig): number {
         registered.structures.add(st.id);
         n++;
     }
-    // Unlocking is separate from registering, and runs on every pass rather than
-    // only the one that registered: `player.buildings` is a plain list the engine
-    // owns, so a structure can be removed from it by a tech or a save without the
-    // registration changing at all. Skipping it here would leave a structure
-    // registered, drawn and permanently unreachable.
+    
+    
+    
+    
+    
     unlockStructures(config);
     return n;
 }
 
-/**
- * Put every registered structure in front of the player.
- *
- * **Unconditional, and that is the point.** The build menu iterates
- * `player.buildings` and reads each definition from the vanilla registry *or* the
- * mod registry (bundel.js 7493921), so the only thing between a registered
- * structure and the menu is membership of that list.
- *
- * The field that looks like it should control this, `alwaysUnlocked`, cannot:
- * the engine reads it in exactly one place, and that place iterates a `const` object
- * literal holding the *vanilla* structures (bundel.js 5251.js, `Ue`) which has
- * zero assignment sites, so a mod id never enters it. The flag is inert for any
- * mod — which is why the panel no longer offers it. A control that silently does
- * nothing is worse than no control.
- *
- * A tech is the *other* route in, and a better one: the engine grants a node's
- * `unlocks.structures` on purchase, pushing each id into `player.buildings`
- * (bundel.js 77135.js, `fe`). A structure that names one is therefore left
- * alone here and waits to be researched — see `src/ui/tech-link.ts` for why the
- * link lives on the structure.
- *
- * `hideFromBuildMenu` is left alone. Unlocking and hiding are independent, and
- * unlocked-but-hidden is exactly how a mod offers a buildable type that only its
- * own UI can select with `building.selectStructure` (md-big-brother does this).
- *
- * Idempotent — the engine's `add` is `includes(t) || push(t)` — so this is safe
- * to call on every apply.
- */
+
 export function unlockStructures(cfg: ModConfig): number {
     let n = 0;
     for (const st of cfg.structures ?? []) {
         if (!st?.id) continue;
-        // `hideFromBuildMenu` now means what its name says, all the way to the
-        // game — not just this mod's own list.
-        //
-        // It is the *only* lever that can do this, and the alternatives are
-        // worth writing down because each looks right and is not:
-        //
-        //  - `alwaysUnlocked: false` — the engine reads this in exactly one
-        //    place, iterating `Object.keys(Ue)` (bundel 5251:1314-1322), and `Ue`
-        //    is a `const` object literal declared at bundel 5251:970 holding the
-        //    *vanilla* structures. It has no assignment site, so a mod id never
-        //    enters it and the flag is never read for one.
-        //  - `hideFromBuildMenu` as a *definition* field — grepped the whole
-        //    bundle: the name appears nowhere. The engine has no such option
-        //    for structures at all.
-        //
-        // What the build menu actually lists is `getUnlockedTypes()`
-        // (bundel 46781:2969), which seeds itself from `player.buildings` and
-        // then adds the `Ue` entries whose `alwaysUnlocked` is set. For a mod
-        // structure only `player.buildings` membership counts.
-        //
-        // The unlock is *withdrawn* rather than merely skipped, for the same
-        // reason the gated path below does it: a save or an earlier apply may
-        // have already put this id in the list, and a structure the author has
-        // since marked hidden must not keep sitting in the menu until reload.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         if (st.hideFromBuildMenu) {
             api.player.buildings.removeById(st.id);
             continue;
         }
-        // A dangling link must not gate anything, or the structure would be
-        // unreachable and the player would never know why. See `unlockTechOf`.
+        
+        
         if (!isAlwaysUnlocked(st.id, cfg)) {
-            // Withdraw any unlock this mod handed out earlier. A structure gated
-            // after being force-unlocked would otherwise stay in the menu until
-            // the game was reloaded, and the change would look ignored.
+            
+            
+            
             api.player.buildings.removeById(st.id);
             continue;
         }
-        // `unlockById`, not `unlockByType` — the latter is @deprecated in both
-        // type sets. The wrapper returns whether the engine call happened, which
-        // is what the post-check below needs; a plain void call would make that
-        // warning unreachable.
+        
+        
+        
+        
         if (api.player.buildings.unlockById(st.id)) n++;
     }
-    // Warn once, and only when there was something to unlock. A silent no-op here
-    // is the whole failure this function exists to prevent, so it must not be one
-    // itself — the usual cause is the mod loading on a worker, where `player`
-    // does not exist.
+    
+    
+    
+    
     const ungated = (cfg.structures ?? []).filter((s) => s?.id && isAlwaysUnlocked(s.id, cfg));
     if (n === 0 && ungated.length > 0) {
         console.warn(

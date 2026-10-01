@@ -19,7 +19,7 @@ const o = (value: string, extra: Partial<Opt> = {}): Opt => ({
     ...extra,
 });
 
-/** The three cases that matter: mine, the game's, and another mod's. */
+
 const MIX: Opt[] = [
     o("mdmy.ores", { source: "mod", color: "#ff8800" }),
     o("mdmy.sand", { source: "mod" }),
@@ -33,7 +33,7 @@ Deno.test("classifyId reads this mod's own prefix", () => {
 });
 
 Deno.test("an unnamespaced id is the game's, never a mod called Sand", () => {
-    // No `modId` key at all, matching `ModOrigin` in definition/types.ts.
+    
     assertEquals(classifyId("Sand"), { own: false });
 });
 
@@ -46,7 +46,7 @@ Deno.test("a leading dot is not a namespace", () => {
 });
 
 Deno.test("a mod entry is own even under an unnamespaced id", () => {
-    // It came out of this config, so it is ours whatever it is called.
+    
     const items = toSelectorItems([o("slab", { source: "mod" })]);
     assertEquals(items[0].own, true);
 });
@@ -76,7 +76,7 @@ Deno.test("counts partition the list so the chips can never lie", () => {
 
 Deno.test("search is substring over id and label", () => {
     const items = toSelectorItems([o("mdmy.ores", { label: "Red Ore" })]);
-    // Substring, so a prefix match is not required.
+    
     assertEquals(filterByText(items, "ores").map((i) => i.value), ["mdmy.ores"]);
     assertEquals(filterByText(items, "red").map((i) => i.value), ["mdmy.ores"]);
     assertEquals(filterByText(items, "zzz").length, 0);
@@ -97,7 +97,7 @@ Deno.test("a multiple choice toggles off when already chosen", () => {
 
 Deno.test("a multiple choice keeps catalogue order, not click order", () => {
     const order = ["mdmy.ores", "mdmy.sand"];
-    // Clicked sand first, then ores — stored order is the catalogue's either way.
+    
     assertEquals(applyChoice(["mdmy.sand"], "mdmy.ores", true, order), [
         "mdmy.ores",
         "mdmy.sand",
@@ -127,13 +127,13 @@ Deno.test("swatch colour survives the mapping", () => {
     assertEquals(toSelectorItems([o("mdmy.ores", { color: "#ff8800" })])[0].color, "#ff8800");
 });
 
-// ── Hidden objects ────────────────────────────────────────────────────────────
-//
-// An element marked `hidden` and a structure marked `hideFromBuildMenu` are
-// both carried on the option and filtered here, rather than dropped at the
-// source. Dropping them makes "there are three and they are hidden" look
-// identical to "you have none", and the user cannot find the object they know
-// exists.
+
+
+
+
+
+
+
 
 const HIDDEN: Opt[] = [
     o("Sand", { source: "game" }),
@@ -143,7 +143,7 @@ const HIDDEN: Opt[] = [
 ];
 
 Deno.test("hidden objects are carried, not dropped", () => {
-    // The point of the change: the option exists and is marked.
+    
     assertEquals(toSelectorItems(HIDDEN).length, 4);
     assertEquals(toSelectorItems(HIDDEN).filter((i) => i.hidden).length, 2);
 });
@@ -164,13 +164,13 @@ Deno.test("the hidden count is what the checkbox says", () => {
 });
 
 Deno.test("an option with no flag is not hidden", () => {
-    // `hidden` is optional; absent must not read as true.
+    
     assertEquals(toSelectorItems([o("Sand")])[0].hidden, false);
 });
 
 Deno.test("the mod's own hidden element is filtered by the same rule", () => {
-    // Not a game-only concern: the author hides their own and wants the same
-    // checkbox, not a rule that only applies to somebody else's content.
+    
+    
     const own = toSelectorItems(HIDDEN).filter((i) => i.own);
     assertEquals(filterHidden(own, false).map((i) => i.value), ["mdmy.ores"]);
 });

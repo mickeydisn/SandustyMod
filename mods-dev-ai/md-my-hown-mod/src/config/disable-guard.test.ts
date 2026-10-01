@@ -1,17 +1,10 @@
-/**
- * The disable path destroys the only copy of the config, so "am I off?" has to
- * mean *explicitly* off — never "I could not read the setting".
- *
- * These lock in the two halves of that rule:
- *   1. the manifest id and `MOD_ID` agree, so the settings lookup can hit at all;
- *   2. an unreadable `enabled` resolves to **enabled**, not to a wipe.
- */
+
 import { assertEquals } from "jsr:@std/assert@1";
 import { MOD_ID, SETTINGS } from "../constants.ts";
 import { readSettingRaw } from "../packages/modkit.ts";
 import modinfo from "../modinfo.json" with { type: "json" };
 
-/** The engine namespaces settings by the manifest id — that is the whole bug. */
+
 Deno.test("the manifest id matches MOD_ID, so settings lookups can hit", () => {
     assertEquals(
         modinfo.id,
@@ -32,7 +25,7 @@ Deno.test("the manifest still declares the fields the code reads", () => {
     }
 });
 
-/** Mirrors `explicitlyDisabled()` in main.ts against a mocked engine. */
+
 function explicitlyDisabled(get: (field: string) => unknown): boolean {
     const raw = readSettingRaw(MOD_ID, "enabled");
     void get;

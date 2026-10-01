@@ -1,9 +1,4 @@
-/**
- * sprite-editor — public surface.
- *
- *   import { getDrawTab } from "../sprite-editor/index.ts";      // panel tab
- *   import { listSpriteOptions } from "../sprite-editor/index.ts"; // pickers
- */
+
 export { getCurrentSession, getDrawTab, setCurrentSession } from "./tab.ts";
 export { getSpriteEditor } from "./editor.ts";
 export {

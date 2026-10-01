@@ -1,17 +1,6 @@
-/**
- * Inline styles for the movable / minimizable config panel.
- * Self-contained so the mod does not depend on external CSS.
- */
 
-/**
- * The one style type this module speaks.
- *
- * `React.CSSProperties` is ambient here (the `deno.window` lib supplies the
- * namespace), which is fine inside this file but not in a module that merely
- * *imports* these values — an ambient global is not re-exported by importing it.
- * Naming the type once lets a caller annotate a style without adding its own
- * React import, and keeps the two from drifting apart.
- */
+
+
 export type Style = React.CSSProperties;
 
 export const panelRoot: React.CSSProperties = {
@@ -26,15 +15,7 @@ export const panelRoot: React.CSSProperties = {
     pointerEvents: "auto",
 };
 
-/**
- * Where the open panel sits: a near-fullscreen overlay, centred.
- *
- * `90vw`/`90vh` with `5vw`/`5vh` of margin on every side, so it is centred
- * whatever the viewport is. The open panel is deliberately *not* draggable — a
- * window that can be shoved to a screen corner is not an overlay, and at this
- * size dragging it could only ever put it somewhere useless. Dragging belongs
- * to the minimised chip, which is small and wants to be parked out of the way.
- */
+
 export const overlayBox: React.CSSProperties = {
     width: "90vw",
     height: "90vh",
@@ -53,22 +34,7 @@ export const panelChrome: React.CSSProperties = {
     boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
     overflow: "hidden",
     minWidth: 280,
-    /**
-     * Fill the 90vh overlay exactly.
-     *
-     * This is the link the whole scroll chain hangs off, and it was missing.
-     * `panelRoot` carries the `90vh`; `panelChrome` is its only child, and
-     * without a height of its own it sizes to its *content*. So the flex column
-     * below had no definite height to divide up: `body`'s `flex: 1` resolved
-     * against an auto-height parent, the list never got a bounded box, and the
-     * list's own `overflowY: auto` had nothing to scroll inside — the bottom of
-     * the list simply fell off the bottom of the panel with no way to reach it.
-     *
-     * `height: 100%` rather than `maxHeight`, so the chrome is exactly as tall as
-     * the overlay and the title bar and nav stay pinned while only the body
-     * scrolls. `overflow: hidden` above then clips nothing, because the content
-     * is now sized to fit.
-     */
+    
     height: "100%",
     display: "flex",
     flexDirection: "column",
@@ -80,8 +46,8 @@ export const titleBar: React.CSSProperties = {
     gap: 8,
     padding: "6px 10px",
     background: "linear-gradient(180deg, rgba(50,60,90,0.9), rgba(30,36,55,0.95))",
-    // The open panel is a fixed overlay, so there is nothing to grab. Only the
-    // minimised chip takes a drag, and it carries its own cursor.
+    
+    
     cursor: "default",
     borderBottom: "1px solid rgba(100,120,160,0.35)",
 };
@@ -119,20 +85,7 @@ export const btnPrimary: React.CSSProperties = {
 export const body: React.CSSProperties = {
     padding: 10,
     overflow: "auto",
-    /**
-     * The scrolling body, and the *only* one.
-     *
-     * It takes the space the title bar and the two nav rows leave over
-     * (`flex: 1` in the chrome's flex column) and scrolls what does not fit.
-     * `minHeight: 0` is what lets it shrink below its content at all: a flex item
-     * defaults to `min-height: auto`, which refuses to, so without it a long list
-     * pushes the panel past 90vh instead of scrolling.
-     *
-     * Everything below this scrolls *with* it — the screen head, the filter bar
-     * and the rows alike. The alternative (a fixed header and a separately
-     * scrolling list) needs three nested scroll containers to get right, and two
-     * of them would be reachable by the wheel at once.
-     */
+    
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
@@ -167,13 +120,7 @@ export const row: React.CSSProperties = {
     border: "1px solid rgba(80, 95, 130, 0.35)",
 };
 
-/**
- * A strip of buttons above a form — `New`, `Import`, the sprite editor's own row.
- *
- * Wraps rather than scrolling: the row's width is the panel's width, and a
- * horizontally scrolling toolbar hides its right-hand buttons behind a gesture
- * the user has no reason to know they need.
- */
+
 export const toolbar: React.CSSProperties = {
     display: "flex",
     flexWrap: "wrap",
@@ -190,14 +137,7 @@ export const rowId: React.CSSProperties = {
     whiteSpace: "nowrap",
 };
 
-/**
- * The list row's own line: swatch, title, id, origin tag.
- *
- * Separate from `row` (the row's *container*) because a row is now a two-level
- * thing — a clickable line and, under it, an expandable detail — and the line
- * has to be the part that grows while the detail hangs off it. `row` stays the
- * outer box so existing callers that style a flat row are unaffected.
- */
+
 export const rowHead: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -207,7 +147,7 @@ export const rowHead: React.CSSProperties = {
     cursor: "pointer",
 };
 
-/** An element's colour, as a small block. No border — it *is* the colour. */
+
 export const rowSwatch: React.CSSProperties = {
     width: 12,
     height: 12,
@@ -225,26 +165,15 @@ export const rowTitle: React.CSSProperties = {
     maxWidth: "45%",
 };
 
-/**
- * "yours" vs "game" — the origin tag on a list row.
- *
- * The one piece of information a row cannot get from its name, so it is always
- * drawn — but quietly, in the row's own corner, because it is context rather
- * than the content. The mod tag reuses the per-field native list's tint, so
- * "the blue ones are yours" is a rule the user learns once rather than twice.
- *
- * `rowTagMod` / `rowTagGame` are declared beside `nativeItem` /
- * `nativeItemMod` further down this file, because spreading a `const` declared
- * later is a use-before-assignment error rather than a style preference.
- */
 
-/** The expanded detail, indented under its row line. */
+
+
 export const rowDetail: React.CSSProperties = {
     marginTop: 6,
     paddingTop: 6,
-    // Aligned with the object's *name*, not with the disclosure marker, so the
-    // detail reads as more information about the same thing rather than as a
-    // separate block that happens to be nearby.
+    
+    
+    
     paddingLeft: 15,
     borderTop: "1px solid rgba(90, 105, 140, 0.25)",
     display: "flex",
@@ -270,7 +199,7 @@ export const detailVal: React.CSSProperties = {
     wordBreak: "break-word",
 };
 
-/** A one-line note above a row's detail, saying whose values these are. */
+
 export const detailNote: React.CSSProperties = {
     fontSize: 10,
     color: "#79829a",
@@ -278,13 +207,7 @@ export const detailNote: React.CSSProperties = {
     marginBottom: 2,
 };
 
-/**
- * The one fact a row leads with after its name — a matter type, a category, a
- * footprint size.
- *
- * A tag rather than free text: it sits inline in the row and must not reflow
- * the rest of the line, so it is capped and clipped.
- */
+
 export const rowFact: React.CSSProperties = {
     fontSize: 10.5,
     color: "#9fb0c8",
@@ -299,7 +222,7 @@ export const rowFact: React.CSSProperties = {
     maxWidth: "22%",
 };
 
-/** A structure's footprint, laid out as a grid of cells. */
+
 export const rowGrid: React.CSSProperties = {
     display: "grid",
     gridAutoFlow: "row",
@@ -316,15 +239,7 @@ export const gridCell: React.CSSProperties = {
     borderRadius: 1,
 };
 
-/**
- * The filter bar: the search box, then the owner chips and the hidden tick.
- *
- * Always rendered, even when a category has rows from a single owner and no
- * chips to show. It used to collapse in that case, which is not a cosmetic
- * saving — the hidden tick lives here, and a control that vanishes when the
- * list is empty is a control that vanishes exactly when it is needed to explain
- * an empty list.
- */
+
 export const listFilterBar: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -333,13 +248,13 @@ export const listFilterBar: React.CSSProperties = {
     flexWrap: "wrap",
 };
 
-/** A read-only row, dimmed so it never looks actionable. */
+
 export const rowReadOnly: React.CSSProperties = {
     ...row,
     opacity: 0.82,
 };
 
-/** The row's horizontal bar: the object line, then the row's buttons. */
+
 export const rowBar: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -347,36 +262,18 @@ export const rowBar: React.CSSProperties = {
     minWidth: 0,
 };
 
-/**
- * A list row rendered as `<details>`.
- *
- * **`flexDirection: "column"` is the fix for the detail appearing in the wrong
- * place.** `S.row` is `display: flex` in the *row* direction — it predates the
- * details row and the handlers panel still uses it as a flat row — so a detail
- * element placed after the bar was laid out *beside* the bar rather than under
- * it, appearing as a narrow column to the right of the object's name.
- *
- * Overriding the direction here rather than editing `S.row` keeps those flat rows
- * untouched, and states the requirement where the details row is defined.
- */
+
 export const rowDetails: React.CSSProperties = {
     flexDirection: "column",
     alignItems: "stretch",
     gap: 0,
-    // No pseudo-element rules here (`::-webkit-details-marker`, `::marker`): this
-    // file's `Style` is `React.CSSProperties`, which does not model selectors, so
-    // they would not typecheck. `listStyle: "none"` on the summary below removes
-    // the native marker in both engines, which is all they were for.
+    
+    
+    
+    
 };
 
-/**
- * The clickable line: the object, then the row's buttons.
- *
- * `listStyle: none` removes the native marker's box so the custom `▸` sits at
- * the row's own left padding rather than wherever the browser put it. The `▸` is
- * kept and rotated rather than dropped, because the whole row being the control
- * is the point — an affordance is what tells the user that.
- */
+
 export const rowSummary: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -385,14 +282,14 @@ export const rowSummary: React.CSSProperties = {
     cursor: "pointer",
     listStyle: "none",
     margin: 0,
-    // A real hit area, not just the text's. This is the difference between "the
-    // row opens" and "I have to hit the name exactly".
+    
+    
     padding: "2px 0",
     borderRadius: 4,
     userSelect: "none",
 };
 
-/** The disclosure marker, drawn in place of the native one. */
+
 export const rowSummaryMark: React.CSSProperties = {
     fontSize: 9,
     color: "#7f8ca8",
@@ -427,19 +324,7 @@ export const input: React.CSSProperties = {
     outline: "none",
 };
 
-/**
- * The multi-line control, used for every JSON box and the full-config editor.
- *
- * `width: 100%` is the fix for the reported one: a `<textarea>` has an intrinsic
- * width of about 20 characters and does NOT stretch to its container the way an
- * `<input>` in the same grid cell does, so every JSON box came out roughly half
- * the width of the row beside it — and on a `wide` field, half the form.
- *
- * `boxSizing: border-box` is not optional alongside it. `input` above sets
- * `padding: "5px 8px"` and no box-sizing, so a `width: 100%` textarea would be
- * 16px wider than its grid cell and push its neighbour along, trading one layout
- * bug for a quieter one.
- */
+
 export const textarea: React.CSSProperties = {
     ...input,
     width: "100%",
@@ -459,8 +344,8 @@ export const hint: React.CSSProperties = {
 export const minimizedChip: React.CSSProperties = {
     ...panelChrome,
     padding: "8px 14px",
-    // The one draggable thing in this panel, so it is the one thing with a
-    // grab cursor. It both drags (to park it) and clicks (to open it).
+    
+    
     cursor: "grab",
     touchAction: "none",
     display: "inline-flex",
@@ -475,7 +360,7 @@ export const minimizedChip: React.CSSProperties = {
     color: "#e8f0ff",
 };
 
-// React namespace for CSSProperties typing without importing React at runtime
+
 declare namespace React {
     type CSSProperties = Record<string, string | number | undefined>;
 }
@@ -485,7 +370,7 @@ export const select: React.CSSProperties = {
     cursor: "pointer",
 };
 
-// ── Grouped navigation & form chrome (v0.2 UI) ──────────────────────────────
+
 
 export const groupNav: React.CSSProperties = {
     display: "flex",
@@ -513,21 +398,14 @@ export const chipActive: React.CSSProperties = {
     fontWeight: 600,
 };
 
-/**
- * A chip that also holds a checkbox — the "hidden objects" filter.
- *
- * Shaped like `chip` so it reads as one more filter beside the owner chips
- * rather than as a stray checkbox welded onto the search box. When it is on it
- * takes `chip`'s active tint, because that is the same signal every other chip
- * uses for "this filter is applied" and a second one would need a legend.
- */
+
 export const chipCheck: React.CSSProperties = {
     ...chip,
     display: "inline-flex",
     alignItems: "center",
     gap: 5,
-    // A label, not a button, so the whole chip is a click target for the
-    // checkbox. Without this only the 10px box is clickable.
+    
+    
     userSelect: "none",
 };
 
@@ -546,15 +424,7 @@ export const chipCount: React.CSSProperties = {
     fontVariantNumeric: "tabular-nums",
 };
 
-/**
- * The per-mod filter chips, tinted to match the row badges they select.
- *
- * A chip that filters to "otherA's objects" reads the same colour as otherA's row
- * badges, so the link between "this chip" and "these rows" is visible rather than
- * something the user learns by clicking. `chipGame` is the quietest of the three
- * for the same reason its badge is — the game's own objects are the baseline, not
- * the interesting case.
- */
+
 export const chipOwn: React.CSSProperties = {
     ...chip,
     color: "#cfe0ff",
@@ -590,18 +460,7 @@ export const screenHead: React.CSSProperties = {
     padding: "8px 10px 0 10px",
 };
 
-/**
- * One screen's root: a flex column.
- *
- * No `flex`, no `minHeight: 0`, and above all no `overflow`. The screen sits
- * inside `body`, which is the panel's *one* scroll container, so anything this
- * style adds here is either redundant or a second scroll area competing with it.
- *
- * `minHeight: 100%` is the one non-obvious part: it makes a short screen (three
- * rows, or a form) fill the body's height, so the empty state and the filter bar
- * do not collapse to the top of a tall window. It is a *minimum*, not a bound —
- * a long screen still grows past it, and `body` scrolls.
- */
+
 export const screen: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -614,19 +473,7 @@ export const screenTitle: React.CSSProperties = {
     letterSpacing: 0.2,
 };
 
-/**
- * The one heading size for every list the reader can see.
- *
- * A screen's own title uses `screenTitle`. The lists drawn *under* it used to
- * use `sectionTitle` instead — 10px, uppercase, grey — so a screen with three
- * lists came out as one big title followed by three small ones, and the small
- * ones read as captions of the list above rather than as titles in their own
- * right. They are peers, so they are sized from this: `listHeadingRow` spreads
- * `screenTitle` rather than restating its numbers, so the two cannot drift.
- *
- * (`sectionTitle` stays for the collapsible field groups inside an edit form.
- * Those are a different thing — a disclosure, not a list — and should stay quiet.)
- */
+
 export const listHeadingRow: React.CSSProperties = {
     ...screenTitle,
     display: "flex",
@@ -641,27 +488,13 @@ export const screenBlurb: React.CSSProperties = {
     flex: 1,
 };
 
-/**
- * A collapsible field group: the `<details>` shell the panel renders each
- * section into.
- *
- * A structure's form is twenty-six fields across a dozen groups, and it opened
- * flat, so the screen was several screens long with no way to tell which
- * question any row belonged to. Each group is now closed until asked for.
- *
- * `sectionBox` is kept as the name because `sectionTitle`/`fieldGrid` are
- * already looked up by it elsewhere; it is the `<details>` element itself.
- */
+
 export const sectionBox: React.CSSProperties = {
     marginTop: 6,
     borderTop: "1px solid rgba(90, 105, 140, 0.3)",
 };
 
-/**
- * The clickable line. `<summary>` ships a disclosure triangle; it is kept,
- * because it is the affordance that says "this opens", but it is aligned and
- * sized to sit with the label rather than push it.
- */
+
 export const sectionSummary: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -672,7 +505,7 @@ export const sectionSummary: React.CSSProperties = {
     listStyle: "revert",
 };
 
-/** How many controls are folded away, right-aligned and quiet. */
+
 export const sectionCount: React.CSSProperties = {
     fontSize: 10,
     color: "#5d6880",
@@ -680,7 +513,7 @@ export const sectionCount: React.CSSProperties = {
     paddingRight: 2,
 };
 
-/** The structure's unlock relation, said in words next to the "Create" action. */
+
 export const unlockRow: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -740,13 +573,7 @@ export const hintBelow: React.CSSProperties = {
     color: "#79829a",
 };
 
-/**
- * The native list under a reference field.
- *
- * Deliberately quiet: it is context for the picker above it, not a control the
- * eye should land on. The toggle reads as text until hovered, so a form full of
- * them does not turn into a row of competing buttons.
- */
+
 export const nativeBox: React.CSSProperties = {
     marginTop: 3,
 };
@@ -787,7 +614,7 @@ export const nativeItemMod: React.CSSProperties = {
     background: "rgba(120,190,255,0.22)",
 };
 
-/** The list row's origin tag — yours, or the game's. See `rowTagMod` above. */
+
 export const rowTagMod: React.CSSProperties = {
     ...nativeItemMod,
     fontSize: 9.5,
@@ -809,15 +636,7 @@ export const rowTagGame: React.CSSProperties = {
     opacity: 0.8,
 };
 
-/**
- * Another mod's object — neither yours nor the game's.
- *
- * A third tint, because that is a third thing. With only two tags, a screen
- * showing a built-in `Furnace` and `otherA.furnace` showed two identical "game"
- * badges, and the user had no way to tell the engine's from another mod's
- * without reading the id. This is deliberately the quietest of the three: it is
- * reference information, and the eye should land on the object's name.
- */
+
 export const rowTagOther: React.CSSProperties = {
     ...nativeItem,
     color: "#c2b6e8",
@@ -855,20 +674,7 @@ export const emptyState: React.CSSProperties = {
     textAlign: "center",
 };
 
-/**
- * The list of rows.
- *
- * Deliberately **not** a scroll container. `body` is the panel's one scroller, and
- * a second `overflowY: auto` here would be a nested scroll area: the wheel would
- * move whichever one the cursor happened to be over, and the list could be
- * scrolled to its end while the rows below it were still off screen — the exact
- * "I cannot see the bottom" symptom, just with a scrollbar that appears to work.
- *
- * So the list is a plain column that grows to fit its rows and lets `body` do the
- * scrolling. `flex: 1` is kept so a *short* list still fills the panel rather
- * than hugging the top; without it, three rows would sit at the top of a tall
- * window with a large gap under them.
- */
+
 export const listScroll: React.CSSProperties = {
     flex: 1,
     minHeight: 0,
@@ -925,7 +731,7 @@ export const shapeCellOff: React.CSSProperties = {
     borderRadius: 3,
 };
 
-// ── Bundled asset library picker ──────────────────────────────────────────────
+
 
 export const libSearch: React.CSSProperties = {
     ...input,
@@ -965,9 +771,9 @@ export const libTileActive: React.CSSProperties = {
     color: "#ffffff",
 };
 
-// ── Handlers tab ────────────────────────────────────────────────────────────
 
-/** A boxed group of rows (one handler type, or the warning block). */
+
+
 export const card: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -977,13 +783,7 @@ export const card: React.CSSProperties = {
     borderRadius: 4,
 };
 
-/**
- * "There is nothing here yet, and here is what to do about it."
- *
- * Used where a reference field has an empty option list, and by the advanced
- * box when an entry has no preserved fields. Deliberately informational rather
- * than alarming — nothing is wrong, there is just nothing to show.
- */
+
 export const emptyBox: React.CSSProperties = {
     padding: "8px 10px",
     fontSize: 12,
@@ -994,7 +794,7 @@ export const emptyBox: React.CSSProperties = {
     borderRadius: 4,
 };
 
-/** Small non-interactive label: scope, slot, usage counts. */
+
 export const tagChip: React.CSSProperties = {
     display: "inline-block",
     padding: "1px 6px",
@@ -1007,14 +807,14 @@ export const tagChip: React.CSSProperties = {
     whiteSpace: "nowrap",
 };
 
-/** Monospace identifier. */
+
 export const codeKey: React.CSSProperties = {
     fontFamily: "ui-monospace, Menlo, Consolas, monospace",
     fontSize: 12,
     color: "#ffe9a8",
 };
 
-/** Inset area holding a form or explanatory text. */
+
 export const noteBox: React.CSSProperties = {
     padding: 8,
     background: "rgba(10, 14, 26, 0.55)",
@@ -1022,7 +822,7 @@ export const noteBox: React.CSSProperties = {
     borderRadius: 3,
 };
 
-/** Preformatted JSON snippet. */
+
 export const codeBlock: React.CSSProperties = {
     margin: "6px 0 0 0",
     padding: 6,
@@ -1035,15 +835,9 @@ export const codeBlock: React.CSSProperties = {
     wordBreak: "break-all",
 };
 
-// ── Asset preview ───────────────────────────────────────────────────────────
 
-/**
- * Nearest-neighbour scaling.
- *
- * `image-rendering: pixelated` is the whole trick: without it a 16×16 sprite
- * scaled to 32px is bilinearly smoothed into a blur, and you cannot tell one
- * icon from another. `crisp-edges` is the older alias some engines still want.
- */
+
+
 export const spritePixel: React.CSSProperties = {
     imageRendering: "pixelated",
     width: 32,
@@ -1051,7 +845,7 @@ export const spritePixel: React.CSSProperties = {
     display: "block",
 };
 
-/** Icon name under a tile thumbnail. */
+
 export const libTileName: React.CSSProperties = {
     marginTop: 2,
     fontSize: 9,
@@ -1062,7 +856,7 @@ export const libTileName: React.CSSProperties = {
     maxWidth: 68,
 };
 
-/** Row holding the magnified preview of the selected asset. */
+
 export const spritePreviewRow: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -1071,7 +865,7 @@ export const spritePreviewRow: React.CSSProperties = {
     padding: 6,
     background: "rgba(0, 0, 0, 0.3)",
     borderRadius: 3,
-    // A checkerboard makes transparency in the art visible instead of guessed.
+    
     backgroundImage:
         "linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%)",
     backgroundSize: "8px 8px",

@@ -1,15 +1,4 @@
-/**
- * Registration: the half of the wrapper that needs the handler.
- *
- * Everything here turns a stored process into something the engine can run, so
- * it imports `handler/custom-process` and `handler/excavation-option`. That is
- * precisely what `mysandkit.ts` cannot do, which is why these are separate
- * files rather than one: the split is the cycle-breaker, not an accident of
- * organisation.
- *
- * Nothing inside `handler/` imports this module, so the dependency still points
- * one way.
- */
+
 import { compileExcavationProfile } from "../handler/excavation-option/index.ts";
 import {
     type ContactReactionConfig,
@@ -33,14 +22,7 @@ import {
     setItemActionCompiler,
 } from "./mysandkit.ts";
 
-/**
- * Hand the wrapper the one thing it cannot build for itself.
- *
- * Runs at module load, which is why importing this module is part of boot: it is
- * what makes `api.items.register` work. Done here rather than at the call site
- * so a missing compiler throws with a message that says what to do, instead of
- * registering an item that can never be used.
- */
+
 setItemActionCompiler(
     (def) => compileEntryProcess(def, "itemAction") as unknown as CompiledItemAction,
 );
@@ -56,11 +38,7 @@ const RECIPE_MACHINES = new Set([
     "smelter",
 ]);
 
-/**
- * Recipe body per machine. See `doc/doc-artifacts/doc.api/shared/api.recipes.md`:
- *   planterBox → { input, output, chance? }   shaker → { input, outputsAbove[], outputsBelow[] }
- *   kineticPress → { input, minimumDownwardVelocity, outputs[] }   others → { input, outputs[] }
- */
+
 function resolveRecipeBody(r: RecipeConfig, machine: string): Record<string, unknown> {
     const body: Record<string, unknown> = { ...r };
     delete body.id;
@@ -131,10 +109,10 @@ export function registerRecipe(r: RecipeConfig): void {
 }
 
 export function registerProcessing(p: ProcessingConfig): void {
-    // handlerKey is a UI/code concern — never forward it to the engine.
-    // The engine definition is `{ structureType, intervalMs, process }`; there is
-    // no per-instance registration, so `structures.addProcessor` is not a real API
-    // and is no longer called.
+    
+    
+    
+    
     const { id, handlerKey: _hk, ...rest } = p as
         & Record<string, unknown>
         & ProcessingConfig;
@@ -149,16 +127,16 @@ export function registerProcessing(p: ProcessingConfig): void {
         );
         return;
     }
-    // The engine signature is `register(id, definition)` — the **id is a label for
-    // the registration**, and `structureType` belongs inside the definition.
-    //
-    // This used to be `register(structureType, rest)`, which reads plausibly and
-    // is wrong twice over: it passed the structure type where the id belongs, and
-    // destructured `structureType` *out* of `rest`, so the definition the engine
-    // received had no `structureType` at all. The engine then threw
-    //     Structure "undefined" must be registered before its processing.
-    // and the tick never ran. Offline tests missed it because the stubbed
-    // `processing.register` never looks at the definition.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     api.structures.processing.register(id ?? `${structureType}:process`, rest);
 }
 
@@ -181,7 +159,7 @@ export function registerInteraction(ix: InteractionConfig): void {
     api.elements.addInteractionInfo(el as string | number, ix.interaction);
 }
 
-// ── Extra register surfaces ────────────────────────────────────────────────
+
 
 export function registerTerrain(def: import("../constants.ts").TerrainConfig): void {
     try {
@@ -222,11 +200,11 @@ export function registerUpgradeCategory(
 ): void {
     try {
         const { onUpgradeKey, id: _id, ...rest } = def as any;
-        // The engine rejects a category that has no id and no localised name:
-        //     if (!t.id || !t.name && !t.nameKey)
-        //         throw new Error("Upgrade category requires an id and localized name.");
-        // Dropping `id` here meant *every* category registration threw, so the
-        // id is forwarded and a name is derived when the author supplied none.
+        
+        
+        
+        
+        
         const body: Record<string, unknown> = { ...rest, id: def.id };
         if (!body.name && !body.nameKey) {
             body.name = def.id;
@@ -241,12 +219,12 @@ export function registerUpgradeCategory(
 export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): void {
     try {
         const { id: _id, ...rest } = def as Record<string, unknown>;
-        // `onUpgrade` is a real top-level field of `upgrades.register` and the
-        // engine reads it — a callback, like `ItemDefinition.handleAction`. The mod
-        // stores a *reference* to a process; a config still on the old `onUpgradeKey`
-        // spelling holds no program at all, and all 7 upgrade actions are then
-        // unreachable in-game. That is the author's entry to fix, not a silent gap
-        // this layer should paper over.
+        
+        
+        
+        
+        
+        
         const compiled = compileEntryProcess(rest, "upgrade");
         if (compiled.skipped.length) {
             console.warn(`${LOG} upgrade ${def.id}: unknown action ${compiled.skipped.join(", ")}`);
@@ -257,11 +235,7 @@ export function registerUpgrade(def: import("../constants.ts").UpgradeConfig): v
     }
 }
 
-/**
- * `input.registerBinding(bindingId, defaultKeys, definition)`. The engine's
- * `handlers` is a function pair JSON cannot hold, so keys are stored and
- * compiled here.
- */
+
 export function registerInputBinding(
     def: import("../constants.ts").InputBindingConfig,
 ): void {
@@ -271,8 +245,8 @@ export function registerInputBinding(
             console.warn(`${LOG} input.registerBinding unavailable — ${def.id} stored only`);
             return;
         }
-        // a binding with neither handler would be inert; the engine still
-        // accepts it, so register with an empty pair rather than skipping
+        
+        
         const handlers: Record<string, Function> = {};
         if (typeof def.onDownKey === "function") handlers.down = def.onDownKey;
         if (typeof def.onUpKey === "function") handlers.up = def.onUpKey;
@@ -298,7 +272,7 @@ export function registerInputBinding(
 export function registerProjectile(def: import("../constants.ts").ProjectileConfig): void {
     try {
         const out: Record<string, unknown> = { ...def };
-        // getOptions is required by engine — synthesize from static options if needed
+        
         if (typeof out.getOptions !== "function") {
             const opts = def.options ?? {};
             out.getOptions = () => ({ ...opts });
@@ -314,9 +288,9 @@ export function registerProjectile(def: import("../constants.ts").ProjectileConf
 
 export function registerEnergyType(def: import("../constants.ts").EnergyTypeConfig): void {
     try {
-        // api.energy.registerType accepts only "conductor" | "storage". Guard here so a
-        // hand-edited / imported config with a bogus role is skipped loudly instead of
-        // being forwarded to the engine.
+        
+        
+        
         const type = def.type;
         if (type !== "conductor" && type !== "storage") {
             console.warn(
@@ -336,17 +310,17 @@ export function registerExcavationProfile(
     def: import("../constants.ts").ExcavationProfileConfig,
 ): void {
     try {
-        // registerProfile(id, { pattern?, power, options?, terrainRules? }) — terrainRules
-        // was previously dropped on the floor, making per-terrain dig rules unreachable.
+        
+        
         const { id, power, pattern, options, terrainRules } = def as typeof def & {
             terrainRules?: unknown;
         };
-        // `power` and `options` come from the chosen **ExcavationOption** when there
-        // is one, and from the entry's own fields when there is not. The option owns
-        // exactly those two keys and nothing else, which is why `pattern` and
-        // `terrainRules` below are read straight off the entry: a preset has no
-        // opinion about the shape of a dig or what sandstone becomes. See
-        // `../handler/excavation-option/compile.ts`.
+        
+        
+        
+        
+        
+        
         const { patch, key, problem } = compileExcavationProfile(def as Record<string, unknown>);
         if (problem) {
             console.warn(`${LOG} excavation profile ${id}: ${problem} — using the stored power`);
@@ -359,8 +333,8 @@ export function registerExcavationProfile(
             pattern,
         };
         if (Array.isArray(terrainRules) && terrainRules.length > 0) {
-            // cellType → TerrainRef, outputElementType → ElementRef. Both accept a
-            // string id, but we upgrade to numeric handles when the runtime knows them.
+            
+            
             payload.terrainRules = terrainRules.map((raw) => {
                 const r = (raw ?? {}) as Record<string, unknown>;
                 const cellType = resolveTerrainRef(
@@ -382,7 +356,7 @@ export function registerExcavationProfile(
     }
 }
 
-/** Register one structure behaviour. This build exposes the split API; the grouped name is probed first. */
+
 export function registerStructureBehavior(
     def: import("../constants.ts").StructureBehaviorConfig,
 ): void {
@@ -398,8 +372,8 @@ export function registerStructureBehavior(
             .structureBehaviors;
         if (kind === "conveyor") {
             const id = String((payload as { id?: string })?.id ?? def.id);
-            // The engine forwards `options` to the workers untouched, so it is
-            // passed through whole rather than picked apart here.
+            
+            
             const options = (payload as { options?: unknown })?.options ?? payload;
             if (typeof grouped?.registerConveyorType === "function") {
                 (grouped.registerConveyorType as (a: string, b: unknown) => void)(
@@ -427,36 +401,13 @@ export function registerStructureBehavior(
     }
 }
 
-/**
- * Register one structure's **placement hotbar fields**.
- *
- * `structures.registerPlacementConfig({ structureId, fields })` — the widgets the
- * player adjusts while holding the building, before placing it.
- *
- * Two things are worth stating because both are ways this call silently fails,
- * and both have already happened to a mod that shipped them:
- *
- * 1. **The payload is `{ structureId, fields }` and nothing else.** There is no
- *    `maxCount`. The engine's body (bundel 88861) opens with
- *    `if (!t.structureId || !t.fields.length) throw …` — so a call carrying
- *    `{ structureId, maxCount }` throws, and a `try {} catch {}` around it turns
- *    that into a config that does not exist and a player who sees no widget and
- *    no reason. Hence the pre-flight below: nothing reaches the engine unchecked.
- *
- * 2. **The check is `structureId` + a non-empty `fields`, not a count.** A
- *    placement config is the hotbar field list. It does not cap how many of a
- *    structure may be placed — the engine's `maxCount` is gated behind
- *    `structureType === GloomEmitter` (bundel 5251) and is unreachable from a mod.
- *
- * The rules themselves live in `../config/placement.ts` and are shared with the
- * panel, so a save the panel accepts and a boot the game accepts cannot disagree.
- */
+
 export function registerPlacementConfig(
     def: import("../constants.ts").PlacementConfigConfig,
 ): void {
     const problem = placementConfigProblem(def);
     if (problem) {
-        // The engine's own wording, so the boot log and the panel read alike.
+        
         console.error(`${LOG} placement config "${def?.id ?? "?"}" rejected: ${problem}`);
         return;
     }
@@ -475,8 +426,8 @@ export function registerPlacementConfig(
         }
         structures.registerPlacementConfig(placementConfigPayload(def));
     } catch (e) {
-        // Reachable: the engine throws *after* its own checks on anything the
-        // pre-flight does not model, and a partial registration can throw too.
+        
+        
         console.error(`${LOG} placement config failed`, def.id, e);
     }
 }
@@ -531,16 +482,16 @@ export function registerTrigger(
 export async function registerSprite(def: import("../constants.ts").SpriteConfig): Promise<void> {
     try {
         const opts = def.options ?? {};
-        // A drawn sprite is a base64 PNG in `source`, not a file. Handing it to
-        // `loadFromMod` would look for a mod asset at that string and fail
-        // silently, leaving the id registered with no texture.
-        //
-        // Imported here rather than at the top: the editor pulls in `api.ts`,
-        // which reads `sandkit.api` at module load, and most callers of this
-        // module are not in a host at all — the config tests and the migration
-        // tools. A static import made those fail to load for a code path they
-        // never take. It also keeps the editor off the boot path for the
-        // overwhelmingly common config that has no drawn sprites in it.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         if (typeof def.source === "string" && def.source.startsWith("data:")) {
             const { registerDataUrlSprite } = await import(
                 "../sprite-editor/register.ts"
@@ -551,10 +502,10 @@ export async function registerSprite(def: import("../constants.ts").SpriteConfig
         if (def.path && (def.fromMod !== false)) {
             await api.sprites.loadFromMod(def.id, def.path, opts);
         } else {
-            // One of the two must be set for this branch to be reached, but the
-            // compiler cannot see that through the `??` — so narrow rather than
-            // assert. The old optional call `sprites.load?.(...)` hid the same
-            // hole from `deno check`.
+            
+            
+            
+            
             const source = def.source ?? def.path;
             if (source === undefined) {
                 console.warn(`${LOG} sprite ${def.id}: need path or source`);

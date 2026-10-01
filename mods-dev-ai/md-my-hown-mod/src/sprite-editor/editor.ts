@@ -1,18 +1,4 @@
-/**
- * sprite-editor / editor — the editor window (React, host `sandkit.react`).
- *
- * Edits ONE sprite (an EditSession) with every tool of the original Grid Editor:
- *   1 Pencil · 2 Eraser · 3 Fill · 4 Picker · 5 Pan · 6 Add tile · 7 Remove tile
- *   8 Square (filled / 1:1) · 9 Copy tile · Undo · palette (click / dbl-click
- *   recolor / drag-merge) · zoom / fit / grid.
- *
- * Game-overlay specifics:
- *   - All canvas pointer handling is native (React's wheel listener is passive).
- *   - Key events inside the window never reach the game (typing a name must not
- *     make the character walk; 1-9 must not switch hotbar slots).
- *   - The session (pixels + undo + view) is a plain object owned by the caller,
- *     so closing/reopening the overlay never loses work.
- */
+
 import { React as HostReact } from "../api.ts";
 import { docToDataUrl, downloadDataUrl } from "./codec.ts";
 import {
@@ -52,9 +38,9 @@ export type Tool =
 
 export interface EditorProps {
     session: EditSession;
-    /** Persist the session. Resolve true when saved. */
+    
     onSave(s: EditSession): Promise<boolean>;
-    /** Close the window (caller drops/keeps the session). */
+    
     onClose(): void;
 }
 
@@ -90,7 +76,7 @@ const KEY_TOOL: Record<string, Tool> = {
 
 const MIN_ZOOM = 0.5, MAX_ZOOM = 48;
 
-/** remembered between opens (session-scoped) */
+
 let lastPos: { x: number; y: number } | null = null;
 
 function isTyping(t: any): boolean {
@@ -112,7 +98,7 @@ function samePixels(a: Uint8ClampedArray, b: Uint8ClampedArray): boolean {
 
 let _Editor: any = null;
 
-/** Component factory (memoised so the component identity is stable). */
+
 export function getSpriteEditor(): (props: EditorProps) => any {
     if (_Editor) return _Editor;
     const React: any = HostReact;
@@ -133,7 +119,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
         const canvasRef = useRef(null as any);
         const statusRef = useRef(null as any);
         const colorEditRef = useRef(null as any);
-        const offRef = useRef(null as any); // offscreen canvas holding the sprite pixels
+        const offRef = useRef(null as any); 
 
         const R = useRef(null as any);
         if (!R.current) {
@@ -154,7 +140,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 lastScreen: null,
                 spaceHeld: false,
                 shiftHeld: false,
-                editing: null, // palette recolor in progress
+                editing: null, 
                 palette: scanPalette(props.session.doc),
                 cw: 480,
                 ch: 360,
@@ -176,9 +162,9 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             }
         );
         const dragRef = useRef(null as any);
-        const F = useRef({} as any); // always-latest handlers for the native listeners
+        const F = useRef({} as any); 
 
-        // ── view / render ────────────────────────────────────────────────
+        
         const dpr = () => window.devicePixelRatio || 1;
 
         const syncOff = () => {
@@ -204,7 +190,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             ctx.translate(v.panX, v.panY);
             ctx.scale(v.zoom, v.zoom);
 
-            // transparency checkerboard, only under the sprite
+            
             const K = 4;
             for (let y = 0; y * K < d.height; y++) {
                 for (let x = 0; x * K < d.width; x++) {
@@ -369,8 +355,8 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             render();
         };
 
-        // ── document changes ─────────────────────────────────────────────
-        /** after pixels/size changed by something other than a live stroke */
+        
+        
         const afterDoc = () => {
             syncOff();
             R.current.palette = scanPalette(sess().doc);
@@ -426,7 +412,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             if (undoStep(sess())) afterDoc();
         };
 
-        // ── pointer helpers ──────────────────────────────────────────────
+        
         const canvasPoint = (e: MouseEvent) => {
             const c: HTMLCanvasElement = canvasRef.current;
             const r = c.getBoundingClientRect();
@@ -493,7 +479,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             updateHover();
         };
 
-        // ── tools at a point ─────────────────────────────────────────────
+        
         const applyToolAt = (c: { x: number; y: number }, isNew: boolean) => {
             const S = R.current, s = sess(), d = s.doc;
             const p = pixelAt(c);
@@ -534,13 +520,13 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 Math.floor(c.y),
                 S.rectSquare,
             );
-            d.data.set(S.stroke.data); // live preview from the untouched pixels
+            d.data.set(S.stroke.data); 
             drawRect(d, sd.x0, sd.y0, lx, ly, S.rectFilled, colorArr());
             syncOff();
             render();
         };
 
-        // ── native pointer handlers (registered once, call latest via F) ──
+        
         const onDown = (e: MouseEvent) => {
             e.stopPropagation();
             focusRoot();
@@ -617,7 +603,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             const S = R.current, s = sess();
             if (!canvasRef.current) return;
             const busy = S.panning || S.pointerDown || S.copyDrag || S.shapeDrag;
-            if (!busy && e.target !== canvasRef.current) return; // game is underneath: do nothing
+            if (!busy && e.target !== canvasRef.current) return; 
             const { sx, sy } = canvasPoint(e);
             if (S.panning) {
                 s.view.panX = S.panning.panX + (sx - S.panning.sx);
@@ -707,7 +693,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             }
         };
 
-        /** canvas click: drop text-field focus, make the window the key target */
+        
         const focusRoot = () => {
             const r = rootRef.current;
             if (!r) return;
@@ -718,7 +704,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
         };
 
         const onKeyDown = (e: KeyboardEvent) => {
-            e.stopPropagation(); // never let typing / hotkeys reach the game
+            e.stopPropagation(); 
             if (isTyping(e.target)) return;
             const S = R.current;
             const key = e.key;
@@ -778,7 +764,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             }
         };
 
-        // ── save / close ─────────────────────────────────────────────────
+        
         const doSave = async (): Promise<boolean> => {
             const S = R.current;
             if (S.saving) return false;
@@ -805,7 +791,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             downloadDataUrl(name, docToDataUrl(sess().doc));
         };
 
-        // ── palette ──────────────────────────────────────────────────────
+        
         const startRecolor = (hex: string) => {
             const input = colorEditRef.current;
             if (!input) return;
@@ -837,7 +823,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
         const mergeSwatch = (targetHex: string, sourceHex: string) => {
             if (!sourceHex || sourceHex.toLowerCase() === targetHex.toLowerCase()) return;
             const s = sess(), before = snapshotOf(s.doc);
-            // the swatch dropped ON takes the colour that was dragged
+            
             if (recolor(s.doc, targetHex, sourceHex)) {
                 pushUndo(s, before);
                 afterDoc();
@@ -856,7 +842,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             onRecolorChange,
         };
 
-        // ── mount: native listeners ──────────────────────────────────────
+        
         useEffect(() => {
             const canvas = canvasRef.current,
                 wrap = wrapRef.current,
@@ -884,13 +870,13 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                     render();
                 }
             };
-            // hover: claim the keyboard only if nothing inside already has it (don't interrupt typing)
+            
             const enterRoot = () => {
                 if (!root.contains(document.activeElement)) root.focus({ preventScroll: true });
             };
             const leaveRoot = () => {
                 const ae: any = document.activeElement;
-                if (ae === root) root.blur(); // hand keyboard back to the game
+                if (ae === root) root.blur(); 
             };
             const ri = () => F.current.onRecolorInput();
             const rc = () => F.current.onRecolorChange();
@@ -914,7 +900,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             const ro = RO ? new RO(() => F.current.resize()) : null;
             ro?.observe(wrap);
 
-            // header drag
+            
             const dmove = (e: MouseEvent) => {
                 const dr = dragRef.current;
                 if (!dr) return;
@@ -949,13 +935,13 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             };
         }, []);
 
-        // re-render the canvas after any React re-render (state may have changed the doc)
+        
         useEffect(() => {
             syncOff();
             render();
         });
 
-        // ── UI ───────────────────────────────────────────────────────────
+        
         const S = R.current, s = sess();
         const hex = rgbToHex(S.color.r, S.color.g, S.color.b);
         const toolBtn = ([t, label, key, title]: [Tool, string, string, string]) =>
@@ -1023,7 +1009,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 style: { ...T.win, left: pos.x, top: pos.y, width: w, height: hgt },
                 onMouseDown: (e: any) => e.stopPropagation(),
             },
-            // header
+            
             h(
                 "div",
                 {
@@ -1082,7 +1068,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                     "✕",
                 ),
             ),
-            // unsaved-close bar
+            
             S.closing
                 ? h(
                     "div",
@@ -1115,7 +1101,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                     }, "Cancel"),
                 )
                 : null,
-            // body
+            
             h(
                 "div",
                 { style: T.body },
@@ -1303,7 +1289,7 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                     }),
                 ),
             ),
-            // footer
+            
             h(
                 "div",
                 { style: T.footer },

@@ -1,19 +1,4 @@
-/**
- * The Graph screen: what the mod's objects point at, and what does not resolve.
- *
- * The screen is the graph and nothing else: no paragraphs of explanation, no
- * per-kind field table. The paragraphs restated the picture, and the field
- * table was a hand-transcribed copy of the engine docs that read as
- * authoritative while drifting out of date. Every form field carries its own
- * hint and `doc/REFERENCE.md` carries the rest, so there was nothing left here
- * that was not either redundant or wrong.
- *
- * What remains cannot be looked up anywhere else: which of *your* entries point
- * at which, and which of those point at nothing.
- *
- * Everything is generated from `schema.ts` and `relations.ts`, the same sources
- * the editing forms use, so it cannot drift from them.
- */
+
 import type { Tab } from "../schema.ts";
 import { CATEGORY_META } from "../schema.ts";
 import { buildGraph, categoryColor, type Graph, graphAsText, neighboursOf } from "../graph.ts";
@@ -25,18 +10,11 @@ type Click = (key: string) => void;
 export interface HelpProps {
     h: H;
     cfg: Record<string, unknown>;
-    /** Jump to the screen that edits a kind. */
+    
     onGoTo: Click;
-    /** Copy text to the clipboard. */
+    
     onCopy: (text: string) => void;
-    /**
-     * Which kind the graph is narrowed to. Optional, and defaults to `"all"`.
-     *
-     * The screen is complete without one — it is a view, not a wizard, and
-     * "show me everything" is a perfectly good default. The panel passes it
-     * explicitly because the panel is the only caller that can keep it across
-     * remounts.
-     */
+    
     filter?: string;
     setFilter?: (next: string) => void;
 }
@@ -46,17 +24,17 @@ export function renderHelp(props: HelpProps): unknown {
     const filter = props.filter ?? "all";
     const setFilter = props.setFilter ?? (() => {});
 
-    // The full graph first, because "which kinds have no links at all" and "who
-    // are this kind's neighbours" are questions about the *whole* relation set,
-    // not about whatever happens to be on screen.
+    
+    
+    
     const whole = buildGraph(cfg);
 
-    // A selected kind narrows the picture to it and its direct neighbours.
-    // `nolink` is the degenerate case: kinds with no edges at all, which is
-    // exactly what "show me everything unconnected" needs and cannot express as
-    // a single node. "all" means no filter at all — and it is spelled out
-    // explicitly, because it is a non-empty string and would otherwise be
-    // treated as a kind name, quietly emptying the screen.
+    
+    
+    
+    
+    
+    
     const keep = filter === "all" ? null : filter === "nolink"
         ? new Set(
             whole.nodes
@@ -65,10 +43,10 @@ export function renderHelp(props: HelpProps): unknown {
         )
         : neighboursOf(whole, filter as Tab);
 
-    // Re-laid out *from* the filter, not filtered after laying out. The kept kinds
-    // get their depths re-derived and their slots re-packed, so a filtered graph
-    // fills the panel instead of leaving five boxes marooned in one corner of a
-    // diagram sized for sixteen.
+    
+    
+    
+    
     const shown = buildGraph(cfg, keep);
     const broken = shown.danglingRefs.length;
 
@@ -90,15 +68,15 @@ export function renderHelp(props: HelpProps): unknown {
                 broken ? `${broken} broken` : `${shown.edges.length} relations`,
             ),
         ),
-        // No prose and no field tables: the tables were a second, worse copy of
-        // the engine docs — frozen at
-        // build time, drifting from the real schema, and reading as
-        // authoritative while being wrong — and opening paragraphs only
-        // restate what the picture already shows. Every form field carries its
-        // own hint, and `doc/REFERENCE.md` carries the rest.
-        //
-        // What is left is the part that cannot be looked up anywhere: which of
-        // *your* entries point at which, and which of those point at nothing.
+        
+        
+        
+        
+        
+        
+        
+        
+        
         filterMenu(h, whole, filter, setFilter),
         broken ? danglingReport(h, shown, onGoTo) : null,
         h(
@@ -123,14 +101,7 @@ export function renderHelp(props: HelpProps): unknown {
     );
 }
 
-/**
- * The filter row: every node in the graph, plus the unconnected ones.
- *
- * "All" first, then the groups in menu order, then the kinds within them. It is
- * the same order as the picture and the same order as the menu, so a kind is at
- * the same relative place in all three and none of them has to be learned
- * separately.
- */
+
 function filterMenu(
     h: H,
     graph: Graph,
@@ -165,14 +136,7 @@ function filterMenu(
     );
 }
 
-/**
- * The most valuable thing on this screen.
- *
- * These are the references that resolve to nothing — the reason a feature
- * silently does not work. They are listed first, in red, with a jump to the
- * entry that holds the bad link, because everything else here is reference
- * material and this is a live bug report.
- */
+
 function danglingReport(h: H, graph: Graph, onGoTo: Click): unknown {
     const bad = graph.danglingRefs;
     if (bad.length === 0) {
@@ -238,20 +202,7 @@ function danglingReport(h: H, graph: Graph, onGoTo: Click): unknown {
     );
 }
 
-/**
- * The same relations in words, because an arrow is not readable on a phone and
- * a picture cannot be pasted into a bug report.
- *
- * Each row is one field, and it carries the five things that decide whether it
- * matters: which kind holds it, which field it is, which kind it points at, how
- * many references currently follow it, and how many of those resolve to nothing.
- * The last two are the point — a relation can be declared by the engine and
- * still be doing nothing in your config, and the two counts are the only way to
- * tell those apart from a relation you are actively using.
- *
- * The kind names are the jump. Clicking one filters the graph to it, which is
- * why they are buttons and not plain text.
- */
+
 function relationTable(
     h: H,
     graph: Graph,
@@ -280,8 +231,8 @@ function relationTable(
                 style: {
                     ...S.tagChip,
                     cursor: "pointer",
-                    // The row you are looking at, so a filtered table reads as a
-                    // slice of the whole rather than as the whole.
+                    
+                    
                     boxShadow: filter === cat ? `0 0 0 1px ${categoryColor(cat)}` : undefined,
                 },
                 title: `Show ${CATEGORY_META[cat].label} and what it connects to`,
@@ -350,37 +301,16 @@ function relationTable(
     );
 }
 
-/**
- * The relation picture.
- *
- * Drawn with positioned boxes and a real SVG layer for the arrows, rather than
- * a canvas: it inherits the panel's own styling, stays crisp, and the boxes
- * stay clickable so a node can take you to the thing it describes.
- *
- * The layout is the fixed one from `graph.ts` — grouped into the same columns
- * as the menu — so the shape means the same thing every time it is drawn, and a
- * node never moves because an unrelated entry was added. A picture you cannot
- * aim at is not a picture.
- */
-/**
- * The direction an arrowhead points, from the point of view of the box it sits
- * on: `left` means the tip is to the left of its base.
- */
+
+
 type Dir = "left" | "right" | "up" | "down";
 
-/** The head at the far end points the other way — back along the same line. */
+
 function opposite(d: Dir): Dir {
     return d === "left" ? "right" : d === "right" ? "left" : d === "up" ? "down" : "up";
 }
 
-/**
- * One arrowhead, drawn as a short stroke rather than a filled triangle.
- *
- * Deliberately inherits the line's own `stroke`, so one arrow stays one colour
- * at both ends, and its direction is always passed in from the geometry rather
- * than inferred here — a head can therefore never disagree with the line it is
- * attached to, which is the bug this replaced.
- */
+
 function head(
     h: H,
     x: number,
@@ -433,25 +363,25 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
             const width = e.live > 0 ? 2 : 1;
             const dash = e.required ? "4 3" : undefined;
 
-            // One edge carries two arrowheads, and they mean different things:
-            //
-            //   → at the target — "this box is a *parameter of* that box".
-            //                    A recipe pointing at an item is asking for it.
-            //   ← at the source — "that box is *used in* this one".
-            //                    The same relationship, read from the other end.
-            //
-            // Drawing only one would force a choice of whose point of view the
-            // picture takes, and the question is rarely one-sided: you ask "what
-            // can this reference?" going one way and "what references this?"
-            // going the other, often in the same sitting. Two heads, one line.
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
             const acx = a.x + a.w / 2;
             const acy = a.y + a.h / 2;
             const bcx = b.x + b.w / 2;
             const bcy = b.y + b.h / 2;
 
             if (acx === bcx && acy === bcy) {
-                // A self-reference (`techs` requiring other `techs`) has no
-                // distance to draw across. A ring is the honest shape for it.
+                
+                
                 const cy = a.y - 18;
                 return [
                     h(
@@ -467,63 +397,63 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
                             strokeDasharray: dash,
                             opacity: dim,
                         }),
-                        // Both heads point back at the box, because both readings
-                        // are true of a thing that depends on itself.
+                        
+                        
                         head(h, acx - 16, cy + 10, "left", colour, width, dim),
                         head(h, acx + 16, cy + 10, "right", colour, width, dim),
                     ),
                 ];
             }
 
-            // An arrow leaves one box by the edge that faces the other and arrives
-            // at the other's facing edge — so it runs *between* the two boxes, never
-            // back through either one. The one exception is the same-height case
-            // below.
-            //
-            // That is a deliberate constraint rather than a consequence of the
-            // layout. Depth puts the target above, so a link between two kinds in
-            // the same group would otherwise have to run sideways along the row,
-            // skimming the boxes between it. Attaching to the facing edges gives
-            // every link the same "it hangs off the end" reading, and it means a
-            // head is never pointing at a box's flank where it is easy to mistake
-            // for belonging to the neighbour.
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
             const aMid = a.x + a.w / 2;
             const bMid = b.x + b.w / 2;
             const targetBelow = b.y + b.h / 2 > a.y + a.h / 2;
             const towards: Dir = targetBelow ? "down" : "up";
-            // Each end attaches to the edge that *faces* the other box, so the line
-            // starts at A's near side and stops at B's near side. Leaving A by the
-            // far edge instead would run the line back through A's own body before
-            // it got anywhere, which is exactly the "arrow leaves by the top or
-            // bottom" rule this is for — an end on the *wrong* horizontal edge is
-            // worse than one on a side.
+            
+            
+            
+            
+            
+            
             const y1 = targetBelow ? a.y + a.h : a.y;
             const y2 = targetBelow ? b.y : b.y + b.h;
             let d: string;
             let endA: Dir = opposite(towards);
             let endB: Dir = towards;
             if (a.y === b.y) {
-                // The same height. Both ends are within one box-height of each
-                // other, so a direct curve between them is a horizontal line drawn
-                // straight through every column in between — and no bow fixes it,
-                // because a bow is still a curve between two points in the same
-                // band.
-                //
-                // So it goes *around*: the arc leaves the source's side, swings
-                // clear past the last group column it would otherwise cut through,
-                // and comes back in from the target's other side. It reads as
-                // "this one goes around", which is also the truth — the two kinds
-                // sit at the same height, so the link has to get past the ones
-                // between them somehow.
-                //
-                // "The last column it would cross" is the important part. Stopping
-                // at the first gap looks right and is not: the columns are full of
-                // boxes, and a shallow arc still lands inside one of them.
-                //
-                // This is the transpose of the layout it replaced, where the same
-                // case dipped *below* the whole group row instead. Both ends now
-                // attach to a side, which is the one place a head points sideways;
-                // everything else still enters by the top and leaves by the bottom.
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
                 const lo = Math.min(a.x, b.x);
                 const hi = Math.max(a.x + a.w, b.x + b.w);
                 const crossed = graph.columns.filter((c) => c.x + c.w > lo && c.x < hi);
@@ -538,9 +468,9 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
                 endA = toRight ? "right" : "left";
                 endB = toRight ? "left" : "right";
             } else {
-                // Different heights: a direct curve between the facing edges,
-                // bowed by the horizontal gap so a long link is not a straight
-                // vertical line painted over everything on the way.
+                
+                
+                
                 const midY = (y1 + y2) / 2;
                 const bow = bMid === aMid
                     ? 0
@@ -549,10 +479,10 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
             }
 
             return [
-                // One group per edge, always. The line and its two heads belong
-                // to the same relationship, and wrapping them keeps "one arrow
-                // per relation" a countable fact rather than something that has
-                // to be re-derived from how many paths a head happens to take.
+                
+                
+                
+                
                 h(
                     "g",
                     { key: `${key}-edge` },
@@ -572,10 +502,10 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
     );
 
     const boxes = graph.nodes.map((n) => {
-        // The kind you filtered to is drawn forward; its neighbours recede.
-        // Without this the selected node is the same size and colour as
-        // everything around it, and a filtered graph looks like the whole one
-        // with a few boxes missing.
+        
+        
+        
+        
         const picked = filter === n.cat;
         const near = filter && filter !== "all" && !picked;
         return h(
@@ -620,12 +550,12 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
         );
     });
 
-    // One heading per column, so the picture is arranged the way the menu is
-    // rather than as an unlabelled field of boxes.
+    
+    
     const headings = graph.columns.map((c) => {
-        // A column with nothing in the current filter keeps its heading but
-        // dims, so the gap still reads as "a group that is filtered out" rather
-        // than as a mistake in the layout.
+        
+        
+        
         const live = graph.nodes.some((n) => n.group === c.key);
         return h(
             "div",

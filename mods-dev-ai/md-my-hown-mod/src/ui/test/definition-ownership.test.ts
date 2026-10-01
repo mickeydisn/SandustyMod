@@ -1,12 +1,10 @@
-// @ts-nocheck
-/**
- * Which folder a definition lives in is a claim about *who owns the object*.
- */
+
+
 import { assert, assertEquals } from "jsr:@std/assert";
 
-// The catalog reads the host `sandkit` global at import time, so it must exist
-// before any definition that imports it resolves. Same stub shape as the other
-// UI tests, including the (modId, key) storage signature.
+
+
+
 const store: Record<string, unknown> = {};
 (globalThis as Record<string, unknown>).sandkit = {
     api: {
@@ -32,26 +30,10 @@ const store: Record<string, unknown> = {};
 
 const DEF_ROOT = new URL("../definition/", import.meta.url);
 
-/**
- * Objects the mod owns. `register()` never receives one of these; it receives
- * the ids/strings the entry produces.
- *
- *   - `networks`     — `api.energy.registerType` never sees a network, only an
- *                      `options.energyType` string that two types must match.
- *   - `unlockNodes`  — the mod's own gate in front of a structure, separate from
- *                      `techs` on purpose (see `constants.ts`).
- */
+
 const CUSTOM = new Set(["networks", "unlockNodes", "customProcess", "buffers"]);
 
-/**
- * The tabs each folder is expected to hold, so a misfile is *named*.
- *
- * Asserting only "custom/ has two files" would catch the wrong count while
- * saying nothing about which file moved — and adding a legitimate third
- * mod-owned object would fail that count for a reason that has nothing to do
- * with a bug. Spelling the whole split out makes the failure name the object
- * and say which folder it belongs in.
- */
+
 const EXPECTED: Record<string, string[]> = {
     core: [
         "behaviors",
@@ -64,9 +46,9 @@ const EXPECTED: Record<string, string[]> = {
         "interactions",
         "items",
         "modifiers",
-        // The engine has a first-class `registerPlacementConfig` and a typed
-        // `PlacementConfigDefinition`, so this is an engine object in `core/` —
-        // not a mod-owned one, even though the entry also carries a mod-local id.
+        
+        
+        
         "placementConfigs",
         "processing",
         "projectiles",
@@ -79,14 +61,14 @@ const EXPECTED: Record<string, string[]> = {
         "triggers",
         "upgrades",
     ],
-    // `customProcess` is here for the same reason as the other two: the engine has no
-    // `register()` for a process. It is a mod-side object that six definitions
-    // reference, and the engine only ever sees the compiled function — which is the
-    // whole of decision D1.
+    
+    
+    
+    
     custom: ["networks", "unlockNodes", "customProcess", "buffers"],
 };
 
-/** The tab each definition file in a folder actually claims. */
+
 async function tabsIn(folder: string) {
     const names = [...Deno.readDirSync(new URL(folder, DEF_ROOT).pathname)]
         .filter((e) => e.isFile && e.name.endsWith(".ts"))
@@ -94,9 +76,9 @@ async function tabsIn(folder: string) {
     const out: Record<string, string> = {};
     for (const name of names.sort()) {
         const mod = await import(new URL(`${name}.ts`, new URL(folder, DEF_ROOT)).href);
-        // A definition is the export carrying a `tab`; anything else in the
-        // module is a helper. Asserting one exists is a separate test, so a
-        // missing `tab` here surfaces as "no tab recorded" rather than a hole.
+        
+        
+        
         const found = Object.values(mod).find((d) =>
             d && typeof d === "object" && typeof (d as { tab?: unknown }).tab === "string"
         ) as { tab: string } | undefined;
@@ -111,8 +93,8 @@ Deno.test("every definition is filed by who owns the object", async () => {
         custom: await tabsIn("custom/"),
     };
 
-    // Compare the *tabs*, not the filenames: a file is correctly placed when the
-    // object it defines is owned the right way, and a rename is not a bug.
+    
+    
     for (const [folder, expected] of Object.entries(EXPECTED)) {
         const actual = Object.values(byFolder[folder]).sort();
         assertEquals(
@@ -123,31 +105,31 @@ Deno.test("every definition is filed by who owns the object", async () => {
         );
     }
 
-    // Nothing may be left in the parent: a definition sitting beside `index.ts`
-    // is outside the split, and the tools' folder walk would not see it.
-    //
-    // The allowlist is for **shared helpers**, not for definitions. `types` is the
-    // contract, `fields`/`values` are the field builders every object uses, `index`
-    // is the registry. `actions-field` joins them for the same reason: it is the one
-    // `actions` field all seven process-storing objects share, and it defines no
-    // object of its own. Putting it in `core/` would be a lie — `custom/` owns two
-    // of the seven.
-    //
-    // `projectile-option-field` is the same idea one level down. It is not shared by
-    // seven objects but by **one** — the projectile — and it is in the parent folder
-    // anyway because it is a *field*, not a definition: it exports no `Definition`,
-    // and `core/projectile.ts` is the only file that uses it. Putting it inside
-    // `core/` would suggest it defines an object, which is exactly the confusion the
-    // `actions-field` exception exists to avoid.
-    //
-    // `excavation-option-field` is that same case again, for the second feature that
-    // builds a value. Two sibling `*-option-field.ts` files in the parent folder is
-    // the shape the rule is asking for: a field that belongs to no object's folder
-    // because it belongs to the *option kind*, not to an object.
-    //
-    // `process-ref-field` is the same idea for the other axis. It is shared by six
-    // definitions — which is *more* shared than any other entry here, and still does
-    // not belong to any one of them.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const SHARED_HELPERS = [
         "types",
         "fields",
@@ -157,16 +139,16 @@ Deno.test("every definition is filed by who owns the object", async () => {
         "projectile-option-field",
         "excavation-option-field",
         "process-ref-field",
-        // The data-field codecs, shared by the element and structure definitions.
-        // They live in `core/` rather than beside the schema because both objects
-        // need them and neither owns them: each is a pair of translators between a
-        // list the panel edits and an object the engine registers, and the two
-        // shapes differ precisely because the two engines do.
+        
+        
+        
+        
+        
         "data-fields",
     ];
     for (const entry of [...Deno.readDirSync(DEF_ROOT.pathname)]) {
         const stem = entry.name.replace(/\.ts$/, "");
-        // A test is not a definition, and a shared helper's test sits beside it.
+        
         const isTest = entry.name.endsWith(".test.ts");
         assert(
             entry.name === "core" || entry.name === "custom" || !entry.isFile || isTest ||
@@ -177,9 +159,9 @@ Deno.test("every definition is filed by who owns the object", async () => {
 });
 
 Deno.test("only the mod-owned objects are in custom/", async () => {
-    // The rule restated as a claim, so the reason for the split is checked and
-    // not just its current shape. `network` is the case that proves the test is
-    // not about size: two fields, and still not an engine object.
+    
+    
+    
     const custom = await tabsIn("custom/");
     for (const [name, tab] of Object.entries(custom)) {
         assert(
@@ -201,16 +183,16 @@ Deno.test("each definition file exports exactly one definition, for one tab", as
 });
 
 Deno.test("the tools find every definition in both folders", async () => {
-    // The failure this protects against is silent and total: `schema-source.ts`
-    // walks a fixed list of directories, so a folder it does not name
-    // contributes no paths, every tab in it reports zero fields, and both
-    // generators emit a document that is confidently wrong.
+    
+    
+    
+    
     const { schemaSourceWithDefinitions } = await import("../../../tools/schema-source.ts");
     const src = schemaSourceWithDefinitions();
-    const seen = [...src.matchAll(/\/\* definition: (.*?) \*\//g)].map((m) => m[1]);
-    // `tabsIn` keys by filename, so the count is the key count — `.length` on the
-    // object is `undefined`, which compares false against 22 and reads as
-    // "nothing was spliced" rather than "the arithmetic is wrong".
+    const seen = [...src.matchAll(/\/\* definition: (.*?) \*\
+    
+    
+    
     const total = Object.keys(await tabsIn("core/")).length +
         Object.keys(await tabsIn("custom/")).length;
     assertEquals(seen.length, total, "a definition was not spliced in");

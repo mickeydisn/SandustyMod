@@ -1,17 +1,8 @@
-/**
- * sprite-editor / engine — pure pixel logic.
- *
- * No DOM, no React, no sandkit: everything works on a `PixelDoc`
- * (RGBA bytes) so it can be unit-tested in plain Node and reused anywhere.
- * Ported from the "Grid Editor" (pixel-editor.html), reduced to ONE sprite.
- *
- * A sprite is treated as a horizontal strip of CELL×CELL tiles (= frames of a
- * spritesheet), exactly like the original editor.
- */
 
-/** Tile / frame width in pixels. */
+
+
 export const CELL = 16;
-/** Undo depth (same as the original editor). */
+
 export const UNDO_LIMIT = 60;
 
 export type Rgba = [number, number, number, number];
@@ -19,7 +10,7 @@ export type Rgba = [number, number, number, number];
 export interface PixelDoc {
     width: number;
     height: number;
-    /** RGBA, row-major, length = width*height*4 */
+    
     data: Uint8ClampedArray;
 }
 
@@ -29,7 +20,7 @@ export interface Snapshot {
     data: Uint8ClampedArray;
 }
 
-// ── colour helpers ───────────────────────────────────────────────────────
+
 
 export function rgbToHex(r: number, g: number, b: number): string {
     return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
@@ -61,7 +52,7 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
     return { h, s, l };
 }
 
-// ── document ─────────────────────────────────────────────────────────────
+
 
 export function createDoc(width: number, height: number): PixelDoc {
     const w = Math.max(1, Math.floor(width)), h = Math.max(1, Math.floor(height));
@@ -112,9 +103,9 @@ export function setPixel(
     d.data[i + 3] = a;
 }
 
-// ── drawing primitives ───────────────────────────────────────────────────
 
-/** Bresenham — no gaps when dragging fast. */
+
+
 export function lineCells(x0: number, y0: number, x1: number, y1: number): Array<[number, number]> {
     const pts: Array<[number, number]> = [];
     x0 = Math.floor(x0);
@@ -161,7 +152,7 @@ export function paintLine(
     for (const [x, y] of lineCells(x0, y0, x1, y1)) setPixel(d, x, y, c[0], c[1], c[2], c[3]);
 }
 
-/** 4-way flood fill on exact RGBA match. Returns false when nothing changed. */
+
 export function floodFill(d: PixelDoc, lx: number, ly: number, c: Rgba): boolean {
     if (!inBounds(d, lx, ly)) return false;
     const t = getPixel(d, lx, ly);
@@ -205,10 +196,7 @@ export function drawRect(
     }
 }
 
-/**
- * Square-tool end point, clamped to the sprite and (optionally) forced 1:1.
- * (x0,y0) = drag start, (lx,ly) = current pixel.
- */
+
 export function constrainRectEnd(
     d: PixelDoc,
     x0: number,
@@ -229,12 +217,9 @@ export function constrainRectEnd(
     return [lx, ly];
 }
 
-// ── tile operations (return NEW docs when the size changes) ──────────────
 
-/**
- * Insert a new CELL-wide tile column at pixel boundary `bx`.
- * The new tile is a copy of the tile on its left (transparent at the far left).
- */
+
+
 export function insertTile(d: PixelDoc, bx: number): PixelDoc {
     const W = d.width, H = d.height, nW = W + CELL;
     bx = Math.max(0, Math.min(W, bx));
@@ -256,7 +241,7 @@ export function insertTile(d: PixelDoc, bx: number): PixelDoc {
     return { width: nW, height: H, data: out };
 }
 
-/** Delete tile column `col`; returns null when it is the last tile. */
+
 export function removeTile(d: PixelDoc, col: number): PixelDoc | null {
     const W = d.width, H = d.height;
     const x0 = col * CELL, x1 = Math.min(x0 + CELL, W);
@@ -271,7 +256,7 @@ export function removeTile(d: PixelDoc, col: number): PixelDoc | null {
     return { width: nW, height: H, data: out };
 }
 
-/** Read one CELL×CELL tile (transparent outside the sprite). */
+
 export function extractTile(d: PixelDoc, cx: number, cy: number): Uint8ClampedArray {
     const out = new Uint8ClampedArray(CELL * CELL * 4);
     for (let ty = 0; ty < CELL; ty++) {
@@ -288,7 +273,7 @@ export function extractTile(d: PixelDoc, cx: number, cy: number): Uint8ClampedAr
     return out;
 }
 
-/** Overwrite a tile (transparent pixels are copied too). */
+
 export function pasteTile(d: PixelDoc, cx: number, cy: number, tile: Uint8ClampedArray): void {
     for (let ty = 0; ty < CELL; ty++) {
         for (let tx = 0; tx < CELL; tx++) {
@@ -306,9 +291,9 @@ export function pasteTile(d: PixelDoc, cx: number, cy: number, tile: Uint8Clampe
     }
 }
 
-// ── palette ──────────────────────────────────────────────────────────────
 
-/** Replace every non-transparent pixel of colour oldHex with newHex. */
+
+
 export function recolor(d: PixelDoc, oldHex: string, newHex: string): boolean {
     const o = hexToRgb(oldHex), n = hexToRgb(newHex);
     if (o.r === n.r && o.g === n.g && o.b === n.b) return false;
@@ -326,12 +311,12 @@ export function recolor(d: PixelDoc, oldHex: string, newHex: string): boolean {
 }
 
 export interface PaletteInfo {
-    /** hue-sorted hex colours */
+    
     colors: string[];
     counts: Record<string, number>;
 }
 
-/** Colours used by the sprite (fully transparent pixels ignored). */
+
 export function scanPalette(d: PixelDoc): PaletteInfo {
     const counts = new Map<string, number>();
     const a = d.data;
@@ -350,20 +335,20 @@ export function scanPalette(d: PixelDoc): PaletteInfo {
     return { colors, counts: Object.fromEntries(counts) };
 }
 
-// ── edit session (document + undo + view), survives UI unmounts ──────────
+
 
 export interface EditSession {
-    /** Full sprite id, e.g. "md-my-hown-mod:crate". Editable while `isNew`. */
+    
     id: string;
-    /** true until first saved under this id */
+    
     isNew: boolean;
-    /** id of an existing config entry this session is allowed to replace */
+    
     replaces?: string;
     doc: PixelDoc;
     undo: Snapshot[];
     dirty: boolean;
     view: { zoom: number; panX: number; panY: number; fitted: boolean };
-    /** free text shown in the editor (where the pixels came from) */
+    
     origin?: string;
 }
 
@@ -383,14 +368,14 @@ export function newSession(
     };
 }
 
-/** Push the current pixels on the undo stack (call BEFORE mutating). */
+
 export function pushUndo(s: EditSession, snap: Snapshot = snapshotOf(s.doc)): void {
     s.undo.push(snap);
     if (s.undo.length > UNDO_LIMIT) s.undo.shift();
     s.dirty = true;
 }
 
-/** Pop one undo step. Returns true when something was restored. */
+
 export function undoStep(s: EditSession): boolean {
     const snap = s.undo.pop();
     if (!snap) return false;

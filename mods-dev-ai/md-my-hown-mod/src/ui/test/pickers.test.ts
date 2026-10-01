@@ -1,20 +1,11 @@
-/**
- * The two rules this pass set out to fix:
- *
- *  1. no `World` group, and `Assets & hooks` split three ways;
- *  2. a field whose value is a closed set is a picker, never a text box.
- *
- * The menu assertions read the real `MENU_GROUPS`; the picker assertions read
- * the real field specs and call the real catalog, because "is this a select" is
- * exactly the kind of thing that regresses by someone adding one more field.
- */
+
 import { assert, assertEquals } from "jsr:@std/assert";
 
-// The catalog reads the host `sandkit` global at import time, so it has to
-// exist before any import that reaches it resolves. Same stub shape as the
-// other UI tests, including the (modId, key) storage signature — a stub with
-// the wrong arity makes every stored-config read return undefined, and the
-// tests below would then pass vacuously.
+
+
+
+
+
 const store: Record<string, unknown> = {};
 (globalThis as Record<string, unknown>).sandkit = {
     api: {
@@ -29,10 +20,10 @@ const store: Record<string, unknown> = {};
             },
         },
         ui: { toast: () => {} },
-        // A small live registry, so `listElements` has real ids to read and the
-        // native-list tests have something to count. Without this the stub
-        // returns an empty list and every "is the source tagged" assertion
-        // passes vacuously.
+        
+        
+        
+        
         elements: {
             list: () => [],
             register: () => {},
@@ -78,7 +69,7 @@ const { UPSERT, REMOVE } = await import("../panel.ts");
 const { PANEL_NATIVES: natives } = await import("../../catalog.ts");
 const { ATTACHED, attachedTo, parentOf } = await import("../panel/attach.ts");
 
-// ── 1. menu structure ────────────────────────────────────────────────────────
+
 
 Deno.test("there is no World group any more", () => {
     assert(!MENU_GROUPS.some((g) => g.key === "world"), "the World group is back");
@@ -87,7 +78,7 @@ Deno.test("there is no World group any more", () => {
 
 Deno.test("terrains live under Content", () => {
     assert(tabsOf("content").includes("terrains"));
-    // and nowhere else, so the tab is not listed twice
+    
     const owners = MENU_GROUPS.filter((g) => g.categories.includes("terrains"));
     assertEquals(owners.map((g) => g.key), ["content"]);
 });
@@ -110,10 +101,10 @@ Deno.test("the menu is the nine groups, in the order that was asked for", () => 
 });
 
 Deno.test("the dissolved groups stay dissolved", () => {
-    // `Systems` was a grab-bag and `Hooks` held a single screen. `Extend` then
-    // held five screens that only ever qualify something else — a tooltip is not a
-    // peer of an element — and they are now drawn under the list they belong to.
-    // None of the three names may creep back.
+    
+    
+    
+    
     for (const key of ["systems", "hooks", "extend"]) {
         assert(!MENU_GROUPS.some((g) => g.key === key), `the ${key} group is back`);
     }
@@ -122,90 +113,90 @@ Deno.test("the dissolved groups stay dissolved", () => {
 });
 
 Deno.test("the screens sit in the groups that were asked for, in order", () => {
-    // `behaviors` once sat under Content, next to the structures it names, then
-    // moved to Extend, and is now under Structures again — as a list beneath the
-    // structures, which is what it always was. The distinction that matters is not
-    // which *group* a screen is in but whether it is a group of its own: a
-    // conveyor behaviour is something a structure has, so it is read with the
-    // structures.
+    
+    
+    
+    
+    
+    
     assertEquals(tabsOf("content"), [
         "terrains",
         "elements",
         "structures",
-        // `placementConfigs` is NOT here any more. It used to be, with a comment
-        // right here explaining that a placement config "is something a structure
-        // *has*, so it is read with the structures" — and then put it in the same
-        // list as the structures themselves. Being next to them in a group is not
-        // being read with them: it was its own screen, reached Content → Placement
-        // fields → Placement fields, with a title that named itself.
-        //
-        // It is now genuinely attached (see `./panel/attach.ts`), so it is drawn
-        // beneath the structures like `behaviors` and `signals`. The argument in
-        // the old comment was right; only the implementation contradicted it.
-        //
-        // `buffers` is a Content tab and not an attached list, which is worth
-        // stating because the two look alike in the code. An attached list is
-        // something a structure *has* — a tooltip, a behaviour — and is drawn
-        // beneath the list of the thing it qualifies. A buffer slot belongs to the
-        // mod and to no entry, so there is nothing for it to hang off and every
-        // structure's process can reach it. That is what makes it a tab of its own
-        // rather than a field on a structure.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         "items",
         "buffers",
     ]);
     assertEquals(tabsOf("production"), ["contacts", "recipes"]);
-    // `unlockNodes` is no longer a Tech tab. It used to come first here, on the
-    // argument that a structure's gate and the research step behind it should not
-    // mean crossing the group. But that argument only holds if both things are
-    // tabs — and once it is drawn under the tech nodes it gates, they are not two
-    // places to choose between at all. It is read with the thing it qualifies.
+    
+    
+    
+    
+    
     assertEquals(tabsOf("tech"), ["techs", "upgrades"]);
     assertEquals(tabsOf("actions"), ["triggers", "inputs", "processing", "modifiers"]);
     assertEquals(tabsOf("energy"), ["networks", "energy"]);
     assertEquals(tabsOf("assets"), ["sprites", "spriteEditor", "draws"]);
-    // What is left in Handlers is what has no owner to be drawn under: the
-    // action vocabulary, and the named processes built from it. The two "builds a
-    // value" catalogues and the upgrade-action list each configure one specific
-    // entry elsewhere, so they moved under it and stopped being tabs.
+    
+    
+    
+    
     assertEquals(tabsOf("handlers"), ["action", "customProcess"]);
     assertEquals(tabsOf("help"), ["help"], "Help must be the graph, and only the graph");
     assertEquals(tabsOf("data"), ["map", "json"]);
 });
 
 Deno.test("the qualifying lists hang off the thing they qualify", () => {
-    // This is the reorganisation: each of these ten used to be a menu chip, five of
-    // them in a group called Extend and five as tabs of their own, and all are now
-    // drawn under the list of the object they describe. A reader looking for the
-    // tooltip of an element, or the functions behind an item's projectiles, should
-    // not have to know that those live somewhere else entirely.
+    
+    
+    
+    
+    
     assertEquals(attachedTo("elements"), ["interactions"]);
-    // Placement fields joins the other two structure qualifiers, and leads them:
-    // it describes the structure itself, where a behaviour and a signal are
-    // optional things hung off it.
+    
+    
+    
     assertEquals(attachedTo("structures"), ["placementConfigs", "behaviors", "signals"]);
-    // The two "builds a value" catalogues sit with the entries they configure, in
-    // the same order as the thing they configure.
+    
+    
     assertEquals(attachedTo("items"), [
         "excavation",
         "projectiles",
         "excavationOption",
         "projectileOption",
     ]);
-    // Tech loses two tabs to the same rule. A structure's unlock gate belongs to the
-    // research node it gates, and the category and action list belong to the upgrade
-    // they classify and run.
+    
+    
+    
     assertEquals(attachedTo("techs"), ["unlockNodes"]);
     assertEquals(attachedTo("upgrades"), ["categories", "upgradeAction"]);
-    // Nothing hangs off a tab that owns its whole subject. `terrains` and
-    // `recipes` are the strongest cases: there is nothing to qualify.
+    
+    
     for (const cat of ["terrains", "recipes", "sprites", "contacts", "triggers"]) {
         assertEquals(attachedTo(cat as never), [], `${cat} should have nothing attached`);
     }
-    // The two fixed catalogues are the reason a list and an editable list are
-    // different things here. They are written in code and compiled once, so an
-    // entry form on either would be a form that cannot change its entry — and a
-    // `+ New` beside it would create something nothing reads. If one of these ever
-    // becomes authorable, it needs a `configKey` as well as a form.
+    
+    
+    
+    
+    
     for (const cat of ["excavationOption", "projectileOption"] as const) {
         assert(
             !CATEGORY_META[cat].configKey,
@@ -213,8 +204,8 @@ Deno.test("the qualifying lists hang off the thing they qualify", () => {
         );
         assertEquals(fieldsFor(cat).length, 0, `${cat} must not have an entry form`);
     }
-    // Every attachment names a real screen, and the round trip holds: an attached
-    // tab must be able to name the tab it is drawn under.
+    
+    
     for (const [parent, children] of Object.entries(ATTACHED)) {
         for (const child of children) {
             assert(CATEGORY_META[child], `${child} is attached but is not a screen`);
@@ -224,9 +215,9 @@ Deno.test("the qualifying lists hang off the thing they qualify", () => {
 });
 
 Deno.test("every tab is either in one group or attached to one", () => {
-    // A tab in two groups renders twice; a tab in neither and attached to nothing
-    // is unreachable. Attached tabs are the second case done deliberately, so the
-    // check is that they are attached to exactly one parent.
+    
+    
+    
     const all = MENU_GROUPS.flatMap((g) => g.categories);
     assertEquals(new Set(all).size, all.length, "a tab is listed in two groups");
     const attached = Object.values(ATTACHED).flat();
@@ -243,9 +234,9 @@ Deno.test("every tab is either in one group or attached to one", () => {
 });
 
 Deno.test("Sprites and Custom draw are listed apart, not merged", () => {
-    // They are different things that happen to both be visual: an image the mod
-    // loads, and a function that paints a structure. One screen would hide one
-    // of them.
+    
+    
+    
     assertEquals(tabsOf("assets"), ["sprites", "spriteEditor", "draws"]);
     assert(tabsOf("assets").includes("sprites"));
     assert(tabsOf("assets").includes("draws"));
@@ -256,15 +247,15 @@ Deno.test("Help holds the graph and nothing else", () => {
     assertEquals(CATEGORY_META.help.label, "Graph");
 });
 
-// ── every saveable screen can actually save ──────────────────────────────────
+
 
 Deno.test("every screen with a config key can be saved and deleted", () => {
-    // A tab with a `configKey` and no upsert is a screen that lists, accepts a
-    // form, validates it, and then silently does nothing on save: `saveForm`
-    // returns early when the dispatch has no entry. Two screens were in exactly
-    // that state — upgrade categories and input bindings — and neither the type
-    // system nor the suite could see it, because the fault is a *missing* table
-    // entry rather than a wrong one.
+    
+    
+    
+    
+    
+    
     const missingSave: string[] = [];
     for (const cat of Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]) {
         if (!CATEGORY_META[cat].configKey) continue;
@@ -275,8 +266,8 @@ Deno.test("every screen with a config key can be saved and deleted", () => {
 });
 
 Deno.test("the dispatch tables have no entry for a screen without storage", () => {
-    // The other direction: a handler for a tab that stores nothing is dead code
-    // that reads as if the screen were wired.
+    
+    
     const stray: string[] = [];
     for (const cat of Object.keys(UPSERT)) {
         if (!CATEGORY_META[cat as keyof typeof CATEGORY_META]?.configKey) stray.push(String(cat));
@@ -285,7 +276,7 @@ Deno.test("the dispatch tables have no entry for a screen without storage", () =
 });
 
 Deno.test("every saveable screen has form fields", () => {
-    // A configKey with no field list would render a form with nothing on it.
+    
     for (const cat of Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]) {
         if (!CATEGORY_META[cat].configKey) continue;
         assert(fieldsFor(cat).length > 0, `${cat} stores entries but has no fields`);
@@ -295,16 +286,16 @@ Deno.test("every saveable screen has form fields", () => {
 Deno.test("group hints say what the group is for", () => {
     for (const g of MENU_GROUPS) {
         assert(g.hint.length > 0, `${g.key} has no hint`);
-        // A hint that just repeats the label tells the reader nothing.
+        
         assert(g.hint.toLowerCase() !== g.label.toLowerCase(), `${g.key} hint is its label`);
     }
 });
-// ── the native list under a reference field ──────────────────────────────────
+
 
 Deno.test("every reference list says where its options came from", () => {
-    // The native box renders from `source`. A list that omits it produces a
-    // field with no summary at all, and the user is back to opening the
-    // dropdown to find out whether the list is even complete.
+    
+    
+    
     const list = listElements();
     assert(list.length > 0, "no elements to check");
     for (const o of list) {
@@ -332,9 +323,9 @@ Deno.test("the native list separates the game's elements from ours", () => {
 });
 
 Deno.test("an entry we made stays marked as ours even once it is registered", () => {
-    // Ours goes into the game registry on apply, so after the first apply the
-    // same element comes back from *both* sources. It must still be counted
-    // once, as ours — the mod's own list is the more useful of the two facts.
+    
+    
+    
     store.config = { version: 1, elements: [{ id: "Sand", name: "Our Sand" }] };
     try {
         const sand = listElements().filter((o) => o.value === "Sand");
@@ -346,8 +337,8 @@ Deno.test("an entry we made stays marked as ours even once it is registered", ()
 });
 
 Deno.test("an option with no source renders no box rather than a wrong count", () => {
-    // A hand-written option list (a fixed role list, say) has no origins. The
-    // box must stay silent instead of claiming "0 in the game".
+    
+    
     const handWritten = fieldsFor("energy")
         .flatMap((f) => (Array.isArray(f.options) ? f.options : []));
     for (const o of handWritten) {
@@ -359,15 +350,15 @@ Deno.test("an option with no source renders no box rather than a wrong count", (
     }
 });
 
-// ── 2. closed sets are pickers ───────────────────────────────────────────────
+
 
 Deno.test("linkedClearance is a select, not a text box", () => {
     assertEquals(field("structures", "linkedClearance")?.kind, "select");
 });
 
 Deno.test("linkedClearance offers exactly the two states the engine knows", () => {
-    // `=== "allOrNothing"` is the only comparison in the whole bundle, so any
-    // third option would be a value the engine treats as "not all or nothing".
+    
+    
     const opts = listLinkedClearance();
     assertEquals(opts.map((o) => o.value), ["", "allOrNothing"]);
 });
@@ -377,7 +368,7 @@ Deno.test("materialId is a select, not a free number", () => {
 });
 
 Deno.test("materialId offers only values the engine accepts", () => {
-    // obstacleBreakpoint is 100 and the ceiling is 150, so 101..149 or nothing.
+    
     for (const o of listMaterialIds()) {
         if (o.value === "") continue;
         const n = Number(o.value);
@@ -388,16 +379,16 @@ Deno.test("materialId offers only values the engine accepts", () => {
 
 Deno.test("materialId leads with the engine's own next-free id", () => {
     const opts = listMaterialIds();
-    // First is the "leave empty" escape; second is the recommendation.
+    
     assertEquals(opts[0].value, "");
     assert(opts[1].value === "101", `expected 101 as next-free, got ${opts[1].value}`);
     assert(opts[1].label.includes("next free"));
 });
 
 Deno.test("no multiselect falls back to free text", () => {
-    // The panel used to render a comma-separated input when the option list was
-    // empty. Reference fields must not accept typed ids, so every one of them
-    // needs a way to say "nothing to show yet".
+    
+    
+    
     const missing: string[] = [];
     for (const tab of Object.keys(CATEGORY_META)) {
         for (const f of fieldsFor(tab as never)) {
@@ -415,7 +406,7 @@ Deno.test("requires explains what to create when the list is empty", () => {
     );
 });
 
-// ── the two view-only screens ────────────────────────────────────────────────
+
 
 Deno.test("draws reports which structures use each draw function", () => {
     const cfg = {
@@ -428,25 +419,25 @@ Deno.test("draws reports which structures use each draw function", () => {
     };
     assertEquals(usageOf(cfg, "outline"), ["a", "b"]);
     assertEquals(usageOf(cfg, "hidden"), ["d"]);
-    // A structure that names nothing uses nothing. Counting it would report a
-    // "default" the config never asked for.
+    
+    
     assertEquals(usageOf(cfg, "default"), []);
 });
 
 Deno.test("draws flags a key this build does not know", () => {
-    // The case worth catching: a typo'd or stale draw key leaves a structure
-    // silently drawing the old way. The counts above only add up for keys we
-    // recognise, so the unknown ones have to be named outright.
+    
+    
+    
     assertEquals(unknownDrawKeys({ structures: [{ id: "a", drawKey: "outline" }] }), []);
     assertEquals(unknownDrawKeys({ structures: [{ id: "a", drawKey: "glowww" }] }), ["glowww"]);
-    // No structures at all is not a finding.
+    
     assertEquals(unknownDrawKeys({}), []);
     assertEquals(unknownDrawKeys({ structures: [{ id: "a" }] }), []);
 });
 
 Deno.test("every draw key the picker offers is one the draws screen explains", () => {
-    // The picker and the catalogue are two places that can drift. If the picker
-    // offers a key the screen cannot explain, the user picked a mystery.
+    
+    
     const picker = listDrawFunctions();
     for (const o of picker) {
         const d = DRAW_FUNCTIONS.find((x) => x.key === o.value);
@@ -462,24 +453,24 @@ Deno.test("every draw key the picker offers is one the draws screen explains", (
 });
 
 Deno.test("the Tooltips screen is the interactions screen, under Elements", () => {
-    // The engine's own word for this feature is "tooltip interactions" —
-    // `terrains.d.ts` says "Tooltip interactions shown for this terrain", and
-    // `InteractionStructureMetadata` is documented as "optional *tooltip*
-    // metadata". The old label, "Element ↔ structure", named one of the seven
-    // kinds and so misdescribed the other six.
+    
+    
+    
+    
+    
     assertEquals(CATEGORY_META.interactions.label, "Tooltips");
-    // It is not a menu chip of its own. It is drawn under Elements, because a
-    // tooltip is something an element has rather than a peer of one.
+    
+    
     const inMenu = MENU_GROUPS.filter((g) => g.categories.includes("interactions"));
     assertEquals(inMenu, [], "Tooltips must not be a menu chip again");
     assertEquals(attachedTo("elements"), ["interactions"], "Tooltips is not under Elements");
 });
 
 Deno.test("there is one screen named Tooltips, not two", () => {
-    // There used to be a view-only "Tooltips" tab collecting tooltip text from
-    // other screens, sitting alongside the real editor. Two screens with the
-    // same name is worse than neither: whichever one you meant, you had a
-    // fifty-fifty guess.
+    
+    
+    
+    
     const named = Object.entries(CATEGORY_META)
         .filter(([, m]) => m.label === "Tooltips")
         .map(([k]) => k);
@@ -487,10 +478,10 @@ Deno.test("there is one screen named Tooltips, not two", () => {
 });
 
 Deno.test("the view-only Custom draw screen owns no storage and no fields", () => {
-    // It explains the draw functions and reports which structures use them. A
-    // configKey here would mean the panel rendered a list and a form, and
-    // "+ New" would create entries the engine never reads — unlike Tooltips,
-    // which has a real editor to merge into, because an interaction is data.
+    
+    
+    
+    
     assertEquals(
         CATEGORY_META.draws.configKey,
         undefined,
@@ -501,9 +492,9 @@ Deno.test("the view-only Custom draw screen owns no storage and no fields", () =
 });
 
 Deno.test("the Custom draw screen renders headlessly", () => {
-    // The screen tests cover json/handlers/help/map. This one was added later
-    // and was blank in the panel until then; the regression worth guarding is
-    // "falls through to the generic list and renders nothing".
+    
+    
+    
     const seen: string[] = [];
     const h = (tag: string, _props: unknown, ..._kids: unknown[]) => {
         seen.push(String(tag));
@@ -517,9 +508,9 @@ Deno.test("the Custom draw screen renders headlessly", () => {
 });
 
 Deno.test("no select is left with an empty or missing list", () => {
-    // An empty `options` array is a picker that shows nothing. It reads as a
-    // broken control rather than as "there is nothing to pick yet", so it has
-    // to fail here rather than in front of someone mid-build.
+    
+    
+    
     const empty: string[] = [];
     for (const cat of Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]) {
         for (const f of fieldsFor(cat as never)) {
@@ -531,15 +522,15 @@ Deno.test("no select is left with an empty or missing list", () => {
 });
 
 Deno.test("a select's list is either live or deliberately closed", () => {
-    // The two kinds of list, and the point of telling them apart: a *live* list
-    // reads the game or the config and must be a function, so it re-reads when
-    // the config changes. A *closed* list is a fixed set the engine defines —
-    // a build mode, an energy role, a behaviour kind — and being a literal is
-    // correct, because there is nothing to read.
-    //
-    // What is not fine is a literal list of ids. That is a snapshot of
-    // something live, and it will go stale the moment the game or the config
-    // moves, with nothing to notice.
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const SNAPSHOT = /^(md-my-hown-mod:|mdmy\.)/;
     const bad: string[] = [];
     let live = 0;
@@ -562,35 +553,23 @@ Deno.test("a select's list is either live or deliberately closed", () => {
         [],
         `closed lists must hold the engine's own values, never mod ids:\n${bad.join("\n")}`,
     );
-    // Sanity: both kinds exist, so the test above is not passing vacuously.
+    
     assert(live > 20, `only ${live} live lists — is the audit still looking at the right thing?`);
     assert(closed > 0, "no closed lists at all — the audit is not checking anything");
 });
 
-// ── the free-text audit, as an invariant rather than a one-time sweep ─────────
 
-/**
- * The `text` fields that are *allowed* to be free, and why.
- *
- * The rule the audit enforces is not "no text fields" — plenty of fields really
- * are free strings, and pretending otherwise would mean inventing broken
- * pickers for things the engine takes as arbitrary text. The rule is that a
- * reference-like field must be a picker, and a field that is genuinely free must
- * say so here, in one place, with a reason.
- *
- * Keyed `screen.key`. Adding a new free text box to a screen therefore fails
- * this test until somebody has decided whether it is a reference — which is the
- * whole point. A silent text box is how an id typo reaches the engine.
- */
+
+
 const ALLOWED_FREE_TEXT: Record<string, string> = {
-    // Names and labels. Free by definition.
+    
     "name": "a display name, not a reference",
     "nameKey": "an i18n key; the game looks it up in a translation table we cannot read",
     "description": "free prose shown to the player in the tooltip body",
     "descriptionKey": "an i18n key, the translatable form of the line above",
-    // A process's own one-liner. There is no list of descriptions to pick from, and
-    // the engine never reads it — it is shown in the Processes list so the author can
-    // tell two similarly-named programs apart.
+    
+    
+    
     "doc": "free prose about a process, shown in its list; the engine never reads it",
     "notes": "a note to yourself; the engine never reads this field at all",
     "displayName": "a plain label in the settings list, grouped by the field below",
@@ -598,42 +577,42 @@ const ALLOWED_FREE_TEXT: Record<string, string> = {
     "itemNameKey": "an i18n key for the item's name in the upgrade list",
     "upgradeNameKey": "an i18n key for the upgrade level's own name",
     "tipTextKey": "an i18n key for the element's hover text",
-    // Not a reference.
+    
     "idSuffix": "the mod builds the id from this; it is a name we are making up",
     "upgradeId": "the upgrade's own id within its item, not a pointer at anything",
     "category": "a settings heading; the game groups by string equality, " +
         "not by a registered category",
-    // Escape hatches for values the picker cannot enumerate. Each of these only
-    // appears when its paired select is set to `__custom__`.
+    
+    
     "currencyTypeCustom": "only shown when currencyType is `__custom__`; the " +
         "currency ids are a free string in the engine with no list API",
     "branchCustom": "only shown when branch is `__custom__`; same, no list API",
     "hookCustom": "only shown when hookId is `__custom__`; hooks are " +
         "namespace:verb strings with no registry",
-    // Genuinely unknowable.
+    
     "entities": "there is no entity registry to enumerate — the engine has no " +
         "list call for entity types, so a picker would be a guess",
     "runTickSharedBufferKey": "a shared-buffer key, which the mod invents when " +
         "it calls api.shared.buffers.ensure(key) — a buffer is created by naming " +
         "it, so there is no list of existing keys to pick from",
-    // The buffer tab's two. `path` is the same situation as the key above, one
-    // level down: a slot is created by naming its path, so the list of paths that
-    // exist is the mod's own Buffer tab — which this field *is*. A picker here
-    // would be the tab picking from itself, and the `buffers.bufferRead` action's
-    // own `path` option is where the cross-reference actually belongs.
+    
+    
+    
+    
+    
     "path": "an address inside the shared record; created by naming it, so there " +
         "is no list of existing paths to pick from",
-    // The seed value. It is a *value*, not a reference: "0", "true" and "hello" are
-    // all legal, and a picker of buffer contents would have to be a live view of
-    // the running mod to be any use. `type` is what constrains it, and the
-    // definition's own `validate` is what checks it.
+    
+    
+    
+    
     "default": "the value a slot starts at; constrained by `type`, not a reference",
 };
 
 Deno.test("every text field is a picker, or is on the free-text list", () => {
-    // The audit. A reference-like field left as a text box is how a typo'd id
-    // reaches the engine and fails silently in-game, so this fails loudly here
-    // instead.
+    
+    
+    
     const strays: string[] = [];
     for (const cat of Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]) {
         for (const f of fieldsFor(cat as never)) {
@@ -653,8 +632,8 @@ Deno.test("every text field is a picker, or is on the free-text list", () => {
 });
 
 Deno.test("the free-text list has no entries for fields that no longer exist", () => {
-    // The other direction. A stale entry would let a field be reintroduced as
-    // free text without anybody looking at it again.
+    
+    
     const live = new Set<string>();
     for (const cat of Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]) {
         for (const f of fieldsFor(cat as never)) live.add(f.key);
@@ -674,14 +653,14 @@ Deno.test("every free-text exemption is a real reason, not a shrug", () => {
 });
 
 Deno.test("a free-text field that names a category is a reference, not a label", () => {
-    // The one that actually bit. `upgrades.categoryId` was a text box whose own
-    // hint said it "must match a category registered with
-    // api.upgrades.registerCategory" — an instruction to go and look the id up
-    // somewhere else. It is a picker now.
+    
+    
+    
+    
     assertEquals(field("upgrades", "categoryId")?.kind, "select");
     const opts = listUpgradeCategoryIds();
-    // `tools` is the default every upgrade lands in when the field is left alone,
-    // so a picker that omitted it would send people hunting for it.
+    
+    
     assert(
         opts.some((o) => o.value === "tools"),
         "the default category is not offered",
@@ -693,9 +672,9 @@ Deno.test("a free-text field that names a category is a reference, not a label",
 });
 
 Deno.test("the category picker never writes its escape hatch into the config", () => {
-    // `__custom__` is a UI affordance, not an id. Writing it out would register
-    // an upgrade under a category literally named `__custom__`, which would
-    // fail at runtime in a way nothing in the panel could explain.
+    
+    
+    
     const entry = formToEntry("upgrades", {
         idSuffix: "u1",
         itemId: "anItem",
@@ -708,7 +687,7 @@ Deno.test("the category picker never writes its escape hatch into the config", (
         undefined,
         "the escape hatch leaked into the config",
     );
-    // And a real category still round-trips.
+    
     const ok = formToEntry("upgrades", {
         idSuffix: "u1",
         itemId: "anItem",
@@ -719,13 +698,13 @@ Deno.test("the category picker never writes its escape hatch into the config", (
     assertEquals((ok as { categoryId?: string }).categoryId, "tools");
 });
 
-// ── "what already exists", at the top of the panel ───────────────────────────
+
 
 Deno.test("only screens with something to enumerate get a native summary", () => {
-    // A recipe, a trigger or a signal is something the *mod* defines — there is
-    // nothing in the game to list before you have written one. Offering the
-    // section there would mean a box that opens onto "nothing", which is worse
-    // than no box: it implies the game might have some.
+    
+    
+    
+    
     const PANEL_NATIVES = natives;
     for (const key of Object.keys(PANEL_NATIVES)) {
         assert(CATEGORY_META[key as keyof typeof CATEGORY_META], `${key} is not a real screen`);
@@ -736,17 +715,17 @@ Deno.test("only screens with something to enumerate get a native summary", () =>
             `${key} has no in-game registry, so it must not claim a native list`,
         );
     }
-    // And the five that do have one are the ones that can be referenced by id.
+    
     for (const key of ["elements", "structures", "items", "terrains", "sprites"]) {
         assert(PANEL_NATIVES[key as keyof typeof PANEL_NATIVES], `${key} should list what exists`);
     }
 });
 
 Deno.test("every panel native list actually returns something", () => {
-    // A registered list that comes back empty is a silent no-op: the section
-    // simply never renders and nobody finds out why. Under the test stub only
-    // elements and terrains are populated, so this checks the wiring rather than
-    // the count.
+    
+    
+    
+    
     const PANEL_NATIVES = natives;
     for (const [key, list] of Object.entries(PANEL_NATIVES)) {
         const opts = list();
@@ -757,9 +736,9 @@ Deno.test("every panel native list actually returns something", () => {
             }
         }
     }
-    // The stub registers two elements, so the elements panel must have something
-    // to show. This is the check that would fail if `PANEL_NATIVES` pointed at
-    // the wrong function.
+    
+    
+    
     assert(
         PANEL_NATIVES.elements!().length > 0,
         "the elements panel has a live list but it came back empty",
@@ -767,8 +746,8 @@ Deno.test("every panel native list actually returns something", () => {
 });
 
 Deno.test("a panel native list counts the game and this mod separately", () => {
-    // The summary has to distinguish them, because the two answer different
-    // questions: "what does the game have" and "what have I already made".
+    
+    
     store.config = { version: 1, elements: [{ id: "mdmy.acid", name: "Acid" }] };
     try {
         const PANEL_NATIVES = natives;
@@ -777,8 +756,8 @@ Deno.test("a panel native list counts the game and this mod separately", () => {
         const mine = opts.filter((o) => o.source === "mod");
         assert(game.length > 0, "the game's own elements are not counted");
         assertEquals(mine.map((o) => o.value), ["mdmy.acid"]);
-        // Every option must be attributed to one side or the other, or the
-        // summary's two numbers would not add up to the total it displays.
+        
+        
         assertEquals(game.length + mine.length, opts.length);
     } finally {
         delete store.config;

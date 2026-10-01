@@ -1,15 +1,4 @@
-/**
- * The configuration's own shape, instance by instance.
- *
- * `graph.ts` draws the *types* — "a terrain can point at an element". This
- * draws the *data* — "this terrain, `md-my-hown-mod:sand`, points at
- * `md-my-hown-mod:water`". Different questions, so a different module: the Help
- * screen teaches the model, and this screen shows the user's own.
- *
- * Nodes are grouped into one column per kind, with every entry in that kind
- * stacked under it. The grouping is what makes it readable — twenty loose boxes
- * on a canvas is noise, twenty boxes in labelled columns is a picture.
- */
+
 import type { Tab } from "./schema.ts";
 import { CATEGORY_META } from "./schema.ts";
 import { RELATIONS } from "./relations.ts";
@@ -17,16 +6,16 @@ import { categoryColor } from "./graph.ts";
 import * as S from "./styles.ts";
 
 export interface InstanceNode {
-    /** The kind this entry belongs to. */
+    
     cat: Tab;
     id: string;
     x: number;
     y: number;
     w: number;
     h: number;
-    /** The column this entry sits in. */
+    
     col: number;
-    /** True when the entry is referenced by nothing at all. */
+    
     orphan: boolean;
 }
 
@@ -36,18 +25,18 @@ export interface InstanceEdge {
     toCat: Tab;
     toId: string;
     field: string;
-    /** True when the target id does not resolve to any entry. */
+    
     broken: boolean;
 }
 
 export interface InstanceMap {
-    /** One header per column, in column order. */
+    
     columns: { cat: Tab; label: string; count: number; x: number; y: number }[];
     nodes: InstanceNode[];
     edges: InstanceEdge[];
     width: number;
     height: number;
-    /** Entries that reference nothing, and are referenced by nothing. */
+    
     orphans: string[];
     brokenEdges: InstanceEdge[];
 }
@@ -58,7 +47,7 @@ const COL_GAP = 72;
 const ROW_GAP = 6;
 const HEAD_H = 34;
 const PAD = 12;
-/** Past this many entries in one kind, the column stops being useful. */
+
 const MAX_PER_COL = 24;
 
 function entriesOf(
@@ -74,7 +63,7 @@ function entriesOf(
     );
 }
 
-/** The kinds worth drawing, ordered so the layout is predictable. */
+
 const MAP_ORDER: Tab[] = [
     "elements",
     "structures",
@@ -98,13 +87,7 @@ const MAP_ORDER: Tab[] = [
     "modifiers",
 ];
 
-/**
- * Build the instance map.
- *
- * A reference to an id that is not in the config is drawn as a broken edge
- * rather than dropped: it is the whole reason to look at this screen, and
- * silently omitting it would hide the one thing worth seeing.
- */
+
 export function buildInstanceMap(cfg: Record<string, unknown>): InstanceMap {
     const present = new Set<Tab>();
     for (const cat of MAP_ORDER) {
@@ -191,13 +174,7 @@ export function buildInstanceMap(cfg: Record<string, unknown>): InstanceMap {
     };
 }
 
-/**
- * The same map as text.
- *
- * More useful here than for the type graph, because "which of my twenty
- * triggers is the broken one" is a question a text file answers instantly and a
- * screenshot does not.
- */
+
 export function instanceMapAsText(
     map: InstanceMap,
     cfg: Record<string, unknown>,
@@ -231,7 +208,7 @@ export function instanceMapAsText(
     return lines.join("\n");
 }
 
-// ── rendering ────────────────────────────────────────────────────────────────
+
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
 type Click = (key: string) => void;
@@ -239,19 +216,12 @@ type Click = (key: string) => void;
 export interface MapProps {
     h: H;
     cfg: Record<string, unknown>;
-    /** Jump to the screen that edits a kind. */
+    
     onGoTo: Click;
     onCopy: (text: string) => void;
 }
 
-/**
- * The Data screen's map of the user's own configuration.
- *
- * Deliberately a *different* picture from the Help screen's. Help draws the
- * model — every kind, whether or not the user has any of it. This draws the
- * data — one box per entry they actually made, in colour-coded columns, with
- * the links between them.
- */
+
 export function renderConfigMap(props: MapProps): unknown {
     const { h, cfg, onGoTo, onCopy } = props;
     const map = buildInstanceMap(cfg);
@@ -387,7 +357,7 @@ function orphanNote(h: H, map: InstanceMap): unknown {
     );
 }
 
-/** The colour key, so a box's colour means something. */
+
 function legend(h: H, map: InstanceMap, onGoTo: Click): unknown {
     return h(
         "div",
@@ -412,7 +382,7 @@ function legend(h: H, map: InstanceMap, onGoTo: Click): unknown {
     );
 }
 
-/** The map itself: one column per kind, one box per entry. */
+
 function drawMap(h: H, map: InstanceMap, onGoTo: Click): unknown {
     const byId = new Map(map.nodes.map((n) => [`${n.cat}:${n.id}`, n]));
 
@@ -512,7 +482,7 @@ function drawMap(h: H, map: InstanceMap, onGoTo: Click): unknown {
                 title: n.orphan ? `${n.id} — not referenced by anything` : `${n.id}`,
                 onClick: () => onGoTo(n.cat),
             },
-            // the namespace is noise once you know the mod; show the bare id
+            
             n.id.includes(":") ? n.id.split(":").slice(1).join(":") : n.id,
         )
     );

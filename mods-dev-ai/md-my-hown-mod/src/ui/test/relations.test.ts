@@ -1,15 +1,5 @@
-// @ts-nocheck
-/**
- * Keeps the hand-written relation table honest against the real forms.
- *
- * A relation row is a claim: "this field, on this category, points at that
- * kind of object". Left unchecked it drifts — a field gets renamed, a category
- * gets re-filed — and the Help screen starts confidently describing a field that
- * no longer exists. That is worse than having no Help screen, because it is
- * wrong and it looks authoritative.
- *
- * So every claim is checked against the live schema, not against a copy.
- */
+
+
 import { assert, assertEquals } from "jsr:@std/assert";
 
 globalThis.sandkit = {
@@ -60,13 +50,13 @@ Deno.test("every relation's field really exists in that category's form", () => 
 });
 
 Deno.test("a many-valued relation points at a field that can hold many", () => {
-    // The inverse mistake: declaring `many` for a field that holds a single id,
-    // which would make the live graph draw one edge where the data has one.
-    //
-    // Two shapes count as "many": controls that are natively multi-valued, and
-    // `json` fields declared as arrays. The json case is checked against
-    // `jsonType` rather than the kind alone, so a single-object json field still
-    // fails — otherwise the check would be toothless for half the table.
+    
+    
+    
+    
+    
+    
+    
     const MANY_KINDS = new Set(["multiselect", "shape", "terrainRules", "outputs"]);
     const canHoldMany = (f: { kind: string; jsonType?: string }) =>
         MANY_KINDS.has(f.kind) || (f.kind === "json" && f.jsonType === "array");
@@ -91,22 +81,9 @@ Deno.test("no duplicate from/field pairs", () => {
     assertEquals(dup, []);
 });
 
-/**
- * The guard that stops the graph rotting again.
- *
- * The table is hand-written, and a hand-written table is only ever as good as
- * the last time somebody remembered to update it — which is exactly how the
- * recipe and item edges went missing for so long. This asserts the *other*
- * direction: every field whose whole job is to name another kind of object must
- * appear in the table.
- *
- * A field qualifies when it offers a picker sourced from another category's
- * ids, which is the mechanical signature of a reference. That is deliberately a
- * different signal from the `Relation.note` text, so a claim can never be
- * justified by the thing it is claiming about.
- */
+
 const REFERENCE_LISTS = new Map<string, string>([
-    // resolver name -> the category whose ids it offers
+    
     ["listElements", "elements"],
     ["listStructures", "structures"],
     ["listItems", "items"],
@@ -116,14 +93,14 @@ const REFERENCE_LISTS = new Map<string, string>([
     ["listOutputTargets", "elements"],
     ["listProcessorKeys", "processing"],
     ["listDescribedProcessorKeys", "processing"],
-    // `listAnyHandlerKeys` / `listHandlerKeys` used to be filed here, pointing at
-    // the `handlers` tab. They name handlers, which are **code** — not ids owned by
-    // any category — so the rows never qualified and were skipped by the
-    // `ENTRY_TABS` guard below. They are gone rather than repointed: a table entry
-    // that can never match is worse than no entry, because it reads as coverage.
+    
+    
+    
+    
+    
 ]);
 
-/** Category tabs that own entries, so a reference into one makes sense. */
+
 const ENTRY_TABS = new Set([
     "elements",
     "structures",
@@ -151,19 +128,19 @@ Deno.test("every reference field is filed as a relation", () => {
     const missing: string[] = [];
 
     for (const tab of Object.keys(CATEGORY_META)) {
-        if (!CATEGORY_META[tab].configKey) continue; // browsers hold no entries
+        if (!CATEGORY_META[tab].configKey) continue; 
         for (const f of fieldsFor(tab)) {
             if (f.kind !== "select" && f.kind !== "multiselect") continue;
-            // The source text of the options, so a wrapped or inline resolver
-            // is still recognised. This reads the schema's own source rather
-            // than calling the resolver, because calling it needs a config and
-            // the claim here is about which field *is* a reference.
+            
+            
+            
+            
             const src = `${String(f.options ?? "")}`;
             for (const [fn, target] of REFERENCE_LISTS) {
                 if (!src.includes(fn)) continue;
-                // A field that offers a picker for its *own* category's ids is
-                // a self-reference at most (blockGridType, variants); those are
-                // legitimately absent from the table when they mean nothing.
+                
+                
+                
                 if (target === tab && !filed.has(`${tab}.${f.key}`)) continue;
                 if (!ENTRY_TABS.has(target)) continue;
                 const key = `${tab}.${f.key}`;
@@ -184,9 +161,9 @@ Deno.test("every reference field is filed as a relation", () => {
 });
 
 Deno.test("every relation has a note that explains it in plain words", () => {
-    // A relation with no note still draws an edge, so the user sees a link whose
-    // meaning they have to guess at. That is the failure mode this table was
-    // built to avoid.
+    
+    
+    
     const terse = RELATIONS.filter((r) => (r.note ?? "").trim().length < 25)
         .map((r) => `${r.from}.${r.field} → ${r.to}`);
     assertEquals(terse, [], `relations with no usable explanation: ${terse.join(", ")}`);
@@ -213,10 +190,10 @@ Deno.test("relationsOf and targetsOf agree with the table", () => {
 });
 
 Deno.test("required relations are the ones the engine actually requires", () => {
-    // A spot-check on the three that matter most, all confirmed against the
-    // engine's register bodies during the audit: the engine reads
-    // `structureType` unconditionally in `processing`, `itemId` is the subject
-    // of every upgrade, and a signal with no `target` has nothing to fire from.
+    
+    
+    
+    
     const required = RELATIONS.filter((r) => r.strength === "required")
         .map((r) => `${r.from}.${r.field}`);
     for (
