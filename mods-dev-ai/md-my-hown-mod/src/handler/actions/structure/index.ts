@@ -637,41 +637,6 @@ interface StructureOptions {
  * these are ✓ Main / — Worker, so on a worker thread they are genuinely absent and
  * `typeof x !== "function"` is the correct test rather than a paranoid one.
  */
-interface StructuresApi {
-    getAtCell?: (x: number, y: number) => StructureRecord | null;
-    hasBuiltAtCell?: (x: number, y: number) => boolean;
-    isTypeAtCell?: (x: number, y: number, ref: string | number) => boolean;
-    isType?: (structure: StructureRecord, ref: string) => boolean;
-    isBlockedByPlayerAtCell?: (x: number, y: number) => boolean;
-    isLauncherAtCell?: (x: number, y: number) => boolean;
-    buildAtCell?: (x: number, y: number, ref: string, options?: unknown) => void;
-    removeAtCell?: (x: number, y: number, options?: unknown) => void;
-    removeAtCells?: (positions: Vector2[], options?: unknown) => void;
-    update?: (structure: StructureRecord, options?: unknown) => void;
-    updateData?: (
-        structure: StructureRecord,
-        partial: Record<string, unknown>,
-        options?: unknown,
-    ) => void;
-    setSpritesheetIndex?: (structure: StructureRecord, index: number) => void;
-    setSpritesheetIndexAtCell?: (x: number, y: number, index: number) => void;
-    setSpritesheetIndexByValue?: (
-        structure: StructureRecord,
-        value: number,
-        thresholds: number[],
-    ) => void;
-    setSpritesheetIndexByValueAtCell?: (
-        x: number,
-        y: number,
-        value: number,
-        thresholds: number[],
-    ) => void;
-    mapValueToSpritesheetIndex?: (value: number, thresholds: number[]) => number;
-    processing?: {
-        isEnabledAtCell?: (x: number, y: number) => boolean;
-        setEnabledAtCell?: (x: number, y: number, enabled: boolean) => boolean;
-    };
-}
 
 /** A number, or `fallback`. `NaN` must never reach the engine: it is not a cell. */
 function num(value: unknown, fallback = 0): number {
@@ -690,9 +655,22 @@ function refOf(options: StructureOptions): string {
     return String(options.structure ?? "");
 }
 
+/**
+ * The `ns.structures` surface this family uses.
+ *
+ * Derived from the wrapper rather than re-declared. This used to be a local
+ * `StructuresApi` interface with every member optional, reached through
+ * `api?.structures as StructuresApi`. The cast asserted members the wrapper did
+ * not have, so the action compiled, the methods were `undefined` at run time, and
+ * every structure action quietly returned "nothing to do". Deriving the type from
+ * the wrapper makes the compiler check this file against the real surface, so the
+ * same drift cannot come back.
+ */
+type StructuresNamespace = typeof api.structures;
+
 /** `ns.structures`, or `null` on a thread that does not have it. */
-function structures(): StructuresApi | null {
-    return api?.structures as StructuresApi;
+function structures(): StructuresNamespace | null {
+    return api?.structures ?? null;
 }
 
 /**
@@ -732,7 +710,7 @@ function firstCell(
 
 /** The structure instance at a cell, or `null`. */
 function at(
-    ns: StructuresApi,
+    ns: StructuresNamespace,
     structure: StructureLike | null,
     options: StructureOptions,
     label: string,
@@ -795,7 +773,7 @@ function writeEach(
     structure: unknown,
     options: unknown,
     label: string,
-    act: (ns: StructuresApi, cell: { x: number; y: number }) => boolean,
+    act: (ns: StructuresNamespace, cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = (structure ?? null) as StructureLike | null;
     const ns = structures();

@@ -551,6 +551,215 @@ export const api = {
                 return false;
             }
         },
+        /** The structure record at a cell, or `null`. */
+        getAtCell(x: number, y: number): Record<string, unknown> | null {
+            try {
+                return g()?.api?.structures?.getAtCell?.(x, y) ?? null;
+            } catch (e) {
+                console.warn(`${LOG} structures.getAtCell failed`, x, y, e);
+                return null;
+            }
+        },
+        hasBuiltAtCell(x: number, y: number): boolean {
+            try {
+                return g()?.api?.structures?.hasBuiltAtCell?.(x, y) === true;
+            } catch (e) {
+                console.warn(`${LOG} structures.hasBuiltAtCell failed`, x, y, e);
+                return false;
+            }
+        },
+        /**
+         * Whether the cell holds this structure.
+         *
+         * The ref is widened to `string | number` for the same reason the terrain
+         * equivalent is: a handle that round-trips through a string bind comes
+         * back as digits, and retrying it as a number is the one case the action
+         * performs.
+         */
+        isTypeAtCell(x: number, y: number, ref: string | number): boolean {
+            try {
+                return g()?.api?.structures?.isTypeAtCell?.(x, y, ref) === true;
+            } catch (e) {
+                console.warn(`${LOG} structures.isTypeAtCell failed`, x, y, e);
+                return false;
+            }
+        },
+        /**
+         * Whether a structure **record** is of this type.
+         *
+         * Distinct from `isTypeAtCell`, which takes coordinates. A caller holding
+         * a record does not want to re-look-up the cell it came from.
+         */
+        isType(structure: unknown, ref: string): boolean {
+            try {
+                return g()?.api?.structures?.isType?.(structure, ref) === true;
+            } catch (e) {
+                console.warn(`${LOG} structures.isType failed`, ref, e);
+                return false;
+            }
+        },
+        isBlockedByPlayerAtCell(x: number, y: number): boolean {
+            try {
+                return g()?.api?.structures?.isBlockedByPlayerAtCell?.(x, y) === true;
+            } catch (e) {
+                console.warn(`${LOG} structures.isBlockedByPlayerAtCell failed`, x, y, e);
+                return false;
+            }
+        },
+        isLauncherAtCell(x: number, y: number): boolean {
+            try {
+                return g()?.api?.structures?.isLauncherAtCell?.(x, y) === true;
+            } catch (e) {
+                console.warn(`${LOG} structures.isLauncherAtCell failed`, x, y, e);
+                return false;
+            }
+        },
+        buildAtCell(x: number, y: number, ref: string, options?: unknown): void {
+            try {
+                g()?.api?.structures?.buildAtCell?.(x, y, ref, options);
+            } catch (e) {
+                console.warn(`${LOG} structures.buildAtCell failed`, x, y, e);
+            }
+        },
+        removeAtCell(x: number, y: number, options?: unknown): void {
+            try {
+                g()?.api?.structures?.removeAtCell?.(x, y, options);
+            } catch (e) {
+                console.warn(`${LOG} structures.removeAtCell failed`, x, y, e);
+            }
+        },
+        /**
+         * Remove many cells in **one** call.
+         *
+         * Not a loop over `removeAtCell`: `removeStructures` is a single engine
+         * call, and a per-cell loop would both cost N calls and let the grid be
+         * observed mid-removal.
+         */
+        removeAtCells(positions: { x: number; y: number }[], options?: unknown): void {
+            try {
+                g()?.api?.structures?.removeAtCells?.(positions, options);
+            } catch (e) {
+                console.warn(`${LOG} structures.removeAtCells failed`, positions.length, e);
+            }
+        },
+        update(structure: unknown, options?: unknown): void {
+            try {
+                g()?.api?.structures?.update?.(structure, options);
+            } catch (e) {
+                console.warn(`${LOG} structures.update failed`, e);
+            }
+        },
+        updateData(
+            structure: unknown,
+            partial: Record<string, unknown>,
+            options?: unknown,
+        ): void {
+            try {
+                g()?.api?.structures?.updateData?.(structure, partial, options);
+            } catch (e) {
+                console.warn(`${LOG} structures.updateData failed`, e);
+            }
+        },
+        setSpritesheetIndex(structure: unknown, index: number): void {
+            try {
+                g()?.api?.structures?.setSpritesheetIndex?.(structure, index);
+            } catch (e) {
+                console.warn(`${LOG} structures.setSpritesheetIndex failed`, e);
+            }
+        },
+        setSpritesheetIndexAtCell(x: number, y: number, index: number): void {
+            try {
+                g()?.api?.structures?.setSpritesheetIndexAtCell?.(x, y, index);
+            } catch (e) {
+                console.warn(`${LOG} structures.setSpritesheetIndexAtCell failed`, x, y, e);
+            }
+        },
+        setSpritesheetIndexByValue(
+            structure: unknown,
+            value: number,
+            thresholds: number[],
+        ): void {
+            try {
+                g()?.api?.structures?.setSpritesheetIndexByValue?.(
+                    structure,
+                    value,
+                    thresholds,
+                );
+            } catch (e) {
+                console.warn(`${LOG} structures.setSpritesheetIndexByValue failed`, e);
+            }
+        },
+        setSpritesheetIndexByValueAtCell(
+            x: number,
+            y: number,
+            value: number,
+            thresholds: number[],
+        ): void {
+            try {
+                g()?.api?.structures?.setSpritesheetIndexByValueAtCell?.(
+                    x,
+                    y,
+                    value,
+                    thresholds,
+                );
+            } catch (e) {
+                console.warn(`${LOG} structures.setSpritesheetIndexByValueAtCell failed`, e);
+            }
+        },
+        mapValueToSpritesheetIndex(value: number, thresholds: number[]): number {
+            try {
+                return g()?.api?.structures?.mapValueToSpritesheetIndex?.(
+                    value,
+                    thresholds,
+                ) as number;
+            } catch (e) {
+                console.warn(`${LOG} structures.mapValueToSpritesheetIndex failed`, e);
+                return 0;
+            }
+        },
+        /**
+         * The per-structure processing sub-namespace.
+         *
+         * `register` is Main-only and the two readers are not, which is why they
+         * live in one object rather than being split — the engine groups them, and
+         * a caller reaching for "the processing API" should not have to know that.
+         */
+        processing: {
+            register(structureType: string | number, def: Record<string, unknown>): void {
+                try {
+                    const st = resolveStructureType(structureType);
+                    g()?.api?.structures?.processing?.register?.(st, def);
+                } catch (e) {
+                    console.error(`${LOG} structures.processing.register failed`, e);
+                }
+            },
+            /**
+             * Whether processing is enabled at a cell.
+             *
+             * Main-only, so genuinely absent on a worker; returns the engine's
+             * own "not here" value rather than a plausible-looking one.
+             */
+            isEnabledAtCell(x: number, y: number): boolean {
+                try {
+                    return g()?.api?.structures?.processing?.isEnabledAtCell?.(x, y) === true;
+                } catch (e) {
+                    console.warn(`${LOG} structures.processing.isEnabledAtCell failed`, e);
+                    return false;
+                }
+            },
+            setEnabledAtCell(x: number, y: number, enabled: boolean): boolean {
+                try {
+                    return g()?.api?.structures?.processing?.setEnabledAtCell?.(
+                        x,
+                        y,
+                        enabled,
+                    ) === true;
+                } catch (e) {
+                    console.warn(`${LOG} structures.processing.setEnabledAtCell failed`, e);
+                    return false;
+                }
+            },
+        },
         register(def: StructureConfig): void {
             try {
                 const { registerOptions, ...body } = normalizeStructure(def);
@@ -571,16 +780,6 @@ export const api = {
                     g()?.api?.structures?.recipes?.register?.(st, recipe);
                 } catch (e) {
                     console.error(`${LOG} structures.recipes.register failed`, e);
-                }
-            },
-        },
-        processing: {
-            register(structureType: string | number, def: Record<string, unknown>): void {
-                try {
-                    const st = resolveStructureType(structureType);
-                    g()?.api?.structures?.processing?.register?.(st, def);
-                } catch (e) {
-                    console.error(`${LOG} structures.processing.register failed`, e);
                 }
             },
         },
