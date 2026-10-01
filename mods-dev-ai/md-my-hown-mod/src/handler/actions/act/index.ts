@@ -30,7 +30,7 @@
  * @module
  */
 import { anchorFor } from "../../core/cell-region.ts";
-import { defineActions, hostNs } from "../../core/types.ts";
+import { api, defineActions } from "../../core/types.ts";
 
 /** The parts of `StructureProcessingContext` the ACT actions use. */
 export interface ProcessingContext {
@@ -129,7 +129,7 @@ export const actActions = defineActions({
                 return;
             }
             try {
-                const grid = hostNs("grid");
+                const grid = api?.grid;
                 grid?.excavateAtCell?.(
                     at.x,
                     at.y,
@@ -170,8 +170,8 @@ export const actActions = defineActions({
                 // `createBlueprintFromId` is the documented way to get one. The
                 // launch direction is an **angle in radians**, not a vector, so it
                 // is derived rather than passed through.
-                const api = hostNs("projectiles");
-                const blueprint = api?.createBlueprintFromId?.(o.projectileId);
+                const projectiles = api?.projectiles;
+                const blueprint = projectiles?.createBlueprintFromId?.(o.projectileId);
                 if (!blueprint) {
                     console.warn(
                         `[md-my-hown-mod:act] itemShoot: no projectile registered as ` +
@@ -185,7 +185,7 @@ export const actActions = defineActions({
                 // velocity therefore still fires, along +x, instead of dividing
                 // by zero or producing NaN.
                 const angle = vx === 0 && vy === 0 ? 0 : Math.atan2(vy, vx);
-                api?.spawnAtWorld?.(at.x, at.y, angle, blueprint);
+                projectiles?.spawnAtWorld?.(at.x, at.y, angle, blueprint);
             } catch (e) {
                 console.warn("[md-my-hown-mod:act] shoot failed", e);
             }

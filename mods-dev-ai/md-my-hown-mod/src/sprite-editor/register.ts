@@ -7,7 +7,7 @@
  *   2. load(id, blob: URL created from the same bytes)
  * and verifies with `sprites.getById(id)` when that method exists.
  */
-import { api, getSandkit } from "../api.ts";
+import { api as skApi } from "../packages/mysandkit.ts";
 import { LOG } from "../constants.ts";
 import { dataUrlToBlob } from "./codec.ts";
 
@@ -22,7 +22,7 @@ export interface RegisterResult {
 const blobUrls = new Map<string, string>();
 
 function spritesApi(): any {
-    return (getSandkit()?.api ?? api)?.sprites;
+    return skApi.sprites.namespace();
 }
 
 function isLoaded(sprites: any, id: string): boolean {

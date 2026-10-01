@@ -36,7 +36,8 @@
  * @module
  */
 import { cellAt, cellsOf, footprint, type ShapeMatrix } from "./cell-region.ts";
-import { hostNs } from "./types.ts";
+
+import { api } from "./types.ts";
 import type { CallSite } from "./types.ts";
 
 /** One seed, and where the engine really gets it from. */
@@ -286,7 +287,7 @@ function footprintSeeds(structure: unknown): Record<string, unknown> {
         // `getDefinitionByType` takes a **type ref**, which is what `structure.type`
         // is. Guarded on both the namespace and the function, because a worker
         // registration can reach seeding without the structures API being present.
-        const lookup = hostNs("structures")?.getDefinitionByType;
+        const lookup = api?.structures?.getDefinitionByType;
         if (typeof lookup === "function" && type !== undefined) {
             shape = lookup(type)?.shape as ShapeMatrix | undefined;
         }

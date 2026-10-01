@@ -168,6 +168,136 @@ export const api = {
                 return undefined;
             }
         },
+        /**
+         * The element type at a cell, as a **number**.
+         *
+         * The engine's signature is `getResolvedTypeAtCell(x, y): number`
+         * (`elements.d.ts:71`), and the number is the *registered* type, not the
+         * id string — an id-registered element and its type resolve to the same
+         * number. So "is this a wall?" compares numbers, and a caller that wants
+         * a name goes through `getIdByType`. Do not expect a string here.
+         *
+         * Wrapped because the actions needing this run on the worker thread,
+         * where an uncaught throw takes the whole structure down.
+         */
+        getResolvedTypeAtCell(x: number, y: number): number | undefined {
+            try {
+                return g()?.api?.elements?.getResolvedTypeAtCell?.(x, y);
+            } catch (e) {
+                console.warn(`${LOG} elements.getResolvedTypeAtCell failed`, x, y, e);
+                return undefined;
+            }
+        },
+        /** The raw (unresolved) type at a cell, or `null` for an empty one. */
+        getTypeAtCell(x: number, y: number): number | null {
+            try {
+                return g()?.api?.elements?.getTypeAtCell?.(x, y) ?? null;
+            } catch (e) {
+                console.warn(`${LOG} elements.getTypeAtCell failed`, x, y, e);
+                return null;
+            }
+        },
+        /** The registered type for an element id, mirroring the engine's `TElementType | null`. */
+        getTypeFromId(id: string): number | null {
+            try {
+                return g()?.api?.elements?.getTypeFromId?.(id) ?? null;
+            } catch (e) {
+                console.warn(`${LOG} elements.getTypeFromId failed`, id, e);
+                return null;
+            }
+        },
+        /** Whether the cell holds exactly this type — a number compare, not a name compare. */
+        isTypeAtCell(x: number, y: number, type: number): boolean {
+            try {
+                return g()?.api?.elements?.isTypeAtCell?.(x, y, type) === true;
+            } catch (e) {
+                console.warn(`${LOG} elements.isTypeAtCell failed`, x, y, e);
+                return false;
+            }
+        },
+    },
+    /**
+     * Grid reads, and the deferred-write batch.
+     *
+     * `mutate` is not optional in the engine's view: main-entry grid writes are
+     * deferred, so a read+write pair that skips it never observes its own write
+     * landing. It is wrapped only to contain a throw from the call *into* the
+     * host — a throw inside `fn` is the engine's, and still propagates.
+     */
+    grid: {
+        /**
+         * Whether a cell holds neither element nor terrain.
+         *
+         * Optional in the engine's own declaration (`isCellEmptyAtCell?`), so this
+         * answers `undefined` — not `false` — when the host predates it. The
+         * distinction is load-bearing: callers use this to decide "is it safe to
+         * write here", and a fabricated `false` would block a write that is fine.
+         */
+        isCellEmptyAtCell(x: number, y: number): boolean | undefined {
+            try {
+                return g()?.api?.grid?.isCellEmptyAtCell?.(x, y);
+            } catch (e) {
+                console.warn(`${LOG} grid.isCellEmptyAtCell failed`, x, y, e);
+                return undefined;
+            }
+        },
+        isTerrainAtCell(x: number, y: number): boolean {
+            try {
+                return g()?.api?.grid?.isTerrainAtCell?.(x, y) === true;
+            } catch (e) {
+                console.warn(`${LOG} grid.isTerrainAtCell failed`, x, y, e);
+                return false;
+            }
+        },
+        reportActivityAtCell(x: number, y: number): void {
+            try {
+                g()?.api?.grid?.reportActivityAtCell?.(x, y);
+            } catch (e) {
+                console.warn(`${LOG} grid.reportActivityAtCell failed`, x, y, e);
+            }
+        },
+        mutate(fn: (writer: unknown) => void): void {
+            try {
+                g()?.api?.grid?.mutate?.(fn);
+            } catch (e) {
+                console.warn(`${LOG} grid.mutate failed`, e);
+            }
+        },
+    },
+    /**
+     * Terrain reads.
+     *
+     * `getDataAtCell` answers the terrain's data object, whose hit points live
+     * under `hitPoints` — older payloads spell it `hp`. Callers wanting a number
+     * should take {@link getHitPointsAtCell} rather than repeating that two-key
+     * dance at every site.
+     */
+    terrains: {
+        getDataAtCell(x: number, y: number): Record<string, unknown> | null {
+            try {
+                return (g()?.api?.terrains?.getDataAtCell?.(x, y) as
+                    | Record<string, unknown>
+                    | null
+                    | undefined) ?? null;
+            } catch (e) {
+                console.warn(`${LOG} terrains.getDataAtCell failed`, x, y, e);
+                return null;
+            }
+        },
+        /**
+         * Hit points at a cell, or `0`.
+         *
+         * `0` rather than `undefined` on failure: a caller summing hit points
+         * across cells wants something to add, and a cell with no terrain
+         * genuinely contributes nothing to that sum.
+         */
+        getHitPointsAtCell(x: number, y: number): number {
+            const data = api.terrains.getDataAtCell(x, y) as
+                | { hitPoints?: unknown; hp?: unknown }
+                | null;
+            const hp = data?.hitPoints ?? data?.hp;
+            return typeof hp === "number" ? hp : 0;
+        },
     },
     /**
      * The only route from a mod structure into the build menu.

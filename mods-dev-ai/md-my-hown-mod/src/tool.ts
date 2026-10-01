@@ -21,7 +21,8 @@
  * alternative is a half-torn-down screen that is still on screen and no longer
  * able to save.
  */
-import { api, getSandkit, h, React, safe, toast } from "./api.ts";
+import { getSandkit, h, React, safe, toast } from "./api.ts";
+import { api as skApi } from "./packages/mysandkit.ts";
 import { LOG, MOD_ID, OVERLAY_ID, SETTINGS, TOOL_NAME } from "./constants.ts";
 import { readSettings } from "./packages/modkit.ts";
 import { ConfiguratorPanel } from "./ui/panel.ts";
@@ -34,7 +35,7 @@ export function mountPanel(): void {
     mounted = true;
 
     const sk = getSandkit();
-    const a = sk?.api ?? api;
+    const a = skApi.raw;
     if (!a) {
         console.error(`${LOG} sandkit.api missing — panel unavailable`, {
             hasDeclare: typeof sk !== "undefined",

@@ -13,7 +13,7 @@
  * @module
  */
 
-import { hostNs } from "./types.ts";
+import { api } from "./types.ts";
 
 /** One cell. `x`/`y` are absolute **grid** cells, never matrix coordinates. */
 export interface Cell {
@@ -186,7 +186,7 @@ function coord(value: unknown): number | undefined {
  * origin" is how a process ends up writing to the top-left corner of the map and
  * reporting success — so the caller gets `source: "none"` and must refuse.
  *
- * The cursor lookup is guarded twice: `hostNs` for a missing namespace, and a `try` for
+ * The cursor lookup is guarded twice: `api` for a missing namespace, and a `try` for
  * a host that throws on a call it cannot serve. An anchor is on the path of every cell
  * action, so it must not be the thing that takes down a tick.
  */
@@ -196,7 +196,7 @@ export function anchorFor(payload: unknown): Anchor {
     if (x !== undefined && y !== undefined) return { x, y, source: "payload" };
 
     try {
-        const cursor = hostNs("input")?.getMouseCellPosition?.();
+        const cursor = api?.input?.getMouseCellPosition?.();
         const cx = coord(readProp(cursor, "x"));
         const cy = coord(readProp(cursor, "y"));
         if (cx !== undefined && cy !== undefined) return { x: cx, y: cy, source: "cursor" };

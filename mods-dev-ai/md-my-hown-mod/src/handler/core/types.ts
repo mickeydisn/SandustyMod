@@ -163,6 +163,8 @@ export type HandlerActionFn = (
  * instead of a TypeError — the difference between an action that no-ops and one
  * that throws mid-process.
  */
+export { api } from "../../packages/mysandkit.ts";
+
 export function hostApi(): Record<string, unknown> | undefined {
     // The injected parameter. Present in the real mod scope; absent in a worker
     // test, hence the guard rather than a bare reference.

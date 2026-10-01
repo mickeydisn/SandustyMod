@@ -122,10 +122,10 @@ Deno.test("the four classes partition the catalogue with the measured counts", (
     //     what the class is supposed to mean. The `total` moved 84 → 87 because
     //     three actions were genuinely added, not because any axis shifted.
     //   `api` 57 → 59 with `readDataField` and `writeDataField`, the element data
-    //     slots, and only that class moves. They resolve `hostNs("elements")` the
+    //     slots, and only that class moves. They resolve `api?.elements` the
     //     same way the motion family does, so the probe sees the namespace — and
     //     the reason it is worth saying is that the *first* draft of these two
-    //     measured `self-sufficient`: the `hostNs` call sat **after** the slot
+    //     measured `self-sufficient`: the `api` read sat **after** the slot
     //     validation, so an action that rejected a bad slot returned before ever
     //     reaching it. Moving the lookup above the checks is what makes the
     //     measurement true, and the ordering is now load-bearing rather than

@@ -13,7 +13,7 @@
  *   - The session (pixels + undo + view) is a plain object owned by the caller,
  *     so closing/reopening the overlay never loses work.
  */
-import { api, React as HostReact } from "../api.ts";
+import { React as HostReact } from "../api.ts";
 import { docToDataUrl, downloadDataUrl } from "./codec.ts";
 import {
     CELL,
@@ -115,7 +115,7 @@ let _Editor: any = null;
 /** Component factory (memoised so the component identity is stable). */
 export function getSpriteEditor(): (props: EditorProps) => any {
     if (_Editor) return _Editor;
-    const React: any = HostReact ?? (api as any)?.react;
+    const React: any = HostReact;
     if (!React) {
         console.error("[sprite-editor] sandkit.react unavailable");
         return (_Editor = () => null);

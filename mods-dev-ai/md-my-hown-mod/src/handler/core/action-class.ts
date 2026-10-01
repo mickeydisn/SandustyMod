@@ -191,8 +191,8 @@ export const ACTION_CLASSES: Record<string, HandlerActionClass> = {
     upgradeCountLevel: "self-sufficient",
     upgradeAdd: "self-sufficient",
     processorCount: "self-sufficient",
-    // Measured, and the measurement is the reason the `hostNs` call in these two
-    // actions comes **before** the option checks: the probe watches `hostNs`, so an
+    // Measured, and the measurement is the reason the `api` call in these two
+    // actions comes **before** the option checks: the probe watches `api`, so an
     // action that validated its slot and returned early would measure as reaching
     // nothing at all. `api`, exactly like `setVelocity` and the rest of the motion
     // family, which resolve the namespace the same way. The API axis below names

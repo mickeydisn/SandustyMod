@@ -15,7 +15,7 @@
  * one to a payload the engine will not read would be the worst kind of bug: it
  * compiles, it commits, it returns `true`, and nothing moves.
  *
- * So these go through `api.elements.*` instead. The cost is real and it is stated in
+ * So these go through `ns.elements.*` instead. The cost is real and it is stated in
  * every doc string here:
  *
  * 1. **Not atomic.** One call per cell. A footprint write is N independent writes.
@@ -28,9 +28,9 @@
  *
  * ## Which thread
  *
- * `api.structures.processing.register` is **Main-only** (availability matrix: Main ✓,
+ * `ns.structures.processing.register` is **Main-only** (availability matrix: Main ✓,
  * Worker —), and this mod ships **no** `workerEntry`, so every processor it registers
- * runs on Main. That is what makes `hostNs("elements")` reach the full namespace here
+ * runs on Main. That is what makes `api?.elements`` reach the full namespace here
  * at all. The official examples rely on the same thing: `06-smart-conveyor-filter.md`
  * calls `setVelocityAtCell` and `23-sandstorm-engine.md` calls
  * `addParticleVelocityAtCell` from inside `process()`.
@@ -40,7 +40,7 @@
  *
  * @module
  */
-import { defineActions, hostNs } from "../../core/types.ts";
+import { api, defineActions } from "../../core/types.ts";
 import { shapeSize } from "../../core/cell-region.ts";
 import { regionFor } from "../element/index.ts";
 
@@ -96,16 +96,16 @@ function flag(value: unknown): boolean {
 }
 
 /**
- * `api.elements`, or `undefined` on a thread that does not have it.
+ * `ns.elements`, or `undefined` on a thread that does not have it.
  *
- * `hostNs` returns an open record, so every member read here is optional-chained and
+ * `api` returns an open record, so every member read here is optional-chained and
  * `typeof`-checked at the call site. That is the same shape `feel/index.ts` uses
- * (`hostNs("ui")?.toast?.(…)`), and it is deliberate: naming the type would mean
- * writing `any` in this file, and the point of `hostNs` is that exactly one file in
+ * (`api?.ui`?.toast?.(…)`), and it is deliberate: naming the type would mean
+ * writing `any` in this file, and the point of `api` is that exactly one file in
  * the action system casts.
  */
 function elements() {
-    return hostNs("elements");
+    return api?.elements;
 }
 
 /** A velocity vector, from `vx`/`vy`. */
@@ -146,29 +146,29 @@ function regionCells(
 }
 
 /**
- * Call an `api.elements` method on every cell in the region, and report whether any
+ * Call an `ns.elements` method on every cell in the region, and report whether any
  * call happened.
  *
  * One helper for all four write actions, because the loop, the missing-namespace check
  * and the "nothing to do" answer are identical in each — and the per-cell nature of the
  * write is the part that must not accidentally be made to look atomic.
  *
- * `call` receives the namespace as the same open record `hostNs` returns rather than a
+ * `call` receives the namespace as the same open record `api` returns rather than a
  * named type. Naming it would put `any` in this file's signature, and the argument the
  * helper is given has to be able to hold the untyped namespace without re-declaring it.
  */
-// deno-lint-ignore no-explicit-any -- the parameter is `hostNs`'s return type verbatim.
+// deno-lint-ignore no-explicit-any -- the parameter is `api`'s return type verbatim.
 type ElementsNs = Record<string, any>;
 
 function overRegion(
     structure: unknown,
     options: unknown,
     label: string,
-    call: (api: ElementsNs, cell: { x: number; y: number }) => boolean,
+    call: (ns: ElementsNs, cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = (structure ?? null) as StructureLike | null;
-    const api = elements();
-    if (!s || !api) {
+    const ns = elements();
+    if (!s || !ns) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: this thread has no api.elements, so nothing ` +
                 "was changed",
@@ -177,7 +177,7 @@ function overRegion(
     }
     let touched = 0;
     for (const cell of regionCells(s, (options ?? {}) as MotionOptions, label)) {
-        if (call(api, cell)) touched++;
+        if (call(ns, cell)) touched++;
     }
     return touched > 0;
 }
@@ -211,11 +211,11 @@ export const motionActions = defineActions({
         fn: (structure, _context, options) => {
             try {
                 const s = (structure ?? null) as StructureLike | null;
-                const api = elements();
-                if (!s || !api?.getVelocityAtCell) return -1;
+                const ns = elements();
+                if (!s || !ns?.getVelocityAtCell) return -1;
                 const first = regionCells(s, (options ?? {}) as MotionOptions, "getVelocity")[0];
                 if (!first) return -1;
-                const v = api.getVelocityAtCell(first.x, first.y) as Vector2 | null | undefined;
+                const v = ns.getVelocityAtCell(first.x, first.y) as Vector2 | null | undefined;
                 if (!v) return -1;
                 return Math.hypot(num(v.x), num(v.y));
             } catch (e) {
@@ -245,14 +245,14 @@ export const motionActions = defineActions({
         fn: (structure, _context, options) => {
             try {
                 const s = (structure ?? null) as StructureLike | null;
-                const api = elements();
-                if (!s || !api?.findFreeCellInStructure) return -1;
+                const ns = elements();
+                if (!s || !ns?.findFreeCellInStructure) return -1;
                 const o = (options ?? {}) as MotionOptions;
                 const own = shapeSize(s.shape);
                 // An explicit `size` wins; otherwise the structure's own footprint, so a
                 // 4×4 machine looks for room inside its 4×4 rather than in its own cell.
                 const side = Math.max(1, Math.trunc(num(o.size, Math.max(own.width, own.height))));
-                const found = api.findFreeCellInStructure(
+                const found = ns.findFreeCellInStructure(
                     num(s.x),
                     num(s.y),
                     side,
@@ -282,9 +282,9 @@ export const motionActions = defineActions({
             "affects particles — use toParticle to turn a cell into one first.",
         fn: (structure, _context, options) => {
             const v = vectorOf((options ?? {}) as MotionOptions);
-            return overRegion(structure, options, "setVelocity", (api, cell) => {
-                if (typeof api.setVelocityAtCell !== "function") return false;
-                api.setVelocityAtCell(cell.x, cell.y, { x: v.x, y: v.y });
+            return overRegion(structure, options, "setVelocity", (ns, cell) => {
+                if (typeof ns.setVelocityAtCell !== "function") return false;
+                ns.setVelocityAtCell(cell.x, cell.y, { x: v.x, y: v.y });
                 return true;
             });
         },
@@ -299,12 +299,12 @@ export const motionActions = defineActions({
             const o = (options ?? {}) as MotionOptions;
             const v = vectorOf(o);
             const max = num(o.maxSpeed, 0);
-            return overRegion(structure, options, "addVelocity", (api, cell) => {
-                if (typeof api.addParticleVelocityAtCell !== "function") return false;
+            return overRegion(structure, options, "addVelocity", (ns, cell) => {
+                if (typeof ns.addParticleVelocityAtCell !== "function") return false;
                 // Omitted rather than passed as 0: the engine reads a present 0 as a
                 // real clamp and would stop the cell dead.
-                if (max > 0) api.addParticleVelocityAtCell(cell.x, cell.y, v, max);
-                else api.addParticleVelocityAtCell(cell.x, cell.y, v);
+                if (max > 0) ns.addParticleVelocityAtCell(cell.x, cell.y, v, max);
+                else ns.addParticleVelocityAtCell(cell.x, cell.y, v);
                 return true;
             });
         },
@@ -324,9 +324,9 @@ export const motionActions = defineActions({
             const o = (options ?? {}) as MotionOptions;
             const ticks = Math.max(0, Math.trunc(num(o.ticks)));
             const rearm = flag(o.rearm);
-            return overRegion(structure, options, "setDuration", (api, cell) => {
-                if (typeof api.setDurationAtCell !== "function") return false;
-                api.setDurationAtCell(cell.x, cell.y, ticks, { updateMax: rearm });
+            return overRegion(structure, options, "setDuration", (ns, cell) => {
+                if (typeof ns.setDurationAtCell !== "function") return false;
+                ns.setDurationAtCell(cell.x, cell.y, ticks, { updateMax: rearm });
                 return true;
             });
         },
@@ -348,8 +348,8 @@ export const motionActions = defineActions({
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             const o = (options ?? {}) as MotionOptions;
-            const api = elements();
-            if (!s || typeof api?.teleportBetweenCells !== "function") {
+            const ns = elements();
+            if (!s || typeof ns?.teleportBetweenCells !== "function") {
                 console.warn(
                     "[md-my-hown-mod:process] teleportElement: this thread has no " +
                         "teleportBetweenCells, so nothing moved",
@@ -362,7 +362,7 @@ export const motionActions = defineActions({
             if (dx === 0 && dy === 0) return false;
             const cells = regionCells(s, o, "teleportElement");
             for (const cell of cells) {
-                api.teleportBetweenCells(cell.x, cell.y, cell.x + dx, cell.y + dy);
+                ns.teleportBetweenCells(cell.x, cell.y, cell.x + dx, cell.y + dy);
             }
             return cells.length > 0;
         },
@@ -381,9 +381,9 @@ export const motionActions = defineActions({
             "what actually launches material — setVelocity alone will not move sand.",
         fn: (structure, _context, options) => {
             const v = vectorOf((options ?? {}) as MotionOptions);
-            return overRegion(structure, options, "toParticle", (api, cell) => {
-                if (typeof api.convertToParticleAtCell !== "function") return false;
-                api.convertToParticleAtCell(cell.x, cell.y, { x: v.x, y: v.y });
+            return overRegion(structure, options, "toParticle", (ns, cell) => {
+                if (typeof ns.convertToParticleAtCell !== "function") return false;
+                ns.convertToParticleAtCell(cell.x, cell.y, { x: v.x, y: v.y });
                 return true;
             });
         },

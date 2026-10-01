@@ -8,7 +8,7 @@
  *
  * ## Why this family cannot be atomic, and it is not the engine's fault
  *
- * The element family got a coherent write batch out of `api.grid.mutate`. Not available
+ * The element family got a coherent write batch out of `ns.grid.mutate`. Not available
  * here, and the reason is one type declaration (`grid.d.ts:147-150`):
  *
  * ```
@@ -19,7 +19,7 @@
  * ```
  *
  * The writer batches **elements and terrain only**. `buildAtCell`, `removeAtCell`,
- * `setEnabledAtCell` and `updateData` are per-instance calls on `api.structures`, and no
+ * `setEnabledAtCell` and `updateData` are per-instance calls on `ns.structures`, and no
  * writer exists for them. So this family is structurally identical to MOTION: one call
  * per cell, no transaction, reads that see the old value.
  *
@@ -33,13 +33,13 @@
  * `StructureProcessingContext` has **no** structure members. Its entire surface is
  * `getResolvedTypeAtCell`, `isCellEmptyAtCell`, `commit` and two deprecated aliases — all
  * about cells and elements. No `getStructureAtCell`, no `setEnabledAtCell`, nothing. Every
- * action here reaches `api.structures.*`, so every one measures `api` / scope `["pos"]`.
+ * action here reaches `ns.structures.*`, so every one measures `api` / scope `["pos"]`.
  * This is the cleanest classification in the catalogue: not a judgement call, the only
  * option.
  *
  * (The docs' prose for the processing section lists `isEnabledAtCell` and
  * `setEnabledAtCell` as context helpers. The **type** does not have them, and this family
- * follows the type — so enablement goes through `api.structures.processing`.)
+ * follows the type — so enablement goes through `ns.structures.processing`.)
  *
  * ## The type-handle trap, which is the sharpest edge here
  *
@@ -76,7 +76,7 @@
  *
  * @module
  */
-import { defineActions, hostNs } from "../../core/types.ts";
+import { api, defineActions } from "../../core/types.ts";
 import { MAX_SCAN_SIDE } from "../../core/cell-region.ts";
 import { regionFor } from "../element/index.ts";
 
@@ -122,13 +122,13 @@ export const structureSenseActions = defineActions({
             "an id by hand.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
-            if (!s || typeof api?.getAtCell !== "function") return "";
+            const ns = structures();
+            if (!s || typeof ns?.getAtCell !== "function") return "";
             const o = (options ?? {}) as StructureOptions;
             // Undeclared on the engine's `Structure` interface, so this read is the index
             // signature doing the work. Absent for a structure with no type handle, and
             // then there is nothing truthful to return but the empty string.
-            const type = at(api, s, o, "structureType")?.type;
+            const type = at(ns, s, o, "structureType")?.type;
             return type === undefined || type === null ? "" : String(type);
         },
     },
@@ -139,10 +139,10 @@ export const structureSenseActions = defineActions({
         doc: "True when a structure has been built at the cell. Bind it with As.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
-            if (!s || typeof api?.hasBuiltAtCell !== "function") return false;
+            const ns = structures();
+            if (!s || typeof ns?.hasBuiltAtCell !== "function") return false;
             const cell = firstCell(s, (options ?? {}) as StructureOptions, "hasStructure");
-            return cell ? api.hasBuiltAtCell(cell.x, cell.y) === true : false;
+            return cell ? ns.hasBuiltAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -173,17 +173,17 @@ export const structureSenseActions = defineActions({
             "a handle from Structure type.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
+            const ns = structures();
             const o = (options ?? {}) as StructureOptions;
             const want = refOf(o);
-            if (!s || !want || typeof api?.isTypeAtCell !== "function") return false;
+            if (!s || !want || typeof ns?.isTypeAtCell !== "function") return false;
             const cell = firstCell(s, o, "isStructureType");
             if (!cell) return false;
-            if (api.isTypeAtCell(cell.x, cell.y, want) === true) return true;
+            if (ns.isTypeAtCell(cell.x, cell.y, want) === true) return true;
             // A bind stringified a numeric handle on the way in. Retry as a number, and
             // only when the text is entirely digits — see the doc comment.
             if (!/^\d+$/.test(want)) return false;
-            return api.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
+            return ns.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
         },
     },
 
@@ -201,10 +201,10 @@ export const structureSenseActions = defineActions({
             "about the instance the process is running on.",
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
-            const api = structures();
+            const ns = structures();
             const want = refOf((options ?? {}) as StructureOptions);
-            if (!s || !want || typeof api?.isType !== "function") return false;
-            return api.isType(s, want) === true;
+            if (!s || !want || typeof ns?.isType !== "function") return false;
+            return ns.isType(s, want) === true;
         },
     },
 
@@ -214,11 +214,11 @@ export const structureSenseActions = defineActions({
         doc: "True when a player has blocked building at the cell.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
-            if (!s || typeof api?.isBlockedByPlayerAtCell !== "function") return false;
+            const ns = structures();
+            if (!s || typeof ns?.isBlockedByPlayerAtCell !== "function") return false;
             const o = (options ?? {}) as StructureOptions;
             const cell = firstCell(s, o, "isBlockedByPlayer");
-            return cell ? api.isBlockedByPlayerAtCell(cell.x, cell.y) === true : false;
+            return cell ? ns.isBlockedByPlayerAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -228,10 +228,10 @@ export const structureSenseActions = defineActions({
         doc: "True when the cell is a structure launcher.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
-            if (!s || typeof api?.isLauncherAtCell !== "function") return false;
+            const ns = structures();
+            if (!s || typeof ns?.isLauncherAtCell !== "function") return false;
             const cell = firstCell(s, (options ?? {}) as StructureOptions, "isLauncher");
-            return cell ? api.isLauncherAtCell(cell.x, cell.y) === true : false;
+            return cell ? ns.isLauncherAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -247,11 +247,11 @@ export const structureSenseActions = defineActions({
         doc: "True when processing is enabled at the cell. Bind it to gate later steps.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
-            if (!s || typeof api?.processing?.isEnabledAtCell !== "function") return false;
+            const ns = structures();
+            if (!s || typeof ns?.processing?.isEnabledAtCell !== "function") return false;
             const o = (options ?? {}) as StructureOptions;
             const cell = firstCell(s, o, "isStructureEnabled");
-            return cell ? api.processing.isEnabledAtCell(cell.x, cell.y) === true : false;
+            return cell ? ns.processing.isEnabledAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -272,12 +272,12 @@ export const structureSenseActions = defineActions({
             "before building.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
-            if (!s || typeof api?.hasBuiltAtCell !== "function") return 0;
+            const ns = structures();
+            if (!s || typeof ns?.hasBuiltAtCell !== "function") return 0;
             const o = (options ?? {}) as StructureOptions;
             let found = 0;
             for (const cell of regionCells(s, o, "countStructures")) {
-                if (api.hasBuiltAtCell(cell.x, cell.y)) found++;
+                if (ns.hasBuiltAtCell(cell.x, cell.y)) found++;
             }
             return found;
         },
@@ -299,11 +299,11 @@ export const structureSenseActions = defineActions({
             "with As. Returns the empty string when the key is absent.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
+            const ns = structures();
             const o = (options ?? {}) as StructureOptions;
             const key = String(o.key ?? "");
-            if (!s || !key || !api) return "";
-            const value = at(api, s, o, "structureData")?.data?.[key];
+            if (!s || !key || !ns) return "";
+            const value = at(ns, s, o, "structureData")?.data?.[key];
             return value === undefined || value === null ? "" : String(value);
         },
     },
@@ -316,7 +316,7 @@ export const structureActActions = defineActions({
      *
      * Main-only and per cell. Over a region this is N independent placements, so a
      * footprint can be half-built: the same non-atomicity as MOTION, for the same reason
-     * (there is no structures writer on `api.grid.mutate`).
+     * (there is no structures writer on `ns.grid.mutate`).
      */
     buildStructure: {
         role: "act",
@@ -327,9 +327,9 @@ export const structureActActions = defineActions({
                 console.warn("[md-my-hown-mod:process] buildStructure: no structure type set");
                 return false;
             }
-            return writeEach(structure, options, "buildStructure", (api, cell) => {
-                if (typeof api.buildAtCell !== "function") return false;
-                api.buildAtCell(cell.x, cell.y, want);
+            return writeEach(structure, options, "buildStructure", (ns, cell) => {
+                if (typeof ns.buildAtCell !== "function") return false;
+                ns.buildAtCell(cell.x, cell.y, want);
                 return true;
             });
         },
@@ -348,9 +348,9 @@ export const structureActActions = defineActions({
         doc: "Removes the structure at the cell. Use Remove structures to clear a whole " +
             "region in one call.",
         fn: (structure, _context, options) => {
-            return writeEach(structure, options, "removeStructure", (api, cell) => {
-                if (typeof api.removeAtCell !== "function") return false;
-                api.removeAtCell(
+            return writeEach(structure, options, "removeStructure", (ns, cell) => {
+                if (typeof ns.removeAtCell !== "function") return false;
+                ns.removeAtCell(
                     cell.x,
                     cell.y,
                     removalOptions((options ?? {}) as StructureOptions),
@@ -377,8 +377,8 @@ export const structureActActions = defineActions({
             "this to Remove structure over an area.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = structures();
-            if (!s || typeof api?.removeAtCells !== "function") {
+            const ns = structures();
+            if (!s || typeof ns?.removeAtCells !== "function") {
                 console.warn(
                     "[md-my-hown-mod:process] removeStructures: api.structures." +
                         "removeAtCells is not on this thread, so nothing was removed",
@@ -388,7 +388,7 @@ export const structureActActions = defineActions({
             const o = (options ?? {}) as StructureOptions;
             const positions = regionCells(s, o, "removeStructures");
             if (positions.length === 0) return false;
-            api.removeAtCells(positions, removalOptions(o));
+            ns.removeAtCells(positions, removalOptions(o));
             return true;
         },
     },
@@ -405,9 +405,9 @@ export const structureActActions = defineActions({
         doc: "Enables or disables processing at the cell.",
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
-            return writeEach(structure, options, "setStructureEnabled", (api, cell) => {
-                if (typeof api.processing?.setEnabledAtCell !== "function") return false;
-                api.processing.setEnabledAtCell(cell.x, cell.y, o.enabled === true);
+            return writeEach(structure, options, "setStructureEnabled", (ns, cell) => {
+                if (typeof ns.processing?.setEnabledAtCell !== "function") return false;
+                ns.processing.setEnabledAtCell(cell.x, cell.y, o.enabled === true);
                 return true;
             });
         },
@@ -427,15 +427,15 @@ export const structureActActions = defineActions({
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
             const frame = num(o.index, 0);
-            return writeEach(structure, options, "setSpritesheetIndex", (api, cell) => {
-                if (typeof api.setSpritesheetIndexAtCell === "function") {
-                    api.setSpritesheetIndexAtCell(cell.x, cell.y, frame);
+            return writeEach(structure, options, "setSpritesheetIndex", (ns, cell) => {
+                if (typeof ns.setSpritesheetIndexAtCell === "function") {
+                    ns.setSpritesheetIndexAtCell(cell.x, cell.y, frame);
                     return true;
                 }
-                if (typeof api.setSpritesheetIndex === "function") {
-                    const found = api.getAtCell?.(cell.x, cell.y) ?? null;
+                if (typeof ns.setSpritesheetIndex === "function") {
+                    const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
                     if (!found) return false;
-                    api.setSpritesheetIndex(found, frame);
+                    ns.setSpritesheetIndex(found, frame);
                     return true;
                 }
                 return false;
@@ -465,15 +465,15 @@ export const structureActActions = defineActions({
                 );
                 return false;
             }
-            return writeEach(structure, options, "setSpritesheetByValue", (api, cell) => {
-                if (typeof api.setSpritesheetIndexByValueAtCell === "function") {
-                    api.setSpritesheetIndexByValueAtCell(cell.x, cell.y, value, thresholds);
+            return writeEach(structure, options, "setSpritesheetByValue", (ns, cell) => {
+                if (typeof ns.setSpritesheetIndexByValueAtCell === "function") {
+                    ns.setSpritesheetIndexByValueAtCell(cell.x, cell.y, value, thresholds);
                     return true;
                 }
-                if (typeof api.setSpritesheetIndexByValue === "function") {
-                    const found = api.getAtCell?.(cell.x, cell.y) ?? null;
+                if (typeof ns.setSpritesheetIndexByValue === "function") {
+                    const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
                     if (!found) return false;
-                    api.setSpritesheetIndexByValue(found, value, thresholds);
+                    ns.setSpritesheetIndexByValue(found, value, thresholds);
                     return true;
                 }
                 return false;
@@ -505,11 +505,11 @@ export const structureActActions = defineActions({
                 console.warn("[md-my-hown-mod:process] setStructureData: no key set");
                 return false;
             }
-            return writeEach(structure, options, "setStructureData", (api, cell) => {
-                if (typeof api.updateData !== "function") return false;
-                const found = api.getAtCell?.(cell.x, cell.y) ?? null;
+            return writeEach(structure, options, "setStructureData", (ns, cell) => {
+                if (typeof ns.updateData !== "function") return false;
+                const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
                 if (!found) return false;
-                api.updateData(found, partial, {
+                ns.updateData(found, partial, {
                     propagateToWorkers: o.propagateToWorkers === true,
                 });
                 return true;
@@ -536,10 +536,10 @@ export const structureActActions = defineActions({
             "that edits the data bag in place.",
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
-            const api = structures();
-            if (!s || typeof api?.update !== "function") return false;
+            const ns = structures();
+            if (!s || typeof ns?.update !== "function") return false;
             const o = (options ?? {}) as StructureOptions;
-            api.update(s, { propagateToWorkers: o.propagateToWorkers === true });
+            ns.update(s, { propagateToWorkers: o.propagateToWorkers === true });
             return true;
         },
     },
@@ -565,12 +565,12 @@ export const structurePureActions = defineActions({
             "would pick. Thresholds are comma-separated, ascending.",
         fn: (_structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
-            const api = structures();
+            const ns = structures();
             const thresholds = thresholdsOf(o);
-            if (thresholds.length === 0 || typeof api?.mapValueToSpritesheetIndex !== "function") {
+            if (thresholds.length === 0 || typeof ns?.mapValueToSpritesheetIndex !== "function") {
                 return -1;
             }
-            const frame = api.mapValueToSpritesheetIndex(float(o.value2, 0), thresholds);
+            const frame = ns.mapValueToSpritesheetIndex(float(o.value2, 0), thresholds);
             return Number.isFinite(frame) ? num(frame, -1) : -1;
         },
     },
@@ -629,10 +629,10 @@ interface StructureOptions {
 }
 
 /**
- * The `api.structures` surface this family uses.
+ * The `ns.structures` surface this family uses.
  *
  * Declared rather than imported for the reason `ElementWriter` is: the engine's `.d.ts`
- * files are not in this mod's dependency graph, so `hostNs` gets a structural type. Every
+ * files are not in this mod's dependency graph, so `sk()` gets a structural type. Every
  * member is **optional**, and that is not hedging — it is the Main/Worker split. Most of
  * these are ✓ Main / — Worker, so on a worker thread they are genuinely absent and
  * `typeof x !== "function"` is the correct test rather than a paranoid one.
@@ -690,9 +690,9 @@ function refOf(options: StructureOptions): string {
     return String(options.structure ?? "");
 }
 
-/** `api.structures`, or `null` on a thread that does not have it. */
+/** `ns.structures`, or `null` on a thread that does not have it. */
 function structures(): StructuresApi | null {
-    return (hostNs("structures") as StructuresApi | null) ?? null;
+    return api?.structures as StructuresApi;
 }
 
 /**
@@ -732,15 +732,15 @@ function firstCell(
 
 /** The structure instance at a cell, or `null`. */
 function at(
-    api: StructuresApi,
+    ns: StructuresApi,
     structure: StructureLike | null,
     options: StructureOptions,
     label: string,
 ): StructureRecord | null {
-    if (typeof api.getAtCell !== "function") return null;
+    if (typeof ns.getAtCell !== "function") return null;
     const cell = firstCell(structure, options, label);
     if (!cell) return null;
-    return api.getAtCell(cell.x, cell.y) ?? null;
+    return ns.getAtCell(cell.x, cell.y) ?? null;
 }
 
 /** `StructureRemovalOptions` / `StructureBulkRemovalOptions`, from the booleans given. */
@@ -795,11 +795,11 @@ function writeEach(
     structure: unknown,
     options: unknown,
     label: string,
-    act: (api: StructuresApi, cell: { x: number; y: number }) => boolean,
+    act: (ns: StructuresApi, cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = (structure ?? null) as StructureLike | null;
-    const api = structures();
-    if (!s || !api) {
+    const ns = structures();
+    if (!s || !ns) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: api.structures is not on this thread, so ` +
                 "nothing was written",
@@ -809,7 +809,7 @@ function writeEach(
     const o = (options ?? {}) as StructureOptions;
     let wrote = false;
     for (const cell of regionCells(s, o, label)) {
-        if (act(api, cell)) wrote = true;
+        if (act(ns, cell)) wrote = true;
     }
     return wrote;
 }

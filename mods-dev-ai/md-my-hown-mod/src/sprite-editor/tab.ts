@@ -10,7 +10,8 @@
  * The open EditSession lives at module level: switching tab, minimising the
  * panel or deselecting the tool never loses pixels or undo history.
  */
-import { api, React as HostReact, toast } from "../api.ts";
+import { React as HostReact, toast } from "../api.ts";
+import { api as skApi } from "../packages/mysandkit.ts";
 import { addOrUpdateSprite } from "../config/store.ts";
 import { MOD_ID, type SpriteConfig } from "../constants.ts";
 import * as S from "../ui/styles.ts";
@@ -61,7 +62,7 @@ let _Tab: any = null;
 /** Memoised component (stable identity → stable hooks). */
 export function getDrawTab(): (props: { onChange?: () => void }) => any {
     if (_Tab) return _Tab;
-    const React: any = HostReact ?? (api as any)?.react;
+    const React: any = HostReact;
     if (!React) return (_Tab = () => null);
     const h = React.createElement.bind(React);
     const { useState, useRef } = React;
@@ -166,7 +167,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
         const editFileSprite = (e: SpriteConfig) => {
             const url = e.source
                 ? String(e.source)
-                : (api as any)?.assets?.getUrl?.(String(e.path)) ?? String(e.path);
+                : skApi.assets.getUrl(String(e.path)) ?? String(e.path);
             // same id + replaces => saving converts the file entry into an editable drawn one
             void openFromUrl(url, e.id, `asset ${e.path ?? e.id}`, e.id);
         };
@@ -174,7 +175,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
         const loadFromPath = () => {
             const p = pathIn.trim();
             if (!p) return;
-            const url = (api as any)?.assets?.getUrl?.(p) ?? p;
+            const url = skApi.assets.getUrl(p) ?? p;
             void openFromUrl(url, uniqueSpriteId(baseName(p)), p);
         };
 

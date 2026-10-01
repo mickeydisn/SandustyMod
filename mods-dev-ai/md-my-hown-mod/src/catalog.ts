@@ -1,7 +1,13 @@
 /**
  * Live catalogues for form pickers: game registries + this mod's stored config.
  */
-import { api, getSandkit, safe } from "./api.ts";
+// `getSandkit`/`safe` are host-free helpers. The api itself comes from
+// `mysandkit`, whose `api.*` members are resolved per call — this file used to
+// import `api` from here, but that export captured `sandkit.api` once at module
+// load, so a host injected later left every call below reading `undefined` and
+// the pickers silently rendering empty. See the note on `getSandkit`.
+import { getSandkit, safe } from "./api.ts";
+import { api as skApi } from "./packages/mysandkit.ts";
 import { configIsHidden, humanise } from "./constants.ts";
 import { loadConfig } from "./config/store.ts";
 import type { Tab } from "./ui/schema.ts";
@@ -106,9 +112,9 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
     const hidden = new Set<string>();
 
     // ── the live registry: the only source of real ids ──
-    const types = (safe(() => api.elements?.getRegisteredTypes?.()) ?? []) as number[];
+    const types = skApi.elements.getRegisteredTypes();
     for (const t of types) {
-        const def = safe(() => api.elements?.getDefinitionByType?.(t)) as
+        const def = skApi.elements.getDefinitionByType(t) as
             | {
                 id?: string;
                 name?: string;
@@ -119,7 +125,7 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
             | undefined;
         // `getIdByType` is the documented way from a type number to an id, and
         // unlike the enum name it is never a guess.
-        const id = def?.id ?? safe(() => api.elements?.getIdByType?.(t));
+        const id = def?.id ?? skApi.elements.getIdByType(t);
         if (!id) continue;
         if (def?.hidden === true) {
             hidden.add(String(id));
@@ -128,7 +134,7 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
             // see the note on `Opt.hidden`.
             if (!includeHidden) continue;
         }
-        const name = def?.name ?? safe(() => api.elements?.getNameByType?.(t)) ?? def?.nameKey ??
+        const name = def?.name ?? skApi.elements.getNameByType(t) ?? def?.nameKey ??
             id;
         map.set(String(id), {
             value: String(id),
@@ -146,7 +152,7 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
     for (const name of enumNames("ElementType")) {
         const type = enumValue("ElementType", name);
         if (type === undefined) continue;
-        const id = safe(() => api.elements?.getIdByType?.(type));
+        const id = skApi.elements.getIdByType(type);
         if (!id || map.has(String(id))) continue;
         if (hidden.has(String(id))) continue;
         map.set(String(id), { value: String(id), label: name, source: "game" });
@@ -243,21 +249,21 @@ export function listStructures(): Opt[] {
     // `structures.getAvailableTypes() -> Set<StructureRef>` and
     // `structures.getUnlockedTypes() -> Set<StructureRef>`. `getRegisteredTypes`
     // and `getAll` do not exist and stay as forward-looking probes.
-    const tryList = [
-        () => api.structures?.getRegisteredTypes?.(),
-        () => api.structures?.getAvailableTypes?.(),
-        () => api.structures?.getUnlockedTypes?.(),
-        () => api.structures?.getAll?.(),
+    const tryList: Array<() => unknown> = [
+        () => skApi.structures.getRegisteredTypes(),
+        () => skApi.structures.getAvailableTypes(),
+        () => skApi.structures.getUnlockedTypes(),
+        () => skApi.structures.getAll(),
     ];
     for (const fn of tryList) {
-        const raw = safe(fn as any);
+        const raw = safe(fn);
         if (!raw) continue;
         const arr = raw instanceof Set ? [...raw] : Array.isArray(raw) ? raw : [];
         for (const t of arr) {
             // A ref that is already a string id needs no resolution.
             if (typeof t === "string" && t) {
                 if (map.has(t)) continue;
-                const def = safe(() => api.structures?.getDefinitionByType?.(t)) as any;
+                const def = skApi.structures.getDefinitionByType(t);
                 map.set(t, {
                     value: t,
                     label: String(def?.name ?? def?.nameKey ?? t),
@@ -270,10 +276,10 @@ export function listStructures(): Opt[] {
                 });
                 continue;
             }
-            const def = safe(() => api.structures?.getDefinitionByType?.(t)) as any;
+            const def = skApi.structures.getDefinitionByType(t as number | string);
             const id = def?.id ??
-                safe(() => api.structures?.getIdByType?.(t)) ??
-                safe(() => api.structures?.getTypeName?.(t)) ??
+                skApi.structures.getIdByType(t as number) ??
+                skApi.structures.getTypeName(t as number) ??
                 String(t);
             const name = def?.name ?? def?.nameKey ?? id;
             map.set(String(id), {
@@ -315,12 +321,12 @@ export function listStructures(): Opt[] {
 export function listItems(): Opt[] {
     const map = new Map<string, Opt>();
     const tryList = [
-        () => api.items?.getRegistered?.(),
-        () => api.items?.getAll?.(),
-        () => api.items?.list?.(),
+        () => skApi.items.getRegistered(),
+        () => skApi.items.getAll(),
+        () => skApi.items.list(),
     ];
     for (const fn of tryList) {
-        const raw = safe(fn as any);
+        const raw = safe(fn);
         if (!raw) continue;
         const arr = Array.isArray(raw) ? raw : typeof raw === "object" ? Object.keys(raw) : [];
         for (const entry of arr) {
@@ -363,7 +369,7 @@ export function listTerrains(): Opt[] {
     for (const name of enumNames("CellType")) {
         const type = enumValue("CellType", name);
         if (type === undefined) continue;
-        const id = safe(() => api.terrains?.getIdByType?.(type));
+        const id = skApi.terrains.getIdByType(type);
         if (!id || map.has(String(id))) continue;
         map.set(String(id), { value: String(id), label: name, source: "game" });
     }
@@ -686,13 +692,13 @@ export function listHookIds(): Opt[] {
 export function listSpriteIds(): Opt[] {
     const map = new Map<string, Opt>();
     const tryList = [
-        () => api.sprites?.getLoaded?.(),
-        () => api.sprites?.getAll?.(),
-        () => api.sprites?.list?.(),
-        () => api.sprites?.getRegistered?.(),
+        () => skApi.sprites.getLoaded(),
+        () => skApi.sprites.getAll(),
+        () => skApi.sprites.list(),
+        () => skApi.sprites.getRegistered(),
     ];
     for (const fn of tryList) {
-        const raw = safe(fn as any);
+        const raw = safe(fn);
         if (!raw) continue;
         const arr = Array.isArray(raw) ? raw : typeof raw === "object" ? Object.keys(raw) : [];
         for (const entry of arr) {
@@ -1046,13 +1052,13 @@ function labelOf(v: unknown): string | undefined {
 export function discoverElements(): NativeObject[] {
     const out = new Map<string, NativeObject>();
 
-    for (const t of api.elements?.getRegisteredTypes?.() ?? []) {
-        const def = api.elements?.getDefinitionByType?.(t);
-        const id = labelOf(def?.id) ?? api.elements?.getIdByType?.(t);
+    for (const t of skApi.elements.getRegisteredTypes()) {
+        const def = skApi.elements.getDefinitionByType(t);
+        const id = labelOf(def?.id) ?? skApi.elements.getIdByType(t);
         if (!id) continue;
         putNative(out, id, {
             label: labelOf(def?.name) ??
-                api.elements?.getNameByType?.(t) ??
+                skApi.elements.getNameByType(t) ??
                 labelOf(def?.nameKey) ??
                 id,
             color: colorFromMeta(def?.metaColor),
@@ -1124,12 +1130,12 @@ function builtInItemName(rawId: unknown): string | undefined {
 /** Game items, read via the documented `getRegisteredIds` + `getDefinitionById` pair. */
 export function discoverItems(): NativeObject[] {
     const out = new Map<string, NativeObject>();
-    for (const rawId of api.items?.getRegisteredIds?.() ?? []) {
+    for (const rawId of skApi.items.getRegisteredIds()) {
         if (rawId === null || rawId === undefined || rawId === "") continue;
         // A built-in id is a number, and was dropped here by a `typeof id !== "string"`
         // guard — so the game never actually had a name to show in the first place.
         const id = String(rawId);
-        const def = safe(() => api.items?.getDefinitionById?.(rawId as never));
+        const def = skApi.items.getDefinitionById(String(rawId));
         out.set(id, {
             id,
             origin: "game",
@@ -1148,9 +1154,9 @@ export function discoverTerrains(): NativeObject[] {
     for (const name of enumNames("CellType")) {
         const type = enumValue("CellType", name);
         if (type === undefined) continue;
-        const id = api.terrains?.getIdByType?.(type);
+        const id = skApi.terrains.getIdByType(type);
         if (!id || out.has(id)) continue;
-        const def = api.terrains?.getDefinitionByType?.(type);
+        const def = skApi.terrains.getDefinitionByType(type);
         out.set(id, { id, origin: "game", label: labelOf(def?.name) ?? name, native: def });
     }
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -1173,10 +1179,10 @@ export function discoverStructures(): NativeObject[] {
 
     // 2) Everything else the engine offers — the base game's structures, which
     //    no mod registry will ever hold.
-    for (const ref of [...(api.structures?.getAvailableTypes?.() ?? new Set())]) {
-        const def = api.structures?.getDefinitionByType?.(ref);
+    for (const ref of [...skApi.structures.getAvailableTypes()]) {
+        const def = skApi.structures.getDefinitionByType(ref);
         const id = labelOf(def?.id) ??
-            (typeof ref === "string" ? ref : api.structures?.getIdByType?.(ref));
+            (typeof ref === "string" ? ref : skApi.structures.getIdByType(ref));
         if (!id || out.has(id)) continue;
         putNative(out, id, {
             label: labelOf(def?.name) ?? labelOf(def?.nameKey) ?? id,

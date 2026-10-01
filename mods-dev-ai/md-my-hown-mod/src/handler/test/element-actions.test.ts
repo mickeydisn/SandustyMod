@@ -78,7 +78,7 @@ function fakeContext(grid: Record<string, string> = {}) {
             else cells.set(key, String(type));
         };
 
-    // Installed on the global, because that is where `hostNs("grid")` looks. Restored by
+    // Installed on the global, because that is where `api` reads from. Restored by
     // `done`, which every test that uses this must call.
     const g = globalThis as unknown as { sandkit?: { api: Record<string, unknown> } };
     const had = "sandkit" in g;

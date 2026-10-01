@@ -39,7 +39,7 @@
  *
  * @module
  */
-import { defineActions, defineModifiers, hostNs } from "../../core/types.ts";
+import { api, defineActions, defineModifiers } from "../../core/types.ts";
 
 // ── Payload-signature actions ────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ export const connectActions = defineActions({
             if (!Number.isFinite(x) || !Number.isFinite(y)) return;
             const value = (options as { value?: unknown } | null)?.value;
             try {
-                hostNs("signals")?.setOutputAtCell?.(x, y, Boolean(value));
+                api?.signals?.setOutputAtCell?.(x, y, Boolean(value));
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] signal output failed", e);
             }
@@ -112,7 +112,7 @@ export const connectActions = defineActions({
             try {
                 // `allOrNothing: false` is the documented default; it is passed
                 // explicitly so the intent survives if the engine ever changes it.
-                hostNs("energy")?.consume?.(amount, { allOrNothing: false });
+                api?.energy?.consume?.(amount, { allOrNothing: false });
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] energy consume failed", e);
             }
@@ -128,7 +128,7 @@ export const connectActions = defineActions({
             const p = payload as { x?: number; y?: number } | null;
             if (!p || !amount) return;
             try {
-                hostNs("energy")?.addAtCell?.(p.x, p.y, amount);
+                api?.energy?.addAtCell?.(p.x, p.y, amount);
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] energy generate failed", e);
             }
@@ -157,7 +157,7 @@ export const connectActions = defineActions({
             const structures = o.structures ?? (self ? [self] : []);
             if (!o.techId || structures.length === 0) return;
             try {
-                hostNs("tech")?.conservatory?.appendUnlock?.(o.techId, {
+                api?.tech?.conservatory?.appendUnlock?.(o.techId, {
                     structures,
                     ...(o.items ? { items: o.items } : {}),
                 });
@@ -178,7 +178,7 @@ export const connectActions = defineActions({
                 // `addById`, not `addFromId` — the latter is @deprecated. It also
                 // takes no count, so a request for more than one is one call per
                 // item rather than a silently ignored argument.
-                const add = hostNs("player")?.inventory?.addById;
+                const add = api?.player?.inventory?.addById;
                 if (typeof add !== "function") return;
                 for (let i = 0; i < Math.max(1, o.count ?? 1); i++) add(o.itemId);
             } catch (e) {
@@ -203,7 +203,7 @@ export const connectActions = defineActions({
             };
             if (!o.itemId || !o.upgradeId) return;
             try {
-                hostNs("upgrades")?.setLevelById?.(o.itemId, o.upgradeId, o.level ?? 1);
+                api?.upgrades?.setLevelById?.(o.itemId, o.upgradeId, o.level ?? 1);
             } catch (e) {
                 console.warn("[md-my-hown-mod:connect] set upgrade level failed", e);
             }

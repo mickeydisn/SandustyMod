@@ -27,7 +27,7 @@
  *
  * @module
  */
-import { defineActions, hostNs } from "../../core/types.ts";
+import { api, defineActions } from "../../core/types.ts";
 
 export const feelActions = defineActions({
     /**
@@ -43,7 +43,7 @@ export const feelActions = defineActions({
             const text = (options as { text?: string } | null)?.text;
             if (!text) return;
             try {
-                hostNs("ui")?.toast?.(text);
+                api?.ui?.toast?.(text);
             } catch (e) {
                 console.warn("[md-my-hown-mod:feel] toast failed", e);
             }
@@ -86,7 +86,7 @@ export const feelActions = defineActions({
             const p = payload as { x?: number; y?: number } | null;
             if (!p || !o.name) return;
             try {
-                hostNs("effects")?.createParticlesAtWorld?.(p.x, p.y, { count: o.count ?? 1 });
+                api?.effects?.createParticlesAtWorld?.(p.x, p.y, { count: o.count ?? 1 });
             } catch (e) {
                 console.warn("[md-my-hown-mod:feel] particles failed", e);
             }

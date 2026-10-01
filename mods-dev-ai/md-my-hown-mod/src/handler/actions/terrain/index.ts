@@ -19,7 +19,7 @@
  *
  * `GridMutationWriterTerrains` has exactly three methods (`grid.d.ts:193-221`):
  * `createAtCell`, `replaceAtCell`, `removeAtCell`. So the three **shape-changing** writes
- * go through `api.grid.mutate` and are one coherent batch, with the read that decided them
+ * go through `ns.grid.mutate` and are one coherent batch, with the read that decided them
  * inside the same callback — the same property the element family has.
  *
  * The other three writes cannot. `damageAtCell`, `setHitPointsAtCell` and `meltAtCell` are
@@ -29,9 +29,9 @@
  *
  * | | actions | path | atomic over a region |
  * | --- | --- | --- | --- |
- * | shape | 3 | `api.grid.mutate(w => w.terrains.…)` | **yes** |
- * | state | 3 | `api.terrains.*` per cell | **no** |
- * | reads | 6 | `api.terrains.*` | coherent *inside* a batch |
+ * | shape | 3 | `ns.grid.mutate(w => w.terrains.…)` | **yes** |
+ * | state | 3 | `ns.terrains.*` per cell | **no** |
+ * | reads | 6 | `ns.terrains.*` | coherent *inside* a batch |
  *
  * The split is worth stating rather than smoothing over, because "terrain writes are
  * atomic" would be a lie for a third of them, and a program that assumed it would
@@ -39,7 +39,7 @@
  *
  * ## `meltAtCell` is documented and does not exist
  *
- * `api.terrains.md` lists `meltAtCell(cx, cy)` in its availability table. It is in no
+ * `ns.terrains.md` lists `meltAtCell(cx, cy)` in its availability table. It is in no
  * `.d.ts`, in neither the `sandkit` facade nor the `shared` layer, and a grep over the
  * whole engine package finds zero occurrences.
  *
@@ -59,16 +59,16 @@
  *
  * ## Which thread
  *
- * `api.grid.mutate` is ✓ Main / — Worker (`api.grid.md:18`), and `register` is Main-only.
+ * `ns.grid.mutate` is ✓ Main / — Worker (`ns.grid.md:18`), and `register` is Main-only.
  * This mod ships no `workerEntry`, so every processor it registers runs on Main and
- * `hostNs` reaches the full namespace. The shape writes are therefore the same Main-only
+ * `sk()` reaches the full namespace. The shape writes are therefore the same Main-only
  * assumption the element family already rests on; the state writes and every read are
  * available on **both** entries per the availability table, so they degrade to a warning
  * rather than breaking if a `workerEntry` ever appears.
  *
  * @module
  */
-import { defineActions, hostNs } from "../../core/types.ts";
+import { api, defineActions } from "../../core/types.ts";
 import { MAX_SCAN_SIDE } from "../../core/cell-region.ts";
 import { regionFor } from "../element/index.ts";
 
@@ -117,10 +117,10 @@ interface TerrainDataLike {
 }
 
 /**
- * The `api.terrains` surface this family uses.
+ * The `ns.terrains` surface this family uses.
  *
  * Declared for the reason `ElementWriter` is: the engine's `.d.ts` files are not in this
- * mod's dependency graph, so `hostNs` gets a structural type.
+ * mod's dependency graph, so `sk()` gets a structural type.
  *
  * Members are optional because the availability table splits this namespace: `register`
  * and the `*WhenIdle` aliases are Main-only, the rest is Main + Worker. The `WhenIdle`
@@ -153,7 +153,7 @@ interface TerrainsApi {
     getTypeById?: (id: string) => number;
 }
 
-/** The terrain half of `api.grid.mutate`'s writer (`grid.d.ts:193-221`). */
+/** The terrain half of `ns.grid.mutate`'s writer (`grid.d.ts:193-221`). */
 interface TerrainWriter {
     createAtCell: (x: number, y: number, type: string | number, options?: unknown) => void;
     replaceAtCell: (x: number, y: number, type: string | number, options?: unknown) => void;
@@ -171,9 +171,9 @@ function refOf(options: TerrainOptions): string {
     return String(options.terrain ?? "");
 }
 
-/** `api.terrains`, or `null` on a thread that does not have it. */
+/** `ns.terrains`, or `null` on a thread that does not have it. */
 function terrains(): TerrainsApi | null {
-    return (hostNs("terrains") as TerrainsApi | null) ?? null;
+    return (api?.terrains as TerrainsApi) ?? null;
 }
 
 /**
@@ -220,7 +220,7 @@ function mutationOptions(options: TerrainOptions): Record<string, unknown> | und
  * The shared body of the three **shape-changing** writes: one coherent batch.
  *
  * This is the terrain family answering a question the motion and structure families could
- * not: can a footprint write be atomic? For terrain, yes — because `api.grid.mutate`
+ * not: can a footprint write be atomic? For terrain, yes — because `ns.grid.mutate`
  * carries a `terrains` writer (`grid.d.ts:193-221`), and the engine documents `mutate` for
  * "state-dependent grid writes". So the read, the decision and the write for a cell are
  * one atomic step, and there is no read/write gap to guard.
@@ -245,7 +245,7 @@ function writeShape(
     // Hoisted out of the callback for the same two reasons as the element family: an
     // optional-chained narrowing does not survive into a closure, and capturing the method
     // once means a context that swapped it mid-batch could not change behaviour halfway.
-    const mutate = hostNs("grid")?.mutate;
+    const mutate = api?.grid?.mutate;
     if (!s || typeof mutate !== "function") {
         console.warn(
             `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
@@ -253,8 +253,8 @@ function writeShape(
         );
         return false;
     }
-    const api = terrains();
-    if (!api) {
+    const ns = terrains();
+    if (!ns) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: no api.terrains on this thread, so the ` +
                 "batch had nothing to decide against",
@@ -266,7 +266,7 @@ function writeShape(
     let queued = 0;
     mutate((writer: { terrains: TerrainWriter }) => {
         for (const cell of cells) {
-            if (decide(writer.terrains, cell, api)) queued++;
+            if (decide(writer.terrains, cell, ns)) queued++;
         }
     });
     return queued > 0;
@@ -295,15 +295,15 @@ export const terrainSenseActions = defineActions({
         doc: "Reads the terrain id at a cell. Empty means no terrain. Bind it with As.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = terrains();
-            if (!s || typeof api?.getTypeAtCell !== "function") return "";
+            const ns = terrains();
+            if (!s || typeof ns?.getTypeAtCell !== "function") return "";
             const o = (options ?? {}) as TerrainOptions;
             const cell = firstCell(s, o, "terrainType");
             if (!cell) return "";
-            const type = api.getTypeAtCell(cell.x, cell.y);
+            const type = ns.getTypeAtCell(cell.x, cell.y);
             if (type === null || type === undefined) return "";
-            if (typeof api.getIdByType === "function") {
-                const id = api.getIdByType(type);
+            if (typeof ns.getIdByType === "function") {
+                const id = ns.getIdByType(type);
                 if (id !== undefined && id !== null && id !== "") return String(id);
             }
             return String(type);
@@ -316,10 +316,10 @@ export const terrainSenseActions = defineActions({
         doc: "True when the cell holds terrain. Bind it with As.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = terrains();
-            if (!s || typeof api?.isAtCell !== "function") return false;
+            const ns = terrains();
+            if (!s || typeof ns?.isAtCell !== "function") return false;
             const cell = firstCell(s, (options ?? {}) as TerrainOptions, "hasTerrain");
-            return cell ? api.isAtCell(cell.x, cell.y) === true : false;
+            return cell ? ns.isAtCell(cell.x, cell.y) === true : false;
         },
     },
 
@@ -337,18 +337,18 @@ export const terrainSenseActions = defineActions({
             "handle from Terrain type.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = terrains();
+            const ns = terrains();
             const o = (options ?? {}) as TerrainOptions;
             const want = refOf(o);
-            if (!s || !want || typeof api?.isTypeAtCell !== "function") return false;
+            if (!s || !want || typeof ns?.isTypeAtCell !== "function") return false;
             const cell = firstCell(s, o, "isTerrainType");
             if (!cell) return false;
-            if (api.isTypeAtCell(cell.x, cell.y, want) === true) return true;
+            if (ns.isTypeAtCell(cell.x, cell.y, want) === true) return true;
             // A handle round-tripped through a bind arrives as a string, so retry a
             // digit-only reference as a number — the same guard as the structure family,
             // and needed for the same reason.
             if (!/^\d+$/.test(want)) return false;
-            return api.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
+            return ns.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
         },
     },
 
@@ -369,12 +369,12 @@ export const terrainSenseActions = defineActions({
             "Bind it to watch a wall wear down.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = terrains();
+            const ns = terrains();
             const o = (options ?? {}) as TerrainOptions;
-            if (!s || typeof api?.getDataAtCell !== "function") return -1;
+            if (!s || !ns || typeof ns.getDataAtCell !== "function") return -1;
             const cell = firstCell(s, o, "terrainHitPoints");
             if (!cell) return -1;
-            const data = api.getDataAtCell(cell.x, cell.y);
+            const data = ns.getDataAtCell(cell.x, cell.y);
             if (!data) return -1;
             const hp = data.hitPoints ?? data.hp;
             return typeof hp === "number" && Number.isFinite(hp) ? hp : -1;
@@ -395,12 +395,12 @@ export const terrainSenseActions = defineActions({
             "-1 when there is none.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = terrains();
-            if (!s || typeof api?.getDataAtCell !== "function") return -1;
+            const ns = terrains();
+            if (!s || !ns || typeof ns.getDataAtCell !== "function") return -1;
             const o = (options ?? {}) as TerrainOptions;
             const cell = firstCell(s, o, "terrainTypeHandle");
             if (!cell) return -1;
-            const type = api.getDataAtCell(cell.x, cell.y)?.cellType;
+            const type = ns.getDataAtCell(cell.x, cell.y)?.cellType;
             return typeof type === "number" && Number.isFinite(type) ? type : -1;
         },
     },
@@ -422,12 +422,12 @@ export const terrainSenseActions = defineActions({
         doc: "Counts cells holding terrain in the region. Bind it to size a footprint.",
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
-            const api = terrains();
-            if (!s || typeof api?.isAtCell !== "function") return 0;
+            const ns = terrains();
+            if (!s || typeof ns?.isAtCell !== "function") return 0;
             const o = (options ?? {}) as TerrainOptions;
             let found = 0;
             for (const cell of regionCells(s, o, "countTerrain")) {
-                if (api.isAtCell(cell.x, cell.y)) found++;
+                if (ns.isAtCell(cell.x, cell.y)) found++;
             }
             return found;
         },
@@ -454,11 +454,11 @@ function writeState(
     structure: unknown,
     options: unknown,
     label: string,
-    act: (api: TerrainsApi, cell: { x: number; y: number }) => boolean,
+    act: (ns: TerrainsApi, cell: { x: number; y: number }) => boolean,
 ): boolean {
     const s = structure as StructureLike | null;
-    const api = terrains();
-    if (!s || !api) {
+    const ns = terrains();
+    if (!s || !ns) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: api.terrains is not on this thread, so ` +
                 "nothing was written",
@@ -468,7 +468,7 @@ function writeState(
     const o = (options ?? {}) as TerrainOptions;
     let wrote = false;
     for (const cell of regionCells(s, o, label)) {
-        if (act(api, cell)) wrote = true;
+        if (act(ns, cell)) wrote = true;
     }
     return wrote;
 }
@@ -481,10 +481,10 @@ export const terrainActActions = defineActions({
     /**
      * `createAtCell` — place terrain, atomically. ← `w.terrains.createAtCell`
      *
-     * Goes through the `api.grid.mutate` writer, so a footprint create is **one coherent
+     * Goes through the `ns.grid.mutate` writer, so a footprint create is **one coherent
      * batch** and a read in the same step sees the world it is writing. That is a stronger
      * guarantee than the motion and structure families can make, and it is the reason this
-     * is not a loop of `api.terrains.createAtCell` calls — that function exists and would
+     * is not a loop of `ns.terrains.createAtCell` calls — that function exists and would
      * be the obvious, wrong choice.
      *
      * Only cells with no terrain are created, matching the engine's own rule that create
@@ -501,10 +501,10 @@ export const terrainActActions = defineActions({
                 console.warn("[md-my-hown-mod:process] createTerrain: no terrain type set");
                 return false;
             }
-            return writeShape(structure, options, "createTerrain", (writer, cell, api) => {
+            return writeShape(structure, options, "createTerrain", (writer, cell, ns) => {
                 // The check is inside the batch, so a second action over an overlapping
                 // region in the same process sees the first one's creates.
-                if (typeof api.isAtCell === "function" && api.isAtCell(cell.x, cell.y)) {
+                if (typeof ns.isAtCell === "function" && ns.isAtCell(cell.x, cell.y)) {
                     return false;
                 }
                 writer.createAtCell(cell.x, cell.y, want, mutationOptions(o));
@@ -561,7 +561,7 @@ export const terrainActActions = defineActions({
      * `damageAtCell` — break terrain down. **Per cell, not batched.**
      *
      * The first of the state writes, and the clearest case of the family's split: there is
-     * no `w.terrains.damageAtCell`, so this is one `api.terrains` call per cell and a region
+     * no `w.terrains.damageAtCell`, so this is one `ns.terrains` call per cell and a region
      * sweep can half-apply. A `true` here means "N calls were made", not "one transaction
      * landed" — which is why the return should not be branched on.
      *
@@ -580,9 +580,9 @@ export const terrainActActions = defineActions({
                 );
                 return false;
             }
-            return writeState(structure, options, "damageTerrain", (api, cell) => {
-                if (typeof api.damageAtCell !== "function") return false;
-                api.damageAtCell(cell.x, cell.y, amount);
+            return writeState(structure, options, "damageTerrain", (ns, cell) => {
+                if (typeof ns.damageAtCell !== "function") return false;
+                ns.damageAtCell(cell.x, cell.y, amount);
                 return true;
             });
         },
@@ -609,9 +609,9 @@ export const terrainActActions = defineActions({
                 );
                 return false;
             }
-            return writeState(structure, options, "setTerrainHitPoints", (api, cell) => {
-                if (typeof api.setHitPointsAtCell !== "function") return false;
-                return api.setHitPointsAtCell(cell.x, cell.y, hp);
+            return writeState(structure, options, "setTerrainHitPoints", (ns, cell) => {
+                if (typeof ns.setHitPointsAtCell !== "function") return false;
+                return ns.setHitPointsAtCell(cell.x, cell.y, hp);
             });
         },
     },
