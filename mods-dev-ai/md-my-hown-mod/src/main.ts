@@ -9,7 +9,6 @@ import { onSettingsChange, readSettingRaw, runDisableCleanup } from "./packages/
 import { registerAll } from "./register/index.ts";
 import { setBufferSource } from "./handler/actions/buffer/index.ts";
 import { loadConfig } from "./config/store.ts";
-import { logHostAudit } from "./handler/core/host-audit.ts";
 import { LOG, MOD_ID, SETTINGS, STORAGE_KEYS, VERSION } from "./constants.ts";
 import { mountPanel } from "./tool.ts";
 import "./handler/index.ts"; // register handler keys for pickers
@@ -77,11 +76,6 @@ try {
     setBufferSource(() => loadConfig().buffers ?? []);
 
     applyEnabled(enabled, "boot");
-
-    // Say so, once, if the host is missing a namespace the actions need. Without
-    // this an unreachable action returns the same falsy value as "nothing to do",
-    // every tick, forever — which is exactly how a wrong host read hid here once.
-    logHostAudit();
 
     onSettingsChange(MOD_ID, SETTINGS, () => {
         // Re-read raw rather than trusting the defaulted object: this callback

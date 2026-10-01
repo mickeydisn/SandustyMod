@@ -23,7 +23,7 @@
  * The `declare const sandkit` is still the right way to see the host: the game
  * injects it into the mod scope, and it is not reliably on `globalThis`.
  */
-import { host } from "./host.ts";
+import { g } from "./host.ts";
 
 declare const sandkit: {
     api: Record<string, any>;
@@ -81,12 +81,16 @@ export function toast(msg: string): void {
 /**
  * The host handle, resolved on **every** call.
  *
- * A thin delegate to `src/host.ts`. It used to be a third independent copy of
- * the resolution order — alongside `mysandkit.ts` and `handler/core/types.ts` —
- * and none of the three held the others to it.
+ * A delegate to `g()` in `host.ts`, which is the one place that knows the
+ * resolution order: the injected `sandkit` first, then `globalThis`. This used to
+ * be a third independent copy of that order — alongside `mysandkit.ts` and
+ * `handler/core/types.ts` — and none of the three held the others to it, so a
+ * change to one silently did not apply to the others.
  *
- * Prefers the injected `sandkit` and falls back to `globalThis`, in that order.
+ * Only the places that genuinely need the raw host (React, enums) should call
+ * this. Engine calls go through the wrapper in `host.ts`, which types them and
+ * contains their failures.
  */
 export function getSandkit(): typeof sandkit | any {
-    return host ?? null;
+    return g() ?? null;
 }

@@ -84,7 +84,7 @@ export const feelActions = defineActions({
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { name?: string; count?: number };
             const p = payload as { x?: number; y?: number } | null;
-            if (!p || !o.name) return;
+            if (!p || !o.name || p.x === undefined || p.y === undefined) return;
             try {
                 api?.effects?.createParticlesAtWorld?.(p.x, p.y, { count: o.count ?? 1 });
             } catch (e) {

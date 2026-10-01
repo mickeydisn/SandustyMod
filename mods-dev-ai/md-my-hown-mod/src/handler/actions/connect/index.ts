@@ -126,7 +126,7 @@ export const connectActions = defineActions({
         fn: (payload, _ctx, options) => {
             const amount = Number((options as { amount?: number } | null)?.amount ?? 0);
             const p = payload as { x?: number; y?: number } | null;
-            if (!p || !amount) return;
+            if (!p || !amount || p.x === undefined || p.y === undefined) return;
             try {
                 api?.energy?.addAtCell?.(p.x, p.y, amount);
             } catch (e) {
@@ -155,9 +155,13 @@ export const connectActions = defineActions({
             };
             const self = (payload as { id?: string } | null)?.id;
             const structures = o.structures ?? (self ? [self] : []);
-            if (!o.techId || structures.length === 0) return;
+            // `o.techId` is untyped option data, so `!o.techId` proves only that it
+            // is not empty — not that it is a string. Narrow it here, because the
+            // engine keys unlocks by id and a non-string would register nothing.
+            const techId = typeof o.techId === "string" ? o.techId : "";
+            if (!techId || structures.length === 0) return;
             try {
-                api?.tech?.conservatory?.appendUnlock?.(o.techId, {
+                api?.tech?.conservatory?.appendUnlock?.(techId, {
                     structures,
                     ...(o.items ? { items: o.items } : {}),
                 });

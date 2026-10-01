@@ -288,8 +288,13 @@ function footprintSeeds(structure: unknown): Record<string, unknown> {
         // is. Guarded on both the namespace and the function, because a worker
         // registration can reach seeding without the structures API being present.
         const lookup = api?.structures?.getDefinitionByType;
-        if (typeof lookup === "function" && type !== undefined) {
-            shape = lookup(type)?.shape as ShapeMatrix | undefined;
+        // `safeRead` is untyped, so `type` can be anything the structure carried.
+        // Only a string or a number is a type ref the engine resolves; a `null` or
+        // a stray object would look up nothing and read as "no shape", which is
+        // the same answer this branch gives for a genuinely shapeless structure.
+        const typeRef = typeof type === "string" || typeof type === "number" ? type : null;
+        if (typeof lookup === "function" && typeRef !== null) {
+            shape = lookup(typeRef)?.shape as ShapeMatrix | undefined;
         }
     } catch {
         // A structure whose type is not registered. Treated as no shape, below.

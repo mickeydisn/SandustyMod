@@ -162,8 +162,18 @@ export type HandlerActionFn = (
  * `(globalThis as any).sandkit` also means a missing host produces `undefined`
  * instead of a TypeError — the difference between an action that no-ops and one
  * that throws mid-process.
+/**
+ * The engine interface, re-exported for the action files.
+ *
+ * From `../../host.ts` — the leaf — and **not** from `packages/mysandkit.ts`.
+ * That file imports `handler/custom-process` and `handler/excavation-option` to
+ * compile stored processes, and `handler-registry.ts` initialises `process.ts`
+ * state at load, so importing it from here closes the cycle and throws
+ * `Cannot access 'BLOCK_KEY' before initialization` before any action runs.
+ * `host.ts` is the same `api` object, minus the two registration helpers that
+ * need the handler.
  */
-export { api } from "../../packages/mysandkit.ts";
+export { api } from "../../host.ts";
 
 export function hostApi(): Record<string, unknown> | undefined {
     // The injected parameter. Present in the real mod scope; absent in a worker
