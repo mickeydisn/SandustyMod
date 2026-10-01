@@ -105,7 +105,11 @@ function flag(value: unknown): boolean {
  * the action system casts.
  */
 function elements() {
-    return api?.elements;
+    // The **engine's** namespace, not the wrapper's — see the note on
+    // `structures()` in the structure family. The writes go through the wrapper;
+    // this is what the presence checks are made against, so a missing namespace
+    // still refuses.
+    return (api.raw as { elements?: { [k: string]: any } } | undefined)?.elements;
 }
 
 /** A velocity vector, from `vx`/`vy`. */
@@ -211,11 +215,12 @@ export const motionActions = defineActions({
         fn: (structure, _context, options) => {
             try {
                 const s = (structure ?? null) as StructureLike | null;
-                const ns = elements();
-                if (!s || !ns?.getVelocityAtCell) return -1;
+                if (!s) return -1;
                 const first = regionCells(s, (options ?? {}) as MotionOptions, "getVelocity")[0];
                 if (!first) return -1;
-                const v = ns.getVelocityAtCell(first.x, first.y) as Vector2 | null | undefined;
+                // `null` means no particle at that cell, which is the one case this
+                // action has to tell apart from a particle sitting still.
+                const v = api.elements.getVelocityAtCell(first.x, first.y);
                 if (!v) return -1;
                 return Math.hypot(num(v.x), num(v.y));
             } catch (e) {
@@ -282,11 +287,15 @@ export const motionActions = defineActions({
             "affects particles — use toParticle to turn a cell into one first.",
         fn: (structure, _context, options) => {
             const v = vectorOf((options ?? {}) as MotionOptions);
-            return overRegion(structure, options, "setVelocity", (ns, cell) => {
-                if (typeof ns.setVelocityAtCell !== "function") return false;
-                ns.setVelocityAtCell(cell.x, cell.y, { x: v.x, y: v.y });
-                return true;
-            });
+            // The wrapper returns whether the engine actually took the write, so a
+            // missing `api.elements` refuses here instead of being reported as a
+            // success the game never acted on.
+            return overRegion(
+                structure,
+                options,
+                "setVelocity",
+                (_ns, cell) => api.elements.setVelocityAtCell(cell.x, cell.y, { x: v.x, y: v.y }),
+            );
         },
     },
 
@@ -299,14 +308,10 @@ export const motionActions = defineActions({
             const o = (options ?? {}) as MotionOptions;
             const v = vectorOf(o);
             const max = num(o.maxSpeed, 0);
-            return overRegion(structure, options, "addVelocity", (ns, cell) => {
-                if (typeof ns.addParticleVelocityAtCell !== "function") return false;
+            return overRegion(structure, options, "addVelocity", (_ns, cell) =>
                 // Omitted rather than passed as 0: the engine reads a present 0 as a
                 // real clamp and would stop the cell dead.
-                if (max > 0) ns.addParticleVelocityAtCell(cell.x, cell.y, v, max);
-                else ns.addParticleVelocityAtCell(cell.x, cell.y, v);
-                return true;
-            });
+                api.elements.addParticleVelocityAtCell(cell.x, cell.y, v, max));
         },
     },
 
@@ -324,11 +329,13 @@ export const motionActions = defineActions({
             const o = (options ?? {}) as MotionOptions;
             const ticks = Math.max(0, Math.trunc(num(o.ticks)));
             const rearm = flag(o.rearm);
-            return overRegion(structure, options, "setDuration", (ns, cell) => {
-                if (typeof ns.setDurationAtCell !== "function") return false;
-                ns.setDurationAtCell(cell.x, cell.y, ticks, { updateMax: rearm });
-                return true;
-            });
+            return overRegion(
+                structure,
+                options,
+                "setDuration",
+                (_ns, cell) =>
+                    api.elements.setDurationAtCell(cell.x, cell.y, ticks, { updateMax: rearm }),
+            );
         },
     },
 
@@ -361,10 +368,16 @@ export const motionActions = defineActions({
             // A zero offset would call the engine once per cell to achieve nothing.
             if (dx === 0 && dy === 0) return false;
             const cells = regionCells(s, o, "teleportElement");
+            let moved = 0;
             for (const cell of cells) {
-                ns.teleportBetweenCells(cell.x, cell.y, cell.x + dx, cell.y + dy);
+                // Only a cell the engine actually moved counts. A cell that was
+                // blocked is reported by the engine, and counting it would make a
+                // region where nothing moved look like a successful one.
+                if (api.elements.teleportBetweenCells(cell.x, cell.y, cell.x + dx, cell.y + dy)) {
+                    moved++;
+                }
             }
-            return cells.length > 0;
+            return moved > 0;
         },
     },
 

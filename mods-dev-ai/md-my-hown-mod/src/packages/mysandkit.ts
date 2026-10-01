@@ -339,35 +339,43 @@ export const api = {
             x: number,
             y: number,
             velocity: { x: number; y: number },
-        ): void {
+        ): boolean {
             try {
-                g()?.api?.elements?.setVelocityAtCell?.(x, y, velocity);
+                const ns = g()?.api?.elements;
+                if (typeof ns?.setVelocityAtCell !== "function") return false;
+                ns.setVelocityAtCell(x, y, velocity);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} elements.setVelocityAtCell failed`, x, y, e);
+                return false;
             }
         },
         /**
          * Add to the particle velocity at a cell.
          *
+         * Named for the engine's own method, `addParticleVelocityAtCell` — the
+         * earlier `addVelocityAtCell` name matched nothing on the engine, so every
+         * call through it silently no-opped and the action still reported success.
+         *
          * `maxSpeed` is omitted entirely when it is zero, because the engine reads
          * a present `0` as "clamp to a standstill" — a silent full stop rather
          * than "no limit".
          */
-        addVelocityAtCell(
+        addParticleVelocityAtCell(
             x: number,
             y: number,
             velocity: { x: number; y: number },
             maxSpeed?: number,
-        ): void {
+        ): boolean {
             try {
-                g()?.api?.elements?.addVelocityAtCell?.(
-                    x,
-                    y,
-                    velocity,
-                    maxSpeed ? { maxSpeed } : undefined,
-                );
+                const ns = g()?.api?.elements;
+                if (typeof ns?.addParticleVelocityAtCell !== "function") return false;
+                if (maxSpeed) ns.addParticleVelocityAtCell(x, y, velocity, maxSpeed);
+                else ns.addParticleVelocityAtCell(x, y, velocity);
+                return true;
             } catch (e) {
-                console.warn(`${LOG} elements.addVelocityAtCell failed`, x, y, e);
+                console.warn(`${LOG} elements.addParticleVelocityAtCell failed`, x, y, e);
+                return false;
             }
         },
         /**
@@ -381,11 +389,17 @@ export const api = {
             y: number,
             n: number,
             opts?: { updateMax?: boolean },
-        ): void {
+        ): boolean {
             try {
-                g()?.api?.elements?.setDurationAtCell?.(x, y, n, opts);
+                const ns = g()?.api?.elements;
+                // Optional on the engine's own declaration, so this is the one
+                // element writer where absence is expected rather than alarming.
+                if (typeof ns?.setDurationAtCell !== "function") return false;
+                ns.setDurationAtCell(x, y, n, opts);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} elements.setDurationAtCell failed`, x, y, e);
+                return false;
             }
         },
         /**
@@ -426,15 +440,21 @@ export const api = {
          * Copied per call so a caller that writes to the result cannot leak that
          * write into the next action's read.
          */
-        getVelocityAtCell(x: number, y: number): { x: number; y: number } {
+        getVelocityAtCell(x: number, y: number): { x: number; y: number } | null {
             try {
                 const v = g()?.api?.elements?.getVelocityAtCell?.(x, y) as
                     | { x?: number; y?: number }
+                    | null
                     | undefined;
-                return { x: v?.x ?? 0, y: v?.y ?? 0 };
+                // `null` for "no particle here", never a zero vector. A substituted
+                // `{x: 0, y: 0}` is indistinguishable from a particle that is
+                // genuinely at rest, so a caller asking whether anything is moving
+                // gets "yes, moving at zero" and treats a still particle as a
+                // moving one.
+                return v ? { x: v.x ?? 0, y: v.y ?? 0 } : null;
             } catch (e) {
                 console.warn(`${LOG} elements.getVelocityAtCell failed`, x, y, e);
-                return { x: 0, y: 0 };
+                return null;
             }
         },
         /**
@@ -450,12 +470,14 @@ export const api = {
             toY: number,
         ): boolean {
             try {
-                return g()?.api?.elements?.teleportBetweenCells?.(
-                    fromX,
-                    fromY,
-                    toX,
-                    toY,
-                ) === true;
+                const ns = g()?.api?.elements;
+                if (typeof ns?.teleportBetweenCells !== "function") return false;
+                // Presence, not the return value. The engine's own declaration
+                // does not list this method at all, so there is no signature to
+                // promise a boolean and nothing to read one from — a `=== true`
+                // test would report failure for every call that worked.
+                ns.teleportBetweenCells(fromX, fromY, toX, toY);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} elements.teleportBetweenCells failed`, e);
                 return false;
@@ -782,18 +804,26 @@ export const api = {
                 return false;
             }
         },
-        buildAtCell(x: number, y: number, ref: string, options?: unknown): void {
+        buildAtCell(x: number, y: number, ref: string, options?: unknown): boolean {
             try {
-                g()?.api?.structures?.buildAtCell?.(x, y, ref, options);
+                const ns = g()?.api?.structures;
+                if (typeof ns?.buildAtCell !== "function") return false;
+                ns.buildAtCell(x, y, ref, options);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.buildAtCell failed`, x, y, e);
+                return false;
             }
         },
-        removeAtCell(x: number, y: number, options?: unknown): void {
+        removeAtCell(x: number, y: number, options?: unknown): boolean {
             try {
-                g()?.api?.structures?.removeAtCell?.(x, y, options);
+                const ns = g()?.api?.structures;
+                if (typeof ns?.removeAtCell !== "function") return false;
+                ns.removeAtCell(x, y, options);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.removeAtCell failed`, x, y, e);
+                return false;
             }
         },
         /**
@@ -803,58 +833,81 @@ export const api = {
          * call, and a per-cell loop would both cost N calls and let the grid be
          * observed mid-removal.
          */
-        removeAtCells(positions: { x: number; y: number }[], options?: unknown): void {
+        removeAtCells(
+            positions: { x: number; y: number }[],
+            options?: unknown,
+        ): boolean {
             try {
-                g()?.api?.structures?.removeAtCells?.(positions, options);
+                const ns = g()?.api?.structures;
+                if (typeof ns?.removeAtCells !== "function") return false;
+                ns.removeAtCells(positions, options);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.removeAtCells failed`, positions.length, e);
+                return false;
             }
         },
-        update(structure: unknown, options?: unknown): void {
+        update(structure: unknown, options?: unknown): boolean {
             try {
-                g()?.api?.structures?.update?.(structure, options);
+                const ns = g()?.api?.structures;
+                if (typeof ns?.update !== "function") return false;
+                ns.update(structure, options);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.update failed`, e);
+                return false;
             }
         },
         updateData(
             structure: unknown,
             partial: Record<string, unknown>,
             options?: unknown,
-        ): void {
+        ): boolean {
             try {
-                g()?.api?.structures?.updateData?.(structure, partial, options);
+                const ns = g()?.api?.structures;
+                if (typeof ns?.updateData !== "function") return false;
+                ns.updateData(structure, partial, options);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.updateData failed`, e);
+                return false;
             }
         },
-        setSpritesheetIndex(structure: unknown, index: number): void {
+        setSpritesheetIndex(structure: unknown, index: number): boolean {
             try {
-                g()?.api?.structures?.setSpritesheetIndex?.(structure, index);
+                const ns = g()?.api?.structures;
+                if (typeof ns?.setSpritesheetIndex !== "function") return false;
+                ns.setSpritesheetIndex(structure, index);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.setSpritesheetIndex failed`, e);
+                return false;
             }
         },
-        setSpritesheetIndexAtCell(x: number, y: number, index: number): void {
+        setSpritesheetIndexAtCell(x: number, y: number, index: number): boolean {
             try {
-                g()?.api?.structures?.setSpritesheetIndexAtCell?.(x, y, index);
+                const ns = g()?.api?.structures;
+                if (typeof ns?.setSpritesheetIndexAtCell !== "function") return false;
+                ns.setSpritesheetIndexAtCell(x, y, index);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.setSpritesheetIndexAtCell failed`, x, y, e);
+                return false;
             }
         },
         setSpritesheetIndexByValue(
             structure: unknown,
             value: number,
             thresholds: number[],
-        ): void {
+        ): boolean {
             try {
-                g()?.api?.structures?.setSpritesheetIndexByValue?.(
-                    structure,
-                    value,
-                    thresholds,
-                );
+                const ns = g()?.api?.structures;
+                if (typeof ns?.setSpritesheetIndexByValue !== "function") return false;
+                ns.setSpritesheetIndexByValue(structure, value, thresholds);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.setSpritesheetIndexByValue failed`, e);
+                return false;
             }
         },
         setSpritesheetIndexByValueAtCell(
@@ -862,16 +915,15 @@ export const api = {
             y: number,
             value: number,
             thresholds: number[],
-        ): void {
+        ): boolean {
             try {
-                g()?.api?.structures?.setSpritesheetIndexByValueAtCell?.(
-                    x,
-                    y,
-                    value,
-                    thresholds,
-                );
+                const ns = g()?.api?.structures;
+                if (typeof ns?.setSpritesheetIndexByValueAtCell !== "function") return false;
+                ns.setSpritesheetIndexByValueAtCell(x, y, value, thresholds);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} structures.setSpritesheetIndexByValueAtCell failed`, e);
+                return false;
             }
         },
         mapValueToSpritesheetIndex(value: number, thresholds: number[]): number {
@@ -917,11 +969,13 @@ export const api = {
             },
             setEnabledAtCell(x: number, y: number, enabled: boolean): boolean {
                 try {
-                    return g()?.api?.structures?.processing?.setEnabledAtCell?.(
-                        x,
-                        y,
-                        enabled,
-                    ) === true;
+                    const ns = g()?.api?.structures?.processing;
+                    if (typeof ns?.setEnabledAtCell !== "function") return false;
+                    // Presence, not the return value: the engine's own signature is
+                    // `void`, so `=== true` would report failure for every call that
+                    // actually worked.
+                    ns.setEnabledAtCell(x, y, enabled);
+                    return true;
                 } catch (e) {
                     console.warn(`${LOG} structures.processing.setEnabledAtCell failed`, e);
                     return false;
@@ -1142,11 +1196,15 @@ export const api = {
              * ids — the engine reads the keys, so an array would register nothing
              * while looking correct at the call site.
              */
-            appendUnlock(techId: string, unlocks: Record<string, unknown>): void {
+            appendUnlock(techId: string, unlocks: Record<string, unknown>): boolean {
                 try {
-                    g()?.api?.tech?.conservatory?.appendUnlock?.(techId, unlocks);
+                    const ns = g()?.api?.tech?.conservatory;
+                    if (typeof ns?.appendUnlock !== "function") return false;
+                    ns.appendUnlock(techId, unlocks);
+                    return true;
                 } catch (e) {
                     console.warn(`${LOG} tech.conservatory.appendUnlock failed`, techId, e);
+                    return false;
                 }
             },
         },
@@ -1236,12 +1294,25 @@ export const api = {
                 return false;
             }
         },
-        /** Apply damage to a terrain cell. */
-        damageAtCell(x: number, y: number, damage: number): void {
+        /**
+         * Apply damage to a terrain cell. Returns whether the engine took it.
+         *
+         * `false` means the call did not happen: no `api.terrains` on this
+         * thread, no `damageAtCell` on it, or the engine threw. That distinction
+         * is the whole reason this returns a boolean — a `void` writer cannot be
+         * distinguished from a successful one by its caller, so an action that
+         * asks the game to change a cell and gets no answer reports success and
+         * the cell never changes.
+         */
+        damageAtCell(x: number, y: number, damage: number): boolean {
             try {
-                g()?.api?.terrains?.damageAtCell?.(x, y, damage);
+                const ns = g()?.api?.terrains;
+                if (typeof ns?.damageAtCell !== "function") return false;
+                ns.damageAtCell(x, y, damage);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} terrains.damageAtCell failed`, x, y, e);
+                return false;
             }
         },
         /**
@@ -1254,7 +1325,9 @@ export const api = {
          */
         setHitPointsAtCell(x: number, y: number, hitPoints: number): boolean {
             try {
-                return g()?.api?.terrains?.setHitPointsAtCell?.(x, y, hitPoints) === true;
+                const ns = g()?.api?.terrains;
+                if (typeof ns?.setHitPointsAtCell !== "function") return false;
+                return ns.setHitPointsAtCell(x, y, hitPoints) === true;
             } catch (e) {
                 console.warn(`${LOG} terrains.setHitPointsAtCell failed`, x, y, e);
                 return false;
@@ -1502,6 +1575,27 @@ export const api = {
                 return g()?.api?.sprites?.loadFromMod?.(id, path, options ?? {});
             } catch (e) {
                 console.warn(`${LOG} sprites.loadFromMod failed`, id, e);
+                return undefined;
+            }
+        },
+        /**
+         * The engine's `sprites` namespace, or `undefined` when this thread has none.
+         *
+         * The editor needs the **whole** object, not a method: it calls `load`,
+         * `getById` and `list` itself and already knows their shapes, so a wrapper
+         * method per call would add indirection without adding safety. Named
+         * explicitly so a reader can see this file talks to the engine directly —
+         * the resolution order and the failure containment still come from here.
+         *
+         * Not to be confused with `namespace()` below, which is the engine's own
+         * member of that name and returns a **string** — the namespace sprite ids
+         * were registered under. The two collided until this was named `raw`.
+         */
+        raw(): Record<string, any> | undefined {
+            try {
+                return g()?.api?.sprites as Record<string, any> | undefined;
+            } catch (e) {
+                console.warn(`${LOG} sprites namespace unavailable`, e);
                 return undefined;
             }
         },

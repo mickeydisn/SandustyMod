@@ -530,8 +530,6 @@ export function registerTrigger(
 
 export async function registerSprite(def: import("../constants.ts").SpriteConfig): Promise<void> {
     try {
-        const sprites = g()?.api?.sprites;
-        if (!sprites) return;
         const opts = def.options ?? {};
         // A drawn sprite is a base64 PNG in `source`, not a file. Handing it to
         // `loadFromMod` would look for a mod asset at that string and fail
@@ -551,11 +549,18 @@ export async function registerSprite(def: import("../constants.ts").SpriteConfig
             return;
         }
         if (def.path && (def.fromMod !== false)) {
-            await sprites.loadFromMod?.(def.id, def.path, opts);
-        } else if (def.source || def.path) {
-            await sprites.load?.(def.id, def.source ?? def.path, opts);
+            await api.sprites.loadFromMod(def.id, def.path, opts);
         } else {
-            console.warn(`${LOG} sprite ${def.id}: need path or source`);
+            // One of the two must be set for this branch to be reached, but the
+            // compiler cannot see that through the `??` — so narrow rather than
+            // assert. The old optional call `sprites.load?.(...)` hid the same
+            // hole from `deno check`.
+            const source = def.source ?? def.path;
+            if (source === undefined) {
+                console.warn(`${LOG} sprite ${def.id}: need path or source`);
+                return;
+            }
+            await api.sprites.load(def.id, source, opts);
         }
     } catch (e) {
         console.error(`${LOG} sprites.load failed`, def.id, e);

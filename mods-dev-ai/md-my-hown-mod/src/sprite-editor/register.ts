@@ -21,8 +21,16 @@ export interface RegisterResult {
 /** blob URLs we created, so a re-save can release the previous one */
 const blobUrls = new Map<string, string>();
 
+/**
+ * The engine's `sprites` namespace.
+ *
+ * `raw()` rather than a wrapped method: this file needs `load`, `getById` and
+ * `list` itself and already knows their shapes, so a wrapper per call would add
+ * indirection without adding safety. The wrapper still owns the resolution order
+ * and the failure containment, which is the part that matters here.
+ */
 function spritesApi(): any {
-    return skApi.sprites.namespace();
+    return skApi.sprites.raw();
 }
 
 function isLoaded(sprites: any, id: string): boolean {

@@ -160,13 +160,19 @@ export const connectActions = defineActions({
             // engine keys unlocks by id and a non-string would register nothing.
             const techId = typeof o.techId === "string" ? o.techId : "";
             if (!techId || structures.length === 0) return;
-            try {
-                api?.tech?.conservatory?.appendUnlock?.(techId, {
-                    structures,
-                    ...(o.items ? { items: o.items } : {}),
-                });
-            } catch (e) {
-                console.warn("[md-my-hown-mod:connect] tech append failed", e);
+            // A **map keyed by unlock kind**, which is what the engine reads — an
+            // array looked correct at the call site and registered nothing.
+            const unlocks: Record<string, unknown> = { structures };
+            if (o.items) unlocks.items = o.items;
+            // `connect` is a void slot: the process discards a return, so the
+            // boolean is consumed here rather than handed to a caller that would
+            // drop it. A refused write is worth saying out loud, and a return into
+            // this slot would be a value nobody reads.
+            if (!api.tech.conservatory.appendUnlock(techId, unlocks)) {
+                console.warn(
+                    "[md-my-hown-mod:connect] tech.conservatory.appendUnlock refused " +
+                        `${techId} — no unlock was added`,
+                );
             }
         },
     },

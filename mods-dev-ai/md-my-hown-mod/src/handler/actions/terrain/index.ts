@@ -156,7 +156,11 @@ function refOf(options: TerrainOptions): string {
  * `host.ts` is the same surface and is real.
  */
 function terrains() {
-    return api?.terrains ?? null;
+    // The **engine's** namespace, not the wrapper's — see the note on
+    // `structures()` in the structure family. `api.terrains` is a plain object
+    // literal that always exists, so a presence check written against it is true
+    // on a thread with no terrain support at all.
+    return (api.raw as { terrains?: TerrainNamespace } | undefined)?.terrains ?? null;
 }
 
 /**
@@ -565,8 +569,7 @@ export const terrainActActions = defineActions({
             }
             return writeState(structure, options, "damageTerrain", (ns, cell) => {
                 if (typeof ns.damageAtCell !== "function") return false;
-                ns.damageAtCell(cell.x, cell.y, amount);
-                return true;
+                return api.terrains.damageAtCell(cell.x, cell.y, amount);
             });
         },
     },
@@ -594,7 +597,7 @@ export const terrainActActions = defineActions({
             }
             return writeState(structure, options, "setTerrainHitPoints", (ns, cell) => {
                 if (typeof ns.setHitPointsAtCell !== "function") return false;
-                return ns.setHitPointsAtCell(cell.x, cell.y, hp);
+                return api.terrains.setHitPointsAtCell(cell.x, cell.y, hp);
             });
         },
     },

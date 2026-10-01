@@ -367,11 +367,30 @@ Deno.test("the action catalogue's API binding, measured", () => {
     const had = "sandkit" in g;
     const prev = g.sandkit;
     g.sandkit = { api: fake };
+    // A blind truthy proxy is not a usable options bag for an action that
+    // **narrows** its options. `techAppendUnlock` reads
+    // `typeof o.techId === "string"`, and a proxy is an object, so it returned
+    // before ever reaching `appendUnlock` — the measurement then reported `tech`
+    // as unreached, which is a false negative of exactly the kind this test
+    // exists to catch. The other action listed here walks a region, and a proxy
+    // `shape` is not a `{width, height}`.
+    //
+    // So an action in this map is probed a second time with real options. The
+    // entry is the record of which actions reject a proxy, which is what the
+    // measurement genuinely cannot express.
+    const REAL_OPTIONS: Record<string, Record<string, unknown>> = {
+        techAppendUnlock: { techId: "t1", structures: ["a"] },
+        getVelocity: { size: 1 },
+    };
     try {
         for (const key of Object.keys(IMPLEMENTED)) {
             const fn = fnFor(key);
             if (!fn) continue;
             probe(fn);
+            const valid = REAL_OPTIONS[key];
+            if (valid) {
+                probe((a, b) => fn(a, b, valid));
+            }
         }
     } finally {
         if (had) g.sandkit = prev;
@@ -965,8 +984,12 @@ Deno.test("the upgrade slot is wired, which it never was", () => {
     // `registerUpgrade` destructured `onUpgradeKey` out and never set `onUpgrade`,
     // so all 7 upgrade actions were unreachable in-game while looking perfectly
     // configured. Asserted at the source level for the same reason as above.
+    // The registrars read `packages/registrations.ts`, not `mysandkit.ts` — the
+    // engine-shaped `register*` functions need the handler to compile stored
+    // processes, and importing that from the wrapper closed a load-time
+    // initialization cycle. The assertion follows the code, not the old layout.
     const kit = Deno.readTextFileSync(
-        new URL("../../packages/mysandkit.ts", import.meta.url).pathname,
+        new URL("../../packages/registrations.ts", import.meta.url).pathname,
     );
     assert(
         /onUpgrade: compiled\.fn/.test(kit),
@@ -977,7 +1000,7 @@ Deno.test("the upgrade slot is wired, which it never was", () => {
     // moving it back onto a raw `actions` read is caught here rather than by an item
     // silently doing nothing in-game.
     assert(
-        /compileEntryProcess\(def as Record<string, unknown>, "itemAction"\)/.test(kit),
+        /compileEntryProcess\(def, "itemAction"\)/.test(kit),
         "registerItem no longer compiles through the shared reader",
     );
     // Scoped to `registerUpgrade`, not the whole file: `registerUpgradeCategory`

@@ -329,8 +329,7 @@ export const structureActActions = defineActions({
             }
             return writeEach(structure, options, "buildStructure", (ns, cell) => {
                 if (typeof ns.buildAtCell !== "function") return false;
-                ns.buildAtCell(cell.x, cell.y, want);
-                return true;
+                return api.structures.buildAtCell(cell.x, cell.y, want);
             });
         },
     },
@@ -350,12 +349,11 @@ export const structureActActions = defineActions({
         fn: (structure, _context, options) => {
             return writeEach(structure, options, "removeStructure", (ns, cell) => {
                 if (typeof ns.removeAtCell !== "function") return false;
-                ns.removeAtCell(
+                return api.structures.removeAtCell(
                     cell.x,
                     cell.y,
                     removalOptions((options ?? {}) as StructureOptions),
                 );
-                return true;
             });
         },
     },
@@ -388,8 +386,7 @@ export const structureActActions = defineActions({
             const o = (options ?? {}) as StructureOptions;
             const positions = regionCells(s, o, "removeStructures");
             if (positions.length === 0) return false;
-            ns.removeAtCells(positions, removalOptions(o));
-            return true;
+            return api.structures.removeAtCells(positions, removalOptions(o));
         },
     },
 
@@ -407,8 +404,11 @@ export const structureActActions = defineActions({
             const o = (options ?? {}) as StructureOptions;
             return writeEach(structure, options, "setStructureEnabled", (ns, cell) => {
                 if (typeof ns.processing?.setEnabledAtCell !== "function") return false;
-                ns.processing.setEnabledAtCell(cell.x, cell.y, o.enabled === true);
-                return true;
+                return api.structures.processing.setEnabledAtCell(
+                    cell.x,
+                    cell.y,
+                    o.enabled === true,
+                );
             });
         },
     },
@@ -429,14 +429,12 @@ export const structureActActions = defineActions({
             const frame = num(o.index, 0);
             return writeEach(structure, options, "setSpritesheetIndex", (ns, cell) => {
                 if (typeof ns.setSpritesheetIndexAtCell === "function") {
-                    ns.setSpritesheetIndexAtCell(cell.x, cell.y, frame);
-                    return true;
+                    return api.structures.setSpritesheetIndexAtCell(cell.x, cell.y, frame);
                 }
                 if (typeof ns.setSpritesheetIndex === "function") {
                     const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
                     if (!found) return false;
-                    ns.setSpritesheetIndex(found, frame);
-                    return true;
+                    return api.structures.setSpritesheetIndex(found, frame);
                 }
                 return false;
             });
@@ -467,14 +465,21 @@ export const structureActActions = defineActions({
             }
             return writeEach(structure, options, "setSpritesheetByValue", (ns, cell) => {
                 if (typeof ns.setSpritesheetIndexByValueAtCell === "function") {
-                    ns.setSpritesheetIndexByValueAtCell(cell.x, cell.y, value, thresholds);
-                    return true;
+                    return api.structures.setSpritesheetIndexByValueAtCell(
+                        cell.x,
+                        cell.y,
+                        value,
+                        thresholds,
+                    );
                 }
                 if (typeof ns.setSpritesheetIndexByValue === "function") {
                     const found = ns.getAtCell?.(cell.x, cell.y) ?? null;
                     if (!found) return false;
-                    ns.setSpritesheetIndexByValue(found, value, thresholds);
-                    return true;
+                    return api.structures.setSpritesheetIndexByValue(
+                        found,
+                        value,
+                        thresholds,
+                    );
                 }
                 return false;
             });
@@ -539,8 +544,7 @@ export const structureActActions = defineActions({
             const ns = structures();
             if (!s || typeof ns?.update !== "function") return false;
             const o = (options ?? {}) as StructureOptions;
-            ns.update(s, { propagateToWorkers: o.propagateToWorkers === true });
-            return true;
+            return api.structures.update(s, { propagateToWorkers: o.propagateToWorkers === true });
         },
     },
 });
@@ -668,9 +672,21 @@ function refOf(options: StructureOptions): string {
  */
 type StructuresNamespace = typeof api.structures;
 
-/** `ns.structures`, or `null` on a thread that does not have it. */
+/**
+ * `ns.structures` — the **engine's** namespace, or `null` on a thread that does
+ * not have it.
+ *
+ * Not `api.structures`. The wrapper object always exists — it is a plain literal
+ * in this module — so a guard written as `typeof ns.buildAtCell === "function"`
+ * against it is true whether or not the game is there, and the action proceeds
+ * to "succeed" without ever reaching the engine. Reading `api.raw` instead asks
+ * the question that actually matters: does this thread have the namespace?
+ *
+ * The wrappers are what the writes go *through*; this is what the reads and the
+ * presence checks are made *against*.
+ */
 function structures(): StructuresNamespace | null {
-    return api?.structures ?? null;
+    return (api.raw as { structures?: StructuresNamespace } | undefined)?.structures ?? null;
 }
 
 /**
@@ -715,6 +731,8 @@ function at(
     options: StructureOptions,
     label: string,
 ): StructureRecord | null {
+    // The namespace has already been confirmed present by `structures()`; this
+    // checks the one member on it, so a build missing `getAtCell` degrades alone.
     if (typeof ns.getAtCell !== "function") return null;
     const cell = firstCell(structure, options, label);
     if (!cell) return null;

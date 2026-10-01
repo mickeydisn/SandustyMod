@@ -282,6 +282,14 @@ export const VALID_OPTIONS: Record<string, Record<string, unknown>> = {
     logicCount: { element: "water", size: 3 },
     logicSum: { size: 3 },
     logicForEach: { to: "stone", size: 3 },
+    // Both of these resolve a **cell** before they touch the engine, and both
+    // return early when the cell cannot be resolved. Under a blind proxy the
+    // shape read comes back as a proxy rather than a `{width, height}`, so the
+    // region walk produced nothing and the action returned its sentinel — the
+    // measurement then said `self-sufficient` where the class table says `api`.
+    // A real `size` is what lets the walk yield a cell.
+    getVelocity: { size: 1 },
+    techAppendUnlock: { techId: "iron", structures: ["wall"] },
 };
 
 /**
