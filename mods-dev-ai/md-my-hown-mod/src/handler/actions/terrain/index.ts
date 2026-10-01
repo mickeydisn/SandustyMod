@@ -1,5 +1,6 @@
 
-import { api, defineActions } from "../../core/types.ts";
+import { defineActions } from "../../core/types.ts";
+import { api } from "../../../packages/mysandkit.ts";
 import { MAX_SCAN_SIDE } from "../../core/cell-region.ts";
 import { regionFor } from "../element/index.ts";
 
@@ -127,9 +128,9 @@ function writeShape(
     
     
     const mutate = api?.grid?.mutate;
-    if (!s || typeof mutate !== "function") {
+    if (!s) {
         console.warn(
-            `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
+            `[md-my-hown-mod:process] ${label}: no structure on this thread, so ` +
                 "nothing was written",
         );
         return false;
@@ -145,11 +146,17 @@ function writeShape(
     const o = (options ?? {}) as TerrainOptions;
     const cells = regionCells(s, o, label);
     let queued = 0;
-    mutate((writer: { terrains: TerrainWriter }) => {
+    if (!mutate((writer: { terrains: TerrainWriter }) => {
         for (const cell of cells) {
             if (decide(writer.terrains, cell, ns)) queued++;
         }
-    });
+    })) {
+        console.warn(
+            `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
+                "nothing was written",
+        );
+        return false;
+    }
     return queued > 0;
 }
 

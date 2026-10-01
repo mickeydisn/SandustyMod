@@ -65,41 +65,6 @@ export type HandlerActionFn = (
     context?: unknown,
 ) => unknown;
 
-export { api } from "../../packages/mysandkit.ts";
-
-
-
-import { api } from "../../packages/mysandkit.ts";
-
-export function hostApi(): Record<string, unknown> | undefined {
-    
-    
-    
-    
-    
-    
-    
-    return api.raw as Record<string, unknown> | undefined;
-}
-
-export function hostNs(...path: string[]): Record<string, any> | undefined {
-    let node: unknown = hostApi();
-    for (const key of path) {
-        
-        
-        
-        
-        
-        if (node === null || (typeof node !== "object" && typeof node !== "function")) {
-            return undefined;
-        }
-        node = (node as Record<string, unknown>)[key];
-    }
-    return node !== null && (typeof node === "object" || typeof node === "function")
-        ? (node as Record<string, any>)
-        : undefined;
-}
-
 export interface ModifierAction {
     kind: "intercept" | "modify";
     fn: HandlerActionFn;

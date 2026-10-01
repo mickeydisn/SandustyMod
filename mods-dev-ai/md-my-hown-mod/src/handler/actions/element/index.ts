@@ -1,5 +1,6 @@
 
-import { defineActions, hostNs } from "../../core/types.ts";
+import { defineActions } from "../../core/types.ts";
+import { api } from "../../../packages/mysandkit.ts";
 import { ELEMENT_DATA_SLOTS } from "../../../ui/definition/data-fields.ts";
 import { anchorFor, MAX_SCAN_SIDE } from "../../core/cell-region.ts";
 import {
@@ -134,18 +135,16 @@ export function cellReaders(context: unknown): {
     const ctx = context as ProcessingContext | null;
     const readType = typeof ctx?.getResolvedTypeAtCell === "function"
         ? ctx.getResolvedTypeAtCell
-        : hostNs("elements")?.getResolvedTypeAtCell;
+        : api.elements.getResolvedTypeAtCell;
     if (typeof readType !== "function") return null;
     const isEmpty = typeof ctx?.isCellEmptyAtCell === "function"
         ? ctx.isCellEmptyAtCell
-        : hostNs("grid")?.isCellEmptyAtCell;
-    const elements = hostNs("elements");
-
+        : api.grid.isCellEmptyAtCell;
     
     const forms = (id: string): Set<unknown> => {
         const set = new Set<unknown>([id]);
         try {
-            const t = elements?.getTypeFromId?.(id);
+            const t = api.elements.getTypeFromId(id);
             if (t != null) set.add(t);
         } catch {
             
@@ -157,7 +156,7 @@ export function cellReaders(context: unknown): {
         if (found == null) return "";
         if (typeof found === "string") return found;
         try {
-            const id = elements?.getIdByType?.(found as number);
+            const id = api.elements.getIdByType(found as number);
             if (typeof id === "string" && id) return id;
         } catch {
             
@@ -196,15 +195,8 @@ export interface ElementWriter {
 function elementsApi():
     | { remove?: (x: number, y: number, options?: unknown) => void }
     | undefined {
-    const api = hostNs("elements") as
-        | {
-            removeAtCellWhenIdle?: (x: number, y: number, options?: unknown) => void;
-            removeAtCell?: (x: number, y: number, options?: unknown) => void;
-        }
-        | undefined;
-    if (!api) return undefined;
-    const remove = api.removeAtCellWhenIdle ?? api.removeAtCell;
-    return remove ? { remove: remove.bind(api) } : undefined;
+    const remove = api.elements.removeAtCellWhenIdle ?? api.elements.removeAtCell;
+    return { remove };
 }
 
 
@@ -225,16 +217,11 @@ export function writeCells(
     
     
     
-    const mutate = hostNs("grid")?.mutate;
-    
-    
-    
-    
     const readType = ctx?.getResolvedTypeAtCell;
     const isEmpty = ctx?.isCellEmptyAtCell;
-    if (!s || typeof readType !== "function" || typeof mutate !== "function") {
+    if (!s || typeof readType !== "function") {
         console.warn(
-            `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
+            `[md-my-hown-mod:process] ${label}: no cell reader on this thread, so ` +
                 "nothing was written",
         );
         return false;
@@ -300,11 +287,17 @@ export function writeCells(
     }
     if (queued === 0) return false;
 
-    mutate((writer: { elements: ElementWriter }) => {
+    if (!api.grid.mutate((writer: { elements: ElementWriter }) => {
         for (const step of plan) {
             decide(writer.elements, step.cell, step.current, step.empty);
         }
-    });
+    })) {
+        console.warn(
+            `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
+                "nothing was written",
+        );
+        return false;
+    }
     return true;
 }
 
@@ -378,16 +371,13 @@ export const elementActions = defineActions({
                 
                 
                 
-                const ns = hostNs("elements");
                 const slot = dataSlotOf(o);
                 if (!slot) return 0;
                 const region = regionFor(s, o);
                 if ("error" in region) return 0;
                 const first = region.range[0];
                 if (!first) return 0;
-                const read = ns?.getDataFieldAtCell;
-                if (typeof read !== "function") return 0;
-                const value = read(first.x, first.y, slot);
+                const value = api.elements.getDataFieldAtCell(first.x, first.y, slot);
                 return typeof value === "number" && Number.isFinite(value) ? value : 0;
             } catch (e) {
                 console.warn("[md-my-hown-mod:process] readDataField failed", e);
@@ -410,15 +400,12 @@ export const elementActions = defineActions({
                 
                 
                 
-                const ns = hostNs("elements");
                 const slot = dataSlotOf(o);
                 if (!slot) return;
                 const region = regionFor(s, o);
                 if ("error" in region) return;
                 const first = region.range[0];
                 if (!first) return;
-                const write = ns?.setDataFieldAtCell;
-                if (typeof write !== "function") return;
                 
                 
                 
@@ -426,7 +413,7 @@ export const elementActions = defineActions({
                 
                 const n = Math.round(Number(o.slotValue));
                 if (!Number.isFinite(n)) return;
-                write(first.x, first.y, slot, n);
+                api.elements.setDataFieldAtCell(first.x, first.y, slot, n);
             } catch (e) {
                 console.warn("[md-my-hown-mod:process] writeDataField failed", e);
             }

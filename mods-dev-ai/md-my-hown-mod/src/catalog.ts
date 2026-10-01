@@ -652,6 +652,8 @@ export function listSpriteIds(): Opt[] {
 
 
 
+export interface LibraryAsset {
+
     name: string;
     
     path: string;

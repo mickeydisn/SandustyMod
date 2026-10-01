@@ -1,6 +1,7 @@
 
 import { cellReaders, type ElementOptions, walkRangeFor, writeCells } from "../element/index.ts";
-import { defineActions, hostNs } from "../../core/types.ts";
+import { defineActions } from "../../core/types.ts";
+import { api } from "../../../packages/mysandkit.ts";
 import { type Positions, positionsOver } from "../../core/positions.ts";
 
 
@@ -134,19 +135,16 @@ export const logicActions = defineActions({
                 const fromCtx = (context as {
                     getTerrainHitPointsAtCell?: (x: number, y: number) => number;
                 } | null)?.getTerrainHitPointsAtCell;
-                const api = hostNs("terrains");
                 const read = typeof fromCtx === "function"
                     ? fromCtx
-                    : typeof api?.getDataAtCell === "function"
-                    ? (x: number, y: number) => {
-                        const data = api.getDataAtCell(x, y) as
+                    : (x: number, y: number) => {
+                        const data = api.terrains.getDataAtCell(x, y) as
                             | { hitPoints?: unknown; hp?: unknown }
                             | null
                             | undefined;
                         const hp = data?.hitPoints ?? data?.hp;
                         return typeof hp === "number" ? hp : 0;
-                    }
-                    : null;
+                    };
                 if (!read) return 0;
                 return list.sum(({ x, y }) => {
                     const n = Number(read(x, y));

@@ -1,6 +1,7 @@
 
 import { anchorFor } from "../../core/cell-region.ts";
-import { defineActions, hostNs } from "../../core/types.ts";
+import { defineActions } from "../../core/types.ts";
+import { api } from "../../../packages/mysandkit.ts";
 
 
 
@@ -78,7 +79,7 @@ export const processingSenseActions = defineActions({
                 
                 
                 const readType = (context as ProcessingContext | null)?.getResolvedTypeAtCell ??
-                    hostNs("elements")?.getResolvedTypeAtCell;
+                    api.elements.getResolvedTypeAtCell;
                 if (anchor.source === "none" || typeof readType !== "function") return false;
                 const o = (options ?? {}) as {
                     element?: unknown;

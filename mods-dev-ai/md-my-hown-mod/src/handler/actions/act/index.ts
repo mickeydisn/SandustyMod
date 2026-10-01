@@ -1,6 +1,7 @@
 
 import { anchorFor } from "../../core/cell-region.ts";
-import { api, defineActions } from "../../core/types.ts";
+import { defineActions } from "../../core/types.ts";
+import { api } from "../../../packages/mysandkit.ts";
 
 
 export interface ProcessingContext {

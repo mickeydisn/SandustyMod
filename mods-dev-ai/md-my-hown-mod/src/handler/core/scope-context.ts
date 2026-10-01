@@ -1,7 +1,7 @@
 
 import { cellAt, cellsOf, footprint, type ShapeMatrix } from "./cell-region.ts";
 
-import { api } from "./types.ts";
+import { api } from "../../packages/mysandkit.ts";
 import type { CallSite } from "./types.ts";
 
 

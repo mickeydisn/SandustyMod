@@ -1,6 +1,6 @@
 
 
-import { api } from "./types.ts";
+import { api } from "../../packages/mysandkit.ts";
 
 
 export interface Cell {

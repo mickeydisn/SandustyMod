@@ -25,11 +25,17 @@ export const api = {
     get raw() {
         return g()?.api;
     },
+    get host() {
+        return g();
+    },
     get enums() {
         return g()?.enums;
     },
     get react() {
         return g()?.react;
+    },
+    get mods() {
+        return g()?.mods;
     },
     toast(msg: string, opts?: Record<string, unknown>) {
         try {
@@ -288,6 +294,29 @@ export const api = {
             }
         },
         
+        removeAtCell(x: number, y: number, options?: unknown): boolean {
+            try {
+                const ns = g()?.api?.elements;
+                if (typeof ns?.removeAtCell !== "function") return false;
+                ns.removeAtCell(x, y, options);
+                return true;
+            } catch (e) {
+                console.warn(`${LOG} elements.removeAtCell failed`, x, y, e);
+                return false;
+            }
+        },
+        removeAtCellWhenIdle(x: number, y: number, options?: unknown): boolean {
+            try {
+                const ns = g()?.api?.elements;
+                const fn = ns?.removeAtCellWhenIdle ?? ns?.removeAtCell;
+                if (typeof fn !== "function") return false;
+                fn.call(ns, x, y, options);
+                return true;
+            } catch (e) {
+                console.warn(`${LOG} elements.removeAtCellWhenIdle failed`, x, y, e);
+                return false;
+            }
+        },
         getDataFieldAtCell(x: number, y: number, field: number): number | null {
             try {
                 return g()?.api?.elements?.getDataFieldAtCell?.(x, y, field) ?? null;
@@ -388,11 +417,15 @@ export const api = {
                 console.warn(`${LOG} grid.reportActivityAtCell failed`, x, y, e);
             }
         },
-        mutate<T extends object>(fn: (writer: T) => void): void {
+        mutate<T extends object>(fn: (writer: T) => void): boolean {
             try {
-                g()?.api?.grid?.mutate?.(fn);
+                const ns = g()?.api?.grid;
+                if (typeof ns?.mutate !== "function") return false;
+                ns.mutate(fn);
+                return true;
             } catch (e) {
                 console.warn(`${LOG} grid.mutate failed`, e);
+                return false;
             }
         },
         

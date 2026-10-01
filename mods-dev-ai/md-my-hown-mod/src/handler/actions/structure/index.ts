@@ -1,5 +1,6 @@
 
-import { api, defineActions } from "../../core/types.ts";
+import { defineActions } from "../../core/types.ts";
+import { api } from "../../../packages/mysandkit.ts";
 import { MAX_SCAN_SIDE } from "../../core/cell-region.ts";
 import { regionFor } from "../element/index.ts";
 
