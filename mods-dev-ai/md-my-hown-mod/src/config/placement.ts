@@ -1,6 +1,4 @@
-
 import type { PlacementConfigConfig, PlacementFieldConfig } from "../constants.ts";
-
 
 export function hasPlacementLabel(v: unknown): boolean {
     if (!v || typeof v !== "object") return false;
@@ -8,7 +6,6 @@ export function hasPlacementLabel(v: unknown): boolean {
     const text = (x: unknown): boolean => typeof x === "string" && x.trim().length > 0;
     return text(o.label) || text(o.labelKey);
 }
-
 
 export function placementConfigProblem(
     def: Partial<PlacementConfigConfig> | null | undefined,
@@ -23,18 +20,11 @@ export function placementConfigProblem(
     for (const f of fields as PlacementFieldConfig[]) {
         const fid = typeof f?.id === "string" ? f.id.trim() : "";
         if (!fid || !hasPlacementLabel(f) || seen.has(fid)) {
-            
-            
-            
-            
-            
             return `Invalid or duplicate placement field "${f?.id}".`;
         }
         seen.add(fid);
         const type = f?.type;
         if (type !== "integer" && type !== "choice") {
-            
-            
             return `Placement field "${fid}" has type "${
                 String(type)
             }" — expected integer or choice.`;
@@ -53,7 +43,6 @@ export function placementConfigProblem(
     }
     return null;
 }
-
 
 export function placementConfigPayload(
     def: PlacementConfigConfig,

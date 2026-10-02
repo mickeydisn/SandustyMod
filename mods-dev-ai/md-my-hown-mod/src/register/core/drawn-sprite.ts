@@ -10,7 +10,7 @@ const images = new Map<string, { src: string; image: unknown; failed: boolean }>
 const warned = new Set<string>();
 
 
-export function sourceOf(spriteId: string): string | undefined {
+function sourceOf(spriteId: string): string | undefined {
     const sprites = configStore.load().sprites ?? [];
     const hit = sprites.find((s) => s?.id === spriteId);
     const src = hit?.source;
@@ -56,11 +56,6 @@ function imageFor(spriteId: string): unknown {
     return image;
 }
 
-
-export function clearDrawnSpriteCache(): void {
-    images.clear();
-    warned.clear();
-}
 
 export function makeDrawnSprite(
     spriteId: string | undefined,

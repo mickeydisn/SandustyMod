@@ -20,7 +20,7 @@ export function isDrawn(e: SpriteConfig | undefined | null): e is DrawnSprite {
     return !!e && (e as any).kind === "drawn" && isPngDataUrl((e as any).source);
 }
 
-export function listSprites(): SpriteConfig[] {
+function listSprites(): SpriteConfig[] {
     return configStore.load().sprites ?? [];
 }
 

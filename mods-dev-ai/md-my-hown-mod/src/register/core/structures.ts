@@ -93,7 +93,7 @@ function makeOutline({ wCells, hCells }: DrawContext) {
 }
 
 
-export function resolveDraw(st: StructureConfig): StructureConfig {
+function resolveDraw(st: StructureConfig): StructureConfig {
     
     
     

@@ -1,4 +1,3 @@
-
 import { LOG, type ModConfig } from "../constants.ts";
 import {
     registerContact,
@@ -38,18 +37,10 @@ import {
 export function registerTheRest(config: ModConfig): Record<string, number> {
     const counts: Record<string, number> = {};
 
-    
-    
-    
     const processes = new ProcessRegistry(config.processes ?? []);
-    
-    
-    
-    
-    
+
     setProcessRegistry(processes);
 
-    
     for (const sp of config.sprites ?? []) {
         if (!sp?.id || registered.sprites.has(sp.id)) continue;
         void registerSprite(sp);
@@ -57,8 +48,6 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         counts.sprites = (counts.sprites ?? 0) + 1;
     }
 
-    
-    
     counts.items = registerItems(config);
 
     for (const r of config.recipes ?? []) {
@@ -70,15 +59,9 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
     }
     for (const p of config.processing ?? []) {
         if (!p?.id || registered.processing.has(p.id)) continue;
-        
+
         const entry = p as Record<string, unknown>;
         if (typeof entry.process !== "function") {
-            
-            
-            
-            
-            
-            
             const compiled = compileEntryProcess(entry, "processing", processes);
             if (compiled.source.kind === "process" && compiled.expanded.length) {
                 console.log(
@@ -91,27 +74,12 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
                 );
             }
             if (compiled.unknownOptions.length) {
-                
-                
-                
-                
                 console.warn(
                     `${LOG} processing ${p.id}: option no action declares ` +
                         `${compiled.unknownOptions.join(", ")} — the step runs on defaults`,
                 );
             }
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             registerProcessing({ ...entry, process: compiled.fn } as never);
         } else {
             registerProcessing(p);
@@ -139,20 +107,13 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
 
     for (const t of config.techs ?? []) {
         if (!t?.id || registered.techs.has(t.id)) continue;
-        
-        
-        
-        
-        
+
         const ids = techUnlockStructureIds(t.id, config);
         registerTech(ids.length ? { ...t, unlocks: { ...(t.unlocks ?? {}), structures: ids } } : t);
         registered.techs.add(t.id);
         counts.techs = (counts.techs ?? 0) + 1;
     }
-    
-    
-    
-    
+
     for (const n of config.unlockNodes ?? []) {
         if (!n?.id || n.kind !== "tech" || n.techId) continue;
         if (registered.techs.has(n.id)) continue;
@@ -176,13 +137,7 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
     }
     for (const p of config.projectiles ?? []) {
         if (!p?.id || registered.projectiles.has(p.id)) continue;
-        
-        
-        
-        
-        
-        
-        
+
         const entry = p as Record<string, unknown>;
         const { ref, problem } = projectileOptionOf(entry);
         if (problem) console.warn(`[md-my-hown-mod] projectile ${entry.id}: ${problem}`);
@@ -198,14 +153,7 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
             if (compiled.problem) {
                 console.warn(`[md-my-hown-mod] projectile ${entry.id}: ${compiled.problem}`);
             }
-            
-            
-            
-            
-            
-            
-            
-            
+
             registerProjectile({
                 ...entry,
                 ...(ref ? { [PROJECTILE_OPTION_STORE_KEY]: ref } : {}),
@@ -223,15 +171,9 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         registered.energyTypes.add(e.id);
         counts.energyTypes = (counts.energyTypes ?? 0) + 1;
     }
-    
-    
+
     reportEnergyNetworks(config, joinedNetworkNames(config));
 
-    
-    
-    
-    
-    
     counts.placementLimits = installPlacementLimits(config);
 
     for (const e of config.excavationProfiles ?? []) {
@@ -246,18 +188,11 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         registered.structureBehaviors.add(b.id);
         counts.structureBehaviors = (counts.structureBehaviors ?? 0) + 1;
     }
-    
-    
-    
-    
-    
+
     for (const p of config.placementConfigs ?? []) {
         if (!p?.id || registered.placementConfigs.has(p.id)) continue;
         registerPlacementConfig(p);
-        
-        
-        
-        
+
         registered.placementConfigs.add(p.id);
         counts.placementConfigs = (counts.placementConfigs ?? 0) + 1;
     }
@@ -272,9 +207,7 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
     }
     for (const tr of config.triggers ?? []) {
         if (!tr?.id || registered.triggers.has(tr.id)) continue;
-        
-        
-        
+
         registerTrigger(
             tr,
             compileEntryProcess(tr as Record<string, unknown>, "trigger", processes).fn as never,
@@ -283,25 +216,13 @@ export function registerTheRest(config: ModConfig): Record<string, number> {
         counts.triggers = (counts.triggers ?? 0) + 1;
     }
 
-    
-    
     for (const b of config.inputBindings ?? []) {
         if (!b?.id || registered.inputBindings.has(b.id)) continue;
         const entry = { ...b } as Record<string, unknown>;
         for (const slot of ["onDownKey", "onUpKey"] as const) {
             const key = b[slot];
             if (!key) continue;
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             const { fn, skipped } = compileProcess([{ key, options: undefined }], "behavior");
             if (typeof fn === "function" && !skipped.length) entry[slot] = fn as never;
             else console.warn(`${LOG} input binding ${b.id}: unknown ${slot} "${key}"`);

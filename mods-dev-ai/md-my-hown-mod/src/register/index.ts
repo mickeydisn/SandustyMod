@@ -1,5 +1,3 @@
-
-
 import { LOG, type ModConfig } from "../constants.ts";
 import { configStore } from "../config/store.ts";
 import { registerElements } from "./core/elements.ts";
@@ -13,25 +11,17 @@ export interface RegisterCounts {
     elements: number;
     structures: number;
     terrains: number;
-    
     rest: Record<string, number>;
-    
     hiddenElements: number;
 }
-
 
 export function registerAll(cfg?: ModConfig): RegisterCounts {
     const config = cfg ?? configStore.load();
     const counts: RegisterCounts = {
         elements: registerElements(config),
-        
         structures: registerStructures(config),
         terrains: registerTerrains(config),
         rest: registerTheRest(config),
-        
-        
-        
-        
         hiddenElements: installElementPickerVisibility(),
     };
     closeBootWindow();

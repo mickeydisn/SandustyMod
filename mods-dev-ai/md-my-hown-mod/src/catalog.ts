@@ -8,23 +8,9 @@ import { getSandkit, safe } from "./api.ts";
 import { api as skApi } from "./packages/mysandkit.ts";
 import { configIsHidden, humanise } from "./constants.ts";
 import { configStore } from "./config/store.ts";
-import type { Tab } from "./ui/schema.ts";
 import type { ListRow } from "./ui/definition/types.ts";
 import { allUnlockNodes, DEFAULT_UNLOCK_NODE } from "./ui/tech-link.ts";
-import type { HandlerMeta, HandlerSlot } from "./handler/core/handler-registry.ts";
-
-
-
-import {
-    allHandlerTypes,
-    HANDLER_META,
-    itemActionHandlersFor,
-} from "./handler/core/handler-registry.ts";
-
-
-
-import { PROJECTILE_OPTION_DOCS, PROJECTILE_OPTIONS } from "./handler/projectile-option/index.ts";
-
+import type { HandlerMeta } from "./handler/core/handler-registry.ts";
 
 export type Opt = {
     value: string;
@@ -156,16 +142,7 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
 }
 
 
-export const DEFAULT_ENERGY_NETWORK = "power";
-
-
-export const PANEL_NATIVES: Partial<Record<Tab, () => Opt[]>> = {
-    elements: () => listElements(),
-    structures: () => listStructures(),
-    items: () => listItems(),
-    terrains: () => listTerrains(),
-    sprites: () => listSpriteIds(),
-};
+const DEFAULT_ENERGY_NETWORK = "power";
 
 export function listEnergyNetworkOpts(): Opt[] {
     const map = new Map<string, Opt>();
@@ -419,10 +396,6 @@ export function listDrawFunctions(): Opt[] {
 }
 
 
-export function drawDoc(key: string): string | undefined {
-    return DRAW_FUNCTIONS.find((d) => d.key === key)?.doc;
-}
-
 export function listMatterTypes(): Opt[] {
     
     
@@ -492,7 +465,7 @@ const STRUCTURE_CATEGORIES = [
 ] as const;
 
 
-export const KEY_CODE_SUGGESTIONS = [
+const KEY_CODE_SUGGESTIONS = [
     "Shift",
     "Alt",
     "Control",
@@ -670,7 +643,7 @@ import { LIBRARY_ICONS } from "./generated/sprite-library.ts";
 export { LIBRARY_ICONS };
 
 
-export function listLibraryAssets(): LibraryAsset[] {
+function listLibraryAssets(): LibraryAsset[] {
     return [...LIBRARY_ICONS].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -736,71 +709,6 @@ function handlerRegistry(): {
         codeDocs: m?.CODE_HANDLER_DOCS,
         meta: m?.HANDLER_META,
     };
-}
-
-
-function describedOptions(
-    reg: Record<string, unknown> | undefined,
-    docs: Record<string, string> | undefined,
-    keys?: string[],
-): Opt[] {
-    if (!reg) return [];
-    const names = keys ?? Object.keys(reg);
-    return names
-        .filter((k) => k in reg)
-        .map((k) => {
-            const doc = docs?.[k];
-            return doc ? { value: k, label: `${k} — ${doc}` } : { value: k, label: k };
-        });
-}
-
-
-function slotHandlerKeys(slot: HandlerSlot, registry: "any" | "process" = "any"): Opt[] {
-    const r = handlerRegistry();
-    const metas = HANDLER_META.filter((m) => m.slots.includes(slot));
-    if (metas.length === 0) return [];
-    const reg = registry === "process" ? r.process : r.any;
-    const docs = registry === "process" ? r.processDocs : r.anyDocs;
-    
-    
-    const fallback = Object.fromEntries(metas.map((m) => [m.key, 1]));
-    return describedOptions(reg ?? fallback, docs, metas.map((m) => m.key));
-}
-
-
-export function listProjectileHandlerKeys(): Opt[] {
-    const docs = PROJECTILE_OPTION_DOCS;
-    return Object.keys(PROJECTILE_OPTIONS).sort().map((key) => ({
-        value: key,
-        label: key,
-        desc: docs[key] ?? "Projectile options.",
-    }));
-}
-
-export function listSignalHandlerKeys(): Opt[] {
-    return slotHandlerKeys("signal");
-}
-
-export function listTriggerHandlerKeys(): Opt[] {
-    return slotHandlerKeys("trigger");
-}
-
-export function listUpgradeHandlerKeys(): Opt[] {
-    return slotHandlerKeys("upgrade");
-}
-
-
-export function listItemActionHandlerKeys(itemType?: string): Opt[] {
-    const metas = itemActionHandlersFor(itemType);
-    const r = handlerRegistry();
-    const docs = r.anyDocs;
-    const fallback = Object.fromEntries(metas.map((m) => [m.key, 1]));
-    return describedOptions(r.any ?? fallback, docs, metas.map((m) => m.key));
-}
-
-
-export function listDescribedProcessorKeys(): Opt[] {
-    return slotHandlerKeys("processing", "process");
 }
 
 
@@ -1056,11 +964,6 @@ export function discoverStructures(): NativeObject[] {
     }
 
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
-}
-
-
-export function discoverSprites(): NativeObject[] {
-    return listSpriteIds().map((o) => ({ id: o.value, origin: "game" as const, label: o.label }));
 }
 
 

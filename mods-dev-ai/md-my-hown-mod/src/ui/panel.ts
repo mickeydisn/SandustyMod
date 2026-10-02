@@ -1,22 +1,18 @@
 
-import { LOG, type ModConfig, type PanelState, type StructureConfig } from "../constants.ts";
+import { LOG, type ModConfig, type PanelState } from "../constants.ts";
 import { configStore, type CollectionKey } from "../config/store.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
 import { React as HostReact } from "../api.ts";
 import {
     autoGraphicsKey,
     CATEGORY_META,
-    describeShape,
-    emptyShape,
     entryToForm,
     type FieldSpec,
     formatIdList,
-    formDefaults,
     formToEntry,
     isActive,
     MENU_GROUPS,
     newEntryForm,
-    normalizeShape,
     parseIdList,
     PASSTHROUGH_KEY,
     passthroughKeysOf,
@@ -24,7 +20,6 @@ import {
     resolveOptions,
     sectionsFor,
     sectionsToReveal,
-    shapeToText,
     type Tab,
     validateForm,
 } from "./schema.ts";
@@ -45,7 +40,6 @@ import {
     countHiddenRows,
     filterRows,
     mergeRows,
-    originTag,
     type OwnerKey,
     ownerLabel,
     ownersOf,
@@ -66,7 +60,6 @@ import { listFor } from "./panel/index.ts";
 import { attachedTo, isInlineCatalogue, parentOf } from "./panel/attach.ts";
 import {
     handlerDoc,
-    listBuildModeTypes,
     listElements,
     listStructures,
     listTerrains,
@@ -86,7 +79,7 @@ import {
 } from "./panel/handlers.ts";
 import { renderHelp } from "./panel/help.ts";
 import { renderConfigMap } from "./config-map.ts";
-import { DEFAULT_UNLOCK_NODE, techUnlockStructureIds, unlockLine } from "./tech-link.ts";
+import { techUnlockStructureIds } from "./tech-link.ts";
 import { renderDraws } from "./panel/draws.ts";
 
 
@@ -96,8 +89,6 @@ import { getDrawTab as getSpriteEditorTab } from "../sprite-editor/index.ts";
 
 
 import {
-    currentProcessRegistry,
-    processProblem,
     ProcessRegistry,
     setProcessRegistry,
 } from "../handler/custom-process/index.ts";
@@ -109,16 +100,7 @@ const HANDLER_SCREENS = {
 } as const;
 
 
-function safeJson(text: string): unknown {
-    try {
-        return JSON.parse(text);
-    } catch {
-        return undefined;
-    }
-}
-
-
-export function resolveCat(raw: unknown): Tab {
+function resolveCat(raw: unknown): Tab {
     if (typeof raw === "string" && CATEGORY_META[raw as Tab]) {
         const tab = raw as Tab;
         
@@ -166,7 +148,7 @@ function entriesOf(cfg: ModConfig, cat: Tab): Record<string, unknown>[] {
 }
 
 
-export function createPanelComponent(defaultMinimized = true) {
+function createPanelComponent(defaultMinimized = true) {
     
     
     
@@ -995,13 +977,6 @@ export function createPanelComponent(defaultMinimized = true) {
                     ? h("div", { style: S.hintBelow }, f.hint)
                     : null,
             );
-        };
-
-        
-        const entryLabel = (entry: Record<string, unknown>): string => {
-            const name = typeof entry.name === "string" ? entry.name : "";
-            const id = typeof entry.id === "string" ? entry.id : "";
-            return name || id;
         };
 
         

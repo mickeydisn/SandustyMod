@@ -96,9 +96,7 @@ const CASCADES: Partial<Record<CollectionKey, (cfg: ModConfig, id: string) => vo
     },
 };
 
-export function migrateLegacyActions(
-    cfg: ModConfig,
-): { changed: number; config: ModConfig } {
+function migrateLegacyActions(cfg: ModConfig): { changed: number; config: ModConfig } {
     const out: ModConfig = { ...cfg, processes: [...(cfg.processes ?? [])] };
     const known = new Set(out.processes.map((p) => p.id));
     let changed = 0;
@@ -159,7 +157,7 @@ export function migrateLegacyActions(
     return { changed, config: out };
 }
 
-export function loadConfig(): ModConfig {
+function loadConfig(): ModConfig {
     api.storage.ensure();
 
     return migrateLegacyActions(
@@ -180,7 +178,7 @@ function saveConfig(cfg: ModConfig): void {
     console.log(`${LOG} config saved (${counts})`);
 }
 
-export function loadPanelState(defaultMinimized = true): PanelState {
+function loadPanelState(defaultMinimized = true): PanelState {
     api.storage.ensure();
     const raw = api.storage.get<Partial<PanelState>>(PANEL_KEY);
     return {
@@ -192,7 +190,7 @@ export function loadPanelState(defaultMinimized = true): PanelState {
     };
 }
 
-export function savePanelState(state: PanelState): void {
+function savePanelState(state: PanelState): void {
     api.storage.ensure();
     api.storage.set(PANEL_KEY, state);
 }
@@ -254,10 +252,10 @@ function upsertAny(key: CollectionKey, entry: AnyEntry): ModConfig {
     });
 }
 
-export function exportConfigJson(): string {
+function exportConfigJson(): string {
     return JSON.stringify(loadConfig(), null, 2);
 }
-export function importConfigJson(json: string): ModConfig {
+function importConfigJson(json: string): ModConfig {
     const cfg = ensureArrays(JSON.parse(json) as Partial<ModConfig>);
     saveConfig(cfg);
     return cfg;

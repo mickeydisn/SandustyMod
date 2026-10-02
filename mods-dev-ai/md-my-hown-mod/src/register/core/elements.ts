@@ -1,4 +1,3 @@
-
 import { LOG, type ModConfig } from "../../constants.ts";
 import { configStore } from "../../config/store.ts";
 import { api, normalizeElementPatch } from "../../packages/mysandkit.ts";
@@ -7,7 +6,6 @@ import { noteElementVisibility } from "./element-picker.ts";
 
 export { closeBootWindow } from "../registry.ts";
 export { __resetBootWindowForTests } from "../registry.ts";
-
 
 export function registerElements(cfg?: ModConfig): number {
     const config = cfg ?? configStore.load();
@@ -22,19 +20,9 @@ export function registerElements(cfg?: ModConfig): number {
         n++;
         const type = res.elementType;
         if (typeof type === "number") api.elements.addElementToDiscoveries(type);
-        
-        
-        
-        
+
         noteElementVisibility(type, el as Record<string, unknown>);
-        
-        
-        
-        
-        
-        
-        
-        
+
         const normalised = normalizeElementPatch(el as Record<string, unknown>);
         console.log(
             `${LOG} element ${el.id} type=${type} matterType ` +
