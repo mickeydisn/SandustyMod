@@ -7,7 +7,7 @@
 import { getSandkit, safe } from "./api.ts";
 import { api as skApi } from "./packages/mysandkit.ts";
 import { configIsHidden, humanise } from "./constants.ts";
-import { loadConfig } from "./config/store.ts";
+import { configStore } from "./config/store.ts";
 import type { Tab } from "./ui/schema.ts";
 import type { ListRow } from "./ui/definition/types.ts";
 import { allUnlockNodes, DEFAULT_UNLOCK_NODE } from "./ui/tech-link.ts";
@@ -139,7 +139,7 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
     }
 
     
-    for (const el of loadConfig().elements ?? []) {
+    for (const el of configStore.load().elements ?? []) {
         if (!el?.id) continue;
         map.set(el.id, {
             value: el.id,
@@ -173,7 +173,7 @@ export function listEnergyNetworkOpts(): Opt[] {
         value: DEFAULT_ENERGY_NETWORK,
         label: `${DEFAULT_ENERGY_NETWORK} — the game's own network`,
     });
-    for (const n of loadConfig().energyNetworks ?? []) {
+    for (const n of configStore.load().energyNetworks ?? []) {
         if (!n?.id) continue;
         map.set(n.id, {
             value: n.id,
@@ -255,7 +255,7 @@ export function listStructures(): Opt[] {
         }
     }
 
-    for (const st of loadConfig().structures ?? []) {
+    for (const st of configStore.load().structures ?? []) {
         if (st?.id) {
             map.set(st.id, {
                 value: st.id,
@@ -309,7 +309,7 @@ export function listItems(): Opt[] {
         
         map.set(v, { value: v, label: v, source: "game" });
     }
-    for (const it of loadConfig().items ?? []) {
+    for (const it of configStore.load().items ?? []) {
         if (!it?.id) continue;
         map.set(it.id, { value: it.id, label: `${it.name || it.id} (this mod)`, source: "mod" });
     }
@@ -328,7 +328,7 @@ export function listTerrains(): Opt[] {
         map.set(String(id), { value: String(id), label: name, source: "game" });
     }
 
-    for (const t of loadConfig().terrains ?? []) {
+    for (const t of configStore.load().terrains ?? []) {
         if (!t?.id) continue;
         map.set(t.id, { value: t.id, label: `${t.name || t.id} (this mod)`, source: "mod" });
     }
@@ -351,7 +351,7 @@ export function listLinkedClearance(): Opt[] {
 
 
 export function listMaterialIds(): Opt[] {
-    const used = (loadConfig().terrains ?? [])
+    const used = (configStore.load().terrains ?? [])
         .map((t) => Number((t as { materialId?: unknown } | undefined)?.materialId))
         .filter((n) => Number.isFinite(n));
     const taken = new Set(used);
@@ -628,7 +628,7 @@ export function listSpriteIds(): Opt[] {
     }
     
     
-    for (const sp of loadConfig().sprites ?? []) {
+    for (const sp of configStore.load().sprites ?? []) {
         if (!sp?.id) continue;
         const lib = LIBRARY_ICONS.find((i) => i.path === sp.path);
         
@@ -812,7 +812,7 @@ export function handlerDoc(key: string): string | undefined {
 
 
 export function listUnlockNodes(): Opt[] {
-    return allUnlockNodes(loadConfig()).map((n) => ({
+    return allUnlockNodes(configStore.load()).map((n) => ({
         value: n.id,
         label: n.kind === "always"
             ? `${n.name || n.id} — no research`
@@ -823,7 +823,7 @@ export function listUnlockNodes(): Opt[] {
 
 export function listTechIds(excludeSuffix?: string): Opt[] {
     const ex = excludeSuffix?.trim();
-    return (loadConfig().techs ?? [])
+    return (configStore.load().techs ?? [])
         .filter((t) => {
             if (!t?.id) return false;
             
@@ -842,7 +842,7 @@ export function listUpgradeCategoryIds(): Opt[] {
     
     
     map.set("tools", { value: "tools", label: "tools (the game's default)", source: "game" });
-    for (const c of loadConfig().upgradeCategories ?? []) {
+    for (const c of configStore.load().upgradeCategories ?? []) {
         if (!c?.id) continue;
         map.set(c.id, {
             value: c.id,
@@ -860,7 +860,7 @@ export function listUpgradeCategoryIds(): Opt[] {
 
 export function listTechBranches(): Opt[] {
     const seen = new Map<string, string>();
-    for (const t of loadConfig().techs ?? []) {
+    for (const t of configStore.load().techs ?? []) {
         const b = typeof t?.branch === "string" ? t.branch.trim() : "";
         if (b) seen.set(b, b);
     }
@@ -873,7 +873,7 @@ export function listTechBranches(): Opt[] {
 
 export function listCurrencyTypes(): Opt[] {
     const seen = new Set<string>(["gold"]);
-    for (const t of loadConfig().techs ?? []) {
+    for (const t of configStore.load().techs ?? []) {
         const c = typeof t?.currencyType === "string" ? t.currencyType.trim() : "";
         if (c) seen.add(c);
     }

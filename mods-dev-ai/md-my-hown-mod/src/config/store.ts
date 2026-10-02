@@ -1,38 +1,5 @@
-
-import {
-    type BufferEntryConfig,
-    type ContactReactionConfig,
-    DEFAULT_CONFIG,
-    type ElementConfig,
-    type EnergyNetworkConfig,
-    type EnergyTypeConfig,
-    type ExcavationProfileConfig,
-    type InputBindingConfig,
-    type InteractionConfig,
-    type ItemConfig,
-    LOG,
-    type ModConfig,
-    type ModifierConfig,
-    type PanelState,
-    type PlacementConfigConfig,
-    type ProcessingConfig,
-    type ProjectileConfig,
-    type RecipeConfig,
-    type SignalConfig,
-    type SpriteConfig,
-    type StructureBehaviorConfig,
-    type StructureConfig,
-    type TechConfig,
-    type TerrainConfig,
-    type TriggerConfig,
-    type UnlockNodeConfig,
-    type UpgradeCategoryConfig,
-    type UpgradeConfig,
-} from "../constants.ts";
+import { LOG, type ModConfig, type PanelState } from "../constants.ts";
 import { api } from "../packages/mysandkit.ts";
-
-
-
 import { derivedProcessId } from "../handler/custom-process/registry.ts";
 import type { ProcessStep } from "../handler/custom-process/types.ts";
 import type { HandlerSlot } from "../handler/core/handler-registry.ts";
@@ -41,42 +8,52 @@ import { DEFAULT_UNLOCK_NODE } from "../ui/tech-link.ts";
 const CONFIG_KEY = "config";
 const PANEL_KEY = "panel";
 
-function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
-    return {
-        version: typeof raw?.version === "number" ? raw.version : 1,
-        elements: Array.isArray(raw?.elements) ? raw!.elements! : [],
-        structures: Array.isArray(raw?.structures) ? raw!.structures! : [],
-        items: Array.isArray(raw?.items) ? raw!.items! : [],
-        recipes: Array.isArray(raw?.recipes) ? raw!.recipes! : [],
-        processing: Array.isArray(raw?.processing) ? raw!.processing! : [],
-        contacts: Array.isArray(raw?.contacts) ? raw!.contacts! : [],
-        interactions: Array.isArray(raw?.interactions) ? raw!.interactions! : [],
-        modifiers: Array.isArray(raw?.modifiers) ? raw!.modifiers! : [],
-        terrains: Array.isArray(raw?.terrains) ? raw!.terrains! : [],
-        techs: Array.isArray(raw?.techs) ? raw!.techs! : [],
-        upgradeCategories: Array.isArray(raw?.upgradeCategories) ? raw!.upgradeCategories! : [],
-        upgrades: Array.isArray(raw?.upgrades) ? raw!.upgrades! : [],
-        projectiles: Array.isArray(raw?.projectiles) ? raw!.projectiles! : [],
-        energyTypes: Array.isArray(raw?.energyTypes) ? raw!.energyTypes! : [],
-        energyNetworks: Array.isArray(raw?.energyNetworks) ? raw!.energyNetworks! : [],
-        unlockNodes: Array.isArray(raw?.unlockNodes) ? raw!.unlockNodes! : [],
-        excavationProfiles: Array.isArray(raw?.excavationProfiles) ? raw!.excavationProfiles! : [],
-        structureBehaviors: Array.isArray(raw?.structureBehaviors) ? raw!.structureBehaviors! : [],
-        placementConfigs: Array.isArray(raw?.placementConfigs) ? raw!.placementConfigs! : [],
-        signals: Array.isArray(raw?.signals) ? raw!.signals! : [],
-        triggers: Array.isArray(raw?.triggers) ? raw!.triggers! : [],
-        sprites: Array.isArray(raw?.sprites) ? raw!.sprites! : [],
-        inputBindings: Array.isArray(raw?.inputBindings) ? raw!.inputBindings! : [],
-        processes: Array.isArray(raw?.processes) ? raw!.processes! : [],
-        
-        
-        
-        buffers: Array.isArray(raw?.buffers) ? raw!.buffers! : [],
-    };
-}
+/** Every array-valued field of `ModConfig`. */
+type CollectionKey = {
+    [K in keyof ModConfig]: ModConfig[K] extends unknown[] ? K : never;
+}[keyof ModConfig];
 
+type CollectionEntry<K extends CollectionKey> = ModConfig[K] extends (infer E)[] ? E : never;
 
-const LEGACY_SLOTS: readonly [string, HandlerSlot][] = [
+/**
+ * Every id-keyed collection in `ModConfig`, with a short label for the save log.
+ *
+ * This table is the single source of truth: `ensureArrays` normalises exactly
+ * these keys, and the `upsertIn`/`removeIn` helpers are written against them.
+ * Adding a collection to `ModConfig` without adding it here is a type error.
+ */
+const COLLECTIONS = {
+    elements: "el",
+    structures: "st",
+    items: "it",
+    recipes: "re",
+    processing: "pr",
+    contacts: "ct",
+    interactions: "ix",
+    modifiers: "mod",
+    terrains: "te",
+    techs: "tech",
+    upgradeCategories: "cat",
+    upgrades: "up",
+    projectiles: "pj",
+    energyTypes: "et",
+    energyNetworks: "en",
+    unlockNodes: "un",
+    excavationProfiles: "ex",
+    structureBehaviors: "sb",
+    placementConfigs: "pc",
+    signals: "sig",
+    triggers: "trg",
+    sprites: "spr",
+    inputBindings: "in",
+    processes: "proc",
+    buffers: "buf",
+} as const satisfies Record<CollectionKey, string>;
+
+const COLLECTION_KEYS = Object.keys(COLLECTIONS) as CollectionKey[];
+
+/** The collection keys that can hold a `processId` reference. */
+const LEGACY_SLOTS: readonly [CollectionKey, HandlerSlot][] = [
     ["signals", "signal"],
     ["triggers", "trigger"],
     ["processing", "processing"],
@@ -85,6 +62,39 @@ const LEGACY_SLOTS: readonly [string, HandlerSlot][] = [
     ["items", "itemAction"],
 ];
 
+function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
+    const out = { version: typeof raw?.version === "number" ? raw.version : 1 } as ModConfig;
+    const target = out as Record<string, unknown>;
+    for (const key of COLLECTION_KEYS) {
+        const value = raw?.[key];
+        target[key] = Array.isArray(value) ? value : [];
+    }
+    return out;
+}
+
+/**
+ * Side effects that must run when a collection entry is deleted. Declared next
+ * to the collection they belong to instead of being buried in a bespoke
+ * `removeX` function.
+ */
+const CASCADES: Partial<Record<CollectionKey, (cfg: ModConfig, id: string) => void>> = {
+    /** Structures pointing at a deleted node fall back to the default node. */
+    unlockNodes(cfg, id) {
+        cfg.structures = (cfg.structures ?? []).map((s) =>
+            s?.unlockNode === id ? { ...s, unlockNode: DEFAULT_UNLOCK_NODE } : s
+        );
+    },
+    /** Entries referencing a deleted process drop the reference. */
+    processes(cfg, id) {
+        for (const [category] of LEGACY_SLOTS) {
+            const entries = cfg[category] as unknown;
+            if (!Array.isArray(entries)) continue;
+            for (const entry of entries as Record<string, unknown>[]) {
+                if (entry?.processId === id) delete entry.processId;
+            }
+        }
+    },
+};
 
 export function migrateLegacyActions(
     cfg: ModConfig,
@@ -96,26 +106,21 @@ export function migrateLegacyActions(
     for (const [category, slot] of LEGACY_SLOTS) {
         const entries = out[category as keyof ModConfig] as unknown;
         if (!Array.isArray(entries)) continue;
-        
-        
-        
-        
-        
-        
+
         const list = entries as unknown[];
         let copied = false;
         for (let i = 0; i < list.length; i++) {
             const original = list[i] as Record<string, unknown> | null;
             if (!original || typeof original !== "object") continue;
-            
+
             if (typeof original.processId === "string" && original.processId) continue;
-            
+
             if (!Array.isArray(original.actions) || original.actions.length === 0) continue;
 
             const entryId = String(original.id ?? "");
             if (!entryId) continue;
             const processId = derivedProcessId(entryId);
-            
+
             if (known.has(processId)) continue;
 
             const steps = original.actions
@@ -141,10 +146,6 @@ export function migrateLegacyActions(
             });
             known.add(processId);
 
-            
-            
-            
-            
             if (!copied) {
                 out[category as keyof ModConfig] = [...list] as never;
                 copied = true;
@@ -160,9 +161,7 @@ export function migrateLegacyActions(
 
 export function loadConfig(): ModConfig {
     api.storage.ensure();
-    
-    
-    
+
     return migrateLegacyActions(
         ensureArrays(api.storage.get<Partial<ModConfig>>(CONFIG_KEY)),
     ).config;
@@ -175,16 +174,17 @@ function saveConfig(cfg: ModConfig): void {
     })) as ModConfig;
     api.storage.ensure();
     api.storage.set(CONFIG_KEY, clean);
-    console.log(
-        `${LOG} config saved (el:${clean.elements.length} st:${clean.structures.length} it:${clean.items.length} re:${clean.recipes.length} pr:${clean.processing.length} ct:${clean.contacts.length} ix:${clean.interactions.length} mod:${clean.modifiers.length})`,
-    );
+    const counts = COLLECTION_KEYS
+        .map((key) => `${COLLECTIONS[key]}:${(clean[key] as unknown[]).length}`)
+        .join(" ");
+    console.log(`${LOG} config saved (${counts})`);
 }
 
 export function loadPanelState(defaultMinimized = true): PanelState {
     api.storage.ensure();
     const raw = api.storage.get<Partial<PanelState>>(PANEL_KEY);
     return {
-        x: typeof raw?.x === "number" ? raw.x : -1, 
+        x: typeof raw?.x === "number" ? raw.x : -1,
         y: typeof raw?.y === "number" ? raw.y : -1,
         minimized: typeof raw?.minimized === "boolean" ? raw.minimized : defaultMinimized,
         width: typeof raw?.width === "number" ? raw.width : 440,
@@ -211,90 +211,49 @@ function removeById<T extends { id: string }>(list: T[], id: string): T[] {
     return list.filter((e) => e.id !== id);
 }
 
-export function addOrUpdateElement(entry: ElementConfig): ModConfig {
+/** Load, apply, save, return — the body shared by every mutation below. */
+function mutate(apply: (cfg: ModConfig) => void): ModConfig {
     const cfg = loadConfig();
-    cfg.elements = upsert(cfg.elements, entry);
+    apply(cfg);
     saveConfig(cfg);
     return cfg;
 }
-export function removeElement(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.elements = removeById(cfg.elements, id);
-    saveConfig(cfg);
-    return cfg;
+
+/** Insert or replace one entry in `key`, then persist. */
+function upsertIn<K extends CollectionKey>(key: K, entry: CollectionEntry<K>): ModConfig {
+    return mutate((cfg) => {
+        const list = cfg[key] as { id: string }[];
+        (cfg as Record<string, unknown>)[key] = upsert(list, entry as { id: string });
+    });
 }
-export function addOrUpdateStructure(entry: StructureConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.structures = upsert(cfg.structures, entry);
-    saveConfig(cfg);
-    return cfg;
+
+/** Delete the entry with `id` from `key`, run its cascade, then persist. */
+function removeIn(key: CollectionKey, id: string): ModConfig {
+    return mutate((cfg) => {
+        const list = cfg[key] as { id: string }[];
+        (cfg as Record<string, unknown>)[key] = removeById(list, id);
+        CASCADES[key]?.(cfg, id);
+    });
 }
-export function removeStructure(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.structures = removeById(cfg.structures, id);
-    saveConfig(cfg);
-    return cfg;
+
+/** Any config entry, as far as a runtime-resolved collection is concerned. */
+type AnyEntry = { id: string } & Record<string, unknown>;
+
+/**
+ * Insert or replace an entry in a collection chosen at runtime.
+ *
+ * `upsertIn` is the strictly-typed path: it ties the entry to the collection, so
+ * `upsertIn("elements", el)` rejects an `ItemConfig`. When the key is only known
+ * at runtime that guarantee is unavailable, so this variant accepts any entry
+ * carrying an `id` and stores it as-is. Callers are responsible for the shape.
+ */
+function upsertAny(key: CollectionKey, entry: AnyEntry): ModConfig {
+    return mutate((cfg) => {
+        const list = cfg[key] as AnyEntry[];
+        (cfg as Record<string, unknown>)[key] = upsert(list, entry);
+    });
 }
-export function addOrUpdateItem(entry: ItemConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.items = upsert(cfg.items, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeItem(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.items = removeById(cfg.items, id);
-    saveConfig(cfg);
-    return cfg;
-}
-export function addOrUpdateRecipe(entry: RecipeConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.recipes = upsert(cfg.recipes, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeRecipe(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.recipes = removeById(cfg.recipes, id);
-    saveConfig(cfg);
-    return cfg;
-}
-export function addOrUpdateProcessing(entry: ProcessingConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.processing = upsert(cfg.processing, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeProcessing(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.processing = removeById(cfg.processing, id);
-    saveConfig(cfg);
-    return cfg;
-}
-export function addOrUpdateContact(entry: ContactReactionConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.contacts = upsert(cfg.contacts, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeContact(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.contacts = removeById(cfg.contacts, id);
-    saveConfig(cfg);
-    return cfg;
-}
-export function addOrUpdateInteraction(entry: InteractionConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.interactions = upsert(cfg.interactions, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeInteraction(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.interactions = removeById(cfg.interactions, id);
-    saveConfig(cfg);
-    return cfg;
-}
+
 export function exportConfigJson(): string {
     return JSON.stringify(loadConfig(), null, 2);
 }
@@ -304,259 +263,36 @@ export function importConfigJson(json: string): ModConfig {
     return cfg;
 }
 
-export function addOrUpdateModifier(entry: ModifierConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.modifiers = upsert(cfg.modifiers, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeModifier(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.modifiers = removeById(cfg.modifiers, id);
-    saveConfig(cfg);
-    return cfg;
-}
+/**
+ * The store, as one object.
+ *
+ * Mutations are addressed by collection key rather than by a named function
+ * per collection, so adding a collection to `ModConfig` needs no new exports
+ * here. Use `upsert` when the key is a literal (full type checking), or
+ * `upsertAny` when the key is resolved at runtime, e.g. from a UI tab.
+ */
+export const configStore = {
+    /** Read the config, normalised and migrated. */
+    load: loadConfig,
+    /** Persist a config object. */
+    save: saveConfig,
+    /** Serialise the config for download. */
+    exportJson: exportConfigJson,
+    /** Replace the config from parsed JSON. */
+    importJson: importConfigJson,
+    /** Read the saved panel window state. */
+    loadPanel: loadPanelState,
+    /** Persist the panel window state. */
+    savePanel: savePanelState,
+    /** Every collection key, with a short label for the save log. */
+    collections: COLLECTIONS,
+    /** Insert or replace one entry in a collection. */
+    upsert: upsertIn,
+    /** As `upsert`, for a collection key resolved at runtime. */
+    upsertAny,
+    /** Delete one entry from a collection, running its cascade. */
+    remove: removeIn,
+} as const;
 
-export function addOrUpdateTerrain(entry: TerrainConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.terrains = upsert(cfg.terrains, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeTerrain(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.terrains = removeById(cfg.terrains, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateTech(entry: TechConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.techs = upsert(cfg.techs, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeTech(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.techs = removeById(cfg.techs, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateUpgrade(entry: UpgradeConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.upgrades = upsert(cfg.upgrades, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeUpgrade(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.upgrades = removeById(cfg.upgrades, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateProjectile(entry: ProjectileConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.projectiles = upsert(cfg.projectiles, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeProjectile(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.projectiles = removeById(cfg.projectiles, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateEnergyType(entry: EnergyTypeConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.energyTypes = upsert(cfg.energyTypes, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeEnergyType(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.energyTypes = removeById(cfg.energyTypes, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateEnergyNetwork(entry: EnergyNetworkConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.energyNetworks = upsert(cfg.energyNetworks, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function addOrUpdateUnlockNode(entry: UnlockNodeConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.unlockNodes = upsert(cfg.unlockNodes, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeUnlockNode(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.unlockNodes = removeById(cfg.unlockNodes, id);
-    
-    
-    
-    
-    cfg.structures = (cfg.structures ?? []).map((s) =>
-        s?.unlockNode === id ? { ...s, unlockNode: DEFAULT_UNLOCK_NODE } : s
-    );
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeEnergyNetwork(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.energyNetworks = removeById(cfg.energyNetworks, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-
-export function addOrUpdateBufferEntry(entry: BufferEntryConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.buffers = upsert(cfg.buffers, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-
-
-export function removeBufferEntry(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.buffers = removeById(cfg.buffers, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-
-export function addOrUpdateCustomProcess(
-    entry: import("../handler/custom-process/types.ts").CustomProcessConfig,
-): ModConfig {
-    const cfg = loadConfig();
-    cfg.processes = upsert(cfg.processes, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-
-
-export function removeCustomProcess(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.processes = removeById(cfg.processes, id);
-    for (const [category] of LEGACY_SLOTS) {
-        const entries = cfg[category as keyof ModConfig] as unknown;
-        if (!Array.isArray(entries)) continue;
-        for (const entry of entries as Record<string, unknown>[]) {
-            if (entry?.processId === id) delete entry.processId;
-        }
-    }
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateUpgradeCategory(entry: UpgradeCategoryConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.upgradeCategories = upsert(cfg.upgradeCategories, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeUpgradeCategory(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.upgradeCategories = removeById(cfg.upgradeCategories, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateInputBinding(entry: InputBindingConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.inputBindings = upsert(cfg.inputBindings, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeInputBinding(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.inputBindings = removeById(cfg.inputBindings, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateExcavationProfile(entry: ExcavationProfileConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.excavationProfiles = upsert(cfg.excavationProfiles, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeExcavationProfile(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.excavationProfiles = removeById(cfg.excavationProfiles, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateStructureBehavior(entry: StructureBehaviorConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.structureBehaviors = upsert(cfg.structureBehaviors, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeStructureBehavior(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.structureBehaviors = removeById(cfg.structureBehaviors, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdatePlacementConfig(
-    entry: PlacementConfigConfig,
-): ModConfig {
-    const cfg = loadConfig();
-    cfg.placementConfigs = upsert(cfg.placementConfigs, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removePlacementConfig(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.placementConfigs = removeById(cfg.placementConfigs, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateSignal(entry: SignalConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.signals = upsert(cfg.signals, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeSignal(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.signals = removeById(cfg.signals, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateTrigger(entry: TriggerConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.triggers = upsert(cfg.triggers, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeTrigger(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.triggers = removeById(cfg.triggers, id);
-    saveConfig(cfg);
-    return cfg;
-}
-
-export function addOrUpdateSprite(entry: SpriteConfig): ModConfig {
-    const cfg = loadConfig();
-    cfg.sprites = upsert(cfg.sprites, entry);
-    saveConfig(cfg);
-    return cfg;
-}
-export function removeSprite(id: string): ModConfig {
-    const cfg = loadConfig();
-    cfg.sprites = removeById(cfg.sprites, id);
-    saveConfig(cfg);
-    return cfg;
-}
+/** The collection keys the config supports, e.g. `"elements"`, `"sprites"`. */
+export type { CollectionKey };

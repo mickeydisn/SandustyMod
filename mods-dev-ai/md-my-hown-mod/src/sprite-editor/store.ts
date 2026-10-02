@@ -1,6 +1,6 @@
 
 import { MOD_ID, type SpriteConfig } from "../constants.ts";
-import { addOrUpdateSprite, loadConfig, removeSprite } from "../config/store.ts";
+import { configStore } from "../config/store.ts";
 import { docToDataUrl, isPngDataUrl } from "./codec.ts";
 import { CELL, type EditSession, frameCount } from "./engine.ts";
 import { registerDataUrlSprite } from "./register.ts";
@@ -21,7 +21,7 @@ export function isDrawn(e: SpriteConfig | undefined | null): e is DrawnSprite {
 }
 
 export function listSprites(): SpriteConfig[] {
-    return loadConfig().sprites ?? [];
+    return configStore.load().sprites ?? [];
 }
 
 
@@ -100,7 +100,7 @@ export async function saveSession(s: EditSession): Promise<SaveResult> {
     } catch (e) {
         return { ok: false, error: "Sprite is not JSON-serialisable: " + String(e) };
     }
-    addOrUpdateSprite(entry);
+    configStore.upsert("sprites", entry);
 
     s.isNew = false;
     s.replaces = undefined;
@@ -115,7 +115,7 @@ export async function saveSession(s: EditSession): Promise<SaveResult> {
 }
 
 export function deleteSprite(id: string): void {
-    removeSprite(id);
+    configStore.remove("sprites", id);
 }
 
 

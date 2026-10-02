@@ -2,7 +2,7 @@
 import { onSettingsChange, readSettingRaw, runDisableCleanup } from "./packages/modkit.ts";
 import { registerAll } from "./register/index.ts";
 import { setBufferSource } from "./handler/actions/buffer/index.ts";
-import { loadConfig } from "./config/store.ts";
+import { configStore } from "./config/store.ts";
 import { LOG, MOD_ID, SETTINGS, STORAGE_KEYS, VERSION } from "./constants.ts";
 import { mountPanel } from "./tool.ts";
 import "./handler/index.ts"; 
@@ -53,7 +53,7 @@ try {
     
     
     
-    setBufferSource(() => loadConfig().buffers ?? []);
+    setBufferSource(() => configStore.load().buffers ?? []);
 
     applyEnabled(enabled, "boot");
 

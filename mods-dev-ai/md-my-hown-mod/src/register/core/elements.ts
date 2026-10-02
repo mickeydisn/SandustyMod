@@ -1,6 +1,6 @@
 
 import { LOG, type ModConfig } from "../../constants.ts";
-import { loadConfig } from "../../config/store.ts";
+import { configStore } from "../../config/store.ts";
 import { api, normalizeElementPatch } from "../../packages/mysandkit.ts";
 import { isBootWindowOpen, registered } from "../registry.ts";
 import { noteElementVisibility } from "./element-picker.ts";
@@ -10,7 +10,7 @@ export { __resetBootWindowForTests } from "../registry.ts";
 
 
 export function registerElements(cfg?: ModConfig): number {
-    const config = cfg ?? loadConfig();
+    const config = cfg ?? configStore.load();
     let n = 0;
     for (const el of config.elements ?? []) {
         if (!el?.id) continue;

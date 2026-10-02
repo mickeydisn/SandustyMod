@@ -1,7 +1,7 @@
 
 import { React as HostReact, toast } from "../api.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
-import { addOrUpdateSprite } from "../config/store.ts";
+import { configStore } from "../config/store.ts";
 import { MOD_ID, type SpriteConfig } from "../constants.ts";
 import * as S from "../ui/styles.ts";
 import { fileToDoc, loadUrlToDoc } from "./codec.ts";
@@ -172,7 +172,7 @@ export function getDrawTab(): (props: { onChange?: () => void }) => any {
         const duplicate = (e: DrawnSprite) => {
             const id = uniqueSpriteId(`${e.id}-copy`);
             const copy: DrawnSprite = { ...e, id, updatedAt: Date.now() };
-            addOrUpdateSprite(copy);
+            configStore.upsert("sprites", copy);
             void registerDataUrlSprite(
                 id,
                 copy.source,

@@ -1,7 +1,7 @@
 
 
 import { LOG, type ModConfig } from "../constants.ts";
-import { loadConfig } from "../config/store.ts";
+import { configStore } from "../config/store.ts";
 import { registerElements } from "./core/elements.ts";
 import { registerStructures } from "./core/structures.ts";
 import { registerTerrains } from "./core/terrains.ts";
@@ -21,7 +21,7 @@ export interface RegisterCounts {
 
 
 export function registerAll(cfg?: ModConfig): RegisterCounts {
-    const config = cfg ?? loadConfig();
+    const config = cfg ?? configStore.load();
     const counts: RegisterCounts = {
         elements: registerElements(config),
         

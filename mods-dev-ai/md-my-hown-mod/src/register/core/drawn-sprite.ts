@@ -1,6 +1,6 @@
 
 import { LOG } from "../../constants.ts";
-import { loadConfig } from "../../config/store.ts";
+import { configStore } from "../../config/store.ts";
 import { api } from "../../packages/mysandkit.ts";
 
 
@@ -11,7 +11,7 @@ const warned = new Set<string>();
 
 
 export function sourceOf(spriteId: string): string | undefined {
-    const sprites = loadConfig().sprites ?? [];
+    const sprites = configStore.load().sprites ?? [];
     const hit = sprites.find((s) => s?.id === spriteId);
     const src = hit?.source;
     return typeof src === "string" && src.startsWith("data:") ? src : undefined;

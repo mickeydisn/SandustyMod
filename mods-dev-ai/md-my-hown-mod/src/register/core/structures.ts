@@ -1,6 +1,6 @@
 
 import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
-import { loadConfig } from "../../config/store.ts";
+import { configStore } from "../../config/store.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { isAlwaysUnlocked } from "../../ui/tech-link.ts";
 import { makeDrawnSprite } from "./drawn-sprite.ts";
@@ -151,7 +151,7 @@ function withSelectionGuard(st: StructureConfig): StructureConfig {
 
 
 export function registerStructures(cfg?: ModConfig): number {
-    const config = cfg ?? loadConfig();
+    const config = cfg ?? configStore.load();
     let n = 0;
     for (const st of config.structures ?? []) {
         if (!st?.id) continue;

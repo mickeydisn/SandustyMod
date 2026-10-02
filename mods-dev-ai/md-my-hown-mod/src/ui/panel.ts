@@ -1,62 +1,6 @@
 
 import { LOG, type ModConfig, type PanelState, type StructureConfig } from "../constants.ts";
-import {
-    addOrUpdateBufferEntry,
-    addOrUpdateContact,
-    addOrUpdateCustomProcess,
-    addOrUpdateElement,
-    addOrUpdateEnergyNetwork,
-    addOrUpdateEnergyType,
-    addOrUpdateExcavationProfile,
-    addOrUpdateInputBinding,
-    addOrUpdateInteraction,
-    addOrUpdateItem,
-    addOrUpdateModifier,
-    addOrUpdatePlacementConfig,
-    addOrUpdateProcessing,
-    addOrUpdateProjectile,
-    addOrUpdateRecipe,
-    addOrUpdateSignal,
-    addOrUpdateSprite,
-    addOrUpdateStructure,
-    addOrUpdateStructureBehavior,
-    addOrUpdateTech,
-    addOrUpdateTerrain,
-    addOrUpdateTrigger,
-    addOrUpdateUnlockNode,
-    addOrUpdateUpgrade,
-    addOrUpdateUpgradeCategory,
-    exportConfigJson,
-    importConfigJson,
-    loadConfig,
-    loadPanelState,
-    removeBufferEntry,
-    removeContact,
-    removeCustomProcess,
-    removeElement,
-    removeEnergyNetwork,
-    removeEnergyType,
-    removeExcavationProfile,
-    removeInputBinding,
-    removeInteraction,
-    removeItem,
-    removeModifier,
-    removePlacementConfig,
-    removeProcessing,
-    removeProjectile,
-    removeRecipe,
-    removeSignal,
-    removeSprite,
-    removeStructure,
-    removeStructureBehavior,
-    removeTech,
-    removeTerrain,
-    removeTrigger,
-    removeUnlockNode,
-    removeUpgrade,
-    removeUpgradeCategory,
-    savePanelState,
-} from "../config/store.ts";
+import { configStore, type CollectionKey } from "../config/store.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
 import { React as HostReact } from "../api.ts";
 import {
@@ -204,70 +148,20 @@ type Mode = ViewMode;
 const CHIP_W = 150;
 const CHIP_H = 40;
 
-type UpsertFn = (entry: never) => ModConfig;
-type RemoveFn = (id: string) => ModConfig;
-
-
-export const UPSERT: Partial<Record<Tab, UpsertFn>> = {
-    elements: addOrUpdateElement,
-    structures: addOrUpdateStructure,
-    items: addOrUpdateItem,
-    recipes: addOrUpdateRecipe,
-    processing: addOrUpdateProcessing,
-    contacts: addOrUpdateContact,
-    interactions: addOrUpdateInteraction,
-    modifiers: addOrUpdateModifier,
-    terrains: addOrUpdateTerrain,
-    techs: addOrUpdateTech,
-    unlockNodes: addOrUpdateUnlockNode,
-    upgrades: addOrUpdateUpgrade,
-    projectiles: addOrUpdateProjectile,
-    energy: addOrUpdateEnergyType,
-    excavation: addOrUpdateExcavationProfile,
-    customProcess: addOrUpdateCustomProcess,
-    behaviors: addOrUpdateStructureBehavior,
-    placementConfigs: addOrUpdatePlacementConfig,
-    signals: addOrUpdateSignal,
-    triggers: addOrUpdateTrigger,
-    sprites: addOrUpdateSprite,
-    networks: addOrUpdateEnergyNetwork,
-    categories: addOrUpdateUpgradeCategory,
-    inputs: addOrUpdateInputBinding,
-    buffers: addOrUpdateBufferEntry,
-};
-
-export const REMOVE: Partial<Record<Tab, RemoveFn>> = {
-    elements: removeElement,
-    structures: removeStructure,
-    items: removeItem,
-    recipes: removeRecipe,
-    processing: removeProcessing,
-    contacts: removeContact,
-    interactions: removeInteraction,
-    modifiers: removeModifier,
-    terrains: removeTerrain,
-    techs: removeTech,
-    unlockNodes: removeUnlockNode,
-    upgrades: removeUpgrade,
-    projectiles: removeProjectile,
-    energy: removeEnergyType,
-    excavation: removeExcavationProfile,
-    customProcess: removeCustomProcess,
-    behaviors: removeStructureBehavior,
-    placementConfigs: removePlacementConfig,
-    signals: removeSignal,
-    triggers: removeTrigger,
-    sprites: removeSprite,
-    networks: removeEnergyNetwork,
-    categories: removeUpgradeCategory,
-    inputs: removeInputBinding,
-    buffers: removeBufferEntry,
-};
+/**
+ * The config collection a tab edits, or `null` for tabs that are not backed by
+ * one (the map, help, raw-JSON views…). `CATEGORY_META` is the single source of
+ * truth for this mapping, so adding a tab needs no change here.
+ */
+function collectionOf(cat: Tab): CollectionKey | null {
+    const key = CATEGORY_META[cat]?.configKey;
+    return key && key in configStore.collections ? key as CollectionKey : null;
+}
 
 function entriesOf(cfg: ModConfig, cat: Tab): Record<string, unknown>[] {
-    const key = CATEGORY_META[cat].configKey;
+    const key = collectionOf(cat);
     if (!key) return [];
-    const arr = (cfg as unknown as Record<string, unknown>)[key];
+    const arr = cfg[key];
     return Array.isArray(arr) ? (arr as Record<string, unknown>[]) : [];
 }
 
@@ -291,9 +185,11 @@ export function createPanelComponent(defaultMinimized = true) {
     const h = React.createElement.bind(React) as (...args: unknown[]) => unknown;
 
     function Panel() {
-        const [panel, setPanel] = useState<PanelState>(() => loadPanelState(defaultMinimized));
+        const [panel, setPanel] = useState<PanelState>(() =>
+            configStore.loadPanel(defaultMinimized)
+        );
         const [cfg, setCfg] = useState<ModConfig>(() => {
-            const loaded = loadConfig();
+            const loaded = configStore.load();
             
             
             
@@ -473,7 +369,7 @@ export function createPanelComponent(defaultMinimized = true) {
             );
         };
 
-        const refresh = useCallback(() => setCfg(loadConfig()), []);
+        const refresh = useCallback(() => setCfg(configStore.load()), []);
 
         
         const resetView = useCallback(() => {
@@ -559,7 +455,7 @@ export function createPanelComponent(defaultMinimized = true) {
             
             
             if (tab === "techs" && id) {
-                const ids = techUnlockStructureIds(id, loadConfig());
+                const ids = techUnlockStructureIds(id, configStore.load());
                 if (ids.length > 0) {
                     next.unlockStructures = formatIdList(
                         Array.from(new Set([...parseIdList(next.unlockStructures), ...ids])),
@@ -587,15 +483,15 @@ export function createPanelComponent(defaultMinimized = true) {
                 skApi.toast(`Fix ${errorCount} issue${errorCount > 1 ? "s" : ""} before saving`);
                 return;
             }
-            const upsert = UPSERT[cat];
-            if (!upsert) return;
+            const key = collectionOf(cat);
+            if (!key) return;
             const entry = formToEntry(cat, form);
             if (!entry.id) {
                 skApi.toast("Id is required");
                 return;
             }
             if (!editingId) {
-                const exists = entriesOf(loadConfig(), cat).some((e) => e.id === entry.id);
+                const exists = entriesOf(configStore.load(), cat).some((e) => e.id === entry.id);
                 if (exists) {
                     setForm((p) => ({ ...p }));
                     skApi.toast(`Id already exists: ${entry.id}`);
@@ -603,7 +499,7 @@ export function createPanelComponent(defaultMinimized = true) {
                 }
             }
             try {
-                (upsert as (e: unknown) => ModConfig)(entry);
+                configStore.upsertAny(key, entry as { id: string });
             } catch (e) {
                 console.error(`${LOG} save failed`, e);
                 skApi.toast("Save failed — see console");
@@ -620,15 +516,15 @@ export function createPanelComponent(defaultMinimized = true) {
 
         
         const requestRemove = (id: string, tab: Tab = cat) => {
-            const key = `${tab}:${id}`;
-            if (confirmId !== key) {
-                setConfirmId(key);
+            const confirmKey = `${tab}:${id}`;
+            if (confirmId !== confirmKey) {
+                setConfirmId(confirmKey);
                 return;
             }
-            const remove = REMOVE[tab];
-            if (!remove) return;
+            const collection = collectionOf(tab);
+            if (!collection) return;
             try {
-                remove(id);
+                configStore.remove(collection, id);
             } catch (e) {
                 console.error(`${LOG} remove failed`, e);
             }
@@ -1557,7 +1453,7 @@ export function createPanelComponent(defaultMinimized = true) {
                         {
                             style: S.btn,
                             onClick: () => {
-                                setJsonText(exportConfigJson());
+                                setJsonText(configStore.exportJson());
                                 setJsonError(null);
                             },
                         },
@@ -1571,7 +1467,7 @@ export function createPanelComponent(defaultMinimized = true) {
                             onClick: () => {
                                 if (!validateJsonText()) return;
                                 try {
-                                    importConfigJson(jsonText);
+                                    configStore.importJson(jsonText);
                                     refresh();
                                     skApi.toast("Config imported — reload the game to apply it.");
                                 } catch (e) {
@@ -1602,7 +1498,7 @@ export function createPanelComponent(defaultMinimized = true) {
         
         const persistPanel = (next: PanelState) => {
             setPanel(next);
-            savePanelState(next);
+            configStore.savePanel(next);
         };
 
         const onDragDown = (e: {
@@ -1660,7 +1556,7 @@ export function createPanelComponent(defaultMinimized = true) {
             
             if (moved) suppressClick.current = true;
             setPanel((p) => {
-                savePanelState(p);
+                configStore.savePanel(p);
                 return p;
             });
         };

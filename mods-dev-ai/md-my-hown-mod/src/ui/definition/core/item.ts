@@ -1,6 +1,6 @@
 
 import { listSpriteIds, type Opt } from "../../../catalog.ts";
-import { loadConfig } from "../../../config/store.ts";
+import { configStore } from "../../../config/store.ts";
 import type { ModConfig } from "../../../constants.ts";
 import {
     PROCESS_COVERED,
@@ -22,7 +22,7 @@ import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.t
 
 function listConfigured(key: keyof ModConfig): Opt[] {
     try {
-        const arr = (loadConfig()[key] ?? []) as unknown[];
+        const arr = (configStore.load()[key] ?? []) as unknown[];
         return arr
             .map((e) => (e && typeof e === "object" ? ((e as { id?: string }).id ?? "") : ""))
             .filter((id) => id)
