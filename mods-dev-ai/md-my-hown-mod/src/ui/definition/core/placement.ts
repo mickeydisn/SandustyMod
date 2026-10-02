@@ -8,9 +8,6 @@ import type { PlacementFieldConfig } from "../../../constants.ts";
 
 const FIELDS_FORM_KEY = "fieldsJson";
 
-
-const NEEDS_STRUCTURE_AND_FIELDS = "Placement config requires a structureId and fields.";
-
 const FIELDS: FieldSpec[] = [
     idField(),
     {
@@ -71,17 +68,11 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
     
     if (!raw) return;
     const problem = placementConfigProblem({
-        id: "form",
         structureId: form.structureId ?? "",
         fields: readFields(raw),
     });
     if (!problem) return;
-    if (problem === NEEDS_STRUCTURE_AND_FIELDS) {
-        if (!(form.structureId ?? "").trim()) errors.structureId = "pick a structure";
-        else errors[FIELDS_FORM_KEY] = "at least one field is required";
-        return;
-    }
-    errors[FIELDS_FORM_KEY] = problem;
+    errors[problem.field === "fields" ? FIELDS_FORM_KEY : problem.field] = problem.message;
 }
 
 

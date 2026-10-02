@@ -20,10 +20,7 @@ import {
     registerUpgradeCategory,
 } from "../packages/registrations.ts";
 import { applyAllModifiers, compileProcess } from "../handler/index.ts";
-import {
-    compileEntryProcess,
-    type ProcessRegistry,
-} from "../handler/custom-process/index.ts";
+import { compileEntryProcess, type ProcessRegistry } from "../handler/custom-process/index.ts";
 import {
     compileProjectile,
     PROJECTILE_OPTION_STORE_KEY,
@@ -34,10 +31,7 @@ import { type Counted, registerEach, registered } from "./registry.ts";
 import { joinedNetworkNames, reportEnergyNetworks } from "./custom/energy-network.ts";
 import { installPlacementLimits } from "./custom/placement-limit.ts";
 
-
-
 type Step = (config: ModConfig, processes: ProcessRegistry) => Counted;
-
 
 const PLAIN = [
     "sprites",
@@ -53,7 +47,6 @@ const PLAIN = [
     "placementConfigs",
 ] as const satisfies readonly CollectionKey[];
 
-
 const PLAIN_REGISTER: Record<(typeof PLAIN)[number], (entry: never) => void> = {
     sprites: (sp) => void registerSprite(sp),
     items: (it) => api.items.register(it),
@@ -67,7 +60,6 @@ const PLAIN_REGISTER: Record<(typeof PLAIN)[number], (entry: never) => void> = {
     structureBehaviors: (b) => registerStructureBehavior(b),
     placementConfigs: (p) => registerPlacementConfig(p),
 };
-
 
 const STEPS: readonly Step[] = [
     (c, p) =>
@@ -85,7 +77,9 @@ const STEPS: readonly Step[] = [
                 );
             }
             if (compiled.skipped.length) {
-                console.warn(`${LOG} processing ${id}: unknown action ${compiled.skipped.join(", ")}`);
+                console.warn(
+                    `${LOG} processing ${id}: unknown action ${compiled.skipped.join(", ")}`,
+                );
             }
             if (compiled.unknownOptions.length) {
                 console.warn(
@@ -96,9 +90,6 @@ const STEPS: readonly Step[] = [
             registerProcessing({ ...raw, process: compiled.fn } as never);
         }),
 
-
-    
-    
     (c) => {
         const n = applyAllModifiers(c.modifiers ?? []);
         for (const m of c.modifiers ?? []) {
@@ -115,10 +106,6 @@ const STEPS: readonly Step[] = [
             );
         }),
 
-    
-    
-    
-    
     (c) =>
         registerEach(c.unlockNodes, "techs", (n) => {
             if (n.kind !== "tech" || n.techId) return false;
@@ -126,7 +113,6 @@ const STEPS: readonly Step[] = [
             if (!tech) return false;
             registerTech(tech);
         }),
-
 
     (c) =>
         registerEach(c.projectiles, "projectiles", (entry) => {
@@ -150,9 +136,6 @@ const STEPS: readonly Step[] = [
             } as never);
         }),
 
-
-    
-    
     (c) => {
         reportEnergyNetworks(c, joinedNetworkNames(c));
         return ["energyNetworks", 0];
@@ -186,8 +169,6 @@ const STEPS: readonly Step[] = [
             registerInputBinding(entry as never);
         }),
 ];
-
-
 
 export function registerTheRest(
     config: ModConfig,

@@ -348,7 +348,9 @@ export function registerPlacementConfig(
 ): void {
     const problem = placementConfigProblem(def);
     if (problem) {
-        console.error(`${LOG} placement config "${def?.id ?? "?"}" rejected: ${problem}`);
+        console.error(
+            `${LOG} placement config "${def?.id ?? "?"}" rejected — ${problem.message}`,
+        );
         return;
     }
     try {

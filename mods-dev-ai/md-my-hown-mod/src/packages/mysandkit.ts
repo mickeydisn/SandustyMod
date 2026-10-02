@@ -10,8 +10,6 @@ import {
     type StructureConfig,
 } from "../constants.ts";
 
-import { placementConfigPayload, placementConfigProblem } from "../config/placement.ts";
-
 declare const sandkit: any;
 
 type SignalHandler = (...args: unknown[]) => unknown;
