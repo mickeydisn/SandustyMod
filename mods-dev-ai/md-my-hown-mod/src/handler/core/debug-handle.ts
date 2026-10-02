@@ -13,14 +13,14 @@
 
 import {
     ACTION_DOCS,
+    actionKeys,
+    actionKeysOfRole,
+    actionOf,
     ACTIONS_BY_ROLE,
     ALL_ACTIONS,
     ANY_ACTIONS,
     MODIFIER_ACTIONS,
     PROCESSING_ACTIONS,
-    actionKeys,
-    actionKeysOfRole,
-    actionOf,
 } from "../actions/index.ts";
 import { ACTION_ROLES, ROLE_BLURBS, ROLE_LABELS } from "./types.ts";
 import { HANDLER_META } from "./handler-registry.ts";
@@ -47,4 +47,4 @@ try {
         CODE_HANDLER_DOCS: ACTION_DOCS,
         HANDLER_META,
     };
-} catch {  }
+} catch {}

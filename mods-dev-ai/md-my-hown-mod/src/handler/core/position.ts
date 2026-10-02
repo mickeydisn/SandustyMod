@@ -1,29 +1,21 @@
-
-
-
 export interface Position {
     readonly x: number;
     readonly y: number;
 }
-
 
 export interface Offset {
     readonly dx: number;
     readonly dy: number;
 }
 
-
 export interface MatrixCell {
     readonly col: number;
     readonly row: number;
 }
 
-
 export type Range = readonly Position[];
 
-
 export type ShapeMatrix = number[][];
-
 
 export interface Addressable {
     x?: number;
@@ -31,42 +23,32 @@ export interface Addressable {
     shape?: ShapeMatrix;
 }
 
-
 export type Address =
-    
     | { readonly kind: "here" }
-    
     | { readonly kind: "offset"; readonly offset: Offset }
-    
     | { readonly kind: "square"; readonly offset: Offset; readonly side: number }
-    
     | { readonly kind: "footprint"; readonly shape?: ShapeMatrix }
-    
     | { readonly kind: "matrix"; readonly cell: MatrixCell };
-
 
 export interface AddressOptions {
     dx?: unknown;
     dy?: unknown;
     size?: unknown;
     footprint?: unknown;
-    
+
     mx?: unknown;
-    
+
     my?: unknown;
 }
-
 
 function int(value: unknown, fallback = 0): number {
     const n = Number(value);
     return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
-
 export function shift(at: Position, by: Offset): Position {
     return { x: at.x + by.dx, y: at.y + by.dy };
 }
-
 
 export function shapePositions(at: Position, shape?: ShapeMatrix): Position[] {
     if (!shape || shape.length === 0) return [at];
@@ -81,7 +63,6 @@ export function shapePositions(at: Position, shape?: ShapeMatrix): Position[] {
     return out;
 }
 
-
 export function positionsFor(address: Address, at: Position): Range {
     switch (address.kind) {
         case "here":
@@ -93,18 +74,6 @@ export function positionsFor(address: Address, at: Position): Range {
         case "footprint":
             return shapePositions(at, address.shape);
         case "square": {
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             const centre = address.offset ? shift(at, address.offset) : at;
             const low = Math.floor((address.side - 1) / 2);
             const high = Math.ceil((address.side - 1) / 2);
@@ -117,17 +86,14 @@ export function positionsFor(address: Address, at: Position): Range {
     }
 }
 
-
 export interface AddressConflict {
     readonly reason: "matrix-with-range";
     readonly message: string;
 }
 
-
 export type AddressResult =
     | { readonly address: Address; readonly clamped: boolean }
     | { readonly conflict: AddressConflict };
-
 
 export function addressFor(
     structure: Addressable | null | undefined,
@@ -137,12 +103,7 @@ export function addressFor(
     const hasMatrix = options.mx !== undefined || options.my !== undefined;
     const size = Math.abs(int(options.size, 1));
     const wantsFootprint = options.footprint === true || options.footprint === "true";
-    
-    
-    
-    
-    
-    
+
     const dx = int(options.dx);
     const dy = int(options.dy);
     const hasOffset = dx !== 0 || dy !== 0;
@@ -181,13 +142,10 @@ export function addressFor(
 
     const offset = { dx: int(options.dx), dy: int(options.dy) };
     return {
-        
-        
         address: offset.dx === 0 && offset.dy === 0 ? { kind: "here" } : { kind: "offset", offset },
         clamped: false,
     };
 }
-
 
 export function walkFor(
     at: Position,
@@ -218,32 +176,27 @@ export function walkFor(
 // on it, so splitting the two only hid that relationship.
 export type CellTest = (cell: Position) => boolean;
 
-
 export type CellValue = (cell: Position) => number;
-
 
 export type CellVisit = (cell: Position) => void;
 
-
 export interface Positions {
-    
     readonly cells: readonly Position[];
-    
+
     readonly requested: number;
-    
+
     readonly clamped: boolean;
-    
+
     forEach(visit: CellVisit): number;
-    
+
     any(test: CellTest): boolean;
-    
+
     all(test: CellTest): boolean;
-    
+
     count(test: CellTest): number;
-    
+
     sum(value: CellValue): number;
 }
-
 
 function safely(test: CellTest): CellTest {
     return (cell) => {
@@ -254,7 +207,6 @@ function safely(test: CellTest): CellTest {
         }
     };
 }
-
 
 function safelyNumber(value: CellValue): CellValue {
     return (cell) => {
@@ -267,7 +219,6 @@ function safelyNumber(value: CellValue): CellValue {
     };
 }
 
-
 export function positionsOver(range: Range, clamped = false): Positions {
     const cells = range;
     return {
@@ -279,9 +230,6 @@ export function positionsOver(range: Range, clamped = false): Positions {
                 try {
                     visit(cell);
                 } catch {
-                    
-                    
-                    
                 }
             }
             return cells.length;
@@ -310,7 +258,6 @@ export function positionsOver(range: Range, clamped = false): Positions {
         },
     };
 }
-
 
 export function singleCell(at: Position): Positions {
     return positionsOver([at]);

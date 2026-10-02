@@ -158,13 +158,3 @@ export const CALL_SITE_SIGNATURES: Record<CallSite, string> = {
     behavior: "onDownKey(key) / onUpKey(key)",
     modifier: "intercept(args, ctx) / modify(args)",
 };
-
-export const CALL_SITE_USES_RETURN: Record<CallSite, boolean> = {
-    signal: false,
-    trigger: false,
-    processing: false,
-    itemAction: false,
-    upgrade: false,
-    behavior: false,
-    modifier: false,
-};

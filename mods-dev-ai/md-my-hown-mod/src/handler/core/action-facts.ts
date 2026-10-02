@@ -18,20 +18,6 @@ import type { ActionKey } from "../actions/index.ts";
 
 export type HandlerActionClass = "api" | "self-sufficient" | "context-bound" | "pure";
 
-export const ACTION_CLASS_LABELS: Record<HandlerActionClass, string> = {
-    api: "API-bound",
-    "self-sufficient": "Self-sufficient",
-    "context-bound": "Context-bound",
-    pure: "Pure",
-};
-
-export const ACTION_CLASS_BLURBS: Record<HandlerActionClass, string> = {
-    api: "Calls one api.* section. The shape the rule wants.",
-    "self-sufficient": "Uses only the payload and its own options. No engine service.",
-    "context-bound": "Needs the processing context the engine passes in.",
-    pure: "Needs nothing. A constant or a log line.",
-};
-
 export type ActionEffect =
     | "returns"
     | "api"
@@ -151,7 +137,13 @@ export const ACTION_FACTS: ActionFactsTable = {
     emptyCells: { cls: "api", effect: "commits", domain: "grid", api: "grid" },
     removeElement: { cls: "api", effect: "commits", domain: "grid", api: "grid" },
     transformElement: { cls: "api", effect: "commits", domain: "grid", api: "grid" },
-    getVelocity: { cls: "api", effect: "reads", domain: "grid", api: "elements", options: {"size":1} },
+    getVelocity: {
+        cls: "api",
+        effect: "reads",
+        domain: "grid",
+        api: "elements",
+        options: { "size": 1 },
+    },
     findFreeCell: { cls: "api", effect: "reads", domain: "grid", api: "elements" },
     setVelocity: { cls: "api", effect: "commits", domain: "grid", api: "elements" },
     addVelocity: { cls: "api", effect: "commits", domain: "grid", api: "elements" },
@@ -201,7 +193,13 @@ export const ACTION_FACTS: ActionFactsTable = {
     signalOutput: { cls: "api", effect: "api", domain: "signals", api: "signals" },
     energyConsumePerRun: { cls: "api", effect: "api", domain: "energy", api: "energy" },
     energyGenerateWhileHeld: { cls: "api", effect: "api", domain: "energy", api: "energy" },
-    techAppendUnlock: { cls: "api", effect: "api", domain: "tech", api: "tech", options: {"techId":"iron","structures":["wall"]} },
+    techAppendUnlock: {
+        cls: "api",
+        effect: "api",
+        domain: "tech",
+        api: "tech",
+        options: { "techId": "iron", "structures": ["wall"] },
+    },
     techGrantItem: { cls: "api", effect: "api", domain: "tech", api: "player" },
     techSetUpgradeLevel: { cls: "api", effect: "api", domain: "tech", api: "upgrades" },
     energyDefault: { cls: "self-sufficient", effect: "returns", domain: "energy", api: "" },
@@ -213,12 +211,41 @@ export const ACTION_FACTS: ActionFactsTable = {
     logArgs: { cls: "pure", effect: "logs", domain: "diagnostics", api: "" },
     identity: { cls: "pure", effect: "reads", domain: "diagnostics", api: "" },
     logBuildingPayload: { cls: "self-sufficient", effect: "logs", domain: "diagnostics", api: "" },
-    logicAny: { cls: "api", effect: "api", domain: "grid", api: "elements", options: {"element":"water","size":3} },
-    logicAll: { cls: "api", effect: "api", domain: "grid", api: "elements", options: {"element":"water","size":3} },
-    logicCount: { cls: "api", effect: "api", domain: "grid", api: "elements", options: {"element":"water","size":3} },
-    logicSum: { cls: "api", effect: "api", domain: "grid", api: "terrains", options: {"size":3} },
-    logicForEach: { cls: "api", effect: "api", domain: "grid", api: "grid", options: {"to":"stone","size":3} },
-
+    logicAny: {
+        cls: "api",
+        effect: "api",
+        domain: "grid",
+        api: "elements",
+        options: { "element": "water", "size": 3 },
+    },
+    logicAll: {
+        cls: "api",
+        effect: "api",
+        domain: "grid",
+        api: "elements",
+        options: { "element": "water", "size": 3 },
+    },
+    logicCount: {
+        cls: "api",
+        effect: "api",
+        domain: "grid",
+        api: "elements",
+        options: { "element": "water", "size": 3 },
+    },
+    logicSum: {
+        cls: "api",
+        effect: "api",
+        domain: "grid",
+        api: "terrains",
+        options: { "size": 3 },
+    },
+    logicForEach: {
+        cls: "api",
+        effect: "api",
+        domain: "grid",
+        api: "grid",
+        options: { "to": "stone", "size": 3 },
+    },
 };
 
 /** The record for one action, or undefined if the key is not an action. */

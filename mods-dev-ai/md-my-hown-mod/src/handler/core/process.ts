@@ -1,5 +1,3 @@
-
-
 export { resolveAction } from "../actions/index.ts";
 import { resolveAction } from "../actions/index.ts";
 import { createContext, type ProcessContext, varsRead, varsWrite } from "./context.ts";
@@ -17,7 +15,6 @@ export {
     BLOCK_KEY,
     CALL_SITE_LABELS,
     CALL_SITE_SIGNATURES,
-    CALL_SITE_USES_RETURN,
     type CallSite,
     flattenRefs,
     type HandlerActionRef,
@@ -25,13 +22,7 @@ export {
     isBlock,
 } from "./types.ts";
 
-
-
-
-
-
 let optionKeysLookup: ((key: string) => ReadonlySet<string> | undefined) | undefined;
-
 
 export function setOptionKeysLookup(
     fn: (key: string) => ReadonlySet<string> | undefined,
@@ -39,22 +30,16 @@ export function setOptionKeysLookup(
     optionKeysLookup = fn;
 }
 
-
 export function optionKeysFor(key: string | undefined): ReadonlySet<string> | undefined {
     return key ? optionKeysLookup?.(key) : undefined;
 }
-
-
-
 
 export interface ProcessFailure {
     key: string;
     error: unknown;
 }
 
-
 export const MAX_BLOCK_DEPTH = 8;
-
 
 type CompiledStep =
     | {
@@ -67,24 +52,22 @@ type CompiledStep =
     | {
         kind: "block";
         key: string;
-        
+
         test: string;
         then: CompiledStep[];
         otherwise: CompiledStep[];
     };
 
-
 export interface CompiledProcess {
     fn: HandlerProcessFn;
     callSite: CallSite;
-    
+
     skipped: string[];
-    
+
     unknownOptions: string[];
-    
+
     usesContext: boolean;
 }
-
 
 export function compileProcess(
     refs: readonly HandlerActionRef[],
@@ -95,7 +78,6 @@ export function compileProcess(
     const unknownOptions: string[] = [];
     let usesContext = false;
 
-    
     const compileList = (list: readonly HandlerActionRef[], depth: number): CompiledStep[] => {
         const out: CompiledStep[] = [];
         for (const ref of list ?? []) {
@@ -111,12 +93,10 @@ export function compileProcess(
                 }
                 const test = String((ref.options as { var?: unknown } | undefined)?.var ?? "");
                 if (!test) {
-                    
-                    
                     onFailure?.({ key: ref.key, error: "an if block needs options.var" });
                     continue;
                 }
-                
+
                 usesContext = true;
                 out.push({
                     kind: "block",
@@ -129,9 +109,6 @@ export function compileProcess(
             }
 
             if (ref.then || ref.else) {
-                
-                
-                
                 onFailure?.({ key: ref.key, error: "only an if block may have then/else" });
             }
             const fn = resolveAction(ref.key);
@@ -140,9 +117,7 @@ export function compileProcess(
                 continue;
             }
             const as = typeof ref.as === "string" && ref.as ? ref.as : undefined;
-            
-            
-            
+
             const declared = optionKeysFor(ref.key);
             if (declared && ref.options) {
                 for (const name of Object.keys(ref.options)) {
@@ -151,9 +126,7 @@ export function compileProcess(
                     }
                 }
             }
-            
-            
-            
+
             if (as) usesContext = true;
             if (refsIn(ref.options).size > 0) usesContext = true;
             out.push({ kind: "step", key: ref.key, fn, options: ref.options, as });
@@ -163,7 +136,6 @@ export function compileProcess(
 
     const steps = compileList(refs, 0);
 
-    
     const runList = (
         list: readonly CompiledStep[],
         payload: unknown,
@@ -195,7 +167,6 @@ export function compileProcess(
                     }
                 }
             } catch (error) {
-                
                 onFailure?.({ key: step.key, error });
             }
         }
@@ -203,22 +174,15 @@ export function compileProcess(
 
     const fn: HandlerProcessFn = (...args: unknown[]) => {
         const [payload, ctx] = args;
-        
-        
+
         const context = createContext(seedsFor(callSite, args));
         runList(steps, payload, ctx, context);
-        
-        
-        
-        
-        
-        
+
         return context.result.value;
     };
 
     return { fn, callSite, skipped, unknownOptions, usesContext };
 }
-
 
 export function actionRefsOf(entry: Record<string, unknown> | undefined): HandlerActionRef[] {
     if (!entry) return [];
@@ -228,9 +192,7 @@ export function actionRefsOf(entry: Record<string, unknown> | undefined): Handle
         .map((a) => ({
             key: String(a.key),
             options: (a.options as Record<string, unknown> | undefined) ?? undefined,
-            
-            
-            
+
             ...(typeof a.as === "string" && a.as ? { as: a.as } : {}),
             ...(Array.isArray(a.then) ? { then: actionRefsOf({ actions: a.then }) } : {}),
             ...(Array.isArray(a.else) ? { else: actionRefsOf({ actions: a.else }) } : {}),

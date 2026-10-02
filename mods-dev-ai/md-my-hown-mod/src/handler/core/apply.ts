@@ -1,4 +1,3 @@
-
 import { LOG, type ModifierConfig } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { resolveModifier } from "../actions/index.ts";
@@ -11,7 +10,6 @@ function wrapUnsub(ret: unknown): Unsub {
     if (typeof ret === "function") return ret as Unsub;
     return () => {};
 }
-
 
 export function applyModifier(entry: ModifierConfig): boolean {
     if (entry.enabled === false) {
@@ -39,7 +37,6 @@ export function applyModifier(entry: ModifierConfig): boolean {
         return false;
     }
 
-    
     const kind = entry.kind ?? handler.kind;
     if (kind !== handler.kind) {
         console.warn(
@@ -48,13 +45,8 @@ export function applyModifier(entry: ModifierConfig): boolean {
     }
     const useKind = handler.kind;
 
-    
     detachModifier(entry.id);
 
-    
-    
-    
-    
     if (!api.hooks.hasHooks()) {
         console.warn(`${LOG} modifier ${entry.id}: sandkit.api.hooks unavailable`);
         return false;

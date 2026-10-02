@@ -1,7 +1,5 @@
-
 import { JsonMapBuffer } from "@sandmd/buffer";
 import type { BufferEntryConfig, BufferValueType } from "../constants.ts";
-
 
 export interface BufferProblem {
     id: string;
@@ -9,14 +7,11 @@ export interface BufferProblem {
     reason: string;
 }
 
-
 const PATH_RE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[\d+\])*$/;
-
 
 export function zeroFor(type: BufferValueType): number | boolean | string {
     return type === "number" ? 0 : type === "bool" ? false : "";
 }
-
 
 export function coerceDefault(type: BufferValueType, raw: unknown): number | boolean | string {
     if (type === "number") {
@@ -24,14 +19,11 @@ export function coerceDefault(type: BufferValueType, raw: unknown): number | boo
         return Number.isFinite(n) ? n : 0;
     }
     if (type === "bool") {
-        
-        
         if (typeof raw === "string") return raw.trim().toLowerCase() === "true";
         return Boolean(raw);
     }
     return raw == null ? "" : String(raw);
 }
-
 
 interface SlotPlan {
     entry: BufferEntryConfig;
@@ -48,7 +40,6 @@ function fail(entry: BufferEntryConfig, path: string, reason: string): SlotPlan 
         problem: reason,
     };
 }
-
 
 export function planSlot(entry: BufferEntryConfig): SlotPlan {
     const path = String(entry.path ?? "").trim();
@@ -67,9 +58,6 @@ export function planSlot(entry: BufferEntryConfig): SlotPlan {
         return { entry, value, bounds: null, problem: null };
     }
 
-    
-    
-    
     const min = Number(entry.min);
     const max = Number(entry.max);
     if (!Number.isFinite(min) || !Number.isFinite(max)) {
@@ -88,7 +76,6 @@ export function planSlot(entry: BufferEntryConfig): SlotPlan {
     return { entry, value, bounds: { min, max }, problem: null };
 }
 
-
 export interface BufferHandle {
     getPath(path: string): unknown;
     setPath(path: string, value: unknown): void;
@@ -97,9 +84,6 @@ export interface BufferHandle {
     commit(): void;
 }
 
-
-
-
 export function build(entries: readonly BufferEntryConfig[]): {
     buffer: BufferHandle | null;
     problems: BufferProblem[];
@@ -107,7 +91,7 @@ export function build(entries: readonly BufferEntryConfig[]): {
     const problems: BufferProblem[] = [];
     const defaultRecord: Record<string, unknown> = {};
     const counters: Record<string, { min: number; max: number }> = {};
-    
+
     const claimed = new Map<string, string>();
 
     for (const entry of entries ?? []) {
@@ -123,9 +107,6 @@ export function build(entries: readonly BufferEntryConfig[]): {
         const path = String(entry.path).trim();
         const first = claimed.get(path);
         if (first) {
-            
-            
-            
             problems.push({
                 id: entry.id,
                 path,
@@ -134,9 +115,7 @@ export function build(entries: readonly BufferEntryConfig[]): {
             continue;
         }
         claimed.set(path, entry.id);
-        
-        
-        
+
         setDeep(defaultRecord, path, plan.value);
         if (plan.bounds) counters[path] = plan.bounds;
     }
@@ -147,25 +126,17 @@ export function build(entries: readonly BufferEntryConfig[]): {
 
     try {
         const buffer = new JsonMapBuffer({
-            
-            
             key: "mdBuffers",
             defaultRecord,
-            
-            
+
             maxBytes: 64 * 1024,
             counters,
-            
-            
-            
+
             persist: false,
             loadFromStorage: false,
         });
         return { buffer, problems };
     } catch (e) {
-        
-        
-        
         problems.push({
             id: "*",
             path: "",
@@ -174,7 +145,6 @@ export function build(entries: readonly BufferEntryConfig[]): {
         return { buffer: null, problems };
     }
 }
-
 
 function setDeep(target: Record<string, unknown>, path: string, value: unknown): void {
     const parts = path.split(/\.|\[(\d+)\]/).filter((p) => p !== undefined && p !== "");
@@ -185,7 +155,6 @@ function setDeep(target: Record<string, unknown>, path: string, value: unknown):
         const key = isIndex ? Number(part) : part;
         const next = node[key as string];
         if (next == null || typeof next !== "object") {
-            
             node[key as string] = /^\d+$/.test(parts[i + 1]) ? [] : {};
         }
         node = node[key as string] as Record<string, unknown>;
@@ -193,11 +162,9 @@ function setDeep(target: Record<string, unknown>, path: string, value: unknown):
     node[parts[parts.length - 1]] = value;
 }
 
-
 let live: BufferHandle | null = null;
 let liveBuilt = false;
 let liveProblems: BufferProblem[] = [];
-
 
 export function ensureBufferReady(
     entries: readonly BufferEntryConfig[],
@@ -210,18 +177,15 @@ export function ensureBufferReady(
     return live;
 }
 
-
 export function resetBuffer(): void {
     live = null;
     liveBuilt = false;
     liveProblems = [];
 }
 
-
 export function bufferProblems(): BufferProblem[] {
     return liveProblems;
 }
-
 
 export function currentBuffer(): BufferHandle | null {
     return live;

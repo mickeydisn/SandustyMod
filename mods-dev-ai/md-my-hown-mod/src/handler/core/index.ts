@@ -1,6 +1,3 @@
-
-
-
 export {
     ACTION_ROLES,
     type ActionDef,
@@ -9,7 +6,6 @@ export {
     BLOCK_KEY,
     CALL_SITE_LABELS,
     CALL_SITE_SIGNATURES,
-    CALL_SITE_USES_RETURN,
     type CallSite,
     defineActions,
     defineModifiers,
@@ -23,7 +19,6 @@ export {
     ROLE_LABELS,
     type StoredAction,
 } from "./types.ts";
-
 
 export {
     ACTION_DOCS,
@@ -42,10 +37,7 @@ export {
 
 // `main.ts` calls this at startup to hand the engine its buffer provider. It is part
 // of the package's surface, so it goes through the barrel with everything else.
-export {
-    setBufferSource,
-} from "../actions/buffer/index.ts";
-
+export { setBufferSource } from "../actions/buffer/index.ts";
 
 export {
     actionRefsOf,
@@ -54,7 +46,6 @@ export {
     type ProcessFailure,
 } from "./process.ts";
 
-
 export {
     activeModifierIds,
     applyAllModifiers,
@@ -62,7 +53,6 @@ export {
     detachAllModifiers,
     detachModifier,
 } from "./apply.ts";
-
 
 export {
     ACTION_SCOPE,
@@ -79,47 +69,31 @@ export {
     slotsFor,
 } from "./scope.ts";
 
-
 export {
-    ACTION_CLASS_BLURBS,
-    ACTION_CLASS_LABELS,
-    type ActionDeps,
-    measureActionDeps,
-} from "./action-class.ts";
-
-export {
-    ACTION_FACTS,
-    actionFacts,
-    actionClassOf,
-    apiOf,
-    type ActionFacts,
-    type ActionKey,
-    type ActionDomain,
-    type ActionEffect,
     ACTION_DOMAIN_BLURBS,
     ACTION_DOMAIN_LABELS,
     ACTION_EFFECT_BLURBS,
     ACTION_EFFECT_LABELS,
+    ACTION_FACTS,
+    actionClassOf,
+    type ActionDomain,
+    type ActionEffect,
+    type ActionFacts,
+    actionFacts,
+    type ActionKey,
+    apiOf,
     domainOf,
     effectOf,
-    isVacuousReturn,
     type HandlerActionClass,
+    isVacuousReturn,
     offRuleActions,
 } from "./action-facts.ts";
 
+export { canBind, createContext } from "./context.ts";
 
-export {
-    canBind,
-    createContext,
-} from "./context.ts";
+export { refsIn } from "./refs.ts";
 
-export {
-    refsIn,
-} from "./refs.ts";
-
-export {
-    scopeSeedNames,
-} from "./scope-context.ts";
+export { scopeSeedNames } from "./scope-context.ts";
 
 export {
     allHandlerTypes,
@@ -135,11 +109,11 @@ export {
     handlerMeta,
     type HandlerParam,
     handlersForSlot,
-    handlersOnlyAtSlot,
     type HandlerSlot,
     handlersOfType,
-    handlerTypesForKeys,
+    handlersOnlyAtSlot,
     type HandlerType,
+    handlerTypesForKeys,
     type HandlerUsage,
     isHandlerKey,
     isOnlyAtSlot,
@@ -151,9 +125,6 @@ export {
     usageIndex,
     validateHandlerParams,
 } from "./handler-registry.ts";
-
-
-
 
 export {
     type CompiledProjectileOption,
@@ -170,12 +141,6 @@ export {
     type ProjectileOptionRef,
     resolveProjectileOption,
 } from "../projectile-option/index.ts";
-
-
-
-// The `globalThis.__mdHandlers` dev handle lives in its own file — see debug-handle.ts.
-// It is imported for the side effect only; it exports nothing.
-import "./debug-handle.ts";
 
 export {
     type CompiledExcavationOption,
@@ -195,7 +160,6 @@ export {
     type ExcavationOptionValue,
     resolveExcavationOption,
 } from "../excavation-option/index.ts";
-
 
 // The `globalThis.__mdHandlers` dev handle lives in its own file — see debug-handle.ts.
 // It is imported for the side effect only; it exports nothing.

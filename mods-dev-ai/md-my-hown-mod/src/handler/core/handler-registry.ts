@@ -1,16 +1,10 @@
-
-
 import { actionFacts, type HandlerActionClass } from "./action-facts.ts";
-
-
 
 import type { Opt } from "../../catalog.ts";
 
 import { actionRefsOf, flattenRefs, isBlock, setOptionKeysLookup } from "./process.ts";
 import { slotsFor } from "./scope.ts";
 import { BLOCK_KEY } from "./types.ts";
-
-
 
 import { projectileOptionOf } from "../projectile-option/index.ts";
 import { excavationOptionOf } from "../excavation-option/index.ts";
@@ -22,9 +16,7 @@ export type HandlerType =
     | "tech"
     | "processor"
     | "modifier"
-    
     | "block";
-
 
 export type HandlerSlot =
     | "signal"
@@ -33,7 +25,6 @@ export type HandlerSlot =
     | "upgrade"
     | "modifier"
     | "itemAction";
-
 
 export type HandlerScope = "global" | "structure" | "cell" | "tech" | "item";
 
@@ -47,29 +38,29 @@ export interface HandlerParam {
     min?: number;
     max?: number;
     int?: boolean;
-    
+
     options?: Opt[];
-    
+
     content?: ContentKind;
 }
 
 export interface HandlerMeta {
     key: string;
-    
+
     type: HandlerType;
-    
+
     api?: string;
-    
+
     cls: HandlerActionClass;
-    
+
     slots: HandlerSlot[];
-    
+
     declaredSlots?: HandlerSlot[];
-    
+
     scope: HandlerScope;
-    
+
     itemTypes?: string[];
-    
+
     params: HandlerParam[];
 }
 
@@ -101,8 +92,6 @@ export const HANDLER_SCOPE_LABELS: Record<HandlerScope, string> = {
     item: "Item",
 };
 
-
-
 const p = (
     key: string,
     label: string,
@@ -118,12 +107,6 @@ const ALL_SLOTS = [
     "modifier",
     "itemAction",
 ] as const satisfies readonly HandlerSlot[];
-
-
-
-
-
-
 
 const REGION_PARAMS: HandlerParam[] = [
     p("dx", "Offset X", "number", { def: "0", int: true, hint: "from my own cell" }),
@@ -148,7 +131,6 @@ const REGION_PARAMS: HandlerParam[] = [
     }),
 ];
 
-
 const MATRIX_PARAMS: HandlerParam[] = [
     p("mx", "Matrix X", "number", {
         int: true,
@@ -158,18 +140,14 @@ const MATRIX_PARAMS: HandlerParam[] = [
     p("my", "Matrix Y", "number", { int: true, hint: "one cell of my shape matrix, by row." }),
 ];
 
-
 const RANGE_PARAMS: HandlerParam[] = REGION_PARAMS;
 
-
 const MOTION_REGION_PARAMS: HandlerParam[] = REGION_PARAMS;
-
 
 const VELOCITY_PARAMS: HandlerParam[] = [
     p("vx", "Velocity X", "number", { def: "0" }),
     p("vy", "Velocity Y", "number", { def: "0", hint: "negative is up" }),
 ];
-
 
 const MOTION_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     {
@@ -186,11 +164,7 @@ const MOTION_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         type: "cell",
         slots: ["processing"],
         scope: "cell",
-        
-        
-        
-        
-        
+
         params: [
             p("size", "Search size", "number", {
                 def: "0",
@@ -255,8 +229,6 @@ const MOTION_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     },
 ];
 
-
-
 const CREATE_PARAMS: HandlerParam[] = [
     p("durationTicks", "Lifetime", "number", {
         def: "0",
@@ -277,9 +249,7 @@ const CREATE_PARAMS: HandlerParam[] = [
     p("vy", "Velocity Y", "number", { def: "0", hint: "negative is up" }),
 ];
 
-
 export type ContentKind = "element" | "structure" | "terrain";
-
 
 const elementRef = (hint: string): HandlerParam =>
     p("element", "Element", "select", { required: true, content: "element", hint });
@@ -296,13 +266,7 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         type: "cell",
         slots: ["processing"],
         scope: "cell",
-        
-        
-        
-        
-        
-        
-        
+
         params: [...REGION_PARAMS, ...MATRIX_PARAMS],
     },
     {
@@ -316,8 +280,6 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         ],
     },
     {
-        
-        
         key: "countEmpty",
         type: "cell",
         slots: ["processing"],
@@ -336,9 +298,6 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         ],
     },
     {
-        
-        
-        
         key: "removeElement",
         type: "cell",
         slots: ["processing"],
@@ -367,9 +326,6 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         params: [...REGION_PARAMS],
     },
     {
-        
-        
-        
         key: "transformElement",
         type: "cell",
         slots: ["processing"],
@@ -379,17 +335,12 @@ const ELEMENT_ENTRIES: Omit<HandlerMeta, "cls">[] = [
                 hint: "only cells holding this are changed. Leave blank for any.",
             }),
             p("to", "To element", "text", { required: true, hint: "what they become" }),
-            
-            
-            
-            
-            
+
             ...CREATE_PARAMS,
             ...REGION_PARAMS,
         ],
     },
 ];
-
 
 const STRUCTURE_REF_PARAMS: HandlerParam[] = [
     structureRef("the structure, or a handle from Structure type"),
@@ -443,8 +394,7 @@ const STRUCTURE_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         type: "cell",
         slots: ["processing"],
         scope: "structure",
-        
-        
+
         params: [...STRUCTURE_REF_PARAMS],
     },
     {
@@ -586,7 +536,6 @@ const STRUCTURE_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     },
 ];
 
-
 const TERRAIN_REF_PARAMS: HandlerParam[] = [
     terrainRef("the terrain, or a handle from Terrain type"),
 ];
@@ -696,7 +645,6 @@ const TERRAIN_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     },
 ];
 
-
 const LOGIC_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     {
         key: "logicAny",
@@ -720,9 +668,6 @@ const LOGIC_ENTRIES: Omit<HandlerMeta, "cls">[] = [
         params: [elementRef("the element to count"), ...RANGE_PARAMS],
     },
     {
-        
-        
-        
         key: "logicSum",
         type: "cell",
         slots: ["signal", "processing", "itemAction", "modifier"],
@@ -732,14 +677,7 @@ const LOGIC_ENTRIES: Omit<HandlerMeta, "cls">[] = [
     {
         key: "logicForEach",
         type: "cell",
-        
-        
-        
-        
-        
-        
-        
-        
+
         slots: ["processing"],
         scope: "cell",
         params: [
@@ -752,15 +690,13 @@ const LOGIC_ENTRIES: Omit<HandlerMeta, "cls">[] = [
                 content: "element",
                 hint: "leave blank to write every cell, whatever is there",
             }),
-            
-            
+
             ...RANGE_PARAMS,
         ],
     },
 ];
 
 const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
-    
     { key: "noop", type: "global", slots: [...ALL_SLOTS], scope: "global", params: [] },
     {
         key: "itemDefault",
@@ -812,16 +748,7 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             }),
         ],
     },
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     {
         key: "triggerScan",
         type: "cell",
@@ -829,12 +756,8 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         scope: "cell",
         params: [p("radius", "Radius", "number", { def: "3", min: 0, int: true })],
     },
-    
+
     {
-        
-        
-        
-        
         key: "randomInt",
         type: "processor",
         slots: [...ALL_SLOTS],
@@ -855,17 +778,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         ],
     },
     {
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         key: "compare",
         type: "processor",
         slots: [...ALL_SLOTS],
@@ -891,13 +803,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         ],
     },
     {
-        
-        
-        
-        
-        
-        
-        
         key: "math",
         type: "processor",
         slots: [...ALL_SLOTS],
@@ -922,9 +827,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     },
     { key: "signalLog", type: "message", slots: ["signal"], scope: "structure", params: [] },
     {
-        
-        
-        
         key: "signalOutput",
         type: "message",
         slots: ["signal", "processing"],
@@ -933,10 +835,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     },
     { key: "structureInspect", type: "message", slots: ["signal"], scope: "structure", params: [] },
     {
-        
-        
-        
-        
         key: "isElementAtCell",
         type: "cell",
         slots: ["processing"],
@@ -969,20 +867,8 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             p("value", "Value", "text", { required: true }),
         ],
     },
-    
-    
-    
-    
-    
-    
-    
-    
+
     {
-        
-        
-        
-        
-        
         key: "readDataField",
         type: "message",
         slots: [...ALL_SLOTS],
@@ -1037,10 +923,7 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
                 required: true,
                 hint: "a path declared in Content → Buffer",
             }),
-            
-            
-            
-            
+
             p("value", "Value", "text", {
                 hint: "a literal, or {{aVariable}} from an earlier step",
             }),
@@ -1057,29 +940,15 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
                 hint:
                     "a **number** path from Content → Buffer — a bool or string slot is not a counter",
             }),
-            
-            
-            
-            
+
             p("delta", "Amount", "number", { required: true, def: "1", int: true }),
         ],
     },
-    
-    
-    
-    
-    
-    
+
     { key: "triggerLog", type: "message", slots: ["trigger"], scope: "global", params: [] },
-    
-    
-    
-    
-    
+
     { key: "triggerTick", type: "message", slots: ["signal"], scope: "structure", params: [] },
-    
-    
-    
+
     {
         key: "toast",
         type: "message",
@@ -1100,15 +969,7 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     {
         key: "itemExcavate",
         type: "message",
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
         slots: ["signal", "processing", "modifier", "itemAction"],
         scope: "cell",
         itemTypes: ["Tool"],
@@ -1122,8 +983,7 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
     {
         key: "itemShoot",
         type: "message",
-        
-        
+
         slots: ["signal", "processing", "modifier", "itemAction"],
         scope: "global",
         itemTypes: ["Weapon"],
@@ -1136,7 +996,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         ],
     },
 
-    
     {
         key: "processorLog",
         type: "processor",
@@ -1174,11 +1033,7 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         scope: "structure",
         params: [],
     },
-    
-    
-    
-    
-    
+
     {
         key: "energyGenerateWhileHeld",
         type: "processor",
@@ -1189,16 +1044,11 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 }),
         ],
     },
-    
-    
-    
+
     {
         key: "energyConsumePerRun",
         type: "processor",
-        
-        
-        
-        
+
         slots: ["processing", "signal", "modifier"],
         scope: "cell",
         params: [
@@ -1206,17 +1056,7 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
             p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 }),
         ],
     },
-    
-    
-    
-    
-    
-    
-    
-    
-    
 
-    
     {
         key: "techAppendUnlock",
         type: "tech",
@@ -1273,7 +1113,6 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         ],
     },
 
-    
     { key: "logArgs", type: "modifier", slots: ["modifier"], scope: "global", params: [] },
     { key: "identity", type: "modifier", slots: ["modifier"], scope: "global", params: [] },
     {
@@ -1283,40 +1122,21 @@ const DECLARED_META: Omit<HandlerMeta, "cls">[] = [
         scope: "global",
         params: [],
     },
-    
+
     ...ELEMENT_ENTRIES,
-    
-    
-    
-    
-    
-    
+
     ...MOTION_ENTRIES,
-    
-    
-    
-    
-    
-    
+
     ...STRUCTURE_ENTRIES,
-    
-    
-    
-    
-    
+
     ...TERRAIN_ENTRIES,
-    
-    
-    
-    
+
     ...LOGIC_ENTRIES,
 ];
-
 
 const TYPE_SLOTS: Partial<Record<HandlerType, HandlerSlot[]>> = {
     tech: ["upgrade"],
 };
-
 
 export function slotsForEntry(
     m: { key: string; type: HandlerType },
@@ -1326,7 +1146,6 @@ export function slotsForEntry(
     if (!narrowed) return needed;
     return needed.filter((s) => narrowed.includes(s));
 }
-
 
 export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => {
     const derived = slotsForEntry(m);
@@ -1342,15 +1161,11 @@ export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => {
     };
 });
 
-
 export const BLOCK_META: HandlerMeta = {
     key: BLOCK_KEY,
     type: "block",
     cls: "pure",
-    
-    
-    
-    
+
     slots: ["signal", "trigger", "processing", "itemAction", "upgrade", "modifier"],
     scope: "cell",
     params: [
@@ -1373,16 +1188,12 @@ export function handlerMeta(key: string | undefined): HandlerMeta | undefined {
     return key ? META_BY_KEY[key] : undefined;
 }
 
-
-
-
 setOptionKeysLookup((key) => {
     const meta = handlerMeta(key);
     if (!meta) return undefined;
     const names = new Set<string>();
     for (const p of meta.params ?? []) names.add(p.key);
-    
-    
+
     names.add("key");
     names.add("as");
     return names;
@@ -1392,11 +1203,9 @@ export function handlersForSlot(slot: HandlerSlot): HandlerMeta[] {
     return HANDLER_META.filter((m) => m.slots.includes(slot));
 }
 
-
 export function isOnlyAtSlot(meta: HandlerMeta, slot: HandlerSlot): boolean {
     return meta.slots.length === 1 && meta.slots[0] === slot;
 }
-
 
 export function handlersOnlyAtSlot(slot: HandlerSlot): HandlerMeta[] {
     return HANDLER_META.filter((m) => isOnlyAtSlot(m, slot));
@@ -1416,16 +1225,6 @@ export function isHandlerKey(key: string | undefined): boolean {
     return !!key && key in META_BY_KEY;
 }
 
-
-export function itemActionHandlersFor(itemType: string | undefined): HandlerMeta[] {
-    const t = itemType ?? "";
-    
-    
-    
-    if (t.toLowerCase() === "consumable") return [];
-    return handlersForSlot("itemAction").filter((m) => !m.itemTypes || m.itemTypes.includes(t));
-}
-
 export const HANDLER_SLOT_LABELS: Record<HandlerSlot, string> = {
     signal: "Signals (structure click)",
     trigger: "Triggers (timed)",
@@ -1436,9 +1235,6 @@ export const HANDLER_SLOT_LABELS: Record<HandlerSlot, string> = {
 };
 
 export const HANDLER_SCOPES = Object.keys(HANDLER_SCOPE_LABELS) as HandlerScope[];
-
-
-
 
 export function validateHandlerParams(
     meta: HandlerMeta,
@@ -1468,16 +1264,6 @@ export function validateHandlerParams(
         }
         if (spec.kind === "select") {
             if (spec.content) {
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
             } else if (spec.options) {
                 if (!spec.options.some((o) => o.value === raw)) {
                     errs.push(
@@ -1491,8 +1277,6 @@ export function validateHandlerParams(
     }
     return errs;
 }
-
-
 
 export function handlerTypesForKeys(keys: string[]): HandlerType[] {
     const byKey = new Map(HANDLER_META.map((m) => [m.key, m.type]));
@@ -1524,23 +1308,7 @@ export function buildHandlerOptions(
     return out;
 }
 
-
-
-
-export const TAB_TO_CALL_SITE: Record<string, HandlerSlot> = {
-    signals: "signal",
-    triggers: "trigger",
-    processing: "processing",
-    items: "itemAction",
-    upgrades: "upgrade",
-    modifiers: "modifier",
-    
-    
-    
-    
-};
-
-
+/** The one place a slot and its config key are written down. */
 const SLOT_LOCATION: Record<HandlerSlot, string> = {
     signal: "signals",
     trigger: "triggers",
@@ -1550,22 +1318,27 @@ const SLOT_LOCATION: Record<HandlerSlot, string> = {
     itemAction: "items",
 };
 
-
+/**
+ * Config key -> slot. Derived from SLOT_LOCATION so the two can never drift.
+ *
+ * This used to be a second hand-written table named TAB_TO_CALL_SITE, holding the
+ * same six pairs. Same failure mode as the four per-action tables: two lists of the
+ * same facts, kept in sync by hand.
+ */
 const SLOTS_BY_CATEGORY: Record<string, HandlerSlot> = Object.fromEntries(
-    Object.entries(SLOT_LOCATION).map(([slot, key]) => [key, slot as HandlerSlot]),
-) as Record<string, HandlerSlot>;
+    Object.entries(SLOT_LOCATION).map(([slot, cfgKey]) => [cfgKey, slot as HandlerSlot]),
+);
 
 export { SLOTS_BY_CATEGORY };
-
+export const TAB_TO_CALL_SITE = SLOTS_BY_CATEGORY;
 
 export interface HandlerUsage {
     category: string;
     id: string;
     slot: HandlerSlot;
-    
+
     key?: string;
 }
-
 
 export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
     const out: HandlerUsage[] = [];
@@ -1573,16 +1346,8 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
         const list = cfg[cfgKey];
         if (!Array.isArray(list)) continue;
         for (const e of list as Record<string, unknown>[]) {
-            
-            
-            
-            
-            
-            
             const refs = flattenRefs(actionRefsOf(e as Record<string, unknown>));
             for (const key of refs.map((r) => r.key)) {
-                
-                
                 if (isBlock({ key })) continue;
                 out.push({ category: cfgKey, id: String(e.id ?? "?"), slot, key });
             }
@@ -1590,7 +1355,6 @@ export function scanHandlerUsage(cfg: Record<string, unknown>): HandlerUsage[] {
     }
     return out;
 }
-
 
 export function scanProjectileOptionUsage(
     cfg: Record<string, unknown>,
@@ -1607,7 +1371,6 @@ export function scanProjectileOptionUsage(
         };
     });
 }
-
 
 export function scanExcavationOptionUsage(
     cfg: Record<string, unknown>,
@@ -1630,12 +1393,9 @@ function findKeyForUsage(cfg: Record<string, unknown>, u: HandlerUsage): string 
     const list = (cfg[cfgKey] ?? []) as Record<string, unknown>[];
     const e = list.find((x) => String(x?.id) === u.id);
     if (!e) return "";
-    
-    
-    
+
     return u.key ?? actionRefsOf(e)[0]?.key ?? "";
 }
-
 
 export function unreachableHandlers(
     cfg: Record<string, unknown>,
@@ -1654,7 +1414,6 @@ export function unreachableHandlers(
     }
     return bad;
 }
-
 
 export function usageIndex(cfg: Record<string, unknown>): Record<string, HandlerUsage[]> {
     const idx: Record<string, HandlerUsage[]> = {};
