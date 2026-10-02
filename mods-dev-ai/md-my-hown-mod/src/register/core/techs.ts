@@ -24,8 +24,8 @@ export function registerTechs({ config }: RegisterContext): number {
         const ids = techUnlockStructureIds(t.id, config);
         registerTech(ids.length ? { ...t, unlocks: { ...(t.unlocks ?? {}), structures: ids } } : t);
     });
-    // Unlock nodes are techs declared through the tech tree rather than the
-    // techs list, so they share the techs bucket and its de-duplication.
+    
+    
     return n + registerEach(config.unlockNodes, "techs", (node) => {
         if (node.kind !== "tech" || node.techId) return false;
         const tech = engineTechOf(node, config);

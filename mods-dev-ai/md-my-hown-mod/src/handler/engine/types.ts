@@ -67,10 +67,10 @@ export type HandlerActionFn = (
 
 import type { Opt } from "../../catalog.ts";
 
-/** What kind of thing a `select` option points at. */
+
 export type ContentKind = "element" | "structure" | "terrain";
 
-/** One row of an action's option editor, as the panel renders it. */
+
 export interface HandlerParam {
     key: string;
     label: string;
@@ -92,13 +92,7 @@ export interface ModifierAction {
     fn: HandlerActionFn;
 }
 
-/**
- * How one action describes itself to the panel.
- *
- * The `type`/`scope`/`slots`/`params` fields are declared next to the action
- * that honours them, not in a parallel table: an action and the options it
- * accepts are always read in the same place.
- */
+
 export interface ActionDef {
     doc: string;
 
@@ -108,30 +102,22 @@ export interface ActionDef {
 
     kind?: "intercept" | "modify";
 
-    /** The panel group this action is listed under. */
+    
     type?: string;
 
-    /** What the host must hand the action for it to run. */
+    
     scope?: string;
 
-    /** Handler slots this action may appear in. */
+    
     slots?: readonly string[];
 
-    /** Item types, when the action is item-scoped. */
+    
     itemTypes?: readonly string[];
 
-    /** The options the panel offers for this action. */
+    
     params?: readonly HandlerParam[];
 
-    /**
-     * What the host must hand this action for it to run.
-     *
-     * Required, and declared next to the action, so adding an action cannot
-     * silently leave it out: the compiler rejects a def that omits it. This
-     * used to be a hand-maintained `ACTION_SCOPE` table in processing/scope.ts
-     * that had to be edited in lockstep with this list; an unknown key there
-     * defaulted to "needs nothing", which quietly let an action run anywhere.
-     */
+    
     needs: readonly ScopeNeed[];
 }
 
@@ -194,13 +180,7 @@ export type CallSite =
     | "behavior"
     | "modifier";
 
-/**
- * One thing an action needs the host to provide.
- *
- * Lives here rather than in processing/scope.ts so `ActionDef` can name it:
- * an action's requirements are part of the action, not a lookup keyed by its
- * name somewhere else. processing/scope.ts re-exports it for its own callers.
- */
+
 export type ScopeNeed = "pos" | "data" | "read" | "commit";
 
 export const CALL_SITE_LABELS: Record<CallSite, string> = {

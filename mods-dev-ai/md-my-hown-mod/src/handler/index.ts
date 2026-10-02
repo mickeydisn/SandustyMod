@@ -35,8 +35,8 @@ export {
     resolveModifier,
 } from "./actions/index.ts";
 
-// `main.ts` calls this at startup to hand the engine its buffer provider. It is part
-// of the package's surface, so it goes through the barrel with everything else.
+
+
 export { setBufferSource } from "./actions/custom/buffer.ts";
 
 export {
@@ -172,6 +172,6 @@ export {
     resolveExcavationOption,
 } from "./processing/excavation-option/index.ts";
 
-// The `globalThis.__mdHandlers` dev handle lives in its own file — see debug-handle.ts.
-// It is imported for the side effect only; it exports nothing.
+
+
 import "./engine/debug-handle.ts";

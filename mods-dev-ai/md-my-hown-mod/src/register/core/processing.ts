@@ -8,7 +8,7 @@ export function registerProcessing({ config, processes }: RegisterContext): numb
         const raw = entry as Record<string, unknown>;
         const id = entry.id ?? "?";
 
-        // A hand-written process function is already runnable.
+        
         if (typeof raw.process !== "function") {
             const compiled = compileEntryProcess(raw, "processing", processes);
             if (compiled.source.kind === "process" && compiled.expanded.length) {

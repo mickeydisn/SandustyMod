@@ -8,7 +8,7 @@ import { slotsFor } from "../processing/scope.ts";
 import { projectileOptionOf } from "../processing/projectile-option/index.ts";
 import { excavationOptionOf } from "../processing/excavation-option/index.ts";
 
-// Types, labels and the shared option-parameter builders live next door.
+
 export * from "./registry/types.ts";
 export {
     DATA_PARAMS,
@@ -40,13 +40,7 @@ const TYPE_SLOTS: Partial<Record<HandlerType, HandlerSlot[]>> = {
     tech: ["upgrade"],
 };
 
-/**
- * The slots one action may appear in, narrowed by its handler type.
- *
- * Takes a real `ActionKey`: every caller derives it from `ALL_ACTIONS`, so
- * there is no unknown key to accommodate here. The `as HandlerSlot[]` that
- * used to sit on `slotsFor`'s result is gone — `slotsFor` returns slots.
- */
+
 export function slotsForEntry(
     m: { key: ActionKey; type: HandlerType },
 ): HandlerSlot[] {
@@ -56,14 +50,7 @@ export function slotsForEntry(
     return needed.filter((s) => narrowed.includes(s));
 }
 
-/**
- * The panel's view of every action.
- *
- * Built from the action definitions themselves: each one now declares its own
- * `type`, `scope`, `slots` and `params`, so there is no second table to keep in
- * step with the first. The engine's own scope check (`slotsFor`) still wins,
- * and the declaration is kept alongside it as `declaredSlots` for diagnostics.
- */
+
 export const HANDLER_META: HandlerMeta[] = (Object.entries(ALL_ACTIONS) as
     [ActionKey, ActionDef][]).map(
         ([key, def]) => {
@@ -79,8 +66,8 @@ export const HANDLER_META: HandlerMeta[] = (Object.entries(ALL_ACTIONS) as
         const facts = actionFacts(key);
         return {
             ...entry,
-            // `api` is absent for engine-free actions; the record states that as "",
-            // so translate rather than leaking an empty string into the panel.
+            
+            
             api: facts?.api || undefined,
             cls: facts?.cls ?? "pure",
             itemTypes: m.itemTypes as string[] | undefined,
@@ -116,12 +103,7 @@ export function handlerMeta(key: string | undefined): HandlerMeta | undefined {
     return key ? META_BY_KEY[key] : undefined;
 }
 
-/**
- * The option names an action accepts, from its own declaration.
- *
- * Handed to `compileProcess` by the caller rather than pushed into it at import
- * time, so the compiler does not have to reach back up into the registry.
- */
+
 export const optionKeysFor: OptionKeysLookup = (key) => {
     const meta = handlerMeta(key);
     if (!meta) return undefined;
@@ -242,7 +224,7 @@ export function buildHandlerOptions(
     return out;
 }
 
-/** The one place a slot and its config key are written down. */
+
 const SLOT_LOCATION: Record<HandlerSlot, string> = {
     signal: "signals",
     trigger: "triggers",
@@ -252,13 +234,7 @@ const SLOT_LOCATION: Record<HandlerSlot, string> = {
     itemAction: "items",
 };
 
-/**
- * Config key -> slot. Derived from SLOT_LOCATION so the two can never drift.
- *
- * This used to be a second hand-written table named TAB_TO_CALL_SITE, holding the
- * same six pairs. Same failure mode as the four per-action tables: two lists of the
- * same facts, kept in sync by hand.
- */
+
 const SLOTS_BY_CATEGORY: Record<string, HandlerSlot> = Object.fromEntries(
     Object.entries(SLOT_LOCATION).map(([slot, cfgKey]) => [cfgKey, slot as HandlerSlot]),
 );

@@ -6,7 +6,7 @@ import {
 import { compileEntryProcess } from "../../handler/processing/custom-process/index.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
-// Lets the item normalizer compile a stored action list into a callback.
+
 setItemActionCompiler(
     (def) => compileEntryProcess(def, "itemAction") as unknown as CompiledItemAction,
 );

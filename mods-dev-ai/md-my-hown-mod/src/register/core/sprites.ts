@@ -3,7 +3,7 @@ import { api } from "../../packages/mysandkit.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
 export function registerSprites({ config }: RegisterContext): number {
-    // Sprites load asynchronously, so this only counts what was dispatched.
+    
     return registerEach(config.sprites, "sprites", (def) => {
         void loadSprite(def.id, def.source, def.path, def.fromMod, def.options ?? {});
     });

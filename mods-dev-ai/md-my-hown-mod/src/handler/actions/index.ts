@@ -9,7 +9,7 @@ import {
     type StoredAction,
 } from "../engine/types.ts";
 
-// --- engine/: actions that do not reach the host -----------------------------
+
 import { processingSenseActions, senseActions } from "./engine/sense.ts";
 import { engineDecideActions } from "./engine/decide.ts";
 import { processingRememberActions, rememberActions } from "./engine/remember.ts";
@@ -17,8 +17,8 @@ import { engineConnectActions, connectModifierActions } from "./engine/connect.t
 import { engineFeelActions } from "./engine/feel.ts";
 import { processorActions } from "./engine/processors.ts";
 
-// --- api/: one file per `api.*` namespace ------------------------------------
-// Files are named for the host namespace they drive, not for a role or action.
+
+
 import { gridActions } from "./api/grid.ts";
 import { projectilesActions } from "./api/projectiles.ts";
 import { structureActions } from "./api/structures.ts";
@@ -33,7 +33,7 @@ import { effectsActions } from "./api/effects.ts";
 import { uiActions } from "./api/ui.ts";
 import { randomActions } from "./api/random.ts";
 
-// --- custom/ and the one folder that is neither ------------------------------
+
 import { bufferActions } from "./custom/buffer.ts";
 import { logicActions } from "./logic.ts";
 interface Folder {
@@ -41,18 +41,11 @@ interface Folder {
     defs: Record<string, ActionDef & { kind?: "intercept" | "modify" }>;
 }
 
-/**
- * The action key union, derived from the folder list below.
- *
- * `FOLDERS` used to be annotated `readonly Folder[]`, which widened every `defs` to
- * `Record<string, ActionDef>` and erased the literal keys. The `satisfies` clause
- * keeps the same check without the widening, so `keyof` still resolves to the 94 real
- * action names — which is what lets `ACTION_FACTS` be exhaustive at compile time.
- */
+
 type DefKeys<T> = T extends { defs: infer D } ? keyof D & string : never;
 
 const FOLDERS = [
-    // engine/ - actions that never touch the host
+    
     { signature: "payload", defs: senseActions },
     { signature: "processing", defs: processingSenseActions },
     { signature: "payload", defs: engineDecideActions },
@@ -63,7 +56,7 @@ const FOLDERS = [
     { signature: "payload", defs: engineFeelActions },
     { signature: "processing", defs: processorActions },
 
-    // api/ - one file per api.* namespace, in the original registration order
+    
     { signature: "payload", defs: randomActions },
     { signature: "payload", defs: uiActions },
     { signature: "payload", defs: effectsActions },
@@ -79,12 +72,12 @@ const FOLDERS = [
     { signature: "processing", defs: structureActions },
     { signature: "processing", defs: terrainActions },
 
-    // custom/ and logic/ - shared state, and the range-walkers
+    
     { signature: "payload", defs: bufferActions },
     { signature: "payload", defs: logicActions },
 ] as const satisfies readonly Folder[];
 
-/** Every action key the package actually defines. Compile-time source of truth. */
+
 export type ActionKey = DefKeys<(typeof FOLDERS)[number]>;
 
 

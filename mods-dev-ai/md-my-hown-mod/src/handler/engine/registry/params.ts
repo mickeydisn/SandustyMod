@@ -1,12 +1,6 @@
 import type { ContentKind, HandlerParam } from "../types.ts";
 
-/**
- * Shared option-parameter builders.
- *
- * Each action declares the options it accepts in its own definition. These
- * groups let the common ones - a cell region, a create payload, an element
- * reference - be written once instead of copied into every action.
- */
+
 
 export const p = (
     key: string,

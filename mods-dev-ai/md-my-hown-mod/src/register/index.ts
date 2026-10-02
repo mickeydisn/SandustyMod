@@ -26,19 +26,10 @@ import { registerModifiers } from "./custom/modifiers.ts";
 import { reportEnergyNetworks } from "./custom/energy-networks.ts";
 import { installPlacementLimits } from "./core/placement-limits.ts";
 
-/** A registration step: runs one group of entries, returns how many registered. */
+
 type Step = (ctx: RegisterContext) => number;
 
-/**
- * Every registration step, in the order the engine needs them.
- *
- * Order is load-bearing, so keep it as written rather than sorting it: elements
- * and structures come first because later steps resolve references to their
- * types, recipes sit next to processing because a processing step names a
- * machine, and the custom steps read what the core steps recorded.
- *
- * A step that only reports contributes 0.
- */
+
 const STEPS: readonly [name: string, step: Step][] = [
     ["elements", registerElements],
     ["structures", registerStructures],
@@ -66,9 +57,9 @@ const STEPS: readonly [name: string, step: Step][] = [
 ];
 
 export interface RegisterCounts {
-    /** Entries registered per step, keyed by step name. */
+    
     steps: Record<string, number>;
-    /** Element types withheld from the picker. */
+    
     hiddenElements: number;
 }
 

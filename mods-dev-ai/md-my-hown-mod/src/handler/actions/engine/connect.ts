@@ -1,10 +1,7 @@
 import { defineActions, defineModifiers } from "../../engine/types.ts";
 import { p } from "../../engine/registry/params.ts";
 
-/**
- * Connect actions that do not call the host: storage/item descriptors that just return
- * an object, plus the engine-hook modifiers.
- */
+
 export const engineConnectActions = defineActions({
     
     energyDefault: {

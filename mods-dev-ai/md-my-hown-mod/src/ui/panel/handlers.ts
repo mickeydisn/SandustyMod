@@ -918,7 +918,7 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
         )
     );
 
-    // renderRow also draws the block pseudo-entry, whose key is not an action
+    
     const needs = needsOfUnknown(m.key);
     const effect = effectOf(m.key);
     const domain = domainOf(m.key);

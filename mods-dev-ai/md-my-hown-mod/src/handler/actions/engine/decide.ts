@@ -11,7 +11,7 @@ function twoSided(options: unknown): { op: string; left: number; right: number }
     };
 }
 
-/** Decide actions that need nothing from the host. */
+
 export const engineDecideActions = defineActions({
     
     math: {

@@ -1,6 +1,6 @@
 import { defineActions } from "../../engine/types.ts";
 
-/** Feel actions that need nothing from the host. */
+
 export const engineFeelActions = defineActions({
     upgradeLog: {
         role: "feel",

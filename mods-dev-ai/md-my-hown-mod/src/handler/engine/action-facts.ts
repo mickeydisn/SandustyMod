@@ -1,18 +1,4 @@
-/**
- * One record per action. Every fact the codebase knows about an action that is not
- * "how to run it" lives here, in one place, once.
- *
- * The four tables this replaces (`ACTION_CLASSES`, `ACTION_APIS`, `ACTION_EFFECTS`,
- * `ACTION_DOMAINS`) were each `Record<string, X>` with 94 keys, kept in sync by hand.
- * A missing key in any one of them was a silent `undefined` at runtime, not a type
- * error. `ACTION_META` is keyed by the action key, and the key type is derived from
- * the action definitions themselves — so an action with no record, or a record for an
- * action that does not exist, is now a compile error.
- *
- * Derived lookups (`actionClassOf`, `effectOf`, `domainOf`, `apiOf`) read from this one
- * record. `HANDLER_META` in the registry reads from it too. Nothing writes a second
- * table.
- */
+
 
 import type { ActionKey } from "../actions/index.ts";
 
@@ -85,30 +71,26 @@ export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
     signals: "Wiring: publishing a structure's signal output, and reading it back.",
 };
 
-/** What one action is, in one place. Every field is required. */
+
 export interface ActionFacts {
-    /** How the action reaches the engine, if at all. */
+    
     readonly cls: HandlerActionClass;
-    /** The single `api.*` namespace it calls. `""` when it calls none. */
+    
     readonly api: string;
-    /** What it does to the world. */
+    
     readonly effect: ActionEffect;
-    /** Which engine area it belongs to. */
+    
     readonly domain: ActionDomain;
-    /** Options the dep probe uses to call this action successfully. Absent = none. */
+    
     readonly options?: Record<string, unknown>;
 }
 
-/** Every action key, as a literal union, taken from the definitions. */
+
 export type { ActionKey };
 
 export type ActionFactsTable = Record<ActionKey, ActionFacts>;
 
-/**
- * The record. One line per action, five facts, no partial entries — an engine-free
- * action says `api: ""` rather than leaving the key out, so "calls no api" is stated
- * instead of implied by absence.
- */
+
 export const ACTION_FACTS: ActionFactsTable = {
     structureInspect: { cls: "self-sufficient", effect: "reads", domain: "structure", api: "" },
     structureReadData: { cls: "self-sufficient", effect: "reads", domain: "structure", api: "" },
@@ -248,7 +230,7 @@ export const ACTION_FACTS: ActionFactsTable = {
     },
 };
 
-/** The record for one action, or undefined if the key is not an action. */
+
 export function actionFacts(key: string): ActionFacts | undefined {
     return (ACTION_FACTS as Record<string, ActionFacts>)[key];
 }
@@ -274,25 +256,14 @@ export function isVacuousReturn(key: string, callSiteUsesReturn: boolean): boole
     return effectOf(key) === "returns" && !callSiteUsesReturn;
 }
 
-/** Actions that do not drive the engine through api.* — the off-rule list. */
+
 export function offRuleActions(): { key: string; cls: HandlerActionClass }[] {
     return (Object.entries(ACTION_FACTS) as [ActionKey, ActionFacts][])
         .filter(([, f]) => f.cls !== "api")
         .map(([key, f]) => ({ key, cls: f.cls }));
 }
 
-/**
- * Runtime companion to the compile-time key check.
- *
- * `Record<ActionKey, ActionFacts>` already makes a missing or extra record a build
- * failure, so this should never fire. It is here for the one case the type system
- * cannot see: a record that is *present* but internally inconsistent — a `cls: "api"`
- * action that names no `api`, or an `api` value on a class that makes no engine call.
- * That mismatch is not an error by itself (the rule is a convention, not a law), so it
- * is reported rather than thrown.
- *
- * Runs once at import, next to the duplicate-key guard in `actions/index.ts`.
- */
+
 function auditFacts(): void {
     const problems: string[] = [];
     for (const [key, f] of Object.entries(ACTION_FACTS) as [ActionKey, ActionFacts][]) {

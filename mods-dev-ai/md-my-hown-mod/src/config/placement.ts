@@ -1,17 +1,13 @@
 import type { PlacementConfigConfig, PlacementFieldConfig } from "../constants.ts";
 
-/**
- * A problem in a placement config, paired with the field it belongs to. Carrying
- * the field lets a form put the message on the right input instead of matching
- * on the message text.
- */
+
 export interface PlacementProblem {
-    /** The config key the problem belongs to. */
+    
     readonly field: "structureId" | "fields";
     readonly message: string;
 }
 
-/** True when `v` carries a `label` or `labelKey` with text in it. */
+
 function hasLabel(v: unknown): boolean {
     if (!v || typeof v !== "object") return false;
     const o = v as { label?: unknown; labelKey?: unknown };
@@ -19,10 +15,7 @@ function hasLabel(v: unknown): boolean {
     return text(o.label) || text(o.labelKey);
 }
 
-/**
- * The first problem that would stop `def` registering, or null if it is fine.
- * Only reads `structureId` and `fields`, so a form can pass a half-built object.
- */
+
 export function placementConfigProblem(
     def: { structureId?: unknown; fields?: unknown } | null | undefined,
 ): PlacementProblem | null {

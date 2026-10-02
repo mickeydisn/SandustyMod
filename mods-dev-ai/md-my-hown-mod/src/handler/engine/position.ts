@@ -168,12 +168,12 @@ export function walkFor(
     return { range: positionsFor(built.address, at), clamped: built.clamped };
 }
 
-// --- Positions: the queryable view over a Range -------------------------------
-//
-// This used to live in `positions.ts` — one letter away from this file, holding a
-// different concept (a walker over cells, not a cell) — with exactly one importer.
-// It is now the lower half of the same file: `Positions` is a `Range` with methods
-// on it, so splitting the two only hid that relationship.
+
+
+
+
+
+
 export type CellTest = (cell: Position) => boolean;
 
 export type CellValue = (cell: Position) => number;

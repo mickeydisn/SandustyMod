@@ -1,15 +1,4 @@
-/**
- * The dev console handle.
- *
- * `globalThis.__mdHandlers` exists so a modder can poke at the action table from the
- * browser console (`__mdHandlers.listProcessorKeys()`). It is a development
- * affordance, not API — nothing in `src/` reads it back.
- *
- * It used to be assembled inline at the bottom of `core/index.ts`, which meant the
- * barrel's export list and a side effect on `globalThis` were the same statement, and
- * deleting the handle meant reading the whole file. It is now one greppable file that
- * can be removed without touching the barrel.
- */
+
 
 import {
     ACTION_DOCS,

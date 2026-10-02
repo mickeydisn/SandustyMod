@@ -17,15 +17,15 @@ export type HandlerSlot =
 
 export type HandlerScope = "global" | "structure" | "cell" | "tech" | "item";
 
-// `HandlerParam`, `ContentKind` and the action-shape fields live in
-// engine/types.ts, because an action definition in actions/ needs them and
-// must not have to reach back into the registry to get them.
+
+
+
 import type { HandlerActionClass } from "../action-facts.ts";
 import type { ContentKind, HandlerParam } from "../types.ts";
 
 export type { ContentKind, HandlerParam };
 
-/** Every slot a handler can appear in. Actions that fit any slot list this. */
+
 export const ALL_SLOTS = [
     "signal",
     "trigger",

@@ -22,14 +22,7 @@ export {
     isBlock,
 } from "../engine/types.ts";
 
-/**
- * The option keys an action accepts, resolved from its own declaration.
- *
- * `compileProcess` needs this only to report unknown options. It is passed in
- * rather than imported, because the declarations live in the registry and this
- * module sits below it: the dependency points down at the call site instead of
- * up at import time.
- */
+
 export type OptionKeysLookup = (key: string) => ReadonlySet<string> | undefined;
 
 export interface ProcessFailure {

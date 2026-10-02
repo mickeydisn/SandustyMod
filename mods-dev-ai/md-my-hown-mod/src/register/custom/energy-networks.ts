@@ -14,7 +14,7 @@ function joinedNetworkNames(config: ModConfig): Set<string> {
     return out;
 }
 
-/** Reports declared energy networks that nothing joins. Never registers. */
+
 export function reportEnergyNetworks({ config }: RegisterContext): number {
     const joined = joinedNetworkNames(config);
     const declared = (config.energyNetworks ?? [])

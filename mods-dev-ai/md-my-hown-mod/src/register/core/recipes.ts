@@ -2,7 +2,7 @@ import { LOG, type RecipeConfig } from "../../constants.ts";
 import { api, resolveElementRef } from "../../packages/mysandkit.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
-/** Every machine id the engine accepts a recipe body for. */
+
 const MACHINES = new Set([
     "planterBox",
     "shaker",
@@ -14,7 +14,7 @@ const MACHINES = new Set([
     "smelter",
 ]);
 
-/** Map a recipe's own vocabulary onto the machine id the engine knows. */
+
 function machineOf(r: RecipeConfig): string {
     let machine = String(r.kind || "structure");
     if (machine === "grower" || machine === "planter") machine = "planterBox";
