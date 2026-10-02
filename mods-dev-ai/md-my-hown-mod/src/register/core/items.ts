@@ -3,7 +3,7 @@ import {
     type CompiledItemAction,
     setItemActionCompiler,
 } from "../../packages/mysandkit.ts";
-import { compileEntryProcess } from "../../handler/custom-process/index.ts";
+import { compileEntryProcess } from "../../handler/processing/custom-process/index.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
 // Lets the item normalizer compile a stored action list into a callback.

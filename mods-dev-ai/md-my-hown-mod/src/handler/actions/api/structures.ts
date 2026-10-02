@@ -1,6 +1,6 @@
-import { defineActions } from "../../core/types.ts";
+import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
-import { MAX_SCAN_SIDE } from "../../core/cell-region.ts";
+import { MAX_SCAN_SIDE } from "../../engine/cell-region.ts";
 import { regionFor } from "./cells.ts";
 interface Vector2 {
     x: number;

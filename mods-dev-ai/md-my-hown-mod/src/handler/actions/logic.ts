@@ -1,8 +1,8 @@
 
 import { cellReaders, type ElementOptions, walkRangeFor, writeCells } from "./api/cells.ts";
-import { defineActions } from "../core/types.ts";
+import { defineActions } from "../engine/types.ts";
 import { api } from "../../packages/mysandkit.ts";
-import { type Positions, positionsOver } from "../core/position.ts";
+import { type Positions, positionsOver } from "../engine/position.ts";
 
 
 interface LogicOptions extends ElementOptions {

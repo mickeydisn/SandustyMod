@@ -1,6 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api, resolveElementRef, resolveTerrainRef } from "../../packages/mysandkit.ts";
-import { compileExcavationProfile } from "../../handler/excavation-option/index.ts";
+import { compileExcavationProfile } from "../../handler/processing/excavation-option/index.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
 export function registerEnergyTypes({ config }: RegisterContext): number {

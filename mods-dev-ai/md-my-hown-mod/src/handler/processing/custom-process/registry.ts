@@ -1,5 +1,5 @@
 
-import { type HandlerSlot, SLOTS_BY_CATEGORY } from "../core/handler-registry.ts";
+import { type HandlerSlot, SLOTS_BY_CATEGORY } from "../../engine/handler-registry.ts";
 import type { CustomProcessConfig } from "./types.ts";
 
 

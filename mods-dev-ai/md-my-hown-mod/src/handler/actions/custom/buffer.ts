@@ -1,6 +1,6 @@
 
-import { defineActions } from "../../core/types.ts";
-import { ensureBufferReady, resetBuffer, zeroFor } from "../../buffer-store.ts";
+import { defineActions } from "../../engine/types.ts";
+import { ensureBufferReady, resetBuffer, zeroFor } from "../../engine/buffer-store.ts";
 import type { BufferEntryConfig, BufferValueType } from "../../../constants.ts";
 
 

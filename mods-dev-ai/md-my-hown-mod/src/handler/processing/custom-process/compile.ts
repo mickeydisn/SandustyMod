@@ -1,6 +1,6 @@
 
-import { type CompiledProcess, compileProcess, type ProcessFailure } from "../core/process.ts";
-import type { HandlerSlot } from "../core/handler-registry.ts";
+import { type CompiledProcess, compileProcess, type ProcessFailure } from "../process.ts";
+import type { HandlerSlot } from "../../engine/handler-registry.ts";
 import type { ProcessRegistry } from "./registry.ts";
 import type { CustomProcessConfig, ProcessStep } from "./types.ts";
 

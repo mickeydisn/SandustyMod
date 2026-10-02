@@ -1,6 +1,6 @@
 
-import type { HandlerSlot } from "../core/handler-registry.ts";
-import type { HandlerActionRef } from "../core/types.ts";
+import type { HandlerSlot } from "../../engine/handler-registry.ts";
+import type { HandlerActionRef } from "../../engine/types.ts";
 
 
 export type ProcessStep = HandlerActionRef;

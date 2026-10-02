@@ -1,8 +1,8 @@
 
 import { TAB_TO_CALL_SITE } from "../handler/index.ts";
-import { resolveProjectileOption } from "../handler/projectile-option/index.ts";
-import { currentProcessRegistry, processProblem } from "../handler/custom-process/index.ts";
-import { resolveExcavationOption } from "../handler/excavation-option/index.ts";
+import { resolveProjectileOption } from "../handler/processing/projectile-option/index.ts";
+import { currentProcessRegistry, processProblem } from "../handler/processing/custom-process/index.ts";
+import { resolveExcavationOption } from "../handler/processing/excavation-option/index.ts";
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
 import {} from "./definition/fields.ts";

@@ -3,7 +3,7 @@ import type { SettingsSchema } from "./packages/modkit.ts";
 
 
 
-import type { CustomProcessConfig } from "./handler/custom-process/types.ts";
+import type { CustomProcessConfig } from "./handler/processing/custom-process/types.ts";
 export const MOD_ID = "md-my-hown-mod";
 export const VERSION = "0.1.4";
 export const LOG = `[${MOD_ID}]`;

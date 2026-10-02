@@ -1,7 +1,7 @@
 export { resolveAction } from "../actions/index.ts";
 import { resolveAction } from "../actions/index.ts";
-import { createContext, type ProcessContext, varsRead, varsWrite } from "./context.ts";
-import { refsIn, resolveRefs } from "./refs.ts";
+import { createContext, type ProcessContext, varsRead, varsWrite } from "../engine/context.ts";
+import { refsIn, resolveRefs } from "../engine/refs.ts";
 import { seedsFor } from "./scope-context.ts";
 import {
     type CallSite,
@@ -9,7 +9,7 @@ import {
     type HandlerActionRef,
     type HandlerProcessFn,
     isBlock,
-} from "./types.ts";
+} from "../engine/types.ts";
 
 export {
     BLOCK_KEY,
@@ -20,7 +20,7 @@ export {
     type HandlerActionRef,
     type HandlerProcessFn,
     isBlock,
-} from "./types.ts";
+} from "../engine/types.ts";
 
 let optionKeysLookup: ((key: string) => ReadonlySet<string> | undefined) | undefined;
 

@@ -4,7 +4,7 @@ import {
     compileProjectile,
     PROJECTILE_OPTION_STORE_KEY,
     projectileOptionOf,
-} from "../../handler/projectile-option/index.ts";
+} from "../../handler/processing/projectile-option/index.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
 export function registerProjectiles({ config }: RegisterContext): number {

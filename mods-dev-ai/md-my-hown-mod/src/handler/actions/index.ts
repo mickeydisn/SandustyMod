@@ -7,7 +7,7 @@ import {
     type HandlerActionFn,
     type ModifierAction,
     type StoredAction,
-} from "../core/types.ts";
+} from "../engine/types.ts";
 
 // --- engine/: actions that do not reach the host -----------------------------
 import { processingSenseActions, senseActions } from "./engine/sense.ts";

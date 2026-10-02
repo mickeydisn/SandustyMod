@@ -1,4 +1,4 @@
-import { defineActions } from "../../core/types.ts";
+import { defineActions } from "../../engine/types.ts";
 
 function twoSided(options: unknown): { op: string; left: number; right: number } {
     const o = (options ?? {}) as { left?: unknown; op?: unknown; right?: unknown };

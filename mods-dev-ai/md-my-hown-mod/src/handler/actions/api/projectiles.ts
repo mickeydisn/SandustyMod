@@ -1,6 +1,6 @@
-import { defineActions } from "../../core/types.ts";
+import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
-import { anchorFor } from "../../core/cell-region.ts";
+import { anchorFor } from "../../engine/cell-region.ts";
 export const projectilesActions = defineActions({
     itemShoot: {
         role: "act",

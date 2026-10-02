@@ -1,4 +1,4 @@
-import type { ContextSeed } from "./scope-context.ts";
+import type { ContextSeed } from "../processing/scope-context.ts";
 
 export type { ContextSeed };
 

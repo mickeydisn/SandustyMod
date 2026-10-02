@@ -1,6 +1,6 @@
 
-import { projectileOptionOf } from "../../handler/projectile-option/index.ts";
-import { resolveProjectileOption } from "../../handler/projectile-option/index.ts";
+import { projectileOptionOf } from "../../handler/processing/projectile-option/index.ts";
+import { resolveProjectileOption } from "../../handler/processing/projectile-option/index.ts";
 import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
 
 

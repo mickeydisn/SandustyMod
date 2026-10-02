@@ -90,7 +90,7 @@ import { getDrawTab as getSpriteEditorTab } from "../sprite-editor/index.ts";
 import {
     ProcessRegistry,
     setProcessRegistry,
-} from "../handler/custom-process/index.ts";
+} from "../handler/processing/custom-process/index.ts";
 
 
 const HANDLER_SCREENS = {

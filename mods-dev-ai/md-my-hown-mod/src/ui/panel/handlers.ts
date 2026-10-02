@@ -26,7 +26,7 @@ import {
     PROJECTILE_OPTIONS,
     projectileOptionParams,
     resolveProjectileOption,
-} from "../../handler/projectile-option/index.ts";
+} from "../../handler/processing/projectile-option/index.ts";
 import {
     BLOCK_META,
     buildHandlerOptions,
@@ -54,7 +54,7 @@ import {
     EXCAVATION_OPTIONS,
     excavationOptionParams,
     resolveExcavationOption,
-} from "../../handler/excavation-option/index.ts";
+} from "../../handler/processing/excavation-option/index.ts";
 import { ACTION_DOCS } from "../../handler/index.ts";
 import * as S from "../styles.ts";
 

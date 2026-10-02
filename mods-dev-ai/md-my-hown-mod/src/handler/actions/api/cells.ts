@@ -1,13 +1,13 @@
 import { api } from "../../../packages/mysandkit.ts";
 import { ELEMENT_DATA_SLOTS } from "../../../ui/definition/data-fields.ts";
-import { anchorFor, MAX_SCAN_SIDE } from "../../core/cell-region.ts";
+import { anchorFor, MAX_SCAN_SIDE } from "../../engine/cell-region.ts";
 import {
     addressFor,
     type Position,
     positionsFor,
     type Range,
     walkFor,
-} from "../../core/position.ts";
+} from "../../engine/position.ts";
 import type { ProcessingContext } from "./processors.ts";
 
 

@@ -1,6 +1,6 @@
 import { COLLECTION_KEYS, type CollectionKey } from "../config/store.ts";
 import type { ModConfig } from "../constants.ts";
-import type { ProcessRegistry } from "../handler/custom-process/index.ts";
+import type { ProcessRegistry } from "../handler/processing/custom-process/index.ts";
 
 /** Categories the engine only accepts while the boot window is open. */
 const WORKER_SCOPED: ReadonlySet<CollectionKey> = new Set<CollectionKey>([

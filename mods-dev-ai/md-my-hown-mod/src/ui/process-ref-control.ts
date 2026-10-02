@@ -3,7 +3,7 @@ import {
     currentProcessRegistry,
     processProblem,
     processUsageCounts,
-} from "../handler/custom-process/index.ts";
+} from "../handler/processing/custom-process/index.ts";
 import { type HandlerSlot, TAB_TO_CALL_SITE } from "../handler/index.ts";
 import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../handler/index.ts";
 import { PROCESS_FORM_KEY } from "./definition/process-ref-field.ts";

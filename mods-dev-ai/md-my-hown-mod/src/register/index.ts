@@ -1,6 +1,6 @@
 import { LOG, type ModConfig } from "../constants.ts";
 import { configStore } from "../config/store.ts";
-import { ProcessRegistry, setProcessRegistry } from "../handler/custom-process/index.ts";
+import { ProcessRegistry, setProcessRegistry } from "../handler/processing/custom-process/index.ts";
 import { closeBootWindow, type RegisterContext } from "./registry.ts";
 
 import { registerElements } from "./core/elements.ts";

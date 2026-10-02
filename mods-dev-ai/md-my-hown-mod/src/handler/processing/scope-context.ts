@@ -1,7 +1,7 @@
-import { cellAt, cellsOf, footprint, type ShapeMatrix } from "./cell-region.ts";
+import { cellAt, cellsOf, footprint, type ShapeMatrix } from "../engine/cell-region.ts";
 
 import { api } from "../../packages/mysandkit.ts";
-import type { CallSite } from "./types.ts";
+import type { CallSite } from "../engine/types.ts";
 
 export interface ContextSeed {
     name: string;

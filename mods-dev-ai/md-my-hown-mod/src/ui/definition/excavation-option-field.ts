@@ -2,8 +2,8 @@
 import {
     EXCAVATION_OPTION_STORE_KEY,
     excavationOptionOf,
-} from "../../handler/excavation-option/index.ts";
-import { resolveExcavationOption } from "../../handler/excavation-option/index.ts";
+} from "../../handler/processing/excavation-option/index.ts";
+import { resolveExcavationOption } from "../../handler/processing/excavation-option/index.ts";
 import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
 
 

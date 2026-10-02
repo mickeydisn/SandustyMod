@@ -1,6 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
-import { compileEntryProcess } from "../../handler/custom-process/index.ts";
+import { compileEntryProcess } from "../../handler/processing/custom-process/index.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
 export function registerSignals({ config, processes }: RegisterContext): number {

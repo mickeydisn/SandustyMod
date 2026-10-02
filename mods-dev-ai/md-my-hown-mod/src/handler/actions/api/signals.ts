@@ -1,4 +1,4 @@
-import { defineActions } from "../../core/types.ts";
+import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 export const signalsActions = defineActions({
     signalOutput: {

@@ -1,4 +1,4 @@
-import { defineActions, defineModifiers } from "../../core/types.ts";
+import { defineActions, defineModifiers } from "../../engine/types.ts";
 
 /**
  * Connect actions that do not call the host: storage/item descriptors that just return

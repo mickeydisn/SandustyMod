@@ -2,12 +2,12 @@ import { actionFacts, type HandlerActionClass } from "./action-facts.ts";
 
 import type { Opt } from "../../catalog.ts";
 
-import { actionRefsOf, flattenRefs, isBlock, setOptionKeysLookup } from "./process.ts";
-import { slotsFor } from "./scope.ts";
+import { actionRefsOf, flattenRefs, isBlock, setOptionKeysLookup } from "../processing/process.ts";
+import { slotsFor } from "../processing/scope.ts";
 import { BLOCK_KEY } from "./types.ts";
 
-import { projectileOptionOf } from "../projectile-option/index.ts";
-import { excavationOptionOf } from "../excavation-option/index.ts";
+import { projectileOptionOf } from "../processing/projectile-option/index.ts";
+import { excavationOptionOf } from "../processing/excavation-option/index.ts";
 
 export type HandlerType =
     | "global"

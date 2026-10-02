@@ -1,4 +1,4 @@
-import { defineActions } from "../../core/types.ts";
+import { defineActions } from "../../engine/types.ts";
 import type { CellMutation, ProcessingContext } from "../api/processors.ts";
 
 

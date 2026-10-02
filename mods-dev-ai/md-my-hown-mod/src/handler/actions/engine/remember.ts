@@ -1,5 +1,5 @@
 
-import { defineActions } from "../../core/types.ts";
+import { defineActions } from "../../engine/types.ts";
 
 
 type Data = Record<string, unknown>;

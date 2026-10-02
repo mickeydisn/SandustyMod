@@ -1,6 +1,6 @@
 
-import { anchorFor } from "../../core/cell-region.ts";
-import { defineActions } from "../../core/types.ts";
+import { anchorFor } from "../../engine/cell-region.ts";
+import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 
 

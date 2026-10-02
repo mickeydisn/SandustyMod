@@ -1,5 +1,5 @@
 import { JsonMapBuffer } from "@sandmd/buffer";
-import type { BufferEntryConfig, BufferValueType } from "../constants.ts";
+import type { BufferEntryConfig, BufferValueType } from "../../constants.ts";
 
 export interface BufferProblem {
     id: string;

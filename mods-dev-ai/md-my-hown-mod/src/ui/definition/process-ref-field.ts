@@ -1,5 +1,5 @@
 
-import { processRefOf } from "../../handler/custom-process/index.ts";
+import { processRefOf } from "../../handler/processing/custom-process/index.ts";
 import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
 
 
