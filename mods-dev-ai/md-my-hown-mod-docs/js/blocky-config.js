@@ -24,6 +24,15 @@
 
 
   const VALUE_ROLES = new Set(["sense", "decide", "logic"]);
+  const FIELD_W = 160; // uniform Blockly field width
+  function textField(def, name) {
+    return new Blockly.FieldTextInput(def == null ? "" : String(def), null, { width: FIELD_W });
+  }
+  function numField(def) {
+    const v = def !== "" && def != null ? String(def) : "0";
+    return new Blockly.FieldTextInput(v, null, { width: FIELD_W });
+  }
+
 
   /** Built-in content ids (common Sandustry) + config-driven catalogs */
   const BUILTIN_ELEMENTS = [
@@ -326,7 +335,7 @@
         this.appendDummyInput().appendField("for each cell");
         this.appendDummyInput()
           .appendField("size")
-          .appendField(new Blockly.FieldNumber(1, 1), "SIZE");
+          .appendField(numField(1), "SIZE");
         this.appendDummyInput()
           .appendField("write ⌗element")
           .appendField(new Blockly.FieldDropdown(() => contentCatalog("element")), "TO");
@@ -350,14 +359,14 @@
 
     Blockly.Blocks["md_lit_number"] = {
       init: function () {
-        this.appendDummyInput().appendField(new Blockly.FieldNumber(0), "NUM");
+        this.appendDummyInput().appendField(numField(0), "NUM");
         this.setOutput(true, ["Number", "Value"]);
         this.setColour(160);
       },
     };
     Blockly.Blocks["md_lit_text"] = {
       init: function () {
-        this.appendDummyInput().appendField(new Blockly.FieldTextInput(""), "TXT");
+        this.appendDummyInput().appendField(textField(""), "TXT");
         this.setOutput(true, ["String", "Value"]);
         this.setColour(160);
       },
@@ -438,7 +447,7 @@
                 const defN = pr.def !== "" && pr.def != null ? Number(pr.def) : 0;
                 this.appendDummyInput()
                   .appendField(pr.label || pr.key)
-                  .appendField(new Blockly.FieldNumber(Number.isFinite(defN) ? defN : 0), fname);
+                  .appendField(numField(Number.isFinite(defN) ? defN : 0), fname);
               } else {
                 const plug =
                   pr.key === "left" ||
@@ -451,7 +460,7 @@
                 } else {
                   this.appendDummyInput()
                     .appendField(pr.label || pr.key)
-                    .appendField(new Blockly.FieldTextInput(pr.def || ""), fname);
+                    .appendField(textField(pr.def || ""), fname);
                 }
               }
             });
@@ -922,6 +931,12 @@
       grid: { spacing: 20, length: 2, colour: "#242424", snap: true },
       renderer: "geras",
     });
+    // Prefer consistent min width for statement blocks
+    try {
+      if (Blockly.BlockSvg) {
+        Blockly.BlockSvg.MIN_WIDTH = 220;
+      }
+    } catch (_) {}
 
     try {
       stepsToWorkspace(steps || [], state.workspace);

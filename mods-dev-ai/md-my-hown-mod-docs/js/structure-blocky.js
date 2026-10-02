@@ -6,6 +6,8 @@
   const STORE = "md-my-hown-mod-config";
   const S = () => window.MD_SCHEMA;
 
+  const FIELD_W = 180; // same width for all value fields
+
   const state = {
     config: null,
     workspace: null,
@@ -95,7 +97,7 @@
       init: function () {
         this.appendDummyInput()
           .appendField("structure tag")
-          .appendField(new Blockly.FieldTextInput("mdmy.structure.1"), "ID");
+          .appendField(new Blockly.FieldTextInput("mdmy.structure.1", null, { width: FIELD_W }), "ID");
         this.appendDummyInput().appendField("(id = ⌗structure content tag)");
         this.appendStatementInput("PROPS").setCheck("StructProp").appendField("define");
         this.setColour(160);
@@ -115,28 +117,33 @@
       const typeName = "md_sprop_" + key;
       Blockly.Blocks[typeName] = {
         init: function () {
-          this.appendDummyInput().appendField(label || key);
+          const head = this.appendDummyInput().appendField(
+            (label || key).padEnd(18, "\u00a0")
+          );
           if (type === "bool") {
-            this.appendDummyInput().appendField(
-              new Blockly.FieldCheckbox("FALSE"),
-              "VAL"
-            );
+            head.appendField(new Blockly.FieldCheckbox("FALSE"), "VAL");
           } else if (type === "select") {
             let opts = ext.options || [];
             if (typeof opts === "string") opts = S()[opts] || [];
             if (key === "categoryKey") opts = S().CATEGORIES || opts;
             const pairs = (opts.length ? opts : ["—"]).map((o) => [String(o), String(o)]);
-            this.appendDummyInput().appendField(new Blockly.FieldDropdown(pairs), "VAL");
+            head.appendField(new Blockly.FieldDropdown(pairs), "VAL");
           } else if (type === "number") {
-            this.appendDummyInput().appendField(new Blockly.FieldNumber(0), "VAL");
+            head.appendField(
+              new Blockly.FieldTextInput("0", null, { width: FIELD_W }),
+              "VAL"
+            );
           } else if (type === "json") {
-            this.appendDummyInput().appendField(
-              new Blockly.FieldTextInput(ext.hint ? "{}" : "[]"),
+            head.appendField(
+              new Blockly.FieldTextInput("{}", null, { width: FIELD_W }),
               "VAL"
             );
             this.setTooltip((ext.hint || "JSON") + " — " + key);
           } else {
-            this.appendDummyInput().appendField(new Blockly.FieldTextInput(""), "VAL");
+            head.appendField(
+              new Blockly.FieldTextInput("", null, { width: FIELD_W }),
+              "VAL"
+            );
             if (ext.hint) this.setTooltip(ext.hint);
           }
           this.setPreviousStatement(true, "StructProp");
@@ -152,7 +159,7 @@
       init: function () {
         this.appendDummyInput()
           .appendField("process id")
-          .appendField(new Blockly.FieldTextInput(""), "VAL");
+          .appendField(new Blockly.FieldTextInput("", null, { width: FIELD_W }), "VAL");
         this.setPreviousStatement(true, "StructProp");
         this.setNextStatement(true, "StructProp");
         this.setColour(310);

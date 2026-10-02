@@ -1149,3 +1149,24 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
   padding: 2px 7px;
   opacity: 0.9;
 }
+
+/* Uniform Blockly field widths */
+.by-blockly-host .blocklyEditableText > rect,
+.by-workspace .blocklyEditableText > rect {
+  min-width: 180px;
+}
+.by-blockly-host .blocklyText,
+.by-workspace .blocklyText {
+  font-size: 12px;
+}
+
+/* blockly uniform boxes */
+#blocky-root .blocklyEditableText > rect {
+  min-width: 160px !important;
+}
+#blocky-root .blocklyBlockCanvas .blocklyDraggable {
+  /* visual rhythm */
+}
+#blocky-root .blocklyText {
+  font-size: 12px;
+}
