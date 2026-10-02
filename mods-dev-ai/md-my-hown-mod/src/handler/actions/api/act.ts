@@ -1,26 +1,22 @@
-
 import { anchorFor } from "../../core/cell-region.ts";
 import { defineActions } from "../../core/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 
-
 export interface ProcessingContext {
     getResolvedTypeAtCell?: (x: number, y: number) => unknown;
     isCellEmptyAtCell?: (x: number, y: number) => boolean;
-    
+
     commit?: (mutations: CellMutation[]) => boolean | void;
 }
-
 
 export interface CellMutation {
     kind: "create" | "remove" | "structure";
     cellX: number;
     cellY: number;
     elementType?: unknown;
-    
+
     expectedElementType?: unknown;
 }
-
 
 function commitOrWarn(
     context: unknown,
@@ -36,8 +32,6 @@ function commitOrWarn(
         return false;
     }
     try {
-        
-        
         const ok = ctx.commit(mutations);
         if (ok === false) {
             console.warn(
@@ -52,7 +46,6 @@ function commitOrWarn(
     }
 }
 
-
 function at(
     structure: { x?: number; y?: number } | null,
     dx: number,
@@ -61,23 +54,13 @@ function at(
     return { cellX: (structure?.x ?? 0) + dx, cellY: (structure?.y ?? 0) + dy };
 }
 
-
-
-
-
 export const actActions = defineActions({
-    
     itemExcavate: {
         role: "act",
         doc: "Digs at this position. Set `damage` and `velocity` in options.",
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { damage?: number; vx?: number; vy?: number };
-            
-            
-            
-            
-            
-            
+
             const at = anchorFor(payload);
             if (at.source === "none") {
                 console.warn(
@@ -99,14 +82,13 @@ export const actActions = defineActions({
         },
     },
 
-    
     itemShoot: {
         role: "act",
         doc: "Fires a projectile. Set `projectileId` and `velocity` in options.",
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { projectileId?: string; vx?: number; vy?: number };
             if (!o.projectileId) return;
-            
+
             const at = anchorFor(payload);
             if (at.source === "none") {
                 console.warn(
@@ -116,17 +98,6 @@ export const actActions = defineActions({
                 return;
             }
             try {
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
                 const blueprint = api.projectiles.createBlueprintFromId(o.projectileId);
                 if (!blueprint) {
                     console.warn(
@@ -137,9 +108,7 @@ export const actActions = defineActions({
                 }
                 const vx = o.vx ?? 0;
                 const vy = o.vy ?? 0;
-                
-                
-                
+
                 const angle = vx === 0 && vy === 0 ? 0 : Math.atan2(vy, vx);
                 api.projectiles.spawnAtWorld(at.x, at.y, angle, blueprint);
             } catch (e) {
@@ -149,15 +118,7 @@ export const actActions = defineActions({
     },
 });
 
-
-
-
-
-
-
-
 export const processingActActions = defineActions({
-    
     processorLog: {
         role: "act",
         doc: "Logs the structure and cell context on every run. Use to confirm wiring.",
@@ -166,14 +127,12 @@ export const processingActActions = defineActions({
         },
     },
 
-    
     processorNoop: {
         role: "act",
         doc: "Does nothing. Keeps the interval alive without side effects.",
         fn: () => {},
     },
 
-    
     processorLift: {
         role: "act",
         doc: "Copies the cell above the structure down to the cell below.",
@@ -196,7 +155,6 @@ export const processingActActions = defineActions({
         },
     },
 
-    
     processorConvert: {
         role: "act",
         doc: "Replaces the cell above with one fixed element. Set `to` in options.",
@@ -213,9 +171,7 @@ export const processingActActions = defineActions({
                     console.log("[md-my-hown-mod:process] convert sees", current);
                     return;
                 }
-                
-                
-                
+
                 commitOrWarn(context, [{ kind: "create", ...src, elementType: target }], "convert");
             } catch (e) {
                 console.warn("[md-my-hown-mod:act] convert failed", e);

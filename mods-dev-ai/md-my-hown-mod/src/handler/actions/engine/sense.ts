@@ -5,7 +5,7 @@ import { api } from "../../../packages/mysandkit.ts";
 
 
 
-import type { ProcessingContext } from "../act/index.ts";
+import type { ProcessingContext } from "../api/act.ts";
 
 export const senseActions = defineActions({
     

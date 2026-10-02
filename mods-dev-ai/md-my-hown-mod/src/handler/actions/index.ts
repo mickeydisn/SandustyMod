@@ -20,7 +20,7 @@ import { engineFeelActions } from "./engine/feel.ts";
 import { decideActions } from "./api/decide.ts";
 import { feelActions } from "./api/feel.ts";
 import { connectActions } from "./api/connect.ts";
-import { actActions, processingActActions } from "./act/index.ts";
+import { actActions, processingActActions } from "./api/act.ts";
 import { elementActions } from "./api/element.ts";
 import { motionActions } from "./api/motion.ts";
 import { structureActions } from "./api/structure.ts";

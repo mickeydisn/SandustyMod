@@ -16,7 +16,7 @@ import {
 
 
 
-import type { ProcessingContext } from "../act/index.ts";
+import type { ProcessingContext } from "./act.ts";
 
 
 interface StructureLike {
