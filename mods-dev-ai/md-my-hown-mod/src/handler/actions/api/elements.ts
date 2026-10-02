@@ -1,3 +1,5 @@
+import { ALL_SLOTS } from "../../engine/registry/types.ts";
+import { CREATE_PARAMS, MATRIX_PARAMS, MOTION_REGION_PARAMS, REGION_PARAMS, VELOCITY_PARAMS, elementRef, p } from "../../engine/registry/params.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { shapeSize } from "../../engine/cell-region.ts";
@@ -108,6 +110,11 @@ export const elementsActions = defineActions({
         role: "sense",
         doc: "Reads the element at the cell and returns its id. Bind it with As, then " +
             "use {{name}} in a later step.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        
+        params: [...REGION_PARAMS, ...MATRIX_PARAMS],
         fn: (structure, context, options) => {
             try {
                 const s = structure as StructureLike | null;
@@ -135,6 +142,18 @@ export const elementsActions = defineActions({
         role: "sense",
         doc: "Reads data slot N (1–4) at the cell and returns the number. Bind it with " +
             "As. The slot is the number from the element's Data fields list.",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "cell",
+        params: [
+        p("slot", "Data slot", "select", {
+        required: true,
+        def: "1",
+        options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
+        hint:
+        "1–4, from the element's Data fields list. The engine stores only these four.",
+        }),
+        ],
         fn: (structure, _context, options) => {
             try {
                 const s = structure as StructureLike | null;
@@ -170,6 +189,21 @@ export const elementsActions = defineActions({
         role: "act",
         doc: "Writes a number into data slot N (1–4) at the cell. Set `slot` (1–4) and " +
             "`value`.",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "cell",
+        params: [
+        p("slot", "Data slot", "select", {
+        required: true,
+        def: "1",
+        options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
+        hint: "1–4, from the element's Data fields list",
+        }),
+        p("slotValue", "Value", "text", {
+        required: true,
+        hint: "a number, or {{aVariable}} from an earlier step. Rounded to a whole number.",
+        }),
+        ],
         fn: (structure, _context, options) => {
             try {
                 const s = structure as StructureLike | null;
@@ -205,6 +239,13 @@ export const elementsActions = defineActions({
         role: "sense",
         doc: "Counts cells holding `element` in the region. Returns a number — bind it " +
             "with As to compare against a threshold.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        elementRef("the element to count"),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, context, options) => {
             try {
                 const s = structure as StructureLike | null;
@@ -240,6 +281,10 @@ export const elementsActions = defineActions({
         role: "sense",
         doc: "Counts cells in the region that hold neither element nor terrain. This is " +
             "the free space.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, context, options) => {
             try {
                 const s = structure as StructureLike | null;
@@ -268,6 +313,14 @@ export const elementsActions = defineActions({
     replaceElement: {
         role: "act",
         doc: "Writes `element` over every cell in the region, replacing what was there.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        elementRef("the element to write"),
+        ...CREATE_PARAMS,
+        ...REGION_PARAMS,
+        ],
         fn: (structure, context, options) => {
             const o = (options ?? {}) as ElementOptions;
             const want = elementOf(o);
@@ -295,6 +348,14 @@ export const elementsActions = defineActions({
         role: "act",
         doc: "Writes `element` into every **empty** cell in the region, leaving anything " +
             "already there alone.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        elementRef("the element to place"),
+        ...CREATE_PARAMS,
+        ...REGION_PARAMS,
+        ],
         fn: (structure, context, options) => {
             const o = (options ?? {}) as ElementOptions;
             const want = elementOf(o);
@@ -322,6 +383,10 @@ export const elementsActions = defineActions({
     emptyCells: {
         role: "act",
         doc: "Removes the element from every occupied cell in the region.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, context, options) => {
             return writeCells(
                 structure,
@@ -347,6 +412,13 @@ export const elementsActions = defineActions({
         role: "act",
         doc: "Removes the element from every cell in the region that holds `element`. " +
             "Leave the element blank to empty every non-empty cell.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        elementRef("only cells holding this are emptied"),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, context, options) => {
             const want = elementOf(options as ElementOptions);
             if (!want) {
@@ -389,6 +461,18 @@ export const elementsActions = defineActions({
         role: "act",
         doc: "Where the region holds `from`, writes `to`. Leave `from` blank to convert " +
             "whatever element is there.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("from", "From element", "text", {
+        hint: "only cells holding this are changed. Leave blank for any.",
+        }),
+        p("to", "To element", "text", { required: true, hint: "what they become" }),
+        
+        ...CREATE_PARAMS,
+        ...REGION_PARAMS,
+        ],
         fn: (structure, context, options) => {
             const o = (options ?? {}) as ElementOptions;
             
@@ -427,6 +511,12 @@ export const motionActions = defineActions({
         role: "sense",
         doc: "Reads the particle speed at the first cell of the region and returns it. " +
             "Bind it with As. Returns -1 when there is no particle to measure.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        ...MOTION_REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             try {
                 const s = (structure ?? null) as StructureLike | null;
@@ -451,6 +541,17 @@ export const motionActions = defineActions({
         role: "sense",
         doc: "Finds a free cell within `size` cells of the structure. Returns its index " +
             "as a number, or -1 when the whole area is occupied.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        
+        params: [
+        p("size", "Search size", "number", {
+        def: "0",
+        min: 1,
+        hint: "cells to search from me. 0 = my own footprint size.",
+        }),
+        ],
         fn: (structure, _context, options) => {
             try {
                 const s = (structure ?? null) as StructureLike | null;
@@ -482,6 +583,10 @@ export const motionActions = defineActions({
         role: "act",
         doc: "Sets the particle velocity (vx, vy) on every cell in the region. Only " +
             "affects particles — use toParticle to turn a cell into one first.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...VELOCITY_PARAMS, ...MOTION_REGION_PARAMS],
         fn: (structure, _context, options) => {
             const v = vectorOf((options ?? {}) as MotionOptions);
             
@@ -502,6 +607,18 @@ export const motionActions = defineActions({
         role: "act",
         doc: "Adds (vx, vy) to the particle velocity in the region. Set maxSpeed to " +
             "clamp the result in cells per second.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        ...VELOCITY_PARAMS,
+        p("maxSpeed", "Max speed", "number", {
+        def: "0",
+        min: 0,
+        hint: "cells/second. 0 = no clamp.",
+        }),
+        ...MOTION_REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as MotionOptions;
             const v = vectorOf(o);
@@ -519,6 +636,17 @@ export const motionActions = defineActions({
         role: "act",
         doc: "Sets the remaining duration in ticks for every cell in the region. Set " +
             "rearm to also raise the maximum, so it fires again next cycle.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("ticks", "Ticks", "number", { def: "60", min: 0, int: true }),
+        p("rearm", "Rearm", "bool", {
+        def: "false",
+        hint: "also raise the maximum, so it fires again next cycle",
+        }),
+        ...MOTION_REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as MotionOptions;
             const ticks = Math.max(0, Math.trunc(num(o.ticks)));
@@ -539,6 +667,14 @@ export const motionActions = defineActions({
         role: "act",
         doc: "Moves everything in the region by the (tx, ty) offset. ty: 1 moves it down " +
             "one cell. Cells that would land on something are not moved.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("tx", "Move X", "number", { def: "0", int: true }),
+        p("ty", "Move Y", "number", { def: "1", int: true, hint: "1 = one cell down" }),
+        ...MOTION_REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             const o = (options ?? {}) as MotionOptions;
@@ -573,6 +709,10 @@ export const motionActions = defineActions({
         role: "act",
         doc: "Turns every cell in the region into a particle moving at (vx, vy). This is " +
             "what actually launches material — setVelocity alone will not move sand.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...VELOCITY_PARAMS, ...MOTION_REGION_PARAMS],
         fn: (structure, _context, options) => {
             const v = vectorOf((options ?? {}) as MotionOptions);
             return overRegion(structure, options, "toParticle", (cell) => {

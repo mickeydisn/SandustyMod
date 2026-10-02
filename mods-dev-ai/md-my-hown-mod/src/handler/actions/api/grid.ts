@@ -1,10 +1,22 @@
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { anchorFor } from "../../engine/cell-region.ts";
+import { p } from "../../engine/registry/params.ts";
 export const gridActions = defineActions({
     itemExcavate: {
         role: "act",
         doc: "Digs at this position. Set `damage` and `velocity` in options.",
+        type: "message",
+        
+        slots: ["signal", "processing", "modifier", "itemAction"],
+        scope: "cell",
+        itemTypes: ["Tool"],
+        params: [
+        p("profileId", "Excavation profile", "text", {
+        hint: "falls back to the item's excavationProfileId",
+        }),
+        p("power", "Power", "number", { def: "10", min: 0 }),
+        ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { damage?: number; vx?: number; vy?: number };
 

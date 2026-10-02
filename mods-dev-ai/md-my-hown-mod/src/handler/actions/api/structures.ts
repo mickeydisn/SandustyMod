@@ -1,3 +1,4 @@
+import { DATA_PARAMS, REGION_PARAMS, REMOVAL_PARAMS, STRUCTURE_REF_PARAMS, p } from "../../engine/registry/params.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { MAX_SCAN_SIDE } from "../../engine/cell-region.ts";
@@ -180,6 +181,10 @@ export const structureSenseActions = defineActions({
         doc: "Reads the type of the structure at a cell and returns the engine's own " +
             "handle for it. Feed it back into Is structure type — do not compare it to " +
             "an id by hand.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return "";
@@ -197,6 +202,10 @@ export const structureSenseActions = defineActions({
     hasStructure: {
         role: "sense",
         doc: "True when a structure has been built at the cell. Bind it with As.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return false;
@@ -211,6 +220,10 @@ export const structureSenseActions = defineActions({
         role: "sense",
         doc: "True when the cell holds a structure of the given type. Accepts an id or " +
             "a handle from Structure type.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...STRUCTURE_REF_PARAMS, ...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             const o = (options ?? {}) as StructureOptions;
@@ -232,6 +245,11 @@ export const structureSenseActions = defineActions({
         role: "sense",
         doc: "True when **this** structure is of the given type. No offsets — it asks " +
             "about the instance the process is running on.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "structure",
+        
+        params: [...STRUCTURE_REF_PARAMS],
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
             const want = refOf((options ?? {}) as StructureOptions);
@@ -245,6 +263,10 @@ export const structureSenseActions = defineActions({
     isBlockedByPlayer: {
         role: "sense",
         doc: "True when a player has blocked building at the cell.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return false;
@@ -259,6 +281,10 @@ export const structureSenseActions = defineActions({
     isLauncher: {
         role: "sense",
         doc: "True when the cell is a structure launcher.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return false;
@@ -272,6 +298,10 @@ export const structureSenseActions = defineActions({
     isStructureEnabled: {
         role: "sense",
         doc: "True when processing is enabled at the cell. Bind it to gate later steps.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return false;
@@ -287,6 +317,10 @@ export const structureSenseActions = defineActions({
         role: "sense",
         doc: "Counts structures in the region. Bind it to check a footprint is clear " +
             "before building.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return 0;
@@ -305,6 +339,13 @@ export const structureSenseActions = defineActions({
         role: "sense",
         doc: "Reads one key from the structure's saved data and returns it. Bind it " +
             "with As. Returns the empty string when the key is absent.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("key", "Key", "text", { required: true, hint: "the data-bag key" }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             const o = (options ?? {}) as StructureOptions;
@@ -322,6 +363,10 @@ export const structureActActions = defineActions({
     buildStructure: {
         role: "act",
         doc: "Builds a structure of the given type at the cell.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...STRUCTURE_REF_PARAMS, ...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const want = refOf((options ?? {}) as StructureOptions);
             if (!want) {
@@ -340,6 +385,10 @@ export const structureActActions = defineActions({
         role: "act",
         doc: "Removes the structure at the cell. Use Remove structures to clear a whole " +
             "region in one call.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REMOVAL_PARAMS, ...REGION_PARAMS],
         fn: (structure, _context, options) => {
             return writeEach(structure, options, "removeStructure", (cell) => {
                 return api.structures.removeAtCell(
@@ -357,6 +406,17 @@ export const structureActActions = defineActions({
         role: "act",
         doc: "Removes every structure in the region with a single engine call. Prefer " +
             "this to Remove structure over an area.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        ...REMOVAL_PARAMS,
+        p("preserveUnselectable", "Only unselectable", "bool", {
+        def: "false",
+        hint: "skip structures a player can currently select",
+        }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) {
@@ -378,6 +438,13 @@ export const structureActActions = defineActions({
     setStructureEnabled: {
         role: "act",
         doc: "Enables or disables processing at the cell.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("enabled", "Enabled", "bool", { def: "true", hint: "the state to switch to" }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
             return writeEach(structure, options, "setStructureEnabled", (cell) => {
@@ -395,6 +462,18 @@ export const structureActActions = defineActions({
     setSpritesheetIndex: {
         role: "act",
         doc: "Sets this instance's spritesheet frame. Bind a number to it for a gauge.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("index", "Frame", "number", {
+        def: "0",
+        int: true,
+        min: 0,
+        hint: "the frame to show",
+        }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
             const frame = num(o.index, 0);
@@ -413,6 +492,17 @@ export const structureActActions = defineActions({
         role: "act",
         doc: "Sets the frame by mapping a value onto a threshold list — the progress bar. " +
             "Thresholds are comma-separated, ascending.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
+        p("thresholds", "Thresholds", "text", {
+        def: "",
+        hint: "comma-separated, ascending. e.g. 25,50,75",
+        }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
             const value = float(o.value2, 0);
@@ -452,6 +542,10 @@ export const structureActActions = defineActions({
         role: "act",
         doc: "Writes one key into the structure's saved data, through the engine. Use " +
             "Number value for a numeric field.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...DATA_PARAMS, ...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
             const partial = dataPartial(o);
@@ -476,6 +570,15 @@ export const structureActActions = defineActions({
         role: "act",
         doc: "Pushes this structure's data to the engine. Only needed after an action " +
             "that edits the data bag in place.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "structure",
+        params: [
+        p("propagateToWorkers", "Send to workers", "bool", {
+        def: "false",
+        hint: "instance data lives on Main; set this if a worker must see it now",
+        }),
+        ],
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
             if (!s) return false;
@@ -492,6 +595,16 @@ export const structurePureActions = defineActions({
         role: "sense",
         doc: "Maps a value onto a threshold list and returns the frame index the engine " +
             "would pick. Thresholds are comma-separated, ascending.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "global",
+        params: [
+        p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
+        p("thresholds", "Thresholds", "text", {
+        def: "",
+        hint: "comma-separated, ascending. e.g. 25,50,75",
+        }),
+        ],
         fn: (_structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
             const thresholds = thresholdsOf(o);

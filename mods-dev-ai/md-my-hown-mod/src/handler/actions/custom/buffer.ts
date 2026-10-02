@@ -1,7 +1,9 @@
+import { ALL_SLOTS } from "../../engine/registry/types.ts";
 
 import { defineActions } from "../../engine/types.ts";
 import { ensureBufferReady, resetBuffer, zeroFor } from "../../engine/buffer-store.ts";
 import type { BufferEntryConfig, BufferValueType } from "../../../constants.ts";
+import { p } from "../../engine/registry/params.ts";
 
 
 type BufferOptions = { path?: string };
@@ -38,6 +40,15 @@ export const bufferActions = defineActions({
     bufferRead: {
         role: "remember",
         doc: "Reads a shared buffer slot. Set `path`. Bind the result with `as`.",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+        p("path", "Buffer path", "text", {
+        required: true,
+        hint: "a path declared in Content → Buffer",
+        }),
+        ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as BufferOptions;
             if (!o.path) return 0;
@@ -74,6 +85,19 @@ export const bufferActions = defineActions({
     bufferWrite: {
         role: "remember",
         doc: "Writes a value to a shared buffer slot. Set `path` and `value`.",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+        p("path", "Buffer path", "text", {
+        required: true,
+        hint: "a path declared in Content → Buffer",
+        }),
+        
+        p("value", "Value", "text", {
+        hint: "a literal, or {{aVariable}} from an earlier step",
+        }),
+        ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as BufferOptions & { value?: unknown };
             if (!o.path) return;
@@ -115,6 +139,18 @@ export const bufferActions = defineActions({
     bufferIncrement: {
         role: "remember",
         doc: "Adds `delta` to a shared counter, clamped. Set `path` and `delta`.",
+        type: "message",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [
+        p("path", "Buffer path", "text", {
+        required: true,
+        hint:
+        "a **number** path from Content → Buffer — a bool or string slot is not a counter",
+        }),
+        
+        p("delta", "Amount", "number", { required: true, def: "1", int: true }),
+        ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as BufferOptions & { delta?: number };
             if (!o.path) return;

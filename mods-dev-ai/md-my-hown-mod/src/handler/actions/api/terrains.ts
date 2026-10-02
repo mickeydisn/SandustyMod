@@ -1,3 +1,4 @@
+import { REGION_PARAMS, TERRAIN_REF_PARAMS, TERRAIN_SHAPE_PARAMS, p } from "../../engine/registry/params.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { MAX_SCAN_SIDE } from "../../engine/cell-region.ts";
@@ -160,6 +161,10 @@ export const terrainSenseActions = defineActions({
     terrainType: {
         role: "sense",
         doc: "Reads the terrain id at a cell. Empty means no terrain. Bind it with As.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return "";
@@ -181,6 +186,10 @@ export const terrainSenseActions = defineActions({
     hasTerrain: {
         role: "sense",
         doc: "True when the cell holds terrain. Bind it with As.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return false;
@@ -195,6 +204,10 @@ export const terrainSenseActions = defineActions({
         role: "sense",
         doc: "True when the cell holds terrain of the given type. Accepts an id or a " +
             "handle from Terrain type.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...TERRAIN_REF_PARAMS, ...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             const o = (options ?? {}) as TerrainOptions;
@@ -217,6 +230,10 @@ export const terrainSenseActions = defineActions({
         role: "sense",
         doc: "Reads the terrain's hit points at a cell. Returns -1 when there are none. " +
             "Bind it to watch a wall wear down.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             const o = (options ?? {}) as TerrainOptions;
@@ -236,6 +253,10 @@ export const terrainSenseActions = defineActions({
         role: "sense",
         doc: "Reads the engine's own numeric handle for the terrain at a cell. Returns " +
             "-1 when there is none.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return -1;
@@ -252,6 +273,10 @@ export const terrainSenseActions = defineActions({
     countTerrain: {
         role: "sense",
         doc: "Counts cells holding terrain in the region. Bind it to size a footprint.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return 0;
@@ -271,6 +296,10 @@ export const terrainActActions = defineActions({
     createTerrain: {
         role: "act",
         doc: "Creates terrain of the given type in empty cells. One atomic batch.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...TERRAIN_SHAPE_PARAMS, ...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
             const want = refOf(o);
@@ -295,6 +324,10 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     replaceTerrain: {
         role: "act",
         doc: "Replaces terrain in every cell of the region. One atomic batch.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [...TERRAIN_SHAPE_PARAMS, ...REGION_PARAMS],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
             const want = refOf(o);
@@ -314,6 +347,16 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     removeTerrain: {
         role: "act",
         doc: "Removes terrain from every cell of the region. One atomic batch.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("skipShadow", "Skip shadow", "bool", {
+        def: "false",
+        hint: "no shadow update around the changed cell",
+        }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
             return writeShape(structure, options, "removeTerrain", (writer, cell) => {
@@ -328,6 +371,13 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     damageTerrain: {
         role: "act",
         doc: "Damages terrain in the region. Per-cell, so a large area can half-apply.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("damage", "Damage", "number", { def: "1", min: 1, hint: "hit points to remove" }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
             const amount = num(o.damage, 0);
@@ -349,6 +399,18 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     setTerrainHitPoints: {
         role: "act",
         doc: "Sets the terrain's hit points in the region. Use it to repair a wall.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("hitPoints", "Hit points", "number", {
+        def: "0",
+        int: true,
+        min: 0,
+        hint: "the health to set. 0 destroys the terrain.",
+        }),
+        ...REGION_PARAMS,
+        ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
             const hp = num(o.hitPoints, -1);

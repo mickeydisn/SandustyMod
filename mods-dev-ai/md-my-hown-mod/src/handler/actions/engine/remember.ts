@@ -1,5 +1,6 @@
 
 import { defineActions } from "../../engine/types.ts";
+import { p } from "../../engine/registry/params.ts";
 
 
 type Data = Record<string, unknown>;
@@ -16,6 +17,13 @@ export const rememberActions = defineActions({
     structureWriteData: {
         role: "remember",
         doc: "Writes one key into this instance's saved data. Set `key` / `value` in options.",
+        type: "message",
+        slots: ["signal"],
+        scope: "structure",
+        params: [
+        p("field", "Data field", "text", { required: true }),
+        p("value", "Value", "text", { required: true }),
+        ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { key?: string; value?: unknown };
             const s = payload as { data?: Data } | null;
@@ -29,6 +37,7 @@ export const rememberActions = defineActions({
     triggerTick: {
         role: "remember",
         doc: "Increments this instance's tick counter. Set `key` in options.",
+        type: "message", slots: ["signal"], scope: "structure", params: [],
         fn: (payload, _ctx, options) => {
             const key = (options as { key?: string } | null)?.key ?? "ticks";
             const s = payload as { data?: Data } | null;
@@ -42,6 +51,10 @@ export const rememberActions = defineActions({
     upgradeCountLevel: {
         role: "remember",
         doc: "Increments a level counter on the upgraded item. Set `key` in options.",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "item",
+        params: [p("field", "Data field", "text", { def: "mdLevel" })],
         fn: (payload, _ctx, options) => {
             const key = (options as { key?: string } | null)?.key ?? "mdLevel";
             const s = payload as { data?: Data } | null;
@@ -55,6 +68,13 @@ export const rememberActions = defineActions({
     upgradeAdd: {
         role: "remember",
         doc: "Adds `amount` to a numeric field. Set `key` and `amount` in options.",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "item",
+        params: [
+        p("field", "Numeric field", "text", { required: true }),
+        p("amount", "Amount", "number", { def: "1" }),
+        ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { key?: string; amount?: number };
             if (!o.key) return;
@@ -75,6 +95,10 @@ export const processingRememberActions = defineActions({
     processorCount: {
         role: "remember",
         doc: "Increments a counter on this instance. Set `key` in options.",
+        type: "processor",
+        slots: ["processing"],
+        scope: "structure",
+        params: [],
         fn: (structure, _context, options) => {
             try {
                 const key = (options as { key?: string } | null)?.key ?? "mdTicks";

@@ -1,4 +1,5 @@
 import { defineActions, defineModifiers } from "../../engine/types.ts";
+import { p } from "../../engine/registry/params.ts";
 
 /**
  * Connect actions that do not call the host: storage/item descriptors that just return
@@ -9,6 +10,10 @@ export const engineConnectActions = defineActions({
     energyDefault: {
         role: "connect",
         doc: "Storage node descriptor: capacity 1000. Override `capacity` in options.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "1000", min: 0, int: true })],
         fn: (_structure, _ctx, extra) => {
             const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
             return {
@@ -22,6 +27,10 @@ export const engineConnectActions = defineActions({
     energyBank: {
         role: "connect",
         doc: "Storage node descriptor: capacity 100000 — a large buffer.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "100000", min: 0, int: true })],
         fn: (_structure, _ctx, extra) => {
             const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
             return {
@@ -35,6 +44,10 @@ export const engineConnectActions = defineActions({
     energyWire: {
         role: "connect",
         doc: "Storage node descriptor: capacity 200 — a small buffer between machines.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "200", min: 0, int: true })],
         fn: (_structure, _ctx, extra) => {
             const o = (extra as { capacity?: number; energyType?: string } | null) ?? {};
             return {
@@ -48,6 +61,10 @@ export const engineConnectActions = defineActions({
     energyConductor: {
         role: "connect",
         doc: "Conductor descriptor: capacity 0. Forwards energy without holding any.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("capacity", "Capacity", "number", { def: "0", min: 0, int: true })],
         fn: () => ({ capacity: 0 }),
     },
 
@@ -55,6 +72,15 @@ export const engineConnectActions = defineActions({
     energyNetwork: {
         role: "connect",
         doc: "Joins the network named by `energyType` in options.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("energyType", "Energy type", "text", {
+        required: true,
+        hint: "network name to join",
+        }),
+        ],
         fn: (_structure, _ctx, extra) => {
             const o = (extra as { energyType?: string } | null) ?? {};
             return { capacity: 0, ...(o.energyType ? { energyType: o.energyType } : {}) };
@@ -65,6 +91,11 @@ export const engineConnectActions = defineActions({
     itemDefault: {
         role: "connect",
         doc: "Baseline item options (power 5). Use as a base for a tool or weapon.",
+        type: "global",
+        slots: ["itemAction"],
+        scope: "item",
+        itemTypes: ["Mod"],
+        params: [p("power", "Power", "number", { def: "5", min: 0 })],
         fn: () => ({ power: 5 }),
     },
 });
@@ -75,6 +106,7 @@ export const connectModifierActions = defineModifiers({
         role: "connect",
         kind: "intercept",
         doc: "Modifier: prints whatever the hook passed in. Use to discover hook names.",
+        type: "modifier", slots: ["modifier"], scope: "global", params: [],
         fn: (args, ctx) => {
             console.log("[md-my-hown-mod:modifier] intercept", args, ctx);
         },
@@ -85,6 +117,7 @@ export const connectModifierActions = defineModifiers({
         role: "connect",
         kind: "modify",
         doc: "Modifier: returns the args untouched. Proves a modify hook is wired.",
+        type: "modifier", slots: ["modifier"], scope: "global", params: [],
         fn: (args) => args,
     },
 
@@ -93,6 +126,10 @@ export const connectModifierActions = defineModifiers({
         role: "connect",
         kind: "intercept",
         doc: "Modifier: prints a building-placement-shaped payload. Useful while wiring.",
+        type: "modifier",
+        slots: ["modifier"],
+        scope: "global",
+        params: [],
         fn: (args) => {
             try {
                 console.log(

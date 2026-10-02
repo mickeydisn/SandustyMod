@@ -1,10 +1,23 @@
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { anchorFor } from "../../engine/cell-region.ts";
+import { p } from "../../engine/registry/params.ts";
 export const projectilesActions = defineActions({
     itemShoot: {
         role: "act",
         doc: "Fires a projectile. Set `projectileId` and `velocity` in options.",
+        type: "message",
+        
+        slots: ["signal", "processing", "modifier", "itemAction"],
+        scope: "global",
+        itemTypes: ["Weapon"],
+        params: [
+        p("projectileId", "Projectile", "text", {
+        hint: "falls back to the item's projectileId",
+        }),
+        p("power", "Power", "number", { def: "5", min: 0 }),
+        p("speed", "Speed", "number", { def: "20", min: 0 }),
+        ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { projectileId?: string; vx?: number; vy?: number };
             if (!o.projectileId) return;

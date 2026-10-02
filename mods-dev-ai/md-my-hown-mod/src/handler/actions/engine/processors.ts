@@ -1,5 +1,6 @@
 import { defineActions } from "../../engine/types.ts";
 import type { CellMutation, ProcessingContext } from "../api/processors.ts";
+import { p } from "../../engine/registry/params.ts";
 
 
 function commitOrWarn(
@@ -43,6 +44,10 @@ export const processorActions = defineActions({
     processorLog: {
         role: "act",
         doc: "Logs the structure and cell context on every run. Use to confirm wiring.",
+        type: "processor",
+        slots: ["processing"],
+        scope: "structure",
+        params: [],
         fn: (structure, context) => {
             console.log("[md-my-hown-mod:process]", structure, context);
         },
@@ -51,12 +56,20 @@ export const processorActions = defineActions({
     processorNoop: {
         role: "act",
         doc: "Does nothing. Keeps the interval alive without side effects.",
+        type: "global", slots: ["processing"], scope: "structure", params: [],
         fn: () => {},
     },
 
     processorLift: {
         role: "act",
         doc: "Copies the cell above the structure down to the cell below.",
+        type: "processor",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("x", "Cell x", "number", { min: 0, int: true }),
+        p("y", "Cell y", "number", { min: 0, int: true }),
+        ],
         fn: (structure, context) => {
             try {
                 const s = structure as { x?: number; y?: number } | null;
@@ -79,6 +92,16 @@ export const processorActions = defineActions({
     processorConvert: {
         role: "act",
         doc: "Replaces the cell above with one fixed element. Set `to` in options.",
+        type: "processor",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("to", "Output element", "text", {
+        required: true,
+        hint: "element id committed into the cell",
+        }),
+        p("chance", "Chance", "number", { def: "1", min: 0, max: 1 }),
+        ],
         fn: (structure, context, options) => {
             try {
                 const s = structure as { x?: number; y?: number } | null;

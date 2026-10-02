@@ -1,4 +1,5 @@
 
+import { elementRef, p } from "../../engine/registry/params.ts";
 import { anchorFor } from "../../engine/cell-region.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
@@ -12,6 +13,7 @@ export const senseActions = defineActions({
     structureInspect: {
         role: "sense",
         doc: "Reports what the clicked structure is, without changing anything.",
+        type: "message", slots: ["signal"], scope: "structure", params: [],
         fn: (structure) => {
             const s = structure as Record<string, unknown> | null;
             if (!s) return;
@@ -26,6 +28,15 @@ export const senseActions = defineActions({
     structureReadData: {
         role: "sense",
         doc: "Reads one key out of the instance's own data bag. Set `key` in options.",
+        type: "message",
+        slots: ["signal"],
+        scope: "structure",
+        params: [
+        p("field", "Data field", "text", {
+        required: true,
+        hint: "key on the structure's data object",
+        }),
+        ],
         fn: (payload, _ctx, options) => {
             const key = (options as { key?: unknown } | null)?.key;
             const d = (payload as { data?: Record<string, unknown> } | null)?.data;
@@ -37,6 +48,10 @@ export const senseActions = defineActions({
     triggerScan: {
         role: "sense",
         doc: "Logs a rectangle of cells around this position. Set `width` / `height` in options.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [p("radius", "Radius", "number", { def: "3", min: 0, int: true })],
         fn: (payload) => {
             const s = payload as { x?: number; y?: number } | null;
             if (!s) return;
@@ -48,6 +63,7 @@ export const senseActions = defineActions({
     signalLog: {
         role: "sense",
         doc: "Logs the raw payload. Use to see what a call site actually delivers.",
+        type: "message", slots: ["signal"], scope: "structure", params: [],
         fn: (payload, _ctx, extra) => {
             console.log("[md-my-hown-mod:signal]", payload, extra);
         },
@@ -57,6 +73,7 @@ export const senseActions = defineActions({
     triggerLog: {
         role: "sense",
         doc: "Logs the raw payload of a timed tick.",
+        type: "message", slots: ["trigger"], scope: "global", params: [],
         fn: (payload, _ctx, extra) => {
             console.log("[md-my-hown-mod:trigger]", payload, extra);
         },
@@ -70,6 +87,14 @@ export const processingSenseActions = defineActions({
         role: "sense",
         doc: "fn(dx?, dy?) → true when the offset cell holds `element`. Bind the " +
             "answer with the step's As field, then read it as {{name}}.",
+        type: "cell",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        elementRef("the element to test for"),
+        p("dx", "Offset X", "number", { def: "0", int: true }),
+        p("dy", "Offset Y", "number", { def: "0", int: true }),
+        ],
         fn: (structure, context, options) => {
             try {
                 const anchor = anchorFor(structure);

@@ -1,9 +1,14 @@
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
+import { p } from "../../engine/registry/params.ts";
 export const techActions = defineActions({
     techAppendUnlock: {
         role: "connect",
         doc: "Adds structures to a tech node. Set `techId` and `structures` in options.",
+        type: "tech",
+        slots: ["upgrade"],
+        scope: "tech",
+        params: [p("techId", "Tech node", "text", { required: true })],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as {
                 techId?: unknown;

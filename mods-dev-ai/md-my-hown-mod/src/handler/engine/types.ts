@@ -65,11 +65,40 @@ export type HandlerActionFn = (
     context?: unknown,
 ) => unknown;
 
+import type { Opt } from "../../catalog.ts";
+
+/** What kind of thing a `select` option points at. */
+export type ContentKind = "element" | "structure" | "terrain";
+
+/** One row of an action's option editor, as the panel renders it. */
+export interface HandlerParam {
+    key: string;
+    label: string;
+    kind: "text" | "number" | "bool" | "select";
+    required?: boolean;
+    def?: string;
+    hint?: string;
+    min?: number;
+    max?: number;
+    int?: boolean;
+
+    options?: Opt[];
+
+    content?: ContentKind;
+}
+
 export interface ModifierAction {
     kind: "intercept" | "modify";
     fn: HandlerActionFn;
 }
 
+/**
+ * How one action describes itself to the panel.
+ *
+ * The `type`/`scope`/`slots`/`params` fields are declared next to the action
+ * that honours them, not in a parallel table: an action and the options it
+ * accepts are always read in the same place.
+ */
 export interface ActionDef {
     doc: string;
 
@@ -78,6 +107,21 @@ export interface ActionDef {
     fn: HandlerActionFn;
 
     kind?: "intercept" | "modify";
+
+    /** The panel group this action is listed under. */
+    type?: string;
+
+    /** What the host must hand the action for it to run. */
+    scope?: string;
+
+    /** Handler slots this action may appear in. */
+    slots?: readonly string[];
+
+    /** Item types, when the action is item-scoped. */
+    itemTypes?: readonly string[];
+
+    /** The options the panel offers for this action. */
+    params?: readonly HandlerParam[];
 }
 
 export interface StoredAction extends ActionDef {

@@ -1,9 +1,18 @@
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
+import { p } from "../../engine/registry/params.ts";
 export const energyActions = defineActions({
     energyConsumePerRun: {
         role: "connect",
         doc: "Draws `amount` from the shared power pool. Set `amount` in options.",
+        type: "processor",
+        
+        slots: ["processing", "signal", "modifier"],
+        scope: "cell",
+        params: [
+        p("energyType", "Energy type", "text", { required: true }),
+        p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 }),
+        ],
         fn: (_payload, _ctx, options) => {
             const amount = Number((options as { amount?: number } | null)?.amount ?? 0);
             if (!amount) return;
@@ -22,6 +31,13 @@ export const energyActions = defineActions({
     energyGenerateWhileHeld: {
         role: "connect",
         doc: "Adds power to the network here. Set `amount` in options.",
+        type: "processor",
+        slots: ["processing"],
+        scope: "cell",
+        params: [
+        p("energyType", "Energy type", "text", { required: true }),
+        p("amountPerRun", "Amount per run", "number", { def: "1", min: 0 }),
+        ],
         fn: (payload, _ctx, options) => {
             const amount = Number((options as { amount?: number } | null)?.amount ?? 0);
             const p = payload as { x?: number; y?: number } | null;
