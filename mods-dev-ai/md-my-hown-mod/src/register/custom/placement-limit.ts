@@ -1,24 +1,16 @@
-
 import { api } from "../../packages/mysandkit.ts";
 import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
 
-
 export interface Limit {
-    
     id: string;
-    
     name: string;
-    
     max: number;
-    
     ref: number | string;
 }
-
 
 function keysFor(limit: Limit): string[] {
     return limit.ref === limit.id ? [limit.id] : [limit.id, String(limit.ref)];
 }
-
 
 function capOf(st: StructureConfig): number | null {
     const n = st?.maxPlaced;
@@ -26,8 +18,7 @@ function capOf(st: StructureConfig): number | null {
     return Math.floor(n);
 }
 
-
-export function buildLimitTable(config: ModConfig): Map<string, Limit> {
+function buildLimitTable(config: ModConfig): Map<string, Limit> {
     const out = new Map<string, Limit>();
     for (const st of config.structures ?? []) {
         const id = typeof st?.id === "string" ? st.id.trim() : "";
@@ -44,13 +35,9 @@ export function buildLimitTable(config: ModConfig): Map<string, Limit> {
     return out;
 }
 
-
 let unsubscribe: (() => void) | null = null;
 
-
 export function installPlacementLimits(config: ModConfig): number {
-    
-    
     if (unsubscribe) {
         try {
             unsubscribe();
@@ -62,9 +49,6 @@ export function installPlacementLimits(config: ModConfig): number {
 
     const table = buildLimitTable(config);
     if (table.size === 0) {
-        
-        
-        
         return 0;
     }
 
@@ -79,12 +63,7 @@ export function installPlacementLimits(config: ModConfig): number {
             (args: { structureId?: number | string }, context: { cancel?: () => void }) => {
                 const limit = table.get(String(args?.structureId ?? ""));
                 if (!limit) return;
-                
-                
-                
-                
-                
-                
+
                 const n = api.structures.countOfType(limit.ref);
                 if (n === null) {
                     console.warn(
@@ -98,8 +77,6 @@ export function installPlacementLimits(config: ModConfig): number {
                     console.log(`${LOG} place cancelled — ${limit.id} ${n}/${limit.max}`);
                 }
             },
-            
-            
         );
         unsubscribe = typeof ret === "function" ? (ret as () => void) : null;
     } catch (e) {

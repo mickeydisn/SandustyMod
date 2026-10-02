@@ -1,12 +1,9 @@
-
 import { api } from "../../packages/mysandkit.ts";
 import { configIsHidden, LOG } from "../../constants.ts";
-
 
 const hiddenTypes = new Set<number>();
 
 let installed = false;
-let detach: (() => void) | null = null;
 
 export function noteElementVisibility(
     type: number | undefined,
@@ -16,7 +13,6 @@ export function noteElementVisibility(
     hiddenTypes.add(type);
     return true;
 }
-
 
 export function installElementPickerVisibility(): number {
     if (installed) return hiddenTypes.size;
@@ -31,16 +27,9 @@ export function installElementPickerVisibility(): number {
         return 0;
     }
 
-    const ret = api.hooks.modify(
+    api.hooks.modify(
         "vacuum:element:prepare",
         (args: unknown) => {
-            
-            
-            
-            
-            
-            
-            
             const a = args as { elementType?: unknown; visibleInPicker?: unknown } | null;
             if (a === null || typeof a !== "object") return;
             if (typeof a.elementType === "number" && hiddenTypes.has(a.elementType)) {
@@ -49,28 +38,10 @@ export function installElementPickerVisibility(): number {
         },
         { priority: 1000 },
     );
-    if (typeof ret === "function") detach = ret as () => void;
 
     console.log(
         `${LOG} element picker: withholding ${hiddenTypes.size} element(s) ` +
             `types ${[...hiddenTypes].join(",")}`,
     );
     return hiddenTypes.size;
-}
-
-
-export function hiddenElementTypes(): number[] {
-    return [...hiddenTypes].sort((a, b) => a - b);
-}
-
-
-export function __resetElementPickerForTests(): void {
-    try {
-        detach?.();
-    } catch {
-        
-    }
-    detach = null;
-    installed = false;
-    hiddenTypes.clear();
 }

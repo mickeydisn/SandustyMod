@@ -1,23 +1,18 @@
+import { COLLECTION_KEYS, type CollectionKey } from "../config/store.ts";
 
 
+const WORKER_SCOPED: ReadonlySet<CollectionKey> = new Set<CollectionKey>([
+    "elements",
+    "terrains",
+    "structures",
+    "recipes",
+]);
 
-const WORKER_SCOPED = ["elements", "terrains", "structures", "recipes"] as const;
-
-const WORKER_SCOPED_SET: ReadonlySet<string> = new Set<string>(WORKER_SCOPED);
-
-
-function needsWorker(cat: string): boolean {
-    return WORKER_SCOPED_SET.has(cat);
-}
 
 let windowOpen = true;
 
 export function closeBootWindow(): void {
     windowOpen = false;
-}
-
-export function isBootWindowOpen(): boolean {
-    return windowOpen;
 }
 
 
@@ -27,32 +22,31 @@ export function __resetBootWindowForTests(): void {
 }
 
 
-export function mayRegister(cat: string, id: string): boolean {
-    if (!needsWorker(cat)) return true;
-    return isBootWindowOpen();
+
+export type Counted = [category: string, count: number];
+
+
+export function registerEach<E extends { id?: string }>(
+    entries: readonly E[] | undefined,
+    cat: CollectionKey,
+    register: (entry: E, id: string) => boolean | void,
+): Counted {
+    if (WORKER_SCOPED.has(cat) && !windowOpen) return [cat, 0];
+
+    const seen = registered[cat];
+    let n = 0;
+    for (const entry of entries ?? []) {
+        const id = entry?.id;
+        if (!id || seen.has(id)) continue;
+        if (register(entry, id) === false) continue;
+        seen.add(id);
+        n++;
+    }
+    return [cat, n];
 }
 
 
-export const registered: Record<string, Set<string>> = {
-    sprites: new Set(),
-    elements: new Set(),
-    structures: new Set(),
-    items: new Set(),
-    terrains: new Set(),
-    recipes: new Set(),
-    processing: new Set(),
-    contacts: new Set(),
-    interactions: new Set(),
-    modifiers: new Set(),
-    techs: new Set(),
-    upgradeCategories: new Set(),
-    upgrades: new Set(),
-    projectiles: new Set(),
-    energyTypes: new Set(),
-    excavationProfiles: new Set(),
-    structureBehaviors: new Set(),
-    placementConfigs: new Set(),
-    signals: new Set(),
-    triggers: new Set(),
-    inputBindings: new Set(),
-};
+
+export const registered: Record<CollectionKey, Set<string>> = Object.fromEntries(
+    COLLECTION_KEYS.map((key) => [key, new Set<string>()]),
+) as Record<CollectionKey, Set<string>>;

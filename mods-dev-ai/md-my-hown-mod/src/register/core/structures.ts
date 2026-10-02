@@ -1,11 +1,9 @@
-
 import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
 import { configStore } from "../../config/store.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { isAlwaysUnlocked } from "../../ui/tech-link.ts";
 import { makeDrawnSprite } from "./drawn-sprite.ts";
-import { mayRegister, registered } from "../registry.ts";
-
+import { registerEach } from "../registry.ts";
 
 type DrawCtx = {
     ctx?: {
@@ -26,14 +24,11 @@ type DrawCtx = {
     placing?: boolean;
 };
 
-
 export interface DrawContext {
-    
     wCells: number;
-    
+
     hCells: number;
 }
-
 
 function safeCanvas(ctx: NonNullable<DrawCtx["ctx"]>): void {
     ctx.save();
@@ -41,26 +36,22 @@ function safeCanvas(ctx: NonNullable<DrawCtx["ctx"]>): void {
     ctx.globalCompositeOperation = "source-over";
     try {
         ctx.filter = "none";
-    } catch {  }
+    } catch {}
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
     ctx.shadowColor = "rgba(0,0,0,0)";
 }
 
-
 function gridMetrics(): { cellSize: number } {
     return { cellSize: api.rendering.getGridMetrics()?.cellSize ?? 4 };
 }
-
 
 function drawPosAt(x: number, y: number): { x: number; y: number } {
     return api.rendering.getDrawPositionAtCell(x, y) ?? { x: x * 4, y: y * 4 };
 }
 
-
 const hidden = () => true;
-
 
 function makeOutline({ wCells, hCells }: DrawContext) {
     return (
@@ -86,32 +77,18 @@ function makeOutline({ wCells, hCells }: DrawContext) {
                 Math.max(1, hCells * cellSize) - 1,
             );
             ctx.restore();
-        } catch {  }
-        
+        } catch {}
+
         return false;
     };
 }
 
-
 function resolveDraw(st: StructureConfig): StructureConfig {
-    
-    
-    
-    
     const { drawKey } = st;
-    
-    
+
     const base = withSelectionGuard(withoutModOnlyKeys(st));
     if (!drawKey || drawKey === "default") return base;
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     const shape = Array.isArray(st.shape) ? st.shape : [];
     const ctx: DrawContext = {
         wCells: Math.max(1, shape[0]?.length || 1),
@@ -120,9 +97,6 @@ function resolveDraw(st: StructureConfig): StructureConfig {
     if (drawKey === "hidden") return { ...base, draw: hidden };
     if (drawKey === "outline") return { ...base, draw: makeOutline(ctx) };
     if (drawKey === "drawnSprite") {
-        
-        
-        
         const imageName = st.render?.imageName;
         return {
             ...base,
@@ -136,12 +110,10 @@ function resolveDraw(st: StructureConfig): StructureConfig {
     return base;
 }
 
-
 function withoutModOnlyKeys(st: StructureConfig): StructureConfig {
     const { drawKey: _draw, maxPlaced: _cap, unlockNode: _node, ...rest } = st;
     return rest;
 }
-
 
 function withSelectionGuard(st: StructureConfig): StructureConfig {
     if (st.disallowPick !== true) return st;
@@ -149,79 +121,35 @@ function withSelectionGuard(st: StructureConfig): StructureConfig {
     return { ...rest, disallowSelection: true } as StructureConfig;
 }
 
-
 export function registerStructures(cfg?: ModConfig): number {
     const config = cfg ?? configStore.load();
-    let n = 0;
-    for (const st of config.structures ?? []) {
-        if (!st?.id) continue;
-        if (registered.structures.has(st.id)) continue;
-        if (!mayRegister("structures", st.id)) continue;
-        api.structures.register(resolveDraw(st));
-        registered.structures.add(st.id);
-        n++;
-    }
-    
-    
-    
-    
-    
+    const n = registerEach(
+        config.structures,
+        "structures",
+        (st) => api.structures.register(resolveDraw(st)),
+    )[1];
     unlockStructures(config);
     return n;
 }
-
 
 export function unlockStructures(cfg: ModConfig): number {
     let n = 0;
     for (const st of cfg.structures ?? []) {
         if (!st?.id) continue;
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
         if (st.hideFromBuildMenu) {
             api.player.buildings.removeById(st.id);
             continue;
         }
-        
-        
+
         if (!isAlwaysUnlocked(st.id, cfg)) {
-            
-            
-            
             api.player.buildings.removeById(st.id);
             continue;
         }
-        
-        
-        
-        
+
         if (api.player.buildings.unlockById(st.id)) n++;
     }
-    
-    
-    
-    
+
     const ungated = (cfg.structures ?? []).filter((s) => s?.id && isAlwaysUnlocked(s.id, cfg));
     if (n === 0 && ungated.length > 0) {
         console.warn(

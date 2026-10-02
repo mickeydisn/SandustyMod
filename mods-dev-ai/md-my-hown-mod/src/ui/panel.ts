@@ -129,11 +129,7 @@ type Mode = ViewMode;
 const CHIP_W = 150;
 const CHIP_H = 40;
 
-/**
- * The config collection a tab edits, or `null` for tabs that are not backed by
- * one (the map, help, raw-JSON views…). `CATEGORY_META` is the single source of
- * truth for this mapping, so adding a tab needs no change here.
- */
+
 function collectionOf(cat: Tab): CollectionKey | null {
     const key = CATEGORY_META[cat]?.configKey;
     return key && key in configStore.collections ? key as CollectionKey : null;

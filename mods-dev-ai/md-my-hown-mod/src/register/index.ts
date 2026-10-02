@@ -1,11 +1,12 @@
 import { LOG, type ModConfig } from "../constants.ts";
 import { configStore } from "../config/store.ts";
+import { registerTerrain } from "../packages/registrations.ts";
+import { ProcessRegistry, setProcessRegistry } from "../handler/custom-process/index.ts";
+import { registerTheRest } from "./categories.ts";
+import { installElementPickerVisibility } from "./core/element-picker.ts";
 import { registerElements } from "./core/elements.ts";
 import { registerStructures } from "./core/structures.ts";
-import { registerTerrains } from "./core/terrains.ts";
-import { registerTheRest } from "./the-rest.ts";
-import { installElementPickerVisibility } from "./core/element-picker.ts";
-import { closeBootWindow } from "./registry.ts";
+import { closeBootWindow, registerEach } from "./registry.ts";
 
 export interface RegisterCounts {
     elements: number;
@@ -17,11 +18,17 @@ export interface RegisterCounts {
 
 export function registerAll(cfg?: ModConfig): RegisterCounts {
     const config = cfg ?? configStore.load();
+
+    
+    
+    const processes = new ProcessRegistry(config.processes ?? []);
+    setProcessRegistry(processes);
+
     const counts: RegisterCounts = {
         elements: registerElements(config),
         structures: registerStructures(config),
-        terrains: registerTerrains(config),
-        rest: registerTheRest(config),
+        terrains: registerEach(config.terrains, "terrains", (t) => registerTerrain(t))[1],
+        rest: registerTheRest(config, processes),
         hiddenElements: installElementPickerVisibility(),
     };
     closeBootWindow();

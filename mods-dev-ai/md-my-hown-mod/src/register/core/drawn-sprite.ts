@@ -1,14 +1,10 @@
-
 import { LOG } from "../../constants.ts";
 import { configStore } from "../../config/store.ts";
 import { api } from "../../packages/mysandkit.ts";
 
-
 const images = new Map<string, { src: string; image: unknown; failed: boolean }>();
 
-
 const warned = new Set<string>();
-
 
 function sourceOf(spriteId: string): string | undefined {
     const sprites = configStore.load().sprites ?? [];
@@ -16,7 +12,6 @@ function sourceOf(spriteId: string): string | undefined {
     const src = hit?.source;
     return typeof src === "string" && src.startsWith("data:") ? src : undefined;
 }
-
 
 function imageFor(spriteId: string): unknown {
     const src = sourceOf(spriteId);
@@ -27,8 +22,6 @@ function imageFor(spriteId: string): unknown {
 
     const ImageCtor = (globalThis as { Image?: new () => unknown }).Image;
     if (!ImageCtor) {
-        
-        
         if (!warned.has(spriteId)) {
             warned.add(spriteId);
             console.warn(`${LOG} drawn sprite ${spriteId}: no Image constructor`);
@@ -55,7 +48,6 @@ function imageFor(spriteId: string): unknown {
     image.src = src;
     return image;
 }
-
 
 export function makeDrawnSprite(
     spriteId: string | undefined,
@@ -90,11 +82,8 @@ export function makeDrawnSprite(
             const image = imageFor(spriteId) as
                 | { complete?: boolean }
                 | undefined;
-            if (!image) return true; 
-            
-            
-            
-            
+            if (!image) return true;
+
             if (image.complete === false) return true;
 
             const cellSize = api.rendering.getGridMetrics()?.cellSize ?? 4;
@@ -102,21 +91,20 @@ export function makeDrawnSprite(
                 { x: structure.x * cellSize, y: structure.y * cellSize };
 
             ctx.save();
-            
-            
+
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
             try {
                 ctx.filter = "none";
-            } catch {  }
+            } catch {}
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
             ctx.shadowColor = "rgba(0,0,0,0)";
-            
+
             try {
                 if ("imageSmoothingEnabled" in ctx) ctx.imageSmoothingEnabled = false;
-            } catch {  }
+            } catch {}
 
             ctx.drawImage(
                 image,
@@ -126,10 +114,8 @@ export function makeDrawnSprite(
                 Math.max(1, hCells) * cellSize,
             );
             ctx.restore();
-        } catch {  }
-        
-        
-        
+        } catch {}
+
         return true;
     };
 }
