@@ -3,6 +3,7 @@
  * world-statistic fields (snapshot, filters, card list, graph selection).
  */
 import { createPanelState } from "@sandmd/ui";
+import type { GraphMode } from "@sandmd/ui";
 import { hydrateFromStorage, store } from "./uiStore.ts";
 import { listCataloguesForPicker, resolveCards } from "./data.ts";
 import { loadCards } from "./cards.ts";
@@ -22,6 +23,14 @@ export interface WordStatExtras {
         structures: string[];
         terrains: string[];
     };
+    /**
+     * Whether the history graphs plot accumulated counts or change per scan.
+     *
+     * Defaults to `total`, which is what this mod always plotted before the
+     * toggle existed — a census count is meaningful as a running total, so
+     * defaulting to `diff` would change every graph on upgrade.
+     */
+    graphMode: GraphMode;
 }
 
 const ctrl = createPanelState<WordStatExtras>({
@@ -35,6 +44,7 @@ const ctrl = createPanelState<WordStatExtras>({
         origin: "all",
         cards: [],
         graphSelection: { elements: [], structures: [], terrains: [] },
+        graphMode: "total",
     },
     // Card edits do not need a rescan: re-resolve the Home cards whenever the
     // config list changes identity (editor save, discard, reset defaults).

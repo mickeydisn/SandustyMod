@@ -5,11 +5,12 @@
  * When enabled: register tool + overlay, optional auto-refresh.
  * When disabled: remove tool item and skip UI.
  */
-import { getConfig, onConfigChange } from "./config.ts";
+import { adoptLegacyAutoMinutes, getConfig, onConfigChange } from "./config.ts";
 import { LOG, VERSION } from "./constants.ts";
 import { removeToolItem, runCleanup, runDisableCleanup } from "./cleanup.ts";
 import { bindAutoRefreshLifecycle, reconfigureAutoRefresh, stopAutoRefresh } from "./refresh.ts";
 import { registerTool } from "./tool.ts";
+import { loadPanelAutoMinutes } from "./uiStore.ts";
 
 async function startEnabled(): Promise<void> {
     await registerTool();
@@ -29,6 +30,10 @@ function applyEnabled(enabled: boolean): void {
 
 try {
     runCleanup("boot");
+
+    // Before anything reads the cadence, fold in the value the old panel override
+    // held; from here on `timeRange` is the only place it lives.
+    adoptLegacyAutoMinutes(loadPanelAutoMinutes());
 
     const cfg = getConfig();
     if (cfg.enabled) {

@@ -61,12 +61,13 @@ export function registerArtefact(
             order: 99,
             // Keeps it out of the build menu.
             //
-            // The menu list (bundel 5251, `getUnlockedTypes`) is the union of
-            // `player.buildings` and every definition whose `alwaysUnlocked`
-            // is set — and it walks the very table `structures.register`
-            // writes mod definitions into, so this flag is NOT inert for a
-            // mod id. We leave it false and never call `player.buildings.add`,
-            // so nothing lists this id.
+            // The build window reads `store.player.buildings` directly
+            // (bundel 151647) and does NOT consult `alwaysUnlocked` — that
+            // flag is only read while walking `Ue`, the `const` literal of
+            // vanilla structures (bundel 3268), which a mod id never enters.
+            // So this flag is inert either way; what actually keeps the
+            // artefact hidden is that nothing ever calls `unlockInBuildMenu`
+            // for this id, so it is never pushed into `player.buildings`.
             alwaysUnlocked: false,
             /**
              * Engine-native "the player may not select this" flag — the real

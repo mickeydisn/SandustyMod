@@ -25,7 +25,15 @@ export type SettingsSchema = {
     };
 };
 
-export type TabId = "home" | "actions" | "items" | "terrain" | "move" | "keys" | "config";
+export type TabId =
+    | "home"
+    | "actions"
+    | "items"
+    | "shoot"
+    | "terrain"
+    | "move"
+    | "keys"
+    | "config";
 
 /** One selectable KPI on a Home card. */
 export interface CardItemRef {
@@ -62,6 +70,7 @@ export interface CardStat {
     title: string;
     color: string;
     total: number;
+    /** Sum of the items' last-interval changes; null if history is too short. */
     delta: number | null;
     items: CardItemStat[];
 }

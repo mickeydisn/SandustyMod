@@ -5,6 +5,7 @@
  * resolved Home cards are the only mod-specific addition.
  */
 import { createPanelState } from "@sandmd/ui";
+import type { GraphMode } from "@sandmd/ui";
 import { store } from "./uiStore.ts";
 import { getConfig } from "./config.ts";
 import { loadCards, resolveCards } from "./buffer.ts";
@@ -17,12 +18,25 @@ export interface PlayerStatExtras {
     resolvedCards: CardStat[];
     /** Ids plotted per KPI category on that tab's history graph. */
     graphSelection: Record<string, string[]>;
+    /**
+     * Whether the history graphs plot accumulated totals or per-interval change.
+     *
+     * Defaults to `diff`, which is what this mod always plotted before the
+     * toggle existed — picking `total` here would silently change every graph
+     * on upgrade.
+     */
+    graphMode: GraphMode;
 }
 
 const ctrl = createPanelState<PlayerStatExtras>({
     store,
     tab: "home",
-    extra: { cards: [], resolvedCards: [], graphSelection: {} },
+    extra: {
+        cards: [],
+        resolvedCards: [],
+        graphSelection: {},
+        graphMode: "diff",
+    },
     recompute: (st) => {
         st.resolvedCards = resolveCards(st.cards, getConfig().historyMax);
     },

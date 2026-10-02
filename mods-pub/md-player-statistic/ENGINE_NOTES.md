@@ -68,14 +68,21 @@ registering.
 The string `"tool"` is never equal to `2`, so the item is filed under the generic `"items"` category
 instead of `"tools"`. `constants.ts` exports `ITEM_TYPE_TOOL = 2` for this reason.
 
-## 3. `api.settings` is already scoped to the calling mod
+## 3. `api.settings` is read-only and already scoped to the calling mod
 
 ```js
 settings: {
-  get:    t => { if (n.configSchema?.[t]) return vt(e, n)[t] },  // field NAME
-  getAll: () => FG(e, n),                                        // the whole bag
+  get:      t => { if (n.configSchema?.[t]) return vt(e, n)[t] },  // field NAME
+  getAll:   () => FG(e, n),                                       // the whole bag
+  onChange: cb => { /* hands over the same per-mod bag */ },
 }
 ```
+
+Three things bite here.
+
+**There is no `set`.** This is the big one. A mod cannot write its own `configSchema` values, so
+`api.settings.set?.(k, v)` is a silent no-op — no throw, no warning, the value just evaporates. Only
+the game's own settings screen can change these.
 
 `get()` takes a **configSchema field name** (`"enabled"`). Passing a mod id or `"modId.field"`
 returns `undefined`, so a mod that reads its own settings that way silently gets its hardcoded
@@ -83,7 +90,23 @@ fallbacks forever — the `enabled` toggle does nothing. `getAll()` returns
 `{enabled, persistSession, historyMax}` and is the only reliable read. `onChange` also hands over
 that same per-mod bag, **not** a map keyed by mod id.
 
-Storage lives at `session.settings.externalModSettings[modId]`.
+**Consequence for the panel.** Both statistic mods used to route their three history settings
+(`timeRange`, `maxCountSave`, `historyMax`) through the non-existent `set`. The symptoms differed,
+which is why it survived so long:
+
+- `md-word-statistic` had no cache, so `getConfig()` re-read the engine bag, returned the old number,
+  and the steppers looked frozen — the player could not change them at all. The mod never even
+  created an `externalModSettings` entry, because nothing was ever written.
+- `md-player-statistic` updated an in-memory cache first, so the rows moved immediately and then
+  reverted on the next launch. That is the more dangerous shape: it looks like it works.
+
+**Fix.** Those three numbers live in `api.storage` now (one key, `tracking`), which both mods already
+use for panel position, zoom and card layout and which demonstrably survives a reload. The engine bag
+seeds them on the first read only. See `packages/ui/src/tracking.ts`. `enabled` and `persistSession`
+stay engine-owned reads — there is no write path for them at all.
+
+Storage for the engine's own settings lives at `session.settings.externalModSettings[modId]`; mod
+storage is a different namespace reached through `api.storage.set(modId, key, value)`.
 
 ## 4. One player action, two event ids
 
@@ -166,3 +189,101 @@ Two consequences that matter for a stats mod:
   dozens of presses.
 
 Neither is mentioned in the typings.
+
+## 12. Item use needs `action:intercept` — two "obvious" signals are dead ends
+
+This is what broke the Items tab. The docs list `item:used` as a normal main-thread event
+(`doc.api/shared/api.hooks.md`, `api.events.md`), so it looks like the right thing to subscribe
+to. It is not — and neither is the hook that sounds even more obviously correct.
+
+### Dead end 1 — the `item:used` event fires for two items
+
+It is emitted from exactly one function, the use-*commit*:
+
+```js
+// module 92174 — the item-use pipeline
+g = (e, t, n, r) => {
+  if (!t || !Number.isSafeInteger(n) || !Number.isSafeInteger(r)) return false;
+  const l = i.get(e);
+  return !!l && (
+    ("instant" === t.kind ? l.instant?.use === t : l.active?.use === t) &&
+    (o.A.emit(e, "item:used", Object.freeze({
+        itemId: t.itemId, useId: t.useId, kind: t.kind,
+        cellX: n, cellY: r, prepared: t.prepared })), true)
+  );
+};
+```
+
+That is exported as `items.commitUse`, and `commitUse` appears **three times** in the whole
+bundle: the facade definition plus **two call sites** — the **laser** and the **caulk
+blaster**. Vacuum, grabber, shovel, grappling hook, rocket launcher, flamethrower,
+teleporter, hauler, cryoblaster and every mod-registered tool emit `item:used` **zero
+times**.
+
+### Dead end 2 — the `item:use` hook only covers `ActionType.Mod`
+
+`item:use` is a real registered interceptor, dispatched from *begin-use*. But `beginUse`
+(`g2`) has exactly **one** call site in the bundle, and it sits in the action dispatcher's
+`ActionType.Mod` branch:
+
+```js
+case r.X2.Mod:
+  const a = e.store.player.inventory.find(e => e.id === t.id);
+  const i = e.sandkit.mods.items[a.id];
+  const s = (0, w.g2)(e, i, a);           // ← fires "item:use"
+  if (false !== s) { … i.handleAction(e, a, s) … }
+```
+
+`ActionType.Weapon` goes to `Jz` and `ActionType.Tool` to the `U[n.id]` map instead —
+neither calls `beginUse`. So `item:use` covers mod-registered items and the built-ins
+registered as such (laser, drill, flashlight, locator, prefabulator, corraller,
+recallDevice, colouring tool), but **no built-in weapon or tool**: vacuum, grabber,
+grappling hook, rocket launcher, flamethrower, hauler, cryoblaster, teleporter.
+
+### What works — `action:intercept`, the action-start hook
+
+```js
+// action dispatcher, when the mouse press begins an action
+if (n.action.state[r.qy.Start] &&
+    (0, A.Z$)(e, "action:intercept", {action: l, cellX: …, cellY: …})) return …;
+```
+
+`Z$` is `runInterceptorsSafe`, which returns `true` **only if a handler cancels**. Not
+cancelling falls through to the normal `action:triggered` + action dispatch, so a
+statistics mod can observe every action without touching the game.
+
+`l` is the resolved active action, `{type, id}` — exactly `args.action?.id`. The id is a
+numeric `ItemId` for built-ins and the definition id string for a mod item; both resolve in
+`displayNameFor`.
+
+⚠️ **A structure placement is an action too** (`{type: Building, id: <structureType>}`), so
+it arrives on the same hook. It is filtered out by `action.type === ActionType.Building`
+(`2`) — `building:placed` already counts it, and leaving it in would file conveyor types
+into the Items tab under an `ItemId` name.
+
+## 13. The projectile hooks
+
+Both are registered interceptors and both carry the live projectile record, so the
+breakdown key is `projectile.type` — the numeric `ProjectileType`
+(`Bullet=1, Rocket=2, GrapplingHook=3, Fire=4, Digger=5, Mod=6`).
+
+```js
+// every projectile that resolves an impact
+if (g.FH.hooks.hasInterceptors(e, "projectile:hit") &&
+    g.FH.hooks.runInterceptorsSafe(e, "projectile:hit", {projectile: t, travelResult: _})) return;
+
+// flamethrower spread onto a structure cell — only ProjectileType.Fire reaches it
+if (t.type === o.Ag.Fire &&
+    g.FH.hooks.runInterceptorsSafe(e, "projectile:fire:overStructure", {projectile: t, x, y})) return;
+```
+
+⚠️ **Both short-circuit the engine on a cancel** — a cancelling `projectile:hit` skips the
+impact handling, a cancelling `projectile:fire:overStructure` stops the fire spreading.
+`src/events.ts` never calls `context.cancel()`; it only reads the payload.
+
+Note `projectile.type` and `ItemId` **overlap numerically** (`Bullet=1` vs `Shovel=1`), so
+each category must resolve through its own enum — a shared lookup would report "Shovel" for
+a bullet. Covered by a test.
+
+> Verified against the **shipped** `app.asar` (`dist/js/bundle.js`), not the repo copy of
+> the bundle — `__bundel/bund/` is an older extract and disagrees about the drill.

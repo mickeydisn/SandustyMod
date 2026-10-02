@@ -46,5 +46,5 @@ export const SCAN_CHUNK = 4096;
 export const SETTINGS = {
     timeRange: { type: "number", default: 2, min: 1, max: 1440, step: 1 },
     maxCountSave: { type: "number", default: 120, min: 10, max: 2000, step: 10 },
-    historyMax: { type: "number", default: 30, min: 5, max: 200, step: 1 },
+    historyMax: { type: "number", default: 30, min: 10, max: 200, step: 10 },
 } as const;

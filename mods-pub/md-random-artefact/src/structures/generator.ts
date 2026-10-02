@@ -27,6 +27,7 @@ import {
     MAX_PROGRESS,
 } from "../constants.ts";
 import { cellHasElement, removeElementAt, resolveElementType } from "../utils/elements.ts";
+import { unlockInBuildMenu } from "../utils/buildMenu.ts";
 import { spawnRandomArtefact } from "../utils/spawn.ts";
 
 interface StructurePos {
@@ -144,13 +145,21 @@ export function registerGenerator(
     });
     // Put it in the build menu.
     //
-    // The engine exposes exactly two members here — `add` and `remove`
-    // (bundel 46781). There is no `unlockById` / `unlockByType`, so those
-    // calls were silent no-ops. `add` is also what makes the id show up
-    // regardless of how the menu filters.
-    try {
-        api.player.buildings.add?.(GENERATOR_ID);
-    } catch { /* best-effort */ }
+    // The build window does NOT use `alwaysUnlocked` — that flag is only read
+    // while walking the vanilla table (bundel 3268), so a mod id never benefits
+    // from it. The window reads `store.player.buildings` directly (bundel
+    // 151647), so membership in that array is the only thing that lists a mod
+    // structure.
+    //
+    // The real members of `api.player.buildings` are `unlockById`,
+    // `unlockByType` and `removeById` — there is **no `add`**. An earlier
+    // version of this comment claimed the opposite and called
+    // `add?.(GENERATOR_ID)`; the optional call silently did nothing, so the
+    // generator registered fine but never appeared in the menu. `add` is kept
+    // below purely as a fallback for builds that only expose it.
+    if (!unlockInBuildMenu(GENERATOR_ID)) {
+        console.warn(`${LOG} generator not unlocked — build menu will hide it`);
+    }
 
     // ── Enforce max 1 creator — LIVE structures only (ignore buffer / save counts) ──
     const countLiveGenerators = (): number => {

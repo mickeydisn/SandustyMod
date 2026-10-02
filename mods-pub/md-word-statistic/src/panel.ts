@@ -5,6 +5,7 @@
  * editable and persisted via mod storage. Zero-count rows stay hidden in lists.
  */
 import {
+    applyGraphMode,
     CfgSection,
     ChromeRows,
     colorFromId,
@@ -17,9 +18,10 @@ import {
     isToolSelected,
     KpiCard,
     maxCount,
-    NumberRow,
     posStyle,
+    rawPointsFor,
     React,
+    renderTrackingSection,
     resolveSelection,
     ROOT_CLASS,
     SelectableList,
@@ -30,7 +32,7 @@ import {
     toggleSelection,
 } from "@sandmd/ui";
 import type { KpiCardModel, StyleObj } from "@sandmd/ui";
-import { ITEM_ID, SETTINGS, VERSION } from "./constants.ts";
+import { ITEM_ID } from "./constants.ts";
 import type {
     CardItemKind,
     CardItemRef,
@@ -419,40 +421,22 @@ export function StatisticPanel(): unknown {
     );
 }
 
-/** Sum of card items in a raw snapshot (last vs N-1 trend). */
-function cardTotalInSnapshot(
-    snap: import("./types.ts").RawStatsSnapshot | null | undefined,
-    items: { kind: string; id: string }[],
-): number {
-    if (!snap) return 0;
-    let s = 0;
-    for (const it of items) {
-        const key = it.kind === "element"
-            ? "elements"
-            : it.kind === "terrain"
-            ? "terrains"
-            : "structures";
-        s += mapGet(snap[key as "elements" | "terrains" | "structures"], it.id);
-    }
-    return s;
-}
-
-/** Δ between latest history sample and the one before (N vs N-1). */
-function miniCardTrend(g: { items: { kind: string; id: string }[] }): number | null {
-    const hist = state.snapshot?.statsHistory ?? loadHistory();
-    if (hist.length < 2) return null;
-    const last = hist[hist.length - 1]!;
-    const prev = hist[hist.length - 2]!;
-    return cardTotalInSnapshot(last, g.items) - cardTotalInSnapshot(prev, g.items);
+/**
+ * Δ shown on the minimised card strip.
+ *
+ * This used to recompute the last-two-samples difference here, from the live
+ * history, while `resolveCards` computed a different number (against the stored
+ * reference) for the same card — so the strip and the full card could disagree.
+ * Both now read the card's own delta, which is the last two points.
+ */
+function miniCardTrend(g: { delta: number | null }): number | null {
+    return g.delta;
 }
 
 function renderConfigPanel(
     e: (...args: unknown[]) => unknown,
     openEditor: () => void,
 ): unknown {
-    const modMins = getConfig().timeRange;
-    const mins = state.autoMinutes ?? modMins;
-
     return e(
         "div",
         { style: styles.cfgWrap },
@@ -463,42 +447,14 @@ function renderConfigPanel(
             zoomRange: [0.6, 1.4],
             alphaRange: [0.35, 1],
         }),
-        CfgSection("Auto refresh", 14),
-        NumberRow("Every", mins, {
-            min: SETTINGS.timeRange.min,
-            max: SETTINGS.timeRange.max,
-            step: SETTINGS.timeRange.step,
-            def: SETTINGS.timeRange.default,
-            suffix: " min",
-            onChange: (v) => {
-                // Keep the panel override and the mod setting in step; the
-                // override wins in intervalMs() until it is cleared.
-                state.autoMinutes = v;
-                store.saveAutoMinutes(v);
-                setSetting("timeRange", v);
-                reconfigureAutoRefresh();
-                bump();
-            },
-        }),
-        NumberRow("Max data points", getConfig().maxCountSave, {
-            min: SETTINGS.maxCountSave.min,
-            max: SETTINGS.maxCountSave.max,
-            step: SETTINGS.maxCountSave.step,
-            def: SETTINGS.maxCountSave.default,
-            onChange: (v) => {
-                setSetting("maxCountSave", v);
-                bump();
-            },
-        }),
-        NumberRow("Display points", getConfig().historyMax, {
-            min: SETTINGS.historyMax.min,
-            max: SETTINGS.historyMax.max,
-            step: SETTINGS.historyMax.step,
-            def: SETTINGS.historyMax.default,
-            onChange: (v) => {
-                setSetting("historyMax", v);
-                bump();
-            },
+        // `timeRange` doubles as the scan interval, so changing it has to
+        // restart the timer; the other two only affect how history is stored
+        // and drawn. There is no separate panel override any more — the value
+        // below is persistent, so a second copy could only drift.
+        renderTrackingSection(getConfig(), (key, v) => {
+            setSetting(key, v);
+            if (key === "timeRange") reconfigureAutoRefresh();
+            bump();
         }),
         CfgSection("KPI cards", 14),
         e(
@@ -590,6 +546,11 @@ function kindKeyOfItem(kind: string): "elements" | "structures" | "terrains" {
 /**
  * Same series builder as the Elements / Structures / Terrains list graphs.
  * Always reads live history + seriesForId — never a pre-baked / mutated array.
+ *
+ * `seriesForId` hands back the raw accumulated counts; `applyGraphMode` then
+ * decides whether the plot shows those totals or the change between scans. The
+ * extra sample `rawPointsFor` asks for in `diff` mode is what keeps the plot at
+ * full width — a diff series loses its first value to the subtraction.
  */
 function seriesFromHistory(
     history: import("./types.ts").RawStatsSnapshot[],
@@ -598,12 +559,20 @@ function seriesFromHistory(
     label: string,
     color: string,
 ): { id: string; label: string; color: string; values: number[] } {
-    return {
+    const mode = state.graphMode;
+    const raw = seriesForId(
+        history,
+        kind,
         id,
-        label,
-        color,
-        values: seriesForId(history, kind, id, getConfig().historyMax),
-    };
+        rawPointsFor(getConfig().historyMax, mode),
+    );
+    return { id, label, color, values: applyGraphMode(raw, mode) };
+}
+
+/** Flip the graph between accumulated totals and change per scan. */
+function toggleGraphMode(): void {
+    state.graphMode = state.graphMode === "total" ? "diff" : "total";
+    bump();
 }
 
 /**
@@ -643,6 +612,9 @@ function renderResourceCard(
         color: g.color,
         total: g.total,
         delta: g.delta,
+        // Explicit rather than relying on the default, so the word mod's badge
+        // says what its numbers mean: change between two scans.
+        deltaLabel: "scan",
         items: g.items.map((it, i) => ({
             label: it.label,
             count: it.count,
@@ -973,6 +945,8 @@ function renderListGraph(
     });
     return GraphBlock({
         title: `History (last ${getConfig().historyMax}) · tick rows below to choose series`,
+        mode: state.graphMode,
+        onModeToggle: toggleGraphMode,
         series,
     });
 }

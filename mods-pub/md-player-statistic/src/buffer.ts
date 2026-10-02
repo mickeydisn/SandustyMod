@@ -2,7 +2,7 @@
  * Live KPI buffer — accumulates counts from player events.
  * Totals are lifetime; session is resettable; history is a rolling window.
  */
-import { api, safe, toIntervals } from "@sandmd/ui";
+import { api, lastDelta, safe, toIntervals } from "@sandmd/ui";
 import { KPI_CATEGORIES, LOG, MOD_ID, SETTINGS } from "./constants.ts";
 import type { HomeCardConfig, KpiBuffer, KpiMap, KpiSnapshot } from "./types.ts";
 
@@ -176,6 +176,12 @@ export function listSubKeys(category: string): { key: string; count: number }[] 
  * `world_items_picked` and `resources_collected` used to share a "Loot" card here.
  * They are still tracked and still have their own default card editor entries —
  * no tab shows them — so a card is the only place they can be seen.
+ *
+ * "Shoot" mirrors the Shoot tab: the two projectile counters that tab breaks
+ * down by projectile type, collapsed to their category totals. A player who has
+ * already saved a card layout does **not** pick this up — `loadCards` only falls
+ * back to the defaults when nothing is stored — so it reaches them via
+ * **Edit cards → Reset defaults**, or by adding it in the editor.
  */
 export function defaultCards(): HomeCardConfig[] {
     return [
@@ -197,6 +203,14 @@ export function defaultCards(): HomeCardConfig[] {
             id: "card-items",
             title: "Items",
             items: [{ category: "items_used", key: "" }],
+        },
+        {
+            id: "card-shoot",
+            title: "Shoot",
+            items: [
+                { category: "projectiles_hit", key: "" },
+                { category: "projectile_fire_structure", key: "" },
+            ],
         },
         {
             id: "card-activity",
@@ -262,7 +276,6 @@ export function resolveCards(
                 : (meta?.label ?? ref.category);
             const color = meta?.color ?? "#94a3b8";
             const count = getCount(ref.category, ref.key || null, "totals");
-            const sessionCount = getCount(ref.category, ref.key || null, "session");
             // Lifetime accumulators — plot the per-interval change, not the
             // running total, or every sparkline is just a rising ramp.
             const series = toIntervals(
@@ -270,6 +283,10 @@ export function resolveCards(
                     .slice(-(displayPoints + 1))
                     .map((s) => s.totals[kpiKey(ref.category, ref.key || null)] ?? 0),
             );
+            // The badge is the last bar of the sparkline above it: the change
+            // between the final two data points. Reading it off the series
+            // rather than the raw samples keeps the two consistent and floors a
+            // counter reset at 0 instead of spiking negative.
             return {
                 category: ref.category,
                 key: ref.key,
@@ -277,12 +294,16 @@ export function resolveCards(
                 color,
                 count,
                 primary: i === 0,
-                delta: sessionCount,
+                delta: lastDelta(series),
                 series,
             };
         });
         const total = items.reduce((s, it) => s + it.count, 0);
-        const delta = items.reduce((s, it) => s + (it.delta ?? 0), 0);
+        // All-null means history is too short to diff at all; keep it null so the
+        // card hides the badge rather than printing a misleading 0.
+        const delta = items.every((it) => it.delta == null)
+            ? null
+            : items.reduce((s, it) => s + (it.delta ?? 0), 0);
         return {
             id: cfg.id,
             title: cfg.title,

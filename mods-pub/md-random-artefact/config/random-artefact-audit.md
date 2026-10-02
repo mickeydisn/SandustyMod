@@ -556,24 +556,80 @@ changes nothing". That is right, but the stronger reason is this: by the time
 Inside the filter predicate that decides what survives (bundel 40443:412-462):
 
 
-#### 17e. `alwaysUnlocked` and `hideFromBuildMenu` are both inert
+#### 17e. `alwaysUnlocked` is inert; `hideFromBuildMenu` is real
 
-Both look like the way to keep a structure out of the build menu, and neither is:
+Three claims in this section were wrong, and the first two are what hid the
+buildings for so long. All three are corrected here.
 
-- `alwaysUnlocked` is read in exactly one place, iterating `Object.keys(Ue)`
-  (bundel 5251:1314-1322). `Ue` is a `const` object literal declared at bundel
-  5251:970 holding the **vanilla** structures. It has no assignment site, so a
-  mod id never enters it and the flag is never read for one.
-- `hideFromBuildMenu` does not appear anywhere in the bundle as a definition
-  field. The engine has no such option for structures.
+**Corrected: `alwaysUnlocked` is inert for a mod id.** It is read in exactly one
+place, iterating `Object.keys(Ue)` (bundel 3268). `Ue` is a `const` object
+literal holding the **vanilla** structures. It has no assignment site, so a mod
+id never enters it and the flag is never read for one. Setting it `true` on a
+mod structure does nothing at all.
 
-The build menu is `getUnlockedTypes()` (bundel 46781:2969), which seeds itself
-from `player.buildings` and then adds the `Ue` entries whose `alwaysUnlocked` is
-set. For a mod structure, **only `player.buildings` membership counts** — which
-is why `hideFromBuildMenu` now withdraws the unlock rather than merely filtering
-this mod's own list. Without that, `unlockStructures` force-unlocked the
-artefact into the menu on every boot, and the player could simply place one by
-hand — which would have made every other protection here moot.
+**Corrected: `hideFromBuildMenu` is a real, read field.** The previous text
+claimed it "does not appear anywhere in the bundle". It does — the build window
+reads it at bundel 151648:
+
+```js
+store.player.buildings.filter(t =>
+    !(V.VI[t] || e.sandkit.mods.structures[t])?.hideFromBuildMenu)
+```
+
+So it filters, but it only ever filters ids that are **already** in
+`player.buildings`. It can hide a structure; it cannot reveal one.
+
+**Corrected: the build menu is not `getUnlockedTypes()`.** The previous text
+named `getUnlockedTypes()` (bundel 3262) as the menu source. That function is
+real but the management window does not use it. The window (`i_`, bundel
+151646-151672) reads `e.store.player.buildings` **directly** and maps each id to
+`V.VI[t] || e.sandkit.mods.structures[t]` — falling back to a placeholder row
+when neither resolves. There is no `alwaysUnlocked` term anywhere in it.
+
+The conclusion survived all of that: **only `player.buildings` membership
+counts.** Which is why keeping the artefact hidden means never unlocking it.
+
+#### 17e-bis. `api.player.buildings` has no `add` — this is what hid the menu
+
+The menu lists nothing that is not in `player.buildings`, and every place this
+mod registered a placeable structure ended with:
+
+```ts
+api.player.buildings.add?.(GENERATOR_ID);
+```
+
+Verified live against the running game (`__sk.apiKeys("player.buildings")`):
+
+```json
+{"unlockById":"fn/1","unlockByType":"fn/1","removeById":"fn/1"}
+```
+
+There is no `add`. `add?.(id)` is an optional call on `undefined`: it returns
+`undefined`, throws nothing, and unlocks nothing. The `catch` never fired, the
+registration log lines looked healthy, and the structures *were* registered —
+`sandkit.mods.structures` held all six ids. Only the array the menu reads was
+empty:
+
+| | before fix | after fix |
+|---|---|---|
+| `sandkit.mods.structures` | 6 artefact ids | 6 artefact ids |
+| `store.player.buildings` | **0** | **5** (hidden `artefact` excluded) |
+
+This is the exact failure the header of this document warns about: *silence
+means "did not compile"*. Optional chaining turns a missing method into a
+silent no-op, which is indistinguishable from success unless you read back the
+thing you were trying to change.
+
+Every other mod in this repo got it right — `md-channel-pads`,
+`md-big-brother` and `md-my-hown-mod` all call `unlockById` and keep `add?.()`
+only as a `catch` fallback. This mod had it exactly backwards, with a comment
+asserting the opposite ("the engine exposes exactly two members — `add` and
+`remove`… there is no `unlockById`"). A confident wrong comment is worse than
+no comment; it is what the next reader trusts.
+
+The fix is `src/utils/buildMenu.ts::unlockInBuildMenu`, which calls
+`unlockById`, falls back to `add`, and then **reads `player.buildings` back** to
+confirm the id actually landed — turning the silent no-op into a loud one.
 
 #### 17f. Boot order is not the problem it looked like
 

@@ -131,6 +131,62 @@ export function toIntervals(values: number[]): number[] {
     return out;
 }
 
+/**
+ * Which quantity a history graph is plotting.
+ *
+ * - `total` — the accumulated running total at each sample. Only ever rises, so
+ *   for lifetime counters it is a rising ramp that says little about activity.
+ * - `diff`  — the change between consecutive samples, i.e. what happened during
+ *   one sampling interval. This is what shows real activity.
+ *
+ * The two mods used to disagree: `md-player-statistic` always plotted `diff`,
+ * `md-word-statistic` always plotted `total`. Rather than pick a winner, both
+ * now expose the choice via the toggle in the graph's top-right corner.
+ */
+export type GraphMode = "total" | "diff";
+
+/** Button captions. Short, because the button is small. */
+export const GRAPH_MODE_LABELS: Record<GraphMode, string> = {
+    total: "Total",
+    diff: "Diff",
+};
+
+/** Hover text explaining what the button will switch *to*. */
+export const GRAPH_MODE_HINTS: Record<GraphMode, string> = {
+    total: "Accumulated totals — each point is the running total. Click for change per interval.",
+    diff: "Change per sampling interval. Click for accumulated totals.",
+};
+
+/** How many raw history points a mode needs to render `points` plotted values. */
+export function rawPointsFor(points: number, mode: GraphMode): number {
+    // A diff series drops its first value: the first sample has no predecessor
+    // to subtract. Reading one extra point keeps the plot at full width.
+    return mode === "diff" ? points + 1 : points;
+}
+
+/**
+ * Project raw history samples onto the requested view.
+ *
+ * Same transform for both mods, which is what makes the shared toggle possible.
+ * `toIntervals` floors at zero, so a counter reset reads as a flat interval
+ * rather than a negative spike.
+ */
+export function applyGraphMode(values: number[], mode: GraphMode): number[] {
+    return mode === "diff" ? toIntervals(values) : values;
+}
+
+/**
+ * Change between the last two samples, oldest → newest.
+ *
+ * Returns `null` when there are fewer than two samples. A card cannot show a
+ * rate it has no measurement for, and printing a `0` there would read as
+ * "nothing happened" rather than "not enough data yet".
+ */
+export function lastDelta(values: number[]): number | null {
+    if (values.length < 2) return null;
+    return (values[values.length - 1] ?? 0) - (values[values.length - 2] ?? 0);
+}
+
 export interface KpiCardItem {
     label: string;
     count: number;
@@ -145,8 +201,20 @@ export interface KpiCardModel {
     /** Accent used for the left border, total and sparklines. */
     color: string;
     total: number;
-    /** Change this session; null when there is no baseline. */
+    /**
+     * Change over the most recent sampling interval; null when there is no
+     * baseline (too few history points to diff).
+     */
     delta: number | null;
+    /**
+     * Caption printed after the delta, e.g. `+12 interval`.
+     *
+     * Defaults to `"interval"`. The badge used to read `session`, which was
+     * accurate when this was a whole-session counter but became a lie once the
+     * delta became a per-interval diff — a caption has to describe what the
+     * number actually is.
+     */
+    deltaLabel?: string;
     items: KpiCardItem[];
 }
 
@@ -156,10 +224,23 @@ export interface KpiCardModel {
  *
  * Shared so `md-player-statistic` and `md-word-statistic` show the same card
  * even though their underlying data models differ.
+ *
+ * ## Every number here is rounded to a whole
+ *
+ * `formatCount` keeps one decimal by default, because several raw KPIs are
+ * fractions — `distance_walked` is `pixels ÷ 16`, and interval series are
+ * differences of totals. A card is a headline figure though, and "1,234.5
+ * shots" or "12.7 collisions" reads as noise or a bug, not a statistic. So the
+ * total, the session delta and each row count are passed through `Math.round`
+ * first; `formatCount` then prints them as plain integers.
+ *
+ * Rounding is display-only. The stored counters and the sparkline series keep
+ * their full precision, so nothing is lost and the graphs stay accurate.
  */
 export function KpiCard(card: KpiCardModel): unknown {
     const e = h;
     if (!e) return null;
+    const deltaLabel = card.deltaLabel ?? "interval";
     return e(
         "div",
         { key: card.id, style: { ...styles.card, borderLeftColor: card.color } },
@@ -170,7 +251,7 @@ export function KpiCard(card: KpiCardModel): unknown {
             e(
                 "span",
                 { style: { ...styles.cardTotal, color: card.color } },
-                formatCount(card.total),
+                formatCount(Math.round(card.total)),
             ),
             card.delta != null && card.delta !== 0
                 ? e(
@@ -180,10 +261,15 @@ export function KpiCard(card: KpiCardModel): unknown {
                             ...styles.cardDelta,
                             color: card.delta > 0 ? COLORS.good : COLORS.danger,
                         },
+                        // Two letters of context that the caption alone cannot
+                        // carry: which two points were subtracted.
+                        title:
+                            `Change between the last two data points — one sampling interval. ` +
+                            `Hover the graph for the ${card.items.length} item trend.`,
                     },
                     card.delta > 0
-                        ? `+${formatCount(card.delta)} session`
-                        : `${formatCount(card.delta)} session`,
+                        ? `+${formatCount(Math.round(card.delta))} ${deltaLabel}`
+                        : `${formatCount(Math.round(card.delta))} ${deltaLabel}`,
                 )
                 : null,
         ),
@@ -199,7 +285,7 @@ export function KpiCard(card: KpiCardModel): unknown {
                     e(
                         "span",
                         { style: { ...styles.rowCount, color: it.color } },
-                        formatCount(it.count),
+                        formatCount(Math.round(it.count)),
                     ),
                 )
             ),
@@ -215,16 +301,74 @@ export interface GraphBlockOptions {
     emptyText?: string;
     width?: number;
     height?: number;
+    /** Current view. Omit (with no `onModeToggle`) to hide the toggle. */
+    mode?: GraphMode;
+    /** Flips `mode`. Omit to render a plain, fixed-mode graph. */
+    onModeToggle?: () => void;
 }
 
-/** The bordered chart panel with an optional heading. */
+/**
+ * The bordered chart panel with an optional heading and an optional view toggle
+ * in the top-right corner.
+ *
+ * The toggle is omitted entirely unless both `mode` and `onModeToggle` are given,
+ * so a caller that has only one view never renders a button that does nothing.
+ */
 export function GraphBlock(opts: GraphBlockOptions): unknown {
     const e = h;
     if (!e) return null;
+
+    const toggle = opts.mode && opts.onModeToggle
+        ? e(
+            "button",
+            {
+                key: "graphMode",
+                style: {
+                    ...styles.button,
+                    padding: "2px 9px",
+                    fontSize: 10,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: COLORS.dim,
+                    flexShrink: 0,
+                },
+                // The hint describes the view you get by clicking, not the one
+                // you are already looking at.
+                title: GRAPH_MODE_HINTS[opts.mode === "total" ? "diff" : "total"],
+                onClick: opts.onModeToggle,
+            },
+            GRAPH_MODE_LABELS[opts.mode],
+        )
+        : null;
+
+    const heading = opts.title || toggle
+        ? e(
+            "div",
+            {
+                style: {
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                },
+            },
+            // `flex: 1` lets a long title wrap instead of pushing the toggle off
+            // the edge of the block.
+            opts.title
+                ? e(
+                    "div",
+                    { style: { ...styles.groupTitle, marginBottom: 0, flex: 1 } },
+                    opts.title,
+                )
+                : null,
+            toggle,
+        )
+        : null;
+
     return e(
         "div",
         { style: styles.graphBlock },
-        opts.title ? e("div", { style: styles.groupTitle }, opts.title) : null,
+        heading,
         opts.series.length === 0
             ? e(
                 "div",

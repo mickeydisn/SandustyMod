@@ -33,6 +33,7 @@ import {
     removeElementAt,
     resolveElementType,
 } from "../utils/elements.ts";
+import { unlockInBuildMenu } from "../utils/buildMenu.ts";
 import { runTerrainStamp } from "../utils/iconTerrain.ts";
 
 interface StructurePos {
@@ -118,9 +119,9 @@ export function registerTerrainCollector(
         },
     });
 
-    try {
-        api.player.buildings.add?.(TERRAIN_COLLECTOR_ID);
-    } catch { /* best-effort */ }
+    if (!unlockInBuildMenu(TERRAIN_COLLECTOR_ID)) {
+        console.warn(`${LOG} terrain collector not unlocked — build menu will hide it`);
+    }
 
     // Max 1
     try {

@@ -43,7 +43,8 @@ export const DESC_KEY = `mods|${MOD_ID}|tool|desc`;
 export const TOOL_NAME = "Player Statistic";
 export const TOOL_DESC = "<b>Player Statistic</b> — live KPI tracker of your actions.<br/>" +
     "Counts <i>structures placed / removed / moved</i>, <i>items used</i>, " +
-    "<i>terrain dug</i>, <i>pickups</i> and <i>resources collected</i>.<br/>" +
+    "<i>projectile hits</i>, <i>terrain dug</i>, <i>pickups</i> and " +
+    "<i>resources collected</i>.<br/>" +
     "Home <b>KPI cards</b> are fully configurable.<br/>" +
     '<span style="opacity:0.85">Select the tool to open the overlay · lock it to keep it open.</span>';
 
@@ -67,13 +68,13 @@ export const SETTINGS = {
         type: "boolean",
         default: true,
     },
-    /** Points rendered on sparklines / charts. */
+    /** Points rendered on sparklines / charts. Steps by 10. */
     historyMax: {
         type: "number",
         default: 30,
-        min: 5,
+        min: 10,
         max: 200,
-        step: 1,
+        step: 10,
     },
     /**
      * Sample interval in minutes — one data point is recorded every N minutes.
@@ -106,6 +107,8 @@ export type KpiCategory =
     | "structures_removed"
     | "structures_moved"
     | "items_used"
+    | "projectiles_hit"
+    | "projectile_fire_structure"
     | "terrain_destroyed"
     | "world_items_picked"
     | "resources_collected"
@@ -118,6 +121,8 @@ export const KPI_CATEGORIES: { id: KpiCategory; label: string; color: string }[]
     { id: "structures_removed", label: "Structures removed", color: "#f87171" },
     { id: "structures_moved", label: "Structures moved", color: "#60a5fa" },
     { id: "items_used", label: "Items used", color: "#fbbf24" },
+    { id: "projectiles_hit", label: "Projectile hits", color: "#fb7185" },
+    { id: "projectile_fire_structure", label: "Fire over structure", color: "#f59e0b" },
     { id: "terrain_destroyed", label: "Terrain dug", color: "#a78bfa" },
     { id: "world_items_picked", label: "World items picked", color: "#34d399" },
     { id: "resources_collected", label: "Resources collected", color: "#f472b6" },

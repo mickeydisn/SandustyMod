@@ -1,9 +1,22 @@
 /**
- * Runtime mod settings from configSchema (api.settings).
+ * Runtime mod settings from configSchema (api.settings) plus the persistent
+ * tracking store.
+ *
+ * ⚠️ `api.settings` is **read-only**. The engine exposes `get`, `getAll` and
+ * `onChange` — there is no `set`. This file used to call
+ * `api.settings.set?.(key, value)` and `set(… "${MOD_ID}.${key}")`, which were
+ * both silent no-ops, and then re-read the engine bag on every `getConfig()`.
+ * Because nothing was ever written, "Max data points" and "Display points"
+ * reverted the instant the panel redrew: the steppers looked frozen and the mod
+ * had no `externalModSettings` entry at all.
+ *
+ * `timeRange`, `maxCountSave` and `historyMax` therefore persist through
+ * `api.storage` via the shared tracking store (see `@sandmd/ui`'s `tracking.ts`),
+ * seeded from the engine bag on the first read. `enabled` is engine-owned and
+ * stays a read — it can only be toggled from the game's mod-settings screen.
  */
-import { api, safe } from "@sandmd/ui";
-import { LOG, MOD_ID, SETTINGS } from "./constants.ts";
-import { loadPanelAutoMinutes } from "./uiStore.ts";
+import { api, createTrackingStore, safe } from "@sandmd/ui";
+import { LOG, MOD_ID } from "./constants.ts";
 
 export interface ModConfig {
     enabled: boolean;
@@ -15,49 +28,52 @@ export interface ModConfig {
     historyMax: number;
 }
 
+/**
+ * Persistent home for the three numbers the engine will not let us write.
+ *
+ * `autoRefreshMinutes` was the pre-`timeRange` name for the scan interval;
+ * it is still honoured so an upgrade does not reset everyone's cadence.
+ */
+export const tracking = createTrackingStore(MOD_ID, "tracking", {
+    timeRange: "autoRefreshMinutes",
+});
+
+/**
+ * Adopt the cadence the player already chose under the old panel override.
+ *
+ * The "Every" row used to write two places: the mod setting (a no-op) and its own
+ * `panelAutoMinutes` storage key, which `intervalMs()` actually read. Now that
+ * `timeRange` persists properly there is one source of truth, so the old key is
+ * folded in once — otherwise everyone who tuned the cadence would silently drop
+ * back to the default on upgrade.
+ *
+ * Called from `main.ts` rather than at module load: `uiStore` imports `data`,
+ * which imports this module, so importing it here would create a cycle.
+ */
+export function adoptLegacyAutoMinutes(legacyMinutes: number | null): void {
+    if (legacyMinutes == null) return;
+    tracking.writeIfAbsent("timeRange", legacyMinutes);
+}
+
 function readBool(name: string, fallback: boolean): boolean {
-    const v = safe(() => api.settings.get(name));
+    const bag = safe(
+        () => api.settings?.getAll?.() as Record<string, unknown> | undefined,
+        undefined,
+    );
+    const v = bag && typeof bag === "object" ? bag[name] : undefined;
     if (typeof v === "boolean") return v;
     if (v === "true" || v === 1) return true;
     if (v === "false" || v === 0) return false;
-    // Namespaced fallbacks some builds use
-    const v2 = safe(() => api.settings.get(`${MOD_ID}.${name}`));
-    if (typeof v2 === "boolean") return v2;
     return fallback;
 }
 
-function readNumber(name: string, fallback: number, min: number, max: number): number {
-    let v = safe(() => api.settings.get(name));
-    if (typeof v !== "number" || !Number.isFinite(v)) {
-        v = safe(() => api.settings.get(`${MOD_ID}.${name}`));
-    }
-    if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
-    return Math.min(max, Math.max(min, Math.round(v)));
-}
-
 export function getConfig(): ModConfig {
+    const t = tracking.read();
     return {
         enabled: readBool("enabled", true),
-        timeRange: readNumber(
-            "timeRange",
-            // Pre-`timeRange` installs stored the scan interval under this
-            // name; honour it so an upgrade does not reset everyone's cadence.
-            readNumber("autoRefreshMinutes", SETTINGS.timeRange.default, 1, SETTINGS.timeRange.max),
-            SETTINGS.timeRange.min,
-            SETTINGS.timeRange.max,
-        ),
-        maxCountSave: readNumber(
-            "maxCountSave",
-            SETTINGS.maxCountSave.default,
-            SETTINGS.maxCountSave.min,
-            SETTINGS.maxCountSave.max,
-        ),
-        historyMax: readNumber(
-            "historyMax",
-            SETTINGS.historyMax.default,
-            SETTINGS.historyMax.min,
-            SETTINGS.historyMax.max,
-        ),
+        timeRange: t.timeRange,
+        maxCountSave: t.maxCountSave,
+        historyMax: t.historyMax,
     };
 }
 
@@ -74,9 +90,7 @@ export function autoRefreshAlwaysOn(): true {
 }
 
 export function intervalMs(): number {
-    const panelMin = loadPanelAutoMinutes();
-    const mins = panelMin ?? getConfig().timeRange;
-    return mins * 60 * 1000;
+    return tracking.read().timeRange * 60 * 1000;
 }
 
 export function onConfigChange(cb: (cfg: ModConfig) => void): void {
@@ -84,6 +98,9 @@ export function onConfigChange(cb: (cfg: ModConfig) => void): void {
     safe(() => {
         api.settings.onChange?.((values: Record<string, unknown>) => {
             void values;
+            // Re-read both sources: the engine bag for `enabled`, and the
+            // tracking store so an external edit is not masked by its cache.
+            tracking.refresh();
             cb(getConfig());
         });
     });
@@ -91,23 +108,24 @@ export function onConfigChange(cb: (cfg: ModConfig) => void): void {
 }
 
 /**
- * Write a setting back to the mod's bag.
+ * Write a setting.
  *
- * The local cache is not stored here (this mod re-reads on demand), but the
- * host's `onChange` does not reliably fire for a mod-initiated write, so we
- * notify listeners directly — otherwise the panel keeps showing the old value
- * until the next reload.
+ * The three numbers go through the tracking store, which clamps and persists
+ * them to `api.storage`. `enabled` is engine-owned and cannot be written from a
+ * mod, so a call for it only refreshes the cache.
  */
 export function setSetting<K extends keyof ModConfig>(key: K, value: ModConfig[K]): void {
-    safe(() => api.settings?.set?.(key as string, value));
-    safe(() => api.settings?.set?.(`${MOD_ID}.${key as string}`, value));
-    configListeners.forEach((cb) => {
+    if (key === "timeRange" || key === "maxCountSave" || key === "historyMax") {
+        tracking.write(key, Number(value));
+    }
+    const cfg = getConfig();
+    for (const cb of configListeners) {
         try {
-            cb(getConfig());
+            cb(cfg);
         } catch (e) {
             console.warn(`${LOG} config listener error`, e);
         }
-    });
+    }
 }
 
 /** Listeners notified by both `onConfigChange` and `setSetting`. */

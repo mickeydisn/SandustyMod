@@ -23,6 +23,15 @@ const ENUMS = {
     // Trimmed but shape-accurate: numeric, name→value, no reverse map.
     StructureType: { ConveyorLeft: 1, ConveyorRight: 2, Foundation: 11 },
     ItemId: { Shovel: 1, Grabber: 2, GrapplingHook: 4, RocketLauncher: 8, MegaShotgun: 16 },
+    ProjectileType: {
+        Bullet: 1,
+        Rocket: 2,
+        GrapplingHook: 3,
+        Fire: 4,
+        Digger: 5,
+        Mod: 6,
+    },
+    ActionType: { Weapon: 1, Building: 2, Tool: 3, Mod: 4 },
 };
 
 /**
@@ -32,13 +41,36 @@ const ENUMS = {
  */
 let namedDefinitions: Record<string, { name?: string }> = {};
 
+/**
+ * Item definitions keyed by their **string** id, which is what the `item:use`
+ * hook actually reports — and the game's own translations for those
+ * `nameKey`s. `i18n.t` echoes an unknown key back, exactly as the host does.
+ */
+const ITEM_DEFS: Record<string, { nameKey?: string; name?: string }> = {
+    laser: { nameKey: "items|laser|name" },
+    drill: { nameKey: "items|drill|name" },
+    "md-excavated-all:tool": { nameKey: "mods|excavatedAll|tool|name" },
+};
+
+const I18N: Record<string, string> = {
+    "items|laser|name": "Laser",
+    "items|drill|name": "Drill",
+    "mods|excavatedAll|tool|name": "Total Excavator",
+};
+
 globalThis.sandkit = {
     api: {
         structures: {
             getDefinitionByType: (t: number) => namedDefinitions[`${t}:definition`],
         },
         items: {
-            getDefinitionById: (id: number) => namedDefinitions[`${id}:definition`],
+            // Real lookups are by string id; the numeric form is kept so the
+            // legacy-row path stays covered.
+            getDefinitionById: (id: string | number) =>
+                ITEM_DEFS[id as string] ?? namedDefinitions[`${id}:definition`],
+        },
+        i18n: {
+            t: (key: string) => I18N[key] ?? key,
         },
     },
     enums: ENUMS,
@@ -81,6 +113,69 @@ Deno.test("a registered name beats the enum member name", () => {
 Deno.test("a mod id is never renamed", () => {
     assertEquals(displayNameFor("structures_placed", "mdmy.furnace"), "mdmy.furnace");
     assertEquals(displayNameFor("items_used", "mdmy.probe"), "mdmy.probe");
+});
+
+/**
+ * Item rows are keyed by the **string** id the `item:use` hook reports, so the
+ * numeric `ItemId` path above only ever sees rows written before that was true.
+ * These pin the path real data actually takes.
+ */
+Deno.test("a registered item id reads as its game name", () => {
+    assertEquals(displayNameFor("items_used", "laser"), "Laser");
+    assertEquals(displayNameFor("items_used", "drill"), "Drill");
+});
+
+Deno.test("a mod item id resolves through its own nameKey", () => {
+    // `<modId>:<localId>` is the id; the mod's registered translation is the
+    // label, which is the only way a modded tool ever gets a readable name.
+    assertEquals(displayNameFor("items_used", "md-excavated-all:tool"), "Total Excavator");
+});
+
+Deno.test("an unregistered item id stays as itself", () => {
+    // The owning mod is disabled or the id was never registered. Inventing a
+    // name from the id would be a guess; the raw id at least cannot be wrong.
+    assertEquals(displayNameFor("items_used", "someGoneMod:tool"), "someGoneMod:tool");
+    assertEquals(displayNameFor("items_used", "flashlight"), "flashlight");
+});
+
+Deno.test("an untranslated nameKey is not shown as a key", () => {
+    // `i18n.t` echoes an unknown key back. Rendering that would put
+    // "items|…|name" in the list, which is worse than the id.
+    ITEM_DEFS.untranslated = { nameKey: "items|untranslated|name" };
+    try {
+        assertEquals(displayNameFor("items_used", "untranslated"), "untranslated");
+    } finally {
+        delete ITEM_DEFS.untranslated;
+    }
+});
+
+/**
+ * Shoot tab.
+ *
+ * Both projectile categories are keyed by `projectile.type`, which is the
+ * numeric `ProjectileType` enum — so both need the same reverse-scan the other
+ * numeric categories use, or every row reads as a bare number.
+ */
+Deno.test("a projectile type reads as its name on both shoot categories", () => {
+    for (const cat of ["projectiles_hit", "projectile_fire_structure"]) {
+        assertEquals(displayNameFor(cat, "1"), "Bullet", cat);
+        assertEquals(displayNameFor(cat, "2"), "Rocket", cat);
+        assertEquals(displayNameFor(cat, "3"), "Grappling Hook", cat);
+        assertEquals(displayNameFor(cat, "4"), "Fire", cat);
+        assertEquals(displayNameFor(cat, "5"), "Digger", cat);
+    }
+});
+
+Deno.test("an unknown projectile type falls back to its number", () => {
+    assertEquals(displayNameFor("projectiles_hit", "99"), "99");
+    assertEquals(displayNameFor("projectile_fire_structure", "99"), "99");
+});
+
+Deno.test("ItemId is not used to name projectiles", () => {
+    // Both enums start at 1 and overlap (Bullet=1 vs Shovel=1). Resolving a
+    // projectile through `ItemId` would silently report "Shovel" for a bullet.
+    assertEquals(displayNameFor("projectiles_hit", "1"), "Bullet");
+    assertEquals(displayNameFor("items_used", "1"), "Shovel");
 });
 
 Deno.test("a number no enum member explains falls back to itself", () => {
@@ -173,6 +268,18 @@ Deno.test("there is an Items card, and no Loot card", () => {
         !cards.some((c) => c.id === "card-loot"),
         "card-loot is back; it was removed deliberately",
     );
+});
+
+Deno.test("there is a Shoot card covering both projectile counters", () => {
+    // The Shoot tab is the only breakdown by projectile type; without a card
+    // the two categories would still be reachable, but a new player would have
+    // no reason to think the Shoot tab is backed by a Home card too.
+    const shoot = defaultCards().find((c) => c.id === "card-shoot");
+    assert(shoot, "no card-shoot in the defaults");
+    assertEquals(shoot!.items.map((i) => i.category), [
+        "projectiles_hit",
+        "projectile_fire_structure",
+    ]);
 });
 
 Deno.test("card ids stay unique", () => {

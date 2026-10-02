@@ -44,11 +44,16 @@ export type { BreakdownOptions, KpiUnits, NumberRowOptions } from "./src/section
 
 // Selectable list + graph
 export {
+    applyGraphMode,
     colorFromId,
     defaultTopIds,
+    GRAPH_MODE_HINTS,
+    GRAPH_MODE_LABELS,
     GraphBlock,
     KpiCard,
+    lastDelta,
     MiniSparkline,
+    rawPointsFor,
     resolveSelection,
     SelectableList,
     toggleSelection,
@@ -56,6 +61,7 @@ export {
 } from "./src/selectablelist.ts";
 export type {
     GraphBlockOptions,
+    GraphMode,
     KpiCardItem,
     KpiCardModel,
     ListRow,
@@ -73,6 +79,16 @@ export {
     Tabs,
 } from "./src/chrome.ts";
 export type { ChromeCtx, ChromeRowsOptions, HeaderOptions, TabsOptions } from "./src/chrome.ts";
+
+// Tracking settings section
+export {
+    createTrackingStore,
+    renderTrackingSection,
+    TRACKING_FIELDS,
+    TRACKING_SECTION,
+    trackingKeys,
+} from "./src/tracking.ts";
+export type { TrackingConfig, TrackingField, TrackingKey, TrackingStore } from "./src/tracking.ts";
 
 // State + persistence
 export { createPanelState } from "./src/state.ts";

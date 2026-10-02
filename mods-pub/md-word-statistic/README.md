@@ -55,7 +55,7 @@ keys from `uiStore.ts` (`UI_POS_KEY`, `UI_ZOOM_KEY`, `UI_ALPHA_KEY`, `UI_LOCK_KE
 | Terrains   | `terrains.getRegisteredTypes`, `terrains.getTypeAtCell`, `terrains.getTypeById`, `terrains.getTypeFromId`, `terrains.getIdByType`, `terrains.getIdFromType`, `terrains.getDefinitionByType`, `terrains.getNameByType`, `terrains.getColorByType`, `terrains.getMetaColorByType` |
 | Items      | `items.register`, `items.isActiveById`, `player.inventory`                                                                                                                                                                                                                      |
 | UI         | `ui.overlays`, `ui.inject`, `ui.toast`, `i18n.register`, `sandkit.react`                                                                                                                                                                                                        |
-| Settings   | `settings.get`, `settings.set`, `settings.onChange`                                                                                                                                                                                                                             |
+| Settings   | `settings.get`, `settings.getAll`, `settings.onChange` — **read-only; there is no `settings.set`**                                                                                                                  |
 | Storage    | `storage.get`, `storage.set`                                                                                                                                                                                                                                                    |
 | Lifecycle  | `events.on("game:ready")`, `events.on("action:changed")`                                                                                                                                                                                                                        |
 | Registries | `sandkit.state.store.player.buildings` / `structures` (cleanup prefix scans)                                                                                                                                                                                                    |
@@ -69,6 +69,60 @@ everything prefixed with its id.
 
 Per-key values for this mod:
 [`doc/doc_ia/MOD_SETTINGS.md`](../../doc/doc_ia/MOD_SETTINGS.md#md-word-statistic).
+
+### Tracking Configuration
+
+The ⚙️ tab has a single **Tracking Configuration** section, shared verbatim with
+`md-player-statistic` (`renderTrackingSection` in `@sandmd/ui`), holding the three numbers that drive
+history: **Every** (`timeRange`), **Max data points** (`maxCountSave`) and **Display points**
+(`historyMax`). Both history sizes step by **10** — they are window sizes, not precision knobs.
+Changing *Every* restarts the scan timer immediately.
+
+> ⚠️ These rows used to be unchangeable. `api.settings` has **no `set` method** — a mod can read its
+> `configSchema` but never write it — so `setSetting` was writing to nothing. This mod kept no cache,
+> so `getConfig()` re-read the engine bag and handed back the old number: the steppers looked frozen,
+> and the mod never created an `externalModSettings` entry at all.
+
+They now persist through `api.storage` (one key, `tracking`), seeded from the engine bag on the first
+read so an existing in-game setting is adopted rather than overwritten. Two older names are migrated
+in on upgrade: the pre-`timeRange` `autoRefreshMinutes` engine setting, and the panel's own
+`panelAutoMinutes` override (folded in once, so a later edit is never clobbered). `enabled` stays an
+engine-owned read.
+
+`src/tracking.test.ts` covers all of this — its stub deliberately has no `settings.set`, so routing
+these numbers back through the engine fails the suite.
+
+### Graph views: total vs diff
+
+Every list graph (Elements / Structures / Terrains) carries a **TOTAL / DIFF** button in its
+top-right corner:
+
+- **Total** — the accumulated census count at each scan. This is the default here, and what the mod
+  always plotted: a resource count is meaningful as a running total.
+- **Diff** — the change between consecutive scans, i.e. what moved since the last refresh.
+
+Hover the button to see what clicking will switch to. The choice applies to every graph in the panel
+and lives in panel state, so it resets when the game restarts.
+
+This mod and `md-player-statistic` previously disagreed — this one plotted totals, that one plotted
+per-interval change — so both now share `applyGraphMode` and each defaults to what it was already
+showing. `rawPointsFor` reads one extra history sample in diff mode, because a diff series loses its
+first point to the subtraction and would otherwise render one point short.
+
+### What the card badge means
+
+The small figure beside a card's big number (e.g. `+12 scan`) is the change between the **last two
+scans** — the same value as the last bar of that card's sparkline. Hover it for confirmation.
+
+It used to read `+N session` and mean `current − reference`: everything found since the very first
+scan *ever*. That is a lifetime figure, not a recent one, and it drifted further from the truth the
+longer the install ran. The minimised card strip computed a genuine last-two-scans difference while
+the full card computed something else, so the two could disagree for the same card; both now read
+the card's own `delta`, so they always agree.
+
+The badge is hidden when history is shorter than two scans, and when the change is exactly zero —
+there is no measurement to show, and a printed `0` would read as "nothing happened" rather than "not
+enough data yet".
 
 ## Usage in-game
 

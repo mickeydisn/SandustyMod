@@ -1,13 +1,25 @@
 /**
  * Settings reader — mirrors configSchema / SETTINGS without @sandmd/modkit.
  *
- * ⚠️ `api.settings` is already scoped to the calling mod. `get()` takes a
- * **configSchema field name** ("enabled"), NOT a mod id and NOT "modId.field" —
- * an unknown key returns `undefined`. `getAll()` returns this mod's whole bag
- * (`{enabled, persistSession, historyMax}`) and is the only reliable read.
+ * ⚠️ `api.settings` is **read-only**: the engine exposes `get`, `getAll` and
+ * `onChange`, and nothing else. There is no `set`, so `api.settings.set?.(...)`
+ * is a silent no-op and a mod can never write its own `configSchema` values.
+ *
+ * `get()` takes a **configSchema field name** ("enabled"), NOT a mod id and NOT
+ * "modId.field" — an unknown key returns `undefined`. `getAll()` returns this
+ * mod's whole bag (`{enabled, persistSession, historyMax, …}`) and is the only
+ * reliable read.
+ *
+ * That split is why the three numeric tracking settings (`timeRange`,
+ * `maxCountSave`, `historyMax`) are **not** read from here. They live in
+ * `api.storage` via the shared tracking store, which actually persists; the
+ * engine bag only seeds them on the first read. See `@sandmd/ui`'s `tracking.ts`
+ * for the full story — briefly: these three used to be "written" through the
+ * no-op `api.settings.set`, so `setSetting` updated an in-memory cache, the panel
+ * looked correct for the session, and the value silently reverted on reload.
  */
-import { api, safe } from "@sandmd/ui";
-import { LOG, SETTINGS } from "./constants.ts";
+import { api, createTrackingStore, safe } from "@sandmd/ui";
+import { LOG, MOD_ID, SETTINGS } from "./constants.ts";
 
 export type ModConfig = {
     enabled: boolean;
@@ -19,72 +31,40 @@ export type ModConfig = {
     maxCountSave: number;
 };
 
-function clampNumber(v: unknown, def: number, min?: number, max?: number): number {
-    let n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : def;
-    if (!Number.isFinite(n)) n = def;
-    if (min != null && n < min) n = min;
-    if (max != null && n > max) n = max;
-    return n;
-}
+/** Persistent home for the three numbers the engine will not let us write. */
+export const tracking = createTrackingStore(MOD_ID);
 
-/** The mod's own settings bag, normalised. Never throws. */
-function normalise(raw: Record<string, unknown> | null, prev?: ModConfig): ModConfig {
-    const enabledRaw = raw?.enabled ?? prev?.enabled ?? SETTINGS.enabled.default;
-    return {
-        enabled: enabledRaw !== false && enabledRaw !== "false" && enabledRaw !== 0,
-        persistSession: (raw?.persistSession ?? prev?.persistSession ??
-            SETTINGS.persistSession.default) !== false,
-        historyMax: clampNumber(
-            raw?.historyMax,
-            prev?.historyMax ?? (SETTINGS.historyMax.default as number),
-            SETTINGS.historyMax.min,
-            SETTINGS.historyMax.max,
-        ),
-        timeRange: Math.round(
-            clampNumber(
-                raw?.timeRange,
-                prev?.timeRange ?? (SETTINGS.timeRange.default as number),
-                SETTINGS.timeRange.min,
-                SETTINGS.timeRange.max,
-            ),
-        ),
-        maxCountSave: Math.round(
-            clampNumber(
-                raw?.maxCountSave,
-                prev?.maxCountSave ?? (SETTINGS.maxCountSave.default as number),
-                SETTINGS.maxCountSave.min,
-                SETTINGS.maxCountSave.max,
-            ),
-        ),
-    };
-}
-
-export function readConfig(): ModConfig {
-    const bag = safe(
-        () => api.settings?.getAll?.() as Record<string, unknown> | undefined,
-        undefined,
-    );
-    return normalise(bag && typeof bag === "object" ? bag : null);
+function readBool(raw: Record<string, unknown> | null, key: string, def: boolean): boolean {
+    const v = raw?.[key];
+    if (typeof v === "boolean") return v;
+    if (v === "true" || v === 1) return true;
+    if (v === "false" || v === 0) return false;
+    return def;
 }
 
 let lastCfg: ModConfig = readConfig();
-const listeners: Array<(cfg: ModConfig) => void> = [];
 
 export function getConfig(): ModConfig {
     return lastCfg;
 }
 
-/**
- * Write a setting back to the mod's bag.
- *
- * `api.settings` is mod-scoped, so the key is the bare configSchema field
- * name. The local cache is updated too, because the host's `onChange` does
- * not reliably fire for a mod-initiated write — otherwise the panel would keep
- * showing the old value until the next reload.
- */
-export function setSetting<K extends keyof ModConfig>(key: K, value: ModConfig[K]): void {
-    lastCfg = normalise({ [key]: value }, lastCfg);
-    safe(() => api.settings?.set?.(key as string, value));
+function readConfig(): ModConfig {
+    const bag = safe(
+        () => api.settings?.getAll?.() as Record<string, unknown> | undefined,
+        undefined,
+    );
+    const raw = bag && typeof bag === "object" ? bag : null;
+    const t = tracking.read();
+    return {
+        enabled: readBool(raw, "enabled", SETTINGS.enabled.default),
+        persistSession: readBool(raw, "persistSession", SETTINGS.persistSession.default),
+        historyMax: t.historyMax,
+        timeRange: t.timeRange,
+        maxCountSave: t.maxCountSave,
+    };
+}
+
+function notify(): void {
     for (const cb of listeners) {
         try {
             cb(lastCfg);
@@ -92,6 +72,22 @@ export function setSetting<K extends keyof ModConfig>(key: K, value: ModConfig[K
             console.warn(`${LOG} config listener error`, e);
         }
     }
+}
+
+/**
+ * Write a setting.
+ *
+ * The three numbers go through the tracking store, which clamps and persists
+ * them to `api.storage`. The booleans are engine-owned: there is no `set`, so
+ * they can only be changed from the game's own mod-settings screen — this
+ * refreshes the cached bag so the panel reflects such a change immediately.
+ */
+export function setSetting<K extends keyof ModConfig>(key: K, value: ModConfig[K]): void {
+    if (key === "historyMax" || key === "timeRange" || key === "maxCountSave") {
+        tracking.write(key, Number(value));
+    }
+    lastCfg = readConfig();
+    notify();
 }
 
 export function onConfigChange(cb: (cfg: ModConfig) => void): () => void {
@@ -107,18 +103,16 @@ export function bindSettings(): void {
     safe(() => {
         // The host passes THIS mod's bag directly (not a global map keyed by
         // mod id), so `values` is already `{enabled, persistSession, …}`.
-        api.settings?.onChange?.((values: Record<string, unknown>) => {
-            const bag = values && typeof values === "object" ? values : null;
-            const next = normalise(bag, lastCfg);
-            lastCfg = next;
-            for (const cb of listeners) {
-                try {
-                    cb(next);
-                } catch (e) {
-                    console.warn(`${LOG} config listener error`, e);
-                }
-            }
+        api.settings?.onChange?.(() => {
+            // Re-read both sources: the engine bag for the booleans, and the
+            // tracking store so an external edit is not masked by its cache.
+            tracking.refresh();
+            lastCfg = readConfig();
+            notify();
         });
     });
     lastCfg = readConfig();
 }
+
+/** Listeners notified by both `onConfigChange` and `setSetting`. */
+const listeners: Array<(cfg: ModConfig) => void> = [];

@@ -44,7 +44,7 @@ export interface CardItemStat {
     count: number;
     /** True when this is the first configured item. */
     primary: boolean;
-    /** current − reference (null if no reference yet). */
+    /** Change between the last two scans; null if history is too short. */
     delta: number | null;
     /** Last ≤10 history counts for sparkline (oldest → newest). */
     series: number[];
@@ -57,7 +57,7 @@ export interface CardStat {
     color: string;
     /** Sum of all item counts. */
     total: number;
-    /** total − reference total for items (null if no ref). */
+    /** Sum of the items' last-interval changes; null if none available. */
     delta: number | null;
     items: CardItemStat[];
 }

@@ -5,6 +5,7 @@
  * breakdowns from the live event buffer (no world scan).
  */
 import {
+    applyGraphMode,
     CfgSection,
     ChromeRows,
     colorFromId,
@@ -17,9 +18,10 @@ import {
     isToolSelected,
     KpiCard,
     MiniHeader,
-    NumberRow,
     posStyle,
+    rawPointsFor,
     React,
+    renderTrackingSection,
     resolveSelection,
     ROOT_CLASS,
     SelectableList,
@@ -27,7 +29,6 @@ import {
     styles,
     Tabs,
     toggleSelection,
-    toIntervals,
 } from "@sandmd/ui";
 import type { ListRow } from "@sandmd/ui";
 import {
@@ -40,7 +41,7 @@ import {
     resetSession,
     saveCards,
 } from "./buffer.ts";
-import { ITEM_ID, KPI_CATEGORIES, KPI_UNITS, SETTINGS, VERSION } from "./constants.ts";
+import { ITEM_ID, KPI_CATEGORIES, KPI_UNITS } from "./constants.ts";
 import type { KpiCategory } from "./constants.ts";
 import { getConfig, setSetting } from "./config.ts";
 import { displayNameFor } from "./events.ts";
@@ -52,6 +53,7 @@ const TABS: { id: TabId; label: string }[] = [
     { id: "home", label: "Home" },
     { id: "actions", label: "Structures" },
     { id: "items", label: "Items" },
+    { id: "shoot", label: "Shoot" },
     { id: "terrain", label: "Dig" },
     { id: "move", label: "Move" },
     { id: "keys", label: "Keys" },
@@ -82,21 +84,23 @@ function kpiRows(cat: string): ListRow[] {
 }
 
 /**
- * Per-interval activity for one sub-key, oldest → newest.
+ * History series for one sub-key, oldest → newest, in the current graph view.
  *
- * These are lifetime accumulators, so plotting the raw totals would just be a
- * rising ramp. Graphs and sparklines plot how much happened in each sampling
- * interval instead — see `toIntervals` in `@sandmd/ui`.
+ * `diff` plots how much happened in each sampling interval; `total` plots the
+ * running total. The raw history is always lifetime accumulators, so `total` is
+ * just the history as stored — `applyGraphMode` picks which one comes out.
  *
- * One extra point is read beyond `displayPoints` so the first displayed
- * interval still has a predecessor to subtract.
+ * `rawPointsFor` reads one extra sample in `diff` mode, because a diff series
+ * loses its first value to the subtraction and would otherwise plot one point
+ * short of the requested width.
  */
 function kpiSeries(cat: string, subKey: string, session = false): number[] {
     const key = subKey ? `${cat}::${subKey}` : cat;
     const points = getConfig().historyMax;
-    return toIntervals(
+    const mode = state.graphMode;
+    return applyGraphMode(
         buffer.history
-            .slice(-(points + 1))
+            .slice(-rawPointsFor(points, mode))
             .map((s) => {
                 if (session) {
                     // Snapshots written before session capture have no
@@ -106,7 +110,14 @@ function kpiSeries(cat: string, subKey: string, session = false): number[] {
                 }
                 return s.totals[key] ?? 0;
             }),
+        mode,
     );
+}
+
+/** Flip the graph between accumulated totals and per-interval change. */
+function toggleGraphMode(): void {
+    state.graphMode = state.graphMode === "total" ? "diff" : "total";
+    bump();
 }
 
 function selectionOf(cat: string, rows: ListRow[]): string[] {
@@ -194,6 +205,8 @@ function KpiSection(
                     ? undefined
                     : `No data points yet — one is recorded every ${perInterval} min. ` +
                         "Play a little and the graph fills in.",
+                mode: state.graphMode,
+                onModeToggle: toggleGraphMode,
                 series: selected.map((id) => ({
                     id,
                     label: id,
@@ -704,10 +717,28 @@ export function StatisticPanel(): unknown {
             null,
             KpiSection("items_used"),
             Hint(
-                "One count per use, broken down by item — graph over time on the " +
-                    "left, selectable list on the right. A built-in item reported as a " +
-                    "numeric id is resolved to its name; an id the game does not " +
-                    "publish, such as a modded item, is shown as the id itself.",
+                "One count per use, from the engine's `action:intercept` action hook " +
+                    "— which fires on the click that starts an action, so it covers " +
+                    "built-in weapons and tools as well as modded ones. Structure " +
+                    "placement rides the same hook but is excluded here; it is counted " +
+                    "on the Structures tab instead. A built-in is labelled with its " +
+                    "in-game name; an id the game does not know is shown as itself.",
+            ),
+        );
+    } else if (state.tab === "shoot") {
+        body = e(
+            "div",
+            null,
+            KpiSection("projectiles_hit"),
+            KpiSection("projectile_fire_structure", { marginTop: 8 }),
+            Hint(
+                "Counted from the `projectile:hit` and " +
+                    "`projectile:fire:overStructure` hooks, broken down by " +
+                    "`projectile.type` (bullet, rocket, grappling hook, fire, " +
+                    "digger). Hits are every projectile that resolves an impact; " +
+                    "fire over structure is the flamethrower's spread onto a " +
+                    "structure cell. Both hooks can cancel the engine's own " +
+                    "handling — this mod only observes, so nothing is suppressed.",
             ),
         );
     } else if (state.tab === "terrain") {
@@ -746,37 +777,9 @@ export function StatisticPanel(): unknown {
                 zoomRange: [0.4, 2.5],
                 alphaRange: [0.3, 1],
             }),
-            CfgSection("Tracking", 14),
-            NumberRow("Every", getConfig().timeRange, {
-                min: SETTINGS.timeRange.min,
-                max: SETTINGS.timeRange.max,
-                step: SETTINGS.timeRange.step,
-                def: SETTINGS.timeRange.default,
-                suffix: " min",
-                onChange: (v) => {
-                    setSetting("timeRange", v);
-                    bump();
-                },
-            }),
-            NumberRow("Max data points", getConfig().maxCountSave, {
-                min: SETTINGS.maxCountSave.min,
-                max: SETTINGS.maxCountSave.max,
-                step: SETTINGS.maxCountSave.step,
-                def: SETTINGS.maxCountSave.default,
-                onChange: (v) => {
-                    setSetting("maxCountSave", v);
-                    bump();
-                },
-            }),
-            NumberRow("Display points", getConfig().historyMax, {
-                min: SETTINGS.historyMax.min,
-                max: SETTINGS.historyMax.max,
-                step: SETTINGS.historyMax.step,
-                def: SETTINGS.historyMax.default,
-                onChange: (v) => {
-                    setSetting("historyMax", v);
-                    bump();
-                },
+            renderTrackingSection(getConfig(), (key, v) => {
+                setSetting(key, v);
+                bump();
             }),
             CfgSection("KPI cards", 14),
             e(
@@ -833,17 +836,6 @@ export function StatisticPanel(): unknown {
         );
     }
 
-    const footer = e(
-        "div",
-        { style: styles.footer },
-        e("span", null, `v${VERSION}`),
-        e(
-            "span",
-            null,
-            `${Object.keys(buffer.totals).length} keys · hist ${buffer.history.length}`,
-        ),
-    );
-
     return e(
         "div",
         {
@@ -857,6 +849,5 @@ export function StatisticPanel(): unknown {
         header,
         tabs,
         e("div", { style: styles.body }, body),
-        footer,
     );
 }

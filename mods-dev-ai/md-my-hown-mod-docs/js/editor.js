@@ -10,7 +10,11 @@
     config: null,
     collection: "elements",
     editIndex: null,
-    dragFrom: null, // { arr, index } for step DnD
+    dragFrom: null,
+    /** @type {Set<string>} path keys of expanded steps e.g. "0", "0.then.1" */
+    openSteps: new Set(["0"]),
+    /** catalog | reorder */
+    dragPayload: null,
   };
 
   function load() {
@@ -239,6 +243,51 @@
     });
   }
 
+
+  function renderSectionedForm(collection, fields, entry) {
+    const secMap = (S().FIELD_SECTIONS && S().FIELD_SECTIONS[collection]) || {};
+    const order = (S().SECTION_ORDER && S().SECTION_ORDER[collection]) || [];
+    const groups = {};
+    fields.forEach((row) => {
+      const k = row[0];
+      const sec = secMap[k] || (k === "id" ? "Identity" : "Other");
+      if (!groups[sec]) groups[sec] = [];
+      groups[sec].push(row);
+    });
+    const seen = new Set();
+    const seq = [];
+    order.forEach((s) => {
+      if (groups[s] && groups[s].length) {
+        seq.push(s);
+        seen.add(s);
+      }
+    });
+    Object.keys(groups).forEach((s) => {
+      if (!seen.has(s)) seq.push(s);
+    });
+    // Identity open by default; others collapsed
+    return seq
+      .map((sec, i) => {
+        const rows = groups[sec] || [];
+        const body = rows
+          .map(([k, label, type, extra]) => fieldControl(k, label, type, extra, entry[k]))
+          .join("");
+        const open = sec === "Identity" || i === 0 ? " open" : "";
+        return (
+          '<details class="ed-section"' +
+          open +
+          "><summary class=\"ed-section-sum\">" +
+          escapeHtml(sec) +
+          ' <span class="ed-section-count">' +
+          rows.length +
+          "</span></summary><div class=\"ed-section-body\">" +
+          body +
+          "</div></details>"
+        );
+      })
+      .join("");
+  }
+
   function fieldControl(k, label, type, extra, value) {
     extra = extra || {};
     if (type === "bool") {
@@ -293,6 +342,7 @@
     });
   }
 
+
   function renderForm(main, key, index, meta) {
     const list = ensureArray(key);
     const entry = list[index];
@@ -315,23 +365,33 @@
       <div class="ed-form" id="ed-form"></div>
       ${
         isProcess
-          ? `<div class="ed-blocks-wrap">
-              <div class="ed-blocks-head">Program steps <span class="ed-muted">— drag handle ⋮⋮ to reorder · stack = order</span></div>
-              <div id="ed-blocks" class="ed-step-list"></div>
-              <button type="button" class="graph-btn primary" id="ed-add-step" style="margin-top:10px">+ Step</button>
+          ? `<div class="ed-program-layout" id="ed-program">
+              <div class="ed-program">
+                <details class="ed-section" open>
+                  <summary class="ed-section-sum">Steps <span class="ed-section-count" id="ed-step-count">0</span></summary>
+                  <div class="ed-section-body ed-program-body">
+                    <p class="ed-muted" style="margin:0">Drag actions from the catalog → drop here. Drag steps to reorder. Action type is fixed.</p>
+                    <div id="ed-blocks" class="ed-program-steps"></div>
+                  </div>
+                </details>
+                <details class="ed-section">
+                  <summary class="ed-section-sum">Process tags <span class="ed-section-count" id="ed-tag-count">0</span></summary>
+                  <div class="ed-section-body" id="ed-tag-list"></div>
+                </details>
+              </div>
+              <aside class="ed-catalog" id="ed-catalog"></aside>
             </div>`
           : ""
       }
       <details class="ed-raw"><summary>Raw JSON</summary><textarea id="ed-raw" rows="12"></textarea></details>`;
 
     const form = $("#ed-form");
-    form.innerHTML = fields
-      .map(([k, label, type, extra]) => fieldControl(k, label, type, extra, entry[k]))
-      .join("");
+    form.innerHTML = renderSectionedForm(key, fields, entry);
     $("#ed-raw").value = JSON.stringify(entry, null, 2);
 
     $("#ed-back")?.addEventListener("click", () => {
       state.editIndex = null;
+      state.openSteps = new Set(["0"]);
       renderMain();
     });
     $("#ed-save")?.addEventListener("click", () => {
@@ -351,297 +411,583 @@
 
     if (isProcess) {
       if (!Array.isArray(entry.steps)) entry.steps = [];
-      renderSteps(entry.steps, $("#ed-blocks"), 0);
-      $("#ed-add-step")?.addEventListener("click", () => {
-        entry.steps.push({ key: "noop", options: {} });
-        renderSteps(entry.steps, $("#ed-blocks"), 0);
-        syncRaw(entry);
+      renderProgramSteps(entry);
+      renderActionCatalog(entry);
+      wireProgramDropZone(entry);
+    }
+  }
+
+  function collectTags(steps, into) {
+    if (!Array.isArray(steps)) return;
+    steps.forEach((s) => {
+      if (!s) return;
+      if (s.as) into.add(String(s.as));
+      if (s.key === "if" && s.options && s.options.var) into.add(String(s.options.var));
+      if (s.then) collectTags(s.then, into);
+      if (s.else) collectTags(s.else, into);
+    });
+  }
+
+  function contentOptions(kind) {
+    const cfg = state.config || {};
+    const from = (arr) =>
+      (Array.isArray(arr) ? arr : [])
+        .map((x) => (x && (x.id || x.path || x.key || x.name)) || null)
+        .filter(Boolean)
+        .map(String);
+    const builtins = {
+      element: ["sand", "water", "steam", "fire", "oil", "lava", "stone", "dirt", "grass", "copper", "gold", "coal"],
+      terrain: ["bedrock", "stone", "dirt", "sand", "grass"],
+      structure: [],
+      buffer: [],
+    };
+    if (kind === "element") return [...new Set([...(builtins.element || []), ...from(cfg.elements)])].sort();
+    if (kind === "structure") return [...new Set([...from(cfg.structures)])].sort();
+    if (kind === "terrain") return [...new Set([...(builtins.terrain || []), ...from(cfg.terrains)])].sort();
+    if (kind === "buffer") return [...new Set([...from(cfg.buffers)])].sort();
+    return [];
+  }
+
+  function contentKind(pr, actionKey) {
+    if (pr && pr.content) return pr.content;
+    const k = (pr.key || "").toLowerCase();
+    const h = ((pr.hint || "") + " " + (pr.label || "")).toLowerCase();
+    const ak = (actionKey || "").toLowerCase();
+    if (k === "path" || (ak.includes("buffer") && k === "path")) return "buffer";
+    if (k === "structure" || h.includes("structure")) return "structure";
+    if (k === "terrain" || h.includes("terrain")) return "terrain";
+    if (k === "element" || k === "from" || k === "to" || k === "when" || h.includes("element")) return "element";
+    return null;
+  }
+
+  function stepPathKey(path) {
+    return path.join(".");
+  }
+
+  function formatStepSummary(step) {
+    const bits = [];
+    if (step.key === "if") {
+      if (step.options && step.options.var) bits.push("var=" + step.options.var);
+      const nt = Array.isArray(step.then) ? step.then.length : 0;
+      const ne = Array.isArray(step.else) ? step.else.length : 0;
+      if (nt) bits.push("then:" + nt);
+      if (ne) bits.push("else:" + ne);
+    } else {
+      if (step.as) bits.push("as " + step.as);
+      const opts = step.options || {};
+      Object.keys(opts)
+        .sort()
+        .forEach((k) => {
+          const v = opts[k];
+          if (v == null || v === "") return;
+          if (typeof v === "boolean") {
+            if (v) bits.push(k);
+            return;
+          }
+          if (typeof v === "object") {
+            bits.push(k + "={…}");
+            return;
+          }
+          const s = String(v);
+          bits.push(k + "=" + (s.length > 24 ? s.slice(0, 22) + "…" : s));
+        });
+    }
+    return bits.length ? bits.join(" · ") : "";
+  }
+
+
+  function renderActionCatalog(entry) {
+    const host = $("#ed-catalog");
+    if (!host) return;
+    const families = S().ACTION_FAMILIES || {};
+    const famKeys = Object.keys(families);
+    // fallback by role if no families
+    let html = '<div class="ed-catalog-head">Action catalog</div>';
+    if (famKeys.length) {
+      famKeys.forEach((fk, i) => {
+        const fam = families[fk];
+        const title = (fam.title || fk).split("—")[0].trim();
+        const open = i < 2 ? " open" : "";
+        html +=
+          '<details class="ed-catalog-fam"' +
+          open +
+          "><summary>" +
+          escapeHtml(title) +
+          ' <span class="ed-muted">(' +
+          (fam.keys || []).length +
+          ")</span></summary><div class=\"ed-catalog-list\">";
+        (fam.keys || []).forEach((key) => {
+          const doc = ((S().ACTION_DOCS && S().ACTION_DOCS[key]) || "").slice(0, 80);
+          html +=
+            '<div class="ed-catalog-item" draggable="true" data-action="' +
+            escapeAttr(key) +
+            '" title="' +
+            escapeAttr(doc) +
+            '">' +
+            escapeHtml(key) +
+            "</div>";
+        });
+        html += "</div></details>";
+      });
+    } else {
+      const acts = S().ACTIONS || {};
+      Object.keys(acts).forEach((role) => {
+        html +=
+          '<details class="ed-catalog-fam" open><summary>' +
+          escapeHtml(role) +
+          '</summary><div class="ed-catalog-list">';
+        (acts[role] || []).forEach((key) => {
+          html +=
+            '<div class="ed-catalog-item" draggable="true" data-action="' +
+            escapeAttr(key) +
+            '">' +
+            escapeHtml(key) +
+            "</div>";
+        });
+        html += "</div></details>";
       });
     }
+    // if block
+    html +=
+      '<details class="ed-catalog-fam"><summary>Control</summary><div class="ed-catalog-list">' +
+      '<div class="ed-catalog-item" draggable="true" data-action="if">if</div></div></details>';
+    host.innerHTML = html;
+
+    host.querySelectorAll(".ed-catalog-item").forEach((el) => {
+      el.addEventListener("dragstart", (ev) => {
+        const key = el.getAttribute("data-action");
+        state.dragPayload = { type: "catalog", action: key };
+        ev.dataTransfer.setData("text/plain", "catalog:" + key);
+        ev.dataTransfer.effectAllowed = "copy";
+      });
+      el.addEventListener("dragend", () => {
+        state.dragPayload = null;
+      });
+    });
+  }
+
+  function wireProgramDropZone(entry) {
+    const host = $("#ed-blocks");
+    if (!host || host.dataset.dropWired) return;
+    host.dataset.dropWired = "1";
+    host.addEventListener("dragover", (ev) => {
+      ev.preventDefault();
+      host.classList.add("ed-drop-target");
+      if (state.dragPayload && state.dragPayload.type === "catalog") {
+        ev.dataTransfer.dropEffect = "copy";
+      } else {
+        ev.dataTransfer.dropEffect = "move";
+      }
+    });
+    host.addEventListener("dragleave", () => host.classList.remove("ed-drop-target"));
+    host.addEventListener("drop", (ev) => {
+      ev.preventDefault();
+      host.classList.remove("ed-drop-target");
+      const p = state.dragPayload;
+      if (!p) return;
+      if (p.type === "catalog" && p.action) {
+        const step = { key: p.action, options: {} };
+        if (p.action === "if") {
+          step.options = { var: "" };
+          step.then = [];
+          step.else = [];
+        }
+        let insertAt = entry.steps.length;
+        // if over a step, insert before it
+        const over = ev.target.closest(".ed-step-section");
+        if (over && over.dataset.stepIndex != null && over.dataset.branchPath == null) {
+          insertAt = Number(over.dataset.stepIndex);
+        }
+        entry.steps.splice(insertAt, 0, step);
+        state.openSteps.add(String(insertAt));
+        state.dragPayload = null;
+        renderProgramSteps(entry);
+        return;
+      }
+      if (p.type === "reorder" && Array.isArray(p.fromPath)) {
+        // handled on step drop
+      }
+      state.dragPayload = null;
+    });
+  }
+
+  function renderProgramSteps(entry) {
+    const host = $("#ed-blocks");
+    if (!host) return;
+    const steps = entry.steps;
+    const tags = new Set();
+    collectTags(steps, tags);
+    const tc = $("#ed-tag-count");
+    if (tc) tc.textContent = String(tags.size);
+    const sc = $("#ed-step-count");
+    if (sc) sc.textContent = String(steps.length);
+    const tl = $("#ed-tag-list");
+    if (tl) {
+      tl.innerHTML = tags.size
+        ? [...tags]
+            .sort()
+            .map((t) => '<span class="by-tag-chip">' + escapeHtml(t) + "</span>")
+            .join(" ")
+        : '<span class="ed-muted">No tags yet — set <code>as</code> on a step or use if var</span>';
+    }
+    host.innerHTML = "";
+    if (!steps.length) {
+      host.innerHTML = '<div class="ed-empty">No steps. Click <strong>+ Step</strong>.</div>';
+      syncRaw(entry);
+      return;
+    }
+    steps.forEach((step, i) => {
+      host.appendChild(stepSection(step, steps, i, 0, entry, [i]));
+    });
+    syncRaw(entry);
+  }
+
+  function actionOptions() {
+    const acts = S().ACTIONS || {};
+    const opts = [];
+    Object.keys(acts)
+      .sort()
+      .forEach((role) => {
+        (acts[role] || []).forEach((k) => opts.push({ role, key: k }));
+      });
+    if (!opts.find((o) => o.key === "if")) opts.push({ role: "block", key: "if" });
+    return opts;
+  }
+
+  function stepSection(step, arr, index, depth, entry, path) {
+    if (!step.options || typeof step.options !== "object") step.options = {};
+    const wrap = document.createElement("details");
+    wrap.className = "ed-section ed-step-section";
+    const pathKey = stepPathKey(path || [index]);
+    wrap.open = state.openSteps.has(pathKey);
+    wrap.addEventListener("toggle", () => {
+      if (wrap.open) state.openSteps.add(pathKey);
+      else state.openSteps.delete(pathKey);
+      // refresh closed summary without full re-render of other open steps
+      const sumBits = wrap.querySelector(".ed-step-cfg");
+      if (sumBits) sumBits.textContent = wrap.open ? "" : formatStepSummary(step);
+    });
+
+    const sum = document.createElement("summary");
+    sum.className = "ed-section-sum ed-step-sum";
+    wrap.dataset.stepIndex = String(index);
+    wrap.draggable = true;
+    wrap.addEventListener("dragstart", (ev) => {
+      // don't start drag from interactive controls
+      if (ev.target.closest("button, input, select, textarea, label")) {
+        ev.preventDefault();
+        return;
+      }
+      state.dragPayload = { type: "reorder", fromPath: path.slice(), fromArr: arr, fromIndex: index };
+      wrap.classList.add("ed-dragging");
+      ev.dataTransfer.setData("text/plain", "reorder:" + pathKey);
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    wrap.addEventListener("dragend", () => {
+      wrap.classList.remove("ed-dragging");
+      $$(".ed-drag-over").forEach((el) => el.classList.remove("ed-drag-over"));
+      state.dragPayload = null;
+    });
+    wrap.addEventListener("dragover", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      wrap.classList.add("ed-drag-over");
+    });
+    wrap.addEventListener("dragleave", () => wrap.classList.remove("ed-drag-over"));
+    wrap.addEventListener("drop", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      wrap.classList.remove("ed-drag-over");
+      const p = state.dragPayload;
+      if (!p) return;
+      if (p.type === "catalog" && p.action) {
+        const stepNew = { key: p.action, options: {} };
+        if (p.action === "if") {
+          stepNew.options = { var: "" };
+          stepNew.then = [];
+          stepNew.else = [];
+        }
+        arr.splice(index, 0, stepNew);
+        state.openSteps.add(stepPathKey(path));
+        state.dragPayload = null;
+        renderProgramSteps(entry);
+        return;
+      }
+      if (p.type === "reorder" && p.fromArr === arr) {
+        const from = p.fromIndex;
+        let to = index;
+        if (from === to) return;
+        const [moved] = arr.splice(from, 1);
+        if (from < to) to -= 1;
+        arr.splice(to, 0, moved);
+        state.dragPayload = null;
+        renderProgramSteps(entry);
+      }
+    });
+
+    const left = document.createElement("span");
+    left.className = "ed-step-sum-left";
+    left.innerHTML =
+      '<span class="ed-step-grip" title="Drag to reorder">⋮⋮</span><span class="ed-step-idx">' +
+      (index + 1) +
+      "</span> <code>" +
+      escapeHtml(step.key || "?") +
+      "</code>";
+    const cfg = document.createElement("span");
+    cfg.className = "ed-step-cfg";
+    if (!wrap.open) cfg.textContent = formatStepSummary(step);
+    left.appendChild(cfg);
+    sum.appendChild(left);
+
+    const actions = document.createElement("span");
+    actions.className = "ed-step-actions";
+    actions.innerHTML =
+      '<button type="button" class="graph-btn ed-step-up" title="Move up">↑</button>' +
+      '<button type="button" class="graph-btn ed-step-dn" title="Move down">↓</button>' +
+      '<button type="button" class="graph-btn ed-step-del" title="Delete">×</button>';
+    sum.appendChild(actions);
+
+    // Prevent summary toggle when clicking buttons
+    actions.addEventListener("click", (e) => e.preventDefault());
+
+    wrap.appendChild(sum);
+
+    const body = document.createElement("div");
+    body.className = "ed-section-body ed-step-body";
+
+    // Fixed action type — only "as" is editable in the head
+    const head = document.createElement("div");
+    head.className = "ed-step-head";
+    const typeLab = document.createElement("div");
+    typeLab.className = "ed-field";
+    typeLab.innerHTML =
+      "<span>Action</span><div><code>" + escapeHtml(step.key || "?") + "</code></div>";
+    head.appendChild(typeLab);
+
+    if (step.key !== "if") {
+      const asLab = document.createElement("label");
+      asLab.className = "ed-field";
+      asLab.innerHTML = "<span>Store as tag</span>";
+      const asInp = document.createElement("input");
+      asInp.type = "text";
+      asInp.placeholder = "process tag name";
+      asInp.value = step.as || "";
+      asInp.addEventListener("change", () => {
+        const v = asInp.value.trim();
+        if (v) step.as = v;
+        else delete step.as;
+        state.openSteps.add(pathKey);
+        renderProgramSteps(entry);
+      });
+      asLab.appendChild(asInp);
+      head.appendChild(asLab);
+    }
+    body.appendChild(head);
+
+    // Doc
+    const doc = (S().ACTION_DOCS && S().ACTION_DOCS[step.key]) || "";
+    const apis = (S().ACTION_APIS && S().ACTION_APIS[step.key]) || [];
+    if (doc || apis.length) {
+      const docEl = document.createElement("p");
+      docEl.className = "ed-step-doc";
+      docEl.textContent = doc;
+      if (apis.length) {
+        docEl.innerHTML +=
+          '<br/><span class="ed-muted">API: ' +
+          apis.map((a) => "<code>" + escapeHtml(a) + "</code>").join(" ") +
+          "</span>";
+      }
+      body.appendChild(docEl);
+    }
+
+    if (step.key === "if") {
+      const varLab = document.createElement("label");
+      varLab.className = "ed-field ed-field-wide";
+      varLab.innerHTML = "<span>When tag is true</span>";
+      const varSel = document.createElement("select");
+      const tags = new Set();
+      collectTags(entry.steps, tags);
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "— select tag —";
+      varSel.appendChild(empty);
+      [...tags].sort().forEach((tg) => {
+        const o = document.createElement("option");
+        o.value = tg;
+        o.textContent = tg;
+        if (String(step.options.var) === tg) o.selected = true;
+        varSel.appendChild(o);
+      });
+      // allow free text via extra option
+      const custom = document.createElement("option");
+      custom.value = "__custom__";
+      custom.textContent = "custom…";
+      varSel.appendChild(custom);
+      varSel.addEventListener("change", () => {
+        if (varSel.value === "__custom__") {
+          const v = prompt("Tag name", step.options.var || "");
+          if (v) step.options.var = v.trim();
+        } else {
+          step.options.var = varSel.value;
+        }
+        renderProgramSteps(entry);
+      });
+      varLab.appendChild(varSel);
+      body.appendChild(varLab);
+
+      if (!Array.isArray(step.then)) step.then = [];
+      if (!Array.isArray(step.else)) step.else = [];
+      body.appendChild(branchSection("then", step.then, entry, step, path));
+      body.appendChild(branchSection("else", step.else, entry, step, path));
+    } else {
+      const defs = paramDefs(step.key);
+      const grid = document.createElement("div");
+      grid.className = "ed-step-params";
+      if (!defs.length) {
+        grid.innerHTML = '<span class="ed-muted">No parameters</span>';
+      } else {
+        defs.forEach((pr) => grid.appendChild(paramField(step, pr, entry)));
+      }
+      body.appendChild(grid);
+    }
+
+    wrap.appendChild(body);
+
+    // Move / delete
+    actions.querySelector(".ed-step-up")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (index <= 0) return;
+      const tmp = arr[index - 1];
+      arr[index - 1] = arr[index];
+      arr[index] = tmp;
+      renderProgramSteps(entry);
+    });
+    actions.querySelector(".ed-step-dn")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (index >= arr.length - 1) return;
+      const tmp = arr[index + 1];
+      arr[index + 1] = arr[index];
+      arr[index] = tmp;
+      renderProgramSteps(entry);
+    });
+    actions.querySelector(".ed-step-del")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!confirm("Delete step " + (step.key || index) + "?")) return;
+      arr.splice(index, 1);
+      renderProgramSteps(entry);
+    });
+
+    return wrap;
+  }
+
+  function branchSection(label, steps, entry, parentStep, parentPath) {
+    const d = document.createElement("details");
+    d.className = "ed-section ed-branch";
+    d.open = steps.length > 0;
+    const sum = document.createElement("summary");
+    sum.className = "ed-section-sum";
+    sum.innerHTML =
+      escapeHtml(label) +
+      ' <span class="ed-section-count">' +
+      steps.length +
+      "</span>";
+    d.appendChild(sum);
+    const body = document.createElement("div");
+    body.className = "ed-section-body ed-program-body";
+    const list = document.createElement("div");
+    list.className = "ed-program-steps";
+    list.addEventListener("dragover", (ev) => {
+      ev.preventDefault();
+      list.classList.add("ed-drop-target");
+    });
+    list.addEventListener("dragleave", () => list.classList.remove("ed-drop-target"));
+    list.addEventListener("drop", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      list.classList.remove("ed-drop-target");
+      const p = state.dragPayload;
+      if (p && p.type === "catalog" && p.action) {
+        const stepNew = { key: p.action, options: {} };
+        if (p.action === "if") {
+          stepNew.options = { var: "" };
+          stepNew.then = [];
+          stepNew.else = [];
+        }
+        steps.push(stepNew);
+        state.openSteps.add(stepPathKey((parentPath || []).concat([label, steps.length - 1])));
+        state.dragPayload = null;
+        renderProgramSteps(entry);
+      }
+    });
+    steps.forEach((s, i) => {
+      const childPath = (parentPath || []).concat([label, i]);
+      list.appendChild(stepSection(s, steps, i, 1, entry, childPath));
+    });
+    body.appendChild(list);
+    d.appendChild(body);
+    return d;
   }
 
   /** Normalize ACTION_PARAMS entry to object shape */
   function paramDefs(actionKey) {
     const raw = (S().ACTION_PARAMS && S().ACTION_PARAMS[actionKey]) || [];
-    return raw.map((p) => {
-      if (Array.isArray(p)) {
-        return { key: p[0], label: p[1], type: p[2], hint: "", def: "", required: false, options: [] };
-      }
-      return p;
-    });
+    return raw.map((p) =>
+      Array.isArray(p)
+        ? { key: p[0], label: p[1], type: p[2], hint: "", def: "", required: false, options: [], content: null }
+        : p
+    );
   }
 
-  function renderSteps(steps, host, depth) {
-    if (!host) return;
-    host.innerHTML = "";
-    if (!steps.length && depth === 0) {
-      host.innerHTML = `<div class="ed-empty" style="padding:16px">No steps yet. Add a step or drag from below.</div>`;
-    }
-    steps.forEach((step, i) => {
-      host.appendChild(stepCard(step, steps, i, depth));
-    });
-  }
-
-  function stepCard(step, parentArr, index, depth) {
-    if (!step.options || typeof step.options !== "object") step.options = {};
-    // Legacy: options.condition → options.var (mod compiler only reads options.var)
-    if (step.key === "if" && step.options.condition != null && step.options.var == null) {
-      step.options.var = step.options.condition;
-      delete step.options.condition;
-    }
-    // Drop stray condition key so it does not appear under Advanced
-    if (step.key === "if" && "condition" in step.options) delete step.options.condition;
-
-    const isIf = step.key === "if";
-    const role = S().roleOf(step.key || "noop");
-    const color = S().ROLE_COLOR[role] || "#888";
-    const el = document.createElement("div");
-    el.className = "ed-block" + (isIf ? " ed-block-if" : "");
-    el.draggable = true;
-    el.style.borderLeftColor = color;
-    if (depth) el.style.marginLeft = depth * 12 + "px";
-
-    // DnD
-    el.addEventListener("dragstart", (ev) => {
-      state.dragFrom = { arr: parentArr, index };
-      el.classList.add("ed-dragging");
-      ev.dataTransfer.effectAllowed = "move";
-      try { ev.dataTransfer.setData("text/plain", String(index)); } catch (_) {}
-    });
-    el.addEventListener("dragend", () => {
-      el.classList.remove("ed-dragging");
-      state.dragFrom = null;
-      $$(".ed-drop-target").forEach((n) => n.classList.remove("ed-drop-target"));
-    });
-    el.addEventListener("dragover", (ev) => {
-      ev.preventDefault();
-      ev.dataTransfer.dropEffect = "move";
-      el.classList.add("ed-drop-target");
-    });
-    el.addEventListener("dragleave", () => el.classList.remove("ed-drop-target"));
-    el.addEventListener("drop", (ev) => {
-      ev.preventDefault();
-      el.classList.remove("ed-drop-target");
-      const from = state.dragFrom;
-      if (!from || from.arr !== parentArr) return;
-      const fi = from.index;
-      const ti = index;
-      if (fi === ti) return;
-      const [item] = parentArr.splice(fi, 1);
-      parentArr.splice(ti, 0, item);
-      const entry = currentEntry();
-      renderSteps(parentArr, el.parentElement, depth);
-      if (entry) syncRaw(entry);
-    });
-
-    const head = document.createElement("div");
-    head.className = "ed-block-head";
-
-    const grip = document.createElement("span");
-    grip.className = "ed-grip";
-    grip.title = "Drag to reorder";
-    grip.textContent = "⋮⋮";
-
-    const roleTag = document.createElement("span");
-    roleTag.className = "ed-role";
-    roleTag.style.background = color + "33";
-    roleTag.style.color = color;
-    roleTag.textContent = isIf ? "If" : (S().ROLE_LABELS[role] || role);
-
-    const keySel = document.createElement("select");
-    keySel.className = "ed-key";
-    Object.entries(S().ACTIONS || {}).forEach(([r, keys]) => {
-      const og = document.createElement("optgroup");
-      og.label = S().ROLE_LABELS[r] || r;
-      keys.forEach((k) => {
-        const opt = document.createElement("option");
-        opt.value = k;
-        opt.textContent = k;
-        if (k === step.key) opt.selected = true;
-        og.appendChild(opt);
-      });
-      keySel.appendChild(og);
-    });
-    if (![...keySel.querySelectorAll("option")].some((o) => o.value === "if")) {
-      const og = document.createElement("optgroup");
-      og.label = "Block";
-      const opt = document.createElement("option");
-      opt.value = "if";
-      opt.textContent = "if";
-      if (step.key === "if") opt.selected = true;
-      og.appendChild(opt);
-      keySel.appendChild(og);
-    }
-    keySel.addEventListener("change", () => {
-      step.key = keySel.value;
-      step.options = {};
-      if (step.key === "if") {
-        step.then = Array.isArray(step.then) ? step.then : [];
-        step.else = Array.isArray(step.else) ? step.else : [];
-        step.options = { var: "" };
-        delete step.as;
-      } else {
-        delete step.then;
-        delete step.else;
-      }
-      const entry = currentEntry();
-      renderSteps(parentArr, el.parentElement, depth);
-      if (entry) syncRaw(entry);
-    });
-
-    head.append(grip, roleTag, keySel);
-
-    // `as` only on real actions — if-blocks branch on options.var, they do not bind a return
-    if (!isIf) {
-      const asInp = document.createElement("input");
-      asInp.className = "ed-as";
-      asInp.placeholder = "as → var";
-      asInp.value = step.as || "";
-      asInp.title = "Bind return value to a process variable";
-      asInp.addEventListener("change", () => {
-        const v = asInp.value.trim();
-        if (v) step.as = v;
-        else delete step.as;
-        const entry = currentEntry();
-        if (entry) syncRaw(entry);
-      });
-      head.appendChild(asInp);
-    }
-
-    const up = mkBtn("↑", () => moveStep(parentArr, index, -1, el.parentElement, depth));
-    const down = mkBtn("↓", () => moveStep(parentArr, index, 1, el.parentElement, depth));
-    const del = mkBtn("×", () => {
-      parentArr.splice(index, 1);
-      const entry = currentEntry();
-      renderSteps(parentArr, el.parentElement, depth);
-      if (entry) syncRaw(entry);
-    });
-    head.append(up, down, del);
-    el.appendChild(head);
-
-    // Doc
-    const doc = isIf
-      ? "Branch on the truthiness of a process variable (options.var). Shape: { key:\"if\", options:{ var }, then:[], else:[] }."
-      : ((S().ACTION_DOCS && S().ACTION_DOCS[step.key]) || "");
-    const apiList = (!isIf && S().ACTION_APIS && S().ACTION_APIS[step.key]) || [];
-    if (doc || (apiList && apiList.length)) {
-      const docEl = document.createElement("div");
-      docEl.className = "ed-block-doc";
-      let html = doc ? escapeHtml(doc) : "";
-      if (apiList && apiList.length) {
-        html += (html ? " " : "") + '<span class="ed-api">API: ' +
-          apiList.map((a) => "<code>" + escapeHtml(a) + "</code>").join(" · ") +
-          "</span>";
-      }
-      docEl.innerHTML = html;
-      el.appendChild(docEl);
-    }
-
-    if (isIf) {
-      // ── Official mod shape: options.var + then[] + else[] ──
-      const grid = document.createElement("div");
-      grid.className = "ed-block-params";
-      const lab = document.createElement("label");
-      lab.className = "ed-pfield ed-pfield-wide";
-      lab.innerHTML =
-        '<span>When variable is true <code class="ed-pkey">options.var</code> *</span>' +
-        '<span class="ed-phint">Name bound by an earlier step\\\'s <code>as</code>. Both branches are compiled; the one that runs is chosen at run time.</span>';
-      const input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = "variable name (e.g. wet)";
-      input.value = step.options.var != null ? String(step.options.var) : "";
-      input.addEventListener("change", () => {
-        const v = input.value.trim();
-        // keep only var in options for if
-        step.options = v ? { var: v } : { var: "" };
-        const entry = currentEntry();
-        if (entry) syncRaw(entry);
-      });
-      lab.appendChild(input);
-      grid.appendChild(lab);
-      el.appendChild(grid);
-
-      if (!Array.isArray(step.then)) step.then = [];
-      if (!Array.isArray(step.else)) step.else = [];
-      appendBranch(el, "then", step.then, depth);
-      appendBranch(el, "else", step.else, depth);
-    } else {
-      // ── Normal action params ──
-      const defs = paramDefs(step.key);
-      const grid = document.createElement("div");
-      grid.className = "ed-block-params";
-      if (defs.length) {
-        defs.forEach((pr) => grid.appendChild(paramField(step, pr)));
-      } else {
-        const hint = document.createElement("div");
-        hint.className = "ed-block-hint";
-        hint.textContent = "No parameters for this action.";
-        grid.appendChild(hint);
-      }
-      const known = new Set(defs.map((d) => d.key));
-      const extraObj = {};
-      Object.keys(step.options).forEach((k) => {
-        if (!known.has(k)) extraObj[k] = step.options[k];
-      });
-      if (Object.keys(extraObj).length) {
-        const details = document.createElement("details");
-        details.className = "ed-extra-details";
-        details.open = true;
-        const sum = document.createElement("summary");
-        sum.textContent = "Extra options (" + Object.keys(extraObj).length + " unlisted keys)";
-        details.appendChild(sum);
-        const extraTa = document.createElement("textarea");
-        extraTa.className = "ed-extra-json";
-        extraTa.rows = 2;
-        extraTa.value = JSON.stringify(extraObj, null, 2);
-        extraTa.addEventListener("change", () => {
-          Object.keys(step.options).forEach((k) => {
-            if (!known.has(k)) delete step.options[k];
-          });
-          const raw = extraTa.value.trim();
-          if (raw) {
-            try { Object.assign(step.options, JSON.parse(raw)); }
-            catch (err) { alert("Extra options: " + err.message); }
-          }
-          const entry = currentEntry();
-          if (entry) syncRaw(entry);
-        });
-        details.appendChild(extraTa);
-        grid.appendChild(details);
-      }
-      el.appendChild(grid);
-    }
-
-    return el;
-  }
-
-  function paramField(step, pr) {
+  function paramField(step, pr, entry) {
     const lab = document.createElement("label");
-    lab.className = "ed-pfield";
+    lab.className = "ed-field";
     const title = document.createElement("span");
+    const ck = contentKind(pr, step.key);
     title.innerHTML =
-      escapeHtml(pr.label) +
+      escapeHtml(pr.label || pr.key) +
       (pr.required ? " *" : "") +
-      ' <code class="ed-pkey">' +
-      escapeHtml(pr.key) +
-      "</code>";
+      (ck ? ' <span class="ed-muted">⌗' + ck + "</span>" : "");
     lab.appendChild(title);
-    if (pr.hint) {
-      const h = document.createElement("span");
-      h.className = "ed-phint";
-      h.textContent = pr.hint;
-      lab.appendChild(h);
-    }
 
     let input;
     const cur = step.options[pr.key];
-    if (pr.type === "bool") {
+
+    if (ck) {
+      input = document.createElement("select");
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "—";
+      input.appendChild(empty);
+      contentOptions(ck).forEach((id) => {
+        const o = document.createElement("option");
+        o.value = id;
+        o.textContent = id;
+        input.appendChild(o);
+      });
+      if (cur != null && cur !== "") {
+        const v = String(cur);
+        if (![...input.options].some((o) => o.value === v)) {
+          const o = document.createElement("option");
+          o.value = v;
+          o.textContent = v + " (custom)";
+          input.appendChild(o);
+        }
+        input.value = v;
+      }
+      input.addEventListener("change", () => {
+        if (input.value === "") delete step.options[pr.key];
+        else step.options[pr.key] = input.value;
+        if (entry) syncRaw(entry);
+      });
+    } else if (pr.type === "bool") {
       input = document.createElement("input");
       input.type = "checkbox";
       input.checked = cur != null ? !!cur : pr.def === "true";
       input.addEventListener("change", () => {
         step.options[pr.key] = input.checked;
-        const entry = currentEntry();
         if (entry) syncRaw(entry);
       });
     } else if (pr.type === "select" && pr.options && pr.options.length) {
@@ -656,18 +1002,38 @@
         opt.textContent = o;
         input.appendChild(opt);
       });
-      const v = cur != null ? String(cur) : pr.def || "";
-      input.value = v;
+      input.value = cur != null ? String(cur) : pr.def || "";
       input.addEventListener("change", () => {
         if (input.value === "") delete step.options[pr.key];
         else step.options[pr.key] = input.value;
-        const entry = currentEntry();
+        if (entry) syncRaw(entry);
+      });
+    } else if (pr.type === "json") {
+      input = document.createElement("textarea");
+      input.rows = 3;
+      input.value =
+        cur != null
+          ? typeof cur === "string"
+            ? cur
+            : JSON.stringify(cur, null, 2)
+          : pr.def || "{}";
+      lab.classList.add("ed-field-wide");
+      input.addEventListener("change", () => {
+        const raw = input.value.trim();
+        if (raw === "") delete step.options[pr.key];
+        else {
+          try {
+            step.options[pr.key] = JSON.parse(raw);
+          } catch (_) {
+            step.options[pr.key] = raw;
+          }
+        }
         if (entry) syncRaw(entry);
       });
     } else {
       input = document.createElement("input");
       input.type = pr.type === "number" ? "number" : "text";
-      input.placeholder = pr.hint || pr.def || pr.type;
+      input.placeholder = pr.hint || pr.def || pr.type || "";
       if (cur != null) input.value = String(cur);
       else if (pr.def) input.value = pr.def;
       input.addEventListener("change", () => {
@@ -677,7 +1043,6 @@
           const n = Number(raw);
           if (!Number.isNaN(n)) step.options[pr.key] = n;
         } else step.options[pr.key] = raw;
-        const entry = currentEntry();
         if (entry) syncRaw(entry);
       });
     }
@@ -685,22 +1050,7 @@
     return lab;
   }
 
-  function appendBranch(el, name, arr, depth) {
-    const lab = document.createElement("div");
-    lab.className = "ed-branch-label";
-    lab.textContent = name;
-    const box = document.createElement("div");
-    box.className = "ed-branch ed-step-list";
-    renderSteps(arr, box, depth + 1);
-    const add = mkBtn("+ " + name, () => {
-      arr.push({ key: "noop", options: {} });
-      renderSteps(arr, box, depth + 1);
-      const entry = currentEntry();
-      if (entry) syncRaw(entry);
-    });
-    add.classList.add("ed-branch-add");
-    el.append(lab, box, add);
-  }
+
 
   function moveStep(arr, index, delta, host, depth) {
     const j = index + delta;

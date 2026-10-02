@@ -20,6 +20,10 @@
  * `structures:placed` / `structures:removed` stay unsubscribed on purpose:
  * they are the world-commit side of the same action, not a second action.
  *
+ * Item use is counted from the `action:intercept` hook, not from the
+ * `item:used` event or the `item:use` hook — see `bindEvents` for why, and
+ * `ENGINE_NOTES.md` §12.
+ *
  * See `ENGINE_NOTES.md` for the emit sites these claims come from.
  */
 import { api, root, safe } from "@sandmd/ui";
@@ -31,6 +35,23 @@ const unsubs: Unsub[] = [];
 
 function on(eventId: string, handler: (payload: any) => void): void {
     const u = safe(() => api.events.on(eventId, handler));
+    if (typeof u === "function") unsubs.push(u as () => void);
+}
+
+/**
+ * Subscribe to an engine **hook** (`api.hooks.intercept`) and keep the
+ * unsubscribe so `unbindEvents` can take it back down.
+ *
+ * The runtime hands our handler `(payload, context)` and `context.cancel()`
+ * vetoes the engine's default for that hook. A statistics mod must never
+ * cancel — leave `context` untouched.
+ *
+ * Registration throws on a hook name the engine does not know, so it goes
+ * through `safe` like everything else here: an unknown name then costs the
+ * counter, never the mod.
+ */
+function onHook(hookId: string, handler: (payload: any, context?: any) => void): void {
+    const u = safe(() => api.hooks?.intercept?.(hookId, handler));
     if (typeof u === "function") unsubs.push(u as () => void);
 }
 
@@ -83,6 +104,22 @@ function enumMap(name: string): Record<string, unknown> {
     return e && typeof e === "object" ? (e as Record<string, unknown>) : {};
 }
 
+/**
+ * `ActionType.Building` — the numeric enum value, resolved from the host and
+ * falling back to the hard-coded `2` (`Weapon=1, Building=2, Tool=3, Mod=4`).
+ *
+ * Read once at module load. `action:intercept` reports the active action, and a
+ * structure placement rides the same signal as an item use; this is what lets
+ * `src/events.ts` tell the two apart.
+ */
+const ACTION_TYPE_BUILDING = ((): number => {
+    const n = safe(() => {
+        const e = (root as { enums?: Record<string, unknown> }).enums;
+        return (e?.ActionType as Record<string, unknown> | undefined)?.Building;
+    }, undefined);
+    return typeof n === "number" ? n : 2;
+})();
+
 /** `GrapplingHook` → `Grappling hook`; `ConveyorLeft` → `Conveyor left`. */
 function humanise(k: string): string {
     const spaced = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
@@ -107,15 +144,51 @@ function definedName(get: () => unknown): string | undefined {
 }
 
 /**
+ * A registered item's human name, from its **string** definition id.
+ *
+ * `item:use` reports `payload.itemId` = the item *definition* id, which is a
+ * string (`"laser"`, `"drill"`, `"md-excavated-all:tool"`) — never the numeric
+ * `ItemId` enum value. So the numeric branch in `displayNameFor` is only reached
+ * by rows stored back when that was not yet true.
+ *
+ * Every registered definition, built-in or mod, carries a `nameKey`
+ * (`"items|laser|name"`), so the game's own translation is the label. Two
+ * failure modes are handled rather than guessed at:
+ *
+ * - the definition is gone (the owning mod was disabled), or the item was never
+ *   registered — there is nothing to name it from, so `undefined` lets the
+ *   caller keep the raw id;
+ * - the `nameKey` has no translation — `i18n.t` echoes the key straight back,
+ *   which would render as `items|laser|name`. That is not a name either.
+ */
+function itemNameFor(id: string): string | undefined {
+    const def = safe(
+        () => api.items?.getDefinitionById?.(id) as { nameKey?: unknown } | undefined,
+        undefined,
+    );
+    const nameKey = def?.nameKey;
+    if (typeof nameKey !== "string" || !nameKey) return undefined;
+
+    const t = safe(() => api.i18n?.t?.(nameKey) as unknown, undefined);
+    return typeof t === "string" && t.trim() && t !== nameKey ? t : undefined;
+}
+
+/**
  * A display name for one sub-key of a KPI category.
  *
  * Returns the key unchanged when nothing better is known, so an unresolvable id
  * still reads as itself rather than as a blank row or an invented name.
  */
 export function displayNameFor(category: string, key: string): string {
-    // A non-numeric key is already an id (a mod structure, a mod item, or a
-    // terrain already resolved at record time) and is its own label.
-    if (key.trim() === "" || !/^\d+$/.test(key)) return key;
+    if (key.trim() === "") return key;
+    const numeric = /^\d+$/.test(key);
+
+    // Items are keyed by the string id the `item:use` hook reports, so they
+    // resolve on the key itself. Everything else is keyed by number or is
+    // already a name (terrain is resolved at record time).
+    if (category === "items_used" && !numeric) return itemNameFor(key) ?? key;
+    if (!numeric) return key;
+
     const n = Number(key);
 
     if (category.startsWith("structures_")) {
@@ -127,11 +200,20 @@ export function displayNameFor(category: string, key: string): string {
     }
 
     if (category === "items_used") {
+        // Rows written before the hook moved item keys to string ids. Still
+        // resolved so existing history does not read as bare numbers.
         return definedName(() => api.items?.getDefinitionById?.(n)) ??
             (() => {
                 const m = memberNameFor("ItemId", n);
                 return m ? humanise(m) : key;
             })();
+    }
+
+    // Both projectile categories are keyed by `ProjectileType`, which is numeric
+    // with no reverse map — the same shape as `ItemId`.
+    if (category === "projectiles_hit" || category === "projectile_fire_structure") {
+        const m = memberNameFor("ProjectileType", n);
+        return m ? humanise(m) : key;
     }
 
     return key;
@@ -156,10 +238,64 @@ export function bindEvents(): void {
         if (n > 0) bumpKpi("structures_moved", null, n);
     });
 
-    // —— Item use (vacuum, shoot, laser, dig tools, …) ——
-    on("item:used", (p) => {
-        const itemId = p?.itemId ?? p?.id ?? "unknown";
-        bumpKpi("items_used", String(itemId));
+    // —— Item use ——
+    //
+    // Counted from the `action:intercept` hook — the action-start signal — read
+    // as `args.action?.id`.
+    //
+    // Two earlier signals were tried and are both dead ends here:
+    //
+    // - `item:used` (event) is emitted from the use-*commit* only, which the
+    //   engine reaches for a couple of built-ins and nothing else.
+    // - `item:use` (hook) fires from *begin-use*, which is reached solely from
+    //   the `ActionType.Mod` branch — so every built-in Weapon/Tool (vacuum,
+    //   grabber, rocket launcher, grappling hook, …) never triggers it either.
+    //
+    // `action:intercept` fires on every action start — the mouse press that
+    // begins an action — and carries the active action itself, so it covers
+    // built-in and modded items alike:
+    //
+    //   runInterceptorsSafe(e, "action:intercept", {action, cellX, cellY})
+    //
+    // `action.id` is a numeric `ItemId` for built-ins and the definition id
+    // string for a mod item; both resolve in `displayNameFor`.
+    //
+    // Not cancelling is required: the dispatch `return`s on a cancel, which
+    // would eat the player's click.
+    onHook("action:intercept", (args) => {
+        const action = args?.action;
+        const id = action?.id;
+        if (typeof id !== "string" && typeof id !== "number") return;
+        // A structure placement is an action too, but it is not an item use —
+        // and `building:placed` already counts it, precisely. Leaving it in
+        // would file conveyor types into the Items tab under an `ItemId` name.
+        if (action?.type === ACTION_TYPE_BUILDING) return;
+        bumpKpi("items_used", String(id));
+    });
+
+    // —— Projectile hits ——
+    //
+    // `projectile:hit` carries the live projectile record, so the breakdown is
+    // by `projectile.type` (`ProjectileType`: Bullet, Rocket, GrapplingHook,
+    // Fire, Digger, Mod).
+    //
+    // ⚠️ The dispatch short-circuits when an interceptor **cancels**, skipping
+    // the hit itself. We only observe, so the default damage still lands.
+    onHook("projectile:hit", (args) => {
+        const type = args?.projectile?.type;
+        if (typeof type !== "number") return;
+        bumpKpi("projectiles_hit", String(type));
+    });
+
+    // —— Flamethrower fire over a structure ——
+    //
+    // Only `ProjectileType.Fire` reaches this one, and again the payload's
+    // projectile record is the source of the type. Same no-cancel rule: a
+    // cancel here would stop the fire from spreading.
+    onHook("projectile:fire:overStructure", (args) => {
+        const type = args?.projectile?.type;
+        if (typeof type !== "number") return;
+        bumpKpi("projectile_fire_structure", String(type));
     });
 
     // —— Terrain dig ——
@@ -180,7 +316,11 @@ export function bindEvents(): void {
         bumpKpi("resources_collected", String(id), amount);
     });
 
-    console.log(`${LOG} event listeners bound (${unsubs.length} unsubs)`);
+    console.log(
+        `${LOG} tracking bound — 6 events + 4 hooks ` +
+            `(action:intercept, projectile:hit, projectile:fire:overStructure, ` +
+            `player:collision:prepare), ${unsubs.length} unsubs`,
+    );
 }
 
 export function unbindEvents(): void {

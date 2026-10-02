@@ -5,14 +5,13 @@
  * Home cards resolve per-item counts with tolerant id matching (vanilla ids are
  * often all-lowercase: water, gold, wetsand, liquidgold, …).
  */
-import { api, root, safe } from "@sandmd/ui";
+import { api, lastDelta, root, safe } from "@sandmd/ui";
 import { BUILT_IN, SCAN_CHUNK } from "./constants.ts";
 import { getConfig } from "./config.ts";
 import { loadCards } from "./cards.ts";
 import {
     buildRawSnapshot,
     CARD_GRAPH_POINTS,
-    diffFromReference,
     loadHistory,
     loadReference,
     mapGet,
@@ -438,9 +437,20 @@ function resolveItemStat(
     };
 }
 
+/**
+ * Attach history-derived series and interval change to one card item.
+ *
+ * `delta` is the change between the **last two** scans — the same number as the
+ * final bar of the sparkline beside it. It used to be `current − reference`,
+ * i.e. everything found since the very first scan ever; that is a lifetime
+ * figure, not a recent one, and it drifts further from the truth the longer the
+ * install is left running.
+ *
+ * `null` when history is shorter than two samples, so the card can omit the
+ * badge rather than claim nothing changed.
+ */
 function attachHistoryToItem(
     item: CardItemStat,
-    reference: import("./types.ts").RawStatsSnapshot | null,
     history: import("./types.ts").RawStatsSnapshot[],
 ): CardItemStat {
     const kindKey = item.kind === "element"
@@ -448,9 +458,9 @@ function attachHistoryToItem(
         : item.kind === "terrain"
         ? "terrains"
         : "structures";
-    const delta = diffFromReference(reference, item.count, kindKey, item.id);
     // Series for charts is built at render time via seriesForId (same path as list graphs).
     const series = seriesForId(history, kindKey, item.id, getConfig().historyMax);
+    const delta = lastDelta(seriesForId(history, kindKey, item.id, 2));
     return { ...item, delta, series };
 }
 
@@ -459,29 +469,21 @@ export function resolveCards(
     elements: ElementRow[],
     structures: StructureRow[],
     terrains: TerrainRow[],
-    reference: import("./types.ts").RawStatsSnapshot | null = null,
+    _reference: import("./types.ts").RawStatsSnapshot | null = null,
     history: import("./types.ts").RawStatsSnapshot[] = [],
 ): CardStat[] {
     return configs.map((cfg) => {
         let items = cfg.items.map((ref, i) =>
             resolveItemStat(ref, i === 0, elements, structures, terrains)
         );
-        items = items.map((it) => attachHistoryToItem(it, reference, history));
+        items = items.map((it) => attachHistoryToItem(it, history));
         const primary = items[0];
         const total = items.reduce((s, it) => s + it.count, 0);
-        let delta: number | null = null;
-        if (reference) {
-            let refTotal = 0;
-            for (const it of items) {
-                const kindKey = it.kind === "element"
-                    ? "elements"
-                    : it.kind === "terrain"
-                    ? "terrains"
-                    : "structures";
-                refTotal += mapGet(reference[kindKey], it.id);
-            }
-            delta = total - refTotal;
-        }
+        // Sum of the per-item last-interval changes. Null when every item is
+        // null, so a card with too little history shows no badge at all.
+        const delta = items.every((it) => it.delta == null)
+            ? null
+            : items.reduce((s, it) => s + (it.delta ?? 0), 0);
         return {
             id: cfg.id,
             title: cfg.title,

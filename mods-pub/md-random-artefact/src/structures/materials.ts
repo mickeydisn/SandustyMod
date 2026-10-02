@@ -17,6 +17,7 @@ import {
     type ArtefactProgress,
     type EatMaterial,
 } from "../constants.ts";
+import { unlockInBuildMenu } from "../utils/buildMenu.ts";
 
 interface StructurePos {
     x: number;
@@ -86,9 +87,9 @@ function registerOne(
         },
     });
 
-    try {
-        api.player.buildings.add?.(id);
-    } catch { /* best-effort */ }
+    if (!unlockInBuildMenu(id)) {
+        console.warn(`${LOG} material link not unlocked — build menu will hide ${id}`);
+    }
 
     // Signal sender: ON while this material is the generator's active cycle pick
     try {

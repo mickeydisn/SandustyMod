@@ -40,10 +40,20 @@ const ERASE_DISTANCE_MIN = OUTLINE_DISTANCE + 1;
 const NEIGH_DX = [1, -1, 0, 0] as const;
 const NEIGH_DY = [0, 0, 1, -1] as const;
 
-/** Minimal shape both `api.terrains` and a `grid.mutate` writer must satisfy. */
+/**
+ * Minimal shape both `api.terrains` and a `grid.mutate` writer must satisfy.
+ *
+ * The real members are `createAtCell` / `replaceAtCell` (plus their
+ * `…WhenIdle` batching twins). There is no `createAt` / `replaceAt` — an
+ * earlier version of this file called those and asserted the opposite in a
+ * comment, so every write silently matched nothing and the stamp reported
+ * `dirt=0 moss=0 erased=0` while appearing to succeed.
+ */
 interface TerrainWriter {
-    createAt?: (x: number, y: number, ref: string) => void;
-    replaceAt?: (x: number, y: number, ref: string) => void;
+    createAtCell?: (x: number, y: number, ref: string | number) => void;
+    createAtCellWhenIdle?: (x: number, y: number, ref: string | number) => void;
+    replaceAtCell?: (x: number, y: number, ref: string | number) => void;
+    replaceAtCellWhenIdle?: (x: number, y: number, ref: string | number) => void;
 }
 
 function randInt(min: number, max: number): number {
@@ -284,9 +294,15 @@ export function findFreeZone(
 /**
  * Write one terrain cell.
  *
- * The real `api.terrains` surface is `createAt` / `replaceAt` / `removeAt` —
- * there is no `createAtCell` / `replaceAtCell`, so the previous names here
- * silently matched nothing and no terrain was ever placed.
+ * `api.terrains` exposes `createAtCell` / `replaceAtCell` and their
+ * `…WhenIdle` twins. An earlier version of this function called `createAt` /
+ * `replaceAt` — names that do not exist — and returned false for every cell,
+ * so the stamp "succeeded" with zero cells written.
+ *
+ * The `…WhenIdle` variants batch into the grid writer, which is what the
+ * `grid.mutate` path below wants, so they are tried first; the immediate ones
+ * are the fallback. Only the first working call per target is used, otherwise a
+ * 64×64 stamp would queue four mutations per cell.
  */
 function placeOne(
     terrains: TerrainWriter | null | undefined,
@@ -295,29 +311,34 @@ function placeOne(
     y: number,
     ref: string,
 ): boolean {
+    const METHOD_ORDER = [
+        "createAtCellWhenIdle",
+        "replaceAtCellWhenIdle",
+        "createAtCell",
+        "replaceAtCell",
+    ] as const;
+
     let wrote = false;
     let lastErr: unknown = null;
-    for (const t of [terrains, apiTerrains]) {
+    // The mutate writer and `api.terrains` are frequently the same object;
+    // de-duplicate so a cell is not written twice per stamp.
+    const targets = [...new Set([terrains, apiTerrains])];
+    for (const t of targets) {
         if (!t) continue;
-        try {
-            if (typeof t.createAt === "function") {
-                t.createAt(x, y, ref);
+        const bag = t as unknown as Record<string, unknown>;
+        for (const name of METHOD_ORDER) {
+            const fn = bag[name];
+            if (typeof fn !== "function") continue;
+            try {
+                (fn as (a: number, b: number, c: unknown) => void).call(t, x, y, ref);
                 wrote = true;
+                break;
+            } catch (e) {
+                lastErr = e;
             }
-        } catch (e) {
-            lastErr = e;
-        }
-        try {
-            if (typeof t.replaceAt === "function") {
-                t.replaceAt(x, y, ref);
-                wrote = true;
-            }
-        } catch (e) {
-            lastErr = e;
         }
     }
     if (!wrote && lastErr) {
-        // only spam once per stamp via console on first failures (caller logs)
         (placeOne as { _errLogged?: boolean })._errLogged ??= false;
         if (!(placeOne as { _errLogged?: boolean })._errLogged) {
             console.warn(`${LOG} placeOne failed @${x},${y} ref=${String(ref)}`, lastErr);
@@ -327,19 +348,30 @@ function placeOne(
     return wrote;
 }
 
-/** Remove whatever element occupies a cell. */
+/**
+ * Remove whatever element occupies a cell.
+ *
+ * The real members are `removeAtCell` / `removeAtCellWhenIdle`. The previous
+ * version called `removeAt` / `removeAtDeferred`, neither of which exists, so
+ * cells were never cleared before the terrain write.
+ */
 function clearElement(x: number, y: number): void {
     const api = sandkit.api;
-    try {
-        if (typeof api.elements?.removeAt === "function") {
+    const bag = api.elements as unknown as Record<string, unknown>;
+    for (const name of ["removeAtCellWhenIdle", "removeAtCell"]) {
+        const fn = bag?.[name];
+        if (typeof fn !== "function") continue;
+        try {
             // The erase ring must not pay out collectors for what it deletes.
-            api.elements.removeAt(x, y, { skipCollectorCheck: true });
+            (fn as (a: number, b: number, c?: unknown) => void).call(
+                api.elements,
+                x,
+                y,
+                { skipCollectorCheck: true },
+            );
             return;
-        }
-    } catch { /* best-effort */ }
-    try {
-        api.elements?.removeAtDeferred?.(x, y);
-    } catch { /* best-effort */ }
+        } catch { /* try the next spelling */ }
+    }
 }
 
 /**
@@ -349,10 +381,37 @@ function clearElement(x: number, y: number): void {
 function eraseCell(x: number, y: number): boolean {
     const api = sandkit.api;
     let touched = false;
+    // `isAtCell` is the real presence test. The previous version called
+    // `isPosTerrain`, which does not exist, so the terrain branch always threw
+    // into the catch and the erase ring only ever removed elements.
+    const bag = api.terrains as unknown as Record<string, unknown>;
     try {
-        if (api.terrains?.isPosTerrain?.(x, y)) {
-            api.terrains.removeAt(x, y, { skipShadow: true });
-            touched = true;
+        let present = false;
+        if (typeof bag?.isAtCell === "function") {
+            present = (bag.isAtCell as (a: number, b: number) => boolean).call(
+                api.terrains,
+                x,
+                y,
+            );
+        } else if (typeof bag?.getTypeAtCell === "function") {
+            present = (bag.getTypeAtCell as (a: number, b: number) => unknown)
+                .call(api.terrains, x, y) != null;
+        }
+        if (present) {
+            for (const name of ["removeAtCellWhenIdle", "removeAtCell"]) {
+                const fn = bag?.[name];
+                if (typeof fn !== "function") continue;
+                try {
+                    (fn as (a: number, b: number, c?: unknown) => void).call(
+                        api.terrains,
+                        x,
+                        y,
+                        { skipShadow: true },
+                    );
+                    touched = true;
+                    break;
+                } catch { /* try the next spelling */ }
+            }
         }
     } catch { /* best-effort */ }
     clearElement(x, y);
@@ -398,25 +457,37 @@ export function paintTerrainFromKinds(
 
     // The erase ring goes first and runs outside the batched terrain writer:
     // it is a removal, not a write, and the writer only carries create/replace.
+    // This part is synchronous, so `erase` is a true count.
     let erase = 0;
     for (const c of toErase) {
         if (eraseCell(c.x, c.y)) erase++;
     }
 
-    let fill = 0;
-    let outline = 0;
+    // `api.grid.mutate` is **deferred** on the main thread — it invokes the
+    // callback after this function has already returned. Counting inside the
+    // callback therefore always yielded 0, which is why the toast read
+    // `dirt=0 moss=0` on a stamp that had in fact written ~900 cells. The two
+    // counts below are the cells *queued* for each ref.
+    const fill = toPlace.reduce((n, c) => (c.kind === "fill" ? n + 1 : n), 0);
+    const outline = toPlace.length - fill;
 
+    // Runs inside the deferred `grid.mutate` callback, so it must not touch
+    // `fill`/`outline` — those are already final and are `const`.
     const apply = (terrains: Parameters<typeof placeOne>[0]) => {
         let logged = 0;
+        let failed = 0;
         for (const c of toPlace) {
             if (placeOne(terrains, api.terrains, c.x, c.y, c.ref)) {
-                if (c.kind === "fill") fill++;
-                else outline++;
                 if (logged < 3) {
                     console.log(`${LOG} terrain write cell=(${c.x},${c.y}) kind=${c.kind} ref=${String(c.ref)}`);
                     logged++;
                 }
+            } else {
+                failed++;
             }
+        }
+        if (failed > 0) {
+            console.warn(`${LOG} terrain: ${failed}/${toPlace.length} cell(s) could not be written`);
         }
     };
 

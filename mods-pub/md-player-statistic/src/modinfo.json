@@ -25,11 +25,11 @@
         "historyMax": {
             "type": "number",
             "default": 30,
-            "min": 5,
+            "min": 10,
             "max": 200,
-            "step": 1,
+            "step": 10,
             "label": "Display points",
-            "description": "How many data points to render on sparklines and charts (5–200)."
+            "description": "How many data points to render on sparklines and charts (10–200, in steps of 10)."
         },
         "timeRange": {
             "type": "number",

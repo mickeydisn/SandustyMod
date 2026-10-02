@@ -1,8 +1,24 @@
 (function () {
   const sections = document.querySelectorAll(".section");
   const navItems = document.querySelectorAll(".nav-item");
+  const sidebar = document.getElementById("sidebar");
+  const sidebarToggle = document.getElementById("sidebar-toggle");
+  try {
+    if (localStorage.getItem("md-sidebar-collapsed") === "1" && sidebar) {
+      sidebar.classList.add("collapsed");
+      if (sidebarToggle) sidebarToggle.textContent = "»";
+    }
+  } catch (_) {}
+  sidebarToggle?.addEventListener("click", () => {
+    if (!sidebar) return;
+    sidebar.classList.toggle("collapsed");
+    const on = sidebar.classList.contains("collapsed");
+    sidebarToggle.textContent = on ? "»" : "«";
+    try { localStorage.setItem("md-sidebar-collapsed", on ? "1" : "0"); } catch (_) {}
+  });
+
   const content = document.querySelector(".content");
-  const PAGE_IDS = new Set(["graph", "editor", "blocky", "structure-blocky", "start", "content", "systems", "handlers"]);
+  const PAGE_IDS = new Set(["graph", "editor", "start", "content", "systems", "handlers"]);
   const ANCHOR_PAGE = {
     "h-processes": "handlers", "h-actions": "handlers", "h-ids": "handlers",
     "start-overview": "start", "start-gs": "start", "start-shape": "start", "start-panel": "start",
@@ -18,7 +34,7 @@
     if (!PAGE_IDS.has(target) && ANCHOR_PAGE[target]) {
       scrollTo = target; target = ANCHOR_PAGE[target];
     }
-    if (String(target).startsWith("role-") || String(target).startsWith("action-")) {
+    if (String(target).startsWith("role-") || String(target).startsWith("action-") || String(target).startsWith("api-")) {
       scrollTo = target; target = "handlers";
     }
     if (!PAGE_IDS.has(target)) target = "graph";
@@ -26,8 +42,7 @@
     navItems.forEach((n) => n.classList.toggle("active", n.dataset.section === target));
     if (content) {
       content.classList.toggle("graph-mode", target === "graph");
-      content.classList.toggle("editor-mode", target === "editor" || target === "blocky" || target === "structure-blocky");
-      content.classList.toggle("blocky-mode", target === "blocky");
+      content.classList.toggle("editor-mode", target === "editor");
     }
     const main = document.querySelector(".main");
     if (main && !scrollTo) main.scrollTo(0, 0);
@@ -37,8 +52,6 @@
     } catch (_) {}
     if (target === "graph" && window.__mdGraphRender) requestAnimationFrame(() => window.__mdGraphRender());
     if (target === "editor" && window.__mdEditorBoot) requestAnimationFrame(() => window.__mdEditorBoot());
-    if (target === "blocky" && window.__mdBlockyBoot) requestAnimationFrame(() => window.__mdBlockyBoot());
-    if (target === "structure-blocky" && window.__mdStructureBlockyBoot) requestAnimationFrame(() => window.__mdStructureBlockyBoot());
     if (scrollTo) {
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -65,7 +78,7 @@
       return;
     }
     if (PAGE_IDS.has(raw)) { show(raw); return; }
-    if (ANCHOR_PAGE[raw] || raw.startsWith("role-") || raw.startsWith("action-")) { show(raw); return; }
+    if (ANCHOR_PAGE[raw] || raw.startsWith("role-") || raw.startsWith("action-") || raw.startsWith("api-")) { show(raw); return; }
     const el = document.getElementById(raw);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
