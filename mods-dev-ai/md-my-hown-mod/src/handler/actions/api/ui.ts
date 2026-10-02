@@ -4,6 +4,7 @@ import { p } from "../../engine/registry/params.ts";
 export const uiActions = defineActions({
     toast: {
         role: "feel",
+        needs: [],
         doc: "Shows a message. Set `text` in options.",
         type: "message",
         slots: ["signal", "trigger", "processing", "itemAction", "upgrade", "modifier"],

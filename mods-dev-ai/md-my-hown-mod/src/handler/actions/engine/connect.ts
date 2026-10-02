@@ -9,6 +9,7 @@ export const engineConnectActions = defineActions({
     
     energyDefault: {
         role: "connect",
+        needs: [],
         doc: "Storage node descriptor: capacity 1000. Override `capacity` in options.",
         type: "cell",
         slots: ["processing"],
@@ -26,6 +27,7 @@ export const engineConnectActions = defineActions({
     
     energyBank: {
         role: "connect",
+        needs: [],
         doc: "Storage node descriptor: capacity 100000 — a large buffer.",
         type: "cell",
         slots: ["processing"],
@@ -43,6 +45,7 @@ export const engineConnectActions = defineActions({
     
     energyWire: {
         role: "connect",
+        needs: [],
         doc: "Storage node descriptor: capacity 200 — a small buffer between machines.",
         type: "cell",
         slots: ["processing"],
@@ -60,6 +63,7 @@ export const engineConnectActions = defineActions({
     
     energyConductor: {
         role: "connect",
+        needs: [],
         doc: "Conductor descriptor: capacity 0. Forwards energy without holding any.",
         type: "cell",
         slots: ["processing"],
@@ -71,6 +75,7 @@ export const engineConnectActions = defineActions({
     
     energyNetwork: {
         role: "connect",
+        needs: [],
         doc: "Joins the network named by `energyType` in options.",
         type: "cell",
         slots: ["processing"],
@@ -90,6 +95,7 @@ export const engineConnectActions = defineActions({
     
     itemDefault: {
         role: "connect",
+        needs: [],
         doc: "Baseline item options (power 5). Use as a base for a tool or weapon.",
         type: "global",
         slots: ["itemAction"],
@@ -104,6 +110,7 @@ export const connectModifierActions = defineModifiers({
     
     logArgs: {
         role: "connect",
+        needs: [],
         kind: "intercept",
         doc: "Modifier: prints whatever the hook passed in. Use to discover hook names.",
         type: "modifier", slots: ["modifier"], scope: "global", params: [],
@@ -115,6 +122,7 @@ export const connectModifierActions = defineModifiers({
     
     identity: {
         role: "connect",
+        needs: [],
         kind: "modify",
         doc: "Modifier: returns the args untouched. Proves a modify hook is wired.",
         type: "modifier", slots: ["modifier"], scope: "global", params: [],
@@ -124,6 +132,7 @@ export const connectModifierActions = defineModifiers({
     
     logBuildingPayload: {
         role: "connect",
+        needs: [],
         kind: "intercept",
         doc: "Modifier: prints a building-placement-shaped payload. Useful while wiring.",
         type: "modifier",

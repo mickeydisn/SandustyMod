@@ -4,6 +4,7 @@ import { p } from "../../engine/registry/params.ts";
 export const playerActions = defineActions({
     techGrantItem: {
         role: "connect",
+        needs: [],
         doc: "Gives the player an item. Set `itemId` and `count` in options.",
         type: "tech",
         slots: ["upgrade"],

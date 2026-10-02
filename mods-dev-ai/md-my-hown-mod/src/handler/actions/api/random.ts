@@ -5,6 +5,7 @@ import { p } from "../../engine/registry/params.ts";
 export const randomActions = defineActions({
     randomInt: {
         role: "decide",
+        needs: [],
         doc: "A random whole number from `min` to `max`, inclusive. Set both.",
         type: "processor",
         slots: [...ALL_SLOTS],

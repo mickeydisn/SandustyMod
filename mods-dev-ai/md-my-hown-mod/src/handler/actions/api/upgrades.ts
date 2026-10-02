@@ -4,6 +4,7 @@ import { p } from "../../engine/registry/params.ts";
 export const upgradesActions = defineActions({
     techSetUpgradeLevel: {
         role: "connect",
+        needs: [],
         doc: "Sets an upgrade level. Set `itemId`, `upgradeId` and `level` in options.",
         type: "tech",
         slots: ["upgrade"],

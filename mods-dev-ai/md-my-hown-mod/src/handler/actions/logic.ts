@@ -59,6 +59,7 @@ export const logicActions = defineActions({
     
     logicAny: {
         role: "logic",
+        needs: ["pos", "read"],
         doc: "fn(size?, element, …) → true when **any** cell in the range holds that " +
             "element. Bind the answer with the step's As field.",
         type: "cell",
@@ -85,6 +86,7 @@ export const logicActions = defineActions({
     
     logicAll: {
         role: "logic",
+        needs: ["pos", "read"],
         doc: "fn(size?, element, …) → true when **all** cells in the range hold that element.",
         type: "cell",
         slots: ["signal", "processing", "itemAction", "modifier"],
@@ -109,6 +111,7 @@ export const logicActions = defineActions({
     
     logicCount: {
         role: "logic",
+        needs: ["pos", "read"],
         doc: "fn(size?, element, …) → how **many** cells in the range hold that " +
             "element. Bind the number with the step's As field.",
         type: "cell",
@@ -135,6 +138,7 @@ export const logicActions = defineActions({
     
     logicSum: {
         role: "logic",
+        needs: ["pos", "read"],
         doc: "fn(size?, …) → the total terrain hit points in the range. A cell with " +
             "no terrain counts as 0.",
         type: "cell",
@@ -177,6 +181,7 @@ export const logicActions = defineActions({
     
     logicForEach: {
         role: "logic",
+        needs: ["pos", "commit"],
         doc: "fn(size?, to, …) → writes an element at **every** cell in the range. " +
             "Set `when` to only touch cells already holding another element.",
         type: "cell",

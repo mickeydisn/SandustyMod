@@ -12,6 +12,7 @@ export const senseActions = defineActions({
     
     structureInspect: {
         role: "sense",
+        needs: ["pos", "data"],
         doc: "Reports what the clicked structure is, without changing anything.",
         type: "message", slots: ["signal"], scope: "structure", params: [],
         fn: (structure) => {
@@ -27,6 +28,7 @@ export const senseActions = defineActions({
     
     structureReadData: {
         role: "sense",
+        needs: ["data"],
         doc: "Reads one key out of the instance's own data bag. Set `key` in options.",
         type: "message",
         slots: ["signal"],
@@ -47,6 +49,7 @@ export const senseActions = defineActions({
     
     triggerScan: {
         role: "sense",
+        needs: ["pos"],
         doc: "Logs a rectangle of cells around this position. Set `width` / `height` in options.",
         type: "cell",
         slots: ["processing"],
@@ -62,6 +65,7 @@ export const senseActions = defineActions({
     
     signalLog: {
         role: "sense",
+        needs: [],
         doc: "Logs the raw payload. Use to see what a call site actually delivers.",
         type: "message", slots: ["signal"], scope: "structure", params: [],
         fn: (payload, _ctx, extra) => {
@@ -72,6 +76,7 @@ export const senseActions = defineActions({
     
     triggerLog: {
         role: "sense",
+        needs: [],
         doc: "Logs the raw payload of a timed tick.",
         type: "message", slots: ["trigger"], scope: "global", params: [],
         fn: (payload, _ctx, extra) => {
@@ -85,6 +90,7 @@ export const processingSenseActions = defineActions({
     
     isElementAtCell: {
         role: "sense",
+        needs: ["pos", "read"],
         doc: "fn(dx?, dy?) → true when the offset cell holds `element`. Bind the " +
             "answer with the step's As field, then read it as {{name}}.",
         type: "cell",

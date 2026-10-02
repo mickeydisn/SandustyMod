@@ -16,6 +16,7 @@ export const engineDecideActions = defineActions({
     
     math: {
         role: "decide",
+        needs: [],
         doc: "`left op right`, where op is + - * or /. Division rounds to the nearest whole number. Set both values.",
         type: "processor",
         slots: [...ALL_SLOTS],
@@ -63,6 +64,7 @@ export const engineDecideActions = defineActions({
     
     compare: {
         role: "decide",
+        needs: [],
         doc: "Compares `left` and `right` with `op`. Answers 1 or 0. Set the options.",
         type: "processor",
         slots: [...ALL_SLOTS],
@@ -111,6 +113,7 @@ export const engineDecideActions = defineActions({
     
     noop: {
         role: "decide",
+        needs: [],
         doc: "Always true. Makes an unconditional process explicit.",
         type: "global", slots: [...ALL_SLOTS], scope: "global", params: [],
         fn: () => undefined,
@@ -119,6 +122,7 @@ export const engineDecideActions = defineActions({
     
     upgradeScale: {
         role: "decide",
+        needs: ["data"],
         doc: "Maps a stored value through thresholds. Set `thresholds` in options.",
         type: "tech",
         slots: ["upgrade"],

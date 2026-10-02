@@ -178,6 +178,7 @@ function writeEach(
 export const structureSenseActions = defineActions({
     structureType: {
         role: "sense",
+        needs: ["pos"],
         doc: "Reads the type of the structure at a cell and returns the engine's own " +
             "handle for it. Feed it back into Is structure type — do not compare it to " +
             "an id by hand.",
@@ -201,6 +202,7 @@ export const structureSenseActions = defineActions({
 
     hasStructure: {
         role: "sense",
+        needs: ["pos"],
         doc: "True when a structure has been built at the cell. Bind it with As.",
         type: "cell",
         slots: ["processing"],
@@ -218,6 +220,7 @@ export const structureSenseActions = defineActions({
 
     isStructureType: {
         role: "sense",
+        needs: ["pos"],
         doc: "True when the cell holds a structure of the given type. Accepts an id or " +
             "a handle from Structure type.",
         type: "cell",
@@ -243,6 +246,7 @@ export const structureSenseActions = defineActions({
 
     isMyType: {
         role: "sense",
+        needs: [],
         doc: "True when **this** structure is of the given type. No offsets — it asks " +
             "about the instance the process is running on.",
         type: "cell",
@@ -262,6 +266,7 @@ export const structureSenseActions = defineActions({
 
     isBlockedByPlayer: {
         role: "sense",
+        needs: ["pos"],
         doc: "True when a player has blocked building at the cell.",
         type: "cell",
         slots: ["processing"],
@@ -280,6 +285,7 @@ export const structureSenseActions = defineActions({
 
     isLauncher: {
         role: "sense",
+        needs: ["pos"],
         doc: "True when the cell is a structure launcher.",
         type: "cell",
         slots: ["processing"],
@@ -297,6 +303,7 @@ export const structureSenseActions = defineActions({
 
     isStructureEnabled: {
         role: "sense",
+        needs: ["pos"],
         doc: "True when processing is enabled at the cell. Bind it to gate later steps.",
         type: "cell",
         slots: ["processing"],
@@ -315,6 +322,7 @@ export const structureSenseActions = defineActions({
 
     countStructures: {
         role: "sense",
+        needs: ["pos"],
         doc: "Counts structures in the region. Bind it to check a footprint is clear " +
             "before building.",
         type: "cell",
@@ -337,6 +345,7 @@ export const structureSenseActions = defineActions({
 
     structureData: {
         role: "sense",
+        needs: ["pos"],
         doc: "Reads one key from the structure's saved data and returns it. Bind it " +
             "with As. Returns the empty string when the key is absent.",
         type: "cell",
@@ -362,6 +371,7 @@ export const structureSenseActions = defineActions({
 export const structureActActions = defineActions({
     buildStructure: {
         role: "act",
+        needs: ["pos"],
         doc: "Builds a structure of the given type at the cell.",
         type: "cell",
         slots: ["processing"],
@@ -383,6 +393,7 @@ export const structureActActions = defineActions({
 
     removeStructure: {
         role: "act",
+        needs: ["pos"],
         doc: "Removes the structure at the cell. Use Remove structures to clear a whole " +
             "region in one call.",
         type: "cell",
@@ -404,6 +415,7 @@ export const structureActActions = defineActions({
 
     removeStructures: {
         role: "act",
+        needs: ["pos"],
         doc: "Removes every structure in the region with a single engine call. Prefer " +
             "this to Remove structure over an area.",
         type: "cell",
@@ -437,6 +449,7 @@ export const structureActActions = defineActions({
 
     setStructureEnabled: {
         role: "act",
+        needs: ["pos"],
         doc: "Enables or disables processing at the cell.",
         type: "cell",
         slots: ["processing"],
@@ -461,6 +474,7 @@ export const structureActActions = defineActions({
 
     setSpritesheetIndex: {
         role: "act",
+        needs: ["pos"],
         doc: "Sets this instance's spritesheet frame. Bind a number to it for a gauge.",
         type: "cell",
         slots: ["processing"],
@@ -490,6 +504,7 @@ export const structureActActions = defineActions({
 
     setSpritesheetByValue: {
         role: "act",
+        needs: ["pos"],
         doc: "Sets the frame by mapping a value onto a threshold list — the progress bar. " +
             "Thresholds are comma-separated, ascending.",
         type: "cell",
@@ -540,6 +555,7 @@ export const structureActActions = defineActions({
 
     setStructureData: {
         role: "act",
+        needs: ["pos"],
         doc: "Writes one key into the structure's saved data, through the engine. Use " +
             "Number value for a numeric field.",
         type: "cell",
@@ -568,6 +584,7 @@ export const structureActActions = defineActions({
 
     pushStructure: {
         role: "act",
+        needs: [],
         doc: "Pushes this structure's data to the engine. Only needed after an action " +
             "that edits the data bag in place.",
         type: "cell",
@@ -593,6 +610,7 @@ export const structureActActions = defineActions({
 export const structurePureActions = defineActions({
     mapSpritesheetValue: {
         role: "sense",
+        needs: [],
         doc: "Maps a value onto a threshold list and returns the frame index the engine " +
             "would pick. Thresholds are comma-separated, ascending.",
         type: "cell",

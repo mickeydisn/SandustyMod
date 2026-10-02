@@ -5,6 +5,7 @@ import { p } from "../../engine/registry/params.ts";
 export const projectilesActions = defineActions({
     itemShoot: {
         role: "act",
+        needs: ["pos"],
         doc: "Fires a projectile. Set `projectileId` and `velocity` in options.",
         type: "message",
         

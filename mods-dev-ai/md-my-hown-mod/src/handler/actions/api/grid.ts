@@ -5,6 +5,7 @@ import { p } from "../../engine/registry/params.ts";
 export const gridActions = defineActions({
     itemExcavate: {
         role: "act",
+        needs: ["pos"],
         doc: "Digs at this position. Set `damage` and `velocity` in options.",
         type: "message",
         

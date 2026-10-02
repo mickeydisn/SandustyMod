@@ -108,6 +108,7 @@ function overRegion(
 export const elementsActions = defineActions({
     readElement: {
         role: "sense",
+        needs: ["pos", "read"],
         doc: "Reads the element at the cell and returns its id. Bind it with As, then " +
             "use {{name}} in a later step.",
         type: "cell",
@@ -140,6 +141,7 @@ export const elementsActions = defineActions({
 
     readDataField: {
         role: "sense",
+        needs: ["pos"],
         doc: "Reads data slot N (1–4) at the cell and returns the number. Bind it with " +
             "As. The slot is the number from the element's Data fields list.",
         type: "message",
@@ -187,6 +189,7 @@ export const elementsActions = defineActions({
 
     writeDataField: {
         role: "act",
+        needs: ["pos"],
         doc: "Writes a number into data slot N (1–4) at the cell. Set `slot` (1–4) and " +
             "`value`.",
         type: "message",
@@ -237,6 +240,7 @@ export const elementsActions = defineActions({
 
     countElements: {
         role: "sense",
+        needs: ["pos", "read"],
         doc: "Counts cells holding `element` in the region. Returns a number — bind it " +
             "with As to compare against a threshold.",
         type: "cell",
@@ -279,6 +283,7 @@ export const elementsActions = defineActions({
 
     countEmpty: {
         role: "sense",
+        needs: ["pos", "read"],
         doc: "Counts cells in the region that hold neither element nor terrain. This is " +
             "the free space.",
         type: "cell",
@@ -312,6 +317,7 @@ export const elementsActions = defineActions({
 
     replaceElement: {
         role: "act",
+        needs: ["pos", "commit"],
         doc: "Writes `element` over every cell in the region, replacing what was there.",
         type: "cell",
         slots: ["processing"],
@@ -346,6 +352,7 @@ export const elementsActions = defineActions({
 
     createElement: {
         role: "act",
+        needs: ["pos", "commit"],
         doc: "Writes `element` into every **empty** cell in the region, leaving anything " +
             "already there alone.",
         type: "cell",
@@ -382,6 +389,7 @@ export const elementsActions = defineActions({
 
     emptyCells: {
         role: "act",
+        needs: ["pos", "commit"],
         doc: "Removes the element from every occupied cell in the region.",
         type: "cell",
         slots: ["processing"],
@@ -410,6 +418,7 @@ export const elementsActions = defineActions({
 
     removeElement: {
         role: "act",
+        needs: ["pos", "read"],
         doc: "Removes the element from every cell in the region that holds `element`. " +
             "Leave the element blank to empty every non-empty cell.",
         type: "cell",
@@ -459,6 +468,7 @@ export const elementsActions = defineActions({
 
     transformElement: {
         role: "act",
+        needs: ["pos", "commit"],
         doc: "Where the region holds `from`, writes `to`. Leave `from` blank to convert " +
             "whatever element is there.",
         type: "cell",
@@ -509,6 +519,7 @@ export const elementsActions = defineActions({
 export const motionActions = defineActions({
     getVelocity: {
         role: "sense",
+        needs: ["pos"],
         doc: "Reads the particle speed at the first cell of the region and returns it. " +
             "Bind it with As. Returns -1 when there is no particle to measure.",
         type: "cell",
@@ -539,6 +550,7 @@ export const motionActions = defineActions({
 
     findFreeCell: {
         role: "sense",
+        needs: ["pos"],
         doc: "Finds a free cell within `size` cells of the structure. Returns its index " +
             "as a number, or -1 when the whole area is occupied.",
         type: "cell",
@@ -581,6 +593,7 @@ export const motionActions = defineActions({
 
     setVelocity: {
         role: "act",
+        needs: ["pos"],
         doc: "Sets the particle velocity (vx, vy) on every cell in the region. Only " +
             "affects particles — use toParticle to turn a cell into one first.",
         type: "cell",
@@ -605,6 +618,7 @@ export const motionActions = defineActions({
 
     addVelocity: {
         role: "act",
+        needs: ["pos"],
         doc: "Adds (vx, vy) to the particle velocity in the region. Set maxSpeed to " +
             "clamp the result in cells per second.",
         type: "cell",
@@ -634,6 +648,7 @@ export const motionActions = defineActions({
 
     setDuration: {
         role: "act",
+        needs: ["pos"],
         doc: "Sets the remaining duration in ticks for every cell in the region. Set " +
             "rearm to also raise the maximum, so it fires again next cycle.",
         type: "cell",
@@ -665,6 +680,7 @@ export const motionActions = defineActions({
 
     teleportElement: {
         role: "act",
+        needs: ["pos"],
         doc: "Moves everything in the region by the (tx, ty) offset. ty: 1 moves it down " +
             "one cell. Cells that would land on something are not moved.",
         type: "cell",
@@ -707,6 +723,7 @@ export const motionActions = defineActions({
 
     toParticle: {
         role: "act",
+        needs: ["pos"],
         doc: "Turns every cell in the region into a particle moving at (vx, vy). This is " +
             "what actually launches material — setVelocity alone will not move sand.",
         type: "cell",

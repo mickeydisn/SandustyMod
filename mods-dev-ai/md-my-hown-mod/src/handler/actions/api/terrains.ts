@@ -160,6 +160,7 @@ function writeState(
 export const terrainSenseActions = defineActions({
     terrainType: {
         role: "sense",
+        needs: ["pos"],
         doc: "Reads the terrain id at a cell. Empty means no terrain. Bind it with As.",
         type: "cell",
         slots: ["processing"],
@@ -185,6 +186,7 @@ export const terrainSenseActions = defineActions({
 
     hasTerrain: {
         role: "sense",
+        needs: ["pos"],
         doc: "True when the cell holds terrain. Bind it with As.",
         type: "cell",
         slots: ["processing"],
@@ -202,6 +204,7 @@ export const terrainSenseActions = defineActions({
 
     isTerrainType: {
         role: "sense",
+        needs: ["pos"],
         doc: "True when the cell holds terrain of the given type. Accepts an id or a " +
             "handle from Terrain type.",
         type: "cell",
@@ -228,6 +231,7 @@ export const terrainSenseActions = defineActions({
 
     terrainHitPoints: {
         role: "sense",
+        needs: ["pos"],
         doc: "Reads the terrain's hit points at a cell. Returns -1 when there are none. " +
             "Bind it to watch a wall wear down.",
         type: "cell",
@@ -251,6 +255,7 @@ export const terrainSenseActions = defineActions({
 
     terrainTypeHandle: {
         role: "sense",
+        needs: ["pos"],
         doc: "Reads the engine's own numeric handle for the terrain at a cell. Returns " +
             "-1 when there is none.",
         type: "cell",
@@ -272,6 +277,7 @@ export const terrainSenseActions = defineActions({
 
     countTerrain: {
         role: "sense",
+        needs: ["pos"],
         doc: "Counts cells holding terrain in the region. Bind it to size a footprint.",
         type: "cell",
         slots: ["processing"],
@@ -295,6 +301,7 @@ export const terrainSenseActions = defineActions({
 export const terrainActActions = defineActions({
     createTerrain: {
         role: "act",
+        needs: ["pos"],
         doc: "Creates terrain of the given type in empty cells. One atomic batch.",
         type: "cell",
         slots: ["processing"],
@@ -323,6 +330,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
 
     replaceTerrain: {
         role: "act",
+        needs: ["pos"],
         doc: "Replaces terrain in every cell of the region. One atomic batch.",
         type: "cell",
         slots: ["processing"],
@@ -346,6 +354,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
 
     removeTerrain: {
         role: "act",
+        needs: ["pos"],
         doc: "Removes terrain from every cell of the region. One atomic batch.",
         type: "cell",
         slots: ["processing"],
@@ -370,6 +379,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
 
     damageTerrain: {
         role: "act",
+        needs: ["pos"],
         doc: "Damages terrain in the region. Per-cell, so a large area can half-apply.",
         type: "cell",
         slots: ["processing"],
@@ -398,6 +408,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
 
     setTerrainHitPoints: {
         role: "act",
+        needs: ["pos"],
         doc: "Sets the terrain's hit points in the region. Use it to repair a wall.",
         type: "cell",
         slots: ["processing"],

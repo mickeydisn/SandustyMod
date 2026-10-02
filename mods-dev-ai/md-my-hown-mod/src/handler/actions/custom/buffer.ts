@@ -39,6 +39,7 @@ export const bufferActions = defineActions({
     
     bufferRead: {
         role: "remember",
+        needs: [],
         doc: "Reads a shared buffer slot. Set `path`. Bind the result with `as`.",
         type: "message",
         slots: [...ALL_SLOTS],
@@ -84,6 +85,7 @@ export const bufferActions = defineActions({
     
     bufferWrite: {
         role: "remember",
+        needs: [],
         doc: "Writes a value to a shared buffer slot. Set `path` and `value`.",
         type: "message",
         slots: [...ALL_SLOTS],
@@ -138,6 +140,7 @@ export const bufferActions = defineActions({
     
     bufferIncrement: {
         role: "remember",
+        needs: [],
         doc: "Adds `delta` to a shared counter, clamped. Set `path` and `delta`.",
         type: "message",
         slots: [...ALL_SLOTS],

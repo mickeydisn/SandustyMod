@@ -122,6 +122,17 @@ export interface ActionDef {
 
     /** The options the panel offers for this action. */
     params?: readonly HandlerParam[];
+
+    /**
+     * What the host must hand this action for it to run.
+     *
+     * Required, and declared next to the action, so adding an action cannot
+     * silently leave it out: the compiler rejects a def that omits it. This
+     * used to be a hand-maintained `ACTION_SCOPE` table in processing/scope.ts
+     * that had to be edited in lockstep with this list; an unknown key there
+     * defaulted to "needs nothing", which quietly let an action run anywhere.
+     */
+    needs: readonly ScopeNeed[];
 }
 
 export interface StoredAction extends ActionDef {
@@ -182,6 +193,15 @@ export type CallSite =
     | "upgrade"
     | "behavior"
     | "modifier";
+
+/**
+ * One thing an action needs the host to provide.
+ *
+ * Lives here rather than in processing/scope.ts so `ActionDef` can name it:
+ * an action's requirements are part of the action, not a lookup keyed by its
+ * name somewhere else. processing/scope.ts re-exports it for its own callers.
+ */
+export type ScopeNeed = "pos" | "data" | "read" | "commit";
 
 export const CALL_SITE_LABELS: Record<CallSite, string> = {
     signal: "Structure click",

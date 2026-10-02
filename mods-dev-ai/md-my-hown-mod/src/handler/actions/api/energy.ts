@@ -4,6 +4,7 @@ import { p } from "../../engine/registry/params.ts";
 export const energyActions = defineActions({
     energyConsumePerRun: {
         role: "connect",
+        needs: [],
         doc: "Draws `amount` from the shared power pool. Set `amount` in options.",
         type: "processor",
         
@@ -30,6 +31,7 @@ export const energyActions = defineActions({
 
     energyGenerateWhileHeld: {
         role: "connect",
+        needs: ["pos"],
         doc: "Adds power to the network here. Set `amount` in options.",
         type: "processor",
         slots: ["processing"],

@@ -4,6 +4,7 @@ import { p } from "../../engine/registry/params.ts";
 export const techActions = defineActions({
     techAppendUnlock: {
         role: "connect",
+        needs: [],
         doc: "Adds structures to a tech node. Set `techId` and `structures` in options.",
         type: "tech",
         slots: ["upgrade"],

@@ -4,6 +4,7 @@ import { p } from "../../engine/registry/params.ts";
 export const effectsActions = defineActions({
     particles: {
         role: "feel",
+        needs: ["pos"],
         doc: "Emits particles here. Set `count` in options.",
         type: "message",
         slots: ["signal", "processing", "modifier"],

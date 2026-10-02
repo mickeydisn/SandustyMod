@@ -16,6 +16,7 @@ export const rememberActions = defineActions({
     
     structureWriteData: {
         role: "remember",
+        needs: ["data"],
         doc: "Writes one key into this instance's saved data. Set `key` / `value` in options.",
         type: "message",
         slots: ["signal"],
@@ -36,6 +37,7 @@ export const rememberActions = defineActions({
     
     triggerTick: {
         role: "remember",
+        needs: ["data"],
         doc: "Increments this instance's tick counter. Set `key` in options.",
         type: "message", slots: ["signal"], scope: "structure", params: [],
         fn: (payload, _ctx, options) => {
@@ -50,6 +52,7 @@ export const rememberActions = defineActions({
     
     upgradeCountLevel: {
         role: "remember",
+        needs: ["data"],
         doc: "Increments a level counter on the upgraded item. Set `key` in options.",
         type: "tech",
         slots: ["upgrade"],
@@ -67,6 +70,7 @@ export const rememberActions = defineActions({
     
     upgradeAdd: {
         role: "remember",
+        needs: ["data"],
         doc: "Adds `amount` to a numeric field. Set `key` and `amount` in options.",
         type: "tech",
         slots: ["upgrade"],
@@ -94,6 +98,7 @@ export const processingRememberActions = defineActions({
     
     processorCount: {
         role: "remember",
+        needs: ["data"],
         doc: "Increments a counter on this instance. Set `key` in options.",
         type: "processor",
         slots: ["processing"],

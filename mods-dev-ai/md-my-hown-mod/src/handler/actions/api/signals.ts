@@ -4,6 +4,7 @@ import { p } from "../../engine/registry/params.ts";
 export const signalsActions = defineActions({
     signalOutput: {
         role: "connect",
+        needs: ["pos"],
         doc: "Publishes this structure's signal output. Set `value` in options.",
         type: "message",
         slots: ["signal", "processing"],

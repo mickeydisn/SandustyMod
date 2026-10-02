@@ -43,6 +43,7 @@ function at(
 export const processorActions = defineActions({
     processorLog: {
         role: "act",
+        needs: [],
         doc: "Logs the structure and cell context on every run. Use to confirm wiring.",
         type: "processor",
         slots: ["processing"],
@@ -55,6 +56,7 @@ export const processorActions = defineActions({
 
     processorNoop: {
         role: "act",
+        needs: [],
         doc: "Does nothing. Keeps the interval alive without side effects.",
         type: "global", slots: ["processing"], scope: "structure", params: [],
         fn: () => {},
@@ -62,6 +64,7 @@ export const processorActions = defineActions({
 
     processorLift: {
         role: "act",
+        needs: ["pos", "commit"],
         doc: "Copies the cell above the structure down to the cell below.",
         type: "processor",
         slots: ["processing"],
@@ -91,6 +94,7 @@ export const processorActions = defineActions({
 
     processorConvert: {
         role: "act",
+        needs: ["pos", "commit"],
         doc: "Replaces the cell above with one fixed element. Set `to` in options.",
         type: "processor",
         slots: ["processing"],
