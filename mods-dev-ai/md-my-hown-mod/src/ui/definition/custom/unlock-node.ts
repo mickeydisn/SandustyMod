@@ -5,6 +5,7 @@ import {
     listTechBranches,
     listTechIds,
 } from "../../../catalog.ts";
+import { UNLOCK_NODE_KIND_OPTS } from "../choices.ts";
 import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "../fields.ts";
 import { parseIdList, putCustomOrSelect } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
@@ -30,13 +31,7 @@ const FIELDS: FieldSpec[] = [
         section: "Identity",
         required: true,
         def: "always",
-        options: [
-            { value: "always", label: "always — available from the start" },
-            {
-                value: "tech",
-                label: "tech — a real research step in the game's tech tree",
-            },
-        ],
+        options: UNLOCK_NODE_KIND_OPTS,
         hint: "a tech node is a real research step in the game's tech tree",
     },
     

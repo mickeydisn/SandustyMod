@@ -1,4 +1,5 @@
 
+import { BUFFER_VALUE_TYPE_OPTS } from "../choices.ts";
 import { idField, numField, textField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
@@ -19,11 +20,7 @@ const FIELDS: FieldSpec[] = [
         section: "Identity",
         required: true,
         def: "number",
-        options: [
-            { value: "number", label: "number — an integer counter, clamped to min/max" },
-            { value: "bool", label: "bool — true / false" },
-            { value: "string", label: "string — free text" },
-        ],
+        options: BUFFER_VALUE_TYPE_OPTS,
         hint: "a number is an atomic counter: clamped, and safe to add to from several threads",
     },
     textField("default", "Default", "Value", true, {

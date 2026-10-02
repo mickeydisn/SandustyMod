@@ -1,5 +1,6 @@
 
 import { listEnergyNetworkOpts, listStructures } from "../../../catalog.ts";
+import { ENERGY_ROLE_OPTS } from "../choices.ts";
 import { advField, idField, numField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
@@ -26,10 +27,7 @@ const FIELDS: FieldSpec[] = [
         section: "Energy",
         required: true,
         def: "storage",
-        options: [
-            { value: "storage", label: "storage — holds energy (needs a capacity)" },
-            { value: "conductor", label: "conductor — forwards energy, holds nothing" },
-        ],
+        options: ENERGY_ROLE_OPTS,
     },
     numField("capacity", "Capacity", "Energy", {
         min: 0,

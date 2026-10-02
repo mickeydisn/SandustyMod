@@ -521,12 +521,15 @@ export interface EnergyNetworkConfig {
 }
 
 
+/** Whether a node is free from the start, or a real step in the tech tree. */
+export type UnlockNodeKind = "always" | "tech";
+
 export interface UnlockNodeConfig {
     id: string;
     name?: string;
     description?: string;
     
-    kind: "always" | "tech";
+    kind: UnlockNodeKind;
     
     cost?: number;
     currencyType?: string;
@@ -556,12 +559,20 @@ export interface BufferEntryConfig {
     [key: string]: unknown;
 }
 
+/**
+ * Whether an energy node holds energy or just forwards it.
+ *
+ * The type stays open (`| (string & {})`) because the engine may accept a
+ * value this mod does not know about; the editor only offers these two.
+ */
+export type EnergyRole = "conductor" | "storage" | (string & {});
+
 export interface EnergyTypeConfig {
     id: string;
     
     structureId: string;
     
-    type: "conductor" | "storage" | (string & {});
+    type: EnergyRole;
     
     options?: {
         capacity?: number;

@@ -1,13 +1,14 @@
 import { LOG } from "../../constants.ts";
 import { api, resolveElementRef, resolveTerrainRef } from "../../packages/mysandkit.ts";
 import { compileExcavationProfile } from "../../handler/processing/excavation-option/index.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { ENERGY_ROLES, isOneOf } from "../../ui/definition/choices.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerEnergyTypes({ config }: RegisterContext): number {
     return registerEach(config.energyTypes, "energyTypes", (def) => {
         try {
             const type = def.type;
-            if (type !== "conductor" && type !== "storage") {
+            if (!isOneOf(ENERGY_ROLES, type)) {
                 console.warn(
                     `${LOG} energy ${def.id}: invalid type "${String(type)}" ` +
                         `— must be conductor|storage. Skip.`,

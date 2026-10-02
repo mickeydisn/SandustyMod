@@ -2,6 +2,7 @@ import { ALL_SLOTS } from "../../engine/registry/types.ts";
 
 import { defineActions } from "../../engine/types.ts";
 import { ensureBufferReady, resetBuffer, zeroFor } from "../../engine/buffer-store.ts";
+import { BUFFER_VALUE_TYPES, isOneOf } from "../../../ui/definition/choices.ts";
 import type { BufferEntryConfig, BufferValueType } from "../../../constants.ts";
 import { p } from "../../engine/registry/params.ts";
 
@@ -27,7 +28,7 @@ function entries(): BufferEntryConfig[] {
 
 function typeAt(path: string): BufferValueType | undefined {
     const type = entries().find((b) => b?.path === path)?.type;
-    return type === "number" || type === "bool" || type === "string" ? type : undefined;
+    return isOneOf(BUFFER_VALUE_TYPES, type) ? type : undefined;
 }
 
 
