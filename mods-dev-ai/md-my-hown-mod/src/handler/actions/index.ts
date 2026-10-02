@@ -9,38 +9,26 @@ import {
     type StoredAction,
 } from "../core/types.ts";
 
-import { processingSenseActions, senseActions } from "./sense/index.ts";
-import { decideActions } from "./decide/index.ts";
+// --- engine/: actions that do not reach the host -----------------------------
+import { processingSenseActions, senseActions } from "./engine/sense.ts";
+import { engineDecideActions } from "./engine/decide.ts";
+import { processingRememberActions, rememberActions } from "./engine/remember.ts";
+import { engineConnectActions, connectModifierActions } from "./engine/connect.ts";
+import { engineFeelActions } from "./engine/feel.ts";
+
+// --- api/: actions that drive the host through `api.*` -----------------------
+import { decideActions } from "./api/decide.ts";
+import { feelActions } from "./api/feel.ts";
+import { connectActions } from "./api/connect.ts";
 import { actActions, processingActActions } from "./act/index.ts";
-import { bufferActions } from "./buffer/index.ts";
-import { processingRememberActions, rememberActions } from "./remember/index.ts";
-import { feelActions } from "./feel/index.ts";
-import { connectActions, connectModifierActions } from "./connect/index.ts";
+import { elementActions } from "./api/element.ts";
+import { motionActions } from "./api/motion.ts";
+import { structureActions } from "./api/structure.ts";
+import { terrainActions } from "./api/terrain.ts";
 
-
-
-import { elementActions } from "./element/index.ts";
-
-
-
-import { motionActions } from "./motion/index.ts";
-
-
-
-import { structureActions } from "./structure/index.ts";
-
-
-import { terrainActions } from "./terrain/index.ts";
-
-
-
-
-
-
-
-import { logicActions } from "./logic/index.ts";
-
-
+// --- custom/ and the one folder that is neither ------------------------------
+import { bufferActions } from "./custom/buffer.ts";
+import { logicActions } from "./logic.ts";
 interface Folder {
     signature: ActionSignature;
     defs: Record<string, ActionDef & { kind?: "intercept" | "modify" }>;
@@ -57,46 +45,29 @@ interface Folder {
 type DefKeys<T> = T extends { defs: infer D } ? keyof D & string : never;
 
 const FOLDERS = [
+    // engine/ - actions that never touch the host
     { signature: "payload", defs: senseActions },
-    
-    
-    
     { signature: "processing", defs: processingSenseActions },
-    { signature: "payload", defs: decideActions },
-    { signature: "payload", defs: actActions },
-    { signature: "processing", defs: processingActActions },
-    
-    
-    { signature: "processing", defs: elementActions },
-    
-    
-    { signature: "processing", defs: motionActions },
-    
-    
-    
-    { signature: "processing", defs: structureActions },
-    
-    
-    
-    
-    
-    { signature: "processing", defs: terrainActions },
+    { signature: "payload", defs: engineDecideActions },
     { signature: "payload", defs: rememberActions },
-    
-    
-    
-    
-    { signature: "payload", defs: bufferActions },
     { signature: "processing", defs: processingRememberActions },
+    { signature: "payload", defs: engineConnectActions },
+    { signature: "modifier", defs: connectModifierActions },
+    { signature: "payload", defs: engineFeelActions },
+
+    // api/ - actions that drive the host through api.*
+    { signature: "payload", defs: decideActions },
     { signature: "payload", defs: feelActions },
     { signature: "payload", defs: connectActions },
-    { signature: "modifier", defs: connectModifierActions },
-    
-    
-    
-    
-    
-    
+    { signature: "payload", defs: actActions },
+    { signature: "processing", defs: processingActActions },
+    { signature: "processing", defs: elementActions },
+    { signature: "processing", defs: motionActions },
+    { signature: "processing", defs: structureActions },
+    { signature: "processing", defs: terrainActions },
+
+    // custom/ and logic/ - shared state, and the range-walkers
+    { signature: "payload", defs: bufferActions },
     { signature: "payload", defs: logicActions },
 ] as const satisfies readonly Folder[];
 

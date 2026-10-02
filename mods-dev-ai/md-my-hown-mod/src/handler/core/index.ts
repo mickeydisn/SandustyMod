@@ -37,7 +37,7 @@ export {
 
 // `main.ts` calls this at startup to hand the engine its buffer provider. It is part
 // of the package's surface, so it goes through the barrel with everything else.
-export { setBufferSource } from "../actions/buffer/index.ts";
+export { setBufferSource } from "../actions/custom/buffer.ts";
 
 export {
     actionRefsOf,

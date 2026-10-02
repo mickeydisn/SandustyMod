@@ -1,7 +1,4 @@
-
 import { defineActions } from "../../core/types.ts";
-import { api } from "../../../packages/mysandkit.ts";
-
 
 function twoSided(options: unknown): { op: string; left: number; right: number } {
     const o = (options ?? {}) as { left?: unknown; op?: unknown; right?: unknown };
@@ -12,26 +9,8 @@ function twoSided(options: unknown): { op: string; left: number; right: number }
     };
 }
 
-export const decideActions = defineActions({
-    
-    randomInt: {
-        role: "decide",
-        doc: "A random whole number from `min` to `max`, inclusive. Set both.",
-        fn: (_payload, _ctx, options) => {
-            const o = options as { min?: unknown; max?: unknown } | null;
-            const lo = Number(o?.min);
-            const hi = Number(o?.max);
-            if (!Number.isFinite(lo)) return 0;
-            if (!Number.isFinite(hi) || hi < lo) return Math.trunc(lo);
-            try {
-                return api.random.int(Math.trunc(lo), Math.trunc(hi)) ??
-                    Math.trunc(lo);
-            } catch {
-                return Math.trunc(lo);
-            }
-        },
-    },
-
+/** Decide actions that need nothing from the host. */
+export const engineDecideActions = defineActions({
     
     math: {
         role: "decide",

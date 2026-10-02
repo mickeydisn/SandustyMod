@@ -2,6 +2,7 @@
 import { defineActions } from "../../core/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 
+/** Feel actions that reach the host through `api.*`. */
 export const feelActions = defineActions({
     
     toast: {
@@ -31,15 +32,6 @@ export const feelActions = defineActions({
             } catch (e) {
                 console.warn("[md-my-hown-mod:feel] particles failed", e);
             }
-        },
-    },
-
-    
-    upgradeLog: {
-        role: "feel",
-        doc: "Prints the upgraded item and these options. Safe to leave on while testing.",
-        fn: (payload, _ctx, options) => {
-            console.log("[md-my-hown-mod:upgrade]", payload, options);
         },
     },
 });
