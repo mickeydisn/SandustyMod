@@ -10,18 +10,18 @@ export const randomActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "global",
         params: [
-        p("min", "Lowest", "number", {
-        required: true,
-        def: "0",
-        int: true,
-        hint: "inclusive",
-        }),
-        p("max", "Highest", "number", {
-        required: true,
-        def: "0",
-        int: true,
-        hint: "inclusive. A max below min answers the min.",
-        }),
+            p("min", "Lowest", "number", {
+                required: true,
+                def: "0",
+                int: true,
+                hint: "inclusive",
+            }),
+            p("max", "Highest", "number", {
+                required: true,
+                def: "0",
+                int: true,
+                hint: "inclusive. A max below min answers the min.",
+            }),
         ],
         fn: (_payload, _ctx, options) => {
             const o = options as { min?: unknown; max?: unknown } | null;
@@ -37,5 +37,4 @@ export const randomActions = defineActions({
             }
         },
     },
-
 });

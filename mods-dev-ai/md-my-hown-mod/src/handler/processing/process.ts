@@ -22,17 +22,15 @@ export {
     isBlock,
 } from "../engine/types.ts";
 
-let optionKeysLookup: ((key: string) => ReadonlySet<string> | undefined) | undefined;
-
-export function setOptionKeysLookup(
-    fn: (key: string) => ReadonlySet<string> | undefined,
-): void {
-    optionKeysLookup = fn;
-}
-
-export function optionKeysFor(key: string | undefined): ReadonlySet<string> | undefined {
-    return key ? optionKeysLookup?.(key) : undefined;
-}
+/**
+ * The option keys an action accepts, resolved from its own declaration.
+ *
+ * `compileProcess` needs this only to report unknown options. It is passed in
+ * rather than imported, because the declarations live in the registry and this
+ * module sits below it: the dependency points down at the call site instead of
+ * up at import time.
+ */
+export type OptionKeysLookup = (key: string) => ReadonlySet<string> | undefined;
 
 export interface ProcessFailure {
     key: string;
@@ -73,6 +71,7 @@ export function compileProcess(
     refs: readonly HandlerActionRef[],
     callSite: CallSite,
     onFailure?: (f: ProcessFailure) => void,
+    optionKeys?: OptionKeysLookup,
 ): CompiledProcess {
     const skipped: string[] = [];
     const unknownOptions: string[] = [];
@@ -118,7 +117,7 @@ export function compileProcess(
             }
             const as = typeof ref.as === "string" && ref.as ? ref.as : undefined;
 
-            const declared = optionKeysFor(ref.key);
+            const declared = optionKeys?.(ref.key);
             if (declared && ref.options) {
                 for (const name of Object.keys(ref.options)) {
                     if (!declared.has(name)) {

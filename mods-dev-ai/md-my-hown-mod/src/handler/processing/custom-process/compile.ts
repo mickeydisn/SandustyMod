@@ -1,6 +1,10 @@
 
-import { type CompiledProcess, compileProcess, type ProcessFailure } from "../process.ts";
-import type { HandlerSlot } from "../../engine/handler-registry.ts";
+import {
+    type CompiledProcess,
+    compileProcess,
+    type ProcessFailure,
+} from "../process.ts";
+import { type HandlerSlot, optionKeysFor } from "../../engine/handler-registry.ts";
 import type { ProcessRegistry } from "./registry.ts";
 import type { CustomProcessConfig, ProcessStep } from "./types.ts";
 
@@ -126,6 +130,7 @@ export function compileCustomProcess(
         steps,
         slot,
         (f: ProcessFailure) => onFailure?.({ id: f.key, error: f.error }),
+        optionKeysFor,
     );
 
     return { ...compiled, processId: id, expanded, truncated };

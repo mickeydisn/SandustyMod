@@ -43,8 +43,10 @@ export {
     actionRefsOf,
     type CompiledProcess,
     compileProcess,
+    type OptionKeysLookup,
     type ProcessFailure,
 } from "./processing/process.ts";
+export { optionKeysFor } from "./engine/handler-registry.ts";
 
 export {
     activeModifierIds,

@@ -1,7 +1,8 @@
 import { actionFacts } from "./action-facts.ts";
 import { BLOCK_KEY, type ActionDef } from "./types.ts";
 import { ALL_ACTIONS } from "../actions/index.ts";
-import { actionRefsOf, flattenRefs, isBlock, setOptionKeysLookup } from "../processing/process.ts";
+import { actionRefsOf, flattenRefs, isBlock } from "../processing/process.ts";
+import type { OptionKeysLookup } from "../processing/process.ts";
 import { slotsFor } from "../processing/scope.ts";
 import { projectileOptionOf } from "../processing/projectile-option/index.ts";
 import { excavationOptionOf } from "../processing/excavation-option/index.ts";
@@ -106,7 +107,13 @@ export function handlerMeta(key: string | undefined): HandlerMeta | undefined {
     return key ? META_BY_KEY[key] : undefined;
 }
 
-setOptionKeysLookup((key) => {
+/**
+ * The option names an action accepts, from its own declaration.
+ *
+ * Handed to `compileProcess` by the caller rather than pushed into it at import
+ * time, so the compiler does not have to reach back up into the registry.
+ */
+export const optionKeysFor: OptionKeysLookup = (key) => {
     const meta = handlerMeta(key);
     if (!meta) return undefined;
     const names = new Set<string>();
@@ -115,7 +122,7 @@ setOptionKeysLookup((key) => {
     names.add("key");
     names.add("as");
     return names;
-});
+};
 
 export function handlersForSlot(slot: HandlerSlot): HandlerMeta[] {
     return HANDLER_META.filter((m) => m.slots.includes(slot));

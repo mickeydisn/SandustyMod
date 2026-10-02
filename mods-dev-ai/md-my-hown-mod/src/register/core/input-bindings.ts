@@ -1,6 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
-import { compileProcess } from "../../handler/index.ts";
+import { compileProcess, optionKeysFor } from "../../handler/index.ts";
 import { registerEach, type RegisterContext } from "../registry.ts";
 
 export function registerInputBindings({ config }: RegisterContext): number {
@@ -13,6 +13,8 @@ export function registerInputBindings({ config }: RegisterContext): number {
                 const { fn, skipped } = compileProcess(
                     [{ key, options: undefined }],
                     "behavior",
+                    undefined,
+                    optionKeysFor,
                 );
                 if (typeof fn === "function" && !skipped.length) entry[slot] = fn;
                 else console.warn(`${LOG} input binding ${b.id}: unknown ${slot} "${key}"`);
