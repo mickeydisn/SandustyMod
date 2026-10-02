@@ -4,7 +4,7 @@ import {
     excavationOptionOf,
 } from "../../handler/processing/excavation-option/index.ts";
 import { resolveExcavationOption } from "../../handler/processing/excavation-option/index.ts";
-import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import type { EntryReader, EntryWriter, FieldSpec } from "../definition/types.ts";
 
 
 export const OPTIONS_FORM_KEY = "optionKey";

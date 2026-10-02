@@ -53,8 +53,8 @@ import {
     type SelectorReact,
     type SelectorState,
 } from "./panel/component/selector/selector.ts";
-import { renderProjectileOption } from "./projectile-option-control.ts";
-import { renderProcessRef } from "./process-ref-control.ts";
+import { renderProjectileOption } from "./control/projectile-option-control.ts";
+import { renderProcessRef } from "./control/process-ref-control.ts";
 import { listFor } from "./panel/index.ts";
 import { attachedTo, isInlineCatalogue, parentOf } from "./panel/attach.ts";
 import {

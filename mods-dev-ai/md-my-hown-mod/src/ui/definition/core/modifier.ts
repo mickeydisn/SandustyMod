@@ -5,7 +5,7 @@ import {
     processRefField,
     readProcessRef,
     writeProcessRef,
-} from "../process-ref-field.ts";
+} from "../../control/process-ref-field.ts";
 import { HOOK_KIND_OPTS } from "../choices.ts";
 import { boolField, idField, textField } from "../fields.ts";
 import { putCustomOrSelect } from "../values.ts";

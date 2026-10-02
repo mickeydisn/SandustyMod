@@ -5,17 +5,17 @@ import {
     type HandlerMeta,
     type HandlerParam,
     type HandlerSlot,
-} from "../handler/index.ts";
-import { scopeSeedNames } from "../handler/index.ts";
-import { refsIn } from "../handler/index.ts";
-import { canBind, createContext } from "../handler/index.ts";
-import { ACTION_ROLES, isBlock, ROLE_LABELS } from "../handler/index.ts";
-import { ACTION_DOCS, ALL_ACTIONS } from "../handler/index.ts";
-import { currentProcessRegistry, type ProcessStep } from "../handler/processing/custom-process/index.ts";
+} from "../../handler/index.ts";
+import { scopeSeedNames } from "../../handler/index.ts";
+import { refsIn } from "../../handler/index.ts";
+import { canBind, createContext } from "../../handler/index.ts";
+import { ACTION_ROLES, isBlock, ROLE_LABELS } from "../../handler/index.ts";
+import { ACTION_DOCS, ALL_ACTIONS } from "../../handler/index.ts";
+import { currentProcessRegistry, type ProcessStep } from "../../handler/processing/custom-process/index.ts";
 import { paramInput } from "./param-controls.ts";
-import * as S from "./styles.ts";
-import type { FieldContext } from "./definition/types.ts";
-import type { SelectorHandle } from "./definition/types.ts";
+import * as S from "../styles.ts";
+import type { FieldContext } from "../definition/types.ts";
+import type { SelectorHandle } from "../definition/types.ts";
 
 
 export const STEPS_FORM_KEY = "program";

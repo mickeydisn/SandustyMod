@@ -1,23 +1,23 @@
 
 import {
-    EXCAVATION_OPTION_DOCS,
-    EXCAVATION_OPTIONS,
-    excavationOptionKeys,
-    excavationOptionParams,
-    resolveExcavationOption,
-} from "../handler/processing/excavation-option/index.ts";
-import type { HandlerParam } from "../handler/index.ts";
+    PROJECTILE_OPTION_DOCS,
+    PROJECTILE_OPTIONS,
+    projectileOptionKeys,
+    projectileOptionParams,
+    resolveProjectileOption,
+} from "../../handler/processing/projectile-option/index.ts";
+import type { HandlerParam } from "../../handler/index.ts";
 import { paramInput, paramText, paramValue } from "./param-controls.ts";
-import { OPTIONS_FORM_KEY, PARAMS_FORM_KEY } from "./definition/excavation-option-field.ts";
-import * as S from "./styles.ts";
-import type { FieldContext } from "./definition/types.ts";
-import type { SelectorHandle } from "./definition/types.ts";
+import { OPTIONS_FORM_KEY, PARAMS_FORM_KEY } from "./projectile-option-field.ts";
+import * as S from "../styles.ts";
+import type { FieldContext } from "../definition/types.ts";
+import type { SelectorHandle } from "../definition/types.ts";
 
 type H = FieldContext["h"];
 
 
 function paramSpecs(key: string): HandlerParam[] {
-    return excavationOptionParams(key).map((p) => ({
+    return projectileOptionParams(key).map((p) => ({
         key: p.key,
         label: p.key,
         kind: typeof p.def === "boolean" ? "bool" : "number",
@@ -38,14 +38,14 @@ function readParams(text: string | undefined): Record<string, unknown> {
     }
 }
 
-export function renderExcavationOption(ctx: FieldContext): unknown {
+export function renderProjectileOption(ctx: FieldContext): unknown {
     const { h, form, setField, selector } = ctx;
     const key = form[OPTIONS_FORM_KEY] ?? "";
-    const known = !key || EXCAVATION_OPTIONS[key] !== undefined;
+    const known = !key || PROJECTILE_OPTIONS[key] !== undefined;
     const specs = key && known ? paramSpecs(key) : [];
     const stored = readParams(form[PARAMS_FORM_KEY]);
     
-    const preview = key && known ? resolveExcavationOption(key)!(stored) : undefined;
+    const preview = key && known ? resolveProjectileOption(key)!(stored) : undefined;
 
     const setParam = (spec: HandlerParam, text: string) => {
         const next = { ...stored };
@@ -77,18 +77,18 @@ export function renderExcavationOption(ctx: FieldContext): unknown {
                         setField(PARAMS_FORM_KEY, "");
                     },
                 },
-                h("option", { value: "" }, "— set power by hand —"),
+                h("option", { value: "" }, "— static options only —"),
                 
                 
                 !known ? h("option", { value: key }, `${key} (unknown)`) : null,
-                ...excavationOptionKeys().map((k) => h("option", { key: k, value: k }, k)),
+                ...projectileOptionKeys().map((k) => h("option", { key: k, value: k }, k)),
             ),
             h(
                 "div",
                 { style: S.hint },
-                EXCAVATION_OPTION_DOCS[key] ??
-                    "A profile's power and dig flags come from exactly one function, not " +
-                        "a list. Leave this empty to use the power and options below.",
+                PROJECTILE_OPTION_DOCS[key] ??
+                    "A projectile's options come from exactly one function, not a list. " +
+                        "Leave this empty to use the static options below.",
             ),
         ),
         
@@ -102,12 +102,7 @@ export function renderExcavationOption(ctx: FieldContext): unknown {
                 "div",
                 { style: S.noteBox },
                 h("div", { style: S.label }, "Result"),
-                h(
-                    "div",
-                    { style: S.hint },
-                    "The power and options registerProfile() will get. The pattern and " +
-                        "terrain rules below are still yours:",
-                ),
+                h("div", { style: S.hint }, "What getOptions() will return:"),
                 h("pre", { style: S.codeBlock }, JSON.stringify(preview, null, 2)),
             )
             : null,

@@ -2,7 +2,7 @@
 import { advField, idField, textField } from "../fields.ts";
 import { HANDLER_SLOT_LABELS, type HandlerSlot } from "../../../handler/index.ts";
 import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../../../handler/index.ts";
-import { renderProgramGrid, STEPS_FORM_KEY } from "../../program-grid-control.ts";
+import { renderProgramGrid, STEPS_FORM_KEY } from "../../control/program-grid-control.ts";
 import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
 
 

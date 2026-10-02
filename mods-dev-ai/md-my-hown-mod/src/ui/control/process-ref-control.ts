@@ -3,12 +3,12 @@ import {
     currentProcessRegistry,
     processProblem,
     processUsageCounts,
-} from "../handler/processing/custom-process/index.ts";
-import { type HandlerSlot, TAB_TO_CALL_SITE } from "../handler/index.ts";
-import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../handler/index.ts";
-import { PROCESS_FORM_KEY } from "./definition/process-ref-field.ts";
-import * as S from "./styles.ts";
-import type { FieldContext, Tab } from "./definition/types.ts";
+} from "../../handler/processing/custom-process/index.ts";
+import { type HandlerSlot, TAB_TO_CALL_SITE } from "../../handler/index.ts";
+import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../../handler/index.ts";
+import { PROCESS_FORM_KEY } from "./process-ref-field.ts";
+import * as S from "../styles.ts";
+import type { FieldContext, Tab } from "../definition/types.ts";
 
 
 function slotOf(tab: Tab | undefined): HandlerSlot | undefined {

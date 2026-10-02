@@ -7,7 +7,7 @@ import {
     projectileOptionField,
     readProjectileOption,
     writeProjectileOption,
-} from "../projectile-option-field.ts";
+} from "../../control/projectile-option-field.ts";
 import { idField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 

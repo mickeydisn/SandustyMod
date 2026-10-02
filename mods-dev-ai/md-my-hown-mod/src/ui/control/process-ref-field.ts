@@ -1,6 +1,6 @@
 
 import { processRefOf } from "../../handler/processing/custom-process/index.ts";
-import type { EntryReader, EntryWriter, FieldSpec } from "./types.ts";
+import type { EntryReader, EntryWriter, FieldSpec } from "../definition/types.ts";
 
 
 export const PROCESS_FORM_KEY = "processId";

@@ -5,7 +5,7 @@ import {
     processRefField,
     readProcessRef,
     writeProcessRef,
-} from "../process-ref-field.ts";
+} from "../../control/process-ref-field.ts";
 import { idField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 

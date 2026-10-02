@@ -1,7 +1,7 @@
 
-import type { HandlerParam } from "../handler/index.ts";
-import type { SelectorHandle } from "./definition/types.ts";
-import * as S from "./styles.ts";
+import type { HandlerParam } from "../../handler/index.ts";
+import type { SelectorHandle } from "../definition/types.ts";
+import * as S from "../styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
 

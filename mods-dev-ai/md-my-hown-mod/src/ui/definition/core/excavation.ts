@@ -289,8 +289,8 @@ import {
     PARAMS_FORM_KEY,
     readExcavationOption,
     writeExcavationOption,
-} from "../excavation-option-field.ts";
-import { renderExcavationOption } from "../../excavation-option-control.ts";
+} from "../../control/excavation-option-field.ts";
+import { renderExcavationOption } from "../../control/excavation-option-control.ts";
 import { listElements, listTerrains } from "../../../catalog.ts";
 import * as S from "../../styles.ts";
 import { idField, numField } from "../fields.ts";
