@@ -1,41 +1,100 @@
 import { LOG, type ModConfig } from "../constants.ts";
 import { configStore } from "../config/store.ts";
-import { registerTerrain } from "../packages/registrations.ts";
 import { ProcessRegistry, setProcessRegistry } from "../handler/custom-process/index.ts";
-import { registerTheRest } from "./categories.ts";
-import { installElementPickerVisibility } from "./core/element-picker.ts";
+import { closeBootWindow, type RegisterContext } from "./registry.ts";
+
 import { registerElements } from "./core/elements.ts";
+import { installElementPickerVisibility } from "./core/element-picker.ts";
 import { registerStructures } from "./core/structures.ts";
-import { closeBootWindow, registerEach } from "./registry.ts";
+import { registerTerrains } from "./core/terrains.ts";
+import { registerSprites } from "./core/sprites.ts";
+import { registerItems } from "./core/items.ts";
+import { registerRecipes } from "./core/recipes.ts";
+import { registerProcessing } from "./core/processing.ts";
+import { registerContacts } from "./core/contacts.ts";
+import { registerInteractions } from "./core/interactions.ts";
+import { registerTechs } from "./core/techs.ts";
+import { registerUpgradeCategories, registerUpgrades } from "./core/upgrades.ts";
+import { registerProjectiles } from "./core/projectiles.ts";
+import { registerEnergyTypes, registerExcavationProfiles } from "./core/energy.ts";
+import { registerStructureBehaviors } from "./core/structure-behaviors.ts";
+import { registerPlacementConfigs } from "./core/placement-configs.ts";
+import { registerSignals, registerTriggers } from "./core/schedules.ts";
+import { registerInputBindings } from "./core/input-bindings.ts";
+
+import { registerModifiers } from "./custom/modifiers.ts";
+import { reportEnergyNetworks } from "./custom/energy-networks.ts";
+import { installPlacementLimits } from "./core/placement-limits.ts";
+
+/** A registration step: runs one group of entries, returns how many registered. */
+type Step = (ctx: RegisterContext) => number;
+
+/**
+ * Every registration step, in the order the engine needs them.
+ *
+ * Order is load-bearing, so keep it as written rather than sorting it: elements
+ * and structures come first because later steps resolve references to their
+ * types, recipes sit next to processing because a processing step names a
+ * machine, and the custom steps read what the core steps recorded.
+ *
+ * A step that only reports contributes 0.
+ */
+const STEPS: readonly [name: string, step: Step][] = [
+    ["elements", registerElements],
+    ["structures", registerStructures],
+    ["terrains", registerTerrains],
+    ["sprites", registerSprites],
+    ["items", registerItems],
+    ["recipes", registerRecipes],
+    ["processing", registerProcessing],
+    ["contacts", registerContacts],
+    ["interactions", registerInteractions],
+    ["modifiers", registerModifiers],
+    ["techs", registerTechs],
+    ["upgradeCategories", registerUpgradeCategories],
+    ["upgrades", registerUpgrades],
+    ["projectiles", registerProjectiles],
+    ["energyTypes", registerEnergyTypes],
+    ["energyNetworks", reportEnergyNetworks],
+    ["placementLimits", installPlacementLimits],
+    ["excavationProfiles", registerExcavationProfiles],
+    ["structureBehaviors", registerStructureBehaviors],
+    ["placementConfigs", registerPlacementConfigs],
+    ["signals", registerSignals],
+    ["triggers", registerTriggers],
+    ["inputBindings", registerInputBindings],
+];
 
 export interface RegisterCounts {
-    elements: number;
-    structures: number;
-    terrains: number;
-    rest: Record<string, number>;
+    /** Entries registered per step, keyed by step name. */
+    steps: Record<string, number>;
+    /** Element types withheld from the picker. */
     hiddenElements: number;
 }
 
 export function registerAll(cfg?: ModConfig): RegisterCounts {
     const config = cfg ?? configStore.load();
 
-    
-    
     const processes = new ProcessRegistry(config.processes ?? []);
     setProcessRegistry(processes);
+    const ctx: RegisterContext = { config, processes };
 
-    const counts: RegisterCounts = {
-        elements: registerElements(config),
-        structures: registerStructures(config),
-        terrains: registerEach(config.terrains, "terrains", (t) => registerTerrain(t))[1],
-        rest: registerTheRest(config, processes),
-        hiddenElements: installElementPickerVisibility(),
-    };
+    const steps: Record<string, number> = {};
+    let total = 0;
+    for (const [name, step] of STEPS) {
+        const n = step(ctx);
+        steps[name] = n;
+        total += n;
+    }
+
+    const hiddenElements = installElementPickerVisibility();
     closeBootWindow();
+
     console.log(
-        `${LOG} registered: el${counts.elements} st${counts.structures} ` +
-            `te${counts.terrains} hidden${counts.hiddenElements} ` +
-            Object.entries(counts.rest).map(([k, v]) => `${k}${v}`).join(" "),
+        `${LOG} registered ${total} entries across ${STEPS.length} steps ` +
+            `(hidden ${hiddenElements} element(s)): ` +
+            Object.entries(steps).map(([k, v]) => `${k}=${v}`).join(" "),
     );
-    return counts;
+
+    return { steps, hiddenElements };
 }

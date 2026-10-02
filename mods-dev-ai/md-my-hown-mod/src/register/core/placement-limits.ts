@@ -1,5 +1,6 @@
 import { api } from "../../packages/mysandkit.ts";
 import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
+import type { RegisterContext } from "../registry.ts";
 
 export interface Limit {
     id: string;
@@ -37,7 +38,7 @@ function buildLimitTable(config: ModConfig): Map<string, Limit> {
 
 let unsubscribe: (() => void) | null = null;
 
-export function installPlacementLimits(config: ModConfig): number {
+export function installPlacementLimits({ config }: RegisterContext): number {
     if (unsubscribe) {
         try {
             unsubscribe();

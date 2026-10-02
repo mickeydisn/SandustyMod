@@ -1,9 +1,8 @@
 import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
-import { configStore } from "../../config/store.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { isAlwaysUnlocked } from "../../ui/tech-link.ts";
 import { makeDrawnSprite } from "./drawn-sprite.ts";
-import { registerEach } from "../registry.ts";
+import { registerEach, type RegisterContext } from "../registry.ts";
 
 type DrawCtx = {
     ctx?: {
@@ -121,13 +120,12 @@ function withSelectionGuard(st: StructureConfig): StructureConfig {
     return { ...rest, disallowSelection: true } as StructureConfig;
 }
 
-export function registerStructures(cfg?: ModConfig): number {
-    const config = cfg ?? configStore.load();
+export function registerStructures({ config }: RegisterContext): number {
     const n = registerEach(
         config.structures,
         "structures",
         (st) => api.structures.register(resolveDraw(st)),
-    )[1];
+    );
     unlockStructures(config);
     return n;
 }

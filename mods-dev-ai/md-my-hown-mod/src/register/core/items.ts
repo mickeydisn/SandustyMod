@@ -1,0 +1,18 @@
+import {
+    api,
+    type CompiledItemAction,
+    setItemActionCompiler,
+} from "../../packages/mysandkit.ts";
+import { compileEntryProcess } from "../../handler/custom-process/index.ts";
+import { registerEach, type RegisterContext } from "../registry.ts";
+
+// Lets the item normalizer compile a stored action list into a callback.
+setItemActionCompiler(
+    (def) => compileEntryProcess(def, "itemAction") as unknown as CompiledItemAction,
+);
+
+export function registerItems({ config }: RegisterContext): number {
+    return registerEach(config.items, "items", (it) => {
+        api.items.register(it);
+    });
+}

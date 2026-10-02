@@ -1,18 +1,14 @@
-import { LOG, type ModConfig } from "../../constants.ts";
-import { configStore } from "../../config/store.ts";
+import { LOG } from "../../constants.ts";
 import { api, normalizeElementPatch } from "../../packages/mysandkit.ts";
-import { registerEach } from "../registry.ts";
+import { registerEach, type RegisterContext } from "../registry.ts";
 import { noteElementVisibility } from "./element-picker.ts";
 
-export function registerElements(cfg?: ModConfig): number {
-    const config = cfg ?? configStore.load();
+export function registerElements({ config }: RegisterContext): number {
     return registerEach(
         config.elements,
         "elements",
         (el) => {
             const res = api.elements.register(el);
-            
-            
             if (res === undefined) return false;
             const type = res.elementType;
             if (typeof type === "number") api.elements.addElementToDiscoveries(type);
@@ -26,5 +22,5 @@ export function registerElements(cfg?: ModConfig): number {
                     `-> ${JSON.stringify(normalised.matterType)}`,
             );
         },
-    )[1];
+    );
 }
