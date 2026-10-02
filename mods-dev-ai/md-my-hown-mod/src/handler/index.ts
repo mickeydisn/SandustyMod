@@ -82,18 +82,14 @@ export {
     ACTION_EFFECT_BLURBS,
     ACTION_EFFECT_LABELS,
     ACTION_FACTS,
-    actionClassOf,
     type ActionDomain,
     type ActionEffect,
     type ActionFacts,
     actionFacts,
     type ActionKey,
-    apiOf,
     domainOf,
     effectOf,
     type HandlerActionClass,
-    isVacuousReturn,
-    offRuleActions,
 } from "./engine/action-facts.ts";
 
 export { canBind, createContext } from "./engine/context.ts";

@@ -1,4 +1,3 @@
-import { actionFacts } from "./action-facts.ts";
 import { BLOCK_KEY, type ActionDef } from "./types.ts";
 import { ALL_ACTIONS } from "../actions/index.ts";
 import type { ActionKey } from "../actions/index.ts";
@@ -67,21 +66,15 @@ export const HANDLER_META: HandlerMeta[] = (Object.entries(ALL_ACTIONS) as
         params: (m.params ?? []) as HandlerParam[],
     };
     const derived = slotsForEntry(entry);
-    const facts = actionFacts(key);
     return {
         ...entry,
-        api: facts?.api || undefined,
-        cls: facts?.cls ?? "pure",
         itemTypes: m.itemTypes as string[] | undefined,
         slots: derived.length ? derived : entry.slots,
-        declaredSlots: entry.slots,
     };
 });
 export const BLOCK_META: HandlerMeta = {
     key: BLOCK_KEY,
     type: "block",
-    cls: "pure",
-
     slots: ["signal", "trigger", "processing", "itemAction", "upgrade", "modifier"],
     scope: "cell",
     params: [
@@ -282,21 +275,14 @@ export function scanExcavationOptionUsage(
     });
 }
 
-function findKeyForUsage(cfg: Record<string, unknown>, u: HandlerUsage): string {
-    const cfgKey = SLOT_LOCATION[u.slot];
-    const list = (cfg[cfgKey] ?? []) as Record<string, unknown>[];
-    const e = list.find((x) => String(x?.id) === u.id);
-    if (!e) return "";
-
-    return u.key ?? actionRefsOf(e)[0]?.key ?? "";
-}
-
 export function unreachableHandlers(
     cfg: Record<string, unknown>,
 ): { key: string; usage: HandlerUsage; reason: string }[] {
     const bad: { key: string; usage: HandlerUsage; reason: string }[] = [];
     for (const u of scanHandlerUsage(cfg)) {
-        const meta = handlerMeta(findKeyForUsage(cfg, u));
+        // `scanHandlerUsage` already carries the key off each ref, so there is
+        // no need to walk the config back to the entry to recover it.
+        const meta = handlerMeta(u.key);
         if (!meta) continue;
         if (!meta.slots.includes(u.slot)) {
             bad.push({
@@ -312,9 +298,8 @@ export function unreachableHandlers(
 export function usageIndex(cfg: Record<string, unknown>): Record<string, HandlerUsage[]> {
     const idx: Record<string, HandlerUsage[]> = {};
     for (const u of scanHandlerUsage(cfg)) {
-        const key = findKeyForUsage(cfg, u);
-        if (!key) continue;
-        (idx[key] ??= []).push(u);
+        if (!u.key) continue;
+        (idx[u.key] ??= []).push(u);
     }
     return idx;
 }

@@ -71,18 +71,50 @@ export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
     signals: "Wiring: publishing a structure's signal output, and reading it back.",
 };
 
-export interface ActionFacts {
-    
-    readonly cls: HandlerActionClass;
-    
-    readonly api: string;
-    
+/**
+ * The `api.*` namespaces an action may reach for.
+ *
+ * A closed list rather than `string`, so naming a namespace that does not
+ * exist is a compile error. This is also what lets the `ActionFacts` union
+ * reject `cls: "api"` with an empty namespace.
+ */
+export type ApiNamespace =
+    | "effects"
+    | "elements"
+    | "energy"
+    | "grid"
+    | "player"
+    | "projectiles"
+    | "random"
+    | "signals"
+    | "structures"
+    | "tech"
+    | "terrains"
+    | "ui"
+    | "upgrades";
+
+interface ActionFactsBase {
     readonly effect: ActionEffect;
-    
+
     readonly domain: ActionDomain;
-    
+
     readonly options?: Record<string, unknown>;
 }
+
+/**
+ * `cls` and `api` are kept consistent by the type rather than by a check.
+ *
+ * An action that reaches for `api.*` is classed "api" and must name the
+ * namespace; every other class must leave it empty. Splitting the union is
+ * what enforces that, so a mismatch is a compile error instead of a console
+ * warning from a loop over the whole table that ran on every module load.
+ */
+export type ActionFacts =
+    | (ActionFactsBase & { readonly cls: "api"; readonly api: ApiNamespace })
+    | (ActionFactsBase & {
+        readonly cls: Exclude<HandlerActionClass, "api">;
+        readonly api: "";
+    });
 
 export type { ActionKey };
 
@@ -231,15 +263,6 @@ export function actionFacts(key: string): ActionFacts | undefined {
     return (ACTION_FACTS as Record<string, ActionFacts>)[key];
 }
 
-export function actionClassOf(key: string): HandlerActionClass | undefined {
-    return actionFacts(key)?.cls;
-}
-
-export function apiOf(key: string): string | undefined {
-    const api = actionFacts(key)?.api;
-    return api ? api : undefined;
-}
-
 export function effectOf(key: string): ActionEffect | undefined {
     return actionFacts(key)?.effect;
 }
@@ -248,32 +271,3 @@ export function domainOf(key: string): ActionDomain | undefined {
     return actionFacts(key)?.domain;
 }
 
-export function isVacuousReturn(key: string, callSiteUsesReturn: boolean): boolean {
-    return effectOf(key) === "returns" && !callSiteUsesReturn;
-}
-
-export function offRuleActions(): { key: string; cls: HandlerActionClass }[] {
-    return (Object.entries(ACTION_FACTS) as [ActionKey, ActionFacts][])
-        .filter(([, f]) => f.cls !== "api")
-        .map(([key, f]) => ({ key, cls: f.cls }));
-}
-
-function auditFacts(): void {
-    const problems: string[] = [];
-    for (const [key, f] of Object.entries(ACTION_FACTS) as [ActionKey, ActionFacts][]) {
-        if (f.cls === "api" && !f.api) {
-            problems.push(`${key}: cls "api" but no api namespace`);
-        }
-        if (f.cls !== "api" && f.api) {
-            problems.push(`${key}: cls "${f.cls}" but calls api.${f.api}`);
-        }
-    }
-    if (problems.length) {
-        console.warn(
-            `[md-my-hown-mod:handler] ${problems.length} action fact mismatch(es):\n  ` +
-                problems.join("\n  "),
-        );
-    }
-}
-
-auditFacts();

@@ -17,7 +17,6 @@ export type HandlerSlot =
 
 export type HandlerScope = "global" | "structure" | "cell" | "tech" | "item";
 
-import type { HandlerActionClass } from "../action-facts.ts";
 import type { ContentKind, HandlerParam } from "../types.ts";
 
 export type { ContentKind, HandlerParam };
@@ -36,13 +35,7 @@ export interface HandlerMeta {
 
     type: HandlerType;
 
-    api?: string;
-
-    cls: HandlerActionClass;
-
     slots: HandlerSlot[];
-
-    declaredSlots?: HandlerSlot[];
 
     scope: HandlerScope;
 
