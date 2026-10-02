@@ -8,8 +8,6 @@ export {
 } from "./compile.ts";
 export {
     currentProcessRegistry,
-    DERIVED_ID_SUFFIX,
-    derivedProcessId,
     ProcessRegistry,
     type ProcessUsage,
     processUsageCounts,

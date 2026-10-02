@@ -18,7 +18,6 @@ function slotOf(tab: Tab | undefined): HandlerSlot | undefined {
 export function renderProcessRef(ctx: FieldContext): unknown {
     const { h, form, cfg, setField, error, locked, tab } = ctx;
     const key = form[PROCESS_FORM_KEY] ?? "";
-    const legacyCount = form[`${PROCESS_FORM_KEY}__legacy`] ?? "";
     const registry = currentProcessRegistry();
     const slot = slotOf(tab);
     const used = processUsageCounts((cfg ?? {}) as Record<string, unknown>);
@@ -56,24 +55,6 @@ export function renderProcessRef(ctx: FieldContext): unknown {
                 );
             }),
         ),
-        legacyCount
-            ? h(
-                "div",
-                { style: { ...S.noteBox, borderColor: "#e67e22" } },
-                h(
-                    "div",
-                    { style: S.label },
-                    `This entry still stores ${legacyCount} action(s) inline.`,
-                ),
-                h(
-                    "div",
-                    { style: S.hint },
-                    "That is the old format, and it still runs as-is. Pick a process above " +
-                        "to convert it — after which editing that process on the Processes " +
-                        "tab would change every entry that uses it.",
-                ),
-            )
-            : null,
         chosen
             ? h(
                 "div",
@@ -87,16 +68,6 @@ export function renderProcessRef(ctx: FieldContext): unknown {
                         (mine > 0 ? ` · used ×${mine}` : " · unused"),
                 ),
                 chosen.doc ? h("div", { style: S.hint }, chosen.doc) : null,
-                
-                
-                chosen.derived
-                    ? h(
-                        "div",
-                        { style: S.hint },
-                        `Converted from the action list on "${chosen.derivedFrom}". Rename ` +
-                            "it to reuse it elsewhere.",
-                    )
-                    : null,
             )
             : null,
         

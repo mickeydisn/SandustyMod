@@ -1,7 +1,5 @@
-
 import { LOG, type ModConfig } from "../../constants.ts";
 import { customIds } from "./index.ts";
-
 
 export function joinedNetworkNames(config: ModConfig): Set<string> {
     const out = new Set<string>();
@@ -16,14 +14,12 @@ export function joinedNetworkNames(config: ModConfig): Set<string> {
     return out;
 }
 
-
 export function unusedEnergyNetworks(
     config: ModConfig,
     joined: ReadonlySet<string>,
 ): string[] {
     return [...customIds("energyNetworks", config)].filter((id) => !joined.has(id));
 }
-
 
 export function reportEnergyNetworks(
     config: ModConfig,

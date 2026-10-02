@@ -1,7 +1,5 @@
 import { LOG, type ModConfig, type PanelState } from "../constants.ts";
 import { api } from "../packages/mysandkit.ts";
-import { derivedProcessId } from "../handler/custom-process/registry.ts";
-import type { ProcessStep } from "../handler/custom-process/types.ts";
 import type { HandlerSlot } from "../handler/core/handler-registry.ts";
 import { DEFAULT_UNLOCK_NODE } from "../ui/tech-link.ts";
 
@@ -53,7 +51,7 @@ const COLLECTIONS = {
 const COLLECTION_KEYS = Object.keys(COLLECTIONS) as CollectionKey[];
 
 /** The collection keys that can hold a `processId` reference. */
-const LEGACY_SLOTS: readonly [CollectionKey, HandlerSlot][] = [
+const PROCESS_REF_SLOTS: readonly [CollectionKey, HandlerSlot][] = [
     ["signals", "signal"],
     ["triggers", "trigger"],
     ["processing", "processing"],
@@ -86,7 +84,7 @@ const CASCADES: Partial<Record<CollectionKey, (cfg: ModConfig, id: string) => vo
     },
     /** Entries referencing a deleted process drop the reference. */
     processes(cfg, id) {
-        for (const [category] of LEGACY_SLOTS) {
+        for (const [category] of PROCESS_REF_SLOTS) {
             const entries = cfg[category] as unknown;
             if (!Array.isArray(entries)) continue;
             for (const entry of entries as Record<string, unknown>[]) {
@@ -96,73 +94,10 @@ const CASCADES: Partial<Record<CollectionKey, (cfg: ModConfig, id: string) => vo
     },
 };
 
-function migrateLegacyActions(cfg: ModConfig): { changed: number; config: ModConfig } {
-    const out: ModConfig = { ...cfg, processes: [...(cfg.processes ?? [])] };
-    const known = new Set(out.processes.map((p) => p.id));
-    let changed = 0;
-
-    for (const [category, slot] of LEGACY_SLOTS) {
-        const entries = out[category as keyof ModConfig] as unknown;
-        if (!Array.isArray(entries)) continue;
-
-        const list = entries as unknown[];
-        let copied = false;
-        for (let i = 0; i < list.length; i++) {
-            const original = list[i] as Record<string, unknown> | null;
-            if (!original || typeof original !== "object") continue;
-
-            if (typeof original.processId === "string" && original.processId) continue;
-
-            if (!Array.isArray(original.actions) || original.actions.length === 0) continue;
-
-            const entryId = String(original.id ?? "");
-            if (!entryId) continue;
-            const processId = derivedProcessId(entryId);
-
-            if (known.has(processId)) continue;
-
-            const steps = original.actions
-                .filter((a) =>
-                    a && typeof a === "object" && typeof (a as { key?: unknown }).key === "string"
-                )
-                .map((a) => {
-                    const step = { key: String((a as { key: unknown }).key) } as ProcessStep;
-                    const options = (a as { options?: unknown }).options;
-                    if (options && typeof options === "object") {
-                        step.options = options as Record<string, unknown>;
-                    }
-                    return step;
-                });
-            if (steps.length === 0) continue;
-
-            out.processes.push({
-                id: processId,
-                scope: slot,
-                steps,
-                derived: true,
-                derivedFrom: entryId,
-            });
-            known.add(processId);
-
-            if (!copied) {
-                out[category as keyof ModConfig] = [...list] as never;
-                copied = true;
-            }
-            const next: Record<string, unknown> = { ...original, processId };
-            delete next.actions;
-            (out[category as keyof ModConfig] as unknown as Record<string, unknown>[])[i] = next;
-            changed++;
-        }
-    }
-    return { changed, config: out };
-}
-
 function loadConfig(): ModConfig {
     api.storage.ensure();
 
-    return migrateLegacyActions(
-        ensureArrays(api.storage.get<Partial<ModConfig>>(CONFIG_KEY)),
-    ).config;
+    return ensureArrays(api.storage.get<Partial<ModConfig>>(CONFIG_KEY));
 }
 
 function saveConfig(cfg: ModConfig): void {

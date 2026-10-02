@@ -1773,8 +1773,7 @@ export interface CompiledItemAction {
     skipped: string[];
     source:
         | { kind: "none" }
-        | { kind: "process"; id: string }
-        | { kind: "legacy"; refs: unknown[] };
+        | { kind: "process"; id: string };
 }
 
 let compileItemAction: ((def: Record<string, unknown>) => CompiledItemAction) | null = null;
@@ -1820,7 +1819,6 @@ function normalizeItem(def: ItemConfig): Record<string, unknown> {
         out.handleAction = compiled.fn as never;
 
         if (compiled.source.kind === "process") out.processId = compiled.source.id;
-        else if (compiled.source.kind === "legacy") out.actions = compiled.source.refs;
         out.options = {
             ...(typeof def.options === "object" ? def.options : {}),
             itemId: id,

@@ -1,10 +1,8 @@
 
-import { handlerMeta, TAB_TO_CALL_SITE } from "../handler/core/handler-registry.ts";
-import { resolveAction } from "../handler/core/process.ts";
+import { TAB_TO_CALL_SITE } from "../handler/core/handler-registry.ts";
 import { resolveProjectileOption } from "../handler/projectile-option/index.ts";
 import { currentProcessRegistry, processProblem } from "../handler/custom-process/index.ts";
 import { resolveExcavationOption } from "../handler/excavation-option/index.ts";
-import { parseActionRefs } from "./definition/actions-field.ts";
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
 import {} from "./definition/fields.ts";
@@ -370,8 +368,6 @@ export type FieldKind =
     
     | "multiselect"
     
-    | "actionList"
-    
     | "projectileOption"
     
     | "excavationOption"
@@ -535,30 +531,6 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
     if (own !== undefined) return own;
 
     switch (f.kind) {
-        case "actionList": {
-            
-            
-            
-            
-            
-            
-            
-            const refs = parseActionRefs(raw);
-            const unknown = refs.filter((r) => !resolveAction(r.key));
-            if (unknown.length) {
-                return `unknown action: ${[...new Set(unknown.map((r) => r.key))].join(", ")}`;
-            }
-            const slot = TAB_TO_CALL_SITE[cat ?? ""];
-            if (!slot) return null; 
-            const bad = refs.filter((r) => {
-                const meta = handlerMeta(r.key);
-                return !!meta && !meta.slots.includes(slot);
-            });
-            if (bad.length) {
-                return `cannot run here: ${[...new Set(bad.map((r) => r.key))].join(", ")}`;
-            }
-            return null;
-        }
         case "processRef": {
             
             

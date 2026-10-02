@@ -53,7 +53,6 @@ import {
     type SelectorReact,
     type SelectorState,
 } from "./panel/component/selector/selector.ts";
-import { renderActionList } from "./action-list-control.ts";
 import { renderProjectileOption } from "./projectile-option-control.ts";
 import { renderProcessRef } from "./process-ref-control.ts";
 import { listFor } from "./panel/index.ts";
@@ -663,23 +662,6 @@ function createPanelComponent(defaultMinimized = true) {
             
             
             
-            if (control === null && f.kind === "actionList") {
-                
-                
-                
-                control = renderActionList({
-                    h,
-                    form,
-                    cfg,
-                    setField,
-                    selector: selectorHandle,
-                    field: f,
-                    value: val,
-                    error: err,
-                    locked,
-                    tab: cat,
-                });
-            }
             if (control === null && f.kind === "projectileOption") {
                 
                 

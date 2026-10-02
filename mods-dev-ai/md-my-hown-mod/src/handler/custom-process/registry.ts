@@ -15,14 +15,6 @@ export interface ProcessUsage {
 }
 
 
-export const DERIVED_ID_SUFFIX = "#process";
-
-
-export function derivedProcessId(entryId: string): string {
-    return `${entryId}${DERIVED_ID_SUFFIX}`;
-}
-
-
 export class ProcessRegistry {
     readonly #byId = new Map<string, CustomProcessConfig>();
 
@@ -52,11 +44,6 @@ export class ProcessRegistry {
         return this.all()
             .filter((p) => p.scope === slot)
             .sort((a, b) => a.id.localeCompare(b.id));
-    }
-
-    
-    derivedIds(): string[] {
-        return this.all().filter((p) => p.derived).map((p) => p.id);
     }
 }
 

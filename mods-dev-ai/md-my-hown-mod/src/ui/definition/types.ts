@@ -87,8 +87,6 @@ export type FieldKind =
     
     | "multiselect"
     
-    | "actionList"
-    
     | "projectileOption"
     
     | "excavationOption"

@@ -17,16 +17,7 @@ export function readProcessRef(
     entry: Record<string, unknown> | undefined,
 ): void {
     const source = processRefOf(entry);
-    if (source.kind === "process") {
-        read.put(PROCESS_FORM_KEY, source.id);
-    } else if (source.kind === "legacy") {
-        read.put(PROCESS_FORM_KEY, "");
-        
-        
-        read.put(`${PROCESS_FORM_KEY}__legacy`, String(source.refs.length));
-    } else {
-        read.put(PROCESS_FORM_KEY, "");
-    }
+    read.put(PROCESS_FORM_KEY, source.kind === "process" ? source.id : "");
 }
 
 

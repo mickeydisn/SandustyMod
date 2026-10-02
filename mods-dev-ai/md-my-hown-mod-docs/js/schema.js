@@ -79,102 +79,3176 @@ window.MD_SCHEMA = (function () {
     processes: [["id","ID","text",{required:true}],["name","Name","text",{}],["scope","Scope (slot)","select",{options:SLOTS,required:true}],["doc","Documentation","text",{}],["derived","Derived","bool",{}],["derivedFrom","Derived from","text",{}]],
   };
   const ACTION_PARAMS = {
-    "addVelocity": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "vx", "label": "Velocity X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "vy", "label": "Velocity Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "maxSpeed", "label": "Max speed", "type": "number", "hint": "cells/second. 0 = no clamp.", "def": "0", "required": false, "options": []}],
-    "bufferIncrement": [{"key": "path", "label": "Buffer path", "type": "text", "hint": "a **number** path from Content \u2192 Buffer \u2014 a bool or string slot is not a counter", "def": "", "required": true, "options": []}, {"key": "delta", "label": "Amount", "type": "number", "hint": "", "def": "1", "required": true, "options": []}],
-    "bufferRead": [{"key": "path", "label": "Buffer path", "type": "text", "hint": "a path declared in Content \u2192 Buffer", "def": "", "required": true, "options": []}],
-    "bufferWrite": [{"key": "path", "label": "Buffer path", "type": "text", "hint": "a path declared in Content \u2192 Buffer", "def": "", "required": true, "options": []}, {"key": "value", "label": "Value", "type": "text", "hint": "a literal, or {{aVariable}} from an earlier step", "def": "", "required": false, "options": []}],
-    "buildStructure": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "compare": [{"key": "left", "label": "Left", "type": "text", "hint": "a number, or {{aVariable}} from an earlier step", "def": "", "required": true, "options": []}, {"key": "op", "label": "Test", "type": "select", "hint": "", "def": "gte", "required": true, "options": ["eq", "ne", "gt", "gte", "lt", "lte"]}, {"key": "right", "label": "Right", "type": "number", "hint": "", "def": "0", "required": true, "options": []}],
-    "countElements": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "countEmpty": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "countStructures": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "countTerrain": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "createElement": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "createTerrain": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "damageTerrain": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "damage", "label": "Damage", "type": "number", "hint": "hit points to remove", "def": "1", "required": false, "options": []}],
-    "emptyCells": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "energyBank": [{"key": "capacity", "label": "Capacity", "type": "number", "hint": "", "def": "100000", "required": false, "options": []}],
-    "energyConductor": [{"key": "capacity", "label": "Capacity", "type": "number", "hint": "", "def": "0", "required": false, "options": []}],
-    "energyConsumePerRun": [{"key": "energyType", "label": "Energy type", "type": "text", "hint": "", "def": "", "required": true, "options": []}, {"key": "amountPerRun", "label": "Amount per run", "type": "number", "hint": "", "def": "1", "required": false, "options": []}],
-    "energyDefault": [{"key": "capacity", "label": "Capacity", "type": "number", "hint": "", "def": "1000", "required": false, "options": []}],
-    "energyGenerateWhileHeld": [{"key": "energyType", "label": "Energy type", "type": "text", "hint": "", "def": "", "required": true, "options": []}, {"key": "amountPerRun", "label": "Amount per run", "type": "number", "hint": "", "def": "1", "required": false, "options": []}],
-    "energyNetwork": [{"key": "energyType", "label": "Energy type", "type": "text", "hint": "network name to join", "def": "", "required": true, "options": []}],
-    "energyWire": [{"key": "capacity", "label": "Capacity", "type": "number", "hint": "", "def": "200", "required": false, "options": []}],
-    "findFreeCell": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "getVelocity": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "hasStructure": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "hasTerrain": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "identity": [],
-    "if": [{"key": "var", "label": "When variable is true", "type": "text", "hint": "The name a step bound with As. Both branches are compiled; the one that runs is chosen at run time.", "def": "", "required": true, "options": []}],
-    "isBlockedByPlayer": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "isElementAtCell": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "0", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "0", "required": false, "options": []}],
-    "isLauncher": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "isMyType": [],
-    "isStructureEnabled": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "isStructureType": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "isTerrainType": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "itemDefault": [{"key": "power", "label": "Power", "type": "number", "hint": "", "def": "5", "required": false, "options": []}],
-    "itemExcavate": [{"key": "profileId", "label": "Excavation profile", "type": "text", "hint": "falls back to the item's excavationProfileId", "def": "", "required": false, "options": []}, {"key": "power", "label": "Power", "type": "number", "hint": "", "def": "10", "required": false, "options": []}],
-    "itemShoot": [{"key": "projectileId", "label": "Projectile", "type": "text", "hint": "falls back to the item's projectileId", "def": "", "required": false, "options": []}, {"key": "power", "label": "Power", "type": "number", "hint": "", "def": "5", "required": false, "options": []}, {"key": "speed", "label": "Speed", "type": "number", "hint": "", "def": "20", "required": false, "options": []}],
-    "logArgs": [],
-    "logBuildingPayload": [],
-    "logicAll": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "logicAny": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "logicCount": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "logicForEach": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "mx", "label": "Matrix X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "my", "label": "Matrix Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "to", "label": "Write element", "type": "select", "hint": "written at every cell in the range [element picker]", "def": "", "required": true, "options": []}, {"key": "when", "label": "\u2026but only cells holding", "type": "select", "hint": "leave blank to write every cell, whatever is there [element picker]", "def": "", "required": false, "options": []}],
-    "logicSum": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "mapSpritesheetValue": [{"key": "value2", "label": "Value", "type": "number", "hint": "the value to map", "def": "0", "required": false, "options": []}, {"key": "thresholds", "label": "Thresholds", "type": "text", "hint": "comma-separated, ascending. e.g. 25,50,75", "def": "", "required": false, "options": []}],
-    "math": [{"key": "left", "label": "Left", "type": "text", "hint": "a number, or {{aVariable}} from an earlier step", "def": "", "required": true, "options": []}, {"key": "op", "label": "Operation", "type": "select", "hint": "", "def": "add", "required": true, "options": ["add", "sub", "mul", "div"]}, {"key": "right", "label": "Right", "type": "number", "hint": "", "def": "1", "required": true, "options": []}],
-    "noop": [],
-    "particles": [{"key": "name", "label": "Effect", "type": "text", "hint": "effect name", "def": "", "required": true, "options": []}, {"key": "count", "label": "Count", "type": "number", "hint": "", "def": "1", "required": false, "options": []}],
-    "processorConvert": [{"key": "to", "label": "Output element", "type": "text", "hint": "element id committed into the cell", "def": "", "required": true, "options": []}, {"key": "chance", "label": "Chance", "type": "number", "hint": "", "def": "1", "required": false, "options": []}],
-    "processorCount": [],
-    "processorLift": [{"key": "x", "label": "Cell x", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "y", "label": "Cell y", "type": "number", "hint": "", "def": "", "required": false, "options": []}],
-    "processorLog": [],
-    "processorNoop": [],
-    "pushStructure": [{"key": "propagateToWorkers", "label": "Send to workers", "type": "bool", "hint": "instance data lives on Main; set this if a worker must see it now", "def": "false", "required": false, "options": []}, {"key": "skipShadow", "label": "Skip shadow", "type": "bool", "hint": "no shadow update around the changed cell", "def": "false", "required": false, "options": []}],
-    "randomInt": [{"key": "min", "label": "Lowest", "type": "number", "hint": "inclusive", "def": "0", "required": true, "options": []}, {"key": "max", "label": "Highest", "type": "number", "hint": "inclusive. A max below min answers the min.", "def": "0", "required": true, "options": []}],
-    "readDataField": [{"key": "slot", "label": "Data slot", "type": "select", "hint": "", "def": "1", "required": true, "options": []}],
-    "readElement": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "mx", "label": "Matrix X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "my", "label": "Matrix Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}],
-    "removeElement": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "removeStructure": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "removeStructures": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "preserveUnselectable", "label": "Only unselectable", "type": "bool", "hint": "skip structures a player can currently select", "def": "false", "required": false, "options": []}],
-    "removeTerrain": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "skipShadow", "label": "Skip shadow", "type": "bool", "hint": "no shadow update around the changed cell", "def": "false", "required": false, "options": []}],
-    "replaceElement": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "replaceTerrain": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "setDuration": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "ticks", "label": "Ticks", "type": "number", "hint": "", "def": "60", "required": false, "options": []}, {"key": "rearm", "label": "Rearm", "type": "bool", "hint": "also raise the maximum, so it fires again next cycle", "def": "false", "required": false, "options": []}],
-    "setSpritesheetByValue": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "value2", "label": "Value", "type": "number", "hint": "the value to map", "def": "0", "required": false, "options": []}, {"key": "thresholds", "label": "Thresholds", "type": "text", "hint": "comma-separated, ascending. e.g. 25,50,75", "def": "", "required": false, "options": []}],
-    "setSpritesheetIndex": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "index", "label": "Frame", "type": "number", "hint": "the frame to show", "def": "0", "required": false, "options": []}],
-    "setStructureData": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "setStructureEnabled": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "enabled", "label": "Enabled", "type": "bool", "hint": "the state to switch to", "def": "true", "required": false, "options": []}],
-    "setTerrainHitPoints": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "hitPoints", "label": "Hit points", "type": "number", "hint": "the health to set. 0 destroys the terrain.", "def": "0", "required": false, "options": []}],
-    "setVelocity": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "vx", "label": "Velocity X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "vy", "label": "Velocity Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}],
-    "signalLog": [],
-    "signalOutput": [{"key": "value", "label": "Output", "type": "bool", "hint": "", "def": "false", "required": false, "options": []}],
-    "structureData": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "key", "label": "Key", "type": "text", "hint": "the data-bag key", "def": "", "required": true, "options": []}],
-    "structureInspect": [],
-    "structureReadData": [{"key": "field", "label": "Data field", "type": "text", "hint": "key on the structure's data object", "def": "", "required": true, "options": []}],
-    "structureType": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "structureWriteData": [{"key": "field", "label": "Data field", "type": "text", "hint": "", "def": "", "required": true, "options": []}, {"key": "value", "label": "Value", "type": "text", "hint": "", "def": "", "required": true, "options": []}],
-    "techAppendUnlock": [{"key": "techId", "label": "Tech node", "type": "text", "hint": "", "def": "", "required": true, "options": []}],
-    "techGrantItem": [{"key": "itemId", "label": "Item", "type": "text", "hint": "", "def": "", "required": true, "options": []}, {"key": "count", "label": "Count", "type": "number", "hint": "", "def": "1", "required": false, "options": []}],
-    "techSetUpgradeLevel": [{"key": "itemId", "label": "Item", "type": "text", "hint": "", "def": "", "required": true, "options": []}, {"key": "level", "label": "Level", "type": "number", "hint": "", "def": "1", "required": false, "options": []}],
-    "teleportElement": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "tx", "label": "Move X", "type": "number", "hint": "", "def": "0", "required": false, "options": []}, {"key": "ty", "label": "Move Y", "type": "number", "hint": "1 = one cell down", "def": "1", "required": false, "options": []}],
-    "terrainHitPoints": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "terrainType": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "terrainTypeHandle": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}],
-    "toParticle": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "vx", "label": "Velocity X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "vy", "label": "Velocity Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "durationTicks", "label": "Lifetime", "type": "number", "hint": "ticks before it expires. 0 = permanent.", "def": "0", "required": false, "options": []}, {"key": "density", "label": "Density", "type": "number", "hint": "overrides the element's density. 0 = its own.", "def": "0", "required": false, "options": []}, {"key": "freeFalling", "label": "Free-falling", "type": "bool", "hint": "spawn already falling rather than resting", "def": "false", "required": false, "options": []}, {"key": "element", "label": "Element", "type": "select", "hint": "[element picker]", "def": "", "required": true, "options": []}, {"key": "structure", "label": "Structure", "type": "select", "hint": "[structure picker]", "def": "", "required": true, "options": []}, {"key": "terrain", "label": "Terrain", "type": "select", "hint": "[terrain picker]", "def": "", "required": true, "options": []}],
-    "toast": [{"key": "text", "label": "Text", "type": "text", "hint": "", "def": "Hello", "required": true, "options": []}],
-    "transformElement": [{"key": "dx", "label": "Offset X", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "dy", "label": "Offset Y", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "size", "label": "Region size", "type": "number", "hint": "", "def": "", "required": false, "options": []}, {"key": "footprint", "label": "Whole footprint", "type": "bool", "hint": "", "def": "", "required": false, "options": []}, {"key": "from", "label": "From element", "type": "text", "hint": "only cells holding this are changed. Leave blank for any.", "def": "", "required": false, "options": []}, {"key": "to", "label": "To element", "type": "text", "hint": "what they become", "def": "", "required": true, "options": []}, {"key": "key", "label": "Key", "type": "text", "hint": "the data-bag key", "def": "", "required": true, "options": []}, {"key": "value", "label": "Value", "type": "text", "hint": "written as text", "def": "", "required": false, "options": []}, {"key": "numberValue", "label": "Number value", "type": "number", "hint": "written as a number. Leave blank to use Value.", "def": "", "required": false, "options": []}, {"key": "propagateToWorkers", "label": "Send to workers", "type": "bool", "hint": "instance data lives on Main; set this if a worker must see it now", "def": "false", "required": false, "options": []}, {"key": "removeCells", "label": "Remove cells too", "type": "bool", "hint": "also remove the terrain under it", "def": "false", "required": false, "options": []}, {"key": "skipVisuals", "label": "Skip visuals", "type": "bool", "hint": "no teardown effect", "def": "false", "required": false, "options": []}],
-    "triggerLog": [],
-    "triggerScan": [{"key": "radius", "label": "Radius", "type": "number", "hint": "", "def": "3", "required": false, "options": []}],
-    "triggerTick": [],
-    "upgradeAdd": [{"key": "field", "label": "Numeric field", "type": "text", "hint": "", "def": "", "required": true, "options": []}, {"key": "amount", "label": "Amount", "type": "number", "hint": "", "def": "1", "required": false, "options": []}],
-    "upgradeCountLevel": [{"key": "field", "label": "Data field", "type": "text", "hint": "", "def": "mdLevel", "required": false, "options": []}],
-    "upgradeLog": [],
-    "upgradeScale": [{"key": "field", "label": "Numeric field", "type": "text", "hint": "", "def": "", "required": true, "options": []}, {"key": "factor", "label": "Factor", "type": "number", "hint": "", "def": "1.1", "required": false, "options": []}],
-    "writeDataField": [{"key": "slot", "label": "Data slot", "type": "select", "hint": "", "def": "1", "required": true, "options": []}, {"key": "slotValue", "label": "Value", "type": "text", "hint": "a number, or {{aVariable}} from an earlier step. Rounded to a whole number.", "def": "", "required": true, "options": []}],
-  };
+  "getVelocity": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "findFreeCell": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "setVelocity": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "vx",
+      "label": "Velocity X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "vy",
+      "label": "Velocity Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "addVelocity": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "vx",
+      "label": "Velocity X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "vy",
+      "label": "Velocity Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "maxSpeed",
+      "label": "Max speed",
+      "type": "number",
+      "hint": "cells/second. 0 = no clamp.",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "setDuration": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "ticks",
+      "label": "Ticks",
+      "type": "number",
+      "hint": "",
+      "def": "60",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "rearm",
+      "label": "Rearm",
+      "type": "bool",
+      "hint": "also raise the maximum, so it fires again next cycle",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "teleportElement": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "tx",
+      "label": "Move X",
+      "type": "number",
+      "hint": "",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "ty",
+      "label": "Move Y",
+      "type": "number",
+      "hint": "1 = one cell down",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "toParticle": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "vx",
+      "label": "Velocity X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "vy",
+      "label": "Velocity Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "durationTicks",
+      "label": "Lifetime",
+      "type": "number",
+      "hint": "ticks before it expires. 0 = permanent.",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "density",
+      "label": "Density",
+      "type": "number",
+      "hint": "overrides the element's density. 0 = its own.",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": "element"
+    },
+    {
+      "key": "freeFalling",
+      "label": "Free-falling",
+      "type": "bool",
+      "hint": "spawn already falling rather than resting",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "Element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    },
+    {
+      "key": "structure",
+      "label": "Structure",
+      "type": "select",
+      "hint": "[structure picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "structure"
+    },
+    {
+      "key": "terrain",
+      "label": "Terrain",
+      "type": "select",
+      "hint": "[terrain picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "terrain"
+    }
+  ],
+  "readElement": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "mx",
+      "label": "Matrix X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "my",
+      "label": "Matrix Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "countElements": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "countEmpty": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "replaceElement": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "removeElement": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "createElement": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "emptyCells": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "transformElement": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "from",
+      "label": "From element",
+      "type": "text",
+      "hint": "only cells holding this are changed. Leave blank for any.",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": "element"
+    },
+    {
+      "key": "to",
+      "label": "To element",
+      "type": "text",
+      "hint": "what they become",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    },
+    {
+      "key": "key",
+      "label": "Key",
+      "type": "text",
+      "hint": "the data-bag key",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "value",
+      "label": "Value",
+      "type": "text",
+      "hint": "written as text",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "numberValue",
+      "label": "Number value",
+      "type": "number",
+      "hint": "written as a number. Leave blank to use Value.",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "propagateToWorkers",
+      "label": "Send to workers",
+      "type": "bool",
+      "hint": "instance data lives on Main; set this if a worker must see it now",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "removeCells",
+      "label": "Remove cells too",
+      "type": "bool",
+      "hint": "also remove the terrain under it",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "skipVisuals",
+      "label": "Skip visuals",
+      "type": "bool",
+      "hint": "no teardown effect",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "structureType": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "hasStructure": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "isStructureType": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "structure",
+      "label": "structure",
+      "type": "select",
+      "hint": "[structure picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "structure"
+    }
+  ],
+  "isMyType": [],
+  "isBlockedByPlayer": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "isLauncher": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "isStructureEnabled": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "countStructures": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "structureData": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "key",
+      "label": "Key",
+      "type": "text",
+      "hint": "the data-bag key",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "mapSpritesheetValue": [
+    {
+      "key": "value2",
+      "label": "Value",
+      "type": "number",
+      "hint": "the value to map",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "thresholds",
+      "label": "Thresholds",
+      "type": "text",
+      "hint": "comma-separated, ascending. e.g. 25,50,75",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "buildStructure": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "structure",
+      "label": "structure",
+      "type": "select",
+      "hint": "[structure picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "structure"
+    }
+  ],
+  "removeStructure": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "removeStructures": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "preserveUnselectable",
+      "label": "Only unselectable",
+      "type": "bool",
+      "hint": "skip structures a player can currently select",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "setStructureEnabled": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "enabled",
+      "label": "Enabled",
+      "type": "bool",
+      "hint": "the state to switch to",
+      "def": "true",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "setSpritesheetIndex": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "index",
+      "label": "Frame",
+      "type": "number",
+      "hint": "the frame to show",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "setSpritesheetByValue": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "value2",
+      "label": "Value",
+      "type": "number",
+      "hint": "the value to map",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "thresholds",
+      "label": "Thresholds",
+      "type": "text",
+      "hint": "comma-separated, ascending. e.g. 25,50,75",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "setStructureData": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "pushStructure": [
+    {
+      "key": "propagateToWorkers",
+      "label": "Send to workers",
+      "type": "bool",
+      "hint": "instance data lives on Main; set this if a worker must see it now",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "skipShadow",
+      "label": "Skip shadow",
+      "type": "bool",
+      "hint": "no shadow update around the changed cell",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "terrainType": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "hasTerrain": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "isTerrainType": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "terrain",
+      "label": "terrain",
+      "type": "select",
+      "hint": "[terrain picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "terrain"
+    }
+  ],
+  "terrainHitPoints": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "terrainTypeHandle": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "countTerrain": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "createTerrain": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "terrain",
+      "label": "terrain",
+      "type": "select",
+      "hint": "[terrain picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "terrain"
+    }
+  ],
+  "replaceTerrain": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "terrain",
+      "label": "terrain",
+      "type": "select",
+      "hint": "[terrain picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "terrain"
+    }
+  ],
+  "removeTerrain": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "skipShadow",
+      "label": "Skip shadow",
+      "type": "bool",
+      "hint": "no shadow update around the changed cell",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "damageTerrain": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "damage",
+      "label": "Damage",
+      "type": "number",
+      "hint": "hit points to remove",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "setTerrainHitPoints": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "hitPoints",
+      "label": "Hit points",
+      "type": "number",
+      "hint": "the health to set. 0 destroys the terrain.",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "logicAny": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "logicAll": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "logicCount": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "logicSum": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "logicForEach": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "size",
+      "label": "Region size",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "footprint",
+      "label": "Whole footprint",
+      "type": "bool",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "mx",
+      "label": "Matrix X",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "my",
+      "label": "Matrix Y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "to",
+      "label": "Write element",
+      "type": "select",
+      "hint": "written at every cell in the range",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    },
+    {
+      "key": "when",
+      "label": "…but only cells holding",
+      "type": "select",
+      "hint": "leave blank to write every cell, whatever is there",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "noop": [],
+  "itemDefault": [
+    {
+      "key": "power",
+      "label": "Power",
+      "type": "number",
+      "hint": "",
+      "def": "5",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "processorNoop": [],
+  "energyDefault": [
+    {
+      "key": "capacity",
+      "label": "Capacity",
+      "type": "number",
+      "hint": "",
+      "def": "1000",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "energyBank": [
+    {
+      "key": "capacity",
+      "label": "Capacity",
+      "type": "number",
+      "hint": "",
+      "def": "100000",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "energyWire": [
+    {
+      "key": "capacity",
+      "label": "Capacity",
+      "type": "number",
+      "hint": "",
+      "def": "200",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "energyConductor": [
+    {
+      "key": "capacity",
+      "label": "Capacity",
+      "type": "number",
+      "hint": "",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "energyNetwork": [
+    {
+      "key": "energyType",
+      "label": "Energy type",
+      "type": "text",
+      "hint": "network name to join",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "triggerScan": [
+    {
+      "key": "radius",
+      "label": "Radius",
+      "type": "number",
+      "hint": "",
+      "def": "3",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "randomInt": [
+    {
+      "key": "min",
+      "label": "Lowest",
+      "type": "number",
+      "hint": "inclusive",
+      "def": "0",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "max",
+      "label": "Highest",
+      "type": "number",
+      "hint": "inclusive. A max below min answers the min.",
+      "def": "0",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "compare": [
+    {
+      "key": "left",
+      "label": "Left",
+      "type": "text",
+      "hint": "a number, or {{aVariable}} from an earlier step",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "op",
+      "label": "Test",
+      "type": "select",
+      "hint": "",
+      "def": "gte",
+      "required": true,
+      "options": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte"
+      ],
+      "content": null
+    },
+    {
+      "key": "right",
+      "label": "Right",
+      "type": "number",
+      "hint": "",
+      "def": "0",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "math": [
+    {
+      "key": "left",
+      "label": "Left",
+      "type": "text",
+      "hint": "a number, or {{aVariable}} from an earlier step",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "op",
+      "label": "Operation",
+      "type": "select",
+      "hint": "",
+      "def": "add",
+      "required": true,
+      "options": [
+        "add",
+        "sub",
+        "mul",
+        "div"
+      ],
+      "content": null
+    },
+    {
+      "key": "right",
+      "label": "Right",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "signalLog": [],
+  "signalOutput": [
+    {
+      "key": "value",
+      "label": "Output",
+      "type": "bool",
+      "hint": "",
+      "def": "false",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "structureInspect": [],
+  "isElementAtCell": [
+    {
+      "key": "dx",
+      "label": "Offset X",
+      "type": "number",
+      "hint": "",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "dy",
+      "label": "Offset Y",
+      "type": "number",
+      "hint": "",
+      "def": "0",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "element",
+      "label": "element",
+      "type": "select",
+      "hint": "[element picker]",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    }
+  ],
+  "structureReadData": [
+    {
+      "key": "field",
+      "label": "Data field",
+      "type": "text",
+      "hint": "key on the structure's data object",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "structureWriteData": [
+    {
+      "key": "field",
+      "label": "Data field",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "value",
+      "label": "Value",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "readDataField": [
+    {
+      "key": "slot",
+      "label": "Data slot",
+      "type": "select",
+      "hint": "",
+      "def": "1",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "writeDataField": [
+    {
+      "key": "slot",
+      "label": "Data slot",
+      "type": "select",
+      "hint": "",
+      "def": "1",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "slotValue",
+      "label": "Value",
+      "type": "text",
+      "hint": "a number, or {{aVariable}} from an earlier step. Rounded to a whole number.",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "bufferRead": [
+    {
+      "key": "path",
+      "label": "Buffer path",
+      "type": "text",
+      "hint": "a path declared in Content → Buffer",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "buffer"
+    }
+  ],
+  "bufferWrite": [
+    {
+      "key": "path",
+      "label": "Buffer path",
+      "type": "text",
+      "hint": "a path declared in Content → Buffer",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "buffer"
+    },
+    {
+      "key": "value",
+      "label": "Value",
+      "type": "text",
+      "hint": "a literal, or {{aVariable}} from an earlier step",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "bufferIncrement": [
+    {
+      "key": "path",
+      "label": "Buffer path",
+      "type": "text",
+      "hint": "a **number** path from Content → Buffer — a bool or string slot is not a counter",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "buffer"
+    },
+    {
+      "key": "delta",
+      "label": "Amount",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "triggerLog": [],
+  "triggerTick": [],
+  "toast": [
+    {
+      "key": "text",
+      "label": "Text",
+      "type": "text",
+      "hint": "",
+      "def": "Hello",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "particles": [
+    {
+      "key": "name",
+      "label": "Effect",
+      "type": "text",
+      "hint": "effect name",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "count",
+      "label": "Count",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "itemExcavate": [
+    {
+      "key": "profileId",
+      "label": "Excavation profile",
+      "type": "text",
+      "hint": "falls back to the item's excavationProfileId",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "power",
+      "label": "Power",
+      "type": "number",
+      "hint": "",
+      "def": "10",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "itemShoot": [
+    {
+      "key": "projectileId",
+      "label": "Projectile",
+      "type": "text",
+      "hint": "falls back to the item's projectileId",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "power",
+      "label": "Power",
+      "type": "number",
+      "hint": "",
+      "def": "5",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "speed",
+      "label": "Speed",
+      "type": "number",
+      "hint": "",
+      "def": "20",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "processorLog": [],
+  "processorLift": [
+    {
+      "key": "x",
+      "label": "Cell x",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "y",
+      "label": "Cell y",
+      "type": "number",
+      "hint": "",
+      "def": "",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "processorConvert": [
+    {
+      "key": "to",
+      "label": "Output element",
+      "type": "text",
+      "hint": "element id committed into the cell",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": "element"
+    },
+    {
+      "key": "chance",
+      "label": "Chance",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "processorCount": [],
+  "energyGenerateWhileHeld": [
+    {
+      "key": "energyType",
+      "label": "Energy type",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "amountPerRun",
+      "label": "Amount per run",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "energyConsumePerRun": [
+    {
+      "key": "energyType",
+      "label": "Energy type",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "amountPerRun",
+      "label": "Amount per run",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "techAppendUnlock": [
+    {
+      "key": "techId",
+      "label": "Tech node",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ],
+  "techSetUpgradeLevel": [
+    {
+      "key": "itemId",
+      "label": "Item",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "level",
+      "label": "Level",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "techGrantItem": [
+    {
+      "key": "itemId",
+      "label": "Item",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "count",
+      "label": "Count",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "upgradeCountLevel": [
+    {
+      "key": "field",
+      "label": "Data field",
+      "type": "text",
+      "hint": "",
+      "def": "mdLevel",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "upgradeLog": [],
+  "upgradeScale": [
+    {
+      "key": "field",
+      "label": "Numeric field",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "factor",
+      "label": "Factor",
+      "type": "number",
+      "hint": "",
+      "def": "1.1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "upgradeAdd": [
+    {
+      "key": "field",
+      "label": "Numeric field",
+      "type": "text",
+      "hint": "",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    },
+    {
+      "key": "amount",
+      "label": "Amount",
+      "type": "number",
+      "hint": "",
+      "def": "1",
+      "required": false,
+      "options": [],
+      "content": null
+    }
+  ],
+  "logArgs": [],
+  "identity": [],
+  "logBuildingPayload": [],
+  "if": [
+    {
+      "key": "var",
+      "label": "When variable is true",
+      "type": "text",
+      "hint": "process tag",
+      "def": "",
+      "required": true,
+      "options": [],
+      "content": null
+    }
+  ]
+}
   const ACTIONS = {
     act: ["addVelocity", "buildStructure", "createElement", "createTerrain", "damageTerrain", "itemExcavate", "itemShoot", "mapSpritesheetValue", "processorConvert", "processorLift", "pushStructure", "removeStructure", "removeStructures", "removeTerrain", "replaceElement", "replaceTerrain", "setDuration", "setSpritesheetByValue", "setSpritesheetIndex", "setStructureData", "setStructureEnabled", "setTerrainHitPoints", "setVelocity", "teleportElement", "toParticle"],
     block: ["if"],

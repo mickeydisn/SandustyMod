@@ -23,10 +23,6 @@ export interface CustomProcessConfig {
     scope: HandlerSlot;
     
     steps: ProcessStep[];
-    
-    derived?: boolean;
-    
-    derivedFrom?: string;
 }
 
 

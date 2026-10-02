@@ -1,14 +1,12 @@
 
 import { type HandlerSlot } from "../core/handler-registry.ts";
-import { actionRefsOf, compileProcess, type ProcessFailure } from "../core/process.ts";
+import { type ProcessFailure } from "../core/process.ts";
 import { compileCustomProcess } from "./compile.ts";
 import { currentProcessRegistry, type ProcessRegistry } from "./registry.ts";
 
 
 export type ProcessSource =
     | { kind: "process"; id: string }
-    
-    | { kind: "legacy"; refs: ReturnType<typeof actionRefsOf> }
     | { kind: "none" };
 
 
@@ -16,14 +14,6 @@ export function processRefOf(entry: Record<string, unknown> | undefined): Proces
     if (!entry) return { kind: "none" };
     const id = entry.processId;
     if (typeof id === "string" && id) return { kind: "process", id };
-    if (Array.isArray(entry.actions)) {
-        const refs = actionRefsOf(entry);
-        
-        
-        
-        if (refs.length === 0) return { kind: "none" };
-        return { kind: "legacy", refs };
-    }
     return { kind: "none" };
 }
 
@@ -60,18 +50,6 @@ export function compileEntryProcess(
             skipped: [],
             unknownOptions: [],
             usesContext: false,
-            expanded: [],
-        };
-    }
-
-    if (source.kind === "legacy") {
-        const compiled = compileProcess(source.refs, slot, onFailure);
-        return {
-            fn: compiled.fn,
-            source,
-            skipped: compiled.skipped,
-            unknownOptions: compiled.unknownOptions,
-            usesContext: compiled.usesContext,
             expanded: [],
         };
     }

@@ -2,7 +2,7 @@
   const sections = document.querySelectorAll(".section");
   const navItems = document.querySelectorAll(".nav-item");
   const content = document.querySelector(".content");
-  const PAGE_IDS = new Set(["graph", "editor", "blocky", "start", "content", "systems", "handlers"]);
+  const PAGE_IDS = new Set(["graph", "editor", "blocky", "structure-blocky", "start", "content", "systems", "handlers"]);
   const ANCHOR_PAGE = {
     "h-processes": "handlers", "h-actions": "handlers", "h-ids": "handlers",
     "start-overview": "start", "start-gs": "start", "start-shape": "start", "start-panel": "start",
@@ -26,7 +26,7 @@
     navItems.forEach((n) => n.classList.toggle("active", n.dataset.section === target));
     if (content) {
       content.classList.toggle("graph-mode", target === "graph");
-      content.classList.toggle("editor-mode", target === "editor" || target === "blocky");
+      content.classList.toggle("editor-mode", target === "editor" || target === "blocky" || target === "structure-blocky");
       content.classList.toggle("blocky-mode", target === "blocky");
     }
     const main = document.querySelector(".main");
@@ -38,6 +38,7 @@
     if (target === "graph" && window.__mdGraphRender) requestAnimationFrame(() => window.__mdGraphRender());
     if (target === "editor" && window.__mdEditorBoot) requestAnimationFrame(() => window.__mdEditorBoot());
     if (target === "blocky" && window.__mdBlockyBoot) requestAnimationFrame(() => window.__mdBlockyBoot());
+    if (target === "structure-blocky" && window.__mdStructureBlockyBoot) requestAnimationFrame(() => window.__mdStructureBlockyBoot());
     if (scrollTo) {
       requestAnimationFrame(() => {
         setTimeout(() => {

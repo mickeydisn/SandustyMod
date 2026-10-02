@@ -44,37 +44,50 @@
 
   function contentCatalog(kind) {
     const cfg = state.config || {};
-    const fromCfg = (arr, idKey) =>
+    const fromCfg = (arr) =>
       (Array.isArray(arr) ? arr : [])
-        .map((x) => (x && (x[idKey] || x.id || x.path || x.name)) || null)
+        .map((x) => {
+          if (!x || typeof x !== "object") return null;
+          return x.id || x.path || x.key || x.name || null;
+        })
         .filter(Boolean)
         .map(String);
     if (kind === "element") {
-      const ids = [...new Set([...BUILTIN_ELEMENTS, ...fromCfg(cfg.elements, "id")])];
+      const ids = [...new Set([...BUILTIN_ELEMENTS, ...fromCfg(cfg.elements)])];
       return ids.sort().map((id) => [id, id]);
     }
     if (kind === "structure") {
-      const ids = [...new Set([...BUILTIN_STRUCTURES, ...fromCfg(cfg.structures, "id")])];
-      return (ids.length ? ids : ["(structure id)"]).map((id) => [id, id]);
+      const ids = [...new Set([...BUILTIN_STRUCTURES, ...fromCfg(cfg.structures)])];
+      if (!ids.length) return [["— define in Config editor —", ""]];
+      return ids.sort().map((id) => [id, id]);
     }
     if (kind === "terrain") {
-      const ids = [...new Set([...BUILTIN_TERRAINS, ...fromCfg(cfg.terrains, "id")])];
+      const ids = [...new Set([...BUILTIN_TERRAINS, ...fromCfg(cfg.terrains)])];
       return ids.sort().map((id) => [id, id]);
     }
     if (kind === "buffer") {
-      const ids = fromCfg(cfg.buffers, "path");
-      if (!ids.length) return [["(buffer path)", ""]];
-      return ids.sort().map((id) => [id, id]);
+      // buffers use path or id as the content tag
+      const ids = [
+        ...fromCfg(cfg.buffers),
+        ...(Array.isArray(cfg.buffers)
+          ? cfg.buffers.map((b) => (b && b.path) || null).filter(Boolean).map(String)
+          : []),
+      ];
+      const uniq = [...new Set(ids)];
+      if (!uniq.length) return [["— define buffer in Config editor —", ""]];
+      return uniq.sort().map((id) => [id, id]);
     }
     return [["—", ""]];
   }
 
   /** Infer content kind for a param from key/label/hint */
   function contentKindFor(pr, actionKey) {
+    // Prefer explicit content kind from schema ACTION_PARAMS
+    if (pr && pr.content) return pr.content;
     const k = (pr.key || "").toLowerCase();
     const h = ((pr.hint || "") + " " + (pr.label || "") + " " + (pr.type || "")).toLowerCase();
     const ak = (actionKey || "").toLowerCase();
-    if (k === "path" || h.includes("buffer path") || (k === "path" && ak.includes("buffer")))
+    if (k === "path" || (ak.includes("buffer") && k === "path") || h.includes("buffer path"))
       return "buffer";
     if (h.includes("[element picker]") || h.includes("element picker")) return "element";
     if (h.includes("[structure picker]") || h.includes("structure picker")) return "structure";
@@ -89,8 +102,7 @@
       k === "to" ||
       k === "when" ||
       h.includes("element id") ||
-      h.includes("element type") ||
-      (pr.type === "select" && h.includes("element"))
+      h.includes("element type")
     )
       return "element";
     return null;
@@ -218,7 +230,8 @@
   }
 
   function registerBlocks() {
-    if (state.registered || !window.Blockly) return;
+    if (!window.Blockly) return;
+    // Re-register every mount so content tags match current config definitions
     state.registered = true;
     const schema = S();
 
@@ -397,19 +410,19 @@
               const fname = "P_" + pr.key;
               const ck = contentKindFor(pr, key);
               if (ck) {
-                const opts = contentCatalog(ck);
+                const kind = ck;
                 const label =
                   (pr.label || pr.key) +
-                  (ck === "element"
+                  (kind === "element"
                     ? " ⌗element"
-                    : ck === "structure"
+                    : kind === "structure"
                       ? " ⌗structure"
-                      : ck === "terrain"
+                      : kind === "terrain"
                         ? " ⌗terrain"
                         : " ⌗buffer");
                 this.appendDummyInput()
                   .appendField(label)
-                  .appendField(new Blockly.FieldDropdown(opts), fname);
+                  .appendField(new Blockly.FieldDropdown(() => contentCatalog(kind)), fname);
                 return;
               }
               if (pr.type === "bool") {
@@ -835,22 +848,47 @@
 
   function renderTagList() {
     const el = $("#by-tag-list");
-    if (!el) return;
-    syncTagsFromWorkspace(state.workspace);
-    if (!state.tags.length) {
-      el.innerHTML = '<span class="ed-muted">No tags yet</span>';
-      return;
+    if (el) {
+      syncTagsFromWorkspace(state.workspace);
+      if (!state.tags.length) {
+        el.innerHTML = '<span class="ed-muted">No process tags yet</span>';
+      } else {
+        el.innerHTML = state.tags
+          .map(
+            (tg) =>
+              '<button type="button" class="by-tag-chip" data-tag="' +
+              escapeHtml(tg) +
+              '">' +
+              escapeHtml(tg) +
+              "</button>"
+          )
+          .join("");
+      }
     }
-    el.innerHTML = state.tags
-      .map((t) => '<button type="button" class="by-tag-chip" data-tag="' + escapeHtml(t) + '">' + escapeHtml(t) + "</button>")
-      .join("");
-    $$(".by-tag-chip", el).forEach((btn) => {
-      btn.addEventListener("click", () => {
-        // ensure tag exists; user can drag tag ref from toolbox
-        const name = btn.dataset.tag;
-        if (name && !state.tags.includes(name)) state.tags.push(name);
+    const cl = $("#by-content-list");
+    if (cl) {
+      const parts = [];
+      ["element", "structure", "terrain", "buffer"].forEach((kind) => {
+        const opts = contentCatalog(kind)
+          .map((x) => x[1])
+          .filter((v) => v && !String(v).startsWith("—"));
+        if (!opts.length) return;
+        parts.push(
+          '<div class="by-content-kind"><span class="by-content-label">⌗' +
+            kind +
+            "</span> " +
+            opts
+              .slice(0, 24)
+              .map((id) => '<span class="by-tag-chip by-content-chip">' + escapeHtml(id) + "</span>")
+              .join(" ") +
+            (opts.length > 24 ? " …" : "") +
+            "</div>"
+        );
       });
-    });
+      cl.innerHTML = parts.length
+        ? parts.join("")
+        : '<span class="ed-muted">Define elements / buffers in Config editor</span>';
+    }
   }
 
   function disposeWs() {
@@ -1038,8 +1076,11 @@
           <div class="by-tag-head">Tags</div>
           <div class="by-tag-list" id="by-tag-list"></div>
           <p class="by-tag-hint">Tags are process variables. <code>set … as tag</code> writes; <code>if [tag]</code> reads. Same name = same group.</p>
+          <div class="by-tag-head" style="margin-top:12px">Content tags</div>
+          <div class="by-tag-list" id="by-content-list"></div>
+          <p class="by-tag-hint">From Config editor definitions + builtins. Action params use matching ⌗element / ⌗structure / ⌗terrain / ⌗buffer.</p>
           <div class="by-tag-head" style="margin-top:12px">sandkit.api</div>
-          <p class="by-tag-hint">Actions bind to <a href="https://github.com/sandustry-modding/SandustryTypes/tree/main/src/sandkit/api" target="_blank" rel="noopener">SandustryTypes / sandkit/api</a> via hostNs in the mod.</p>
+          <p class="by-tag-hint">Bound to <a href="https://github.com/sandustry-modding/SandustryTypes/tree/main/src/sandkit/api" target="_blank" rel="noopener">SandustryTypes / sandkit/api</a>.</p>
         </aside>
       </div>
       <details class="ed-raw"><summary>Raw steps JSON</summary><textarea id="by-raw" rows="8"></textarea></details>`;

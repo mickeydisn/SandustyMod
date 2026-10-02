@@ -1135,3 +1135,17 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
   line-height: 1.4;
 }
 .by-tag-hint a { color: var(--sd-color-primary); }
+
+.by-content-kind { margin-bottom: 8px; line-height: 1.6; }
+.by-content-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sd-color-text-muted);
+  margin-right: 4px;
+}
+.by-content-chip {
+  font-size: 10px;
+  padding: 2px 7px;
+  opacity: 0.9;
+}
