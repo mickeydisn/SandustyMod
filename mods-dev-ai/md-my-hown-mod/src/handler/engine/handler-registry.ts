@@ -9,7 +9,6 @@ import { projectileOptionOf } from "../processing/projectile-option/index.ts";
 import { excavationOptionOf } from "../processing/excavation-option/index.ts";
 import { SLOT_LOCATION, SLOTS_BY_CATEGORY } from "./registry/categories.ts";
 
-
 export * from "./registry/types.ts";
 export {
     DATA_PARAMS,
@@ -41,7 +40,6 @@ const TYPE_SLOTS: Partial<Record<HandlerType, HandlerSlot[]>> = {
     tech: ["upgrade"],
 };
 
-
 export function slotsForEntry(
     m: { key: ActionKey; type: HandlerType },
 ): HandlerSlot[] {
@@ -51,32 +49,34 @@ export function slotsForEntry(
     return needed.filter((s) => narrowed.includes(s));
 }
 
-
+/**
+ * One row per action, for the panel and the compile-time option check.
+ *
+ * The metadata is read off the action definition and the slot list is derived
+ * from what the action needs, so there is no second table to keep in step.
+ * `slots` is the derived list; `declaredSlots` keeps whatever the action
+ * pinned by hand, which is empty for actions that declare nothing.
+ */
 export const HANDLER_META: HandlerMeta[] = (Object.entries(ALL_ACTIONS) as
-    [ActionKey, ActionDef][]).map(
-        ([key, def]) => {
-            const m = def as ActionDef;
-            const entry = {
-                key,
-                type: (m.type ?? "cell") as HandlerType,
-                scope: (m.scope ?? "cell") as HandlerScope,
-                slots: (m.slots ?? []) as HandlerSlot[],
-                params: (m.params ?? []) as HandlerParam[],
-            };
-        const derived = slotsForEntry(entry);
-        const facts = actionFacts(key);
-        return {
-            ...entry,
-            
-            
-            api: facts?.api || undefined,
-            cls: facts?.cls ?? "pure",
-            itemTypes: m.itemTypes as string[] | undefined,
-            slots: derived.length ? derived : entry.slots,
-            declaredSlots: entry.slots,
-        } as HandlerMeta;
-    },
-);
+    [ActionKey, ActionDef][]).map(([key, m]) => {
+    const entry = {
+        key,
+        type: (m.type ?? "cell") as HandlerType,
+        scope: (m.scope ?? "cell") as HandlerScope,
+        slots: (m.slots ?? []) as HandlerSlot[],
+        params: (m.params ?? []) as HandlerParam[],
+    };
+    const derived = slotsForEntry(entry);
+    const facts = actionFacts(key);
+    return {
+        ...entry,
+        api: facts?.api || undefined,
+        cls: facts?.cls ?? "pure",
+        itemTypes: m.itemTypes as string[] | undefined,
+        slots: derived.length ? derived : entry.slots,
+        declaredSlots: entry.slots,
+    };
+});
 export const BLOCK_META: HandlerMeta = {
     key: BLOCK_KEY,
     type: "block",
@@ -103,7 +103,6 @@ const META_BY_KEY: Record<string, HandlerMeta> = Object.fromEntries(
 export function handlerMeta(key: string | undefined): HandlerMeta | undefined {
     return key ? META_BY_KEY[key] : undefined;
 }
-
 
 export const optionKeysFor: OptionKeysLookup = (key) => {
     const meta = handlerMeta(key);
@@ -150,8 +149,6 @@ export const HANDLER_SLOT_LABELS: Record<HandlerSlot, string> = {
     modifier: "Hook modifiers",
     itemAction: "Items (handleAction)",
 };
-
-export const HANDLER_SCOPES = Object.keys(HANDLER_SCOPE_LABELS) as HandlerScope[];
 
 export function validateHandlerParams(
     meta: HandlerMeta,
@@ -224,7 +221,6 @@ export function buildHandlerOptions(
     }
     return out;
 }
-
 
 /** The config-key → call-site map, re-exported for the panel's tab lookup. */
 export { SLOTS_BY_CATEGORY };

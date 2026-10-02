@@ -1,7 +1,5 @@
 import type { ContentKind, HandlerParam } from "../types.ts";
 
-
-
 export const p = (
     key: string,
     label: string,

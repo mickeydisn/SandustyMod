@@ -15,7 +15,6 @@ export {
     isBlock,
     type ModifierAction,
     ROLE_BLURBS,
-    ROLE_IO,
     ROLE_LABELS,
     type StoredAction,
 } from "./engine/types.ts";

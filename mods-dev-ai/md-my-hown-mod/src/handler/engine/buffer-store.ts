@@ -1,7 +1,7 @@
 import { JsonMapBuffer } from "@sandmd/buffer";
 import type { BufferEntryConfig, BufferValueType } from "../../constants.ts";
 
-export interface BufferProblem {
+interface BufferProblem {
     id: string;
     path: string;
     reason: string;
@@ -13,7 +13,7 @@ export function zeroFor(type: BufferValueType): number | boolean | string {
     return type === "number" ? 0 : type === "bool" ? false : "";
 }
 
-export function coerceDefault(type: BufferValueType, raw: unknown): number | boolean | string {
+function coerceDefault(type: BufferValueType, raw: unknown): number | boolean | string {
     if (type === "number") {
         const n = Number(raw);
         return Number.isFinite(n) ? n : 0;
@@ -41,7 +41,7 @@ function fail(entry: BufferEntryConfig, path: string, reason: string): SlotPlan 
     };
 }
 
-export function planSlot(entry: BufferEntryConfig): SlotPlan {
+function planSlot(entry: BufferEntryConfig): SlotPlan {
     const path = String(entry.path ?? "").trim();
     if (!path) return fail(entry, path, "a path is required");
     if (!PATH_RE.test(path)) {
@@ -76,7 +76,7 @@ export function planSlot(entry: BufferEntryConfig): SlotPlan {
     return { entry, value, bounds: { min, max }, problem: null };
 }
 
-export interface BufferHandle {
+interface BufferHandle {
     getPath(path: string): unknown;
     setPath(path: string, value: unknown): void;
     increment(path: string, delta: number): number;
@@ -84,7 +84,7 @@ export interface BufferHandle {
     commit(): void;
 }
 
-export function build(entries: readonly BufferEntryConfig[]): {
+function build(entries: readonly BufferEntryConfig[]): {
     buffer: BufferHandle | null;
     problems: BufferProblem[];
 } {
@@ -162,17 +162,22 @@ function setDeep(target: Record<string, unknown>, path: string, value: unknown):
     node[parts[parts.length - 1]] = value;
 }
 
+/**
+ * The shared buffer, built once from the declared entries.
+ *
+ * `resetBuffer` drops it so the next `ensureBufferReady` rebuilds from a
+ * reloaded config; the action that owns the buffer calls it on every reload.
+ * Build problems are reported per-slot by the action itself, so they are not
+ * retained here.
+ */
 let live: BufferHandle | null = null;
 let liveBuilt = false;
-let liveProblems: BufferProblem[] = [];
 
 export function ensureBufferReady(
     entries: readonly BufferEntryConfig[],
 ): BufferHandle | null {
     if (liveBuilt) return live;
-    const { buffer, problems } = build(entries);
-    live = buffer;
-    liveProblems = problems;
+    live = build(entries).buffer;
     liveBuilt = true;
     return live;
 }
@@ -180,13 +185,4 @@ export function ensureBufferReady(
 export function resetBuffer(): void {
     live = null;
     liveBuilt = false;
-    liveProblems = [];
-}
-
-export function bufferProblems(): BufferProblem[] {
-    return liveProblems;
-}
-
-export function currentBuffer(): BufferHandle | null {
-    return live;
 }

@@ -1,10 +1,5 @@
 
 
-
-
-
-
-
 export type ActionRole =
     | "sense"
     | "decide"
@@ -44,18 +39,6 @@ export const ROLE_BLURBS: Record<ActionRole, string> = {
     logic: "Walk a range of cells. The only place a process may loop.",
 };
 
-export const ROLE_IO: Record<ActionRole, { reads: string; writes: string }> = {
-    sense: { reads: "engine, vars", writes: "vars" },
-    decide: { reads: "vars, engine", writes: "proceed" },
-    act: { reads: "vars", writes: "pending" },
-    remember: { reads: "vars", writes: "structure.data" },
-    feel: { reads: "vars", writes: "the screen" },
-    connect: { reads: "vars", writes: "the engine" },
-    logic: { reads: "vars, engine, cells", writes: "vars, pending" },
-};
-
-
-
 export type ActionSignature = "payload" | "processing" | "modifier";
 
 export type HandlerActionFn = (
@@ -67,9 +50,7 @@ export type HandlerActionFn = (
 
 import type { Opt } from "../../catalog.ts";
 
-
 export type ContentKind = "element" | "structure" | "terrain";
-
 
 export interface HandlerParam {
     key: string;
@@ -91,7 +72,6 @@ export interface ModifierAction {
     kind: "intercept" | "modify";
     fn: HandlerActionFn;
 }
-
 
 export interface ActionDef {
     doc: string;
@@ -125,8 +105,6 @@ export interface StoredAction extends ActionDef {
     signature: ActionSignature;
 }
 
-
-
 export function defineActions<T extends Record<string, ActionDef>>(defs: T): T {
     return defs;
 }
@@ -136,8 +114,6 @@ export function defineModifiers<
 >(defs: T): T {
     return defs;
 }
-
-
 
 export const BLOCK_KEY = "if";
 
@@ -179,7 +155,6 @@ export type CallSite =
     | "upgrade"
     | "behavior"
     | "modifier";
-
 
 export type ScopeNeed = "pos" | "data" | "read" | "commit";
 

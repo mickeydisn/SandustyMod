@@ -168,12 +168,6 @@ export function walkFor(
     return { range: positionsFor(built.address, at), clamped: built.clamped };
 }
 
-
-
-
-
-
-
 export type CellTest = (cell: Position) => boolean;
 
 export type CellValue = (cell: Position) => number;

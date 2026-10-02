@@ -71,7 +71,6 @@ export const ACTION_DOMAIN_BLURBS: Record<ActionDomain, string> = {
     signals: "Wiring: publishing a structure's signal output, and reading it back.",
 };
 
-
 export interface ActionFacts {
     
     readonly cls: HandlerActionClass;
@@ -85,11 +84,9 @@ export interface ActionFacts {
     readonly options?: Record<string, unknown>;
 }
 
-
 export type { ActionKey };
 
 export type ActionFactsTable = Record<ActionKey, ActionFacts>;
-
 
 export const ACTION_FACTS: ActionFactsTable = {
     structureInspect: { cls: "self-sufficient", effect: "reads", domain: "structure", api: "" },
@@ -230,7 +227,6 @@ export const ACTION_FACTS: ActionFactsTable = {
     },
 };
 
-
 export function actionFacts(key: string): ActionFacts | undefined {
     return (ACTION_FACTS as Record<string, ActionFacts>)[key];
 }
@@ -256,13 +252,11 @@ export function isVacuousReturn(key: string, callSiteUsesReturn: boolean): boole
     return effectOf(key) === "returns" && !callSiteUsesReturn;
 }
 
-
 export function offRuleActions(): { key: string; cls: HandlerActionClass }[] {
     return (Object.entries(ACTION_FACTS) as [ActionKey, ActionFacts][])
         .filter(([, f]) => f.cls !== "api")
         .map(([key, f]) => ({ key, cls: f.cls }));
 }
-
 
 function auditFacts(): void {
     const problems: string[] = [];

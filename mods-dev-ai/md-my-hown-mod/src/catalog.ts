@@ -10,7 +10,6 @@ import { configIsHidden, humanise } from "./constants.ts";
 import { configStore } from "./config/store.ts";
 import type { ListRow } from "./ui/definition/types.ts";
 import { allUnlockNodes, DEFAULT_UNLOCK_NODE } from "./ui/tech-link.ts";
-import type { HandlerMeta } from "./handler/index.ts";
 
 export type Opt = {
     value: string;
@@ -692,29 +691,21 @@ export function listProcessorKeys(): Opt[] {
 
 
 
-function handlerRegistry(): {
-    any?: Record<string, unknown>;
-    process?: Record<string, unknown>;
-    anyDocs?: Record<string, string>;
-    processDocs?: Record<string, string>;
-    codeDocs?: Record<string, string>;
-    meta?: HandlerMeta[];
-} {
+/**
+ * The action docs published on `__mdHandlers` by the handler package.
+ *
+ * The bridge sets all three names to the same table, so the fallbacks are
+ * belt-and-braces for an older handler build rather than three sources. The
+ * `ANY_HANDLERS` / `PROCESS_HANDLERS` / `HANDLER_META` fields this used to
+ * surface were never set by the bridge, so they were always undefined.
+ */
+function handlerDocs(): Record<string, string> | undefined {
     const m = (globalThis as any).__mdHandlers;
-    return {
-        any: m?.ANY_HANDLERS,
-        process: m?.PROCESS_HANDLERS,
-        anyDocs: m?.ANY_HANDLER_DOCS,
-        processDocs: m?.PROCESS_HANDLER_DOCS,
-        codeDocs: m?.CODE_HANDLER_DOCS,
-        meta: m?.HANDLER_META,
-    };
+    return m?.ANY_HANDLER_DOCS ?? m?.PROCESS_HANDLER_DOCS ?? m?.CODE_HANDLER_DOCS;
 }
 
-
 export function handlerDoc(key: string): string | undefined {
-    const r = handlerRegistry();
-    return r.anyDocs?.[key] ?? r.processDocs?.[key] ?? r.codeDocs?.[key];
+    return handlerDocs()?.[key];
 }
 
 
