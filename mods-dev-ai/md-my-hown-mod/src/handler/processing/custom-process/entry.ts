@@ -4,11 +4,9 @@ import { type ProcessFailure } from "../process.ts";
 import { compileCustomProcess } from "./compile.ts";
 import { currentProcessRegistry, type ProcessRegistry } from "./registry.ts";
 
-
 export type ProcessSource =
     | { kind: "process"; id: string }
     | { kind: "none" };
-
 
 export function processRefOf(entry: Record<string, unknown> | undefined): ProcessSource {
     if (!entry) return { kind: "none" };
@@ -16,7 +14,6 @@ export function processRefOf(entry: Record<string, unknown> | undefined): Proces
     if (typeof id === "string" && id) return { kind: "process", id };
     return { kind: "none" };
 }
-
 
 export interface CompiledEntry {
     
@@ -32,7 +29,6 @@ export interface CompiledEntry {
     
     expanded: string[];
 }
-
 
 export function compileEntryProcess(
     entry: Record<string, unknown> | undefined,

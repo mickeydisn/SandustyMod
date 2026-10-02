@@ -1,20 +1,15 @@
 
-import { type HandlerSlot, SLOTS_BY_CATEGORY } from "../../engine/handler-registry.ts";
+import type { HandlerSlot } from "../../engine/registry/types.ts";
+import { SLOT_CATEGORIES } from "../../engine/registry/categories.ts";
 import type { CustomProcessConfig } from "./types.ts";
 
-
-export interface ProcessUsage {
-    
-    category: string;
-    
-    id: string;
-    
-    slot: HandlerSlot;
-    
-    processId: string;
-}
-
-
+/**
+ * The custom processes a config declares, by id.
+ *
+ * `get` returns the config, `forSlot` the ones built for one call site, and
+ * `ids` every name, sorted. A config declaring two processes with the same id
+ * keeps the last one, which is what the loader produced before this was a map.
+ */
 export class ProcessRegistry {
     readonly #byId = new Map<string, CustomProcessConfig>();
 
@@ -47,40 +42,33 @@ export class ProcessRegistry {
     }
 }
 
-
-export function scanProcessUsage(cfg: Record<string, unknown>): ProcessUsage[] {
-    const out: ProcessUsage[] = [];
+/**
+ * How many entries reference each custom process, by process id.
+ *
+ * This used to be two exports: `scanProcessUsage` returned a `ProcessUsage`
+ * row per referencing entry, and `processUsageCounts` counted those rows. Only
+ * the count was ever read, so the row shape — category, entry id, slot — was
+ * built on every call and then thrown away. One pass, no intermediate array.
+ */
+export function processUsageCounts(cfg: Record<string, unknown>): Record<string, number> {
+    const counts: Record<string, number> = {};
     for (const [category, entries] of Object.entries(cfg)) {
-        const slot = SLOTS_BY_CATEGORY[category];
-        if (!slot || !Array.isArray(entries)) continue;
+        // only categories the engine reads can reference a process
+        if (!SLOT_CATEGORIES.has(category) || !Array.isArray(entries)) continue;
         for (const entry of entries as Record<string, unknown>[]) {
             const id = entry?.processId;
             if (typeof id !== "string" || !id) continue;
-            out.push({ category, id: String(entry?.id ?? "?"), slot, processId: id });
+            counts[id] = (counts[id] ?? 0) + 1;
         }
-    }
-    return out;
-}
-
-
-export function processUsageCounts(cfg: Record<string, unknown>): Record<string, number> {
-    const counts: Record<string, number> = {};
-    for (const u of scanProcessUsage(cfg)) {
-        counts[u.processId] = (counts[u.processId] ?? 0) + 1;
     }
     return counts;
 }
 
-
-
-
 const holder: { current: ProcessRegistry | undefined } = { current: undefined };
-
 
 export function setProcessRegistry(registry: ProcessRegistry | undefined): void {
     holder.current = registry;
 }
-
 
 export function currentProcessRegistry(): ProcessRegistry {
     return holder.current ?? new ProcessRegistry();

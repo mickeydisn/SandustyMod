@@ -6,9 +6,7 @@ import type {
     ExcavationOptionRef,
 } from "./types.ts";
 
-
 export const EXCAVATION_OPTION_STORE_KEY = "option";
-
 
 export interface CompiledExcavationOption {
     
@@ -18,7 +16,6 @@ export interface CompiledExcavationOption {
     
     problem?: string;
 }
-
 
 export function excavationOptionOf(
     entry: Record<string, unknown> | undefined,
@@ -38,7 +35,6 @@ export function excavationOptionOf(
     }
     return {};
 }
-
 
 export function compileExcavationProfile(
     entry: Record<string, unknown> | undefined,
@@ -69,7 +65,6 @@ export function compileExcavationProfile(
         return { patch: fromEntry(entry), key: ref.key, problem: String(error) };
     }
 }
-
 
 function fromEntry(entry: Record<string, unknown> | undefined): ExcavationOptionPatch {
     const patch: ExcavationOptionPatch = {};

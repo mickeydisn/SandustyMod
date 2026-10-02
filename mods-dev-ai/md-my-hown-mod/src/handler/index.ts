@@ -57,10 +57,8 @@ export {
 } from "./engine/apply.ts";
 
 export {
-    ACTION_SCOPE,
     ALL_CALL_SITES,
     asCallSite,
-    asScopeNeed,
     CALL_SITE_SCOPE,
     canRunAt,
     canRunAtUnknown,

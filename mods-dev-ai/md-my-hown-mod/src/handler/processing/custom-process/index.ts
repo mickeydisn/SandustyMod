@@ -9,14 +9,9 @@ export {
 export {
     currentProcessRegistry,
     ProcessRegistry,
-    type ProcessUsage,
     processUsageCounts,
-    scanProcessUsage,
     setProcessRegistry,
 } from "./registry.ts";
-
-
-
 
 export {
     type CompiledEntry,
@@ -24,4 +19,4 @@ export {
     processRefOf,
     type ProcessSource,
 } from "./entry.ts";
-export type { CustomProcessConfig, ProcessRef, ProcessStep } from "./types.ts";
+export type { CustomProcessConfig, ProcessStep } from "./types.ts";

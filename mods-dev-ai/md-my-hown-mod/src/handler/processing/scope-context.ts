@@ -3,7 +3,6 @@ import { cellAt, cellsOf, footprint, type ShapeMatrix } from "../engine/cell-reg
 import { api } from "../../packages/mysandkit.ts";
 import type { CallSite } from "../engine/types.ts";
 
-
 export interface ContextSeed {
     
     name: string;
@@ -21,14 +20,12 @@ function safeRead(source: unknown, key: string): unknown {
     }
 }
 
-
 const STRUCTURE_SEEDS: readonly ContextSeed[] = [
     { name: "structure.x", read: (a) => safeRead(a[0], "x") },
     { name: "structure.y", read: (a) => safeRead(a[0], "y") },
     { name: "structure.type", read: (a) => safeRead(a[0], "type") },
     { name: "structure.data", read: (a) => safeRead(a[0], "data") },
 ];
-
 
 const CONTEXT_SEEDS: readonly ContextSeed[] = [
     { name: "context.getResolvedTypeAtCell", read: (a) => safeRead(a[1], "getResolvedTypeAtCell") },
@@ -59,7 +56,6 @@ function footprintSeeds(structure: unknown): Record<string, unknown> {
         "structure.footprint": cellsOf(region),
     };
 }
-
 
 const FOOTPRINT_SEEDS: readonly ContextSeed[] = ([
     "structure.shape",
@@ -98,7 +94,6 @@ const SCOPE_CONTEXT: Record<CallSite, readonly ContextSeed[]> = {
         { name: "key", read: (a) => a[0] },
     ],
 };
-
 
 export function seedsFor(
     callSite: CallSite,

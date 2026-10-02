@@ -13,8 +13,6 @@ export {
     resolveExcavationOption,
 } from "./registry.ts";
 
-
-
 export {
     EXCAVATION_FLAGS,
     type ExcavationFlag,

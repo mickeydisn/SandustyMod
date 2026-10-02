@@ -6,7 +6,6 @@ import type {
     ProjectileOptionRef,
 } from "./types.ts";
 
-
 export interface CompiledProjectileOption {
     
     getOptions: ProjectileGetOptions;
@@ -17,7 +16,6 @@ export interface CompiledProjectileOption {
 }
 
 const EMPTY: Record<string, unknown> = {};
-
 
 export function compileProjectile(
     ref: ProjectileOptionRef | undefined,
@@ -57,7 +55,6 @@ export function compileProjectile(
 
     return { getOptions, key: ref.key };
 }
-
 
 export const PROJECTILE_OPTION_STORE_KEY = "option";
 

@@ -2,17 +2,10 @@
 import type { HandlerSlot } from "../../engine/handler-registry.ts";
 import type { HandlerActionRef } from "../../engine/types.ts";
 
-
 export type ProcessStep = HandlerActionRef;
 
-
-export interface ProcessRef {
-    
-    id: string;
-}
-
-
 export interface CustomProcessConfig {
+    /** The id configs refer to this process by. */
     
     id: string;
     
@@ -20,14 +13,9 @@ export interface CustomProcessConfig {
     
     doc?: string;
     
+    /** The call site this process was built for. */
     scope: HandlerSlot;
     
     steps: ProcessStep[];
 }
 
-
-export interface ProcessCompileFailure {
-    
-    id: string;
-    error: unknown;
-}

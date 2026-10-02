@@ -1,9 +1,7 @@
 
 import { EXCAVATION_FLAGS, type ExcavationOptionFn, type ExcavationOptionValue } from "./types.ts";
 
-
 const FLAG_SET: ReadonlySet<string> = new Set(EXCAVATION_FLAGS);
-
 
 function withParams(
     base: { power: number; flags?: Record<string, number | boolean> },
@@ -53,7 +51,6 @@ export const EXCAVATION_OPTIONS: Record<string, ExcavationOptionFn> = {
         withParams({ power: 16, flags: { useLiteralOutVelocity: true } }, params),
 };
 
-
 export function excavationOptionParams(
     key: string,
 ): { key: string; def: number | boolean; section: "power" | "options" }[] {
@@ -73,16 +70,13 @@ export function excavationOptionParams(
     return out;
 }
 
-
 export function resolveExcavationOption(key: string): ExcavationOptionFn | undefined {
     return EXCAVATION_OPTIONS[key];
 }
 
-
 export function excavationOptionKeys(): string[] {
     return Object.keys(EXCAVATION_OPTIONS).sort();
 }
-
 
 export const EXCAVATION_OPTION_DOCS: Record<string, string> = {
     excavationDefault: "A plain dig: power 10, no flags. The baseline to edit from.",

@@ -18,13 +18,7 @@ export const SCOPE_NEED_LABELS: Record<ScopeNeed, string> = {
     commit: "to commit writes",
 };
 
-
 export type MaybeScopeNeed = ScopeNeed | "";
-
-
-export function asScopeNeed(value: string): ScopeNeed | undefined {
-    return SCOPE_NEEDS.find((n) => n === value);
-}
 
 export const SCOPE_NEED_BLURBS: Record<ScopeNeed, string> = {
     pos: "needs to know *where* it is — the payload's x/y, or the cursor cell.",
@@ -32,7 +26,6 @@ export const SCOPE_NEED_BLURBS: Record<ScopeNeed, string> = {
     read: "reads a cell via api.elements / api.grid, which are ambient.",
     commit: "writes through ctx.commit — only process(structure, context) hands one over.",
 };
-
 
 export const CALL_SITE_SCOPE: Record<CallSite, ProcessScope> = {
     processing: { pos: true, data: true, read: true, commit: true, ret: false },
@@ -50,12 +43,9 @@ export const CALL_SITE_SCOPE: Record<CallSite, ProcessScope> = {
     behavior: { pos: false, data: false, read: true, commit: false, ret: false },
 };
 
-
 export const ALL_CALL_SITES = Object.keys(CALL_SITE_SCOPE) as CallSite[];
 
-
 export type MaybeCallSite = CallSite | "";
-
 
 export function asCallSite(value: string): CallSite | undefined {
     return (ALL_CALL_SITES as string[]).includes(value) ? value as CallSite : undefined;
@@ -69,37 +59,36 @@ export function describeNeeds(needs: readonly ScopeNeed[]): string {
     return needs.length === 0 ? "nothing" : needs.map((n) => SCOPE_NEED_LABELS[n]).join(" + ");
 }
 
-
-
-export const ACTION_SCOPE: Record<ActionKey, readonly ScopeNeed[]> = Object.fromEntries(
-    Object.entries(ALL_ACTIONS).map(([key, def]) => [key, def.needs]),
-) as Record<ActionKey, readonly ScopeNeed[]>;
-
+/**
+ * What each action needs, read straight off the action definition.
+ *
+ * This was a second table beside `ALL_ACTIONS`, first hand-maintained and then
+ * derived from `def.needs`. It is gone: `needsOf` and `isActionKey` read the
+ * definitions directly, so there is no second place to forget an entry.
+ */
 
 export function needsOf(key: ActionKey): readonly ScopeNeed[] {
-    return ACTION_SCOPE[key];
+    return ALL_ACTIONS[key].needs;
 }
 
-
+/** An unknown key is assumed to need everything, so it fails closed. */
 export function needsOfUnknown(key: string): readonly ScopeNeed[] {
-    return isActionKey(key) ? ACTION_SCOPE[key] : SCOPE_NEEDS;
+    return isActionKey(key) ? ALL_ACTIONS[key].needs : SCOPE_NEEDS;
 }
 
-
+/** Whether this name is a registered action, i.e. whether we know its needs. */
 export function isActionKey(key: string): key is ActionKey {
-    return Object.hasOwn(ACTION_SCOPE, key);
+    return Object.hasOwn(ALL_ACTIONS, key);
 }
 
 export function canRunAt(key: ActionKey, callSite: CallSite): boolean {
     return scopeSatisfies(CALL_SITE_SCOPE[callSite], needsOf(key));
 }
 
-
 export function canRunAtUnknown(key: string, callSite: string): boolean {
     const site = asCallSite(callSite);
     return site !== undefined && isActionKey(key) && canRunAt(key, site);
 }
-
 
 export function slotsFor(key: ActionKey): HandlerSlot[] {
     return ALL_SLOTS.filter((slot) => canRunAt(key, slot));

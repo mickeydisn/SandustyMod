@@ -8,16 +8,13 @@ import { type HandlerSlot, optionKeysFor } from "../../engine/handler-registry.t
 import type { ProcessRegistry } from "./registry.ts";
 import type { CustomProcessConfig, ProcessStep } from "./types.ts";
 
-
 export const MAX_NESTING = 8;
-
 
 export interface ProcessCompileFailure {
     
     id: string;
     error: unknown;
 }
-
 
 export interface CompiledCustomProcess extends CompiledProcess {
     
@@ -27,7 +24,6 @@ export interface CompiledCustomProcess extends CompiledProcess {
     
     truncated: boolean;
 }
-
 
 export function processProblem(
     registry: ProcessRegistry,
@@ -39,7 +35,6 @@ export function processProblem(
     if (p.scope !== slot) return `built for ${p.scope}, used in ${slot}`;
     return undefined;
 }
-
 
 function expand(
     registry: ProcessRegistry,
@@ -75,7 +70,6 @@ function expand(
         out.push(step);
     }
 }
-
 
 export function compileCustomProcess(
     registry: ProcessRegistry,

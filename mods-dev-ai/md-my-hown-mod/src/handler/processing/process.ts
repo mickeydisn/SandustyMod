@@ -22,7 +22,6 @@ export {
     isBlock,
 } from "../engine/types.ts";
 
-
 export type OptionKeysLookup = (key: string) => ReadonlySet<string> | undefined;
 
 export interface ProcessFailure {

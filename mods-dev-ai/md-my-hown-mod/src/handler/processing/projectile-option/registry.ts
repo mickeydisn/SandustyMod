@@ -1,7 +1,6 @@
 
 import type { ProjectileOptionFn } from "./types.ts";
 
-
 function withParams(
     base: Record<string, number | boolean>,
     params: unknown,
@@ -54,7 +53,6 @@ export const PROJECTILE_OPTIONS: Record<string, ProjectileOptionFn> = {
         withParams({ speed: 8, radius: 16, lifetime: 30, carryTerrain: true }, params),
 };
 
-
 export function projectileOptionParams(key: string): { key: string; def: number | boolean }[] {
     const fn = PROJECTILE_OPTIONS[key];
     if (!fn) return [];
@@ -64,16 +62,13 @@ export function projectileOptionParams(key: string): { key: string; def: number 
         .map(([k, v]) => ({ key: k, def: v as number | boolean }));
 }
 
-
 export function resolveProjectileOption(key: string): ProjectileOptionFn | undefined {
     return PROJECTILE_OPTIONS[key];
 }
 
-
 export function projectileOptionKeys(): string[] {
     return Object.keys(PROJECTILE_OPTIONS).sort();
 }
-
 
 export const PROJECTILE_OPTION_DOCS: Record<string, string> = {
     defaultProjectileOptions:

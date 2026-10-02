@@ -9,8 +9,6 @@ export {
     resolveProjectileOption,
 } from "./registry.ts";
 
-
-
 export type {
     ProjectileGetOptions,
     ProjectileOptionFailure,

@@ -7,6 +7,7 @@ import type { OptionKeysLookup } from "../processing/process.ts";
 import { slotsFor } from "../processing/scope.ts";
 import { projectileOptionOf } from "../processing/projectile-option/index.ts";
 import { excavationOptionOf } from "../processing/excavation-option/index.ts";
+import { SLOT_LOCATION, SLOTS_BY_CATEGORY } from "./registry/categories.ts";
 
 
 export * from "./registry/types.ts";
@@ -225,20 +226,7 @@ export function buildHandlerOptions(
 }
 
 
-const SLOT_LOCATION: Record<HandlerSlot, string> = {
-    signal: "signals",
-    trigger: "triggers",
-    processing: "processing",
-    upgrade: "upgrades",
-    modifier: "modifiers",
-    itemAction: "items",
-};
-
-
-const SLOTS_BY_CATEGORY: Record<string, HandlerSlot> = Object.fromEntries(
-    Object.entries(SLOT_LOCATION).map(([slot, cfgKey]) => [cfgKey, slot as HandlerSlot]),
-);
-
+/** The config-key → call-site map, re-exported for the panel's tab lookup. */
 export { SLOTS_BY_CATEGORY };
 export const TAB_TO_CALL_SITE = SLOTS_BY_CATEGORY;
 
