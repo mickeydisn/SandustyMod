@@ -1,6 +1,7 @@
 import { actionFacts } from "./action-facts.ts";
 import { BLOCK_KEY, type ActionDef } from "./types.ts";
 import { ALL_ACTIONS } from "../actions/index.ts";
+import type { ActionKey } from "../actions/index.ts";
 import { actionRefsOf, flattenRefs, isBlock } from "../processing/process.ts";
 import type { OptionKeysLookup } from "../processing/process.ts";
 import { slotsFor } from "../processing/scope.ts";
@@ -39,10 +40,17 @@ const TYPE_SLOTS: Partial<Record<HandlerType, HandlerSlot[]>> = {
     tech: ["upgrade"],
 };
 
+/**
+ * The slots one action may appear in, narrowed by its handler type.
+ *
+ * Takes a real `ActionKey`: every caller derives it from `ALL_ACTIONS`, so
+ * there is no unknown key to accommodate here. The `as HandlerSlot[]` that
+ * used to sit on `slotsFor`'s result is gone — `slotsFor` returns slots.
+ */
 export function slotsForEntry(
-    m: { key: string; type: HandlerType },
+    m: { key: ActionKey; type: HandlerType },
 ): HandlerSlot[] {
-    const needed = slotsFor(m.key) as HandlerSlot[];
+    const needed = slotsFor(m.key);
     const narrowed = TYPE_SLOTS[m.type];
     if (!narrowed) return needed;
     return needed.filter((s) => narrowed.includes(s));
@@ -56,16 +64,17 @@ export function slotsForEntry(
  * step with the first. The engine's own scope check (`slotsFor`) still wins,
  * and the declaration is kept alongside it as `declaredSlots` for diagnostics.
  */
-export const HANDLER_META: HandlerMeta[] = Object.entries(ALL_ACTIONS).map(
-    ([key, def]) => {
-        const m = def as ActionDef;
-        const entry = {
-            key,
-            type: (m.type ?? "cell") as HandlerType,
-            scope: (m.scope ?? "cell") as HandlerScope,
-            slots: (m.slots ?? []) as HandlerSlot[],
-            params: (m.params ?? []) as HandlerParam[],
-        };
+export const HANDLER_META: HandlerMeta[] = (Object.entries(ALL_ACTIONS) as
+    [ActionKey, ActionDef][]).map(
+        ([key, def]) => {
+            const m = def as ActionDef;
+            const entry = {
+                key,
+                type: (m.type ?? "cell") as HandlerType,
+                scope: (m.scope ?? "cell") as HandlerScope,
+                slots: (m.slots ?? []) as HandlerSlot[],
+                params: (m.params ?? []) as HandlerParam[],
+            };
         const derived = slotsForEntry(entry);
         const facts = actionFacts(key);
         return {

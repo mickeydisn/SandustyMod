@@ -58,10 +58,18 @@ export {
 
 export {
     ACTION_SCOPE,
+    ALL_CALL_SITES,
+    asCallSite,
+    asScopeNeed,
     CALL_SITE_SCOPE,
     canRunAt,
+    canRunAtUnknown,
     describeNeeds,
+    isActionKey,
+    type MaybeCallSite,
+    type MaybeScopeNeed,
     needsOf,
+    needsOfUnknown,
     type ProcessScope,
     SCOPE_NEED_BLURBS,
     SCOPE_NEED_LABELS,
@@ -99,6 +107,7 @@ export { scopeSeedNames } from "./processing/scope-context.ts";
 
 export {
     allHandlerTypes,
+    ALL_SLOTS,
     BLOCK_META,
     buildHandlerOptions,
     type ContentKind,

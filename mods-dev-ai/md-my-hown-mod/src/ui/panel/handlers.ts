@@ -11,14 +11,16 @@ import {
     effectOf,
 } from "../../handler/index.ts";
 import {
+    ALL_CALL_SITES,
     CALL_SITE_SCOPE,
-    canRunAt,
+    canRunAtUnknown,
     describeNeeds,
-    needsOf,
+    type MaybeCallSite,
+    type MaybeScopeNeed,
+    needsOfUnknown,
     SCOPE_NEED_BLURBS,
     SCOPE_NEED_LABELS,
     SCOPE_NEEDS,
-    type ScopeNeed,
 } from "../../handler/index.ts";
 import { actionRefsOf, CALL_SITE_LABELS } from "../../handler/index.ts";
 import {
@@ -74,9 +76,9 @@ export interface HandlersTabState {
     
     effect: string;
     
-    need: string;
+    need: MaybeScopeNeed;
+    callSite: MaybeCallSite;
     
-    callSite: string;
     
     onlyUsed: boolean;
 }
@@ -151,8 +153,8 @@ export function filterActions(
             if (state.onlyUsed && !(used[m.key] ?? []).length) return false;
             if (state.domain && domainOf(m.key) !== state.domain) return false;
             if (state.effect && effectOf(m.key) !== state.effect) return false;
-            if (state.need && !needsOf(m.key).includes(state.need as ScopeNeed)) return false;
-            if (state.callSite && !canRunAt(m.key, state.callSite)) return false;
+            if (state.need && !needsOfUnknown(m.key).includes(state.need)) return false;
+            if (state.callSite && !canRunAtUnknown(m.key, state.callSite)) return false;
             if (!q) return true;
             
             
@@ -265,7 +267,7 @@ function filterBar(
     const domains = present(Object.keys(ACTION_DOMAIN_LABELS) as ActionDomain[], domainOf);
     const effects = present(Object.keys(ACTION_EFFECT_LABELS) as ActionEffect[], effectOf);
     const needs = [...SCOPE_NEEDS];
-    const sites = Object.keys(CALL_SITE_SCOPE);
+    const sites = ALL_CALL_SITES;
 
     
     
@@ -916,7 +918,8 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
         )
     );
 
-    const needs = needsOf(m.key);
+    // renderRow also draws the block pseudo-entry, whose key is not an action
+    const needs = needsOfUnknown(m.key);
     const effect = effectOf(m.key);
     const domain = domainOf(m.key);
     
