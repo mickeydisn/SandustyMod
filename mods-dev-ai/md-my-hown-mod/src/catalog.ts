@@ -10,7 +10,7 @@ import { configIsHidden, humanise } from "./constants.ts";
 import { configStore } from "./config/store.ts";
 import type { ListRow } from "./ui/definition/types.ts";
 import { allUnlockNodes, DEFAULT_UNLOCK_NODE } from "./ui/tech-link.ts";
-import type { HandlerMeta } from "./handler/core/handler-registry.ts";
+import type { HandlerMeta } from "./handler/index.ts";
 
 export type Opt = {
     value: string;

@@ -1,5 +1,5 @@
 
-import { TAB_TO_CALL_SITE } from "../handler/core/handler-registry.ts";
+import { TAB_TO_CALL_SITE } from "../handler/index.ts";
 import { resolveProjectileOption } from "../handler/projectile-option/index.ts";
 import { currentProcessRegistry, processProblem } from "../handler/custom-process/index.ts";
 import { resolveExcavationOption } from "../handler/excavation-option/index.ts";

@@ -26,7 +26,7 @@ import {
 
 
 import type { SelectorHandle } from "./definition/types.ts";
-import type { ContentKind } from "../handler/core/handler-registry.ts";
+import type { ContentKind } from "../handler/index.ts";
 
 
 const CONTENT_LISTERS: Record<ContentKind, () => Opt[]> = {

@@ -46,8 +46,17 @@ interface Folder {
     defs: Record<string, ActionDef & { kind?: "intercept" | "modify" }>;
 }
 
+/**
+ * The action key union, derived from the folder list below.
+ *
+ * `FOLDERS` used to be annotated `readonly Folder[]`, which widened every `defs` to
+ * `Record<string, ActionDef>` and erased the literal keys. The `satisfies` clause
+ * keeps the same check without the widening, so `keyof` still resolves to the 94 real
+ * action names — which is what lets `ACTION_FACTS` be exhaustive at compile time.
+ */
+type DefKeys<T> = T extends { defs: infer D } ? keyof D & string : never;
 
-const FOLDERS: readonly Folder[] = [
+const FOLDERS = [
     { signature: "payload", defs: senseActions },
     
     
@@ -89,7 +98,10 @@ const FOLDERS: readonly Folder[] = [
     
     
     { signature: "payload", defs: logicActions },
-] as const;
+] as const satisfies readonly Folder[];
+
+/** Every action key the package actually defines. Compile-time source of truth. */
+export type ActionKey = DefKeys<(typeof FOLDERS)[number]>;
 
 
 export const ALL_ACTIONS: Record<string, StoredAction> = (() => {

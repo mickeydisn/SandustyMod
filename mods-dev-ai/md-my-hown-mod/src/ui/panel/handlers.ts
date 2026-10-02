@@ -1,5 +1,5 @@
 
-import type { HandlerMeta, HandlerUsage } from "../../handler/core/handler-registry.ts";
+import type { HandlerMeta, HandlerUsage } from "../../handler/index.ts";
 import {
     ACTION_DOMAIN_BLURBS,
     ACTION_DOMAIN_LABELS,
@@ -9,7 +9,7 @@ import {
     type ActionEffect,
     domainOf,
     effectOf,
-} from "../../handler/core/action-class.ts";
+} from "../../handler/index.ts";
 import {
     CALL_SITE_SCOPE,
     canRunAt,
@@ -19,8 +19,8 @@ import {
     SCOPE_NEED_LABELS,
     SCOPE_NEEDS,
     type ScopeNeed,
-} from "../../handler/core/scope.ts";
-import { actionRefsOf, CALL_SITE_LABELS } from "../../handler/core/process.ts";
+} from "../../handler/index.ts";
+import { actionRefsOf, CALL_SITE_LABELS } from "../../handler/index.ts";
 import {
     PROJECTILE_OPTION_DOCS,
     PROJECTILE_OPTIONS,
@@ -40,8 +40,8 @@ import {
     unreachableHandlers,
     usageIndex,
     validateHandlerParams,
-} from "../../handler/core/handler-registry.ts";
-import { BLOCK_KEY } from "../../handler/core/types.ts";
+} from "../../handler/index.ts";
+import { BLOCK_KEY } from "../../handler/index.ts";
 
 
 const BLOCK_DOC: Record<string, string> = {
@@ -55,7 +55,7 @@ import {
     excavationOptionParams,
     resolveExcavationOption,
 } from "../../handler/excavation-option/index.ts";
-import { ACTION_DOCS } from "../../handler/actions/index.ts";
+import { ACTION_DOCS } from "../../handler/index.ts";
 import * as S from "../styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;

@@ -5,12 +5,12 @@ import {
     type HandlerMeta,
     type HandlerParam,
     type HandlerSlot,
-} from "../handler/core/handler-registry.ts";
-import { scopeSeedNames } from "../handler/core/scope-context.ts";
-import { refsIn } from "../handler/core/refs.ts";
-import { canBind, createContext } from "../handler/core/context.ts";
-import { ACTION_ROLES, isBlock, ROLE_LABELS } from "../handler/core/types.ts";
-import { ACTION_DOCS, ALL_ACTIONS } from "../handler/actions/index.ts";
+} from "../handler/index.ts";
+import { scopeSeedNames } from "../handler/index.ts";
+import { refsIn } from "../handler/index.ts";
+import { canBind, createContext } from "../handler/index.ts";
+import { ACTION_ROLES, isBlock, ROLE_LABELS } from "../handler/index.ts";
+import { ACTION_DOCS, ALL_ACTIONS } from "../handler/index.ts";
 import { currentProcessRegistry, type ProcessStep } from "../handler/custom-process/index.ts";
 import { paramInput } from "./param-controls.ts";
 import * as S from "./styles.ts";

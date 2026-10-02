@@ -6,6 +6,7 @@ export {
     type ActionDef,
     type ActionRole,
     type ActionSignature,
+    BLOCK_KEY,
     CALL_SITE_LABELS,
     CALL_SITE_SIGNATURES,
     CALL_SITE_USES_RETURN,
@@ -15,6 +16,7 @@ export {
     type HandlerActionFn,
     type HandlerActionRef,
     type HandlerProcessFn,
+    isBlock,
     type ModifierAction,
     ROLE_BLURBS,
     ROLE_IO,
@@ -37,6 +39,12 @@ export {
     resolveAction,
     resolveModifier,
 } from "../actions/index.ts";
+
+// `main.ts` calls this at startup to hand the engine its buffer provider. It is part
+// of the package's surface, so it goes through the barrel with everything else.
+export {
+    setBufferSource,
+} from "../actions/buffer/index.ts";
 
 
 export {
@@ -75,30 +83,70 @@ export {
 export {
     ACTION_CLASS_BLURBS,
     ACTION_CLASS_LABELS,
-    ACTION_CLASSES,
-    actionClassOf,
     type ActionDeps,
-    type HandlerActionClass,
     measureActionDeps,
-    offRuleActions,
 } from "./action-class.ts";
+
+export {
+    ACTION_FACTS,
+    actionFacts,
+    actionClassOf,
+    apiOf,
+    type ActionFacts,
+    type ActionKey,
+    type ActionDomain,
+    type ActionEffect,
+    ACTION_DOMAIN_BLURBS,
+    ACTION_DOMAIN_LABELS,
+    ACTION_EFFECT_BLURBS,
+    ACTION_EFFECT_LABELS,
+    domainOf,
+    effectOf,
+    isVacuousReturn,
+    type HandlerActionClass,
+    offRuleActions,
+} from "./action-facts.ts";
 
 
 export {
+    canBind,
+    createContext,
+} from "./context.ts";
+
+export {
+    refsIn,
+} from "./refs.ts";
+
+export {
+    scopeSeedNames,
+} from "./scope-context.ts";
+
+export {
     allHandlerTypes,
+    BLOCK_META,
     buildHandlerOptions,
+    type ContentKind,
     HANDLER_META,
+    HANDLER_SCOPE_LABELS,
     HANDLER_SCOPE_LABELS as HANDLER_SCOPE_LABELS_UI,
+    HANDLER_SLOT_LABELS,
+    HANDLER_TYPE_LABELS,
     type HandlerMeta,
     handlerMeta,
     type HandlerParam,
     handlersForSlot,
+    handlersOnlyAtSlot,
     type HandlerSlot,
     handlersOfType,
+    handlerTypesForKeys,
     type HandlerType,
     type HandlerUsage,
     isHandlerKey,
+    isOnlyAtSlot,
+    scanExcavationOptionUsage,
     scanHandlerUsage,
+    scanProjectileOptionUsage,
+    TAB_TO_CALL_SITE,
     unreachableHandlers,
     usageIndex,
     validateHandlerParams,
@@ -125,22 +173,9 @@ export {
 
 
 
-import {
-    ACTION_DOCS,
-    actionKeys,
-    actionKeysOfRole,
-    actionOf,
-    ACTIONS_BY_ROLE,
-    ALL_ACTIONS,
-    ANY_ACTIONS,
-    MODIFIER_ACTIONS,
-    PROCESSING_ACTIONS,
-} from "../actions/index.ts";
-import { ACTION_ROLES, ROLE_BLURBS, ROLE_LABELS } from "./types.ts";
-import { HANDLER_META } from "./handler-registry.ts";
-
-
-
+// The `globalThis.__mdHandlers` dev handle lives in its own file — see debug-handle.ts.
+// It is imported for the side effect only; it exports nothing.
+import "./debug-handle.ts";
 
 export {
     type CompiledExcavationOption,
@@ -162,43 +197,6 @@ export {
 } from "../excavation-option/index.ts";
 
 
-
-
-
-
-
-
-try {
-    (globalThis as Record<string, unknown>).__mdHandlers = {
-        
-        
-        ALL_ACTIONS,
-        ACTIONS_BY_ROLE,
-        ACTION_DOCS,
-        ACTION_ROLES,
-        ROLE_LABELS,
-        ROLE_BLURBS,
-        actionKeys,
-        actionKeysOfRole,
-        actionOf,
-        
-        
-        ANY_ACTIONS,
-        PROCESSING_ACTIONS,
-        MODIFIER_ACTIONS,
-        
-        
-        
-        
-        
-        
-        listAnyHandlerKeys: () => Object.keys(ANY_ACTIONS),
-        listProcessorKeys: () => Object.keys(PROCESSING_ACTIONS),
-        listHandlerKeys: () => Object.keys(MODIFIER_ACTIONS),
-        ANY_HANDLER_DOCS: ACTION_DOCS,
-        PROCESS_HANDLER_DOCS: ACTION_DOCS,
-        CODE_HANDLER_DOCS: ACTION_DOCS,
-        
-        HANDLER_META,
-    };
-} catch {  }
+// The `globalThis.__mdHandlers` dev handle lives in its own file — see debug-handle.ts.
+// It is imported for the side effect only; it exports nothing.
+import "./debug-handle.ts";

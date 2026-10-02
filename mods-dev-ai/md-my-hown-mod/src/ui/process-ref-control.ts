@@ -4,8 +4,8 @@ import {
     processProblem,
     processUsageCounts,
 } from "../handler/custom-process/index.ts";
-import { type HandlerSlot, TAB_TO_CALL_SITE } from "../handler/core/handler-registry.ts";
-import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../handler/core/types.ts";
+import { type HandlerSlot, TAB_TO_CALL_SITE } from "../handler/index.ts";
+import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../handler/index.ts";
 import { PROCESS_FORM_KEY } from "./definition/process-ref-field.ts";
 import * as S from "./styles.ts";
 import type { FieldContext, Tab } from "./definition/types.ts";

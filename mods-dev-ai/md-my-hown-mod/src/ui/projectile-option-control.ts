@@ -6,7 +6,7 @@ import {
     projectileOptionParams,
     resolveProjectileOption,
 } from "../handler/projectile-option/index.ts";
-import type { HandlerParam } from "../handler/core/handler-registry.ts";
+import type { HandlerParam } from "../handler/index.ts";
 import { paramInput, paramText, paramValue } from "./param-controls.ts";
 import { OPTIONS_FORM_KEY, PARAMS_FORM_KEY } from "./definition/projectile-option-field.ts";
 import * as S from "./styles.ts";

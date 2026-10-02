@@ -6,7 +6,7 @@ import {
     excavationOptionParams,
     resolveExcavationOption,
 } from "../handler/excavation-option/index.ts";
-import type { HandlerParam } from "../handler/core/handler-registry.ts";
+import type { HandlerParam } from "../handler/index.ts";
 import { paramInput, paramText, paramValue } from "./param-controls.ts";
 import { OPTIONS_FORM_KEY, PARAMS_FORM_KEY } from "./definition/excavation-option-field.ts";
 import * as S from "./styles.ts";

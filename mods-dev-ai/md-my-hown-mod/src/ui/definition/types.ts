@@ -5,7 +5,7 @@ import type { Opt } from "../../catalog.ts";
 
 
 import type { SelectorState } from "../panel/component/selector/selector.ts";
-import type { ContentKind } from "../../handler/core/handler-registry.ts";
+import type { ContentKind } from "../../handler/index.ts";
 
 
 

@@ -1,6 +1,6 @@
 
 
-import { ACTION_APIS, ACTION_CLASSES, type HandlerActionClass } from "./action-class.ts";
+import { actionFacts, type HandlerActionClass } from "./action-facts.ts";
 
 
 
@@ -1330,13 +1330,13 @@ export function slotsForEntry(
 
 export const HANDLER_META: HandlerMeta[] = DECLARED_META.map((m) => {
     const derived = slotsForEntry(m);
+    const facts = actionFacts(m.key);
     return {
         ...m,
-        api: ACTION_APIS[m.key],
-        
-        
-        
-        cls: ACTION_CLASSES[m.key] ?? "pure",
+        // `api` is absent for engine-free actions; the record states that as "",
+        // so translate rather than leaking an empty string into the panel.
+        api: facts?.api || undefined,
+        cls: facts?.cls ?? "pure",
         slots: derived.length ? derived : m.slots,
         declaredSlots: m.slots,
     };

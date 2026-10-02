@@ -1,6 +1,6 @@
 import { LOG, type ModConfig, type PanelState } from "../constants.ts";
 import { api } from "../packages/mysandkit.ts";
-import type { HandlerSlot } from "../handler/core/handler-registry.ts";
+import type { HandlerSlot } from "../handler/index.ts";
 import { DEFAULT_UNLOCK_NODE } from "../ui/tech-link.ts";
 
 const CONFIG_KEY = "config";

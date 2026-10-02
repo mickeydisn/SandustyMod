@@ -1,5 +1,5 @@
 
-import type { HandlerParam } from "../handler/core/handler-registry.ts";
+import type { HandlerParam } from "../handler/index.ts";
 import type { SelectorHandle } from "./definition/types.ts";
 import * as S from "./styles.ts";
 
