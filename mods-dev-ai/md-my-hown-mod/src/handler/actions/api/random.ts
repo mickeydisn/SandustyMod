@@ -1,10 +1,6 @@
-
 import { defineActions } from "../../core/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
-
-/** Decide actions that reach the host through `api.*`. */
-export const decideActions = defineActions({
-    
+export const randomActions = defineActions({
     randomInt: {
         role: "decide",
         doc: "A random whole number from `min` to `max`, inclusive. Set both.",
@@ -22,4 +18,5 @@ export const decideActions = defineActions({
             }
         },
     },
+
 });

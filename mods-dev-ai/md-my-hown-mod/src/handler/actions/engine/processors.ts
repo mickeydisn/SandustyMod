@@ -1,22 +1,6 @@
-import { anchorFor } from "../../core/cell-region.ts";
 import { defineActions } from "../../core/types.ts";
-import { api } from "../../../packages/mysandkit.ts";
+import type { CellMutation, ProcessingContext } from "../api/processors.ts";
 
-export interface ProcessingContext {
-    getResolvedTypeAtCell?: (x: number, y: number) => unknown;
-    isCellEmptyAtCell?: (x: number, y: number) => boolean;
-
-    commit?: (mutations: CellMutation[]) => boolean | void;
-}
-
-export interface CellMutation {
-    kind: "create" | "remove" | "structure";
-    cellX: number;
-    cellY: number;
-    elementType?: unknown;
-
-    expectedElementType?: unknown;
-}
 
 function commitOrWarn(
     context: unknown,
@@ -54,71 +38,8 @@ function at(
     return { cellX: (structure?.x ?? 0) + dx, cellY: (structure?.y ?? 0) + dy };
 }
 
-export const actActions = defineActions({
-    itemExcavate: {
-        role: "act",
-        doc: "Digs at this position. Set `damage` and `velocity` in options.",
-        fn: (payload, _ctx, options) => {
-            const o = (options ?? {}) as { damage?: number; vx?: number; vy?: number };
 
-            const at = anchorFor(payload);
-            if (at.source === "none") {
-                console.warn(
-                    "[md-my-hown-mod:act] itemExcavate: this call site gave no position and " +
-                        "there is no cursor to read, so nothing was dug",
-                );
-                return;
-            }
-            try {
-                api.grid.excavateAtCell(
-                    at.x,
-                    at.y,
-                    { x: o.vx ?? 0, y: o.vy ?? 0 },
-                    o.damage ?? 1,
-                );
-            } catch (e) {
-                console.warn("[md-my-hown-mod:act] excavate failed", e);
-            }
-        },
-    },
-
-    itemShoot: {
-        role: "act",
-        doc: "Fires a projectile. Set `projectileId` and `velocity` in options.",
-        fn: (payload, _ctx, options) => {
-            const o = (options ?? {}) as { projectileId?: string; vx?: number; vy?: number };
-            if (!o.projectileId) return;
-
-            const at = anchorFor(payload);
-            if (at.source === "none") {
-                console.warn(
-                    "[md-my-hown-mod:act] itemShoot: this call site gave no position and " +
-                        "there is no cursor to read, so nothing was fired",
-                );
-                return;
-            }
-            try {
-                const blueprint = api.projectiles.createBlueprintFromId(o.projectileId);
-                if (!blueprint) {
-                    console.warn(
-                        `[md-my-hown-mod:act] itemShoot: no projectile registered as ` +
-                            `"${o.projectileId}", so nothing was fired`,
-                    );
-                    return;
-                }
-                const vx = o.vx ?? 0;
-                const vy = o.vy ?? 0;
-
-                const angle = vx === 0 && vy === 0 ? 0 : Math.atan2(vy, vx);
-                api.projectiles.spawnAtWorld(at.x, at.y, angle, blueprint);
-            } catch (e) {
-                console.warn("[md-my-hown-mod:act] shoot failed", e);
-            }
-        },
-    },
-});
-
-export const processingActActions = defineActions({
+export const processorActions = defineActions({
     processorLog: {
         role: "act",
         doc: "Logs the structure and cell context on every run. Use to confirm wiring.",

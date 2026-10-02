@@ -15,16 +15,23 @@ import { engineDecideActions } from "./engine/decide.ts";
 import { processingRememberActions, rememberActions } from "./engine/remember.ts";
 import { engineConnectActions, connectModifierActions } from "./engine/connect.ts";
 import { engineFeelActions } from "./engine/feel.ts";
+import { processorActions } from "./engine/processors.ts";
 
-// --- api/: actions that drive the host through `api.*` -----------------------
-import { decideActions } from "./api/decide.ts";
-import { feelActions } from "./api/feel.ts";
-import { connectActions } from "./api/connect.ts";
-import { actActions, processingActActions } from "./api/act.ts";
-import { elementActions } from "./api/element.ts";
-import { motionActions } from "./api/motion.ts";
-import { structureActions } from "./api/structure.ts";
-import { terrainActions } from "./api/terrain.ts";
+// --- api/: one file per `api.*` namespace ------------------------------------
+// Files are named for the host namespace they drive, not for a role or action.
+import { gridActions } from "./api/grid.ts";
+import { projectilesActions } from "./api/projectiles.ts";
+import { structureActions } from "./api/structures.ts";
+import { elementsActions, motionActions } from "./api/elements.ts";
+import { terrainActions } from "./api/terrains.ts";
+import { energyActions } from "./api/energy.ts";
+import { signalsActions } from "./api/signals.ts";
+import { techActions } from "./api/tech.ts";
+import { playerActions } from "./api/player.ts";
+import { upgradesActions } from "./api/upgrades.ts";
+import { effectsActions } from "./api/effects.ts";
+import { uiActions } from "./api/ui.ts";
+import { randomActions } from "./api/random.ts";
 
 // --- custom/ and the one folder that is neither ------------------------------
 import { bufferActions } from "./custom/buffer.ts";
@@ -54,14 +61,20 @@ const FOLDERS = [
     { signature: "payload", defs: engineConnectActions },
     { signature: "modifier", defs: connectModifierActions },
     { signature: "payload", defs: engineFeelActions },
+    { signature: "processing", defs: processorActions },
 
-    // api/ - actions that drive the host through api.*
-    { signature: "payload", defs: decideActions },
-    { signature: "payload", defs: feelActions },
-    { signature: "payload", defs: connectActions },
-    { signature: "payload", defs: actActions },
-    { signature: "processing", defs: processingActActions },
-    { signature: "processing", defs: elementActions },
+    // api/ - one file per api.* namespace, in the original registration order
+    { signature: "payload", defs: randomActions },
+    { signature: "payload", defs: uiActions },
+    { signature: "payload", defs: effectsActions },
+    { signature: "payload", defs: signalsActions },
+    { signature: "payload", defs: energyActions },
+    { signature: "payload", defs: techActions },
+    { signature: "payload", defs: playerActions },
+    { signature: "payload", defs: upgradesActions },
+    { signature: "payload", defs: gridActions },
+    { signature: "payload", defs: projectilesActions },
+    { signature: "processing", defs: elementsActions },
     { signature: "processing", defs: motionActions },
     { signature: "processing", defs: structureActions },
     { signature: "processing", defs: terrainActions },

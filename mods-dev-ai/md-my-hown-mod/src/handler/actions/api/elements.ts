@@ -1,24 +1,16 @@
-
 import { defineActions } from "../../core/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
-import { ELEMENT_DATA_SLOTS } from "../../../ui/definition/data-fields.ts";
-import { anchorFor, MAX_SCAN_SIDE } from "../../core/cell-region.ts";
+import { shapeSize } from "../../core/cell-region.ts";
 import {
-    addressFor,
-    type Position,
-    positionsFor,
-    type Range,
-    walkFor,
-} from "../../core/position.ts";
-
-
-
-
-
-
-import type { ProcessingContext } from "./act.ts";
-
-
+    cellReaders,
+    clampNote,
+    createOptions,
+    dataSlotOf,
+    elementOf,
+    regionFor,
+    writeCells,
+    type ElementOptions,
+} from "./cells.ts";
 interface StructureLike {
     x?: number;
     y?: number;
@@ -26,299 +18,92 @@ interface StructureLike {
 }
 
 
-export interface ElementOptions {
-    
-    dx?: unknown;
-    dy?: unknown;
-    
-    size?: unknown;
-    
-    from?: unknown;
-    
-    to?: unknown;
-    
-    element?: unknown;
-    
-    footprint?: unknown;
-    
-    mx?: unknown;
-    
-    my?: unknown;
-    
-    
-    
-    durationTicks?: unknown;
-    
-    density?: unknown;
-    
-    freeFalling?: unknown;
+interface Vector2 {
+    x: number;
+    y: number;
+}
+
+
+interface MotionOptions {
     
     vx?: unknown;
     
     vy?: unknown;
     
-    slot?: unknown;
+    ticks?: unknown;
     
-    slotValue?: unknown;
+    rearm?: unknown;
+    
+    tx?: unknown;
+    ty?: unknown;
+    
+    maxSpeed?: unknown;
+    
+    size?: unknown;
+    
+    particle?: unknown;
 }
 
 
 function num(value: unknown, fallback = 0): number {
     const n = Number(value);
-    return Number.isFinite(n) ? Math.trunc(n) : fallback;
+    return Number.isFinite(n) ? n : fallback;
 }
 
 
-function anchorPosition(structure: StructureLike | null): Position | null {
-    const anchor = anchorFor(structure);
-    return anchor.source === "none" ? null : { x: anchor.x, y: anchor.y };
+function flag(value: unknown): boolean {
+    return value === true || value === "true";
 }
 
 
-export function regionFor(
+function vectorOf(options: MotionOptions): Vector2 {
+    return { x: num(options.vx), y: num(options.vy) };
+}
+
+
+function regionCells(
     structure: StructureLike | null,
-    options: ElementOptions,
-): { range: Range; clamped: boolean } | { error: string } {
-    const at = anchorPosition(structure);
-    if (!at) {
-        return {
-            error: "this call site delivered no position and there is no cursor to read, " +
-                "so there is no cell to work on",
-        };
+    options: MotionOptions,
+    label: string,
+): { x: number; y: number }[] {
+    const resolved = regionFor(structure ?? {}, options as never);
+    if ("error" in resolved) {
+        console.warn(`[md-my-hown-mod:process] ${label}: ${resolved.error}`);
+        return [];
     }
-    const built = addressFor(structure, options, MAX_SCAN_SIDE);
-    if ("conflict" in built) return { error: built.conflict.message };
-    return { range: positionsFor(built.address, at), clamped: built.clamped };
+    if (resolved.clamped) {
+        console.warn(
+            `[md-my-hown-mod:process] ${label}: range clamped to 64×64 — this call covered ` +
+                "less than you asked for",
+        );
+    }
+    return resolved.range.map((cell) => ({ x: cell.x, y: cell.y }));
 }
 
 
-export function walkRangeFor(
-    structure: StructureLike | null,
-    options: ElementOptions,
-): { range: Range; clamped: boolean } | { error: string } {
-    const at = anchorPosition(structure);
-    if (!at) return { error: "no position and no cursor: a walk has no cells to visit" };
-    const built = walkFor(at, structure, options, MAX_SCAN_SIDE);
-    if ("conflict" in built) return { error: built.conflict.message };
-    return { range: built.range, clamped: built.clamped };
-}
-
-
-function clampNote(clamped: boolean, label: string): string {
-    return clamped
-        ? `[md-my-hown-mod:process] ${label}: range clamped to ${MAX_SCAN_SIDE}×${MAX_SCAN_SIDE} — the count below covers less than you asked for`
-        : "";
-}
-
-
-function elementOf(options: ElementOptions): string {
-    return String(options.element ?? "");
-}
-
-
-function dataSlotOf(options: ElementOptions): number {
-    const n = Math.round(Number(options.slot));
-    return Number.isInteger(n) && n >= 1 && n <= ELEMENT_DATA_SLOTS ? n : 0;
-}
-
-
-export function cellReaders(context: unknown): {
-    readType: (x: number, y: number) => unknown;
-    isEmpty: ((x: number, y: number) => boolean) | undefined;
-    
-    idOf: (found: unknown) => string;
-    
-    matches: (id: string) => (x: number, y: number) => boolean;
-    
-    holdsValue: (id: string) => (found: unknown) => boolean;
-} | null {
-    const ctx = context as ProcessingContext | null;
-    const readType = typeof ctx?.getResolvedTypeAtCell === "function"
-        ? ctx.getResolvedTypeAtCell
-        : api.elements.getResolvedTypeAtCell;
-    if (typeof readType !== "function") return null;
-    const isEmpty = typeof ctx?.isCellEmptyAtCell === "function"
-        ? ctx.isCellEmptyAtCell
-        : api.grid.isCellEmptyAtCell;
-    
-    const forms = (id: string): Set<unknown> => {
-        const set = new Set<unknown>([id]);
-        try {
-            const t = api.elements.getTypeFromId(id);
-            if (t != null) set.add(t);
-        } catch {
-            
-        }
-        return set;
-    };
-
-    const idOf = (found: unknown): string => {
-        if (found == null) return "";
-        if (typeof found === "string") return found;
-        try {
-            const id = api.elements.getIdByType(found as number);
-            if (typeof id === "string" && id) return id;
-        } catch {
-            
-        }
-        return String(found);
-    };
-
-    const holdsValue = (id: string) => {
-        const want = forms(id);
-        return (found: unknown) => found != null && want.has(found);
-    };
-
-    return {
-        readType: readType as (x: number, y: number) => unknown,
-        isEmpty: typeof isEmpty === "function"
-            ? isEmpty as (x: number, y: number) => boolean
-            : undefined,
-        idOf,
-        holdsValue,
-        matches: (id: string) => {
-            const test = holdsValue(id);
-            return (x: number, y: number) => test(readType(x, y));
-        },
-    };
-}
-
-
-export interface ElementWriter {
-    createAtCell: (x: number, y: number, type: string, options?: unknown) => void;
-    replaceAtCell: (x: number, y: number, type: string, options?: unknown) => void;
-    
-    removeAtCell?: (x: number, y: number, options?: unknown) => void;
-}
-
-
-export function writeCells(
+function overRegion(
     structure: unknown,
-    context: unknown,
     options: unknown,
     label: string,
-    decide: (
-        writer: ElementWriter,
-        cell: { x: number; y: number },
-        current: unknown,
-        empty: boolean,
-    ) => boolean,
+    call: (cell: { x: number; y: number }) => boolean,
 ): boolean {
-    const s = structure as StructureLike | null;
-    const ctx = context as ProcessingContext | null;
-    
-    
-    
-    const readType = ctx?.getResolvedTypeAtCell;
-    const isEmpty = ctx?.isCellEmptyAtCell;
-    if (!s || typeof readType !== "function") {
+    const s = (structure ?? null) as StructureLike | null;
+    if (!s) {
         console.warn(
-            `[md-my-hown-mod:process] ${label}: no cell reader on this thread, so ` +
-                "nothing was written",
+            `[md-my-hown-mod:process] ${label}: this thread has no api.elements, so nothing ` +
+                "was changed",
         );
         return false;
     }
-    const o = (options ?? {}) as ElementOptions;
-    const resolved = regionFor(s, o);
-    if ("error" in resolved) {
-        console.warn(`[md-my-hown-mod:process] ${label}: ${resolved.error} — nothing was written`);
-        return false;
+    let touched = 0;
+    for (const cell of regionCells(s, (options ?? {}) as MotionOptions, label)) {
+        if (call(cell)) touched++;
     }
-    const { range, clamped } = resolved;
-    const note = clampNote(clamped, label);
-    if (note) console.warn(note);
-    const cells = range;
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    const plan: { cell: { x: number; y: number }; current: unknown; empty: boolean }[] = [];
-    for (const cell of cells) {
-        const empty = isEmpty ? isEmpty(cell.x, cell.y) : false;
-        plan.push({ cell, current: empty ? null : readType(cell.x, cell.y), empty });
-    }
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    const noop: ElementWriter = {
-        createAtCell: () => {},
-        replaceAtCell: () => {},
-        removeAtCell: () => {},
-    };
-    let queued = 0;
-    for (const step of plan) {
-        if (decide(noop, step.cell, step.current, step.empty)) queued++;
-    }
-    if (queued === 0) return false;
-
-    if (!api.grid.mutate((writer: { elements: ElementWriter }) => {
-        for (const step of plan) {
-            decide(writer.elements, step.cell, step.current, step.empty);
-        }
-    })) {
-        console.warn(
-            `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
-                "nothing was written",
-        );
-        return false;
-    }
-    return true;
+    return touched > 0;
 }
 
 
-function createOptions(options: ElementOptions): Record<string, unknown> | undefined {
-    const out: Record<string, unknown> = {};
-    const ticks = num(options.durationTicks);
-    if (ticks > 0) out.durationTicks = ticks;
-    const density = Number(options.density);
-    if (Number.isFinite(density) && density > 0) out.density = density;
-    if (options.freeFalling === true) out.isFreeFalling = true;
-    
-    
-    
-    const vx = Number(options.vx);
-    const vy = Number(options.vy);
-    if (Number.isFinite(vx) && Number.isFinite(vy) && (vx !== 0 || vy !== 0)) {
-        out.particle = { velocity: { x: vx, y: vy } };
-    }
-    return Object.keys(out).length > 0 ? out : undefined;
-}
-
-
-
-
-export const elementActions = defineActions({
-    
-
-    
+export const elementsActions = defineActions({
     readElement: {
         role: "sense",
         doc: "Reads the element at the cell and returns its id. Bind it with As, then " +
@@ -345,6 +130,7 @@ export const elementActions = defineActions({
     },
 
     
+
     readDataField: {
         role: "sense",
         doc: "Reads data slot N (1–4) at the cell and returns the number. Bind it with " +
@@ -379,6 +165,7 @@ export const elementActions = defineActions({
     },
 
     
+
     writeDataField: {
         role: "act",
         doc: "Writes a number into data slot N (1–4) at the cell. Set `slot` (1–4) and " +
@@ -413,6 +200,7 @@ export const elementActions = defineActions({
     },
 
     
+
     countElements: {
         role: "sense",
         doc: "Counts cells holding `element` in the region. Returns a number — bind it " +
@@ -447,6 +235,7 @@ export const elementActions = defineActions({
     },
 
     
+
     countEmpty: {
         role: "sense",
         doc: "Counts cells in the region that hold neither element nor terrain. This is " +
@@ -475,6 +264,7 @@ export const elementActions = defineActions({
 
     
     
+
     replaceElement: {
         role: "act",
         doc: "Writes `element` over every cell in the region, replacing what was there.",
@@ -500,6 +290,7 @@ export const elementActions = defineActions({
     },
 
     
+
     createElement: {
         role: "act",
         doc: "Writes `element` into every **empty** cell in the region, leaving anything " +
@@ -527,6 +318,7 @@ export const elementActions = defineActions({
     },
 
     
+
     emptyCells: {
         role: "act",
         doc: "Removes the element from every occupied cell in the region.",
@@ -550,6 +342,7 @@ export const elementActions = defineActions({
     },
 
     
+
     removeElement: {
         role: "act",
         doc: "Removes the element from every cell in the region that holds `element`. " +
@@ -591,6 +384,7 @@ export const elementActions = defineActions({
     },
 
     
+
     transformElement: {
         role: "act",
         doc: "Where the region holds `from`, writes `to`. Leave `from` blank to convert " +
@@ -624,4 +418,170 @@ export const elementActions = defineActions({
             );
         },
     },
+
+});
+
+
+export const motionActions = defineActions({
+    getVelocity: {
+        role: "sense",
+        doc: "Reads the particle speed at the first cell of the region and returns it. " +
+            "Bind it with As. Returns -1 when there is no particle to measure.",
+        fn: (structure, _context, options) => {
+            try {
+                const s = (structure ?? null) as StructureLike | null;
+                if (!s) return -1;
+                const first = regionCells(s, (options ?? {}) as MotionOptions, "getVelocity")[0];
+                if (!first) return -1;
+                
+                
+                const v = api.elements.getVelocityAtCell(first.x, first.y);
+                if (!v) return -1;
+                return Math.hypot(num(v.x), num(v.y));
+            } catch (e) {
+                console.warn("[md-my-hown-mod:process] getVelocity failed", e);
+                return -1;
+            }
+        },
+    },
+
+    
+
+    findFreeCell: {
+        role: "sense",
+        doc: "Finds a free cell within `size` cells of the structure. Returns its index " +
+            "as a number, or -1 when the whole area is occupied.",
+        fn: (structure, _context, options) => {
+            try {
+                const s = (structure ?? null) as StructureLike | null;
+                if (!s) return -1;
+                const o = (options ?? {}) as MotionOptions;
+                const own = shapeSize(s.shape);
+                
+                
+                const side = Math.max(1, Math.trunc(num(o.size, Math.max(own.width, own.height))));
+                const found = api.elements.findFreeCellInStructure(
+                    num(s.x),
+                    num(s.y),
+                    side,
+                ) as Vector2 | null | undefined;
+                if (!found) return -1;
+                return num(found.y) * side + num(found.x);
+            } catch (e) {
+                console.warn("[md-my-hown-mod:process] findFreeCell failed", e);
+                return -1;
+            }
+        },
+    },
+
+    
+
+    
+
+    setVelocity: {
+        role: "act",
+        doc: "Sets the particle velocity (vx, vy) on every cell in the region. Only " +
+            "affects particles — use toParticle to turn a cell into one first.",
+        fn: (structure, _context, options) => {
+            const v = vectorOf((options ?? {}) as MotionOptions);
+            
+            
+            
+            return overRegion(
+                structure,
+                options,
+                "setVelocity",
+                (cell) => api.elements.setVelocityAtCell(cell.x, cell.y, { x: v.x, y: v.y }),
+            );
+        },
+    },
+
+    
+
+    addVelocity: {
+        role: "act",
+        doc: "Adds (vx, vy) to the particle velocity in the region. Set maxSpeed to " +
+            "clamp the result in cells per second.",
+        fn: (structure, _context, options) => {
+            const o = (options ?? {}) as MotionOptions;
+            const v = vectorOf(o);
+            const max = num(o.maxSpeed, 0);
+            return overRegion(structure, options, "addVelocity", (cell) =>
+                
+                
+                api.elements.addParticleVelocityAtCell(cell.x, cell.y, v, max));
+        },
+    },
+
+    
+
+    setDuration: {
+        role: "act",
+        doc: "Sets the remaining duration in ticks for every cell in the region. Set " +
+            "rearm to also raise the maximum, so it fires again next cycle.",
+        fn: (structure, _context, options) => {
+            const o = (options ?? {}) as MotionOptions;
+            const ticks = Math.max(0, Math.trunc(num(o.ticks)));
+            const rearm = flag(o.rearm);
+            return overRegion(
+                structure,
+                options,
+                "setDuration",
+                (cell) =>
+                    api.elements.setDurationAtCell(cell.x, cell.y, ticks, { updateMax: rearm }),
+            );
+        },
+    },
+
+    
+
+    teleportElement: {
+        role: "act",
+        doc: "Moves everything in the region by the (tx, ty) offset. ty: 1 moves it down " +
+            "one cell. Cells that would land on something are not moved.",
+        fn: (structure, _context, options) => {
+            const s = (structure ?? null) as StructureLike | null;
+            const o = (options ?? {}) as MotionOptions;
+            if (!s) {
+                console.warn(
+                    "[md-my-hown-mod:process] teleportElement: this thread has no " +
+                        "teleportBetweenCells, so nothing moved",
+                );
+                return false;
+            }
+            const dx = Math.trunc(num(o.tx));
+            const dy = Math.trunc(num(o.ty));
+            
+            if (dx === 0 && dy === 0) return false;
+            const cells = regionCells(s, o, "teleportElement");
+            let moved = 0;
+            for (const cell of cells) {
+                
+                
+                
+                if (api.elements.teleportBetweenCells(cell.x, cell.y, cell.x + dx, cell.y + dy)) {
+                    moved++;
+                }
+            }
+            return moved > 0;
+        },
+    },
+
+    
+
+    toParticle: {
+        role: "act",
+        doc: "Turns every cell in the region into a particle moving at (vx, vy). This is " +
+            "what actually launches material — setVelocity alone will not move sand.",
+        fn: (structure, _context, options) => {
+            const v = vectorOf((options ?? {}) as MotionOptions);
+            return overRegion(structure, options, "toParticle", (cell) => {
+                return api.elements.convertToParticleAtCell(cell.x, cell.y, {
+                    x: v.x,
+                    y: v.y,
+                });
+            });
+        },
+    },
+
 });

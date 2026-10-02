@@ -1,10 +1,7 @@
-
 import { defineActions } from "../../core/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { MAX_SCAN_SIDE } from "../../core/cell-region.ts";
-import { regionFor } from "./element.ts";
-
-
+import { regionFor } from "./cells.ts";
 interface StructureLike {
     x?: number;
     y?: number;
@@ -136,114 +133,6 @@ function writeShape(
     return queued > 0;
 }
 
-
-export const terrainSenseActions = defineActions({
-    
-    terrainType: {
-        role: "sense",
-        doc: "Reads the terrain id at a cell. Empty means no terrain. Bind it with As.",
-        fn: (structure, _context, options) => {
-            const s = (structure ?? null) as StructureLike | null;
-            if (!s) return "";
-            const o = (options ?? {}) as TerrainOptions;
-            const cell = firstCell(s, o, "terrainType");
-            if (!cell) return "";
-            const type = api.terrains.getTypeAtCell(cell.x, cell.y);
-            if (type === null || type === undefined) return "";
-{
-                const id = api.terrains.getIdByType(type);
-                if (id !== undefined && id !== null && id !== "") return String(id);
-            }
-            return String(type);
-        },
-    },
-
-    
-    hasTerrain: {
-        role: "sense",
-        doc: "True when the cell holds terrain. Bind it with As.",
-        fn: (structure, _context, options) => {
-            const s = (structure ?? null) as StructureLike | null;
-            if (!s) return false;
-            const cell = firstCell(s, (options ?? {}) as TerrainOptions, "hasTerrain");
-            return cell ? api.terrains.isAtCell(cell.x, cell.y) === true : false;
-        },
-    },
-
-    
-    isTerrainType: {
-        role: "sense",
-        doc: "True when the cell holds terrain of the given type. Accepts an id or a " +
-            "handle from Terrain type.",
-        fn: (structure, _context, options) => {
-            const s = (structure ?? null) as StructureLike | null;
-            const o = (options ?? {}) as TerrainOptions;
-            const want = refOf(o);
-            if (!s || !want) return false;
-            const cell = firstCell(s, o, "isTerrainType");
-            if (!cell) return false;
-            if (api.terrains.isTypeAtCell(cell.x, cell.y, want) === true) return true;
-            
-            
-            
-            if (!/^\d+$/.test(want)) return false;
-            return api.terrains.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
-        },
-    },
-
-    
-    terrainHitPoints: {
-        role: "sense",
-        doc: "Reads the terrain's hit points at a cell. Returns -1 when there are none. " +
-            "Bind it to watch a wall wear down.",
-        fn: (structure, _context, options) => {
-            const s = (structure ?? null) as StructureLike | null;
-            const o = (options ?? {}) as TerrainOptions;
-            if (!s) return -1;
-            const cell = firstCell(s, o, "terrainHitPoints");
-            if (!cell) return -1;
-            const data = api.terrains.getDataAtCell(cell.x, cell.y);
-            if (!data) return -1;
-            const hp = data.hitPoints ?? data.hp;
-            return typeof hp === "number" && Number.isFinite(hp) ? hp : -1;
-        },
-    },
-
-    
-    terrainTypeHandle: {
-        role: "sense",
-        doc: "Reads the engine's own numeric handle for the terrain at a cell. Returns " +
-            "-1 when there is none.",
-        fn: (structure, _context, options) => {
-            const s = (structure ?? null) as StructureLike | null;
-            if (!s) return -1;
-            const o = (options ?? {}) as TerrainOptions;
-            const cell = firstCell(s, o, "terrainTypeHandle");
-            if (!cell) return -1;
-            const type = api.terrains.getDataAtCell(cell.x, cell.y)?.cellType;
-            return typeof type === "number" && Number.isFinite(type) ? type : -1;
-        },
-    },
-
-    
-    countTerrain: {
-        role: "sense",
-        doc: "Counts cells holding terrain in the region. Bind it to size a footprint.",
-        fn: (structure, _context, options) => {
-            const s = (structure ?? null) as StructureLike | null;
-            if (!s) return 0;
-            const o = (options ?? {}) as TerrainOptions;
-            let found = 0;
-            for (const cell of regionCells(s, o, "countTerrain")) {
-                if (api.terrains.isAtCell(cell.x, cell.y)) found++;
-            }
-            return found;
-        },
-    },
-});
-
-
-
 function writeState(
     structure: unknown,
     options: unknown,
@@ -267,8 +156,118 @@ function writeState(
 }
 
 
-export const terrainActActions = defineActions({
+export const terrainSenseActions = defineActions({
+    terrainType: {
+        role: "sense",
+        doc: "Reads the terrain id at a cell. Empty means no terrain. Bind it with As.",
+        fn: (structure, _context, options) => {
+            const s = (structure ?? null) as StructureLike | null;
+            if (!s) return "";
+            const o = (options ?? {}) as TerrainOptions;
+            const cell = firstCell(s, o, "terrainType");
+            if (!cell) return "";
+            const type = api.terrains.getTypeAtCell(cell.x, cell.y);
+            if (type === null || type === undefined) return "";
+{
+                const id = api.terrains.getIdByType(type);
+                if (id !== undefined && id !== null && id !== "") return String(id);
+            }
+            return String(type);
+        },
+    },
+
     
+
+    hasTerrain: {
+        role: "sense",
+        doc: "True when the cell holds terrain. Bind it with As.",
+        fn: (structure, _context, options) => {
+            const s = (structure ?? null) as StructureLike | null;
+            if (!s) return false;
+            const cell = firstCell(s, (options ?? {}) as TerrainOptions, "hasTerrain");
+            return cell ? api.terrains.isAtCell(cell.x, cell.y) === true : false;
+        },
+    },
+
+    
+
+    isTerrainType: {
+        role: "sense",
+        doc: "True when the cell holds terrain of the given type. Accepts an id or a " +
+            "handle from Terrain type.",
+        fn: (structure, _context, options) => {
+            const s = (structure ?? null) as StructureLike | null;
+            const o = (options ?? {}) as TerrainOptions;
+            const want = refOf(o);
+            if (!s || !want) return false;
+            const cell = firstCell(s, o, "isTerrainType");
+            if (!cell) return false;
+            if (api.terrains.isTypeAtCell(cell.x, cell.y, want) === true) return true;
+            
+            
+            
+            if (!/^\d+$/.test(want)) return false;
+            return api.terrains.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
+        },
+    },
+
+    
+
+    terrainHitPoints: {
+        role: "sense",
+        doc: "Reads the terrain's hit points at a cell. Returns -1 when there are none. " +
+            "Bind it to watch a wall wear down.",
+        fn: (structure, _context, options) => {
+            const s = (structure ?? null) as StructureLike | null;
+            const o = (options ?? {}) as TerrainOptions;
+            if (!s) return -1;
+            const cell = firstCell(s, o, "terrainHitPoints");
+            if (!cell) return -1;
+            const data = api.terrains.getDataAtCell(cell.x, cell.y);
+            if (!data) return -1;
+            const hp = data.hitPoints ?? data.hp;
+            return typeof hp === "number" && Number.isFinite(hp) ? hp : -1;
+        },
+    },
+
+    
+
+    terrainTypeHandle: {
+        role: "sense",
+        doc: "Reads the engine's own numeric handle for the terrain at a cell. Returns " +
+            "-1 when there is none.",
+        fn: (structure, _context, options) => {
+            const s = (structure ?? null) as StructureLike | null;
+            if (!s) return -1;
+            const o = (options ?? {}) as TerrainOptions;
+            const cell = firstCell(s, o, "terrainTypeHandle");
+            if (!cell) return -1;
+            const type = api.terrains.getDataAtCell(cell.x, cell.y)?.cellType;
+            return typeof type === "number" && Number.isFinite(type) ? type : -1;
+        },
+    },
+
+    
+
+    countTerrain: {
+        role: "sense",
+        doc: "Counts cells holding terrain in the region. Bind it to size a footprint.",
+        fn: (structure, _context, options) => {
+            const s = (structure ?? null) as StructureLike | null;
+            if (!s) return 0;
+            const o = (options ?? {}) as TerrainOptions;
+            let found = 0;
+            for (const cell of regionCells(s, o, "countTerrain")) {
+                if (api.terrains.isAtCell(cell.x, cell.y)) found++;
+            }
+            return found;
+        },
+    },
+
+});
+
+
+export const terrainActActions = defineActions({
     createTerrain: {
         role: "act",
         doc: "Creates terrain of the given type in empty cells. One atomic batch.",
@@ -292,6 +291,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     },
 
     
+
     replaceTerrain: {
         role: "act",
         doc: "Replaces terrain in every cell of the region. One atomic batch.",
@@ -310,6 +310,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     },
 
     
+
     removeTerrain: {
         role: "act",
         doc: "Removes terrain from every cell of the region. One atomic batch.",
@@ -323,6 +324,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     },
 
     
+
     damageTerrain: {
         role: "act",
         doc: "Damages terrain in the region. Per-cell, so a large area can half-apply.",
@@ -343,6 +345,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
     },
 
     
+
     setTerrainHitPoints: {
         role: "act",
         doc: "Sets the terrain's hit points in the region. Use it to repair a wall.",
@@ -361,6 +364,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
             });
         },
     },
+
 });
 
 

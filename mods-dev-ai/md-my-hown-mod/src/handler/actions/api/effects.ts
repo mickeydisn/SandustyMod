@@ -1,25 +1,6 @@
-
 import { defineActions } from "../../core/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
-
-/** Feel actions that reach the host through `api.*`. */
-export const feelActions = defineActions({
-    
-    toast: {
-        role: "feel",
-        doc: "Shows a message. Set `text` in options.",
-        fn: (_payload, _ctx, options) => {
-            const text = (options as { text?: string } | null)?.text;
-            if (!text) return;
-            try {
-                api.ui.toast(text);
-            } catch (e) {
-                console.warn("[md-my-hown-mod:feel] toast failed", e);
-            }
-        },
-    },
-
-    
+export const effectsActions = defineActions({
     particles: {
         role: "feel",
         doc: "Emits particles here. Set `count` in options.",
@@ -34,4 +15,5 @@ export const feelActions = defineActions({
             }
         },
     },
+
 });
