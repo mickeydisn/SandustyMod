@@ -103,19 +103,17 @@ export function writerFor(
     form: Record<string, string>,
     entry: Record<string, unknown>,
 ): EntryWriter {
+    // One rule, four spellings: skip undefined, otherwise write as-is.
+    const put = (key: string, v: unknown): void => {
+        if (v !== undefined) entry[key] = v;
+    };
+
     return {
-        setStr(key, v) {
-            if (v !== undefined) entry[key] = v;
-        },
-        setNum(key, v) {
-            if (v !== undefined) entry[key] = v;
-        },
-        setBool(key, v) {
-            if (v !== undefined) entry[key] = v;
-        },
-        setRaw(key, v) {
-            if (v !== undefined) entry[key] = v;
-        },
+        set: put,
+        setStr: put,
+        setNum: put,
+        setBool: put,
+        setRaw: put,
         
         
         

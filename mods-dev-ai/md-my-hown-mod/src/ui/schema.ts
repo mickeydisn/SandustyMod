@@ -5,34 +5,7 @@ import { currentProcessRegistry, processProblem } from "../handler/processing/cu
 import { resolveExcavationOption } from "../handler/processing/excavation-option/index.ts";
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
-import {} from "./definition/fields.ts";
-import { behaviorDefinition } from "./definition/core/behavior.ts";
-import { placementConfigDefinition } from "./definition/core/placement.ts";
-import { contactDefinition } from "./definition/core/contact.ts";
-import { elementDefinition } from "./definition/core/element.ts";
-import { energyDefinition } from "./definition/core/energy.ts";
-import { excavationDefinition } from "./definition/core/excavation.ts";
-import { inputDefinition } from "./definition/core/input.ts";
-import { interactionDefinition } from "./definition/core/interaction.ts";
-import { itemDefinition } from "./definition/core/item.ts";
-import { modifierDefinition } from "./definition/core/modifier.ts";
 
-
-import { customProcessDefinition } from "./definition/custom/process.ts";
-import { bufferDefinition } from "./definition/custom/buffer.ts";
-import { networkDefinition } from "./definition/custom/network.ts";
-import { processingDefinition } from "./definition/core/processing.ts";
-import { projectileDefinition } from "./definition/core/projectile.ts";
-import { recipeDefinition } from "./definition/core/recipe.ts";
-import { signalDefinition } from "./definition/core/signal.ts";
-import { spriteDefinition } from "./definition/core/sprite.ts";
-import { structureDefinition } from "./definition/core/structure.ts";
-import { terrainDefinition } from "./definition/core/terrain.ts";
-import { techDefinition } from "./definition/core/tech.ts";
-import { triggerDefinition } from "./definition/core/trigger.ts";
-import { unlockNodeDefinition } from "./definition/custom/unlock-node.ts";
-import { upgradeDefinition } from "./definition/core/upgrade.ts";
-import { upgradeCategoryDefinition } from "./definition/core/upgrade-category.ts";
 import {
     formatIdList,
     HEX,
@@ -422,7 +395,6 @@ export {
 
 
 
-const FIELDS: Partial<Record<Tab, FieldSpec[]>> = {};
 
 
 
@@ -453,7 +425,7 @@ export function fieldsFor(cat: Tab): FieldSpec[] {
     
     
     
-    return definitionFor(cat)?.fields ?? FIELDS[cat] ?? [];
+    return definitionFor(cat)?.fields ?? [];
 }
 
 
@@ -709,167 +681,13 @@ function passthroughOf(cat: Tab, entry: Record<string, unknown>): Record<string,
 export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<string, string> {
     const form = formDefaults(cat);
     const e = entry ?? {};
-    const put = (k: string, v: string | undefined) => {
-        if (v !== undefined) form[k] = v;
-    };
-    const num = (
-        v: unknown,
-    ) => (typeof v === "number" && Number.isFinite(v) ? String(v) : undefined);
-    const str = (v: unknown) => (typeof v === "string" ? v : undefined);
-    const json = (
-        v: unknown,
-    ) => (v === undefined || v === null ? undefined : JSON.stringify(v, null, 2));
 
     if (typeof e.id === "string") form.idSuffix = suffixOf(e.id, cat);
 
-    switch (cat) {
-        case "elements": {
-            
-            elementDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "structures": {
-            
-            structureDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "items": {
-            
-            itemDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "recipes": {
-            
-            recipeDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "processing": {
-            
-            processingDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "contacts": {
-            
-            contactDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "interactions": {
-            
-            interactionDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "terrains": {
-            
-            terrainDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "unlockNodes": {
-            
-            unlockNodeDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "techs": {
-            
-            techDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "categories": {
-            
-            upgradeCategoryDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "inputs": {
-            
-            inputDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "upgrades": {
-            
-            
-            
-            
-            
-            
-            
-            upgradeDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "signals": {
-            
-            signalDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "triggers": {
-            
-            triggerDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "behaviors": {
-            
-            behaviorDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "placementConfigs": {
-            placementConfigDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "energy": {
-            
-            energyDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "networks": {
-            
-            networkDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "excavation": {
-            
-            excavationDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "projectiles": {
-            
-            projectileDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "sprites": {
-            
-            spriteDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "modifiers": {
-            
-            modifierDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "customProcess": {
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            customProcessDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        case "buffers": {
-            
-            bufferDefinition.entryToForm?.(e, readerFor(form));
-            break;
-        }
-        default:
-            break;
-    }
+    definitionFor(cat)?.entryToForm?.(e, readerFor(form));
 
-    
+    // Anything the form does not cover rides along untouched, so editing an
+    // entry never silently drops a key the editor happens not to know about.
     const rest = passthroughOf(cat, e);
     if (Object.keys(rest).length > 0) form.advancedJson = JSON.stringify(rest, null, 2);
     return form;
@@ -891,170 +709,6 @@ export function formToEntry(
     const id = fullIdOf(form, cat);
     if (id) entry.id = id;
 
-    switch (cat) {
-        case "elements": {
-            
-            
-            
-            elementDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "structures": {
-            
-            
-            
-            structureDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "items": {
-            
-            
-            
-            itemDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "recipes": {
-            
-            
-            
-            recipeDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "processing": {
-            
-            
-            
-            processingDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "contacts": {
-            
-            
-            
-            contactDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "interactions": {
-            
-            
-            
-            interactionDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "terrains": {
-            
-            
-            
-            terrainDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "unlockNodes": {
-            
-            
-            
-            unlockNodeDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "techs": {
-            
-            
-            
-            techDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "categories": {
-            
-            
-            upgradeCategoryDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "inputs": {
-            
-            inputDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "upgrades": {
-            
-            
-            
-            upgradeDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "signals": {
-            
-            
-            signalDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "triggers": {
-            
-            
-            
-            triggerDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "behaviors": {
-            
-            
-            
-            behaviorDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "placementConfigs": {
-            
-            
-            
-            placementConfigDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "energy": {
-            
-            energyDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "networks": {
-            
-            networkDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "excavation": {
-            
-            
-            
-            excavationDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "projectiles": {
-            
-            
-            
-            projectileDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "sprites": {
-            
-            spriteDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "modifiers": {
-            
-            
-            modifierDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "customProcess": {
-            
-            customProcessDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        case "buffers": {
-            
-            bufferDefinition.formToEntry?.(form, writerFor(form, entry));
-            break;
-        }
-        default:
-            break;
-    }
-
+    definitionFor(cat)?.formToEntry?.(form, writerFor(form, entry));
     return entry;
 }

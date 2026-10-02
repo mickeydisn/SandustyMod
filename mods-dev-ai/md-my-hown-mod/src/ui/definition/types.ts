@@ -153,10 +153,20 @@ export interface EntryReader {
 
 
 export interface EntryWriter {
+    /**
+     * Write `v` under `key` unless it is `undefined`.
+     *
+     * The typed variants below are all this one rule; they exist so a call
+     * site can hand over the exact type it read off a form without a cast.
+     */
+    set(key: string, v: unknown): void;
+
     setStr(key: string, v: string | undefined): void;
+
     setNum(key: string, v: number | undefined): void;
+
     setBool(key: string, v: boolean | undefined): void;
-    
+
     setRaw(key: string, v: unknown): void;
     
     del(key: string): void;
