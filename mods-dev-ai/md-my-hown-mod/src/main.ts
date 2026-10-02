@@ -1,14 +1,12 @@
-
 import { onSettingsChange, readSettingRaw, runDisableCleanup } from "./packages/modkit.ts";
 import { registerAll } from "./register/index.ts";
 import { setBufferSource } from "./handler/index.ts";
 import { configStore } from "./config/store.ts";
 import { LOG, MOD_ID, SETTINGS, STORAGE_KEYS, VERSION } from "./constants.ts";
 import { mountPanel } from "./tool.ts";
-import "./handler/index.ts"; 
+import "./handler/index.ts";
 
 console.log(`${LOG} SCRIPT START v${VERSION}`);
-
 
 function explicitlyDisabled(): boolean {
     const raw = readSettingRaw(MOD_ID, "enabled");
@@ -25,9 +23,6 @@ function explicitlyDisabled(): boolean {
 function applyEnabled(enabled: boolean, reason: string): void {
     console.log(`${LOG} applyEnabled`, enabled, reason);
     if (!enabled) {
-        
-        
-        
         try {
             runDisableCleanup(MOD_ID, reason, STORAGE_KEYS);
         } catch (e) {
@@ -42,24 +37,13 @@ function applyEnabled(enabled: boolean, reason: string): void {
 try {
     const enabled = !explicitlyDisabled();
 
-    
-    
-    
     if (enabled) registerAll();
 
-    
-    
-    
-    
-    
-    
     setBufferSource(() => configStore.load().buffers ?? []);
 
     applyEnabled(enabled, "boot");
 
     onSettingsChange(MOD_ID, SETTINGS, () => {
-        
-        
         applyEnabled(!explicitlyDisabled(), "config-change");
     });
     console.log(`${LOG} LOADED v${VERSION}`);

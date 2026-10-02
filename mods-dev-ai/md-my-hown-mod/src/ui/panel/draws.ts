@@ -1,4 +1,3 @@
-
 import { DRAW_FUNCTIONS } from "../../catalog.ts";
 import * as S from "../styles.ts";
 
@@ -13,14 +12,12 @@ interface StructureRow {
     drawKey?: string;
 }
 
-
 export function usageOf(cfg: Record<string, unknown>, key: string): string[] {
     const structures = (cfg?.structures ?? []) as StructureRow[];
     return structures
         .filter((s) => s?.drawKey === key)
         .map((s) => String(s.id ?? "?"));
 }
-
 
 export function unknownDrawKeys(cfg: Record<string, unknown>): string[] {
     const known = new Set(DRAW_FUNCTIONS.map((d) => d.key));

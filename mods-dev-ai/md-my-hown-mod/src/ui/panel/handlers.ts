@@ -1,4 +1,3 @@
-
 import type { HandlerMeta, HandlerUsage } from "../../handler/index.ts";
 import {
     ACTION_DOMAIN_BLURBS,
@@ -45,7 +44,6 @@ import {
 } from "../../handler/index.ts";
 import { BLOCK_KEY } from "../../handler/index.ts";
 
-
 const BLOCK_DOC: Record<string, string> = {
     [BLOCK_KEY]: "if(when a bound variable is truthy) run one list of steps, otherwise run " +
         "another. Both branches are compiled; only the chosen one runs. Branches may " +
@@ -63,23 +61,20 @@ import * as S from "../styles.ts";
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
 type Click = (key: string) => void;
 
-
 export interface HandlersTabState {
-    
     open: string | null;
-    
+
     values: Record<string, Record<string, string>>;
-    
+
     query: string;
-    
+
     domain: string;
-    
+
     effect: string;
-    
+
     need: MaybeScopeNeed;
     callSite: MaybeCallSite;
-    
-    
+
     onlyUsed: boolean;
 }
 
@@ -96,7 +91,6 @@ export function initialHandlersState(): HandlersTabState {
     };
 }
 
-
 export function defaultParams(meta: HandlerMeta): Record<string, string> {
     const out: Record<string, string> = {};
     for (const p of meta.params) if (p.def !== undefined) out[p.key] = p.def;
@@ -108,21 +102,16 @@ export interface HandlersTabProps {
     cfg: Record<string, unknown>;
     state: HandlersTabState;
     setState: (next: HandlersTabState) => void;
-    
+
     onGoTo: Click;
-    
+
     onCopy: (text: string) => void;
 }
-
 
 const PROCESS_SLOTS: { slot: string; category: string; label: string }[] = [
     { slot: "signal", category: "signals", label: "Signals — structure click" },
     { slot: "trigger", category: "triggers", label: "Triggers — timed tick" },
-    
-    
-    
-    
-    
+
     { slot: "processing", category: "processing", label: "Processing — process step" },
     { slot: "upgrade", category: "upgrades", label: "Upgrades — level bought" },
     { slot: "modifier", category: "modifiers", label: "Modifiers — engine hook" },
@@ -131,7 +120,6 @@ const PROCESS_SLOTS: { slot: string; category: string; label: string }[] = [
 
 const API_SECTION_KEY = "(no api — the action reaches for nothing)";
 
-
 export function filterActions(
     metas: readonly HandlerMeta[],
     state: HandlersTabState,
@@ -139,9 +127,7 @@ export function filterActions(
     docs: Record<string, string>,
 ): HandlerMeta[] {
     const q = state.query.trim().toLowerCase();
-    
-    
-    
+
     const axisFilterSet = !!(state.domain || state.effect || state.need || state.callSite);
     return [...metas]
         .sort((a, b) => a.key.localeCompare(b.key))
@@ -156,16 +142,13 @@ export function filterActions(
             if (state.need && !needsOfUnknown(m.key).includes(state.need)) return false;
             if (state.callSite && !canRunAtUnknown(m.key, state.callSite)) return false;
             if (!q) return true;
-            
-            
-            
+
             const hay = `${m.key} ${docs[m.key] ?? ""} ${domainOf(m.key) ?? ""} ${
                 effectOf(m.key) ?? ""
             } ${m.slots.join(" ")}`.toLowerCase();
             return hay.includes(q);
         });
 }
-
 
 export function filterProjectileOptions(
     query: string,
@@ -178,9 +161,7 @@ export function filterProjectileOptions(
         .filter((key) => {
             if (onlyUsed && !(used[key] ?? 0)) return false;
             if (!q) return true;
-            
-            
-            
+
             return `${key} ${PROJECTILE_OPTION_DOCS[key] ?? ""}`.toLowerCase().includes(q);
         })
         .map((key) => ({
@@ -189,7 +170,6 @@ export function filterProjectileOptions(
             params: projectileOptionParams(key),
         }));
 }
-
 
 export function filterExcavationOptions(
     query: string,
@@ -202,8 +182,7 @@ export function filterExcavationOptions(
         .filter((key) => {
             if (onlyUsed && !(used[key] ?? 0)) return false;
             if (!q) return true;
-            
-            
+
             return `${key} ${EXCAVATION_OPTION_DOCS[key] ?? ""}`.toLowerCase().includes(q);
         })
         .map((key) => ({
@@ -212,7 +191,6 @@ export function filterExcavationOptions(
             params: excavationOptionParams(key),
         }));
 }
-
 
 function chip(
     h: H,
@@ -234,7 +212,6 @@ function chip(
     );
 }
 
-
 function filterBar(
     h: H,
     state: HandlersTabState,
@@ -242,25 +219,12 @@ function filterBar(
     used: Record<string, HandlerUsage[]>,
     shown: number,
     total: number,
-    
     listed: readonly HandlerMeta[],
 ): unknown {
     const set = (patch: Partial<HandlersTabState>) => setState({ ...state, ...patch });
     const toggleVal = (field: "domain" | "effect" | "need" | "callSite", v: string) =>
         set({ [field]: state[field] === v ? "" : v } as Partial<HandlersTabState>);
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     const present = <V extends string>(all: readonly V[], of: (key: string) => V | undefined) =>
         all.filter((v) => listed.some((m) => of(m.key) === v));
 
@@ -269,12 +233,6 @@ function filterBar(
     const needs = [...SCOPE_NEEDS];
     const sites = ALL_CALL_SITES;
 
-    
-    
-    
-    
-    
-    
     const effDomain = state.domain;
     const effEffect = state.effect;
 
@@ -287,11 +245,7 @@ function filterBar(
             h("input", {
                 style: { ...S.input, flex: 1 },
                 value: state.query,
-                
-                
-                
-                
-                
+
                 placeholder: `Search ${total} actions…`,
                 onInput: (e: { currentTarget: { value: string } }) =>
                     set({ query: e.currentTarget.value }),
@@ -301,17 +255,12 @@ function filterBar(
                 state.onlyUsed ? "In use only" : "All",
                 state.onlyUsed,
                 () => set({ onlyUsed: !state.onlyUsed }),
-                
-                
-                
                 state.onlyUsed
                     ? "In use only — showing actions a process uses. Click for all."
                     : "All — showing every action. Click for 'In use only' to hide the ones nothing uses.",
             ),
             h("span", { style: S.hint }, `${shown}/${total}`),
         ),
-        
-        
         ...([
             [
                 "Needs",
@@ -329,8 +278,7 @@ function filterBar(
             ],
             [
                 "Effect",
-                
-                
+
                 [
                     ...effects,
                     ...(effEffect && !effects.includes(effEffect as ActionEffect)
@@ -414,7 +362,6 @@ function filterBar(
     );
 }
 
-
 function paramEditor(
     state: HandlersTabState,
     setState: (n: HandlersTabState) => void,
@@ -445,28 +392,13 @@ function paramEditor(
 
 export function renderActions(props: HandlersTabProps): unknown {
     const { h, cfg, state, setState, onGoTo, onCopy } = props;
-    
-    
-    
-    
+
     const docs = { ...ACTION_DOCS, ...BLOCK_DOC };
     const used = usageIndex(cfg);
     const bad = unreachableHandlers(cfg);
 
     const { toggle, setParam } = paramEditor(state, setState);
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     const listed = [
         ...HANDLER_META.filter((m) => !isOnlyAtSlot(m, "upgrade")),
         BLOCK_META,
@@ -491,7 +423,7 @@ export function renderActions(props: HandlersTabProps): unknown {
             ),
         )
         : h("div", { style: { ...S.card, paddingTop: 2, paddingBottom: 2 } }, ...rows);
-    
+
     const warnings = bad.length === 0 ? null : h(
         "div",
         { style: { ...S.card, borderColor: "#c0392b", marginBottom: 8 } },
@@ -521,23 +453,11 @@ export function renderActions(props: HandlersTabProps): unknown {
         ),
     );
 
-    
-    
-    
     const processGroups = processGroupsFor(h, cfg, onGoTo);
 
     return h(
         "div",
         { style: { padding: "0 10px 8px 10px" } },
-        
-        
-        
-        
-        
-        
-        
-        
-        
         warnings,
         bar,
         h(
@@ -556,7 +476,6 @@ export function renderActions(props: HandlersTabProps): unknown {
     );
 }
 
-
 export function renderUpgradeActions(props: HandlersTabProps): unknown {
     const { h, cfg, state, setState, onCopy } = props;
     const docs = ACTION_DOCS;
@@ -566,11 +485,6 @@ export function renderUpgradeActions(props: HandlersTabProps): unknown {
     const listed = handlersOnlyAtSlot("upgrade");
     const shown = filterActions(listed, state, used, docs);
 
-    
-    
-    
-    
-    
     const set = (patch: Partial<HandlersTabState>) => setState({ ...state, ...patch });
     const bar = h(
         "div",
@@ -607,10 +521,6 @@ export function renderUpgradeActions(props: HandlersTabProps): unknown {
         )
         : h("div", { style: { ...S.card, paddingTop: 2, paddingBottom: 2 } }, ...rows);
 
-    
-    
-    
-    
     const ups = ((cfg.upgrades as Record<string, unknown>[] | undefined) ?? [])
         .map((e) => ({ id: String(e.id ?? "?"), refs: actionRefsOf(e) }))
         .filter((u) => u.refs.length > 0);
@@ -649,10 +559,6 @@ export function renderUpgradeActions(props: HandlersTabProps): unknown {
     return h(
         "div",
         { style: { padding: "0 10px 8px 10px" } },
-        
-        
-        
-        
         bar,
         h(
             "div",
@@ -665,9 +571,7 @@ export function renderUpgradeActions(props: HandlersTabProps): unknown {
     );
 }
 
-
 export type FixedCatalogue = "projectileOption" | "excavationOption";
-
 
 export interface FixedCatalogueProps {
     h: H;
@@ -685,16 +589,12 @@ export function renderFixedCatalogue(
     const { h } = ctx;
     const isProjectile = kind === "projectileOption";
 
-    
-    
-    
     const usage = isProjectile
         ? scanProjectileOptionUsage(ctx.cfg)
         : scanExcavationOptionUsage(ctx.cfg);
     const used: Record<string, number> = {};
     for (const u of usage) if (u.key) used[u.key] = (used[u.key] ?? 0) + 1;
-    
-    
+
     const bad = usage.filter((u) => u.problem);
     const shown = isProjectile
         ? filterProjectileOptions(ctx.query, ctx.onlyUsed, used)
@@ -706,9 +606,6 @@ export function renderFixedCatalogue(
     return h(
         "div",
         null,
-        
-        
-        
         ...bad.map((u) =>
             h(
                 "div",
@@ -744,7 +641,6 @@ export function renderFixedCatalogue(
     );
 }
 
-
 function readOnlyCatalogue(
     ctx: {
         h: H;
@@ -758,8 +654,6 @@ function readOnlyCatalogue(
     const all = ctx.shown === ctx.total;
     return h(
         "details",
-        
-        
         { style: S.rowDetails, open: true },
         h(
             "summary",
@@ -774,7 +668,6 @@ function readOnlyCatalogue(
         ...ctx.body,
     );
 }
-
 
 function searchRow(
     ctx: FixedCatalogueProps,
@@ -805,15 +698,13 @@ function searchRow(
     );
 }
 
-
 function renderOptionRow(
     o: { key: string; doc: string; params: { key: string; def: number | boolean }[] },
     ctx: { h: H; used: Record<string, number> },
 ): unknown {
     const { h } = ctx;
     const count = ctx.used[o.key] ?? 0;
-    
-    
+
     const sample = resolveProjectileOption(o.key)?.({}) ?? {};
     return h(
         "div",
@@ -829,8 +720,6 @@ function renderOptionRow(
                     `used ×${count}`,
                 )
                 : h("span", { style: { ...S.hint, opacity: 0.6 } }, "unused"),
-            
-            
             h("span", { style: { ...S.tagChip, borderColor: "#8e44ad" } }, "builds a value"),
         ),
         h("div", { style: S.hint }, o.doc),
@@ -847,7 +736,6 @@ function renderOptionRow(
         ),
     );
 }
-
 
 function processGroupsFor(
     h: H,
@@ -880,8 +768,6 @@ function processGroupsFor(
                         style: { ...S.chip, cursor: "pointer" },
                         onClick: () => onGoTo(category),
                     }, id),
-                    
-                    
                     ...refs.map((r, i) =>
                         h("span", { key: `${id}:${i}`, style: S.codeKey }, `${i + 1}. ${r.key}`)
                     ),
@@ -890,8 +776,6 @@ function processGroupsFor(
         );
     }).filter((n) => n !== null);
 }
-
-
 
 interface RowCtx {
     h: H;
@@ -918,12 +802,10 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
         )
     );
 
-    
     const needs = needsOfUnknown(m.key);
     const effect = effectOf(m.key);
     const domain = domainOf(m.key);
-    
-    
+
     const vacuous = m.slots.every((s) => CALL_SITE_SCOPE[s] && !CALL_SITE_SCOPE[s].ret) &&
         effect === "returns";
 
@@ -985,7 +867,6 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
     return h(
         "div",
         { key: m.key, style: { ...S.row, flexDirection: "column", alignItems: "stretch", gap: 4 } },
-        
         h(
             "div",
             { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
@@ -998,7 +879,6 @@ function renderRow(m: HandlerMeta, ctx: RowCtx): unknown {
                 )
                 : null,
             h("span", { style: { flex: 1 } }),
-            
             h(
                 "button",
                 { style: open ? S.chipActive : S.chip, onClick: () => toggle(m) },
@@ -1062,13 +942,8 @@ function renderExpanded(
         );
     });
 
-    
     const errs = validateHandlerParams(m, values);
-    
-    
-    
-    
-    
+
     const snippet = JSON.stringify(
         { actions: [{ key: m.key, options: buildHandlerOptions(m, values) }] },
         null,
@@ -1086,14 +961,11 @@ function renderExpanded(
             "div",
             { style: { marginTop: 6 } },
             h("button", { style: S.chip, onClick: () => onCopy(snippet) }, "Copy as a process"),
-            
-            
             h("span", { style: S.hint }, "paste into the entry's Process field"),
         ),
         h("pre", { style: S.codeBlock }, snippet),
     );
 }
-
 
 function renderExcavationOptionRow(
     o: { key: string; doc: string; params: { key: string; def: number | boolean }[] },
@@ -1101,12 +973,9 @@ function renderExcavationOptionRow(
 ): unknown {
     const { h } = ctx;
     const count = ctx.used[o.key] ?? 0;
-    
-    
+
     const sample = resolveExcavationOption(o.key)?.({}) ?? {};
-    
-    
-    
+
     const fields: [string, unknown][] = typeof sample.power === "number"
         ? [["power", sample.power], ...Object.entries(sample.options ?? {})]
         : Object.entries(sample.options ?? {});
@@ -1124,7 +993,6 @@ function renderExcavationOptionRow(
                     `used ×${count}`,
                 )
                 : h("span", { style: { ...S.hint, opacity: 0.6 } }, "unused"),
-            
             h("span", { style: { ...S.tagChip, borderColor: "#8e44ad" } }, "builds a value"),
             h("span", { style: S.tagChip }, "power + flags only"),
         ),

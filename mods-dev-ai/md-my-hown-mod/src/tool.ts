@@ -1,10 +1,8 @@
-
 import { getSandkit, h, React, safe, toast } from "./api.ts";
 import { api as skApi } from "./packages/mysandkit.ts";
 import { LOG, MOD_ID, OVERLAY_ID, SETTINGS, TOOL_NAME } from "./constants.ts";
 import { readSettings } from "./packages/modkit.ts";
 import { ConfiguratorPanel } from "./ui/panel.ts";
-
 
 let mounted = false;
 
@@ -16,11 +14,6 @@ export function mountPanel(): void {
     const a = skApi.raw;
     if (!a) {
         console.error(`${LOG} sandkit.api missing — panel unavailable`, {
-            
-            
-            
-            
-            
             resolved: !!getSandkit(),
         });
         return;
@@ -33,14 +26,8 @@ export function mountPanel(): void {
         return;
     }
 
-    
-    
-    
     const startMinimized = readSettings(MOD_ID, SETTINGS).panelMinimized !== false;
 
-    
-    
-    
     const dispose = safe(() =>
         a.ui?.inject?.(OVERLAY_ID, (() => ConfiguratorPanel(startMinimized)) as never)
     );
@@ -50,21 +37,16 @@ export function mountPanel(): void {
                 startMinimized ? "minimized" : "open"
             }`,
         );
-        
-        
-        
+
         const bump = () => safe(() => a.ui.overlays?.update?.("global"));
         setTimeout(bump, 300);
         setTimeout(bump, 1500);
         try {
             a.events?.on?.("game:ready", bump);
-        } catch {  }
+        } catch {}
         return;
     }
 
-    
-    
-    
     try {
         safe(() => a.ui.overlays?.unregister?.("global", OVERLAY_ID));
         a.ui.overlays.register(
@@ -79,7 +61,7 @@ export function mountPanel(): void {
         setTimeout(bump, 1500);
         try {
             a.events?.on?.("action:changed", bump);
-        } catch {  }
+        } catch {}
     } catch (err) {
         console.warn(`${LOG} panel mount failed — no ui.inject, no overlays.register`, err);
         toast(`${TOOL_NAME}: could not open the panel — see console`);

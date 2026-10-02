@@ -1,13 +1,9 @@
-
 import type { SettingsSchema } from "./packages/modkit.ts";
-
-
 
 import type { CustomProcessConfig } from "./handler/processing/custom-process/types.ts";
 export const MOD_ID = "md-my-hown-mod";
 export const VERSION = "0.1.4";
 export const LOG = `[${MOD_ID}]`;
-
 
 export const OWN_ID_PREFIXES: readonly string[] = [MOD_ID, "mdmy"];
 
@@ -18,10 +14,9 @@ export const STORAGE_KEYS: readonly string[] = [
 
 export const SETTINGS = {
     enabled: { type: "boolean", default: true },
-    
+
     panelMinimized: { type: "boolean", default: true },
 } as const satisfies SettingsSchema;
-
 
 export function humanise(k: string): string {
     const spaced = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
@@ -30,13 +25,7 @@ export function humanise(k: string): string {
 
 export const OVERLAY_ID = `${MOD_ID}:panel`;
 
-
 export const TOOL_NAME = "My Own Mod";
-
-
-
-
-
 
 export type MatterTypeName =
     | "Solid"
@@ -56,11 +45,6 @@ export type MatterTypeName =
     | "Powder"
     | "powder";
 
-
-
-
-
-
 export interface ElementColorVariantFromData {
     rangeMin?: number;
     rangeMax?: number;
@@ -69,7 +53,6 @@ export interface ElementColorVariantFromData {
 }
 
 export interface ElementColors {
-    
     variants?: number[][];
     variantFromDataField1?: ElementColorVariantFromData;
 }
@@ -79,62 +62,52 @@ export interface ElementDurationRandom {
     max: number;
 }
 
-
 export interface ElementConfig {
-    
     id: string;
-    
+
     name?: string;
     nameKey?: string;
     description?: string;
     descriptionKey?: string;
-    
+
     matterType?: MatterTypeName | number;
-    
+
     density?: number;
-    
+
     metaColor?: number;
-    
+
     materialId?: number;
-    
+
     colors?: ElementColors | number[][];
-    
+
     duration?: number;
     durationRandom?: ElementDurationRandom;
-    
+
     flammable?: boolean | Record<string, unknown>;
     isGrabbable?: boolean;
     isTransportable?: boolean;
-    
+
     hidden?: boolean;
-    
+
     interactions?: unknown[];
-    
+
     defaultDataFields?: Record<string, number | string | boolean>;
-    
+
     getExtraProps?: () => Record<string, unknown>;
-    
+
     [key: string]: unknown;
 }
 
-
-
-
-
-
-
 export interface StructureBuildMode {
-    
     type: string;
-    
+
     directions?: string[];
     [key: string]: unknown;
 }
 
 export interface StructureVariant {
-    
     id: string;
-    
+
     angles: number[];
 }
 
@@ -149,12 +122,11 @@ export interface StructureRenderUi {
 }
 
 export interface StructureRender {
-    
     imageName?: string;
     size?: { width: number; height: number };
     offset?: { x: number; y: number };
     ui?: StructureRenderUi;
-    
+
     spritesheet?: {
         frameBuffer?: { key: string; index?: number };
         [key: string]: unknown;
@@ -163,91 +135,82 @@ export interface StructureRender {
 }
 
 export interface StructureConfig {
-    
     id: string;
     name?: string;
     nameKey?: string;
     description?: string;
     descriptionKey?: string;
-    
+
     categoryKey?: string;
-    
+
     order?: number;
-    
+
     hideFromBuildMenu?: boolean;
-    
+
     alwaysUnlocked?: boolean;
-    
+
     unlockNode?: string;
     disallowPick?: boolean;
-    
+
     maxPlaced?: number;
-    
+
     blockGridType?: string;
-    
+
     shape?: number[][];
-    
+
     buildModes?: StructureBuildMode[];
     variants?: StructureVariant[];
     render?: StructureRender;
-    
+
     draw?: (...args: never[]) => boolean | void;
-    
+
     drawKey?: string;
-    
+
     defaultData?: Record<string, unknown>;
-    
+
     copyData?: boolean;
-    
+
     rejectWhenBlocked?: boolean;
     altOriginOffsetY?: number;
-    
+
     tooltipHover?: Record<string, unknown>;
-    
+
     registerOptions?: { useRawShape?: boolean };
     [key: string]: unknown;
 }
 
-
-
-
-
-
 export interface ItemSprite {
-    
     id: string;
-    
+
     type?: string;
-    
+
     mount?: string;
     [key: string]: unknown;
 }
 
 export interface ItemConfig {
     id: string;
-    
+
     itemType?: "Weapon" | "Tool" | "Consumable" | "Mod" | string | number;
-    
+
     type?: string | number;
     name?: string;
     nameKey?: string;
     description?: string;
     descriptionKey?: string;
     categoryKey?: string;
-    
+
     sprite?: ItemSprite;
-    
+
     cooldown?: number | { last?: number; [key: string]: unknown };
-    
+
     handlerKey?: string;
-    
+
     hideFromBuildMenu?: boolean;
     [key: string]: unknown;
 }
 
-
 export type HiddenCategory = "elements" | "structures" | "items";
-
 
 export const HIDDEN_FIELD: Partial<Record<HiddenCategory, string>> = {
     elements: "visibleInPicker",
@@ -255,49 +218,25 @@ export const HIDDEN_FIELD: Partial<Record<HiddenCategory, string>> = {
     items: "hideFromBuildMenu",
 };
 
-
 const HIDDEN_INVERTED: Partial<Record<HiddenCategory, boolean>> = {
     elements: true,
 };
-
 
 export function entryVisibility(
     e: Record<string, unknown>,
     cat: string,
 ): boolean | undefined {
     const field = HIDDEN_FIELD[cat as HiddenCategory];
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     if (field && typeof e[field] === "boolean") {
         return HIDDEN_INVERTED[cat as HiddenCategory] ? e[field] === false : e[field] === true;
     }
     return undefined;
 }
 
-
 export function configIsHidden(e: Record<string, unknown>, cat: string): boolean {
-    
-    
-    
     return entryVisibility(e, cat) === true;
 }
-
-
-
-
-
-
 
 export type RecipeKind =
     | "grower"
@@ -309,92 +248,68 @@ export type RecipeKind =
     | "synthesizer"
     | "snowmaker"
     | "smelter"
-    | "structure"; 
+    | "structure";
 
 export interface RecipeOutputEntry {
     elementType: string | number;
     chance?: number;
 }
 
-
 export interface RecipeConfig {
     id: string;
-    
+
     kind: RecipeKind | string;
-    
+
     structureType?: string | number;
-    
+
     input?: string | number;
-    
+
     output?: string | number;
-    
+
     chance?: number;
-    
+
     outputs?: RecipeOutputEntry[];
     outputsAbove?: RecipeOutputEntry[];
     outputsBelow?: RecipeOutputEntry[];
-    
+
     minimumDownwardVelocity?: number;
     [key: string]: unknown;
 }
 
-
-
-
-
-
-
-
-
 export interface ProcessingConfig {
     id: string;
-    
+
     structureType?: string | number;
-    
+
     intervalMs?: number;
-    
+
     process?: (ctx: unknown, api: unknown) => void;
     [key: string]: unknown;
 }
 
-
-
-
-
-
 export interface ContactReactionConfig {
     id: string;
-    
+
     inputA: string | number;
-    
+
     inputB: string | number;
-    
+
     outputA: string | number | null;
-    
+
     outputB: string | number | null;
-    
+
     orientation?: string;
     [key: string]: unknown;
 }
 
-
-
-
-
 export interface InteractionConfig {
     id: string;
-    
+
     elementId: string | number;
-    
+
     interaction: Record<string, unknown>;
     [key: string]: unknown;
 }
-
-
-
-
-
-
 
 export interface TerrainConfig {
     id: string;
@@ -421,10 +336,6 @@ export interface TerrainConfig {
     [key: string]: unknown;
 }
 
-
-
-
-
 export interface TechConfig {
     id: string;
     name?: string;
@@ -446,22 +357,17 @@ export interface TechConfig {
     electricityNodeStyle?: boolean;
     isAlien?: boolean;
     unavailable?: boolean;
-    
+
     parentId?: string;
     preferredPosition?: { row?: number; col?: number; [key: string]: unknown };
     [key: string]: unknown;
 }
 
-
-
-
-
-
 export interface UpgradeCategoryConfig {
     id: string;
-    
+
     name?: string;
-    
+
     nameKey?: string;
     categoryId: string;
     itemId?: string | number;
@@ -469,7 +375,7 @@ export interface UpgradeCategoryConfig {
     itemNameKey?: string;
     requirement?: Record<string, unknown>;
     upgrade?: Record<string, unknown>;
-    
+
     onUpgradeKey?: string;
     [key: string]: unknown;
 }
@@ -494,32 +400,21 @@ export interface UpgradeConfig {
     [key: string]: unknown;
 }
 
-
-
-
-
-
 export interface ProjectileConfig {
     id: string;
     sprite: { id: string; tint?: number; [key: string]: unknown };
-    
+
     options?: Record<string, unknown>;
-    
+
     getOptionsKey?: string;
     [key: string]: unknown;
 }
-
-
-
-
-
 
 export interface EnergyNetworkConfig {
     id: string;
     name?: string;
     [key: string]: unknown;
 }
-
 
 /** Whether a node is free from the start, or a real step in the tech tree. */
 export type UnlockNodeKind = "always" | "tech";
@@ -528,32 +423,30 @@ export interface UnlockNodeConfig {
     id: string;
     name?: string;
     description?: string;
-    
+
     kind: UnlockNodeKind;
-    
+
     cost?: number;
     currencyType?: string;
     branch?: string;
-    
+
     parentId?: string;
     requires?: string[];
-    
+
     techId?: string;
     [key: string]: unknown;
 }
 
-
 export type BufferValueType = "number" | "bool" | "string";
-
 
 export interface BufferEntryConfig {
     id: string;
-    
+
     path: string;
     type: BufferValueType;
-    
+
     default: number | boolean | string;
-    
+
     min?: number;
     max?: number;
     [key: string]: unknown;
@@ -569,11 +462,11 @@ export type EnergyRole = "conductor" | "storage" | (string & {});
 
 export interface EnergyTypeConfig {
     id: string;
-    
+
     structureId: string;
-    
+
     type: EnergyRole;
-    
+
     options?: {
         capacity?: number;
         energyType?: string;
@@ -582,10 +475,6 @@ export interface EnergyTypeConfig {
     };
     [key: string]: unknown;
 }
-
-
-
-
 
 export interface ExcavationProfileConfig {
     id: string;
@@ -598,11 +487,11 @@ export interface ExcavationProfileConfig {
         useLiteralOutVelocity?: boolean;
         destroyNonDestructible?: boolean;
         forceRemoveAll?: boolean;
-        
+
         drillTierDamage?: number;
         [key: string]: unknown;
     };
-    
+
     terrainRules?: {
         cellType?: string | number;
         terrainType?: string | number;
@@ -613,140 +502,87 @@ export interface ExcavationProfileConfig {
     [key: string]: unknown;
 }
 
-
-
-
-
-
 export interface StructureBehaviorConfig {
     id: string;
-    
+
     kind: string;
     behaviorType?: string;
     definition?: Record<string, unknown>;
     [key: string]: unknown;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export interface PlacementFieldUpgradeMax {
-    
     itemId: string;
-    
+
     upgradeId: string;
-    
+
     minimum?: number;
-    
+
     offset?: number;
 }
 
 export interface PlacementFieldOptionConfig {
-    
     value: string;
-    
+
     label?: string;
-    
+
     labelKey?: string;
     [key: string]: unknown;
 }
 
 export interface PlacementFieldConfig {
-    
     type: "integer" | "choice";
-    
+
     id: string;
-    
+
     label?: string;
-    
+
     labelKey?: string;
-    
+
     min?: number;
-    
+
     max?: number | PlacementFieldUpgradeMax;
-    
+
     default?: number;
-    
+
     options?: PlacementFieldOptionConfig[];
     [key: string]: unknown;
 }
 
 export interface PlacementConfigConfig {
-    
     id: string;
-    
+
     structureId: string;
-    
+
     fields: PlacementFieldConfig[];
     [key: string]: unknown;
 }
 
-
-
-
-
 export interface SignalConfig {
     id: string;
-    
+
     kind: "targets" | "interactables" | "senderType" | string;
-    
+
     target: string;
     handlerKey?: string;
     [key: string]: unknown;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 export interface InputBindingConfig {
-    
     id: string;
-    
+
     displayName: string;
-    
+
     displayNameKey?: string;
-    
+
     category: string;
-    
+
     defaultKeys?: string[];
-    
+
     onDownKey?: string;
-    
+
     onUpKey?: string;
-    
+
     subsection?: {
         title?: string;
         titleKey?: string;
@@ -755,10 +591,6 @@ export interface InputBindingConfig {
     };
     [key: string]: unknown;
 }
-
-
-
-
 
 export interface TriggerConfig {
     id: string;
@@ -770,45 +602,33 @@ export interface TriggerConfig {
     [key: string]: unknown;
 }
 
-
-
-
-
 export interface SpriteConfig {
     id: string;
-    
+
     path?: string;
-    
+
     source?: string;
     options?: Record<string, unknown>;
-    
+
     fromMod?: boolean;
     [key: string]: unknown;
 }
-
-
-
-
-
-
-
-
 
 export type HookKind = "intercept" | "modify";
 
 export interface ModifierConfig {
     id: string;
-    
+
     hookId: string;
-    
+
     kind: HookKind;
-    
+
     handlerKey?: string;
-    
+
     options?: Record<string, unknown>;
-    
+
     notes?: string;
-    
+
     enabled?: boolean;
     [key: string]: unknown;
 }
@@ -830,19 +650,19 @@ export type ModConfig = {
     projectiles: ProjectileConfig[];
     energyTypes: EnergyTypeConfig[];
     energyNetworks: EnergyNetworkConfig[];
-    
+
     unlockNodes: UnlockNodeConfig[];
     excavationProfiles: ExcavationProfileConfig[];
     structureBehaviors: StructureBehaviorConfig[];
-    
+
     placementConfigs: PlacementConfigConfig[];
     signals: SignalConfig[];
     triggers: TriggerConfig[];
     sprites: SpriteConfig[];
     inputBindings: InputBindingConfig[];
-    
+
     processes: CustomProcessConfig[];
-    
+
     buffers: BufferEntryConfig[];
 };
 
@@ -882,7 +702,6 @@ export type PanelState = {
     width?: number;
     height?: number;
 };
-
 
 export const FIELD_HELP = {
     elements: [

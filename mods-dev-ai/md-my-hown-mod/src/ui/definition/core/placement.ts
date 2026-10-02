@@ -1,10 +1,8 @@
-
 import { listStructures } from "../../../catalog.ts";
 import { idField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 import { placementConfigProblem } from "../../../config/placement.ts";
 import type { PlacementFieldConfig } from "../../../constants.ts";
-
 
 const FIELDS_FORM_KEY = "fieldsJson";
 
@@ -35,7 +33,6 @@ const FIELDS: FieldSpec[] = [
     },
 ];
 
-
 function readFields(raw: string): PlacementFieldConfig[] | undefined {
     try {
         const v = JSON.parse(raw);
@@ -45,14 +42,10 @@ function readFields(raw: string): PlacementFieldConfig[] | undefined {
     }
 }
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("structureId", read.str(e.structureId));
     read.put(FIELDS_FORM_KEY, read.json(e.fields));
 }
-
 
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("structureId", w.opt("structureId"));
@@ -61,11 +54,9 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     else w.del("fields");
 }
 
-
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
     const raw = (form[FIELDS_FORM_KEY] ?? "").trim();
-    
-    
+
     if (!raw) return;
     const problem = placementConfigProblem({
         structureId: form.structureId ?? "",
@@ -74,7 +65,6 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
     if (!problem) return;
     errors[problem.field === "fields" ? FIELDS_FORM_KEY : problem.field] = problem.message;
 }
-
 
 const FORM_COVERED = ["structureId", "fields"];
 
@@ -85,15 +75,8 @@ export const placementConfigDefinition: Definition = {
     entryToForm,
     formToEntry,
     validate,
-    
-    
-    
+
     onNewEntry(form: Record<string, string>): void {
-        
-        
-        
-        
-        
         form[FIELDS_FORM_KEY] = JSON.stringify(
             [{ type: "integer", id: "amount", label: "Amount", min: 1, max: 1 }],
             null,

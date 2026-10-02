@@ -1,4 +1,3 @@
-
 import {
     currentProcessRegistry,
     processProblem,
@@ -9,7 +8,6 @@ import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../../handler/index.ts";
 import { PROCESS_FORM_KEY } from "./process-ref-field.ts";
 import * as S from "../styles.ts";
 import type { FieldContext, Tab } from "../definition/types.ts";
-
 
 function slotOf(tab: Tab | undefined): HandlerSlot | undefined {
     return tab ? TAB_TO_CALL_SITE[tab] : undefined;
@@ -22,12 +20,9 @@ export function renderProcessRef(ctx: FieldContext): unknown {
     const slot = slotOf(tab);
     const used = processUsageCounts((cfg ?? {}) as Record<string, unknown>);
 
-    
-    
     const offered = slot ? registry.forSlot(slot) : registry.all();
     const chosen = key ? registry.get(key) : undefined;
-    
-    
+
     const unknown = !!key && !chosen;
     const mine = chosen ? used[chosen.id] ?? 0 : 0;
 
@@ -70,8 +65,6 @@ export function renderProcessRef(ctx: FieldContext): unknown {
                 chosen.doc ? h("div", { style: S.hint }, chosen.doc) : null,
             )
             : null,
-        
-        
         key && !chosen ? h("div", { style: S.errorText }, `No process named "${key}".`) : null,
         key && chosen && slot && processProblem(registry, key, slot)
             ? h(

@@ -8,15 +8,15 @@ export const gridActions = defineActions({
         needs: ["pos"],
         doc: "Digs at this position. Set `damage` and `velocity` in options.",
         type: "message",
-        
+
         slots: ["signal", "processing", "modifier", "itemAction"],
         scope: "cell",
         itemTypes: ["Tool"],
         params: [
-        p("profileId", "Excavation profile", "text", {
-        hint: "falls back to the item's excavationProfileId",
-        }),
-        p("power", "Power", "number", { def: "10", min: 0 }),
+            p("profileId", "Excavation profile", "text", {
+                hint: "falls back to the item's excavationProfileId",
+            }),
+            p("power", "Power", "number", { def: "10", min: 0 }),
         ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { damage?: number; vx?: number; vy?: number };
@@ -41,5 +41,4 @@ export const gridActions = defineActions({
             }
         },
     },
-
 });

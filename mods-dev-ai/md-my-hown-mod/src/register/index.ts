@@ -26,9 +26,7 @@ import { registerModifiers } from "./custom/modifiers.ts";
 import { reportEnergyNetworks } from "./custom/energy-networks.ts";
 import { installPlacementLimits } from "./core/placement-limits.ts";
 
-
 type Step = (ctx: RegisterContext) => number;
-
 
 const STEPS: readonly [name: string, step: Step][] = [
     ["elements", registerElements],
@@ -57,9 +55,8 @@ const STEPS: readonly [name: string, step: Step][] = [
 ];
 
 export interface RegisterCounts {
-    
     steps: Record<string, number>;
-    
+
     hiddenElements: number;
 }
 

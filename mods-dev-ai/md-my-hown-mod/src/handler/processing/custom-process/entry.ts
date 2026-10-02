@@ -1,4 +1,3 @@
-
 import { type HandlerSlot } from "../../engine/handler-registry.ts";
 import { type ProcessFailure } from "../process.ts";
 import { compileCustomProcess } from "./compile.ts";
@@ -16,17 +15,16 @@ export function processRefOf(entry: Record<string, unknown> | undefined): Proces
 }
 
 export interface CompiledEntry {
-    
     fn: (structure?: unknown, context?: unknown) => void;
-    
+
     source: ProcessSource;
-    
+
     skipped: string[];
-    
+
     unknownOptions: string[];
-    
+
     usesContext: boolean;
-    
+
     expanded: string[];
 }
 

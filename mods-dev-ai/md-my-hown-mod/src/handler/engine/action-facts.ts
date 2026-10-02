@@ -1,5 +1,3 @@
-
-
 import type { ActionKey } from "../actions/index.ts";
 
 export type HandlerActionClass = "api" | "self-sufficient" | "context-bound" | "pure";
@@ -270,4 +268,3 @@ export function effectOf(key: string): ActionEffect | undefined {
 export function domainOf(key: string): ActionDomain | undefined {
     return actionFacts(key)?.domain;
 }
-

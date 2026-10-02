@@ -1,14 +1,11 @@
-
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverElements } from "../../catalog.ts";
 import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
-
 function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
 }
-
 
 function inlineRender(ctx: ListRenderCtx): unknown {
     const { h, row } = ctx;
@@ -24,7 +21,6 @@ function inlineRender(ctx: ListRenderCtx): unknown {
         originTag(h, row),
     );
 }
-
 
 const DETAILS: DetailSpec = {
     fields: [
@@ -52,8 +48,7 @@ const DETAILS: DetailSpec = {
         {
             key: "colors",
             label: "Colours",
-            
-            
+
             pick: (s) => {
                 const c = s.colors as { variants?: unknown[] } | unknown[] | undefined;
                 const n = Array.isArray(c) ? c.length : (c as { variants?: unknown[] })?.variants
@@ -62,15 +57,13 @@ const DETAILS: DetailSpec = {
             },
         },
     ],
-    
-    
+
     skip: ["elementType", "matterTypes", "matterTypeNames", "dataFieldCount"],
 };
 
 function infoRender(ctx: ListRenderCtx): unknown {
     return renderDetail(ctx.h as never, ctx, DETAILS);
 }
-
 
 function searchText(row: ListRow): string {
     const src = row.native ?? row.entry ?? {};

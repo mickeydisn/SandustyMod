@@ -1,4 +1,3 @@
-
 export type { CompiledProjectileOption } from "./compile.ts";
 export { compileProjectile, PROJECTILE_OPTION_STORE_KEY, projectileOptionOf } from "./compile.ts";
 export {

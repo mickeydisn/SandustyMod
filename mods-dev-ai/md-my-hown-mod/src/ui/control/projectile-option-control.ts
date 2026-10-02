@@ -1,4 +1,3 @@
-
 import {
     PROJECTILE_OPTION_DOCS,
     PROJECTILE_OPTIONS,
@@ -15,7 +14,6 @@ import type { SelectorHandle } from "../definition/types.ts";
 
 type H = FieldContext["h"];
 
-
 function paramSpecs(key: string): HandlerParam[] {
     return projectileOptionParams(key).map((p) => ({
         key: p.key,
@@ -25,15 +23,12 @@ function paramSpecs(key: string): HandlerParam[] {
     }));
 }
 
-
 function readParams(text: string | undefined): Record<string, unknown> {
     if (!text?.trim()) return {};
     try {
         const parsed = JSON.parse(text);
         return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
     } catch {
-        
-        
         return {};
     }
 }
@@ -44,7 +39,7 @@ export function renderProjectileOption(ctx: FieldContext): unknown {
     const known = !key || PROJECTILE_OPTIONS[key] !== undefined;
     const specs = key && known ? paramSpecs(key) : [];
     const stored = readParams(form[PARAMS_FORM_KEY]);
-    
+
     const preview = key && known ? resolveProjectileOption(key)!(stored) : undefined;
 
     const setParam = (spec: HandlerParam, text: string) => {
@@ -68,18 +63,11 @@ export function renderProjectileOption(ctx: FieldContext): unknown {
                     style: { ...S.input, cursor: "pointer" },
                     value: key,
                     onChange: (e: { target: { value: string } }) => {
-                        
-                        
-                        
-                        
-                        
                         setField(OPTIONS_FORM_KEY, e.target.value);
                         setField(PARAMS_FORM_KEY, "");
                     },
                 },
                 h("option", { value: "" }, "— static options only —"),
-                
-                
                 !known ? h("option", { value: key }, `${key} (unknown)`) : null,
                 ...projectileOptionKeys().map((k) => h("option", { key: k, value: k }, k)),
             ),
@@ -91,8 +79,6 @@ export function renderProjectileOption(ctx: FieldContext): unknown {
                         "Leave this empty to use the static options below.",
             ),
         ),
-        
-        
         key && known && specs.length === 0
             ? h("div", { style: S.hint }, "This option takes no parameters.")
             : null,
@@ -109,13 +95,11 @@ export function renderProjectileOption(ctx: FieldContext): unknown {
     );
 }
 
-
 function paramRows(
     h: H,
     specs: HandlerParam[],
     stored: Record<string, unknown>,
     setParam: (spec: HandlerParam, text: string) => void,
-    
     selector?: SelectorHandle,
 ): unknown {
     return h(

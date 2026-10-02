@@ -1,14 +1,13 @@
 import { LOG, type ProcessingConfig } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { compileEntryProcess } from "../../handler/processing/custom-process/index.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerProcessing({ config, processes }: RegisterContext): number {
     return registerEach(config.processing, "processing", (entry) => {
         const raw = entry as Record<string, unknown>;
         const id = entry.id ?? "?";
 
-        
         if (typeof raw.process !== "function") {
             const compiled = compileEntryProcess(raw, "processing", processes);
             if (compiled.source.kind === "process" && compiled.expanded.length) {

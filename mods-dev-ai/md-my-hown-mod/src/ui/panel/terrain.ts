@@ -1,14 +1,11 @@
-
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverTerrains } from "../../catalog.ts";
 import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
-
 function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
 }
-
 
 function swatch(ctx: ListRenderCtx): string | undefined {
     const packed = field(ctx, "color");
@@ -26,12 +23,9 @@ function swatch(ctx: ListRenderCtx): string | undefined {
             return `hsl(${Math.round(hh * 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`;
         }
     }
-    
-    
-    
+
     return ctx.row.color;
 }
-
 
 function inlineRender(ctx: ListRenderCtx): unknown {
     const { h, row } = ctx;
@@ -51,12 +45,8 @@ function inlineRender(ctx: ListRenderCtx): unknown {
     );
 }
 
-
 const DETAILS: DetailSpec = {
     fields: [
-        
-        
-        
         { key: "hp", label: "Hit points" },
         { key: "materialId", label: "Material id" },
         { key: "isBuilding", label: "Counts as a building" },
@@ -69,13 +59,11 @@ const DETAILS: DetailSpec = {
         {
             key: "colorHSL",
             label: "Colour",
-            
-            
+
             pick: (s) => s.colorHSL ?? s.metaColor,
         },
     ],
-    
-    
+
     skip: [
         "hitPoints",
         "colorPattern",

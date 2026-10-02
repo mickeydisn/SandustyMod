@@ -1,11 +1,6 @@
-import {
-    api,
-    type CompiledItemAction,
-    setItemActionCompiler,
-} from "../../packages/mysandkit.ts";
+import { api, type CompiledItemAction, setItemActionCompiler } from "../../packages/mysandkit.ts";
 import { compileEntryProcess } from "../../handler/processing/custom-process/index.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
-
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 setItemActionCompiler(
     (def) => compileEntryProcess(def, "itemAction") as unknown as CompiledItemAction,

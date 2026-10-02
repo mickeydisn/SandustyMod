@@ -1,4 +1,3 @@
-
 import { listStructures } from "../../../catalog.ts";
 import {
     PROCESS_COVERED,
@@ -9,14 +8,11 @@ import {
 import { idField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-
 const KINDS = [
     { value: "interactables", label: "interactables — structure click" },
     { value: "targets", label: "targets — signal receiver" },
     { value: "senderType", label: "senderType — signal sender" },
 ];
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -38,16 +34,11 @@ const FIELDS: FieldSpec[] = [
         options: listStructures,
     },
     {
-        
-        
         ...processRefField("runs when the structure is clicked"),
         section: "Signal",
         required: true,
     },
 ];
-
-
-
 
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("kind", read.str(e.kind));
@@ -55,15 +46,11 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     readProcessRef(read, e);
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("kind", w.opt("kind"));
     w.setStr("target", w.opt("target"));
     writeProcessRef(w);
 }
-
-
-
 
 const FORM_COVERED = ["kind", "target", ...PROCESS_COVERED];
 
@@ -73,8 +60,4 @@ export const signalDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
-    
 };

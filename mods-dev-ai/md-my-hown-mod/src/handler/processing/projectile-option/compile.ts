@@ -1,4 +1,3 @@
-
 import { resolveProjectileOption } from "./registry.ts";
 import type {
     ProjectileGetOptions,
@@ -7,11 +6,10 @@ import type {
 } from "./types.ts";
 
 export interface CompiledProjectileOption {
-    
     getOptions: ProjectileGetOptions;
-    
+
     key?: string;
-    
+
     problem?: string;
 }
 
@@ -21,10 +19,6 @@ export function compileProjectile(
     ref: ProjectileOptionRef | undefined,
     onFailure?: (f: ProjectileOptionFailure) => void,
 ): CompiledProjectileOption {
-    
-    
-    
-    
     if (!ref?.key) return { getOptions: () => EMPTY };
 
     const fn = resolveProjectileOption(ref.key);
@@ -42,8 +36,6 @@ export function compileProjectile(
         try {
             built = fn(ref.params);
         } catch (error) {
-            
-            
             if (!reported) {
                 reported = true;
                 onFailure?.({ key: ref.key, error });

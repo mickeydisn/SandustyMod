@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import { getSandkit, safe } from "./api.ts";
 import { api as skApi } from "./packages/mysandkit.ts";
 import { configIsHidden, humanise } from "./constants.ts";
@@ -16,7 +10,7 @@ export type Opt = {
     label: string;
     color?: string;
     source?: "game" | "mod";
-    
+
     hidden?: boolean;
 };
 
@@ -36,19 +30,16 @@ function enumOpts(name: string): Opt[] {
     return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-
 function enumNames(name: string): string[] {
     const e = sk()?.enums?.[name];
     if (!e || typeof e !== "object") return [];
     return Object.keys(e).filter((k) => Number.isNaN(Number(k))).sort();
 }
 
-
 function enumValue(enumName: string, member: string): number | undefined {
     const v = enumRawValue(enumName, member);
     return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
-
 
 function enumRawValue(enumName: string, member: string): unknown {
     const e = sk()?.enums?.[enumName];
@@ -67,16 +58,12 @@ function colorFromMeta(meta: unknown): string | undefined {
     return undefined;
 }
 
-
 export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
     const map = new Map<string, Opt>();
     const includeHidden = !!opts?.includeHidden;
-    
-    
-    
+
     const hidden = new Set<string>();
 
-    
     const types = skApi.elements.getRegisteredTypes();
     for (const t of types) {
         const def = skApi.elements.getDefinitionByType(t) as
@@ -88,15 +75,12 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
                 metaColor?: unknown;
             }
             | undefined;
-        
-        
+
         const id = def?.id ?? skApi.elements.getIdByType(t);
         if (!id) continue;
         if (def?.hidden === true) {
             hidden.add(String(id));
-            
-            
-            
+
             if (!includeHidden) continue;
         }
         const name = def?.name ?? skApi.elements.getNameByType(t) ?? def?.nameKey ??
@@ -106,14 +90,11 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
             label: String(name),
             color: colorFromMeta(def?.metaColor),
             source: "game",
-            
+
             hidden: def?.hidden === true,
         });
     }
 
-    
-    
-    
     for (const name of enumNames("ElementType")) {
         const type = enumValue("ElementType", name);
         if (type === undefined) continue;
@@ -123,7 +104,6 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
         map.set(String(id), { value: String(id), label: name, source: "game" });
     }
 
-    
     for (const el of configStore.load().elements ?? []) {
         if (!el?.id) continue;
         map.set(el.id, {
@@ -131,15 +111,13 @@ export function listElements(opts?: { includeHidden?: boolean }): Opt[] {
             label: `${el.name || el.id} (this mod)`,
             source: "mod",
             color: typeof el.metaColor === "string" ? el.metaColor : colorFromMeta(el.metaColor),
-            
-            
+
             hidden: el.hidden === true,
         });
     }
 
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
-
 
 const DEFAULT_ENERGY_NETWORK = "power";
 
@@ -163,22 +141,6 @@ export function listEnergyNetworkOpts(): Opt[] {
 export function listStructures(): Opt[] {
     const map = new Map<string, Opt>();
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     const tryList: Array<() => unknown> = [
         () => skApi.structures.getRegisteredTypes(),
         () => skApi.structures.getAvailableTypes(),
@@ -190,7 +152,6 @@ export function listStructures(): Opt[] {
         if (!raw) continue;
         const arr = raw instanceof Set ? [...raw] : Array.isArray(raw) ? raw : [];
         for (const t of arr) {
-            
             if (typeof t === "string" && t) {
                 if (map.has(t)) continue;
                 const def = skApi.structures.getDefinitionByType(t);
@@ -198,10 +159,7 @@ export function listStructures(): Opt[] {
                     value: t,
                     label: String(def?.name ?? def?.nameKey ?? t),
                     source: "game",
-                    
-                    
-                    
-                    
+
                     hidden: configIsHidden(def ?? {}, "structures"),
                 });
                 continue;
@@ -224,9 +182,6 @@ export function listStructures(): Opt[] {
     for (const o of enumOpts("StructureType")) {
         const name = o.label.split(" ")[0];
         if (![...map.keys()].some((k) => k === name || k === o.value)) {
-            
-            
-            
             map.set(name, { value: name, label: o.label, source: "game" });
         }
     }
@@ -237,9 +192,7 @@ export function listStructures(): Opt[] {
                 value: st.id,
                 label: `${st.name || st.id} (this mod)`,
                 source: "mod",
-                
-                
-                
+
                 hidden: configIsHidden(st, "structures"),
             });
         }
@@ -268,21 +221,12 @@ export function listItems(): Opt[] {
             }
         }
     }
-    
-    
-    
-    
-    
-    
-    
-    
+
     for (const name of enumNames("ItemId")) {
         const v = enumRawValue("ItemId", name);
         if (typeof v !== "string" || !v) continue;
         if (map.has(v)) continue;
-        
-        
-        
+
         map.set(v, { value: v, label: v, source: "game" });
     }
     for (const it of configStore.load().items ?? []) {
@@ -291,7 +235,6 @@ export function listItems(): Opt[] {
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
-
 
 export function listTerrains(): Opt[] {
     const map = new Map<string, Opt>();
@@ -311,7 +254,6 @@ export function listTerrains(): Opt[] {
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-
 export function listLinkedClearance(): Opt[] {
     return [
         {
@@ -325,14 +267,12 @@ export function listLinkedClearance(): Opt[] {
     ];
 }
 
-
 export function listMaterialIds(): Opt[] {
     const used = (configStore.load().terrains ?? [])
         .map((t) => Number((t as { materialId?: unknown } | undefined)?.materialId))
         .filter((n) => Number.isFinite(n));
     const taken = new Set(used);
 
-    
     let next = 101;
     for (const n of used) if (n >= next && n < 149) next = n + 1;
 
@@ -352,13 +292,12 @@ export function listMaterialIds(): Opt[] {
     return opts;
 }
 
-
 export interface DrawFnMeta {
     key: string;
     label: string;
-    
+
     doc: string;
-    
+
     passthrough: boolean;
 }
 
@@ -389,15 +328,11 @@ export const DRAW_FUNCTIONS: DrawFnMeta[] = [
     },
 ];
 
-
 export function listDrawFunctions(): Opt[] {
     return DRAW_FUNCTIONS.map((d) => ({ value: d.key, label: `${d.label} — ${d.doc}` }));
 }
 
-
 export function listMatterTypes(): Opt[] {
-    
-    
     return [
         { value: "solid", label: "Solid (1)" },
         { value: "liquid", label: "Liquid (2)" },
@@ -410,7 +345,6 @@ export function listMatterTypes(): Opt[] {
     ];
 }
 
-
 export const MATTER_NAME_BY_VALUE: Record<number, string> = {
     1: "solid",
     2: "liquid",
@@ -421,9 +355,6 @@ export const MATTER_NAME_BY_VALUE: Record<number, string> = {
     7: "wisp",
     8: "powder",
 };
-
-
-
 
 const BUILD_MODE_TYPES = [
     "single",
@@ -438,7 +369,6 @@ const BUILD_MODE_TYPES = [
 export function listBuildModeTypes(): Opt[] {
     return BUILD_MODE_TYPES.map((v) => ({ value: v, label: v }));
 }
-
 
 const STRUCTURE_CATEGORIES = [
     "misc",
@@ -462,7 +392,6 @@ const STRUCTURE_CATEGORIES = [
     "lighting",
     "special",
 ] as const;
-
 
 const KEY_CODE_SUGGESTIONS = [
     "Shift",
@@ -521,7 +450,6 @@ export function listStructureCategories(): Opt[] {
     return [...STRUCTURE_CATEGORIES].map((v) => ({ value: v, label: v }));
 }
 
-
 export const RECIPE_MACHINES = [
     "planterBox",
     "shaker",
@@ -546,14 +474,12 @@ export function listRecipeMachines(): Opt[] {
     ];
 }
 
-
 export function listContactOrientation(): Opt[] {
     return [
         { value: "any", label: "any — touch in any arrangement" },
         { value: "stacked", label: "stacked — vertical only" },
     ];
 }
-
 
 const HOOK_IDS = [
     "element:move",
@@ -577,7 +503,6 @@ export function listHookIds(): Opt[] {
     ];
 }
 
-
 export function listSpriteIds(): Opt[] {
     const map = new Map<string, Opt>();
     const tryList = [
@@ -598,16 +523,11 @@ export function listSpriteIds(): Opt[] {
             }
         }
     }
-    
-    
+
     for (const sp of configStore.load().sprites ?? []) {
         if (!sp?.id) continue;
         const lib = LIBRARY_ICONS.find((i) => i.path === sp.path);
-        
-        
-        
-        
-        
+
         const drawn = typeof sp.source === "string" && sp.source.startsWith("data:");
         map.set(sp.id, {
             value: sp.id,
@@ -622,18 +542,15 @@ export function listSpriteIds(): Opt[] {
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-
-
 export interface LibraryAsset {
-
     name: string;
-    
+
     path: string;
-    
+
     sizes: string[];
-    
+
     preview: string;
-    
+
     previewW: number;
     previewH: number;
 }
@@ -641,11 +558,9 @@ export interface LibraryAsset {
 import { LIBRARY_ICONS } from "./generated/sprite-library.ts";
 export { LIBRARY_ICONS };
 
-
 function listLibraryAssets(): LibraryAsset[] {
     return [...LIBRARY_ICONS].sort((a, b) => a.name.localeCompare(b.name));
 }
-
 
 export function searchLibraryAssets(query: string): LibraryAsset[] {
     const q = query.trim().toLowerCase();
@@ -654,11 +569,9 @@ export function searchLibraryAssets(query: string): LibraryAsset[] {
     return all.filter((i) => i.name.toLowerCase().includes(q));
 }
 
-
 export function listOutputTargets(): Opt[] {
     return [{ value: "__null__", label: "∅ consume (null)" }, ...listElements()];
 }
-
 
 export function listAnyHandlerKeys(): Opt[] {
     try {
@@ -666,10 +579,9 @@ export function listAnyHandlerKeys(): Opt[] {
         if (m?.listAnyHandlerKeys) {
             return m.listAnyHandlerKeys().map((k: string) => ({ value: k, label: k }));
         }
-    } catch {  }
+    } catch {}
     return listHandlerKeys();
 }
-
 
 export function listProcessorKeys(): Opt[] {
     try {
@@ -677,19 +589,12 @@ export function listProcessorKeys(): Opt[] {
         if (m?.listProcessorKeys) {
             return m.listProcessorKeys().map((k: string) => ({ value: k, label: k }));
         }
-    } catch {  }
+    } catch {}
     return [{ value: "processorLog", label: "processorLog" }, {
         value: "processorNoop",
         label: "processorNoop",
     }];
 }
-
-
-
-
-
-
-
 
 /**
  * The action docs published on `__mdHandlers` by the handler package.
@@ -708,8 +613,6 @@ export function handlerDoc(key: string): string | undefined {
     return handlerDocs()?.[key];
 }
 
-
-
 export function listUnlockNodes(): Opt[] {
     return allUnlockNodes(configStore.load()).map((n) => ({
         value: n.id,
@@ -725,21 +628,15 @@ export function listTechIds(excludeSuffix?: string): Opt[] {
     return (configStore.load().techs ?? [])
         .filter((t) => {
             if (!t?.id) return false;
-            
-            
-            
+
             return ex ? t.id !== ex && !t.id.endsWith(ex) : true;
         })
         .map((t) => ({ value: t.id, label: t.name ? `${t.name} — ${t.id}` : t.id }));
 }
 
-
-
 export function listUpgradeCategoryIds(): Opt[] {
     const map = new Map<string, Opt>();
-    
-    
-    
+
     map.set("tools", { value: "tools", label: "tools (the game's default)", source: "game" });
     for (const c of configStore.load().upgradeCategories ?? []) {
         if (!c?.id) continue;
@@ -749,7 +646,7 @@ export function listUpgradeCategoryIds(): Opt[] {
             source: "mod",
         });
     }
-    
+
     map.set("__custom__", {
         value: "__custom__",
         label: "custom category (the game may have more than we can list)",
@@ -769,7 +666,6 @@ export function listTechBranches(): Opt[] {
         .concat([{ value: "__custom__", label: "custom branch (type below)" }]);
 }
 
-
 export function listCurrencyTypes(): Opt[] {
     const seen = new Set<string>(["gold"]);
     for (const t of configStore.load().techs ?? []) {
@@ -782,15 +678,9 @@ export function listCurrencyTypes(): Opt[] {
         .concat([{ value: "__custom__", label: "custom currency (type below)" }]);
 }
 
-
-
-
 export interface NativeObject extends Omit<ListRow, "origin" | "entry"> {
-    
     origin: "game";
 }
-
-
 
 function modRegistry(): Record<string, Record<string, unknown>> {
     try {
@@ -812,11 +702,9 @@ function putNative(
     map.set(id, { id, origin: "game", ...rest });
 }
 
-
 function labelOf(v: unknown): string | undefined {
     return typeof v === "string" && v.trim() ? v : undefined;
 }
-
 
 export function discoverElements(): NativeObject[] {
     const out = new Map<string, NativeObject>();
@@ -831,28 +719,12 @@ export function discoverElements(): NativeObject[] {
                 labelOf(def?.nameKey) ??
                 id,
             color: colorFromMeta(def?.metaColor),
-            
-            
-            
-            
-            
+
             hidden: configIsHidden(def ?? {}, "elements"),
             native: def,
         });
     }
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     for (const [id, entry] of Object.entries(modRegistry().elements ?? {})) {
         if (!id) continue;
         const reg = entry as Record<string, unknown>;
@@ -861,9 +733,7 @@ export function discoverElements(): NativeObject[] {
             ...(prior ?? { id, origin: "game" as const, label: id }),
             label: labelOf(reg.name) ?? labelOf(reg.nameKey) ?? prior?.label ?? id,
             color: prior?.color ?? colorFromMeta(reg.metaColor),
-            
-            
-            
+
             hidden: configIsHidden(reg, "elements") ||
                 (configIsHidden(prior?.native ?? {}, "elements") &&
                     reg.visibleInPicker === undefined),
@@ -873,7 +743,6 @@ export function discoverElements(): NativeObject[] {
 
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
-
 
 function builtInItemName(rawId: unknown): string | undefined {
     const n = typeof rawId === "number"
@@ -888,27 +757,23 @@ function builtInItemName(rawId: unknown): string | undefined {
     return undefined;
 }
 
-
 export function discoverItems(): NativeObject[] {
     const out = new Map<string, NativeObject>();
     for (const rawId of skApi.items.getRegisteredIds()) {
         if (rawId === null || rawId === undefined || rawId === "") continue;
-        
-        
+
         const id = String(rawId);
         const def = skApi.items.getDefinitionById(String(rawId));
         out.set(id, {
             id,
             origin: "game",
-            
-            
+
             label: labelOf(def?.name) ?? builtInItemName(rawId) ?? id,
             native: def,
         });
     }
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
-
 
 export function discoverTerrains(): NativeObject[] {
     const out = new Map<string, NativeObject>();
@@ -923,11 +788,9 @@ export function discoverTerrains(): NativeObject[] {
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-
 export function discoverStructures(): NativeObject[] {
     const out = new Map<string, NativeObject>();
 
-    
     for (const [id, entry] of Object.entries(modRegistry().structures ?? {})) {
         if (!id) continue;
         const def = entry as Record<string, unknown>;
@@ -938,8 +801,6 @@ export function discoverStructures(): NativeObject[] {
         });
     }
 
-    
-    
     for (const ref of [...skApi.structures.getAvailableTypes()]) {
         const def = skApi.structures.getDefinitionByType(ref);
         const id = labelOf(def?.id) ??
@@ -947,8 +808,7 @@ export function discoverStructures(): NativeObject[] {
         if (!id || out.has(id)) continue;
         putNative(out, id, {
             label: labelOf(def?.name) ?? labelOf(def?.nameKey) ?? id,
-            
-            
+
             hidden: configIsHidden(def ?? {}, "structures"),
             native: def,
         });
@@ -957,14 +817,13 @@ export function discoverStructures(): NativeObject[] {
     return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-
 export function listHandlerKeys(): Opt[] {
     try {
         const m = (globalThis as any).__mdHandlers;
         if (m?.listHandlerKeys) {
             return m.listHandlerKeys().map((k: string) => ({ value: k, label: k }));
         }
-    } catch {  }
+    } catch {}
     return [
         { value: "logArgs", label: "logArgs" },
         { value: "identity", label: "identity" },

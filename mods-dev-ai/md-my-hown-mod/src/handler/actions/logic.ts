@@ -1,22 +1,18 @@
-
-import { RANGE_PARAMS, elementRef, p } from "../engine/registry/params.ts";
+import { elementRef, p, RANGE_PARAMS } from "../engine/registry/params.ts";
 import { cellReaders, type ElementOptions, walkRangeFor, writeCells } from "./api/cells.ts";
 import { defineActions } from "../engine/types.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { type Positions, positionsOver } from "../engine/position.ts";
 
-
 interface LogicOptions extends ElementOptions {
-    
     element?: unknown;
-    
+
     to?: unknown;
-    
+
     when?: unknown;
-    
+
     onlyEmpty?: unknown;
 }
-
 
 function walkOf(structure: unknown, options: LogicOptions): Positions | null {
     const resolved = walkRangeFor(structure as never, options);
@@ -27,7 +23,6 @@ function walkOf(structure: unknown, options: LogicOptions): Positions | null {
     return positionsOver(resolved.range, resolved.clamped);
 }
 
-
 function warnClamp(what: string, list: Positions, options: LogicOptions): void {
     if (!list.clamped) return;
     console.warn(
@@ -37,7 +32,6 @@ function warnClamp(what: string, list: Positions, options: LogicOptions): void {
     );
 }
 
-
 function typeTest(
     context: unknown,
     wanted: string,
@@ -45,9 +39,7 @@ function typeTest(
 ): ((cell: { x: number; y: number }) => boolean) | null {
     const readers = cellReaders(context);
     if (!readers) return null;
-    
-    
-    
+
     const holds = readers.matches(wanted);
     return ({ x, y }) => {
         if (onlyEmpty && readers.isEmpty && !readers.isEmpty(x, y)) return false;
@@ -56,7 +48,6 @@ function typeTest(
 }
 
 export const logicActions = defineActions({
-    
     logicAny: {
         role: "logic",
         needs: ["pos", "read"],
@@ -83,7 +74,6 @@ export const logicActions = defineActions({
         },
     },
 
-    
     logicAll: {
         role: "logic",
         needs: ["pos", "read"],
@@ -108,7 +98,6 @@ export const logicActions = defineActions({
         },
     },
 
-    
     logicCount: {
         role: "logic",
         needs: ["pos", "read"],
@@ -135,7 +124,6 @@ export const logicActions = defineActions({
         },
     },
 
-    
     logicSum: {
         role: "logic",
         needs: ["pos", "read"],
@@ -151,21 +139,18 @@ export const logicActions = defineActions({
                 const list = walkOf(structure, o);
                 if (!list) return 0;
                 warnClamp("logicSum", list, o);
-                
-                
+
                 const fromCtx = (context as {
                     getTerrainHitPointsAtCell?: (x: number, y: number) => number;
                 } | null)?.getTerrainHitPointsAtCell;
-                const read = typeof fromCtx === "function"
-                    ? fromCtx
-                    : (x: number, y: number) => {
-                        const data = api.terrains.getDataAtCell(x, y) as
-                            | { hitPoints?: unknown; hp?: unknown }
-                            | null
-                            | undefined;
-                        const hp = data?.hitPoints ?? data?.hp;
-                        return typeof hp === "number" ? hp : 0;
-                    };
+                const read = typeof fromCtx === "function" ? fromCtx : (x: number, y: number) => {
+                    const data = api.terrains.getDataAtCell(x, y) as
+                        | { hitPoints?: unknown; hp?: unknown }
+                        | null
+                        | undefined;
+                    const hp = data?.hitPoints ?? data?.hp;
+                    return typeof hp === "number" ? hp : 0;
+                };
                 if (!read) return 0;
                 return list.sum(({ x, y }) => {
                     const n = Number(read(x, y));
@@ -178,28 +163,27 @@ export const logicActions = defineActions({
         },
     },
 
-    
     logicForEach: {
         role: "logic",
         needs: ["pos", "commit"],
         doc: "fn(size?, to, …) → writes an element at **every** cell in the range. " +
             "Set `when` to only touch cells already holding another element.",
         type: "cell",
-        
+
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("to", "Write element", "select", {
-        required: true,
-        content: "element",
-        hint: "written at every cell in the range",
-        }),
-        p("when", "…but only cells holding", "select", {
-        content: "element",
-        hint: "leave blank to write every cell, whatever is there",
-        }),
-        
-        ...RANGE_PARAMS,
+            p("to", "Write element", "select", {
+                required: true,
+                content: "element",
+                hint: "written at every cell in the range",
+            }),
+            p("when", "…but only cells holding", "select", {
+                content: "element",
+                hint: "leave blank to write every cell, whatever is there",
+            }),
+
+            ...RANGE_PARAMS,
         ],
         fn: (structure, context, options) => {
             try {
@@ -207,9 +191,7 @@ export const logicActions = defineActions({
                 const to = String(o.to ?? o.element ?? "");
                 if (!to) return 0;
                 const when = o.when === undefined ? "" : String(o.when);
-                
-                
-                
+
                 let changed = 0;
                 writeCells(structure, context, o, "logicForEach", (writer, cell, current) => {
                     if (when && current !== when) return false;

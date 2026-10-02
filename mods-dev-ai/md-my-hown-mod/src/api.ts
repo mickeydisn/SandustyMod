@@ -1,4 +1,3 @@
-
 import { api, g } from "./packages/mysandkit.ts";
 
 declare const sandkit: {
@@ -9,7 +8,6 @@ declare const sandkit: {
     enums?: any;
 };
 
-
 export interface HostReactType {
     createElement: (...args: unknown[]) => unknown;
     useState: <S>(initial: S | (() => S)) => [S, (v: S | ((prev: S) => S)) => void];
@@ -18,7 +16,6 @@ export interface HostReactType {
     useCallback: <T>(fn: T, deps?: readonly unknown[]) => T;
     useMemo: <T>(fn: () => T, deps?: readonly unknown[]) => T;
 }
-
 
 export const React = (sandkit as { react?: HostReactType }).react;
 export const h = React?.createElement?.bind(React) as
@@ -36,7 +33,6 @@ export function safe<T>(fn: () => T, fallback: T | null = null): T | null {
 export function toast(msg: string): void {
     api.toast(msg);
 }
-
 
 export function getSandkit(): typeof sandkit | any {
     return g() ?? null;

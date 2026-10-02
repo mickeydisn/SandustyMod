@@ -1,5 +1,13 @@
 import { ALL_SLOTS } from "../../engine/registry/types.ts";
-import { CREATE_PARAMS, MATRIX_PARAMS, MOTION_REGION_PARAMS, REGION_PARAMS, VELOCITY_PARAMS, elementRef, p } from "../../engine/registry/params.ts";
+import {
+    CREATE_PARAMS,
+    elementRef,
+    MATRIX_PARAMS,
+    MOTION_REGION_PARAMS,
+    p,
+    REGION_PARAMS,
+    VELOCITY_PARAMS,
+} from "../../engine/registry/params.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { shapeSize } from "../../engine/cell-region.ts";
@@ -9,9 +17,9 @@ import {
     createOptions,
     dataSlotOf,
     elementOf,
+    type ElementOptions,
     regionFor,
     writeCells,
-    type ElementOptions,
 } from "./cells.ts";
 interface StructureLike {
     x?: number;
@@ -19,49 +27,42 @@ interface StructureLike {
     shape?: number[][];
 }
 
-
 interface Vector2 {
     x: number;
     y: number;
 }
 
-
 interface MotionOptions {
-    
     vx?: unknown;
-    
+
     vy?: unknown;
-    
+
     ticks?: unknown;
-    
+
     rearm?: unknown;
-    
+
     tx?: unknown;
     ty?: unknown;
-    
+
     maxSpeed?: unknown;
-    
+
     size?: unknown;
-    
+
     particle?: unknown;
 }
-
 
 function num(value: unknown, fallback = 0): number {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
 }
 
-
 function flag(value: unknown): boolean {
     return value === true || value === "true";
 }
 
-
 function vectorOf(options: MotionOptions): Vector2 {
     return { x: num(options.vx), y: num(options.vy) };
 }
-
 
 function regionCells(
     structure: StructureLike | null,
@@ -81,7 +82,6 @@ function regionCells(
     }
     return resolved.range.map((cell) => ({ x: cell.x, y: cell.y }));
 }
-
 
 function overRegion(
     structure: unknown,
@@ -104,7 +104,6 @@ function overRegion(
     return touched > 0;
 }
 
-
 export const elementsActions = defineActions({
     readElement: {
         role: "sense",
@@ -114,7 +113,7 @@ export const elementsActions = defineActions({
         type: "cell",
         slots: ["processing"],
         scope: "cell",
-        
+
         params: [...REGION_PARAMS, ...MATRIX_PARAMS],
         fn: (structure, context, options) => {
             try {
@@ -126,9 +125,7 @@ export const elementsActions = defineActions({
                 const first = resolved.range[0];
                 if (!first) return "";
                 const found = readers.readType(first.x, first.y);
-                
-                
-                
+
                 return found === undefined || found === null ? "" : readers.idOf(found);
             } catch (e) {
                 console.warn("[md-my-hown-mod:process] readElement failed", e);
@@ -136,8 +133,6 @@ export const elementsActions = defineActions({
             }
         },
     },
-
-    
 
     readDataField: {
         role: "sense",
@@ -148,28 +143,20 @@ export const elementsActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "cell",
         params: [
-        p("slot", "Data slot", "select", {
-        required: true,
-        def: "1",
-        options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
-        hint:
-        "1–4, from the element's Data fields list. The engine stores only these four.",
-        }),
+            p("slot", "Data slot", "select", {
+                required: true,
+                def: "1",
+                options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
+                hint:
+                    "1–4, from the element's Data fields list. The engine stores only these four.",
+            }),
         ],
         fn: (structure, _context, options) => {
             try {
                 const s = structure as StructureLike | null;
                 if (!s) return 0;
                 const o = (options ?? {}) as ElementOptions;
-                
-                
-                
-                
-                
-                
-                
-                
-                
+
                 const slot = dataSlotOf(o);
                 if (!slot) return 0;
                 const region = regionFor(s, o);
@@ -185,8 +172,6 @@ export const elementsActions = defineActions({
         },
     },
 
-    
-
     writeDataField: {
         role: "act",
         needs: ["pos"],
@@ -196,37 +181,30 @@ export const elementsActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "cell",
         params: [
-        p("slot", "Data slot", "select", {
-        required: true,
-        def: "1",
-        options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
-        hint: "1–4, from the element's Data fields list",
-        }),
-        p("slotValue", "Value", "text", {
-        required: true,
-        hint: "a number, or {{aVariable}} from an earlier step. Rounded to a whole number.",
-        }),
+            p("slot", "Data slot", "select", {
+                required: true,
+                def: "1",
+                options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Field ${n}` })),
+                hint: "1–4, from the element's Data fields list",
+            }),
+            p("slotValue", "Value", "text", {
+                required: true,
+                hint: "a number, or {{aVariable}} from an earlier step. Rounded to a whole number.",
+            }),
         ],
         fn: (structure, _context, options) => {
             try {
                 const s = structure as StructureLike | null;
                 if (!s) return;
                 const o = (options ?? {}) as ElementOptions;
-                
-                
-                
-                
+
                 const slot = dataSlotOf(o);
                 if (!slot) return;
                 const region = regionFor(s, o);
                 if ("error" in region) return;
                 const first = region.range[0];
                 if (!first) return;
-                
-                
-                
-                
-                
+
                 const n = Math.round(Number(o.slotValue));
                 if (!Number.isFinite(n)) return;
                 api.elements.setDataFieldAtCell(first.x, first.y, slot, n);
@@ -235,8 +213,6 @@ export const elementsActions = defineActions({
             }
         },
     },
-
-    
 
     countElements: {
         role: "sense",
@@ -247,8 +223,8 @@ export const elementsActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        elementRef("the element to count"),
-        ...REGION_PARAMS,
+            elementRef("the element to count"),
+            ...REGION_PARAMS,
         ],
         fn: (structure, context, options) => {
             try {
@@ -264,8 +240,7 @@ export const elementsActions = defineActions({
                 }
                 const note = clampNote(resolved.clamped, "countElements");
                 if (note) console.warn(note);
-                
-                
+
                 const holds = readers.matches(want);
                 let n = 0;
                 for (const cell of resolved.range) {
@@ -278,8 +253,6 @@ export const elementsActions = defineActions({
             }
         },
     },
-
-    
 
     countEmpty: {
         role: "sense",
@@ -310,11 +283,6 @@ export const elementsActions = defineActions({
         },
     },
 
-    
-
-    
-    
-
     replaceElement: {
         role: "act",
         needs: ["pos", "commit"],
@@ -323,9 +291,9 @@ export const elementsActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        elementRef("the element to write"),
-        ...CREATE_PARAMS,
-        ...REGION_PARAMS,
+            elementRef("the element to write"),
+            ...CREATE_PARAMS,
+            ...REGION_PARAMS,
         ],
         fn: (structure, context, options) => {
             const o = (options ?? {}) as ElementOptions;
@@ -348,8 +316,6 @@ export const elementsActions = defineActions({
         },
     },
 
-    
-
     createElement: {
         role: "act",
         needs: ["pos", "commit"],
@@ -359,9 +325,9 @@ export const elementsActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        elementRef("the element to place"),
-        ...CREATE_PARAMS,
-        ...REGION_PARAMS,
+            elementRef("the element to place"),
+            ...CREATE_PARAMS,
+            ...REGION_PARAMS,
         ],
         fn: (structure, context, options) => {
             const o = (options ?? {}) as ElementOptions;
@@ -384,8 +350,6 @@ export const elementsActions = defineActions({
             );
         },
     },
-
-    
 
     emptyCells: {
         role: "act",
@@ -414,8 +378,6 @@ export const elementsActions = defineActions({
         },
     },
 
-    
-
     removeElement: {
         role: "act",
         needs: ["pos", "read"],
@@ -425,8 +387,8 @@ export const elementsActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        elementRef("only cells holding this are emptied"),
-        ...REGION_PARAMS,
+            elementRef("only cells holding this are emptied"),
+            ...REGION_PARAMS,
         ],
         fn: (structure, context, options) => {
             const want = elementOf(options as ElementOptions);
@@ -434,11 +396,7 @@ export const elementsActions = defineActions({
                 console.warn("[md-my-hown-mod:process] removeElement: no element set");
                 return false;
             }
-            
-            
-            
-            
-            
+
             const isGold = cellReaders(context)?.holdsValue(want) ?? null;
             return writeCells(
                 structure,
@@ -446,13 +404,9 @@ export const elementsActions = defineActions({
                 options,
                 "removeElement",
                 (writer, cell, current) => {
-                    
                     if (current === null || current === undefined) return false;
                     if (!isGold || !isGold(current)) return false;
-                    
-                    
-                    
-                    
+
                     if (typeof writer.removeAtCell === "function") {
                         writer.removeAtCell(cell.x, cell.y, {});
                         return true;
@@ -464,8 +418,6 @@ export const elementsActions = defineActions({
         },
     },
 
-    
-
     transformElement: {
         role: "act",
         needs: ["pos", "commit"],
@@ -475,21 +427,17 @@ export const elementsActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("from", "From element", "text", {
-        hint: "only cells holding this are changed. Leave blank for any.",
-        }),
-        p("to", "To element", "text", { required: true, hint: "what they become" }),
-        
-        ...CREATE_PARAMS,
-        ...REGION_PARAMS,
+            p("from", "From element", "text", {
+                hint: "only cells holding this are changed. Leave blank for any.",
+            }),
+            p("to", "To element", "text", { required: true, hint: "what they become" }),
+
+            ...CREATE_PARAMS,
+            ...REGION_PARAMS,
         ],
         fn: (structure, context, options) => {
             const o = (options ?? {}) as ElementOptions;
-            
-            
-            
-            
-            
+
             const to = String(o.to ?? "");
             if (!to) {
                 console.warn("[md-my-hown-mod:process] transformElement: no target element set");
@@ -512,9 +460,7 @@ export const elementsActions = defineActions({
             );
         },
     },
-
 });
-
 
 export const motionActions = defineActions({
     getVelocity: {
@@ -526,7 +472,7 @@ export const motionActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        ...MOTION_REGION_PARAMS,
+            ...MOTION_REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             try {
@@ -534,8 +480,7 @@ export const motionActions = defineActions({
                 if (!s) return -1;
                 const first = regionCells(s, (options ?? {}) as MotionOptions, "getVelocity")[0];
                 if (!first) return -1;
-                
-                
+
                 const v = api.elements.getVelocityAtCell(first.x, first.y);
                 if (!v) return -1;
                 return Math.hypot(num(v.x), num(v.y));
@@ -546,8 +491,6 @@ export const motionActions = defineActions({
         },
     },
 
-    
-
     findFreeCell: {
         role: "sense",
         needs: ["pos"],
@@ -556,13 +499,13 @@ export const motionActions = defineActions({
         type: "cell",
         slots: ["processing"],
         scope: "cell",
-        
+
         params: [
-        p("size", "Search size", "number", {
-        def: "0",
-        min: 1,
-        hint: "cells to search from me. 0 = my own footprint size.",
-        }),
+            p("size", "Search size", "number", {
+                def: "0",
+                min: 1,
+                hint: "cells to search from me. 0 = my own footprint size.",
+            }),
         ],
         fn: (structure, _context, options) => {
             try {
@@ -570,8 +513,7 @@ export const motionActions = defineActions({
                 if (!s) return -1;
                 const o = (options ?? {}) as MotionOptions;
                 const own = shapeSize(s.shape);
-                
-                
+
                 const side = Math.max(1, Math.trunc(num(o.size, Math.max(own.width, own.height))));
                 const found = api.elements.findFreeCellInStructure(
                     num(s.x),
@@ -587,10 +529,6 @@ export const motionActions = defineActions({
         },
     },
 
-    
-
-    
-
     setVelocity: {
         role: "act",
         needs: ["pos"],
@@ -602,9 +540,7 @@ export const motionActions = defineActions({
         params: [...VELOCITY_PARAMS, ...MOTION_REGION_PARAMS],
         fn: (structure, _context, options) => {
             const v = vectorOf((options ?? {}) as MotionOptions);
-            
-            
-            
+
             return overRegion(
                 structure,
                 options,
@@ -613,8 +549,6 @@ export const motionActions = defineActions({
             );
         },
     },
-
-    
 
     addVelocity: {
         role: "act",
@@ -625,26 +559,26 @@ export const motionActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        ...VELOCITY_PARAMS,
-        p("maxSpeed", "Max speed", "number", {
-        def: "0",
-        min: 0,
-        hint: "cells/second. 0 = no clamp.",
-        }),
-        ...MOTION_REGION_PARAMS,
+            ...VELOCITY_PARAMS,
+            p("maxSpeed", "Max speed", "number", {
+                def: "0",
+                min: 0,
+                hint: "cells/second. 0 = no clamp.",
+            }),
+            ...MOTION_REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as MotionOptions;
             const v = vectorOf(o);
             const max = num(o.maxSpeed, 0);
-            return overRegion(structure, options, "addVelocity", (cell) =>
-                
-                
-                api.elements.addParticleVelocityAtCell(cell.x, cell.y, v, max));
+            return overRegion(
+                structure,
+                options,
+                "addVelocity",
+                (cell) => api.elements.addParticleVelocityAtCell(cell.x, cell.y, v, max),
+            );
         },
     },
-
-    
 
     setDuration: {
         role: "act",
@@ -655,12 +589,12 @@ export const motionActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("ticks", "Ticks", "number", { def: "60", min: 0, int: true }),
-        p("rearm", "Rearm", "bool", {
-        def: "false",
-        hint: "also raise the maximum, so it fires again next cycle",
-        }),
-        ...MOTION_REGION_PARAMS,
+            p("ticks", "Ticks", "number", { def: "60", min: 0, int: true }),
+            p("rearm", "Rearm", "bool", {
+                def: "false",
+                hint: "also raise the maximum, so it fires again next cycle",
+            }),
+            ...MOTION_REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as MotionOptions;
@@ -676,8 +610,6 @@ export const motionActions = defineActions({
         },
     },
 
-    
-
     teleportElement: {
         role: "act",
         needs: ["pos"],
@@ -687,9 +619,9 @@ export const motionActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("tx", "Move X", "number", { def: "0", int: true }),
-        p("ty", "Move Y", "number", { def: "1", int: true, hint: "1 = one cell down" }),
-        ...MOTION_REGION_PARAMS,
+            p("tx", "Move X", "number", { def: "0", int: true }),
+            p("ty", "Move Y", "number", { def: "1", int: true, hint: "1 = one cell down" }),
+            ...MOTION_REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
@@ -703,14 +635,11 @@ export const motionActions = defineActions({
             }
             const dx = Math.trunc(num(o.tx));
             const dy = Math.trunc(num(o.ty));
-            
+
             if (dx === 0 && dy === 0) return false;
             const cells = regionCells(s, o, "teleportElement");
             let moved = 0;
             for (const cell of cells) {
-                
-                
-                
                 if (api.elements.teleportBetweenCells(cell.x, cell.y, cell.x + dx, cell.y + dy)) {
                     moved++;
                 }
@@ -718,8 +647,6 @@ export const motionActions = defineActions({
             return moved > 0;
         },
     },
-
-    
 
     toParticle: {
         role: "act",
@@ -740,5 +667,4 @@ export const motionActions = defineActions({
             });
         },
     },
-
 });

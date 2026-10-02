@@ -1,7 +1,9 @@
-
 import { TAB_TO_CALL_SITE } from "../handler/index.ts";
 import { resolveProjectileOption } from "../handler/processing/projectile-option/index.ts";
-import { currentProcessRegistry, processProblem } from "../handler/processing/custom-process/index.ts";
+import {
+    currentProcessRegistry,
+    processProblem,
+} from "../handler/processing/custom-process/index.ts";
 import { resolveExcavationOption } from "../handler/processing/excavation-option/index.ts";
 import { MOD_ID, type ModConfig } from "../constants.ts";
 import { definitionFor } from "./definition/index.ts";
@@ -15,9 +17,7 @@ import {
     writerFor,
 } from "./definition/values.ts";
 
-
 export { formatIdList, parseIdList, safeJson };
-
 
 export {
     composeTooltipHover,
@@ -30,8 +30,6 @@ export {
 export { autoGraphicsKey, resolveAutoFill } from "./definition/fields.ts";
 export { PASSTHROUGH_KEY, passthroughKeysOf } from "./definition/fields.ts";
 import { type Opt, searchLibraryAssets } from "../catalog.ts";
-
-
 
 export type Tab =
     | "elements"
@@ -49,7 +47,6 @@ export type Tab =
     | "signals"
     | "triggers"
     | "behaviors"
-    
     | "placementConfigs"
     | "energy"
     | "networks"
@@ -59,30 +56,21 @@ export type Tab =
     | "sprites"
     | "modifiers"
     | "inputs"
-    
     | "draws"
-    
     | "spriteEditor"
-    
     | "action"
-    
     | "projectileOption"
-    
     | "excavationOption"
-    
     | "customProcess"
-    
     | "upgradeAction"
-    
     | "help"
-    
     | "map"
     | "json";
 
 export interface CategoryMeta {
     label: string;
     blurb: string;
-    
+
     configKey?: keyof ModConfig;
 }
 
@@ -165,12 +153,7 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
             "Not a limit on how many may be placed.",
         configKey: "placementConfigs",
     },
-    
-    
-    
-    
-    
-    
+
     energy: {
         label: "Interactions",
         blurb: "Attach a conductor/storage energy node to a structure.",
@@ -183,11 +166,7 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
     },
     buffers: {
         label: "Buffer",
-        
-        
-        
-        
-        
+
         blurb: "Shared slots every process in this mod can read and write.",
         configKey: "buffers",
     },
@@ -232,7 +211,7 @@ export const CATEGORY_META: Record<Tab, CategoryMeta> = {
         label: "Upgrade actions",
         blurb: "The actions an upgrade can run — and nothing else can.",
     },
-    
+
     draws: {
         label: "Custom draw",
         blurb: "What the engine can paint, and which of it this mod uses.",
@@ -259,17 +238,12 @@ export interface MenuGroup {
     categories: Tab[];
 }
 
-
 export const MENU_GROUPS: MenuGroup[] = [
     {
         key: "content",
         label: "Content",
         hint: "What the player sees in the world",
-        
-        
-        
-        
-        
+
         categories: ["terrains", "elements", "structures", "items", "buffers"],
     },
     {
@@ -305,9 +279,7 @@ export const MENU_GROUPS: MenuGroup[] = [
     {
         key: "handlers",
         label: "Handlers",
-        
-        
-        
+
         hint: "What this mod can run, and what it can build",
         categories: ["action", "customProcess"],
     },
@@ -320,8 +292,6 @@ export const MENU_GROUPS: MenuGroup[] = [
     },
 ];
 
-
-
 export type FieldKind =
     | "text"
     | "number"
@@ -332,21 +302,13 @@ export type FieldKind =
     | "outputs"
     | "shape"
     | "library"
-    
     | "terrainRules"
-    
     | "buildModes"
-    
     | "colorVariants"
-    
     | "multiselect"
-    
     | "projectileOption"
-    
     | "excavationOption"
-    
     | "processRef"
-    
     | "program";
 
 export interface FieldSpec {
@@ -357,51 +319,38 @@ export interface FieldSpec {
     required?: boolean;
     hint?: string;
     placeholder?: string;
-    
+
     min?: number;
     max?: number;
     step?: number;
     int?: boolean;
-    
+
     maxLength?: number;
     pattern?: string;
     patternMsg?: string;
-    
+
     options?: Opt[] | ((form: Record<string, string>) => Opt[]);
-    
+
     jsonType?: "object" | "array" | "matrix";
-    
+
     when?: (form: Record<string, string>) => boolean;
-    
+
     def?: string;
-    
+
     wide?: boolean;
-    
+
     emptyHint?: string;
-    
+
     autoKey?: string;
-    
+
     autoValue?: string;
 }
-
 
 export {
     hexListToVariants,
     seedVariantFromMapColor,
     variantsToHexList,
 } from "./definition/core/element.ts";
-
-
-
-
-
-
-
-
-
-
-
-
 
 export function resolveOptions(f: FieldSpec, form: Record<string, string> = {}): Opt[] {
     if (!f.options) return [];
@@ -421,13 +370,8 @@ export function isActive(f: FieldSpec, form: Record<string, string>): boolean {
 }
 
 export function fieldsFor(cat: Tab): FieldSpec[] {
-    
-    
-    
-    
     return definitionFor(cat)?.fields ?? [];
 }
-
 
 export function sectionsToReveal(
     sections: Section[],
@@ -445,7 +389,6 @@ export interface Section {
     fields: FieldSpec[];
 }
 
-
 export function sectionsFor(cat: Tab, form?: Record<string, string>): Section[] {
     const out: Section[] = [];
     for (const f of fieldsFor(cat)) {
@@ -456,7 +399,6 @@ export function sectionsFor(cat: Tab, form?: Record<string, string>): Section[] 
     }
     return out;
 }
-
 
 function fullIdOf(form: Record<string, string>, cat?: Tab): string {
     const suffix = (form.idSuffix ?? "").trim();
@@ -480,7 +422,6 @@ function parseJsonRaw(raw: string): { ok: boolean; value?: unknown; error?: stri
     }
 }
 
-
 function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): string | null {
     if (!isActive(f, form)) return null;
     const raw = (form[f.key] ?? "").trim();
@@ -488,45 +429,25 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
     if (f.kind === "bool") return null;
 
     if (!raw) {
-        
-        
-        
-        
         const empty = cat === undefined ? undefined : definitionFor(cat)?.validateField?.(f, raw);
         if (empty !== undefined) return empty;
         return f.required ? "required" : null;
     }
 
-    
-    
     const own = cat === undefined ? undefined : definitionFor(cat)?.validateField?.(f, raw);
     if (own !== undefined) return own;
 
     switch (f.kind) {
         case "processRef": {
-            
-            
             if (!raw.trim()) return null;
-            
-            
-            
-            
+
             const slot = TAB_TO_CALL_SITE[cat ?? ""];
-            if (!slot) return null; 
+            if (!slot) return null;
             return processProblem(currentProcessRegistry(), raw, slot) ?? null;
         }
         case "projectileOption":
-        
-        
-        
-        
-        
-        
-        
-        
-        
         case "excavationOption": {
-            if (!raw.trim()) return null; 
+            if (!raw.trim()) return null;
             if (f.kind === "projectileOption") {
                 if (!resolveProjectileOption(raw)) return `unknown projectile option: ${raw}`;
             } else if (!resolveExcavationOption(raw)) {
@@ -540,8 +461,7 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
                 return f.patternMsg ?? `must match ${f.pattern}`;
             }
             return null;
-        
-        
+
         case "library": {
             const known = searchLibraryAssets("").some((a) => a.path === raw);
             return known ? null : "not a bundled asset — pick one from the list";
@@ -555,11 +475,9 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
             return null;
         }
         case "multiselect": {
-            
-            
             const opts = resolveOptions(f, form);
             const tokens = parseIdList(raw);
-            if (opts.length === 0) return null; 
+            if (opts.length === 0) return null;
             const bad = tokens.filter((t) => !opts.some((o) => o.value === t));
             if (bad.length > 0) return `not a listed value: ${bad.join(", ")}`;
             return null;
@@ -587,9 +505,7 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
             if (f.jsonType === "array" && !Array.isArray(parsed.value)) {
                 return "must be a JSON array [ ]";
             }
-            
-            
-            
+
             return null;
         }
         default:
@@ -597,27 +513,16 @@ function validateField(f: FieldSpec, form: Record<string, string>, cat?: Tab): s
     }
 }
 
-
 export function validateForm(cat: Tab, form: Record<string, string>): Record<string, string> {
     const errors: Record<string, string> = {};
     for (const f of fieldsFor(cat)) {
         const err = validateField(f, form, cat);
         if (err) errors[f.key] = err;
     }
-    
-    
+
     definitionFor(cat)?.validate?.(form, errors);
     return errors;
 }
-
-
-
-
-
-
-
-
-
 
 function optJson<T>(form: Record<string, string>, key: string): T | undefined {
     const v = (form[key] ?? "").trim();
@@ -625,14 +530,11 @@ function optJson<T>(form: Record<string, string>, key: string): T | undefined {
     try {
         return JSON.parse(v) as T;
     } catch {
-        return undefined; 
+        return undefined;
     }
 }
 
-
 export { putCustomOrSelect } from "./definition/values.ts";
-
-
 
 export function formDefaults(cat: Tab): Record<string, string> {
     const form: Record<string, string> = {};
@@ -643,14 +545,11 @@ export function formDefaults(cat: Tab): Record<string, string> {
     return form;
 }
 
-
 export function newEntryForm(cat: Tab): Record<string, string> {
     const form = formDefaults(cat);
     definitionFor(cat)?.onNewEntry?.(form);
     return form;
 }
-
-
 
 export function passthroughKeys(
     cat: Tab,
@@ -659,24 +558,18 @@ export function passthroughKeys(
     return Object.keys(passthroughOf(cat, entry)).sort();
 }
 
-
 function passthroughOf(cat: Tab, entry: Record<string, unknown>): Record<string, unknown> {
-    
-    
-    
-    
     const covered = new Set<string>(definitionFor(cat)?.formCovered ?? []);
     covered.add("id");
     const rest: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(entry)) {
         if (covered.has(k)) continue;
         if (v === undefined || v === null) continue;
-        if (typeof v === "function") continue; 
+        if (typeof v === "function") continue;
         rest[k] = v;
     }
     return rest;
 }
-
 
 export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<string, string> {
     const form = formDefaults(cat);
@@ -693,19 +586,14 @@ export function entryToForm(cat: Tab, entry: Record<string, unknown>): Record<st
     return form;
 }
 
-
 export function formToEntry(
     cat: Tab,
     form: Record<string, string>,
 ): Record<string, unknown> & { id?: string } {
-    
     const entry: Record<string, unknown> = {
         ...(optJson<Record<string, unknown>>(form, "advancedJson") ?? {}),
     };
-    
-    
-    
-    
+
     const id = fullIdOf(form, cat);
     if (id) entry.id = id;
 

@@ -1,8 +1,4 @@
-
-
-
 export const DRAG_SLOP = 4;
-
 
 export function exceedsSlop(
     startX: number,
@@ -13,7 +9,6 @@ export function exceedsSlop(
 ): boolean {
     return Math.abs(x - startX) > slop || Math.abs(y - startY) > slop;
 }
-
 
 export function clampChip(
     x: number,

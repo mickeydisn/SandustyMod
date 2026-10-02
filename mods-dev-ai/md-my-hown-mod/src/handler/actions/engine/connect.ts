@@ -1,9 +1,7 @@
 import { defineActions, defineModifiers } from "../../engine/types.ts";
 import { p } from "../../engine/registry/params.ts";
 
-
 export const engineConnectActions = defineActions({
-    
     energyDefault: {
         role: "connect",
         needs: [],
@@ -21,7 +19,6 @@ export const engineConnectActions = defineActions({
         },
     },
 
-    
     energyBank: {
         role: "connect",
         needs: [],
@@ -39,7 +36,6 @@ export const engineConnectActions = defineActions({
         },
     },
 
-    
     energyWire: {
         role: "connect",
         needs: [],
@@ -57,7 +53,6 @@ export const engineConnectActions = defineActions({
         },
     },
 
-    
     energyConductor: {
         role: "connect",
         needs: [],
@@ -69,7 +64,6 @@ export const engineConnectActions = defineActions({
         fn: () => ({ capacity: 0 }),
     },
 
-    
     energyNetwork: {
         role: "connect",
         needs: [],
@@ -78,10 +72,10 @@ export const engineConnectActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("energyType", "Energy type", "text", {
-        required: true,
-        hint: "network name to join",
-        }),
+            p("energyType", "Energy type", "text", {
+                required: true,
+                hint: "network name to join",
+            }),
         ],
         fn: (_structure, _ctx, extra) => {
             const o = (extra as { energyType?: string } | null) ?? {};
@@ -89,7 +83,6 @@ export const engineConnectActions = defineActions({
         },
     },
 
-    
     itemDefault: {
         role: "connect",
         needs: [],
@@ -104,29 +97,32 @@ export const engineConnectActions = defineActions({
 });
 
 export const connectModifierActions = defineModifiers({
-    
     logArgs: {
         role: "connect",
         needs: [],
         kind: "intercept",
         doc: "Modifier: prints whatever the hook passed in. Use to discover hook names.",
-        type: "modifier", slots: ["modifier"], scope: "global", params: [],
+        type: "modifier",
+        slots: ["modifier"],
+        scope: "global",
+        params: [],
         fn: (args, ctx) => {
             console.log("[md-my-hown-mod:modifier] intercept", args, ctx);
         },
     },
 
-    
     identity: {
         role: "connect",
         needs: [],
         kind: "modify",
         doc: "Modifier: returns the args untouched. Proves a modify hook is wired.",
-        type: "modifier", slots: ["modifier"], scope: "global", params: [],
+        type: "modifier",
+        slots: ["modifier"],
+        scope: "global",
+        params: [],
         fn: (args) => args,
     },
 
-    
     logBuildingPayload: {
         role: "connect",
         needs: [],

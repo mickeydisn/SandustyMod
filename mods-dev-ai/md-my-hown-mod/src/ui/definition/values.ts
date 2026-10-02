@@ -1,7 +1,5 @@
-
 import type { Opt } from "../../catalog.ts";
 import type { EntryReader, EntryWriter } from "./types.ts";
-
 
 export function safeJson(text: string): unknown {
     try {
@@ -10,7 +8,6 @@ export function safeJson(text: string): unknown {
         return undefined;
     }
 }
-
 
 export function parseObjectOrUndefined(
     raw: string | undefined,
@@ -26,7 +23,6 @@ export function parseObjectOrUndefined(
     }
 }
 
-
 export function parseIdList(text: string | undefined): string[] {
     if (!text) return [];
     return text
@@ -35,14 +31,11 @@ export function parseIdList(text: string | undefined): string[] {
         .filter((s) => s !== "");
 }
 
-
 export function formatIdList(ids: readonly string[] | undefined): string {
     return Array.isArray(ids) ? ids.join(", ") : "";
 }
 
-
 export const CUSTOM = "__custom__";
-
 
 export function putCustomOrSelect(
     put: (key: string, value: string) => void,
@@ -60,18 +53,14 @@ export function putCustomOrSelect(
     }
 }
 
-
 export function optOrCustom(form: Record<string, string>, selectKey: string, customKey: string) {
     const picked = (form[selectKey] ?? "").trim();
     return picked === CUSTOM ? (form[customKey] ?? "").trim() || undefined : picked || undefined;
 }
 
-
 export function readerFor(form: Record<string, string>): EntryReader {
     return {
         put(key, value) {
-            
-            
             if (value !== undefined) form[key] = value;
         },
         str: (v) => (typeof v === "string" ? v : undefined),
@@ -83,21 +72,17 @@ export function readerFor(form: Record<string, string>): EntryReader {
 
 const NUMERIC = /^-?\d+(\.\d+)?$/;
 
-
 export const HEX = /^#[0-9a-fA-F]{6}$/;
-
 
 export function hexToPacked(hex: string): number {
     return parseInt(hex.slice(1), 16) & 0xffffff;
 }
-
 
 export function packedToHex(n: number | undefined): string {
     if (typeof n !== "number" || !Number.isFinite(n)) return "";
     const rgb = n > 0xffffff ? (n >>> 0) & 0xffffff : n & 0xffffff;
     return `#${rgb.toString(16).padStart(6, "0")}`;
 }
-
 
 export function writerFor(
     form: Record<string, string>,
@@ -114,16 +99,11 @@ export function writerFor(
         setNum: put,
         setBool: put,
         setRaw: put,
-        
-        
-        
-        
+
         del(key) {
             delete entry[key];
         },
-        
-        
-        
+
         opt(key) {
             const v = (form[key] ?? "").trim();
             return v === "" ? undefined : v;
@@ -144,7 +124,7 @@ export function writerFor(
             try {
                 return JSON.parse(v) as T;
             } catch {
-                return undefined; 
+                return undefined;
             }
         },
     };

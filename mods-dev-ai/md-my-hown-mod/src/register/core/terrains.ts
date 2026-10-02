@@ -1,6 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerTerrains({ config }: RegisterContext): number {
     return registerEach(config.terrains, "terrains", (def) => {

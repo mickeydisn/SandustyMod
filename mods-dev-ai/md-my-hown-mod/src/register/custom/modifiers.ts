@@ -1,6 +1,5 @@
 import { applyModifier } from "../../handler/index.ts";
-import { registered, type RegisterContext } from "../registry.ts";
-
+import { type RegisterContext, registered } from "../registry.ts";
 
 export function registerModifiers({ config }: RegisterContext): number {
     let n = 0;

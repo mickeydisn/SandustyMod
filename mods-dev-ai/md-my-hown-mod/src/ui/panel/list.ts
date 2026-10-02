@@ -1,5 +1,3 @@
-
-
 import type { ListRenderCtx, ListRow, ModOrigin, RowOrigin } from "../definition/types.ts";
 import {
     configIsHidden,
@@ -12,9 +10,6 @@ import {
 import * as S from "../styles.ts";
 import type { Style } from "../styles.ts";
 
-
-
-
 export function modOf(row: ListRow): ModOrigin {
     const dot = row.id.indexOf(".");
     if (dot <= 0) return { own: false };
@@ -22,26 +17,20 @@ export function modOf(row: ListRow): ModOrigin {
     return { modId, own: OWN_ID_PREFIXES.includes(modId) };
 }
 
-
 export type OwnerKey = "own" | "game" | `mod:${string}`;
 
-
 export function ownerOf(row: ListRow): OwnerKey {
-    
-    
     if (row.origin === "mod") return "own";
     const m = modOf(row);
     if (!m.modId) return "game";
     return `mod:${m.modId}`;
 }
 
-
 export function ownerLabel(key: OwnerKey): string {
     if (key === "own") return "This mod";
     if (key === "game") return "Game";
     return key.slice(4);
 }
-
 
 export function ownersOf(rows: ListRow[]): OwnerKey[] {
     const seen = new Set<OwnerKey>();
@@ -56,7 +45,6 @@ export function ownersOf(rows: ListRow[]): OwnerKey[] {
     ];
 }
 
-
 export function countByOwner(rows: ListRow[]): Map<OwnerKey, number> {
     const out = new Map<OwnerKey, number>();
     for (const r of rows) {
@@ -66,19 +54,11 @@ export function countByOwner(rows: ListRow[]): Map<OwnerKey, number> {
     return out;
 }
 
-
-
-
-
 export { configIsHidden, HIDDEN_FIELD, type HiddenCategory } from "../../constants.ts";
-
 
 export function hiddenFieldOf(cat: string): string | undefined {
     return HIDDEN_FIELD[cat as HiddenCategory];
 }
-
-
-
 
 export function brief(v: unknown): string {
     if (v === undefined || v === null || v === "") return "";
@@ -86,15 +66,14 @@ export function brief(v: unknown): string {
     if (typeof v === "boolean") return v ? "yes" : "no";
     if (typeof v === "object") {
         const o = v as Record<string, unknown>;
-        
+
         for (const k of ["id", "name", "type", "nameKey"]) {
             if (typeof o[k] === "string" && o[k]) return String(o[k]);
         }
         if (Array.isArray(v)) {
             const arr = v as unknown[];
             if (arr.length === 0) return "none";
-            
-            
+
             if (
                 arr.length <= 4 &&
                 arr.every((x) => typeof x === "string" || typeof x === "number")
@@ -103,8 +82,7 @@ export function brief(v: unknown): string {
             }
             return `${arr.length} entries`;
         }
-        
-        
+
         const keys = Object.keys(o);
         if (keys.length === 0) return "set";
         if (keys.length <= 6) return keys.map((k) => `${k}: ${brief(o[k])}`).join(", ");
@@ -113,21 +91,18 @@ export function brief(v: unknown): string {
     return String(v);
 }
 
-
 export interface DetailField {
     key: string;
     label: string;
-    
+
     pick?: (src: Record<string, unknown>) => unknown;
 }
 
-
 export interface DetailSpec {
     fields: DetailField[];
-    
+
     skip: string[];
 }
-
 
 const ALWAYS_SKIP = [
     "id",
@@ -144,7 +119,6 @@ const ALWAYS_SKIP = [
     "onDamage",
 ];
 
-
 export function detailRows(
     src: Record<string, unknown>,
     spec: DetailSpec,
@@ -155,8 +129,7 @@ export function detailRows(
     for (const f of spec.fields) {
         used.add(f.key);
         const s = brief(f.pick ? f.pick(src) : src[f.key]);
-        
-        
+
         if (s) rows.push([f.label, s]);
     }
 
@@ -169,9 +142,7 @@ export function detailRows(
     return rows;
 }
 
-
 type H = (type: string, props: unknown, ...children: unknown[]) => unknown;
-
 
 export function renderDetail(h: H, ctx: ListRenderCtx, spec: DetailSpec): unknown {
     const src = ctx.row.native ?? ctx.row.entry ?? {};
@@ -192,8 +163,6 @@ export function renderDetail(h: H, ctx: ListRenderCtx, spec: DetailSpec): unknow
                 "div",
                 { key: k, style: S.detailLine },
                 h("span", { style: S.detailKey }, k),
-                
-                
                 h("span", { style: S.detailVal, title: v }, v),
             )
         ),
@@ -209,13 +178,10 @@ export function mergeRows(
         hidden?: boolean;
         native?: Record<string, unknown>;
     }[],
-    
     cat?: string,
 ): ListRow[] {
     const byId = new Map<string, ListRow>();
 
-    
-    
     for (const n of natives) {
         if (!n?.id) continue;
         byId.set(n.id, {
@@ -224,10 +190,7 @@ export function mergeRows(
             origin: "game",
             color: n.color,
             native: n.native,
-            
-            
-            
-            
+
             hidden: n.hidden === true,
         });
     }
@@ -242,14 +205,10 @@ export function mergeRows(
             label: name || prior?.label || id,
             origin: "mod",
             color: prior?.color,
-            
-            
+
             native: prior?.native,
             entry: e,
-            
-            
-            
-            
+
             hidden: (() => {
                 const said = entryVisibility(e, cat!);
                 return said === undefined ? prior?.hidden === true : said;
@@ -260,7 +219,6 @@ export function mergeRows(
     return [...byId.values()].sort(byOwnerThenLabel);
 }
 
-
 function byOwnerThenLabel(a: ListRow, b: ListRow): number {
     const ka = ownerOf(a);
     const kb = ownerOf(b);
@@ -268,22 +226,17 @@ function byOwnerThenLabel(a: ListRow, b: ListRow): number {
     return a.label.localeCompare(b.label) || a.id.localeCompare(b.id);
 }
 
-
 function ownerRank(key: OwnerKey): number {
     if (key === "own") return 0;
     if (key === "game") return 1;
     return 2;
 }
 
-
-
-
 export function filterRows(
     rows: ListRow[],
     text: string,
     searchText?: (row: ListRow) => string,
     owner: OwnerKey | "all" = "all",
-    
     showHidden = false,
 ): ListRow[] {
     const q = text.trim().toLowerCase();
@@ -296,7 +249,6 @@ export function filterRows(
     });
 }
 
-
 export function shownBecauseOf(
     rows: ListRow[],
     owner: OwnerKey | "all",
@@ -308,48 +260,28 @@ export function shownBecauseOf(
     const matches = (o: OwnerKey | "all", hid: boolean) =>
         filterRows(rows, query, undefined, o, hid).length;
 
-    
-    
     if (query.trim() && matches(owner, showHidden) === 0) {
         return `No ${what} match “${query.trim()}” in this view.`;
     }
 
-    
-    
-    
-    
     if (!showHidden && matches(owner, true) > 0) {
         return `All ${
             countHiddenRows(rows, owner)
         } ${what} in this view are hidden — tick “hidden” to show them.`;
     }
 
-    
-    
-    
     if (owner !== "all" && matches("all", showHidden) > 0) {
         return `You have no ${what} in this view. ${
             matches("all", showHidden)
         } exist — switch the filter to “All” to see them.`;
     }
 
-    
-    
-    
-    
-    
     if (matches("all", true) > 0) {
         return `All ${rows.length} ${what} here are another mod's and hidden — switch the filter to “All” and tick “hidden”.`;
     }
 
-    
-    
-    
-    
-    
     return `No ${what} match that filter.`;
 }
-
 
 export function countHiddenRows(
     rows: ListRow[],
@@ -364,15 +296,11 @@ export function countHiddenRows(
     return n;
 }
 
-
 export function countByOrigin(rows: ListRow[]): Record<RowOrigin, number> {
     const out: Record<RowOrigin, number> = { mod: 0, game: 0 };
     for (const r of rows) out[r.origin]++;
     return out;
 }
-
-
-
 
 export function renderRowInline(
     ctx: ListRenderCtx,
@@ -382,7 +310,6 @@ export function renderRowInline(
     return def.inlineRender ? def.inlineRender(ctx) : shared();
 }
 
-
 export function renderRowInfo(
     ctx: ListRenderCtx,
     def: { infoRender?: (c: ListRenderCtx) => unknown },
@@ -391,14 +318,11 @@ export function renderRowInfo(
     return def.infoRender ? def.infoRender(ctx) : shared();
 }
 
-
 export function sharedInline(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx): unknown {
     const { row } = ctx;
     return h(
         "div",
         { style: S.rowHead },
-        
-        
         disclosureMark(h, ctx),
         row.color ? h("span", { style: { ...S.rowSwatch, background: row.color } }) : null,
         h("span", { style: S.rowTitle, title: row.label }, row.label),
@@ -407,7 +331,6 @@ export function sharedInline(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx
     );
 }
 
-
 export function originText(row: ListRow): string {
     const key = ownerOf(row);
     if (key === "own") return "yours";
@@ -415,15 +338,12 @@ export function originText(row: ListRow): string {
     return key.slice(4);
 }
 
-
 export function originTagStyle(row: ListRow): Style {
     const key = ownerOf(row);
     if (key === "own") return S.rowTagMod;
-    
-    
+
     return key === "game" ? S.rowTagGame : S.rowTagOther;
 }
-
 
 export function originHint(row: ListRow): string {
     const key = ownerOf(row);
@@ -431,7 +351,6 @@ export function originHint(row: ListRow): string {
     if (key === "game") return "Built into the game — reference only.";
     return `Added by the "${key.slice(4)}" mod — reference only.`;
 }
-
 
 export function disclosureMark(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx): unknown {
     return h(
@@ -447,7 +366,6 @@ export function disclosureMark(h: (...a: unknown[]) => unknown, ctx: ListRenderC
     );
 }
 
-
 export function originTag(h: (...a: unknown[]) => unknown, row: ListRow): unknown {
     return h(
         "span",
@@ -455,7 +373,6 @@ export function originTag(h: (...a: unknown[]) => unknown, row: ListRow): unknow
         originText(row),
     );
 }
-
 
 export function sharedInfo(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx): unknown {
     const src = ctx.row.native ?? ctx.row.entry;
@@ -465,8 +382,7 @@ export function sharedInfo(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx):
         if (k === "id" || v === undefined || v === null || v === "") continue;
         if (typeof v === "object") continue;
         pairs.push([k, v]);
-        
-        
+
         if (pairs.length >= 8) break;
     }
     if (!pairs.length) return null;
@@ -484,9 +400,6 @@ export function sharedInfo(h: (...a: unknown[]) => unknown, ctx: ListRenderCtx):
     );
 }
 
-
-
-
 export function renderListRow(
     ctx: ListRenderCtx,
     def: {
@@ -497,9 +410,7 @@ export function renderListRow(
     const { h, row, expanded } = ctx;
     const inline = renderRowInline(ctx, def, () => sharedInline(h, ctx));
     const detail = expanded ? renderRowInfo(ctx, def, () => sharedInfo(h, ctx)) : null;
-    
-    
-    
+
     const stop = (fn?: () => void) =>
         fn
             ? (e: { stopPropagation: () => void; preventDefault?: () => void }) => {
@@ -512,14 +423,9 @@ export function renderListRow(
         "details",
         {
             style: { ...(row.origin === "mod" ? S.row : S.rowReadOnly), ...S.rowDetails },
-            
-            
-            
+
             open: expanded,
             onToggle: (e: { currentTarget: { open: boolean } }) => {
-                
-                
-                
                 if (e.currentTarget.open && !expanded) ctx.toggle();
             },
         },
@@ -529,13 +435,7 @@ export function renderListRow(
                 style: S.rowSummary,
                 title: expanded ? "Hide details" : "Show details",
             },
-            
-            
-            
             inline,
-            
-            
-            
             ctx.edit ? h("button", { style: S.btn, onClick: stop(ctx.edit) }, "Edit") : null,
             ctx.remove
                 ? h(

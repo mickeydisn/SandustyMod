@@ -1,5 +1,3 @@
-
-
 import type { Opt } from "../../../../catalog.ts";
 import {
     listElements,
@@ -31,56 +29,48 @@ import {
     toSelectorItems,
 } from "./selector-state.ts";
 
-
 export interface SelectorReact {
     h: (...args: unknown[]) => unknown;
 }
 
-
 export interface SelectorState {
-    
     open?: boolean;
-    
+
     owner?: SelectorOwner;
-    
+
     query?: string;
-    
+
     showHidden?: boolean;
 }
-
 
 export function selectorKey(field: string, entryId: string | null): string {
     return entryId ? `${field}::${entryId}` : field;
 }
 
-
 export interface SelectorProps {
     react: SelectorReact;
     value: string;
     options: readonly Opt[];
-    
+
     multiple: boolean;
     onChange: (value: string) => void;
-    
+
     locked?: boolean;
-    
+
     emptyHint?: string;
-    
+
     placeholder?: string;
-    
+
     state?: SelectorState;
-    
+
     onState: (patch: SelectorState) => void;
 }
-
 
 function swatch(h: SelectorReact["h"], item: SelectorItem): unknown {
     if (!item.color) return null;
     return h("span", {
         key: `sw:${item.value}`,
         style: {
-            
-            
             width: 12,
             height: 12,
             borderRadius: 2,
@@ -90,7 +80,6 @@ function swatch(h: SelectorReact["h"], item: SelectorItem): unknown {
         },
     });
 }
-
 
 export const CONTENT_RESOLVERS: ReadonlySet<unknown> = new Set([
     listElements,
@@ -102,24 +91,17 @@ export const CONTENT_RESOLVERS: ReadonlySet<unknown> = new Set([
     listEnergyNetworkOpts,
     listOutputTargets,
     listLinkedClearance,
-    
-    
-    
-    
+
     listTechIds,
-    
-    
+
     listUpgradeCategoryIds,
 ]);
 
-
 export function isContentField(options: FieldSpec["options"]): boolean {
     if (typeof options === "function") return CONTENT_RESOLVERS.has(options);
-    
-    
+
     return false;
 }
-
 
 function ownerChips(
     h: SelectorReact["h"],
@@ -127,9 +109,7 @@ function ownerChips(
     counts: Record<SelectorOwner, number>,
     mods: readonly string[],
     set: (patch: SelectorState) => void,
-    
     hiddenCount: number,
-    
     showHidden: boolean,
 ): unknown[] {
     const rows: [SelectorOwner, string, number, Record<string, unknown>, string][] = [
@@ -154,8 +134,6 @@ function ownerChips(
                     h("span", { style: S.chipCount }, String(n)),
                 )
             ),
-            
-            
             owner === "own"
                 ? h(
                     "span",
@@ -172,8 +150,6 @@ function ownerChips(
                     },
                     "✕ only mine",
                 ),
-            
-            
             mods.length
                 ? h(
                     "span",
@@ -181,9 +157,6 @@ function ownerChips(
                     `+${mods.length}`,
                 )
                 : null,
-            
-            
-            
             hiddenCount
                 ? h(
                     "label",
@@ -217,21 +190,17 @@ function ownerChips(
 export function renderSelector(props: SelectorProps): unknown {
     const { h } = props.react;
     const { value, options, multiple, onChange, locked, emptyHint, placeholder } = props;
-    
-    
+
     const { open = false, owner = "own", query = "", showHidden = false } = props.state ?? {};
     const setState = props.onState;
 
     const items = toSelectorItems(options);
     const selected = multiple ? parseIdList(value) : value ? [value] : [];
     const counts = countByOwner(items);
-    
-    
-    
-    
+
     const shown = filterByText(filterHidden(filterByOwner(items, owner), showHidden), query);
     const hiddenCount = countHidden(filterByOwner(items, owner));
-    
+
     const missing = findOrphans(selected, items);
     const order = items.map((i) => i.value);
     const mods = otherMods(items);
@@ -243,7 +212,6 @@ export function renderSelector(props: SelectorProps): unknown {
     const pick = (v: string) => commit(applyChoice(selected, v, multiple, order));
     const clear = (v: string) => commit(selected.filter((x) => x !== v));
 
-    
     if (!open) {
         const chosen = selected
             .map((v) => items.find((i) => i.value === v))
@@ -290,7 +258,6 @@ export function renderSelector(props: SelectorProps): unknown {
                     : h("span", { style: { color: "#7f90ad" } }, placeholder ?? "— none —"),
                 h("span", { style: { marginLeft: "auto", fontSize: 10, color: "#7f90ad" } }, "▾"),
             ),
-            
             ...missing.map((v) =>
                 h(
                     "span",
@@ -324,7 +291,6 @@ export function renderSelector(props: SelectorProps): unknown {
         );
     }
 
-    
     return h(
         "div",
         {
@@ -381,9 +347,6 @@ export function renderSelector(props: SelectorProps): unknown {
                         key: `opt:${i.value}`,
                         type: "button",
                         style: {
-                            
-                            
-                            
                             display: "flex",
                             alignItems: "center",
                             gap: 6,
@@ -413,9 +376,6 @@ export function renderSelector(props: SelectorProps): unknown {
                         },
                         i.label,
                     ),
-                    
-                    
-                    
                     i.own ? null : h(
                         "span",
                         {

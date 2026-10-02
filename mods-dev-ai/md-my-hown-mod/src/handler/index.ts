@@ -34,8 +34,6 @@ export {
     resolveModifier,
 } from "./actions/index.ts";
 
-
-
 export { setBufferSource } from "./actions/custom/buffer.ts";
 
 export {
@@ -99,8 +97,8 @@ export { refsIn } from "./engine/refs.ts";
 export { scopeSeedNames } from "./processing/scope-context.ts";
 
 export {
-    allHandlerTypes,
     ALL_SLOTS,
+    allHandlerTypes,
     BLOCK_META,
     buildHandlerOptions,
     type ContentKind,
@@ -164,7 +162,5 @@ export {
     type ExcavationOptionValue,
     resolveExcavationOption,
 } from "./processing/excavation-option/index.ts";
-
-
 
 import "./engine/debug-handle.ts";

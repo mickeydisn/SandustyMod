@@ -1,5 +1,3 @@
-
-
 export const EXCAVATION_FLAGS = [
     "fromGun",
     "fromRocketExplosion",
@@ -15,9 +13,8 @@ export type ExcavationFlag = (typeof EXCAVATION_FLAGS)[number];
 export type ExcavationOptionFn = (params: unknown) => ExcavationOptionValue;
 
 export interface ExcavationOptionValue {
-    
     power?: number;
-    
+
     options?: Record<string, unknown>;
 }
 

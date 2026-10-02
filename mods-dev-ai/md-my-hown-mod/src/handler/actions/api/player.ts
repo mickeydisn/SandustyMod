@@ -10,16 +10,13 @@ export const playerActions = defineActions({
         slots: ["upgrade"],
         scope: "item",
         params: [
-        p("itemId", "Item", "text", { required: true }),
-        p("count", "Count", "number", { def: "1", min: 0, int: true }),
+            p("itemId", "Item", "text", { required: true }),
+            p("count", "Count", "number", { def: "1", min: 0, int: true }),
         ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as { itemId?: string; count?: number };
             if (!o.itemId) return;
             try {
-                
-                
-                
                 for (let i = 0; i < Math.max(1, o.count ?? 1); i++) {
                     api.player.inventory.addById(o.itemId);
                 }
@@ -28,7 +25,4 @@ export const playerActions = defineActions({
             }
         },
     },
-
-    
-
 });

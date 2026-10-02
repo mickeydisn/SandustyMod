@@ -1,4 +1,3 @@
-
 import type { ProjectileOptionFn } from "./types.ts";
 
 function withParams(
@@ -10,10 +9,6 @@ function withParams(
     for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
         if (typeof v !== "number" && typeof v !== "boolean") continue;
         if (k === "rotatesWithVelocity") {
-            
-            
-            
-            
             out.rotateWithVelocity = v;
             continue;
         }
@@ -24,31 +19,24 @@ function withParams(
 }
 
 export const PROJECTILE_OPTIONS: Record<string, ProjectileOptionFn> = {
-    
     defaultProjectileOptions: (params) =>
         withParams({ speed: 10, rotateWithVelocity: true }, params),
 
-    
     projectileHeavy: (params) =>
         withParams({ speed: 6, radius: 14, lifetime: 90, damage: 40 }, params),
 
-    
     projectileFast: (params) =>
         withParams({ speed: 24, radius: 6, lifetime: 45, damage: 12 }, params),
 
-    
     projectileHoming: (params) =>
         withParams({ speed: 12, radius: 8, lifetime: 120, homing: true }, params),
 
-    
     projectileShotgun: (params) =>
         withParams({ speed: 18, radius: 4, lifetime: 20, spread: 0.35 }, params),
 
-    
     projectileExcavate: (params) =>
         withParams({ speed: 14, radius: 10, lifetime: 60, damage: 15, dig: true }, params),
 
-    
     projectileTerrain: (params) =>
         withParams({ speed: 8, radius: 16, lifetime: 30, carryTerrain: true }, params),
 };

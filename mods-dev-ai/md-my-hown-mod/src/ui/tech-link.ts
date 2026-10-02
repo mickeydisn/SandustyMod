@@ -1,15 +1,10 @@
-
-
 import { MOD_ID, type ModConfig, type TechConfig, type UnlockNodeConfig } from "../constants.ts";
 
-
 export const DEFAULT_UNLOCK_NODE = `${MOD_ID}:unlock.default`;
-
 
 export function defaultUnlockNode(): UnlockNodeConfig {
     return { id: DEFAULT_UNLOCK_NODE, name: "Unlock by default", kind: "always" };
 }
-
 
 export function allUnlockNodes(cfg: ModConfig): UnlockNodeConfig[] {
     const out = [defaultUnlockNode()];
@@ -22,7 +17,6 @@ export function allUnlockNodes(cfg: ModConfig): UnlockNodeConfig[] {
     return out;
 }
 
-
 export function unlockNodeOf(structureId: string, cfg: ModConfig): UnlockNodeConfig {
     const st = (cfg.structures ?? []).find((s) => s?.id === structureId);
     const want = st?.unlockNode?.trim();
@@ -30,11 +24,9 @@ export function unlockNodeOf(structureId: string, cfg: ModConfig): UnlockNodeCon
     return (cfg.unlockNodes ?? []).find((n) => n?.id === want) ?? defaultUnlockNode();
 }
 
-
 export function isAlwaysUnlocked(structureId: string, cfg: ModConfig): boolean {
     return unlockNodeOf(structureId, cfg).kind === "always";
 }
-
 
 export function structuresForNode(nodeId: string, cfg: ModConfig): string[] {
     return (cfg.structures ?? [])
@@ -42,14 +34,9 @@ export function structuresForNode(nodeId: string, cfg: ModConfig): string[] {
         .map((s) => s.id);
 }
 
-
 export function engineTechOf(node: UnlockNodeConfig, cfg: ModConfig): TechConfig | undefined {
     if (node.kind !== "tech") return undefined;
     if (node.techId) {
-        
-        
-        
-        
         return (cfg.techs ?? []).find((t) => t?.id === node.techId);
     }
     const built: TechConfig = {
@@ -66,7 +53,6 @@ export function engineTechOf(node: UnlockNodeConfig, cfg: ModConfig): TechConfig
     return built;
 }
 
-
 export function techUnlockStructureIds(techId: string, cfg: ModConfig): string[] {
     const tech = (cfg.techs ?? []).find((t) => t?.id === techId);
     const declared = Array.isArray(tech?.unlocks?.structures) ? tech.unlocks.structures : [];
@@ -77,15 +63,13 @@ export function techUnlockStructureIds(techId: string, cfg: ModConfig): string[]
     for (const id of declared) add(id);
     for (const n of cfg.unlockNodes ?? []) {
         if (!n?.id || n.kind !== "tech") continue;
-        
-        
+
         if (n.id === techId || n.techId === techId) {
             for (const id of structuresForNode(n.id, cfg)) add(id);
         }
     }
     return out;
 }
-
 
 export function describeNode(node: UnlockNodeConfig): string {
     const named = node.id === DEFAULT_UNLOCK_NODE ? "Unlock by default" : node.name || node.id;
@@ -97,7 +81,6 @@ export function describeNode(node: UnlockNodeConfig): string {
     return `Unlocked by ${named} ${via}${cost}${parent}.`;
 }
 
-
 export function unlockLine(
     form: Record<string, string>,
     cfg: ModConfig,
@@ -106,8 +89,7 @@ export function unlockLine(
     if (!want || want === DEFAULT_UNLOCK_NODE) return describeNode(defaultUnlockNode());
     const node = (cfg.unlockNodes ?? []).find((n) => n?.id === want);
     if (node) return describeNode(node);
-    
-    
+
     return `⚠ ${want} no longer exists — this structure is available from the start. ` +
         `Pick another node, or the default.`;
 }

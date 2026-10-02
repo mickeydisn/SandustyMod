@@ -1,14 +1,11 @@
-
 import type { DefinitionList, ListRenderCtx, ListRow } from "../definition/types.ts";
 import { discoverItems } from "../../catalog.ts";
 import { brief, type DetailSpec, disclosureMark, originTag, renderDetail } from "./list.ts";
 import * as S from "../styles.ts";
 
-
 function field(ctx: ListRenderCtx, key: string): unknown {
     return ctx.row.native?.[key] ?? ctx.row.entry?.[key];
 }
-
 
 const BY_TYPE: Record<string, [string, string][]> = {
     tool: [
@@ -32,14 +29,12 @@ const BY_TYPE: Record<string, [string, string][]> = {
     gadget: [["Cooldown", "cooldown"], ["Charges", "charges"]],
 };
 
-
 const COMMON: [string, string][] = [
     ["Type", "itemType"],
     ["Stack size", "maxStackSize"],
     ["Cooldown", "cooldown"],
     ["Sprite", "sprite"],
 ];
-
 
 function fieldsFor(itemType: string): [string, string][] {
     const t = itemType.trim().toLowerCase();
@@ -49,7 +44,6 @@ function fieldsFor(itemType: string): [string, string][] {
     }
     return [[...COMMON[0]], ...COMMON.slice(1)];
 }
-
 
 function inlineRender(ctx: ListRenderCtx): unknown {
     const { h, row } = ctx;
@@ -65,19 +59,16 @@ function inlineRender(ctx: ListRenderCtx): unknown {
     );
 }
 
-
 function infoRender(ctx: ListRenderCtx): unknown {
     const src = ctx.row.native ?? ctx.row.entry ?? {};
     const type = brief(src.itemType);
     const spec: DetailSpec = {
         fields: fieldsFor(type).map(([label, key]) => ({ key, label })),
-        
-        
+
         skip: ["sprite", "process", "handlerKey", "actions"],
     };
     return renderDetail(ctx.h as never, ctx, spec);
 }
-
 
 function searchText(row: ListRow): string {
     const src = row.native ?? row.entry ?? {};

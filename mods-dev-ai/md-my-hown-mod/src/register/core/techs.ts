@@ -1,7 +1,7 @@
 import { LOG, type TechConfig } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { engineTechOf, techUnlockStructureIds } from "../../ui/tech-link.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 function registerTech(def: TechConfig): void {
     try {
@@ -24,8 +24,7 @@ export function registerTechs({ config }: RegisterContext): number {
         const ids = techUnlockStructureIds(t.id, config);
         registerTech(ids.length ? { ...t, unlocks: { ...(t.unlocks ?? {}), structures: ids } } : t);
     });
-    
-    
+
     return n + registerEach(config.unlockNodes, "techs", (node) => {
         if (node.kind !== "tech" || node.techId) return false;
         const tech = engineTechOf(node, config);

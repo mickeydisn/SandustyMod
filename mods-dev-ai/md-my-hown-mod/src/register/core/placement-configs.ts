@@ -1,7 +1,7 @@
 import { LOG } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { placementConfigPayload, placementConfigProblem } from "../../config/placement.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerPlacementConfigs({ config }: RegisterContext): number {
     return registerEach(config.placementConfigs, "placementConfigs", (def) => {

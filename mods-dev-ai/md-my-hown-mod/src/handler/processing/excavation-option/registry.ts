@@ -1,4 +1,3 @@
-
 import { EXCAVATION_FLAGS, type ExcavationOptionFn, type ExcavationOptionValue } from "./types.ts";
 
 const FLAG_SET: ReadonlySet<string> = new Set(EXCAVATION_FLAGS);
@@ -20,33 +19,26 @@ function withParams(
             flags[k] = v;
         }
     }
-    
-    
-    
+
     if (Object.keys(flags).length > 0) out.options = flags;
     return out;
 }
 
 export const EXCAVATION_OPTIONS: Record<string, ExcavationOptionFn> = {
-    
     excavationDefault: (params) => withParams({ power: 10 }, params),
 
-    
     excavationCrusher: (params) =>
         withParams(
             { power: 24, flags: { fromRocketExplosion: true, forceRemoveAll: false } },
             params,
         ),
 
-    
     excavationDrill: (params) =>
         withParams({ power: 8, flags: { fromDrill: true, drillTierDamage: 25 } }, params),
 
-    
     excavationGun: (params) =>
         withParams({ power: 4, flags: { fromGun: true, destroyNonDestructible: false } }, params),
 
-    
     excavationShatter: (params) =>
         withParams({ power: 16, flags: { useLiteralOutVelocity: true } }, params),
 };

@@ -6,13 +6,11 @@ import { DEFAULT_UNLOCK_NODE } from "../ui/tech-link.ts";
 const CONFIG_KEY = "config";
 const PANEL_KEY = "panel";
 
-
 type CollectionKey = {
     [K in keyof ModConfig]: ModConfig[K] extends unknown[] ? K : never;
 }[keyof ModConfig];
 
 type CollectionEntry<K extends CollectionKey> = ModConfig[K] extends (infer E)[] ? E : never;
-
 
 const COLLECTIONS = {
     elements: "el",
@@ -44,7 +42,6 @@ const COLLECTIONS = {
 
 export const COLLECTION_KEYS = Object.keys(COLLECTIONS) as CollectionKey[];
 
-
 const PROCESS_REF_SLOTS: readonly [CollectionKey, HandlerSlot][] = [
     ["signals", "signal"],
     ["triggers", "trigger"],
@@ -64,15 +61,13 @@ function ensureArrays(raw: Partial<ModConfig> | null | undefined): ModConfig {
     return out;
 }
 
-
 const CASCADES: Partial<Record<CollectionKey, (cfg: ModConfig, id: string) => void>> = {
-    
     unlockNodes(cfg, id) {
         cfg.structures = (cfg.structures ?? []).map((s) =>
             s?.unlockNode === id ? { ...s, unlockNode: DEFAULT_UNLOCK_NODE } : s
         );
     },
-    
+
     processes(cfg, id) {
         for (const [category] of PROCESS_REF_SLOTS) {
             const entries = cfg[category] as unknown;
@@ -134,7 +129,6 @@ function removeById<T extends { id: string }>(list: T[], id: string): T[] {
     return list.filter((e) => e.id !== id);
 }
 
-
 function mutate(apply: (cfg: ModConfig) => void): ModConfig {
     const cfg = loadConfig();
     apply(cfg);
@@ -142,14 +136,12 @@ function mutate(apply: (cfg: ModConfig) => void): ModConfig {
     return cfg;
 }
 
-
 function upsertIn<K extends CollectionKey>(key: K, entry: CollectionEntry<K>): ModConfig {
     return mutate((cfg) => {
         const list = cfg[key] as { id: string }[];
         (cfg as Record<string, unknown>)[key] = upsert(list, entry as { id: string });
     });
 }
-
 
 function removeIn(key: CollectionKey, id: string): ModConfig {
     return mutate((cfg) => {
@@ -159,9 +151,7 @@ function removeIn(key: CollectionKey, id: string): ModConfig {
     });
 }
 
-
 type AnyEntry = { id: string } & Record<string, unknown>;
-
 
 function upsertAny(key: CollectionKey, entry: AnyEntry): ModConfig {
     return mutate((cfg) => {
@@ -179,29 +169,26 @@ function importConfigJson(json: string): ModConfig {
     return cfg;
 }
 
-
 export const configStore = {
-    
     load: loadConfig,
-    
+
     save: saveConfig,
-    
+
     exportJson: exportConfigJson,
-    
+
     importJson: importConfigJson,
-    
+
     loadPanel: loadPanelState,
-    
+
     savePanel: savePanelState,
-    
+
     collections: COLLECTIONS,
-    
+
     upsert: upsertIn,
-    
+
     upsertAny,
-    
+
     remove: removeIn,
 } as const;
-
 
 export type { CollectionKey };

@@ -1,21 +1,13 @@
-
-
-
-
 const FIELDS: FieldSpec[] = [
     idField(),
-    
-    
-    
+
     excavationOptionField(),
     numField("power", "Power", "Profile", {
         required: true,
         min: 0,
         max: 1000,
         def: "10",
-        
-        
-        
+
         when: (f) => !(f[OPTIONS_FORM_KEY] ?? "").trim(),
     }),
     {
@@ -24,10 +16,7 @@ const FIELDS: FieldSpec[] = [
         kind: "json",
         section: "Profile",
         jsonType: "object",
-        
-        
-        
-        
+
         when: () => false,
     },
     {
@@ -56,16 +45,12 @@ const FIELDS: FieldSpec[] = [
         section: "Profile",
         jsonType: "object",
         wide: true,
-        
-        
+
         when: (f) => !(f[OPTIONS_FORM_KEY] ?? "").trim(),
         hint: "{ fromGun?, fromDrill?, drillTierDamage? (0–1000), forceRemoveAll?, … }",
         placeholder: '{ "fromDrill": true }',
     },
 ];
-
-
-
 
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("power", read.num(e.power));
@@ -75,23 +60,17 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("optionsJson", read.json(e.options));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     writeExcavationOption(w);
     w.setNum("power", w.optNum("power"));
     const pattern = w.optJson<number[][]>("patternJson");
     if (pattern) w.setRaw("pattern", pattern);
-    
-    
-    
+
     const rules = w.optJson<Record<string, unknown>[]>("terrainRulesJson");
     if (rules && rules.length > 0) w.setRaw("terrainRules", rules);
     const options = w.optJson<Record<string, unknown>>("optionsJson");
     if (options) w.setRaw("options", options);
 }
-
-
-
 
 function renderTerrainRules(ctx: FieldContext): unknown {
     const { h, field, value, setField } = ctx;
@@ -99,7 +78,7 @@ function renderTerrainRules(ctx: FieldContext): unknown {
     try {
         const parsed = JSON.parse(value || "[]");
         if (Array.isArray(parsed)) rows = parsed;
-    } catch {  }
+    } catch {}
     const writeRows = (next: Record<string, unknown>[]) =>
         setField(field.key, JSON.stringify(next, null, 2));
     const terrains = listTerrains();
@@ -199,7 +178,6 @@ function renderTerrainRules(ctx: FieldContext): unknown {
     );
 }
 
-
 function validateMatrix(value: unknown): string | undefined {
     if (!Array.isArray(value) || value.length === 0) {
         return "must be a non-empty array of rows";
@@ -216,11 +194,10 @@ function validateMatrix(value: unknown): string | undefined {
     return undefined;
 }
 
-
 function validateField(field: FieldSpec, value: string): string | undefined {
     if (field.kind === "terrainRules") {
         const text = value.trim();
-        if (!text) return undefined; 
+        if (!text) return undefined;
         let parsed: unknown;
         try {
             parsed = JSON.parse(text);
@@ -244,12 +221,9 @@ function validateField(field: FieldSpec, value: string): string | undefined {
     }
     if (field.kind === "json" && field.jsonType === "matrix") {
         const text = value.trim();
-        
+
         if (!text) return undefined;
-        
-        
-        
-        
+
         try {
             return validateMatrix(JSON.parse(text));
         } catch (e) {
@@ -259,15 +233,11 @@ function validateField(field: FieldSpec, value: string): string | undefined {
     return undefined;
 }
 
-
 function renderField(ctx: FieldContext): unknown {
     if (ctx.field.kind === "terrainRules") return renderTerrainRules(ctx);
     if (ctx.field.kind === "excavationOption") return renderExcavationOption(ctx);
     return null;
 }
-
-
-
 
 const FORM_COVERED = ["power", "pattern", "terrainRules", "options", ...OPTION_COVERED];
 
@@ -278,8 +248,7 @@ export const excavationDefinition: Definition = {
     entryToForm,
     formToEntry,
     validateField,
-    
-    
+
     panel: { renderField },
 };
 import {

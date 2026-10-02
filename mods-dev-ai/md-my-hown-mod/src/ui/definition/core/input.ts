@@ -1,14 +1,11 @@
-
 import { listAnyHandlerKeys, listKeyCodes } from "../../../catalog.ts";
 import { advField, idField, NAME_MAX, textField, typesHintFor } from "../fields.ts";
 import { parseIdList } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-
-
 const FIELDS: FieldSpec[] = [
     idField(),
-    
+
     textField("displayName", "Display name", "Identity", true, { maxLength: NAME_MAX }),
     textField("displayNameKey", "Display name key (i18n)", "Identity", false, {
         placeholder: "mods|example|toggle",
@@ -21,9 +18,6 @@ const FIELDS: FieldSpec[] = [
         hint: "grouping heading in the game's settings screen",
     }),
     {
-        
-        
-        
         key: "subsectionJson",
         label: "Subsection",
         kind: "json",
@@ -33,9 +27,6 @@ const FIELDS: FieldSpec[] = [
         hint: "optional settings group: { title, titleKey, description, descriptionKey }",
     },
     {
-        
-        
-        
         key: "defaultKeys",
         label: "Default keys",
         kind: "multiselect",
@@ -64,9 +55,6 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("displayName", read.str(e.displayName));
     read.put("displayNameKey", read.str(e.displayNameKey));
@@ -79,13 +67,11 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("subsectionJson", read.json(e.subsection));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("displayName", w.opt("displayName"));
     w.setStr("displayNameKey", w.opt("displayNameKey"));
     w.setStr("category", w.opt("category"));
-    
-    
+
     const keys = parseIdList(form.defaultKeys ?? "");
     if (keys.length > 0) w.setRaw("defaultKeys", keys);
     w.setStr("onDownKey", w.opt("onDownKey"));
@@ -93,9 +79,6 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     const subsection = w.optJson<Record<string, unknown>>("subsectionJson");
     if (subsection) w.setRaw("subsection", subsection);
 }
-
-
-
 
 const FORM_COVERED = [
     "displayName",
@@ -113,8 +96,4 @@ export const inputDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
-    
 };

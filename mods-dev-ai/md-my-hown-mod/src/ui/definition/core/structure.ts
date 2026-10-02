@@ -1,4 +1,3 @@
-
 import {
     listBuildModeTypes,
     listDrawFunctions,
@@ -34,18 +33,11 @@ import type {
     PanelContext,
 } from "../types.ts";
 
-
-
-
-
-
 const SHAPE_SIZE = 4;
-
 
 export function emptyShape(fill: 0 | 1 = 0): number[][] {
     return Array.from({ length: SHAPE_SIZE }, () => Array<number>(SHAPE_SIZE).fill(fill));
 }
-
 
 export function normalizeShape(raw: unknown): number[][] {
     const grid = emptyShape(0);
@@ -61,11 +53,9 @@ export function normalizeShape(raw: unknown): number[][] {
     return grid;
 }
 
-
 export function shapeToText(raw: unknown): string {
     return JSON.stringify(normalizeShape(raw));
 }
-
 
 export function describeShape(raw: unknown): string {
     const grid = normalizeShape(raw);
@@ -75,7 +65,6 @@ export function describeShape(raw: unknown): string {
     return `custom — ${filled} of 16 cells occupied`;
 }
 
-
 function shapeField(): FieldSpec {
     return {
         key: "shapeJson",
@@ -83,16 +72,11 @@ function shapeField(): FieldSpec {
         kind: "shape",
         section: "Placement",
         wide: true,
-        
-        
-        
+
         def: shapeToText(emptyShape(1)),
         hint: "1 = occupied cell, 0 = empty. Use the buttons for solid / empty / clear.",
     };
 }
-
-
-
 
 export function parseBuildModes(
     raw: string | undefined,
@@ -123,9 +107,6 @@ export function parseBuildModes(
     return out;
 }
 
-
-
-
 export function composeTooltipHover(
     f: Record<string, string>,
 ): Record<string, unknown> | undefined {
@@ -142,22 +123,18 @@ export function composeTooltipHover(
     };
 }
 
-
 export function tooltipHoverIsComplete(raw: string | undefined): boolean {
     const obj = parseObjectOrUndefined(raw);
-    if (!obj) return true; 
+    if (!obj) return true;
     const msg = (obj as { dataFieldMessage?: Record<string, unknown> }).dataFieldMessage;
     if (!msg) return false;
-    if (typeof msg.message === "string") return false; 
+    if (typeof msg.message === "string") return false;
     const fields = Array.isArray(msg.fields) ? msg.fields : [];
-    if (fields.length !== 1) return false; 
+    if (fields.length !== 1) return false;
     const only = fields[0] as Record<string, unknown>;
     if ("valueLabels" in only || "valueKeys" in only) return false;
     return Object.keys(only).every((k) => ["field", "param", "fallback"].includes(k));
 }
-
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -169,7 +146,6 @@ const FIELDS: FieldSpec[] = [
         hint: "used when no plain description is set",
     }),
     {
-        
         key: "descriptionParamsJson",
         label: "Description parameters",
         kind: "json",
@@ -179,10 +155,6 @@ const FIELDS: FieldSpec[] = [
         hint: 'values interpolated into the description, e.g. { "count": 3 }',
     },
     {
-        
-        
-        
-        
         key: "linkedClearance",
         label: "Linked clearance",
         kind: "select",
@@ -191,14 +163,6 @@ const FIELDS: FieldSpec[] = [
         hint: "how a multi-cell footprint is validated against the cells under it",
     },
     {
-        
-        
-        
-        
-        
-        
-        
-        
         key: "categoryKey",
         label: "Build category",
         kind: "select",
@@ -214,12 +178,6 @@ const FIELDS: FieldSpec[] = [
         hint: "sort inside the category",
     }),
     {
-        
-        
-        
-        
-        
-        
         key: "buildModesJson",
         label: "Build modes",
         kind: "buildModes",
@@ -239,24 +197,7 @@ const FIELDS: FieldSpec[] = [
         hint: "refuse placement if any footprint cell is occupied",
     },
     shapeField(),
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     boolField(
         "hideFromBuildMenu",
         "Hide from build menu",
@@ -265,13 +206,6 @@ const FIELDS: FieldSpec[] = [
         "unhide to list it — a structure with no unlock tech is available from the start",
     ),
     {
-        
-        
-        
-        
-        
-        
-        
         key: "unlockNode",
         label: "Unlock node",
         kind: "select",
@@ -289,7 +223,6 @@ const FIELDS: FieldSpec[] = [
     },
     boolField("disallowPick", "Disallow pick", "Flags"),
     {
-        
         key: "tooltipHoverJson",
         label: "Hover tooltip",
         kind: "json",
@@ -299,7 +232,6 @@ const FIELDS: FieldSpec[] = [
         hint: "custom tooltip driven by structure data fields",
     },
     {
-        
         key: "variantsJson",
         label: "Variants",
         kind: "json",
@@ -317,12 +249,6 @@ const FIELDS: FieldSpec[] = [
         hint: "render.imageName (load a sprite first)",
     },
     {
-        
-        
-        
-        
-        
-        
         key: "drawKey",
         label: "Custom draw",
         kind: "select",
@@ -333,33 +259,11 @@ const FIELDS: FieldSpec[] = [
             "draw is a function, not data — pick a built-in. Anything typed here by hand is ignored by the game.",
     },
     {
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         key: "blockGridType",
         label: "Block grid type",
         kind: "select",
         section: "Grid",
-        
-        
-        
+
         options: listStructures,
         emptyHint:
             "no other structures exist yet — save this one first, then pick its own id from the list.",
@@ -367,8 +271,6 @@ const FIELDS: FieldSpec[] = [
             "leave empty only for a footprint of 8x8 or smaller. Above that, set this to the structure's OWN id: without it a large structure places as a single 1-cell unit and its hover tooltip only resolves at the origin cell. Point it at a DIFFERENT structure to share that structure's grid instead.",
     },
     {
-        
-        
         key: "skipCopyData",
         label: "Skip data copy",
         kind: "bool",
@@ -378,11 +280,6 @@ const FIELDS: FieldSpec[] = [
             "do not copy grid data on placement (the engine also sets this when copyData is false)",
     },
     {
-        
-        
-        
-        
-        
         key: "defaultDataJson",
         label: "Data for each placed copy",
         kind: "json",
@@ -393,25 +290,6 @@ const FIELDS: FieldSpec[] = [
             "the data object every placed copy starts with; the hover tooltip reads dataField1..4 back out of it. Unrelated to elements.",
     },
     {
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         key: "dataFieldsJson",
         label: "Data fields",
         kind: "json",
@@ -427,9 +305,6 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
     read.put("description", read.str(e.description));
@@ -438,8 +313,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("linkedClearance", read.str(e.linkedClearance));
     read.put("categoryKey", read.str(e.categoryKey));
     read.put("order", read.num(e.order));
-    
-    
+
     const modes = (Array.isArray(e.buildModes) ? e.buildModes : []) as Record<
         string,
         unknown
@@ -451,33 +325,18 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     if (dirs.includes("vertical")) read.put("dirV", "true");
     if (dirs.includes("diagonal")) read.put("dirD", "true");
     read.put("shapeJson", e.shape === undefined ? undefined : shapeToText(e.shape));
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     if (typeof e.hideFromBuildMenu === "boolean") {
         read.put("hideFromBuildMenu", String(e.hideFromBuildMenu));
     }
     if (typeof e.disallowPick === "boolean") read.put("disallowPick", String(e.disallowPick));
-    
-    
-    
-    
+
     read.put("unlockNode", read.str(e.unlockNode) || DEFAULT_UNLOCK_NODE);
     if (typeof e.rejectWhenBlocked === "boolean") {
         read.put("rejectWhenBlocked", String(e.rejectWhenBlocked));
     }
     read.put("tooltipHoverJson", read.json(e.tooltipHover));
-    
-    
-    
+
     {
         const th = e.tooltipHover as
             | { dataFieldMessage?: { messageKey?: string; fields?: unknown[] } }
@@ -503,14 +362,9 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
         read.put("skipCopyData", String(e.skipCopyData));
     }
     read.put("defaultDataJson", read.json(e.defaultData));
-    
-    
-    
-    
-    
+
     read.put("dataFieldsJson", read.json(structureRecordToFields(e.defaultData)));
 }
-
 
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
@@ -520,8 +374,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     const descriptionParams = w.optJson<Record<string, unknown>>("descriptionParamsJson");
     if (descriptionParams) w.setRaw("descriptionParams", descriptionParams);
     w.setBool("rejectWhenBlocked", w.optBool("rejectWhenBlocked"));
-    
-    
+
     const existingHover = parseObjectOrUndefined(form.tooltipHoverJson);
     const hover = composeTooltipHover(form);
     if (hover) {
@@ -536,7 +389,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     if (variants) w.setRaw("variants", variants);
     w.setStr("categoryKey", w.opt("categoryKey"));
     w.setNum("order", w.optNum("order"));
-    
+
     const dirs: string[] = [];
     if (w.optBool("dirH")) dirs.push("horizontal");
     if (w.optBool("dirV")) dirs.push("vertical");
@@ -547,8 +400,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     if (shape) w.setRaw("shape", normalizeShape(shape));
     w.setBool("hideFromBuildMenu", w.optBool("hideFromBuildMenu"));
     w.setBool("disallowPick", w.optBool("disallowPick"));
-    
-    
+
     w.setStr("unlockNode", w.opt("unlockNode"));
     const image = w.opt("imageName");
     if (image) w.setRaw("render", { imageName: image });
@@ -559,13 +411,12 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     writeStructureDefaultData(w);
 }
 
-
 function writeStructureDefaultData(w: EntryWriter): void {
     const rows = w.optJson<StructureDataField[]>("dataFieldsJson");
     const box = w.optJson<Record<string, unknown>>("defaultDataJson");
     if (rows?.length) {
         const { record, problems } = structureFieldsToRecord(rows);
-        if (problems.length) return; 
+        if (problems.length) return;
         if (!box || Object.keys(box).every((k) => k in record)) {
             w.setRaw("defaultData", record);
             return;
@@ -575,9 +426,8 @@ function writeStructureDefaultData(w: EntryWriter): void {
     else w.del("defaultData");
 }
 
-
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
-    if (errors.buildModesJson) return; 
+    if (errors.buildModesJson) return;
     const raw = form.buildModesJson?.trim();
     if (!raw) return;
     try {
@@ -591,11 +441,9 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
             }
         });
     } catch {
-        
     }
     validateStructureDataFields(form, errors);
 }
-
 
 function validateStructureDataFields(
     form: Record<string, string>,
@@ -612,14 +460,12 @@ function validateStructureDataFields(
         }
         rows = parsed as StructureDataField[];
     } catch {
-        
         return;
     }
     const { problems } = structureFieldsToRecord(rows);
     if (!problems.length) return;
     errors.dataFieldsJson = problems.map((p) => `row ${p.row + 1}: ${p.reason}`).join("; ");
 }
-
 
 function parseShape(text: string): number[][] | null {
     let parsed: unknown;
@@ -636,16 +482,12 @@ function parseShape(text: string): number[][] | null {
     return parsed as number[][];
 }
 
-
 function validateField(field: FieldSpec, value: string): string | undefined {
     if (field.kind !== "shape") return undefined;
     return parseShape(value) === null
         ? `must be a ${SHAPE_SIZE}×${SHAPE_SIZE} grid of 0 or 1`
         : undefined;
 }
-
-
-
 
 function renderShape(ctx: FieldContext): unknown {
     const { h, field, value, error } = ctx;
@@ -697,7 +539,6 @@ function renderShape(ctx: FieldContext): unknown {
     );
 }
 
-
 function renderBuildModes(ctx: FieldContext): unknown {
     const { h, field, value, locked } = ctx;
     let rows: Record<string, unknown>[] = [];
@@ -705,7 +546,6 @@ function renderBuildModes(ctx: FieldContext): unknown {
         const parsed = JSON.parse(value || "[]");
         if (Array.isArray(parsed)) rows = parsed;
     } catch {
-        
     }
     const writeRows = (next: Record<string, unknown>[]) =>
         ctx.setField(field.key, JSON.stringify(next));
@@ -741,9 +581,7 @@ function renderBuildModes(ctx: FieldContext): unknown {
                                     if (nextType === "line") {
                                         return { ...r, type: nextType };
                                     }
-                                    
-                                    
-                                    
+
                                     const { spanTiles: _drop, ...rest } = r;
                                     return { ...rest, type: nextType };
                                 }),
@@ -803,7 +641,6 @@ function renderBuildModes(ctx: FieldContext): unknown {
     );
 }
 
-
 function renderHeader(ctx: PanelContext): unknown {
     return ctx.h(
         "div",
@@ -811,7 +648,6 @@ function renderHeader(ctx: PanelContext): unknown {
         ctx.h("span", { style: S.unlockText }, unlockLine(ctx.form, ctx.cfg)),
     );
 }
-
 
 function renderField(ctx: FieldContext): unknown {
     switch (ctx.field.kind) {
@@ -823,9 +659,6 @@ function renderField(ctx: FieldContext): unknown {
             return null;
     }
 }
-
-
-
 
 const FORM_COVERED = [
     "name",
@@ -863,11 +696,7 @@ export const structureDefinition: Definition = {
     formToEntry,
     validate,
     validateField,
-    
-    
-    
-    
-    
+
     onNewEntry: (form) => {
         form.unlockNode = DEFAULT_UNLOCK_NODE;
     },

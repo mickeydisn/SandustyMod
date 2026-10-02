@@ -1,4 +1,3 @@
-
 import {
     listCurrencyTypes,
     listItems,
@@ -10,11 +9,8 @@ import { advField, DESC_MAX, idField, NAME_MAX, numField, textField } from "../f
 import { formatIdList, parseIdList, putCustomOrSelect } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-
 const ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,31}$";
 const ID_MSG = "lowercase id (a-z 0-9 . _ -)";
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -84,9 +80,6 @@ const FIELDS: FieldSpec[] = [
         hint: "used when no plain description is set",
     }),
     {
-        
-        
-        
         key: "unlockStructures",
         label: "Unlocks structures",
         kind: "multiselect",
@@ -107,17 +100,12 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
     read.put("description", read.str(e.description));
     read.put("descriptionKey", read.str(e.descriptionKey));
     read.put("cost", read.num(e.cost));
-    
-    
-    
+
     putCustomOrSelect(
         read.put,
         read.str(e.currencyType),
@@ -139,13 +127,12 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("unlockItems", read.jsonList(unlocks?.items));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
     w.setStr("description", w.opt("description"));
     w.setStr("descriptionKey", w.opt("descriptionKey"));
     w.setNum("cost", w.optNum("cost"));
-    
+
     w.setStr(
         "currencyType",
         w.opt("currencyType") === "__custom__"
@@ -159,8 +146,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("parentId", w.opt("parentId"));
     const requires = parseIdList(form.requires);
     if (requires.length > 0) w.setRaw("requires", requires);
-    
-    
+
     const unlockStructures = parseIdList(form.unlockStructures);
     const unlockItems = parseIdList(form.unlockItems);
     if (unlockStructures.length > 0 || unlockItems.length > 0) {
@@ -170,9 +156,6 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
         w.setRaw("unlocks", unlocks);
     }
 }
-
-
-
 
 const FORM_COVERED = [
     "name",
@@ -192,11 +175,4 @@ export const techDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
-    
-    
-    
-    
 };

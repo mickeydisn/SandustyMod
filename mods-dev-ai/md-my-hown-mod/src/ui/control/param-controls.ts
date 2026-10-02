@@ -1,10 +1,8 @@
-
 import type { HandlerParam } from "../../handler/index.ts";
 import type { SelectorHandle } from "../definition/types.ts";
 import * as S from "../styles.ts";
 
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
-
 
 export function paramText(
     options: Record<string, unknown> | undefined,
@@ -16,7 +14,6 @@ export function paramText(
     if (typeof v === "boolean") return v ? "true" : "false";
     return String(v);
 }
-
 
 export function paramValue(
     p: Pick<HandlerParam, "key" | "kind" | "int">,
@@ -32,13 +29,11 @@ export function paramValue(
     return t;
 }
 
-
 export function paramInput(
     h: H,
     p: HandlerParam,
     value: string,
     onChange: (v: string) => void,
-    
     selector?: SelectorHandle,
 ): unknown {
     const on = (e: { target: { value: string } }) => onChange(e.target.value);
@@ -65,18 +60,7 @@ export function paramInput(
         );
     }
     if (p.kind === "select" && (p.content || p.options)) {
-        
-        
-        
-        
-        
         const rendered = selector?.renderParam?.({
-            
-            
-            
-            
-            
-            
             h: h as unknown as (...args: unknown[]) => unknown,
             content: p.content,
             options: p.options ?? [],
@@ -84,14 +68,11 @@ export function paramInput(
             onChange,
             placeholder: p.required ? "— select —" : "— none —",
             state: selector.read(p.key),
-            
-            
+
             onState: (patch) => selector?.write(p.key, patch),
         });
         if (rendered !== null && rendered !== undefined) return rendered;
 
-        
-        
         const fixed = p.options ?? [];
         if (fixed.length) {
             return h(

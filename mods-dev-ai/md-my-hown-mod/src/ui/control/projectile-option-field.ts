@@ -1,20 +1,14 @@
-
 import { projectileOptionOf } from "../../handler/processing/projectile-option/index.ts";
 import { resolveProjectileOption } from "../../handler/processing/projectile-option/index.ts";
 import type { EntryReader, EntryWriter, FieldSpec } from "../definition/types.ts";
 
-
 export const OPTIONS_FORM_KEY = "optionKey";
-
 
 export const PARAMS_FORM_KEY = "optionParamsJson";
 
-
 export const OPTION_STORE_KEY = "option";
 
-
 export const OPTION_COVERED = [OPTION_STORE_KEY];
-
 
 export function readProjectileOption(read: EntryReader, entry: Record<string, unknown>): void {
     const { ref } = projectileOptionOf(entry);
@@ -25,7 +19,6 @@ export function readProjectileOption(read: EntryReader, entry: Record<string, un
     );
 }
 
-
 export function writeProjectileOption(w: EntryWriter): void {
     const key = w.opt(OPTIONS_FORM_KEY);
     if (key) {
@@ -35,7 +28,6 @@ export function writeProjectileOption(w: EntryWriter): void {
         w.del(OPTION_STORE_KEY);
     }
 }
-
 
 export function projectileOptionField(): FieldSpec {
     return {
@@ -48,7 +40,6 @@ export function projectileOptionField(): FieldSpec {
             "engine uses at spawn; leave empty to use the static options instead.",
     };
 }
-
 
 function optionKeyKnown(key: string | undefined): boolean {
     return !!key && !!resolveProjectileOption(key);

@@ -1,6 +1,3 @@
-
-
-
 export type Style = React.CSSProperties;
 
 export const panelRoot: React.CSSProperties = {
@@ -14,7 +11,6 @@ export const panelRoot: React.CSSProperties = {
     userSelect: "none",
     pointerEvents: "auto",
 };
-
 
 export const overlayBox: React.CSSProperties = {
     width: "90vw",
@@ -34,7 +30,7 @@ export const panelChrome: React.CSSProperties = {
     boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
     overflow: "hidden",
     minWidth: 280,
-    
+
     height: "100%",
     display: "flex",
     flexDirection: "column",
@@ -46,8 +42,7 @@ export const titleBar: React.CSSProperties = {
     gap: 8,
     padding: "6px 10px",
     background: "linear-gradient(180deg, rgba(50,60,90,0.9), rgba(30,36,55,0.95))",
-    
-    
+
     cursor: "default",
     borderBottom: "1px solid rgba(100,120,160,0.35)",
 };
@@ -85,7 +80,7 @@ export const btnPrimary: React.CSSProperties = {
 export const body: React.CSSProperties = {
     padding: 10,
     overflow: "auto",
-    
+
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
@@ -120,7 +115,6 @@ export const row: React.CSSProperties = {
     border: "1px solid rgba(80, 95, 130, 0.35)",
 };
 
-
 export const toolbar: React.CSSProperties = {
     display: "flex",
     flexWrap: "wrap",
@@ -137,7 +131,6 @@ export const rowId: React.CSSProperties = {
     whiteSpace: "nowrap",
 };
 
-
 export const rowHead: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -146,7 +139,6 @@ export const rowHead: React.CSSProperties = {
     minWidth: 0,
     cursor: "pointer",
 };
-
 
 export const rowSwatch: React.CSSProperties = {
     width: 12,
@@ -165,15 +157,10 @@ export const rowTitle: React.CSSProperties = {
     maxWidth: "45%",
 };
 
-
-
-
 export const rowDetail: React.CSSProperties = {
     marginTop: 6,
     paddingTop: 6,
-    
-    
-    
+
     paddingLeft: 15,
     borderTop: "1px solid rgba(90, 105, 140, 0.25)",
     display: "flex",
@@ -199,14 +186,12 @@ export const detailVal: React.CSSProperties = {
     wordBreak: "break-word",
 };
 
-
 export const detailNote: React.CSSProperties = {
     fontSize: 10,
     color: "#79829a",
     fontStyle: "italic",
     marginBottom: 2,
 };
-
 
 export const rowFact: React.CSSProperties = {
     fontSize: 10.5,
@@ -221,7 +206,6 @@ export const rowFact: React.CSSProperties = {
     textOverflow: "ellipsis",
     maxWidth: "22%",
 };
-
 
 export const rowGrid: React.CSSProperties = {
     display: "grid",
@@ -239,7 +223,6 @@ export const gridCell: React.CSSProperties = {
     borderRadius: 1,
 };
 
-
 export const listFilterBar: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -248,12 +231,10 @@ export const listFilterBar: React.CSSProperties = {
     flexWrap: "wrap",
 };
 
-
 export const rowReadOnly: React.CSSProperties = {
     ...row,
     opacity: 0.82,
 };
-
 
 export const rowBar: React.CSSProperties = {
     display: "flex",
@@ -262,17 +243,11 @@ export const rowBar: React.CSSProperties = {
     minWidth: 0,
 };
 
-
 export const rowDetails: React.CSSProperties = {
     flexDirection: "column",
     alignItems: "stretch",
     gap: 0,
-    
-    
-    
-    
 };
-
 
 export const rowSummary: React.CSSProperties = {
     display: "flex",
@@ -282,13 +257,11 @@ export const rowSummary: React.CSSProperties = {
     cursor: "pointer",
     listStyle: "none",
     margin: 0,
-    
-    
+
     padding: "2px 0",
     borderRadius: 4,
     userSelect: "none",
 };
-
 
 export const rowSummaryMark: React.CSSProperties = {
     fontSize: 9,
@@ -324,7 +297,6 @@ export const input: React.CSSProperties = {
     outline: "none",
 };
 
-
 export const textarea: React.CSSProperties = {
     ...input,
     width: "100%",
@@ -344,8 +316,7 @@ export const hint: React.CSSProperties = {
 export const minimizedChip: React.CSSProperties = {
     ...panelChrome,
     padding: "8px 14px",
-    
-    
+
     cursor: "grab",
     touchAction: "none",
     display: "inline-flex",
@@ -360,7 +331,6 @@ export const minimizedChip: React.CSSProperties = {
     color: "#e8f0ff",
 };
 
-
 declare namespace React {
     type CSSProperties = Record<string, string | number | undefined>;
 }
@@ -369,8 +339,6 @@ export const select: React.CSSProperties = {
     ...input,
     cursor: "pointer",
 };
-
-
 
 export const groupNav: React.CSSProperties = {
     display: "flex",
@@ -398,14 +366,12 @@ export const chipActive: React.CSSProperties = {
     fontWeight: 600,
 };
 
-
 export const chipCheck: React.CSSProperties = {
     ...chip,
     display: "inline-flex",
     alignItems: "center",
     gap: 5,
-    
-    
+
     userSelect: "none",
 };
 
@@ -423,7 +389,6 @@ export const chipCount: React.CSSProperties = {
     opacity: 0.75,
     fontVariantNumeric: "tabular-nums",
 };
-
 
 export const chipOwn: React.CSSProperties = {
     ...chip,
@@ -460,7 +425,6 @@ export const screenHead: React.CSSProperties = {
     padding: "8px 10px 0 10px",
 };
 
-
 export const screen: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -472,7 +436,6 @@ export const screenTitle: React.CSSProperties = {
     fontSize: 13,
     letterSpacing: 0.2,
 };
-
 
 export const listHeadingRow: React.CSSProperties = {
     ...screenTitle,
@@ -488,12 +451,10 @@ export const screenBlurb: React.CSSProperties = {
     flex: 1,
 };
 
-
 export const sectionBox: React.CSSProperties = {
     marginTop: 6,
     borderTop: "1px solid rgba(90, 105, 140, 0.3)",
 };
-
 
 export const sectionSummary: React.CSSProperties = {
     display: "flex",
@@ -505,14 +466,12 @@ export const sectionSummary: React.CSSProperties = {
     listStyle: "revert",
 };
 
-
 export const sectionCount: React.CSSProperties = {
     fontSize: 10,
     color: "#5d6880",
     marginLeft: "auto",
     paddingRight: 2,
 };
-
 
 export const unlockRow: React.CSSProperties = {
     display: "flex",
@@ -573,7 +532,6 @@ export const hintBelow: React.CSSProperties = {
     color: "#79829a",
 };
 
-
 export const nativeBox: React.CSSProperties = {
     marginTop: 3,
 };
@@ -614,7 +572,6 @@ export const nativeItemMod: React.CSSProperties = {
     background: "rgba(120,190,255,0.22)",
 };
 
-
 export const rowTagMod: React.CSSProperties = {
     ...nativeItemMod,
     fontSize: 9.5,
@@ -635,7 +592,6 @@ export const rowTagGame: React.CSSProperties = {
     marginLeft: "auto",
     opacity: 0.8,
 };
-
 
 export const rowTagOther: React.CSSProperties = {
     ...nativeItem,
@@ -673,7 +629,6 @@ export const emptyState: React.CSSProperties = {
     borderRadius: 6,
     textAlign: "center",
 };
-
 
 export const listScroll: React.CSSProperties = {
     flex: 1,
@@ -731,8 +686,6 @@ export const shapeCellOff: React.CSSProperties = {
     borderRadius: 3,
 };
 
-
-
 export const libSearch: React.CSSProperties = {
     ...input,
     marginBottom: 6,
@@ -771,9 +724,6 @@ export const libTileActive: React.CSSProperties = {
     color: "#ffffff",
 };
 
-
-
-
 export const card: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -782,7 +732,6 @@ export const card: React.CSSProperties = {
     border: "1px solid rgba(120, 160, 220, 0.25)",
     borderRadius: 4,
 };
-
 
 export const emptyBox: React.CSSProperties = {
     padding: "8px 10px",
@@ -793,7 +742,6 @@ export const emptyBox: React.CSSProperties = {
     border: "1px dashed rgba(120, 160, 220, 0.35)",
     borderRadius: 4,
 };
-
 
 export const tagChip: React.CSSProperties = {
     display: "inline-block",
@@ -807,13 +755,11 @@ export const tagChip: React.CSSProperties = {
     whiteSpace: "nowrap",
 };
 
-
 export const codeKey: React.CSSProperties = {
     fontFamily: "ui-monospace, Menlo, Consolas, monospace",
     fontSize: 12,
     color: "#ffe9a8",
 };
-
 
 export const noteBox: React.CSSProperties = {
     padding: 8,
@@ -821,7 +767,6 @@ export const noteBox: React.CSSProperties = {
     border: "1px solid rgba(120, 160, 220, 0.18)",
     borderRadius: 3,
 };
-
 
 export const codeBlock: React.CSSProperties = {
     margin: "6px 0 0 0",
@@ -835,16 +780,12 @@ export const codeBlock: React.CSSProperties = {
     wordBreak: "break-all",
 };
 
-
-
-
 export const spritePixel: React.CSSProperties = {
     imageRendering: "pixelated",
     width: 32,
     height: 32,
     display: "block",
 };
-
 
 export const libTileName: React.CSSProperties = {
     marginTop: 2,
@@ -856,7 +797,6 @@ export const libTileName: React.CSSProperties = {
     maxWidth: 68,
 };
 
-
 export const spritePreviewRow: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -865,7 +805,7 @@ export const spritePreviewRow: React.CSSProperties = {
     padding: 6,
     background: "rgba(0, 0, 0, 0.3)",
     borderRadius: 3,
-    
+
     backgroundImage:
         "linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%)",
     backgroundSize: "8px 8px",

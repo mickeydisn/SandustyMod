@@ -1,19 +1,13 @@
-
 import { defineActions } from "../../engine/types.ts";
 import { p } from "../../engine/registry/params.ts";
 
-
 type Data = Record<string, unknown>;
-
 
 function num(bag: Data | undefined, key: string): number {
     return Number(bag?.[key]) || 0;
 }
 
-
-
 export const rememberActions = defineActions({
-    
     structureWriteData: {
         role: "remember",
         needs: ["data"],
@@ -22,8 +16,8 @@ export const rememberActions = defineActions({
         slots: ["signal"],
         scope: "structure",
         params: [
-        p("field", "Data field", "text", { required: true }),
-        p("value", "Value", "text", { required: true }),
+            p("field", "Data field", "text", { required: true }),
+            p("value", "Value", "text", { required: true }),
         ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { key?: string; value?: unknown };
@@ -34,12 +28,14 @@ export const rememberActions = defineActions({
         },
     },
 
-    
     triggerTick: {
         role: "remember",
         needs: ["data"],
         doc: "Increments this instance's tick counter. Set `key` in options.",
-        type: "message", slots: ["signal"], scope: "structure", params: [],
+        type: "message",
+        slots: ["signal"],
+        scope: "structure",
+        params: [],
         fn: (payload, _ctx, options) => {
             const key = (options as { key?: string } | null)?.key ?? "ticks";
             const s = payload as { data?: Data } | null;
@@ -49,7 +45,6 @@ export const rememberActions = defineActions({
         },
     },
 
-    
     upgradeCountLevel: {
         role: "remember",
         needs: ["data"],
@@ -67,7 +62,6 @@ export const rememberActions = defineActions({
         },
     },
 
-    
     upgradeAdd: {
         role: "remember",
         needs: ["data"],
@@ -76,8 +70,8 @@ export const rememberActions = defineActions({
         slots: ["upgrade"],
         scope: "item",
         params: [
-        p("field", "Numeric field", "text", { required: true }),
-        p("amount", "Amount", "number", { def: "1" }),
+            p("field", "Numeric field", "text", { required: true }),
+            p("amount", "Amount", "number", { def: "1" }),
         ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { key?: string; amount?: number };
@@ -90,12 +84,7 @@ export const rememberActions = defineActions({
     },
 });
 
-
-
-
-
 export const processingRememberActions = defineActions({
-    
     processorCount: {
         role: "remember",
         needs: ["data"],

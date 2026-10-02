@@ -61,4 +61,3 @@ export const HANDLER_SCOPE_LABELS: Record<HandlerScope, string> = {
     tech: "Tech node",
     item: "Item",
 };
-

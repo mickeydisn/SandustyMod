@@ -1,7 +1,6 @@
 import { LOG, type RecipeConfig } from "../../constants.ts";
 import { api, resolveElementRef } from "../../packages/mysandkit.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
-
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 const MACHINES = new Set([
     "planterBox",
@@ -13,7 +12,6 @@ const MACHINES = new Set([
     "snowmaker",
     "smelter",
 ]);
-
 
 function machineOf(r: RecipeConfig): string {
     let machine = String(r.kind || "structure");

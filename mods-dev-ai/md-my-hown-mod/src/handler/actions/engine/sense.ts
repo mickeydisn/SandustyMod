@@ -1,20 +1,19 @@
-
 import { elementRef, p } from "../../engine/registry/params.ts";
 import { anchorFor } from "../../engine/cell-region.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 
-
-
 import type { ProcessingContext } from "../api/processors.ts";
 
 export const senseActions = defineActions({
-    
     structureInspect: {
         role: "sense",
         needs: ["pos", "data"],
         doc: "Reports what the clicked structure is, without changing anything.",
-        type: "message", slots: ["signal"], scope: "structure", params: [],
+        type: "message",
+        slots: ["signal"],
+        scope: "structure",
+        params: [],
         fn: (structure) => {
             const s = structure as Record<string, unknown> | null;
             if (!s) return;
@@ -25,7 +24,6 @@ export const senseActions = defineActions({
         },
     },
 
-    
     structureReadData: {
         role: "sense",
         needs: ["data"],
@@ -34,10 +32,10 @@ export const senseActions = defineActions({
         slots: ["signal"],
         scope: "structure",
         params: [
-        p("field", "Data field", "text", {
-        required: true,
-        hint: "key on the structure's data object",
-        }),
+            p("field", "Data field", "text", {
+                required: true,
+                hint: "key on the structure's data object",
+            }),
         ],
         fn: (payload, _ctx, options) => {
             const key = (options as { key?: unknown } | null)?.key;
@@ -46,7 +44,6 @@ export const senseActions = defineActions({
         },
     },
 
-    
     triggerScan: {
         role: "sense",
         needs: ["pos"],
@@ -62,32 +59,34 @@ export const senseActions = defineActions({
         },
     },
 
-    
     signalLog: {
         role: "sense",
         needs: [],
         doc: "Logs the raw payload. Use to see what a call site actually delivers.",
-        type: "message", slots: ["signal"], scope: "structure", params: [],
+        type: "message",
+        slots: ["signal"],
+        scope: "structure",
+        params: [],
         fn: (payload, _ctx, extra) => {
             console.log("[md-my-hown-mod:signal]", payload, extra);
         },
     },
 
-    
     triggerLog: {
         role: "sense",
         needs: [],
         doc: "Logs the raw payload of a timed tick.",
-        type: "message", slots: ["trigger"], scope: "global", params: [],
+        type: "message",
+        slots: ["trigger"],
+        scope: "global",
+        params: [],
         fn: (payload, _ctx, extra) => {
             console.log("[md-my-hown-mod:trigger]", payload, extra);
         },
     },
 });
 
-
 export const processingSenseActions = defineActions({
-    
     isElementAtCell: {
         role: "sense",
         needs: ["pos", "read"],
@@ -97,18 +96,14 @@ export const processingSenseActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        elementRef("the element to test for"),
-        p("dx", "Offset X", "number", { def: "0", int: true }),
-        p("dy", "Offset Y", "number", { def: "0", int: true }),
+            elementRef("the element to test for"),
+            p("dx", "Offset X", "number", { def: "0", int: true }),
+            p("dy", "Offset Y", "number", { def: "0", int: true }),
         ],
         fn: (structure, context, options) => {
             try {
                 const anchor = anchorFor(structure);
-                
-                
-                
-                
-                
+
                 const readType = (context as ProcessingContext | null)?.getResolvedTypeAtCell ??
                     api.elements.getResolvedTypeAtCell;
                 if (anchor.source === "none" || typeof readType !== "function") return false;
@@ -119,9 +114,7 @@ export const processingSenseActions = defineActions({
                 };
                 const name = String(o.element ?? "");
                 if (!name) return false;
-                
-                
-                
+
                 const dx = Number(o.dx ?? 0) || 0;
                 const dy = Number(o.dy ?? 0) || 0;
                 const found = (readType as (x: number, y: number) => unknown)(

@@ -1,12 +1,9 @@
 import type { PlacementConfigConfig, PlacementFieldConfig } from "../constants.ts";
 
-
 export interface PlacementProblem {
-    
     readonly field: "structureId" | "fields";
     readonly message: string;
 }
-
 
 function hasLabel(v: unknown): boolean {
     if (!v || typeof v !== "object") return false;
@@ -14,7 +11,6 @@ function hasLabel(v: unknown): boolean {
     const text = (x: unknown): boolean => typeof x === "string" && x.trim().length > 0;
     return text(o.label) || text(o.labelKey);
 }
-
 
 export function placementConfigProblem(
     def: { structureId?: unknown; fields?: unknown } | null | undefined,
@@ -49,7 +45,10 @@ export function placementConfigProblem(
             }
             for (const o of opts) {
                 if (!hasLabel(o)) {
-                    return { field: "fields", message: `choice "${fid}" has an option with no label` };
+                    return {
+                        field: "fields",
+                        message: `choice "${fid}" has an option with no label`,
+                    };
                 }
             }
         }

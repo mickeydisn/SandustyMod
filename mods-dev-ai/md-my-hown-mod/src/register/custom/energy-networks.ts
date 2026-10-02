@@ -14,7 +14,6 @@ function joinedNetworkNames(config: ModConfig): Set<string> {
     return out;
 }
 
-
 export function reportEnergyNetworks({ config }: RegisterContext): number {
     const joined = joinedNetworkNames(config);
     const declared = (config.energyNetworks ?? [])

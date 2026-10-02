@@ -1,4 +1,3 @@
-
 import type { HandlerSlot } from "../../engine/registry/types.ts";
 import { SLOT_CATEGORIES } from "../../engine/registry/categories.ts";
 import type { CustomProcessConfig } from "./types.ts";
@@ -19,22 +18,18 @@ export class ProcessRegistry {
         }
     }
 
-    
     get(id: string): CustomProcessConfig | undefined {
         return this.#byId.get(id);
     }
 
-    
     all(): CustomProcessConfig[] {
         return [...this.#byId.values()];
     }
 
-    
     ids(): string[] {
         return [...this.#byId.keys()].sort();
     }
 
-    
     forSlot(slot: HandlerSlot): CustomProcessConfig[] {
         return this.all()
             .filter((p) => p.scope === slot)

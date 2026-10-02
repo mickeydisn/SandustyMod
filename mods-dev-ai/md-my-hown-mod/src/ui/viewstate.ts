@@ -1,4 +1,3 @@
-
 import { type HandlersTabState, initialHandlersState } from "./panel/handlers.ts";
 import type { OwnerKey } from "./panel/list.ts";
 
@@ -13,16 +12,15 @@ export interface VolatileViewState {
     jsonError: string | null;
     libQuery: Record<string, string>;
     handlerTab: HandlersTabState;
-    
+
     listQuery: string;
-    
+
     listOwner: OwnerKey | "all";
-    
+
     listHidden: boolean;
-    
+
     openRow: string | null;
 }
-
 
 export const VOLATILE_KEYS = [
     "mode",
@@ -39,7 +37,6 @@ export const VOLATILE_KEYS = [
     "openRow",
 ] as const satisfies readonly (keyof VolatileViewState)[];
 
-
 export const LIST_DEFAULTS: Pick<
     VolatileViewState,
     "listQuery" | "listOwner" | "listHidden"
@@ -48,7 +45,6 @@ export const LIST_DEFAULTS: Pick<
     listOwner: "own",
     listHidden: false,
 };
-
 
 export function emptyViewState(): VolatileViewState {
     return {

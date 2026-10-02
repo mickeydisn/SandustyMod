@@ -1,5 +1,3 @@
-
-
 export type InteractionKind =
     | "destroyer"
     | "structure"
@@ -39,16 +37,13 @@ export const INTERACTION_KINDS: { kind: InteractionKind; label: string; blurb: s
     },
 ];
 
-
 export const TOOLTIP_KINDS: InteractionKind[] = ["structure", "custom"];
-
 
 export const DATA_FIELD_MODES: { value: string; label: string }[] = [
     { value: "", label: "Always show" },
     { value: "visibleWhen", label: "Show only when a data field equals a value" },
     { value: "crossedOutWhen", label: "Show, but crossed out, when a data field equals a value" },
 ];
-
 
 const KNOWN = new Set([
     "kind",
@@ -60,7 +55,6 @@ const KNOWN = new Set([
     "crossedOutWhen",
     "onlyWhenTranslated",
 ]);
-
 
 export function composeInteraction(
     f: Record<string, string>,
@@ -86,9 +80,6 @@ export function composeInteraction(
         if (f.tipTextKey?.trim()) out.textKey = f.tipTextKey.trim();
         const mode = f.tipVisibility ?? "";
         if (mode === "visibleWhen" || mode === "crossedOutWhen") {
-            
-            
-            
             const field = Number(f.tipDataField);
             const equals = Number(f.tipDataFieldEquals);
             if (
@@ -102,7 +93,6 @@ export function composeInteraction(
     }
     return out;
 }
-
 
 export function splitInteraction(
     interaction: Record<string, unknown> | undefined,

@@ -1,35 +1,29 @@
-
 import { listStructures } from "../../../catalog.ts";
 import { idField } from "../fields.ts";
 import { parseObjectOrUndefined } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldKind, FieldSpec } from "../types.ts";
-
 
 const KINDS = [
     { value: "conveyor", label: "conveyor" },
     { value: "launcher", label: "launcher" },
 ];
 
-
 const RUN_WITH = [
     { value: "right", label: "right" },
     { value: "left", label: "left" },
 ];
 
-
 const isLauncher = (f: Record<string, string>) => f.kind === "launcher";
 
 const isConveyor = (f: Record<string, string>) => !isLauncher(f);
 
-
 interface Opt {
-    
     control: string;
-    
+
     key: string;
-    
+
     type: "str" | "num" | "json" | "bool";
-    
+
     label: string;
     kind: FieldKind;
     section: string;
@@ -44,7 +38,6 @@ interface Opt {
     wide?: boolean;
     when?: (f: Record<string, string>) => boolean;
 }
-
 
 const CONVEYOR_OPTS: Opt[] = [
     {
@@ -125,19 +118,12 @@ const CONVEYOR_OPTS: Opt[] = [
         label: "Skip queued",
         kind: "bool",
         section: "Conveyor",
-        
-        
-        
-        
-        
-        
-        
+
         when: isConveyor,
         hint: "pass over cells that are already queued instead of stopping at them. " +
             "blank and off both skip nothing, but only a written value counts as an option",
     },
 ];
-
 
 const LAUNCHER_OPTS: Opt[] = [
     {
@@ -184,8 +170,7 @@ const LAUNCHER_OPTS: Opt[] = [
         wide: true,
         when: isLauncher,
         placeholder: "[ 0, -1 ]",
-        
-        
+
         hint: "[x, y] tuple — a conveyor's velocity is a {x, y} object instead",
     },
     {
@@ -211,22 +196,16 @@ const LAUNCHER_OPTS: Opt[] = [
     },
 ];
 
-
 const OWNED = new Set([...CONVEYOR_OPTS, ...LAUNCHER_OPTS].map((o) => o.key));
-
 
 function toField(o: Opt): FieldSpec {
     const { control, key: _key, type: _type, ...rest } = o;
     return { key: control, ...rest } as FieldSpec;
 }
 
-
 function optsForKind(kind: string | undefined): Opt[] {
     return kind === "launcher" ? LAUNCHER_OPTS : CONVEYOR_OPTS;
 }
-
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -243,16 +222,6 @@ const FIELDS: FieldSpec[] = [
     ...CONVEYOR_OPTS.map(toField),
     ...LAUNCHER_OPTS.map(toField),
     {
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         key: "definitionJson",
         label: "Rest of the payload",
         kind: "json",
@@ -265,9 +234,6 @@ const FIELDS: FieldSpec[] = [
     },
 ];
 
-
-
-
 function readOpt(def: Record<string, unknown>, o: Opt, read: EntryReader): string | undefined {
     switch (o.type) {
         case "str":
@@ -277,16 +243,9 @@ function readOpt(def: Record<string, unknown>, o: Opt, read: EntryReader): strin
         case "json":
             return read.json(def[o.key]);
         case "bool":
-            
-            
-            
-            
-            
-            
             return def[o.key] === true ? "true" : undefined;
     }
 }
-
 
 function writeOpt(w: EntryWriter, o: Opt): unknown {
     switch (o.type) {
@@ -301,67 +260,40 @@ function writeOpt(w: EntryWriter, o: Opt): unknown {
     }
 }
 
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("kind", read.str(e.kind));
-    
-    
-    
-    
+
     const def = (e.definition ?? {}) as Record<string, unknown>;
     for (const o of [...CONVEYOR_OPTS, ...LAUNCHER_OPTS]) {
         read.put(o.control, readOpt(def, o, read));
     }
-    
-    
-    
-    
-    
+
     const leftover: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(def)) {
-        
-        
-        
-        
         if (!OWNED.has(k) || v === false) leftover[k] = v;
     }
     read.put("definitionJson", read.json(Object.keys(leftover).length > 0 ? leftover : undefined));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     const kind = w.opt("kind");
     w.setStr("kind", kind);
-    
-    
-    
+
     const def: Record<string, unknown> = {
         ...(parseObjectOrUndefined(form.definitionJson) ?? {}),
     };
-    
-    
-    
+
     for (const o of optsForKind(kind)) {
         const v = writeOpt(w, o);
         if (v === undefined) continue;
-        
-        
-        
-        
-        
-        
+
         if (o.type === "bool" && v === false) continue;
-        
-        
+
         def[o.key] = v;
     }
-    
-    
+
     if (Object.keys(def).length > 0) w.setRaw("definition", def);
 }
-
-
-
 
 const FORM_COVERED = ["kind", "definition"];
 
@@ -371,7 +303,4 @@ export const behaviorDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
 };

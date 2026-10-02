@@ -10,8 +10,8 @@ export const upgradesActions = defineActions({
         slots: ["upgrade"],
         scope: "item",
         params: [
-        p("itemId", "Item", "text", { required: true }),
-        p("level", "Level", "number", { def: "1", min: 0, int: true }),
+            p("itemId", "Item", "text", { required: true }),
+            p("level", "Level", "number", { def: "1", min: 0, int: true }),
         ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as {
@@ -27,5 +27,4 @@ export const upgradesActions = defineActions({
             }
         },
     },
-
 });

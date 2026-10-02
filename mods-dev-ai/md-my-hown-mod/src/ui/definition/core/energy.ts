@@ -1,10 +1,7 @@
-
 import { listEnergyNetworkOpts, listStructures } from "../../../catalog.ts";
 import { ENERGY_ROLE_OPTS } from "../choices.ts";
 import { advField, idField, numField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -17,10 +14,6 @@ const FIELDS: FieldSpec[] = [
         options: listStructures,
     },
     {
-        
-        
-        
-        
         key: "type",
         label: "Role",
         kind: "select",
@@ -37,12 +30,6 @@ const FIELDS: FieldSpec[] = [
         hint: "max energy this node can hold (api.energy.registerType options.capacity)",
     }),
     {
-        
-        
-        
-        
-        
-        
         key: "energyType",
         label: "Network",
         kind: "select",
@@ -60,13 +47,10 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("structureId", read.str(e.structureId));
     read.put("type", read.str(e.type));
-    
+
     const o = e.options as
         | { capacity?: number; energyType?: string; priority?: number }
         | undefined;
@@ -75,13 +59,10 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("priority", read.num(o?.priority));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("structureId", w.opt("structureId"));
     w.setStr("type", w.opt("type"));
-    
-    
-    
+
     const options: Record<string, unknown> = {};
     const cap = w.optNum("capacity");
     if (cap !== undefined) options.capacity = cap;
@@ -92,9 +73,6 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     if (Object.keys(options).length > 0) w.setRaw("options", options);
 }
 
-
-
-
 const FORM_COVERED = ["structureId", "type", "options"];
 
 export const energyDefinition: Definition = {
@@ -103,8 +81,4 @@ export const energyDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
-    
 };

@@ -5,7 +5,7 @@ import {
     PROJECTILE_OPTION_STORE_KEY,
     projectileOptionOf,
 } from "../../handler/processing/projectile-option/index.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerProjectiles({ config }: RegisterContext): number {
     return registerEach(config.projectiles, "projectiles", (entry) => {

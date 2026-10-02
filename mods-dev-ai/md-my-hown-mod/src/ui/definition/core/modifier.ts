@@ -1,4 +1,3 @@
-
 import { listHookIds } from "../../../catalog.ts";
 import {
     PROCESS_COVERED,
@@ -10,8 +9,6 @@ import { HOOK_KIND_OPTS } from "../choices.ts";
 import { boolField, idField, textField } from "../fields.ts";
 import { putCustomOrSelect } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -39,9 +36,6 @@ const FIELDS: FieldSpec[] = [
         options: HOOK_KIND_OPTS,
     },
     {
-        
-        
-        
         ...processRefField("intercepts or rewrites the engine hook", { section: "Hook" }),
         required: true,
     },
@@ -49,11 +43,7 @@ const FIELDS: FieldSpec[] = [
     textField("notes", "Notes", "Hook", false, { maxLength: 120 }),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
-    
     putCustomOrSelect(read.put, read.str(e.hookId), "hookId", "hookCustom", listHookIds());
     read.put("kind", read.str(e.kind));
     readProcessRef(read, e);
@@ -61,20 +51,13 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     if (typeof e.enabled === "boolean") read.put("enabled", String(e.enabled));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
-    
-    
-    
     w.setStr("hookId", w.opt("hookCustom") ?? w.opt("hookId"));
     w.setStr("kind", w.opt("kind"));
     writeProcessRef(w);
     w.setStr("notes", w.opt("notes"));
     w.setBool("enabled", w.optBool("enabled"));
 }
-
-
-
 
 const FORM_COVERED = ["hookId", "kind", "enabled", "notes", ...PROCESS_COVERED];
 
@@ -84,7 +67,4 @@ export const modifierDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
 };

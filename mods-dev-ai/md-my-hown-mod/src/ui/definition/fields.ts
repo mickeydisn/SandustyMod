@@ -1,10 +1,8 @@
-
 import { listElements } from "../../catalog.ts";
 import { MOD_ID } from "../../constants.ts";
 import { HANDLER_TYPE_LABELS, handlerTypesForKeys } from "../../handler/index.ts";
 import type { Opt } from "../../catalog.ts";
 import type { FieldSpec } from "./types.ts";
-
 
 export function typesHintFor(pick: () => Opt[]): string {
     const types = handlerTypesForKeys(pick().map((o) => o.value));
@@ -23,7 +21,6 @@ export const SPRITE_ID_MSG = "key, or namespace:key — e.g. sprites:crusher";
 export const NAME_MAX = 64;
 export const DESC_MAX = 200;
 
-
 export function idField(): FieldSpec {
     return {
         key: "idSuffix",
@@ -37,7 +34,6 @@ export function idField(): FieldSpec {
         placeholder: "my-thing",
     };
 }
-
 
 export function spriteIdField(): FieldSpec {
     return {
@@ -53,9 +49,7 @@ export function spriteIdField(): FieldSpec {
     };
 }
 
-
 export const PASSTHROUGH_KEY = "advancedJson";
-
 
 export function passthroughKeysOf(raw: string | undefined): string[] {
     const text = (raw ?? "").trim();
@@ -64,12 +58,11 @@ export function passthroughKeysOf(raw: string | undefined): string[] {
     try {
         parsed = JSON.parse(text);
     } catch {
-        return []; 
+        return [];
     }
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return [];
     return Object.keys(parsed as Record<string, unknown>).sort();
 }
-
 
 export function advField(): FieldSpec {
     return {
@@ -116,7 +109,6 @@ export function numField(
     return { key, label, kind: "number", section, step: 1, int: true, ...extra };
 }
 
-
 export function elSelect(
     key: string,
     label: string,
@@ -127,7 +119,6 @@ export function elSelect(
     return { key, label, kind: "select", section, required, options: listElements, hint };
 }
 
-
 export function resolveAutoFill(
     current: string | undefined,
     lastAuto: string | undefined,
@@ -137,7 +128,6 @@ export function resolveAutoFill(
     if (cur !== "" && cur !== (lastAuto ?? "")) return null;
     return derived;
 }
-
 
 export function autoGraphicsKey(assetName: string): string {
     return `sprites:${assetName}`;

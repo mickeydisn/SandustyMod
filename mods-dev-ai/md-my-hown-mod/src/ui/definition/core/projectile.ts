@@ -1,4 +1,3 @@
-
 import { listSpriteIds } from "../../../catalog.ts";
 import {
     OPTION_COVERED,
@@ -11,8 +10,6 @@ import {
 import { idField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-
-
 const FIELDS: FieldSpec[] = [
     idField(),
     {
@@ -23,16 +20,9 @@ const FIELDS: FieldSpec[] = [
         required: true,
         options: listSpriteIds,
     },
-    
-    
+
     projectileOptionField(),
     {
-        
-        
-        
-        
-        
-        
         key: PARAMS_FORM_KEY,
         label: "Parameters",
         kind: "json",
@@ -47,27 +37,19 @@ const FIELDS: FieldSpec[] = [
         section: "Look",
         jsonType: "object",
         wide: true,
-        
-        
-        
-        
+
         when: (f) => !(f[OPTIONS_FORM_KEY] ?? "").trim(),
         hint: "{ speed?, rotateWithVelocity?, tint?, … }",
         placeholder: '{ "speed": 10 }',
     },
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
-    
     const sprite = e.sprite as { id?: string } | undefined;
     read.put("spriteId", read.str(sprite?.id));
     readProjectileOption(read, e);
     read.put("optionsJson", read.json(e.options));
 }
-
 
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     const spriteId = w.opt("spriteId");
@@ -77,9 +59,6 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     if (options) w.setRaw("options", options);
 }
 
-
-
-
 const FORM_COVERED = ["sprite", "options", ...OPTION_COVERED];
 
 export const projectileDefinition: Definition = {
@@ -88,5 +67,4 @@ export const projectileDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
 };

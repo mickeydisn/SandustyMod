@@ -1,4 +1,3 @@
-
 import {
     ACTION_ROLES,
     type ActionDef,
@@ -9,15 +8,12 @@ import {
     type StoredAction,
 } from "../engine/types.ts";
 
-
 import { processingSenseActions, senseActions } from "./engine/sense.ts";
 import { engineDecideActions } from "./engine/decide.ts";
 import { processingRememberActions, rememberActions } from "./engine/remember.ts";
-import { engineConnectActions, connectModifierActions } from "./engine/connect.ts";
+import { connectModifierActions, engineConnectActions } from "./engine/connect.ts";
 import { engineFeelActions } from "./engine/feel.ts";
 import { processorActions } from "./engine/processors.ts";
-
-
 
 import { gridActions } from "./api/grid.ts";
 import { projectilesActions } from "./api/projectiles.ts";
@@ -33,7 +29,6 @@ import { effectsActions } from "./api/effects.ts";
 import { uiActions } from "./api/ui.ts";
 import { randomActions } from "./api/random.ts";
 
-
 import { bufferActions } from "./custom/buffer.ts";
 import { logicActions } from "./logic.ts";
 interface Folder {
@@ -41,11 +36,9 @@ interface Folder {
     defs: Record<string, ActionDef & { kind?: "intercept" | "modify" }>;
 }
 
-
 type DefKeys<T> = T extends { defs: infer D } ? keyof D & string : never;
 
 const FOLDERS = [
-    
     { signature: "payload", defs: senseActions },
     { signature: "processing", defs: processingSenseActions },
     { signature: "payload", defs: engineDecideActions },
@@ -56,7 +49,6 @@ const FOLDERS = [
     { signature: "payload", defs: engineFeelActions },
     { signature: "processing", defs: processorActions },
 
-    
     { signature: "payload", defs: randomActions },
     { signature: "payload", defs: uiActions },
     { signature: "payload", defs: effectsActions },
@@ -72,22 +64,16 @@ const FOLDERS = [
     { signature: "processing", defs: structureActions },
     { signature: "processing", defs: terrainActions },
 
-    
     { signature: "payload", defs: bufferActions },
     { signature: "payload", defs: logicActions },
 ] as const satisfies readonly Folder[];
 
-
 export type ActionKey = DefKeys<(typeof FOLDERS)[number]>;
-
 
 export const ALL_ACTIONS: Record<string, StoredAction> = (() => {
     const out: Record<string, StoredAction> = {};
     for (const folder of FOLDERS) {
         for (const [key, def] of Object.entries(folder.defs)) {
-            
-            
-            
             if (out[key]) {
                 throw new Error(
                     `handler: duplicate action key "${key}" — declared in two role folders`,
@@ -99,11 +85,9 @@ export const ALL_ACTIONS: Record<string, StoredAction> = (() => {
     return out;
 })();
 
-
 export function actionKeys(): string[] {
     return Object.keys(ALL_ACTIONS).sort();
 }
-
 
 export function actionKeysOfRole(role: ActionRole): string[] {
     return Object.entries(ALL_ACTIONS)
@@ -112,19 +96,10 @@ export function actionKeysOfRole(role: ActionRole): string[] {
         .sort();
 }
 
-
 export function actionOf(key: string | undefined): StoredAction | undefined {
     if (!key) return undefined;
     return ALL_ACTIONS[key];
 }
-
-
-
-
-
-
-
-
 
 export const ANY_ACTIONS: Record<string, HandlerActionFn> = Object.fromEntries(
     Object.entries(ALL_ACTIONS)
@@ -132,13 +107,11 @@ export const ANY_ACTIONS: Record<string, HandlerActionFn> = Object.fromEntries(
         .map(([k, a]) => [k, a.fn]),
 );
 
-
 export const PROCESSING_ACTIONS: Record<string, HandlerActionFn> = Object.fromEntries(
     Object.entries(ALL_ACTIONS)
         .filter(([, a]) => a.signature === "processing")
         .map(([k, a]) => [k, a.fn]),
 );
-
 
 export const MODIFIER_ACTIONS: Record<string, ModifierAction> = Object.fromEntries(
     Object.entries(ALL_ACTIONS)
@@ -146,23 +119,17 @@ export const MODIFIER_ACTIONS: Record<string, ModifierAction> = Object.fromEntri
         .map(([k, a]) => [k, { kind: a.kind!, fn: a.fn }]),
 );
 
-
 export const ACTION_DOCS: Record<string, string> = Object.fromEntries(
     Object.entries(ALL_ACTIONS).map(([k, a]) => [k, a.doc]),
 );
-
 
 export const ACTIONS_BY_ROLE: Record<ActionRole, string[]> = Object.fromEntries(
     ACTION_ROLES.map((r) => [r, actionKeysOfRole(r)]),
 ) as Record<ActionRole, string[]>;
 
-
-
-
 export function resolveAction(key: string | undefined): HandlerActionFn | undefined {
     return actionOf(key)?.fn;
 }
-
 
 export function resolveModifier(key: string | undefined): ModifierAction | undefined {
     const a = actionOf(key);

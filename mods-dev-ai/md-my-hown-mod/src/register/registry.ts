@@ -2,7 +2,6 @@ import { COLLECTION_KEYS, type CollectionKey } from "../config/store.ts";
 import type { ModConfig } from "../constants.ts";
 import type { ProcessRegistry } from "../handler/processing/custom-process/index.ts";
 
-
 const WORKER_SCOPED: ReadonlySet<CollectionKey> = new Set<CollectionKey>([
     "elements",
     "terrains",
@@ -25,12 +24,10 @@ export function __resetBootWindowForTests(): void {
     windowOpen = true;
 }
 
-
 export interface RegisterContext {
     readonly config: ModConfig;
     readonly processes: ProcessRegistry;
 }
-
 
 export function registerEach<E extends { id?: string }>(
     entries: readonly E[] | undefined,

@@ -1,5 +1,3 @@
-
-
 import type { Tab } from "./schema.ts";
 import { CATEGORY_META, MENU_GROUPS } from "./schema.ts";
 import { RELATIONS, relationsOf } from "./relations.ts";
@@ -17,19 +15,18 @@ import { DEFAULT_UNLOCK_NODE } from "./tech-link.ts";
 export interface GraphNode {
     cat: Tab;
     label: string;
-    
+
     group: string;
     groupLabel: string;
-    
+
     depth: number;
-    
+
     count: number;
     x: number;
     y: number;
     w: number;
     h: number;
 }
-
 
 export interface GraphColumn {
     key: string;
@@ -38,9 +35,9 @@ export interface GraphColumn {
     y: number;
     w: number;
     h: number;
-    
+
     count: number;
-    
+
     minDepth: number;
 }
 
@@ -50,19 +47,18 @@ export interface GraphEdge {
     field: string;
     note: string;
     required: boolean;
-    
+
     live: number;
-    
+
     dangling: number;
 }
 
 export interface DanglingRef {
-    
     from: Tab;
-    
+
     fromId: string;
     field: string;
-    
+
     target: string;
     to: Tab;
 }
@@ -70,11 +66,11 @@ export interface DanglingRef {
 export interface Graph {
     nodes: GraphNode[];
     edges: GraphEdge[];
-    
+
     columns: GraphColumn[];
     width: number;
     height: number;
-    
+
     danglingRefs: DanglingRef[];
 }
 
@@ -89,7 +85,6 @@ const ROW_GAP = 14;
 
 const GROUP_GAP = 40;
 const PAD = 16;
-
 
 const PALETTE = [
     "#5b8ff9",
@@ -127,14 +122,11 @@ const COLOUR_ORDER: Tab[] = [
     "modifiers",
 ];
 
-
 export function categoryColor(cat: Tab): string {
     const i = COLOUR_ORDER.indexOf(cat);
-    
-    
+
     return PALETTE[i < 0 ? COLOUR_ORDER.length % PALETTE.length : i % PALETTE.length];
 }
-
 
 export function graphCategories(): Tab[] {
     const involved = new Set<Tab>();
@@ -158,7 +150,6 @@ function entriesOf(
     );
 }
 
-
 const GAME_ID_LOADERS: Partial<Record<Tab, () => string[]>> = {
     elements: () => listElements({ includeHidden: true }).map((o) => o.value),
     items: () => listItems().map((o) => o.value),
@@ -166,9 +157,7 @@ const GAME_ID_LOADERS: Partial<Record<Tab, () => string[]>> = {
     structures: () => listStructures().map((o) => o.value),
     sprites: () => listSpriteIds().map((o) => o.value),
     techs: () => listTechIds().map((o) => o.value),
-    
-    
-    
+
     unlockNodes: () => listUnlockNodes().map((o) => o.value),
 };
 
@@ -184,7 +173,6 @@ function gameIds(tab: Tab): Set<string> {
     return out;
 }
 
-
 export function findDangling(
     cfg: Record<string, unknown>,
     known?: (tab: Tab) => Set<string>,
@@ -196,8 +184,7 @@ export function findDangling(
         if (list.length === 0) continue;
         const known = new Set(entriesOf(cfg, r.to).map((e) => String(e.id ?? "")));
         for (const id of builtins(r.to)) known.add(id);
-        
-        
+
         if (known.size === 0) continue;
         for (const entry of list) {
             const raw = entry[r.field];
@@ -220,11 +207,9 @@ export function findDangling(
     return out;
 }
 
-
 const VIRTUAL_IDS: Partial<Record<Tab, string[]>> = {
     unlockNodes: [DEFAULT_UNLOCK_NODE],
 };
-
 
 function edgeCounts(
     cfg: Record<string, unknown>,
@@ -255,7 +240,6 @@ function edgeCounts(
     return { live, dangling };
 }
 
-
 function depthOf(cats: Tab[]): Map<Tab, number> {
     const index = new Map(cats.map((c, i) => [c, i]));
     const edges = new Map<Tab, number[]>();
@@ -269,9 +253,6 @@ function depthOf(cats: Tab[]): Map<Tab, number> {
         );
     }
 
-    
-    
-    
     const strong = new Int32Array(cats.length).fill(-1);
     const low = new Int32Array(cats.length);
     const onStack = new Uint8Array(cats.length);
@@ -312,13 +293,11 @@ function depthOf(cats: Tab[]): Map<Tab, number> {
         }
     }
 
-    
-    
     const compOf = (v: number) => strong[v];
     const compEdges = new Map<number, Set<number>>();
     for (let v = 0; v < cats.length; v++) {
         for (const w of edges.get(cats[v]) ?? []) {
-            if (compOf(v) === compOf(w)) continue; 
+            if (compOf(v) === compOf(w)) continue;
             const from = compOf(v);
             compEdges.set(from, (compEdges.get(from) ?? new Set()).add(compOf(w)));
         }
@@ -328,7 +307,7 @@ function depthOf(cats: Tab[]): Map<Tab, number> {
     const walk = (c: number): number => {
         const known = compDepth.get(c);
         if (known !== undefined) return known;
-        compDepth.set(c, 0); 
+        compDepth.set(c, 0);
         let d = 0;
         for (const t of compEdges.get(c) ?? []) d = Math.max(d, walk(t) + 1);
         compDepth.set(c, d);
@@ -341,20 +320,7 @@ function depthOf(cats: Tab[]): Map<Tab, number> {
     return out;
 }
 
-
 export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null): Graph {
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     const cats = keep ? graphCategories().filter((c) => keep.has(c)) : graphCategories();
     if (!cats.length) {
         return { nodes: [], edges: [], columns: [], width: 0, height: 0, danglingRefs: [] };
@@ -387,22 +353,9 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
             minDepth: Math.min(...orphans.map((c) => depth.get(c) ?? 0)),
         });
     }
-    
-    
-    
-    
-    
+
     groups.sort((a, b) => a.minDepth - b.minDepth);
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
     const perGroup = groups.map((g) => {
         const byDepth = new Map<number, Tab[]>();
         for (const cat of g.cats) {
@@ -416,21 +369,14 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
         ...perGroup.flatMap((b) => [...b.values()].map((v) => v.length)),
     );
     const slotStepH = NODE_H + ROW_GAP;
-    
-    
-    
-    
+
     const rows = Math.max(
         1,
         ...perGroup.flatMap((byDepth) =>
             [...byDepth].flatMap(([d, members]) => members.map((_, i) => d * slot + i + 1))
         ),
     );
-    
-    
-    
-    
-    
+
     const groupW = NODE_W + COL_PAD * 2;
     const groupH = HEAD_H + rows * slotStepH - ROW_GAP;
     const nodeX = COL_PAD;
@@ -445,10 +391,7 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
         for (const [d, members] of byDepth) {
             for (let i = 0; i < members.length; i++) {
                 const cat = members[i];
-                
-                
-                
-                
+
                 nodes.push({
                     cat,
                     label: CATEGORY_META[cat].label,
@@ -468,8 +411,7 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
             key: g.key,
             label: g.label,
             minDepth: g.minDepth,
-            
-            
+
             x,
             y: PAD,
             w: groupW,
@@ -478,12 +420,6 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
         });
     });
 
-    
-    
-    
-    
-    
-    
     const inGraph = new Set<Tab>(cats);
     const edges: GraphEdge[] = RELATIONS
         .filter((r) => inGraph.has(r.from) && inGraph.has(r.to))
@@ -510,7 +446,6 @@ export function buildGraph(cfg: Record<string, unknown>, keep?: Set<Tab> | null)
     };
 }
 
-
 export function neighboursOf(graph: Graph, cat: Tab): Set<Tab> {
     const out = new Set<Tab>([cat]);
     for (const e of graph.edges) {
@@ -519,7 +454,6 @@ export function neighboursOf(graph: Graph, cat: Tab): Set<Tab> {
     }
     return out;
 }
-
 
 export function graphAsText(graph: Graph): string {
     const lines: string[] = [];

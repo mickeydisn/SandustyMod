@@ -1,8 +1,5 @@
-
 import { advField, DESC_MAX, idField, textField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -13,21 +10,13 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
-    
-    
     w.setStr("name", w.opt("name"));
 }
-
-
 
 export const networkDefinition: Definition = {
     tab: "networks",
@@ -35,7 +24,4 @@ export const networkDefinition: Definition = {
     formCovered: ["name"],
     entryToForm,
     formToEntry,
-    
-    
-    
 };

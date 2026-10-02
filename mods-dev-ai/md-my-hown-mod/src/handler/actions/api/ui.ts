@@ -20,7 +20,4 @@ export const uiActions = defineActions({
             }
         },
     },
-
-    
-
 });

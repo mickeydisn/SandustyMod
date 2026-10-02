@@ -1,4 +1,3 @@
-
 import { behaviorDefinition } from "./core/behavior.ts";
 import { bufferDefinition } from "./custom/buffer.ts";
 import { contactDefinition } from "./core/contact.ts";
@@ -25,7 +24,6 @@ import { customProcessDefinition } from "./custom/process.ts";
 import { networkDefinition } from "./custom/network.ts";
 import { unlockNodeDefinition } from "./custom/unlock-node.ts";
 import type { Definition, Tab } from "./types.ts";
-
 
 export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
     behaviors: behaviorDefinition,
@@ -54,7 +52,6 @@ export const DEFINITIONS: Partial<Record<Tab, Definition>> = {
     unlockNodes: unlockNodeDefinition,
     upgrades: upgradeDefinition,
 };
-
 
 export function definitionFor(cat: Tab): Definition | undefined {
     return DEFINITIONS[cat];

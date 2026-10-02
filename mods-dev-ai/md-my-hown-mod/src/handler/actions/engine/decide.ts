@@ -11,9 +11,7 @@ function twoSided(options: unknown): { op: string; left: number; right: number }
     };
 }
 
-
 export const engineDecideActions = defineActions({
-    
     math: {
         role: "decide",
         needs: [],
@@ -22,21 +20,21 @@ export const engineDecideActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "global",
         params: [
-        p("left", "Left", "text", {
-        required: true,
-        hint: "a number, or {{aVariable}} from an earlier step",
-        }),
-        p("op", "Operation", "select", {
-        required: true,
-        def: "add",
-        options: [
-        { value: "add", label: "plus" },
-        { value: "sub", label: "minus" },
-        { value: "mul", label: "times" },
-        { value: "div", label: "divided by" },
-        ],
-        }),
-        p("right", "Right", "number", { required: true, def: "1" }),
+            p("left", "Left", "text", {
+                required: true,
+                hint: "a number, or {{aVariable}} from an earlier step",
+            }),
+            p("op", "Operation", "select", {
+                required: true,
+                def: "add",
+                options: [
+                    { value: "add", label: "plus" },
+                    { value: "sub", label: "minus" },
+                    { value: "mul", label: "times" },
+                    { value: "div", label: "divided by" },
+                ],
+            }),
+            p("right", "Right", "number", { required: true, def: "1" }),
         ],
         fn: (_payload, _ctx, options) => {
             const { op, left, right } = twoSided(options);
@@ -50,9 +48,6 @@ export const engineDecideActions = defineActions({
                 case "mul":
                     return left * right;
                 case "div":
-                    
-                    
-                    
                     if (right === 0) return left;
                     return Math.round(left / right);
                 default:
@@ -61,7 +56,6 @@ export const engineDecideActions = defineActions({
         },
     },
 
-    
     compare: {
         role: "decide",
         needs: [],
@@ -70,23 +64,23 @@ export const engineDecideActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "global",
         params: [
-        p("left", "Left", "text", {
-        required: true,
-        hint: "a number, or {{aVariable}} from an earlier step",
-        }),
-        p("op", "Test", "select", {
-        required: true,
-        def: "gte",
-        options: [
-        { value: "eq", label: "is" },
-        { value: "ne", label: "is not" },
-        { value: "gt", label: "is more than" },
-        { value: "gte", label: "is at least" },
-        { value: "lt", label: "is less than" },
-        { value: "lte", label: "is at most" },
-        ],
-        }),
-        p("right", "Right", "number", { required: true, def: "0" }),
+            p("left", "Left", "text", {
+                required: true,
+                hint: "a number, or {{aVariable}} from an earlier step",
+            }),
+            p("op", "Test", "select", {
+                required: true,
+                def: "gte",
+                options: [
+                    { value: "eq", label: "is" },
+                    { value: "ne", label: "is not" },
+                    { value: "gt", label: "is more than" },
+                    { value: "gte", label: "is at least" },
+                    { value: "lt", label: "is less than" },
+                    { value: "lte", label: "is at most" },
+                ],
+            }),
+            p("right", "Right", "number", { required: true, def: "0" }),
         ],
         fn: (_payload, _ctx, options) => {
             const { op, left, right } = twoSided(options);
@@ -110,16 +104,17 @@ export const engineDecideActions = defineActions({
         },
     },
 
-    
     noop: {
         role: "decide",
         needs: [],
         doc: "Always true. Makes an unconditional process explicit.",
-        type: "global", slots: [...ALL_SLOTS], scope: "global", params: [],
+        type: "global",
+        slots: [...ALL_SLOTS],
+        scope: "global",
+        params: [],
         fn: () => undefined,
     },
 
-    
     upgradeScale: {
         role: "decide",
         needs: ["data"],
@@ -128,8 +123,8 @@ export const engineDecideActions = defineActions({
         slots: ["upgrade"],
         scope: "item",
         params: [
-        p("field", "Numeric field", "text", { required: true }),
-        p("factor", "Factor", "number", { def: "1.1", min: 0 }),
+            p("field", "Numeric field", "text", { required: true }),
+            p("factor", "Factor", "number", { def: "1.1", min: 0 }),
         ],
         fn: (payload, _ctx, options) => {
             const o = options as { thresholds?: number[] } | null;

@@ -6,38 +6,30 @@ import { BUFFER_VALUE_TYPES, isOneOf } from "../../../ui/definition/choices.ts";
 import type { BufferEntryConfig, BufferValueType } from "../../../constants.ts";
 import { p } from "../../engine/registry/params.ts";
 
-
 type BufferOptions = { path?: string };
-
 
 let source: (() => BufferEntryConfig[]) | null = null;
 
-
 export function setBufferSource(fn: () => BufferEntryConfig[]): void {
     source = fn;
-    
-    
+
     resetBuffer();
 }
-
 
 function entries(): BufferEntryConfig[] {
     return source?.() ?? [];
 }
-
 
 function typeAt(path: string): BufferValueType | undefined {
     const type = entries().find((b) => b?.path === path)?.type;
     return isOneOf(BUFFER_VALUE_TYPES, type) ? type : undefined;
 }
 
-
 function buffer() {
     return ensureBufferReady(entries());
 }
 
 export const bufferActions = defineActions({
-    
     bufferRead: {
         role: "remember",
         needs: [],
@@ -46,36 +38,24 @@ export const bufferActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "global",
         params: [
-        p("path", "Buffer path", "text", {
-        required: true,
-        hint: "a path declared in Content → Buffer",
-        }),
+            p("path", "Buffer path", "text", {
+                required: true,
+                hint: "a path declared in Content → Buffer",
+            }),
         ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as BufferOptions;
             if (!o.path) return 0;
             const buf = buffer();
-            
-            
-            
+
             if (!buf) return 0;
             let value: unknown;
             try {
                 value = buf.getPath(o.path);
             } catch {
-                
-                
                 return 0;
             }
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             if (value === undefined) {
                 return zeroFor(typeAt(o.path) ?? "number");
             }
@@ -83,7 +63,6 @@ export const bufferActions = defineActions({
         },
     },
 
-    
     bufferWrite: {
         role: "remember",
         needs: [],
@@ -92,53 +71,36 @@ export const bufferActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "global",
         params: [
-        p("path", "Buffer path", "text", {
-        required: true,
-        hint: "a path declared in Content → Buffer",
-        }),
-        
-        p("value", "Value", "text", {
-        hint: "a literal, or {{aVariable}} from an earlier step",
-        }),
+            p("path", "Buffer path", "text", {
+                required: true,
+                hint: "a path declared in Content → Buffer",
+            }),
+
+            p("value", "Value", "text", {
+                hint: "a literal, or {{aVariable}} from an earlier step",
+            }),
         ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as BufferOptions & { value?: unknown };
             if (!o.path) return;
             const buf = buffer();
             if (!buf) return;
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             if (typeAt(o.path) === undefined) return;
             try {
-                
-                
-                
-                
                 if (buf.isCounter(o.path)) {
                     const n = Math.round(Number(o.value));
                     buf.setPath(o.path, Number.isFinite(n) ? n : 0);
                 } else {
                     buf.setPath(o.path, o.value);
                 }
-                
-                
-                
+
                 buf.commit();
             } catch {
-                
-                
             }
         },
     },
 
-    
     bufferIncrement: {
         role: "remember",
         needs: [],
@@ -147,26 +109,21 @@ export const bufferActions = defineActions({
         slots: [...ALL_SLOTS],
         scope: "global",
         params: [
-        p("path", "Buffer path", "text", {
-        required: true,
-        hint:
-        "a **number** path from Content → Buffer — a bool or string slot is not a counter",
-        }),
-        
-        p("delta", "Amount", "number", { required: true, def: "1", int: true }),
+            p("path", "Buffer path", "text", {
+                required: true,
+                hint:
+                    "a **number** path from Content → Buffer — a bool or string slot is not a counter",
+            }),
+
+            p("delta", "Amount", "number", { required: true, def: "1", int: true }),
         ],
         fn: (_payload, _ctx, options) => {
             const o = (options ?? {}) as BufferOptions & { delta?: number };
             if (!o.path) return;
             const buf = buffer();
-            
-            
-            
+
             if (!buf || !buf.isCounter(o.path)) return;
-            
-            
-            
-            
+
             if (typeAt(o.path) === undefined) return;
             const delta = Number(o.delta);
             if (!Number.isInteger(delta)) return;
@@ -174,7 +131,6 @@ export const bufferActions = defineActions({
                 buf.increment(o.path, delta);
                 buf.commit();
             } catch {
-                
             }
         },
     },

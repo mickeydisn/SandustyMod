@@ -1,4 +1,3 @@
-
 import { listElements, listMatterTypes, MATTER_NAME_BY_VALUE } from "../../../catalog.ts";
 import * as S from "../../styles.ts";
 import {
@@ -18,17 +17,6 @@ import {
     elementRecordToFields,
 } from "../data-fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
-
-
-
-
-
-
-
-
-
-
-
 
 export function variantsToHexList(raw: string | undefined): string[] {
     if (!raw?.trim()) return [];
@@ -53,7 +41,6 @@ export function variantsToHexList(raw: string | undefined): string[] {
     return out;
 }
 
-
 export function hexListToVariants(list: string[]): [number, number, number, number][] {
     return list
         .filter((h) => /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(h))
@@ -68,17 +55,12 @@ export function hexListToVariants(list: string[]): [number, number, number, numb
         });
 }
 
-
 export function seedVariantFromMapColor(mapColorHex: string | undefined): string {
     return mapColorHex && HEX.test(mapColorHex) ? `${mapColorHex}ff` : "#ccccccff";
 }
 
-
-
-
 const isFlammableOn = (f: Record<string, string>) => f.flammableOn === "true";
 const isCollectableOn = (f: Record<string, string>) => f.collectableOn === "true";
-
 
 const FLAMMABLE_FIELDS: FieldSpec[] = [
     {
@@ -95,9 +77,7 @@ const FLAMMABLE_FIELDS: FieldSpec[] = [
         section: "Flammable",
         when: isFlammableOn,
         options: listElements,
-        
-        
-        
+
         hint: "the element written over the burnt cell. empty = nothing is left",
     },
     {
@@ -109,8 +89,7 @@ const FLAMMABLE_FIELDS: FieldSpec[] = [
         min: 0,
         max: 1,
         step: 0.05,
-        
-        
+
         hint: "0–1. engine default 0.25, not 1",
     },
     {
@@ -145,7 +124,6 @@ const FLAMMABLE_FIELDS: FieldSpec[] = [
     },
 ];
 
-
 const COLLECTABLE_FIELDS: FieldSpec[] = [
     {
         key: "collectableOn",
@@ -163,12 +141,10 @@ const COLLECTABLE_FIELDS: FieldSpec[] = [
         min: 0,
         step: 1,
         int: true,
-        
-        
+
         hint: "the number the collector stores. required — gold is 2",
     },
 ];
-
 
 const DATA_FIELDS: FieldSpec[] = [
     {
@@ -246,9 +222,6 @@ const FIELDS: FieldSpec[] = [
         hint: "packed 0xRRGGBB (minimap / inspector)",
     },
     {
-        
-        
-        
         key: "colorsJson",
         label: "Colour variants",
         kind: "colorVariants",
@@ -265,11 +238,7 @@ const FIELDS: FieldSpec[] = [
         "conveyors / launchers can move it",
     ),
     boolField("isGrabbable", "Grabbable", "Behaviour"),
-    
-    
-    
-    
-    
+
     boolField("visibleInPicker", "Visible in picker", "Behaviour", "true"),
     ...FLAMMABLE_FIELDS,
     ...COLLECTABLE_FIELDS,
@@ -277,10 +246,7 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
 const FLAGS = ["isTransportable", "isGrabbable", "visibleInPicker"];
-
-
 
 function matterTypeToForm(v: unknown): string | undefined {
     if (typeof v === "string") return v;
@@ -289,7 +255,6 @@ function matterTypeToForm(v: unknown): string | undefined {
     }
     return undefined;
 }
-
 
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
@@ -303,8 +268,7 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("durationRandomMin", read.num(dr?.min));
     read.put("durationRandomMax", read.num(dr?.max));
     read.put("metaColor", packedToHex(e.metaColor as number | undefined));
-    
-    
+
     const colors = e.colors as { variants?: number[][] } | number[][] | undefined;
     read.put("colorsJson", read.json(Array.isArray(colors) ? colors : colors?.variants));
     for (const k of FLAGS) {
@@ -312,19 +276,13 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     }
     readFlammable(e.flammable, read);
     readCollectable(e.collectable, read);
-    
-    
-    
-    
-    
+
     read.put("dataFieldsJson", read.json(elementRecordToFields(e.defaultDataFields)));
 }
 
-
 function readFlammable(raw: unknown, read: EntryReader): void {
     if (typeof raw !== "object" || raw === null) return;
-    
-    
+
     read.put("flammableOn", "true");
     const f = raw as {
         outputElementId?: string;
@@ -334,11 +292,9 @@ function readFlammable(raw: unknown, read: EntryReader): void {
     };
     read.put("flammableOutputId", read.str(f.outputElementId));
     read.put("flammableOutputChance", read.num(f.outputChance));
-    
-    
+
     if (f.fireInheritsDuration) read.put("flammableInheritsDuration", "true");
-    
-    
+
     if (Array.isArray(f.duration)) {
         read.put("flammableDurationMin", read.num(f.duration[0]));
         read.put("flammableDurationMax", read.num(f.duration[1]));
@@ -347,13 +303,11 @@ function readFlammable(raw: unknown, read: EntryReader): void {
     }
 }
 
-
 function readCollectable(raw: unknown, read: EntryReader): void {
     if (typeof raw !== "object" || raw === null) return;
     read.put("collectableOn", "true");
     read.put("collectableValue", read.num((raw as { value?: number }).value));
 }
-
 
 function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
@@ -363,9 +317,7 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setNum("density", w.optNum("density"));
     w.setNum("horizontalSpeed", w.optNum("horizontalSpeed"));
     w.setNum("duration", w.optNum("duration"));
-    
-    
-    
+
     const dMin = w.optNum("durationRandomMin");
     const dMax = w.optNum("durationRandomMax");
     if (dMin !== undefined || dMax !== undefined) {
@@ -381,21 +333,17 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     writeElementDataFields(w);
 }
 
-
 function writeElementDataFields(w: EntryWriter): void {
     const rows = w.optJson<ElementDataField[]>("dataFieldsJson");
     if (!rows?.length) {
         w.del("defaultDataFields");
         return;
     }
-    
-    
-    
+
     const { record, problems } = elementFieldsToRecord(rows);
     if (problems.length) return;
     w.setRaw("defaultDataFields", record);
 }
-
 
 function writeFlammable(w: EntryWriter): void {
     if (!w.optBool("flammableOn")) {
@@ -408,10 +356,7 @@ function writeFlammable(w: EntryWriter): void {
     const chance = w.optNum("flammableOutputChance");
     if (chance !== undefined) f.outputChance = chance;
     if (w.optBool("flammableInheritsDuration")) f.fireInheritsDuration = true;
-    
-    
-    
-    
+
     const dMin = w.optNum("flammableDurationMin");
     const dMax = w.optNum("flammableDurationMax");
     if (dMin !== undefined && dMax !== undefined) f.duration = [dMin, dMax];
@@ -419,7 +364,6 @@ function writeFlammable(w: EntryWriter): void {
     else if (dMax !== undefined) f.duration = dMax;
     w.setRaw("flammable", f);
 }
-
 
 function writeCollectable(w: EntryWriter): void {
     if (!w.optBool("collectableOn")) {
@@ -429,7 +373,6 @@ function writeCollectable(w: EntryWriter): void {
     const value = w.optNum("collectableValue");
     w.setRaw("collectable", value === undefined ? {} : { value });
 }
-
 
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
     if (!errors.durationRandomMax && !errors.flammableDurationMax) {
@@ -444,16 +387,12 @@ function validate(form: Record<string, string>, errors: Record<string, string>):
             errors.flammableDurationMax = "must be ≥ min";
         }
     }
-    
-    
-    
-    
+
     if (form.collectableOn === "true" && !form.collectableValue?.trim()) {
         errors.collectableValue = "required — without a value the collector skips this element";
     }
     validateElementDataFields(form, errors);
 }
-
 
 function validateElementDataFields(
     form: Record<string, string>,
@@ -470,20 +409,14 @@ function validateElementDataFields(
         }
         rows = parsed as ElementDataField[];
     } catch {
-        
-        
         return;
     }
     const { problems } = elementFieldsToRecord(rows);
     if (!problems.length) return;
-    
-    
+
     const reasons = problems.map((p) => `row ${p.row + 1}: ${p.reason}`);
     errors.dataFieldsJson = reasons.join("; ");
 }
-
-
-
 
 function renderColorVariants(ctx: FieldContext): unknown {
     const { h, field, value, locked, form, setField } = ctx;
@@ -518,8 +451,7 @@ function renderColorVariants(ctx: FieldContext): unknown {
                     },
                     onChange: (e: { target: { value: string } }) => {
                         const next = [...swatches];
-                        
-                        
+
                         next[i] = e.target.value + hexValue.slice(7);
                         write(next);
                     },
@@ -548,8 +480,7 @@ function renderColorVariants(ctx: FieldContext): unknown {
                 type: "button",
                 style: S.btn,
                 disabled: locked,
-                
-                
+
                 onClick: () => write([...swatches, seedVariantFromMapColor(form.metaColor)]),
             },
             "+ variant from map colour",
@@ -557,14 +488,10 @@ function renderColorVariants(ctx: FieldContext): unknown {
     );
 }
 
-
 function renderField(ctx: FieldContext): unknown {
     if (ctx.field.kind !== "colorVariants") return null;
     return renderColorVariants(ctx);
 }
-
-
-
 
 const FORM_COVERED = [
     "name",

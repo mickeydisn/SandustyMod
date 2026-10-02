@@ -1,4 +1,3 @@
-
 import {
     BLOCK_META,
     HANDLER_META,
@@ -11,38 +10,36 @@ import { refsIn } from "../../handler/index.ts";
 import { canBind, createContext } from "../../handler/index.ts";
 import { ACTION_ROLES, isBlock, ROLE_LABELS } from "../../handler/index.ts";
 import { ACTION_DOCS, ALL_ACTIONS } from "../../handler/index.ts";
-import { currentProcessRegistry, type ProcessStep } from "../../handler/processing/custom-process/index.ts";
+import {
+    currentProcessRegistry,
+    type ProcessStep,
+} from "../../handler/processing/custom-process/index.ts";
 import { paramInput } from "./param-controls.ts";
 import * as S from "../styles.ts";
 import type { FieldContext } from "../definition/types.ts";
 import type { SelectorHandle } from "../definition/types.ts";
 
-
 export const STEPS_FORM_KEY = "program";
-
 
 export const STEPS_JSON_KEY = `${STEPS_FORM_KEY}__json`;
 
 type H = FieldContext["h"];
 
-
 export interface ContextRow {
     name: string;
-    
+
     from: string;
-    
+
     seed: boolean;
-    
+
     writtenBy?: number;
-    
+
     readBy: number[];
 }
 
-
 export function deriveContext(scope: string, steps: readonly ProcessStep[]): ContextRow[] {
     const rows = new Map<string, ContextRow>();
-    
-    
+
     const seeds = createContext(
         Object.fromEntries(scopeSeedNames(scope as never).map((n) => [n, undefined])),
     );
@@ -50,15 +47,6 @@ export function deriveContext(scope: string, steps: readonly ProcessStep[]): Con
         rows.set(name, { name, from: SCOPE_FROM[name] ?? "the engine", seed: true, readBy: [] });
     }
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
     let position = 0;
     const walk = (list: readonly ProcessStep[]): void => {
         for (const step of list) {
@@ -78,8 +66,6 @@ export function deriveContext(scope: string, steps: readonly ProcessStep[]): Con
                 if (existing) {
                     if (!existing.readBy.includes(i)) existing.readBy.push(i);
                 } else {
-                    
-                    
                     rows.set(ref, {
                         name: ref,
                         from: "referenced, never bound",
@@ -95,7 +81,6 @@ export function deriveContext(scope: string, steps: readonly ProcessStep[]): Con
     walk(steps);
     return [...rows.values()];
 }
-
 
 const SCOPE_FROM: Record<string, string> = {
     "structure.x": "the structure's cell X",
@@ -114,7 +99,6 @@ const SCOPE_FROM: Record<string, string> = {
     key: "the key pressed",
 };
 
-
 function readSteps(text: string | undefined): ProcessStep[] {
     if (!text?.trim()) return [];
     try {
@@ -122,28 +106,19 @@ function readSteps(text: string | undefined): ProcessStep[] {
         if (!Array.isArray(parsed)) return [];
         return parsed.filter((s) => s && typeof s.key === "string") as ProcessStep[];
     } catch {
-        
-        
         return [];
     }
 }
-
 
 function writeSteps(steps: readonly ProcessStep[]): string {
     return steps.length ? JSON.stringify(steps, null, 2) : "";
 }
 
-
 function canRunHere(meta: HandlerMeta, scope: string): boolean {
     return meta.slots.includes(scope as HandlerSlot);
 }
 
-
 export function stepChoices(scope: string): { role: string; label: string; keys: string[] }[] {
-    
-    
-    
-    
     const blockGroup = {
         role: "decide",
         label: "Decisions",
@@ -155,11 +130,7 @@ export function stepChoices(scope: string): { role: string; label: string; keys:
             return {
                 role,
                 label: ROLE_LABELS[role],
-                
-                
-                
-                
-                
+
                 keys: HANDLER_META
                     .filter((m) => ALL_ACTIONS[m.key]?.role === role && canRunHere(m, scope))
                     .map((m) => m.key)
@@ -169,19 +140,14 @@ export function stepChoices(scope: string): { role: string; label: string; keys:
     ];
 }
 
-
 function paramsOf(key: string): HandlerParam[] {
     if (isBlockKey(key)) return BLOCK_META.params;
     return HANDLER_META.find((m) => m.key === key)?.params ?? [];
 }
 
-
 function isBlockKey(key: string): boolean {
     return isBlock({ key });
 }
-
-
-
 
 function summarize(step: ProcessStep): string {
     const options = (step.options ?? {}) as Record<string, unknown>;
@@ -206,9 +172,7 @@ function summarize(step: ProcessStep): string {
     return parts.join("   ");
 }
 
-
 const EXPANDED: Map<string, Set<string>> = new Map();
-
 
 function expandedFor(processId: string): Set<string> {
     const id = processId || "(new)";
@@ -220,11 +184,9 @@ function expandedFor(processId: string): Set<string> {
     return set;
 }
 
-
 function branchPath(path: string, which: "then" | "else"): string {
     return `${path}/${which}/`;
 }
-
 
 function allPaths(list: readonly ProcessStep[], prefix: string): string[] {
     const out: string[] = [];
@@ -237,9 +199,7 @@ function allPaths(list: readonly ProcessStep[], prefix: string): string[] {
     return out;
 }
 
-
 const SUMMARY = { fontSize: 11, fontFamily: "ui-monospace, Menlo, monospace" } as const;
-
 
 function rowControls(
     h: H,
@@ -249,7 +209,7 @@ function rowControls(
         locked: boolean;
         move: (by: number) => void;
         remove: () => void;
-        
+
         toggle?: (() => void) | null;
     },
 ): unknown[] {
@@ -277,12 +237,11 @@ function rowControls(
             args.locked || args.index === args.total - 1,
             () => args.move(1),
         ),
-        
+
         args.toggle ? chip("Edit", "Edit this step", args.locked, args.toggle) : null,
         chip("×", "Delete this step", args.locked, args.remove, true),
     ];
 }
-
 
 function summaryRow(h: H, step: ProcessStep, index: number, args: {
     locked: boolean;
@@ -314,8 +273,7 @@ function summaryRow(h: H, step: ProcessStep, index: number, args: {
                     fontWeight: 600,
                     minWidth: 88,
                 },
-                
-                
+
                 title: ACTION_DOCS[step.key] ?? "",
             },
             label,
@@ -327,17 +285,13 @@ function summaryRow(h: H, step: ProcessStep, index: number, args: {
                     ...SUMMARY,
                     color: "#9aa0a6",
                     flex: 1,
-                    
-                    
-                    
+
                     whiteSpace: "normal",
                     wordBreak: "break-word",
                 },
             },
             summarize(step),
         ),
-        
-        
         ...rowControls(h, {
             index,
             total: args.total,
@@ -348,8 +302,6 @@ function summaryRow(h: H, step: ProcessStep, index: number, args: {
         }),
     );
 }
-
-
 
 function stepRow(h: H, args: {
     step: ProcessStep;
@@ -365,7 +317,7 @@ function stepRow(h: H, args: {
     move: (by: number) => void;
     remove: () => void;
     branches?: (step: ProcessStep) => unknown;
-    
+
     open: boolean;
     toggle: () => void;
 }): unknown {
@@ -380,14 +332,9 @@ function stepRow(h: H, args: {
         "div",
         { key: `step:${args.index}`, style: { display: "flex", flexDirection: "column", gap: 3 } },
         body,
-        
-        
-        
-        
         args.branches ? args.branches(args.step) : null,
     );
 }
-
 
 function editRow(
     h: H,
@@ -426,9 +373,6 @@ function editRow(
                     value: step.key,
                     disabled: locked,
                     onChange: (e: { target: { value: string } }) => {
-                        
-                        
-                        
                         args.replace({ key: e.target.value });
                     },
                 },
@@ -439,7 +383,6 @@ function editRow(
                         ...g.keys.map((k) => h("option", { key: k, value: k }, k)),
                     )
                 ),
-                
                 nestable.length
                     ? h(
                         "optgroup",
@@ -447,15 +390,10 @@ function editRow(
                         ...nestable.map((id) => h("option", { key: id, value: id }, id)),
                     )
                     : null,
-                
-                
                 !all.includes(step.key)
                     ? h("option", { value: step.key }, `${step.key} (unknown)`)
                     : null,
             ),
-            
-            
-            
             ...rowControls(h, {
                 index,
                 total,
@@ -478,9 +416,6 @@ function editRow(
                 }, args.selector),
             )
         ),
-        
-        
-        
         known.length || step.as
             ? h(
                 "div",
@@ -492,8 +427,6 @@ function editRow(
                     disabled: locked,
                     placeholder: "bind this step's result to a name",
                     onInput: (e: { currentTarget: { value: string } }) => {
-                        
-                        
                         args.replace(withAs(step, e.currentTarget.value.trim()));
                     },
                 }),
@@ -507,12 +440,10 @@ function editRow(
     );
 }
 
-
 const BRANCH_STYLE = {
     then: { borderLeft: "2px solid #27ae60", paddingLeft: 8, color: "#27ae60" },
     else: { borderLeft: "2px solid #7f8c8d", paddingLeft: 8, color: "#7f8c8d" },
 } as const;
-
 
 function withOptions(step: ProcessStep, options: Record<string, unknown>): ProcessStep {
     const next: ProcessStep = { ...step, options };
@@ -521,14 +452,12 @@ function withOptions(step: ProcessStep, options: Record<string, unknown>): Proce
     return next;
 }
 
-
 function withAs(step: ProcessStep, as: string): ProcessStep {
     const next: ProcessStep = { ...step };
     if (as) next.as = as;
     else delete next.as;
     return next;
 }
-
 
 function withBranch(
     step: ProcessStep,
@@ -606,25 +535,21 @@ function contextList(ctx: FieldContext, scope: string, steps: ProcessStep[]): un
     );
 }
 
-
 export function renderProgramGrid(ctx: FieldContext): unknown {
     const { h, form, setField, error, locked } = ctx;
     const scope = form.scope ?? "";
     const steps = readSteps(form[STEPS_JSON_KEY]);
     const choices = scope ? stepChoices(scope) : [];
     const registry = currentProcessRegistry();
-    
+
     const known = deriveContext(scope, steps).map((r) => r.name);
-    
-    
+
     const nestable = scope
         ? registry.forSlot(scope as HandlerSlot)
             .filter((p) => p.id !== form.id)
             .map((p) => p.id)
         : [];
 
-    
-    
     const openRows = expandedFor(form.id ?? "");
 
     const commit = (next: ProcessStep[]): void => setField(STEPS_JSON_KEY, writeSteps(next));
@@ -642,7 +567,6 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
         commit(next);
     };
 
-    
     const stepList = (
         list: readonly ProcessStep[],
         depth: number,
@@ -656,8 +580,7 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                     display: "flex",
                     flexDirection: "column",
                     gap: 2,
-                    
-                    
+
                     marginLeft: depth ? 12 : 0,
                 },
             },
@@ -677,9 +600,7 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                     toggle: () => {
                         if (openRows.has(at)) openRows.delete(at);
                         else openRows.add(at);
-                        
-                        
-                        
+
                         commit([...steps]);
                     },
                     replace: (s) => {
@@ -712,7 +633,6 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
             ),
         );
 
-    
     const renderBranches = (
         step: ProcessStep,
         depth: number,
@@ -740,7 +660,6 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
             ),
         );
 
-    
     const replaceAt = (
         target: ProcessStep,
         which: "then" | "else",
@@ -750,10 +669,7 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
             list.map((s) => {
                 if (s === target) return withBranch(s, which, branch);
                 if (!isBlockKey(s.key)) return s;
-                
-                
-                
-                
+
                 let next = withBranch(s, "then", rewrite(s.then ?? []));
                 if (s.else) next = withBranch(next, "else", rewrite(s.else));
                 return next;
@@ -773,9 +689,6 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                     "div",
                     { style: { display: "flex", alignItems: "center", gap: 6 } },
                     h("div", { style: S.label }, "Steps"),
-                    
-                    
-                    
                     h(
                         "button",
                         {
@@ -809,14 +722,9 @@ export function renderProgramGrid(ctx: FieldContext): unknown {
                 { style: S.hint },
                 "Pick a scope first — it decides which steps you can add.",
             ),
-        
-        
-        
-        
         error ? h("div", { style: S.errorText }, error) : null,
     );
 }
-
 
 function seedKey(
     choices: { keys: string[] }[],

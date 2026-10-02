@@ -1,17 +1,11 @@
-
-
-
 export type DataFieldValue = number | boolean | string;
 
-
 export interface ElementDataField {
-    
     name: string;
-    
+
     slot: number;
     default: number;
 }
-
 
 export interface StructureDataField {
     key: string;
@@ -19,21 +13,16 @@ export interface StructureDataField {
     default: DataFieldValue;
 }
 
-
 export const ELEMENT_DATA_SLOTS = 4 as const;
-
 
 export function elementSlotKey(slot: number): string {
     return `field${slot}`;
 }
 
-
 export interface DataFieldProblem {
-    
     row: number;
     reason: string;
 }
-
 
 export function elementFieldsToRecord(
     rows: readonly ElementDataField[],
@@ -51,9 +40,6 @@ export function elementFieldsToRecord(
         }
         const first = seen.get(slot);
         if (first) {
-            
-            
-            
             problems.push({
                 row,
                 reason: `slot ${slot} is already used by "${first}" — a slot holds one number`,
@@ -66,8 +52,6 @@ export function elementFieldsToRecord(
             continue;
         }
         if (!Number.isInteger(value)) {
-            
-            
             problems.push({ row, reason: "default must be a whole number" });
             continue;
         }
@@ -76,7 +60,6 @@ export function elementFieldsToRecord(
     }
     return { record, problems };
 }
-
 
 export function elementRecordToFields(raw: unknown): ElementDataField[] {
     if (typeof raw !== "object" || raw === null) return [];
@@ -89,7 +72,6 @@ export function elementRecordToFields(raw: unknown): ElementDataField[] {
     }
     return out.sort((a, b) => a.slot - b.slot);
 }
-
 
 export function structureFieldsToRecord(
     rows: readonly StructureDataField[],
@@ -111,7 +93,6 @@ export function structureFieldsToRecord(
     return { record, problems };
 }
 
-
 export function coerceDataValue(
     type: StructureDataField["type"],
     raw: unknown,
@@ -127,7 +108,6 @@ export function coerceDataValue(
     return raw == null ? "" : String(raw);
 }
 
-
 export function structureRecordToFields(raw: unknown): StructureDataField[] {
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return [];
     const out: StructureDataField[] = [];
@@ -140,9 +120,7 @@ export function structureRecordToFields(raw: unknown): StructureDataField[] {
                 : typeof value === "boolean"
                 ? "bool"
                 : "string",
-            
-            
-            
+
             default: (value ?? "") as DataFieldValue,
         });
     }

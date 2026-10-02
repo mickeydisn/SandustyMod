@@ -1,6 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api, resolveElementRef } from "../../packages/mysandkit.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerInteractions({ config }: RegisterContext): number {
     return registerEach(config.interactions, "interactions", (ix) => {

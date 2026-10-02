@@ -1,5 +1,3 @@
-
-
 export type ActionRole =
     | "sense"
     | "decide"
@@ -82,22 +80,16 @@ export interface ActionDef {
 
     kind?: "intercept" | "modify";
 
-    
     type?: string;
 
-    
     scope?: string;
 
-    
     slots?: readonly string[];
 
-    
     itemTypes?: readonly string[];
 
-    
     params?: readonly HandlerParam[];
 
-    
     needs: readonly ScopeNeed[];
 }
 

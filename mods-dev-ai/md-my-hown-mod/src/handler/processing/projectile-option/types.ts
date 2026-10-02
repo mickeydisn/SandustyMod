@@ -1,5 +1,3 @@
-
-
 export type ProjectileOptionFn = (params: unknown) => Record<string, unknown>;
 
 export interface ProjectileOptionRef {

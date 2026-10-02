@@ -1,4 +1,3 @@
-
 import { listItems, listUpgradeCategoryIds } from "../../../catalog.ts";
 import {
     PROCESS_COVERED,
@@ -10,13 +9,9 @@ import { advField, boolField, idField, numField, textField } from "../fields.ts"
 import { CUSTOM } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-
-
 const FIELDS: FieldSpec[] = [
     idField(),
     {
-        
-        
         key: "itemId",
         label: "Item",
         kind: "select",
@@ -25,14 +20,6 @@ const FIELDS: FieldSpec[] = [
         options: listItems,
     },
     {
-        
-        
-        
-        
-        
-        
-        
-        
         key: "categoryId",
         label: "Category",
         kind: "select",
@@ -64,7 +51,6 @@ const FIELDS: FieldSpec[] = [
         def: "3",
     }),
     {
-        
         key: "costsJson",
         label: "Costs per level",
         kind: "json",
@@ -77,22 +63,16 @@ const FIELDS: FieldSpec[] = [
     },
     boolField("oneOff", "One-off", "Upgrade", "false", "can only be bought once"),
     {
-        
-        
-        
         ...processRefField("runs when a level is bought", { section: "Upgrade" }),
     },
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("itemId", read.str(e.itemId) ?? read.num(e.itemId));
     read.put("itemNameKey", read.str(e.itemNameKey));
     read.put("categoryId", read.str(e.categoryId));
-    
+
     const u = e.upgrade as
         | { id?: string; maxLevel?: number; costs?: number[]; oneOff?: boolean; nameKey?: string }
         | undefined;
@@ -104,17 +84,13 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     readProcessRef(read, e);
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("itemId", w.opt("itemId"));
     w.setStr("itemNameKey", w.opt("itemNameKey"));
-    
-    
-    
-    
+
     const categoryId = w.opt("categoryId");
     if (categoryId && categoryId !== CUSTOM) w.setStr("categoryId", categoryId);
-    
+
     const upgrade: Record<string, unknown> = {};
     const upId = w.opt("upgradeId");
     if (upId) upgrade.id = upId;
@@ -130,9 +106,6 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     writeProcessRef(w);
 }
 
-
-
-
 const FORM_COVERED = ["itemId", "itemNameKey", "categoryId", "upgrade", ...PROCESS_COVERED];
 
 export const upgradeDefinition: Definition = {
@@ -141,12 +114,4 @@ export const upgradeDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
-    
-    
-    
-    
-    
 };

@@ -1,7 +1,7 @@
 import { LOG } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { compileProcess, optionKeysFor } from "../../handler/index.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerInputBindings({ config }: RegisterContext): number {
     return registerEach(config.inputBindings, "inputBindings", (b) => {

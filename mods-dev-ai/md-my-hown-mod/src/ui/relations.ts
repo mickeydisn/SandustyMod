@@ -1,26 +1,20 @@
-
 import type { Tab } from "./schema.ts";
 
 export interface Relation {
-    
     from: Tab;
-    
+
     field: string;
-    
+
     to: Tab;
-    
+
     note: string;
-    
+
     strength: "required" | "optional";
-    
+
     many?: boolean;
 }
 
 export const RELATIONS: Relation[] = [
-    
-    
-    
-    
     {
         from: "recipes",
         field: "input",
@@ -117,7 +111,6 @@ export const RELATIONS: Relation[] = [
         strength: "required",
     },
 
-    
     {
         from: "terrains",
         field: "outputElement",
@@ -142,7 +135,6 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
 
-    
     {
         from: "items",
         field: "excavationProfileId",
@@ -165,7 +157,6 @@ export const RELATIONS: Relation[] = [
         strength: "optional",
     },
 
-    
     {
         from: "structures",
         field: "imageName",
@@ -190,7 +181,6 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
 
-    
     {
         from: "techs",
         field: "unlockStructures",
@@ -200,9 +190,6 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
     {
-        
-        
-        
         from: "structures",
         field: "unlockNode",
         to: "unlockNodes",
@@ -211,9 +198,6 @@ export const RELATIONS: Relation[] = [
         many: false,
     },
     {
-        
-        
-        
         from: "unlockNodes",
         field: "techId",
         to: "techs",
@@ -222,10 +206,6 @@ export const RELATIONS: Relation[] = [
         many: false,
     },
     {
-        
-        
-        
-        
         from: "unlockNodes",
         field: "gatesStructures",
         to: "structures",
@@ -234,9 +214,6 @@ export const RELATIONS: Relation[] = [
         many: true,
     },
     {
-        
-        
-        
         from: "unlockNodes",
         field: "parentId",
         to: "techs",
@@ -299,7 +276,6 @@ export const RELATIONS: Relation[] = [
         strength: "optional",
     },
 
-    
     {
         from: "signals",
         field: "target",
@@ -314,14 +290,7 @@ export const RELATIONS: Relation[] = [
         note: "The structure that carries this energy node.",
         strength: "required",
     },
-    
-    
-    
-    
-    
-    
-    
-    
+
     {
         from: "behaviors",
         field: "structureId",
@@ -329,14 +298,7 @@ export const RELATIONS: Relation[] = [
         note: "The structure this conveyor moves items for.",
         strength: "required",
     },
-    
-    
-    
-    
-    
-    
-    
-    
+
     {
         from: "placementConfigs",
         field: "structureId",
@@ -374,11 +336,9 @@ export const RELATIONS: Relation[] = [
     },
 ];
 
-
 export function relationsOf(cat: Tab): Relation[] {
     return RELATIONS.filter((r) => r.from === cat);
 }
-
 
 export function targetsOf(cat: Tab): Tab[] {
     return [...new Set(RELATIONS.filter((r) => r.from === cat).map((r) => r.to))];

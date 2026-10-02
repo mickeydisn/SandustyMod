@@ -1,4 +1,3 @@
-
 import { listItems, listStructures } from "../../../catalog.ts";
 import {
     composeInteraction,
@@ -11,23 +10,17 @@ import { elSelect, idField, numField, textField } from "../fields.ts";
 import { parseObjectOrUndefined } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-
 const hasTooltip = (f: Record<string, string>) =>
     TOOLTIP_KINDS.includes(f.interactionKind as never);
-
 
 const comparesField = (f: Record<string, string>) =>
     hasTooltip(f) &&
     (f.tipVisibility === "visibleWhen" || f.tipVisibility === "crossedOutWhen");
 
-
-
 const FIELDS: FieldSpec[] = [
     idField(),
     elSelect("elementId", "Element", "Target", true),
-    
-    
-    
+
     {
         key: "interactionKind",
         label: "What kind of interaction",
@@ -57,9 +50,6 @@ const FIELDS: FieldSpec[] = [
         when: (f) => f.interactionKind === "destroyer",
     },
     {
-        
-        
-        
         key: "entities",
         label: "Entity types",
         kind: "text",
@@ -104,10 +94,6 @@ const FIELDS: FieldSpec[] = [
         hint: "hide the label rather than showing raw text when the key has no translation",
     },
     {
-        
-        
-        
-        
         key: "interactionJson",
         label: "Fields this panel does not show",
         kind: "json",
@@ -119,24 +105,17 @@ const FIELDS: FieldSpec[] = [
     },
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("elementId", read.str(e.elementId) ?? read.num(e.elementId));
-    
-    
+
     const ix = splitInteraction(e.interaction as Record<string, unknown> | undefined);
     for (const [k, v] of Object.entries(ix.fields)) read.put(k, v);
     read.put("interactionJson", read.json(e.interaction));
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("elementId", w.opt("elementId"));
-    
-    
-    
+
     const existing = parseObjectOrUndefined(form.interactionJson);
     const composed = composeInteraction(form);
     if (composed) {
@@ -146,9 +125,6 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     }
 }
 
-
-
-
 const FORM_COVERED = ["elementId", "interaction"];
 
 export const interactionDefinition: Definition = {
@@ -157,11 +133,4 @@ export const interactionDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
-    
-    
-    
-    
-    
-    
 };

@@ -1,4 +1,4 @@
-import { BLOCK_KEY, type ActionDef } from "./types.ts";
+import { type ActionDef, BLOCK_KEY } from "./types.ts";
 import { ALL_ACTIONS } from "../actions/index.ts";
 import type { ActionKey } from "../actions/index.ts";
 import { actionRefsOf, flattenRefs, isBlock } from "../processing/process.ts";
@@ -10,21 +10,21 @@ import { SLOT_LOCATION, SLOTS_BY_CATEGORY } from "./registry/categories.ts";
 
 export * from "./registry/types.ts";
 export {
-    DATA_PARAMS,
     CREATE_PARAMS,
+    DATA_PARAMS,
+    elementRef,
     MATRIX_PARAMS,
     MOTION_REGION_PARAMS,
+    p,
     RANGE_PARAMS,
     REGION_PARAMS,
     REMOVAL_PARAMS,
     STRUCTURE_REF_PARAMS,
+    structureRef,
     TERRAIN_REF_PARAMS,
     TERRAIN_SHAPE_PARAMS,
-    VELOCITY_PARAMS,
-    elementRef,
-    p,
-    structureRef,
     terrainRef,
+    VELOCITY_PARAMS,
 } from "./registry/params.ts";
 import {
     HANDLER_SCOPE_LABELS,
@@ -56,22 +56,22 @@ export function slotsForEntry(
  * `slots` is the derived list; `declaredSlots` keeps whatever the action
  * pinned by hand, which is empty for actions that declare nothing.
  */
-export const HANDLER_META: HandlerMeta[] = (Object.entries(ALL_ACTIONS) as
-    [ActionKey, ActionDef][]).map(([key, m]) => {
-    const entry = {
-        key,
-        type: (m.type ?? "cell") as HandlerType,
-        scope: (m.scope ?? "cell") as HandlerScope,
-        slots: (m.slots ?? []) as HandlerSlot[],
-        params: (m.params ?? []) as HandlerParam[],
-    };
-    const derived = slotsForEntry(entry);
-    return {
-        ...entry,
-        itemTypes: m.itemTypes as string[] | undefined,
-        slots: derived.length ? derived : entry.slots,
-    };
-});
+export const HANDLER_META: HandlerMeta[] = (Object.entries(ALL_ACTIONS) as [ActionKey, ActionDef][])
+    .map(([key, m]) => {
+        const entry = {
+            key,
+            type: (m.type ?? "cell") as HandlerType,
+            scope: (m.scope ?? "cell") as HandlerScope,
+            slots: (m.slots ?? []) as HandlerSlot[],
+            params: (m.params ?? []) as HandlerParam[],
+        };
+        const derived = slotsForEntry(entry);
+        return {
+            ...entry,
+            itemTypes: m.itemTypes as string[] | undefined,
+            slots: derived.length ? derived : entry.slots,
+        };
+    });
 export const BLOCK_META: HandlerMeta = {
     key: BLOCK_KEY,
     type: "block",

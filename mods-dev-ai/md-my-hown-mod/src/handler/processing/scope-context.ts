@@ -4,10 +4,8 @@ import { api } from "../../packages/mysandkit.ts";
 import type { CallSite } from "../engine/types.ts";
 
 export interface ContextSeed {
-    
     name: string;
 
-    
     read: (args: readonly unknown[]) => unknown;
 }
 
@@ -65,12 +63,11 @@ const FOOTPRINT_SEEDS: readonly ContextSeed[] = ([
 ] as const).map((name) => ({
     name,
     read: (a: readonly unknown[]) => footprintSeeds(a[0])[name],
-})); 
+}));
 
 const SCOPE_CONTEXT: Record<CallSite, readonly ContextSeed[]> = {
     processing: [...STRUCTURE_SEEDS, ...CONTEXT_SEEDS, ...FOOTPRINT_SEEDS],
 
-    
     signal: STRUCTURE_SEEDS,
 
     trigger: [],

@@ -1,4 +1,3 @@
-
 import { resolveExcavationOption } from "./registry.ts";
 import type {
     ExcavationOptionFailure,
@@ -9,11 +8,10 @@ import type {
 export const EXCAVATION_OPTION_STORE_KEY = "option";
 
 export interface CompiledExcavationOption {
-    
     patch: ExcavationOptionPatch;
-    
+
     key?: string;
-    
+
     problem?: string;
 }
 
@@ -47,8 +45,7 @@ export function compileExcavationProfile(
     if (!fn) {
         const problem = foundProblem ?? `not an excavation option: ${ref.key}`;
         onFailure?.({ key: ref.key, error: new Error(problem) });
-        
-        
+
         return { patch: fromEntry(entry), key: ref.key, problem };
     }
 

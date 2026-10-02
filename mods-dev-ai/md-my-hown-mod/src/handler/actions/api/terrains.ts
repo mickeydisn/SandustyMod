@@ -1,4 +1,9 @@
-import { REGION_PARAMS, TERRAIN_REF_PARAMS, TERRAIN_SHAPE_PARAMS, p } from "../../engine/registry/params.ts";
+import {
+    p,
+    REGION_PARAMS,
+    TERRAIN_REF_PARAMS,
+    TERRAIN_SHAPE_PARAMS,
+} from "../../engine/registry/params.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { MAX_SCAN_SIDE } from "../../engine/cell-region.ts";
@@ -9,43 +14,38 @@ interface StructureLike {
     shape?: number[][];
 }
 
-
 interface Vector2 {
     x: number;
     y: number;
 }
 
-
 interface TerrainOptions {
-    
     dx?: unknown;
     dy?: unknown;
-    
+
     size?: unknown;
-    
+
     footprint?: unknown;
-    
+
     mx?: unknown;
-    
+
     my?: unknown;
-    
+
     terrain?: unknown;
-    
+
     damage?: unknown;
-    
+
     hitPoints?: unknown;
-    
+
     skipShadow?: unknown;
 }
-
 
 interface TerrainDataLike {
     cellType?: number;
     hitPoints?: number | null;
-    
+
     hp?: number | null;
 }
-
 
 interface TerrainWriter {
     createAtCell: (x: number, y: number, type: string | number, options?: unknown) => void;
@@ -53,17 +53,14 @@ interface TerrainWriter {
     removeAtCell: (x: number, y: number, options?: unknown) => void;
 }
 
-
 function num(value: unknown, fallback = 0): number {
     const n = Number(value);
     return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
-
 function refOf(options: TerrainOptions): string {
     return String(options.terrain ?? "");
 }
-
 
 function regionCells(
     structure: StructureLike | null,
@@ -84,7 +81,6 @@ function regionCells(
     return resolved.range.map((cell) => ({ x: cell.x, y: cell.y }));
 }
 
-
 function firstCell(
     structure: StructureLike | null,
     options: TerrainOptions,
@@ -93,11 +89,9 @@ function firstCell(
     return regionCells(structure, options, label)[0] ?? null;
 }
 
-
 function mutationOptions(options: TerrainOptions): Record<string, unknown> | undefined {
     return options.skipShadow === true ? { skipShadow: true } : undefined;
 }
-
 
 function writeShape(
     structure: unknown,
@@ -120,11 +114,13 @@ function writeShape(
     const o = (options ?? {}) as TerrainOptions;
     const cells = regionCells(s, o, label);
     let queued = 0;
-    if (!mutate((writer: { terrains: TerrainWriter }) => {
-        for (const cell of cells) {
-            if (decide(writer.terrains, cell)) queued++;
-        }
-    })) {
+    if (
+        !mutate((writer: { terrains: TerrainWriter }) => {
+            for (const cell of cells) {
+                if (decide(writer.terrains, cell)) queued++;
+            }
+        })
+    ) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
                 "nothing was written",
@@ -156,7 +152,6 @@ function writeState(
     return wrote;
 }
 
-
 export const terrainSenseActions = defineActions({
     terrainType: {
         role: "sense",
@@ -174,15 +169,13 @@ export const terrainSenseActions = defineActions({
             if (!cell) return "";
             const type = api.terrains.getTypeAtCell(cell.x, cell.y);
             if (type === null || type === undefined) return "";
-{
+            {
                 const id = api.terrains.getIdByType(type);
                 if (id !== undefined && id !== null && id !== "") return String(id);
             }
             return String(type);
         },
     },
-
-    
 
     hasTerrain: {
         role: "sense",
@@ -199,8 +192,6 @@ export const terrainSenseActions = defineActions({
             return cell ? api.terrains.isAtCell(cell.x, cell.y) === true : false;
         },
     },
-
-    
 
     isTerrainType: {
         role: "sense",
@@ -219,15 +210,11 @@ export const terrainSenseActions = defineActions({
             const cell = firstCell(s, o, "isTerrainType");
             if (!cell) return false;
             if (api.terrains.isTypeAtCell(cell.x, cell.y, want) === true) return true;
-            
-            
-            
+
             if (!/^\d+$/.test(want)) return false;
             return api.terrains.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
         },
     },
-
-    
 
     terrainHitPoints: {
         role: "sense",
@@ -251,8 +238,6 @@ export const terrainSenseActions = defineActions({
         },
     },
 
-    
-
     terrainTypeHandle: {
         role: "sense",
         needs: ["pos"],
@@ -273,8 +258,6 @@ export const terrainSenseActions = defineActions({
         },
     },
 
-    
-
     countTerrain: {
         role: "sense",
         needs: ["pos"],
@@ -294,9 +277,7 @@ export const terrainSenseActions = defineActions({
             return found;
         },
     },
-
 });
-
 
 export const terrainActActions = defineActions({
     createTerrain: {
@@ -315,9 +296,7 @@ export const terrainActActions = defineActions({
                 return false;
             }
             return writeShape(structure, options, "createTerrain", (writer, cell) => {
-                
-                
-if (api.terrains.isAtCell(cell.x, cell.y)) {
+                if (api.terrains.isAtCell(cell.x, cell.y)) {
                     return false;
                 }
                 writer.createAtCell(cell.x, cell.y, want, mutationOptions(o));
@@ -325,8 +304,6 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
             });
         },
     },
-
-    
 
     replaceTerrain: {
         role: "act",
@@ -350,8 +327,6 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
         },
     },
 
-    
-
     removeTerrain: {
         role: "act",
         needs: ["pos"],
@@ -360,11 +335,11 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("skipShadow", "Skip shadow", "bool", {
-        def: "false",
-        hint: "no shadow update around the changed cell",
-        }),
-        ...REGION_PARAMS,
+            p("skipShadow", "Skip shadow", "bool", {
+                def: "false",
+                hint: "no shadow update around the changed cell",
+            }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
@@ -375,8 +350,6 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
         },
     },
 
-    
-
     damageTerrain: {
         role: "act",
         needs: ["pos"],
@@ -385,8 +358,8 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("damage", "Damage", "number", { def: "1", min: 1, hint: "hit points to remove" }),
-        ...REGION_PARAMS,
+            p("damage", "Damage", "number", { def: "1", min: 1, hint: "hit points to remove" }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
@@ -404,8 +377,6 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
         },
     },
 
-    
-
     setTerrainHitPoints: {
         role: "act",
         needs: ["pos"],
@@ -414,13 +385,13 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("hitPoints", "Hit points", "number", {
-        def: "0",
-        int: true,
-        min: 0,
-        hint: "the health to set. 0 destroys the terrain.",
-        }),
-        ...REGION_PARAMS,
+            p("hitPoints", "Hit points", "number", {
+                def: "0",
+                int: true,
+                min: 0,
+                hint: "the health to set. 0 destroys the terrain.",
+            }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as TerrainOptions;
@@ -437,9 +408,7 @@ if (api.terrains.isAtCell(cell.x, cell.y)) {
             });
         },
     },
-
 });
-
 
 export const terrainActions = {
     ...terrainSenseActions,

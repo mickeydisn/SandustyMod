@@ -1,4 +1,10 @@
-import { DATA_PARAMS, REGION_PARAMS, REMOVAL_PARAMS, STRUCTURE_REF_PARAMS, p } from "../../engine/registry/params.ts";
+import {
+    DATA_PARAMS,
+    p,
+    REGION_PARAMS,
+    REMOVAL_PARAMS,
+    STRUCTURE_REF_PARAMS,
+} from "../../engine/registry/params.ts";
 import { defineActions } from "../../engine/types.ts";
 import { api } from "../../../packages/mysandkit.ts";
 import { MAX_SCAN_SIDE } from "../../engine/cell-region.ts";
@@ -8,13 +14,11 @@ interface Vector2 {
     y: number;
 }
 
-
 interface StructureLike {
     x?: number;
     y?: number;
     shape?: number[][];
 }
-
 
 interface StructureRecord {
     x?: number;
@@ -23,62 +27,56 @@ interface StructureRecord {
     [key: string]: unknown;
 }
 
-
 interface StructureOptions {
-    
     dx?: unknown;
     dy?: unknown;
-    
+
     size?: unknown;
-    
+
     footprint?: unknown;
-    
+
     mx?: unknown;
-    
+
     my?: unknown;
-    
+
     structure?: unknown;
-    
+
     key?: unknown;
-    
+
     value?: unknown;
-    
+
     numberValue?: unknown;
-    
+
     removeCells?: unknown;
-    
+
     skipVisuals?: unknown;
-    
+
     preserveUnselectable?: unknown;
-    
+
     propagateToWorkers?: unknown;
-    
+
     enabled?: unknown;
-    
+
     index?: unknown;
-    
+
     value2?: unknown;
-    
+
     thresholds?: unknown;
 }
-
 
 function num(value: unknown, fallback = 0): number {
     const n = Number(value);
     return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
-
 function float(value: unknown, fallback = 0): number {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
 }
 
-
 function refOf(options: StructureOptions): string {
     return String(options.structure ?? "");
 }
-
 
 function regionCells(
     structure: StructureLike | null,
@@ -99,7 +97,6 @@ function regionCells(
     return resolved.range.map((cell) => ({ x: cell.x, y: cell.y }));
 }
 
-
 function firstCell(
     structure: StructureLike | null,
     options: StructureOptions,
@@ -108,19 +105,15 @@ function firstCell(
     return regionCells(structure, options, label)[0] ?? null;
 }
 
-
 function at(
     structure: StructureLike | null,
     options: StructureOptions,
     label: string,
 ): StructureRecord | null {
-    
-    
     const cell = firstCell(structure, options, label);
     if (!cell) return null;
     return api.structures.getAtCell(cell.x, cell.y) ?? null;
 }
-
 
 function removalOptions(options: StructureOptions): Record<string, unknown> | undefined {
     const out: Record<string, unknown> = {};
@@ -129,7 +122,6 @@ function removalOptions(options: StructureOptions): Record<string, unknown> | un
     if (options.preserveUnselectable === true) out.preserveUnselectable = true;
     return Object.keys(out).length > 0 ? out : undefined;
 }
-
 
 function dataPartial(options: StructureOptions): Record<string, unknown> | null {
     const key = String(options.key ?? "");
@@ -141,7 +133,6 @@ function dataPartial(options: StructureOptions): Record<string, unknown> | null 
     return { [key]: String(options.value ?? "") };
 }
 
-
 function thresholdsOf(options: StructureOptions): number[] {
     const raw = String(options.thresholds ?? "");
     if (!raw) return [];
@@ -151,7 +142,6 @@ function thresholdsOf(options: StructureOptions): number[] {
         .map(Number)
         .filter((n) => Number.isFinite(n));
 }
-
 
 function writeEach(
     structure: unknown,
@@ -190,15 +180,11 @@ export const structureSenseActions = defineActions({
             const s = (structure ?? null) as StructureLike | null;
             if (!s) return "";
             const o = (options ?? {}) as StructureOptions;
-            
-            
-            
+
             const type = at(s, o, "structureType")?.type;
             return type === undefined || type === null ? "" : String(type);
         },
     },
-
-    
 
     hasStructure: {
         role: "sense",
@@ -215,8 +201,6 @@ export const structureSenseActions = defineActions({
             return cell ? api.structures.hasBuiltAtCell(cell.x, cell.y) === true : false;
         },
     },
-
-    
 
     isStructureType: {
         role: "sense",
@@ -235,14 +219,11 @@ export const structureSenseActions = defineActions({
             const cell = firstCell(s, o, "isStructureType");
             if (!cell) return false;
             if (api.structures.isTypeAtCell(cell.x, cell.y, want) === true) return true;
-            
-            
+
             if (!/^\d+$/.test(want)) return false;
             return api.structures.isTypeAtCell(cell.x, cell.y, Number(want)) === true;
         },
     },
-
-    
 
     isMyType: {
         role: "sense",
@@ -252,7 +233,7 @@ export const structureSenseActions = defineActions({
         type: "cell",
         slots: ["processing"],
         scope: "structure",
-        
+
         params: [...STRUCTURE_REF_PARAMS],
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
@@ -261,8 +242,6 @@ export const structureSenseActions = defineActions({
             return api.structures.isType(s, want) === true;
         },
     },
-
-    
 
     isBlockedByPlayer: {
         role: "sense",
@@ -281,8 +260,6 @@ export const structureSenseActions = defineActions({
         },
     },
 
-    
-
     isLauncher: {
         role: "sense",
         needs: ["pos"],
@@ -299,8 +276,6 @@ export const structureSenseActions = defineActions({
         },
     },
 
-    
-
     isStructureEnabled: {
         role: "sense",
         needs: ["pos"],
@@ -314,11 +289,11 @@ export const structureSenseActions = defineActions({
             if (!s) return false;
             const o = (options ?? {}) as StructureOptions;
             const cell = firstCell(s, o, "isStructureEnabled");
-            return cell ? api.structures.processing.isEnabledAtCell(cell.x, cell.y) === true : false;
+            return cell
+                ? api.structures.processing.isEnabledAtCell(cell.x, cell.y) === true
+                : false;
         },
     },
-
-    
 
     countStructures: {
         role: "sense",
@@ -341,8 +316,6 @@ export const structureSenseActions = defineActions({
         },
     },
 
-    
-
     structureData: {
         role: "sense",
         needs: ["pos"],
@@ -352,8 +325,8 @@ export const structureSenseActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("key", "Key", "text", { required: true, hint: "the data-bag key" }),
-        ...REGION_PARAMS,
+            p("key", "Key", "text", { required: true, hint: "the data-bag key" }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
@@ -364,9 +337,7 @@ export const structureSenseActions = defineActions({
             return value === undefined || value === null ? "" : String(value);
         },
     },
-
 });
-
 
 export const structureActActions = defineActions({
     buildStructure: {
@@ -389,8 +360,6 @@ export const structureActActions = defineActions({
         },
     },
 
-    
-
     removeStructure: {
         role: "act",
         needs: ["pos"],
@@ -411,8 +380,6 @@ export const structureActActions = defineActions({
         },
     },
 
-    
-
     removeStructures: {
         role: "act",
         needs: ["pos"],
@@ -422,12 +389,12 @@ export const structureActActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        ...REMOVAL_PARAMS,
-        p("preserveUnselectable", "Only unselectable", "bool", {
-        def: "false",
-        hint: "skip structures a player can currently select",
-        }),
-        ...REGION_PARAMS,
+            ...REMOVAL_PARAMS,
+            p("preserveUnselectable", "Only unselectable", "bool", {
+                def: "false",
+                hint: "skip structures a player can currently select",
+            }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const s = (structure ?? null) as StructureLike | null;
@@ -445,8 +412,6 @@ export const structureActActions = defineActions({
         },
     },
 
-    
-
     setStructureEnabled: {
         role: "act",
         needs: ["pos"],
@@ -455,8 +420,8 @@ export const structureActActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("enabled", "Enabled", "bool", { def: "true", hint: "the state to switch to" }),
-        ...REGION_PARAMS,
+            p("enabled", "Enabled", "bool", { def: "true", hint: "the state to switch to" }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
@@ -470,8 +435,6 @@ export const structureActActions = defineActions({
         },
     },
 
-    
-
     setSpritesheetIndex: {
         role: "act",
         needs: ["pos"],
@@ -480,13 +443,13 @@ export const structureActActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("index", "Frame", "number", {
-        def: "0",
-        int: true,
-        min: 0,
-        hint: "the frame to show",
-        }),
-        ...REGION_PARAMS,
+            p("index", "Frame", "number", {
+                def: "0",
+                int: true,
+                min: 0,
+                hint: "the frame to show",
+            }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
@@ -500,8 +463,6 @@ export const structureActActions = defineActions({
         },
     },
 
-    
-
     setSpritesheetByValue: {
         role: "act",
         needs: ["pos"],
@@ -511,12 +472,12 @@ export const structureActActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
-        p("thresholds", "Thresholds", "text", {
-        def: "",
-        hint: "comma-separated, ascending. e.g. 25,50,75",
-        }),
-        ...REGION_PARAMS,
+            p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
+            p("thresholds", "Thresholds", "text", {
+                def: "",
+                hint: "comma-separated, ascending. e.g. 25,50,75",
+            }),
+            ...REGION_PARAMS,
         ],
         fn: (structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
@@ -551,8 +512,6 @@ export const structureActActions = defineActions({
         },
     },
 
-    
-
     setStructureData: {
         role: "act",
         needs: ["pos"],
@@ -580,8 +539,6 @@ export const structureActActions = defineActions({
         },
     },
 
-    
-
     pushStructure: {
         role: "act",
         needs: [],
@@ -591,10 +548,10 @@ export const structureActActions = defineActions({
         slots: ["processing"],
         scope: "structure",
         params: [
-        p("propagateToWorkers", "Send to workers", "bool", {
-        def: "false",
-        hint: "instance data lives on Main; set this if a worker must see it now",
-        }),
+            p("propagateToWorkers", "Send to workers", "bool", {
+                def: "false",
+                hint: "instance data lives on Main; set this if a worker must see it now",
+            }),
         ],
         fn: (structure, _context, options) => {
             const s = structure as StructureRecord | null;
@@ -603,9 +560,7 @@ export const structureActActions = defineActions({
             return api.structures.update(s, { propagateToWorkers: o.propagateToWorkers === true });
         },
     },
-
 });
-
 
 export const structurePureActions = defineActions({
     mapSpritesheetValue: {
@@ -617,11 +572,11 @@ export const structurePureActions = defineActions({
         slots: ["processing"],
         scope: "global",
         params: [
-        p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
-        p("thresholds", "Thresholds", "text", {
-        def: "",
-        hint: "comma-separated, ascending. e.g. 25,50,75",
-        }),
+            p("value2", "Value", "number", { def: "0", hint: "the value to map" }),
+            p("thresholds", "Thresholds", "text", {
+                def: "",
+                hint: "comma-separated, ascending. e.g. 25,50,75",
+            }),
         ],
         fn: (_structure, _context, options) => {
             const o = (options ?? {}) as StructureOptions;
@@ -633,9 +588,7 @@ export const structurePureActions = defineActions({
             return Number.isFinite(frame) ? num(frame, -1) : -1;
         },
     },
-
 });
-
 
 export const structureActions = {
     ...structureSenseActions,

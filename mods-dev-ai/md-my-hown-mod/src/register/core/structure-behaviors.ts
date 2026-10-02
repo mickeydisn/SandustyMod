@@ -1,6 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerStructureBehaviors({ config }: RegisterContext): number {
     return registerEach(config.structureBehaviors, "structureBehaviors", (def) => {

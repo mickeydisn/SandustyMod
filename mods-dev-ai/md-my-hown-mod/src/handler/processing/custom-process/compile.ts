@@ -1,9 +1,4 @@
-
-import {
-    type CompiledProcess,
-    compileProcess,
-    type ProcessFailure,
-} from "../process.ts";
+import { type CompiledProcess, compileProcess, type ProcessFailure } from "../process.ts";
 import { type HandlerSlot, optionKeysFor } from "../../engine/handler-registry.ts";
 import type { ProcessRegistry } from "./registry.ts";
 import type { CustomProcessConfig, ProcessStep } from "./types.ts";
@@ -11,17 +6,15 @@ import type { CustomProcessConfig, ProcessStep } from "./types.ts";
 export const MAX_NESTING = 8;
 
 export interface ProcessCompileFailure {
-    
     id: string;
     error: unknown;
 }
 
 export interface CompiledCustomProcess extends CompiledProcess {
-    
     processId: string;
-    
+
     expanded: string[];
-    
+
     truncated: boolean;
 }
 
@@ -60,9 +53,6 @@ function expand(
     for (const step of process.steps ?? []) {
         const nested = registry.get(step.key);
         if (nested) {
-            
-            
-            
             if (step.as) onFailure?.({ id: step.key, error: "a nested process binds nothing" });
             expand(registry, nested, path, depth + 1, out, expanded, onFailure);
             continue;
@@ -118,8 +108,6 @@ export function compileCustomProcess(
         },
     );
 
-    
-    
     const compiled = compileProcess(
         steps,
         slot,

@@ -12,11 +12,7 @@
  * read as a list of fields instead of a place where the vocabulary is
  * restated.
  */
-import type {
-    BufferValueType,
-    HookKind,
-    UnlockNodeKind,
-} from "../../constants.ts";
+import type { BufferValueType, HookKind, UnlockNodeKind } from "../../constants.ts";
 import type { Opt } from "../../catalog.ts";
 
 /**

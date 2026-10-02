@@ -1,7 +1,7 @@
 import { LOG } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { compileEntryProcess } from "../../handler/processing/custom-process/index.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerSignals({ config, processes }: RegisterContext): number {
     return registerEach(config.signals, "signals", (def) => {

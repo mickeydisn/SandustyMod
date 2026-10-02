@@ -1,21 +1,15 @@
-
 import { advField, idField, textField } from "../fields.ts";
 import { HANDLER_SLOT_LABELS, type HandlerSlot } from "../../../handler/index.ts";
 import { CALL_SITE_LABELS, CALL_SITE_SIGNATURES } from "../../../handler/index.ts";
 import { renderProgramGrid, STEPS_FORM_KEY } from "../../control/program-grid-control.ts";
 import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
 
-
-
-
 const SCOPES = Object.keys(HANDLER_SLOT_LABELS) as HandlerSlot[];
-
 
 function scopeOptions(): { value: string; label: string }[] {
     return SCOPES.map((slot) => ({
         value: slot,
-        
-        
+
         label: `${CALL_SITE_LABELS[slot]} — ${CALL_SITE_SIGNATURES[slot]}`,
     }));
 }
@@ -41,8 +35,6 @@ const FIELDS: FieldSpec[] = [
         hint: "one line on what it does",
     }),
     {
-        
-        
         key: STEPS_FORM_KEY,
         label: "Program",
         kind: "program",
@@ -50,9 +42,6 @@ const FIELDS: FieldSpec[] = [
         wide: true,
     },
     {
-        
-        
-        
         key: `${STEPS_FORM_KEY}__json`,
         label: "Steps",
         kind: "json",
@@ -62,7 +51,6 @@ const FIELDS: FieldSpec[] = [
     },
     advField(),
 ];
-
 
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
@@ -74,20 +62,17 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     );
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     void form;
     w.setStr("name", w.opt("name"));
     const scope = w.opt("scope");
-    
-    
+
     if (SCOPES.includes(scope as HandlerSlot)) w.setRaw("scope", scope);
     w.setStr("doc", w.opt("doc"));
     const steps = w.optJson<unknown[]>(`${STEPS_FORM_KEY}__json`);
     if (steps && steps.length > 0) w.setRaw("steps", steps);
     else w.del("steps");
 }
-
 
 const FORM_COVERED = ["name", "scope", "doc", "steps"];
 
@@ -102,9 +87,8 @@ export const customProcessDefinition: Definition = {
     formCovered: FORM_COVERED,
     entryToForm,
     formToEntry,
-    
+
     panel: { renderField },
-    
-    
+
     list: { discover: () => [] },
 };

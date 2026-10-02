@@ -1,4 +1,3 @@
-
 import type { Tab } from "../schema.ts";
 import { CATEGORY_META } from "../schema.ts";
 import { buildGraph, categoryColor, type Graph, graphAsText, neighboursOf } from "../graph.ts";
@@ -10,11 +9,11 @@ type Click = (key: string) => void;
 export interface HelpProps {
     h: H;
     cfg: Record<string, unknown>;
-    
+
     onGoTo: Click;
-    
+
     onCopy: (text: string) => void;
-    
+
     filter?: string;
     setFilter?: (next: string) => void;
 }
@@ -24,17 +23,8 @@ export function renderHelp(props: HelpProps): unknown {
     const filter = props.filter ?? "all";
     const setFilter = props.setFilter ?? (() => {});
 
-    
-    
-    
     const whole = buildGraph(cfg);
 
-    
-    
-    
-    
-    
-    
     const keep = filter === "all" ? null : filter === "nolink"
         ? new Set(
             whole.nodes
@@ -43,10 +33,6 @@ export function renderHelp(props: HelpProps): unknown {
         )
         : neighboursOf(whole, filter as Tab);
 
-    
-    
-    
-    
     const shown = buildGraph(cfg, keep);
     const broken = shown.danglingRefs.length;
 
@@ -68,15 +54,6 @@ export function renderHelp(props: HelpProps): unknown {
                 broken ? `${broken} broken` : `${shown.edges.length} relations`,
             ),
         ),
-        
-        
-        
-        
-        
-        
-        
-        
-        
         filterMenu(h, whole, filter, setFilter),
         broken ? danglingReport(h, shown, onGoTo) : null,
         h(
@@ -100,7 +77,6 @@ export function renderHelp(props: HelpProps): unknown {
         relationTable(h, shown, filter, onGoTo, setFilter),
     );
 }
-
 
 function filterMenu(
     h: H,
@@ -135,7 +111,6 @@ function filterMenu(
         ]),
     );
 }
-
 
 function danglingReport(h: H, graph: Graph, onGoTo: Click): unknown {
     const bad = graph.danglingRefs;
@@ -202,7 +177,6 @@ function danglingReport(h: H, graph: Graph, onGoTo: Click): unknown {
     );
 }
 
-
 function relationTable(
     h: H,
     graph: Graph,
@@ -231,8 +205,7 @@ function relationTable(
                 style: {
                     ...S.tagChip,
                     cursor: "pointer",
-                    
-                    
+
                     boxShadow: filter === cat ? `0 0 0 1px ${categoryColor(cat)}` : undefined,
                 },
                 title: `Show ${CATEGORY_META[cat].label} and what it connects to`,
@@ -301,15 +274,11 @@ function relationTable(
     );
 }
 
-
-
 type Dir = "left" | "right" | "up" | "down";
-
 
 function opposite(d: Dir): Dir {
     return d === "left" ? "right" : d === "right" ? "left" : d === "up" ? "down" : "up";
 }
-
 
 function head(
     h: H,
@@ -363,25 +332,12 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
             const width = e.live > 0 ? 2 : 1;
             const dash = e.required ? "4 3" : undefined;
 
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             const acx = a.x + a.w / 2;
             const acy = a.y + a.h / 2;
             const bcx = b.x + b.w / 2;
             const bcy = b.y + b.h / 2;
 
             if (acx === bcx && acy === bcy) {
-                
-                
                 const cy = a.y - 18;
                 return [
                     h(
@@ -397,63 +353,23 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
                             strokeDasharray: dash,
                             opacity: dim,
                         }),
-                        
-                        
                         head(h, acx - 16, cy + 10, "left", colour, width, dim),
                         head(h, acx + 16, cy + 10, "right", colour, width, dim),
                     ),
                 ];
             }
 
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             const aMid = a.x + a.w / 2;
             const bMid = b.x + b.w / 2;
             const targetBelow = b.y + b.h / 2 > a.y + a.h / 2;
             const towards: Dir = targetBelow ? "down" : "up";
-            
-            
-            
-            
-            
-            
+
             const y1 = targetBelow ? a.y + a.h : a.y;
             const y2 = targetBelow ? b.y : b.y + b.h;
             let d: string;
             let endA: Dir = opposite(towards);
             let endB: Dir = towards;
             if (a.y === b.y) {
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
                 const lo = Math.min(a.x, b.x);
                 const hi = Math.max(a.x + a.w, b.x + b.w);
                 const crossed = graph.columns.filter((c) => c.x + c.w > lo && c.x < hi);
@@ -468,9 +384,6 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
                 endA = toRight ? "right" : "left";
                 endB = toRight ? "left" : "right";
             } else {
-                
-                
-                
                 const midY = (y1 + y2) / 2;
                 const bow = bMid === aMid
                     ? 0
@@ -479,10 +392,6 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
             }
 
             return [
-                
-                
-                
-                
                 h(
                     "g",
                     { key: `${key}-edge` },
@@ -502,10 +411,6 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
     );
 
     const boxes = graph.nodes.map((n) => {
-        
-        
-        
-        
         const picked = filter === n.cat;
         const near = filter && filter !== "all" && !picked;
         return h(
@@ -550,12 +455,7 @@ function renderGraph(h: H, graph: Graph, filter: string, onGoTo: Click): unknown
         );
     });
 
-    
-    
     const headings = graph.columns.map((c) => {
-        
-        
-        
         const live = graph.nodes.some((n) => n.group === c.key);
         return h(
             "div",

@@ -10,8 +10,8 @@ export const effectsActions = defineActions({
         slots: ["signal", "processing", "modifier"],
         scope: "cell",
         params: [
-        p("name", "Effect", "text", { required: true, hint: "effect name" }),
-        p("count", "Count", "number", { def: "1", min: 0, max: 999 }),
+            p("name", "Effect", "text", { required: true, hint: "effect name" }),
+            p("count", "Count", "number", { def: "1", min: 0, max: 999 }),
         ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { name?: string; count?: number };
@@ -24,5 +24,4 @@ export const effectsActions = defineActions({
             }
         },
     },
-
 });

@@ -1,6 +1,5 @@
-
 import { LOG, type ModConfig, type PanelState } from "../constants.ts";
-import { configStore, type CollectionKey } from "../config/store.ts";
+import { type CollectionKey, configStore } from "../config/store.ts";
 import { api as skApi } from "../packages/mysandkit.ts";
 import { React as HostReact } from "../api.ts";
 import {
@@ -24,10 +23,8 @@ import {
     validateForm,
 } from "./schema.ts";
 
-
 import type { SelectorHandle } from "./definition/types.ts";
 import type { ContentKind } from "../handler/index.ts";
-
 
 const CONTENT_LISTERS: Record<ContentKind, () => Opt[]> = {
     element: () => listElements(),
@@ -81,31 +78,19 @@ import { renderConfigMap } from "./config-map.ts";
 import { techUnlockStructureIds } from "./tech-link.ts";
 import { renderDraws } from "./panel/draws.ts";
 
-
-
 import { getDrawTab as getSpriteEditorTab } from "../sprite-editor/index.ts";
 
-
-
-import {
-    ProcessRegistry,
-    setProcessRegistry,
-} from "../handler/processing/custom-process/index.ts";
-
+import { ProcessRegistry, setProcessRegistry } from "../handler/processing/custom-process/index.ts";
 
 const HANDLER_SCREENS = {
     action: renderActions,
     upgradeAction: renderUpgradeActions,
 } as const;
 
-
 function resolveCat(raw: unknown): Tab {
     if (typeof raw === "string" && CATEGORY_META[raw as Tab]) {
         const tab = raw as Tab;
-        
-        
-        
-        
+
         if (isInlineCatalogue(tab)) return parentOf(tab) ?? tab;
         return tab;
     }
@@ -114,7 +99,6 @@ function resolveCat(raw: unknown): Tab {
     );
     return "elements";
 }
-
 
 function describeValue(v: unknown): string {
     if (v === null) return "null";
@@ -125,10 +109,8 @@ function describeValue(v: unknown): string {
 
 type Mode = ViewMode;
 
-
 const CHIP_W = 150;
 const CHIP_H = 40;
-
 
 function collectionOf(cat: Tab): CollectionKey | null {
     const key = CATEGORY_META[cat]?.configKey;
@@ -142,22 +124,13 @@ function entriesOf(cfg: ModConfig, cat: Tab): Record<string, unknown>[] {
     return Array.isArray(arr) ? (arr as Record<string, unknown>[]) : [];
 }
 
-
 function createPanelComponent(defaultMinimized = true) {
-    
-    
-    
-    
-    
     const React = HostReact;
     if (!React) {
         console.error(`${LOG} sandkit.react unavailable — panel disabled`);
         return () => null;
     }
-    
-    
-    
-    
+
     const { useState, useRef, useCallback, useMemo } = React;
     const h = React.createElement.bind(React) as (...args: unknown[]) => unknown;
 
@@ -167,11 +140,7 @@ function createPanelComponent(defaultMinimized = true) {
         );
         const [cfg, setCfg] = useState<ModConfig>(() => {
             const loaded = configStore.load();
-            
-            
-            
-            
-            
+
             setProcessRegistry(new ProcessRegistry(loaded.processes ?? []));
             return loaded;
         });
@@ -181,22 +150,21 @@ function createPanelComponent(defaultMinimized = true) {
         const [form, setForm] = useState<Record<string, string>>({});
         const [editingId, setEditingId] = useState<string | null>(null);
         const [confirmId, setConfirmId] = useState<string | null>(null);
-        
+
         const revealed = useRef<Set<string>>(new Set());
-        
+
         const [listQuery, setListQuery] = useState(LIST_DEFAULTS.listQuery);
-        
+
         const [listOwner, setListOwner] = useState<OwnerKey | "all">(LIST_DEFAULTS.listOwner);
-        
+
         const [listHidden, setListHidden] = useState(LIST_DEFAULTS.listHidden);
-        
+
         const [openRow, setOpenRow] = useState<string | null>(null);
-        
+
         const [nativeOpen, setNativeOpen] = useState<Record<string, boolean>>({});
-        
+
         const [selectorState, setSelectorState] = useState<Record<string, SelectorState>>({});
 
-        
         const selectorHandle = useMemo<SelectorHandle>(
             () => ({
                 read: (key) => selectorState[`param:${key}`],
@@ -208,18 +176,12 @@ function createPanelComponent(defaultMinimized = true) {
                 renderParam: (req) => {
                     if (!req.content) return null;
                     const list = CONTENT_LISTERS[req.content];
-                    
-                    
-                    
-                    
-                    
-                    
+
                     if (!list) throw new Error(`no content lister for "${req.content}"`);
                     return renderSelector({
                         react: { h: req.h as SelectorReact["h"] },
                         value: req.value,
-                        
-                        
+
                         options: list(),
                         multiple: false,
                         onChange: req.onChange,
@@ -231,69 +193,52 @@ function createPanelComponent(defaultMinimized = true) {
             }),
             [selectorState],
         );
-        
+
         const [helpFilter, setHelpFilter] = useState("all");
         const [jsonText, setJsonText] = useState("");
         const [jsonError, setJsonError] = useState<string | null>(null);
-        
+
         const [handlerTab, setHandlerTab] = useState<HandlersTabState>(() =>
             initialHandlersState()
         );
-        
+
         const [libQuery, setLibQuery] = useState<Record<string, string>>({});
-        
+
         const [attachedQuery, setAttachedQuery] = useState<Record<string, string>>({});
-        
+
         const [catalogueOnlyUsed, setCatalogueOnlyUsed] = useState<Record<string, boolean>>({});
         const drag = useRef<{
             ox: number;
             oy: number;
             active: boolean;
-            
+
             moved: boolean;
             startX: number;
             startY: number;
         }>({ ox: 0, oy: 0, active: false, moved: false, startX: 0, startY: 0 });
-        
+
         const suppressClick = useRef(false);
 
         const group = MENU_GROUPS.find((g) => g.key === groupKey) ?? MENU_GROUPS[0];
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
         const cat = resolveCat(rawCat);
         const meta = CATEGORY_META[cat];
-        
-        
-        
-        
-        
+
         const navCat = parentOf(cat) ?? cat;
         const navGroup = MENU_GROUPS.find((g) => g.categories.includes(navCat)) ?? group;
 
-        
         const errors = useMemo<Record<string, string>>(
             () => (mode === "form" ? validateForm(cat, form) : {}),
             [mode, cat, form],
         );
         const errorCount = Object.keys(errors).length;
 
-        
         const nativeBox = (f: FieldSpec, opts: Opt[]): unknown => {
             if (f.kind !== "select" && f.kind !== "multiselect") return null;
             if (!opts.length) return null;
             const game = opts.filter((o) => o.source === "game");
             const mine = opts.filter((o) => o.source === "mod");
-            
-            
+
             if (!game.length && !mine.length) return null;
 
             const isOpen = !!nativeOpen[f.key];
@@ -348,10 +293,7 @@ function createPanelComponent(defaultMinimized = true) {
 
         const refresh = useCallback(() => setCfg(configStore.load()), []);
 
-        
         const resetView = useCallback(() => {
-            
-            
             const clean = emptyViewState();
             setMode(clean.mode);
             setConfirmId(clean.confirmId);
@@ -362,8 +304,7 @@ function createPanelComponent(defaultMinimized = true) {
             setLibQuery(clean.libQuery);
             setHandlerTab(clean.handlerTab);
             setListQuery(clean.listQuery);
-            
-            
+
             setListOwner(clean.listOwner);
             setListHidden(clean.listHidden);
             setOpenRow(clean.openRow);
@@ -383,13 +324,10 @@ function createPanelComponent(defaultMinimized = true) {
 
         const goCategory = (next: Tab) => {
             resetView();
-            
-            
-            
+
             setCat(isInlineCatalogue(next) ? (parentOf(next) ?? next) : next);
         };
 
-        
         const copyText = (text: string) => {
             try {
                 (globalThis as {
@@ -400,22 +338,13 @@ function createPanelComponent(defaultMinimized = true) {
                 skApi.toast("Clipboard unavailable — select the text instead");
             }
         };
-        
-        
-        
-        
-        
 
-        
         const startNew = (tab: Tab = cat) => {
             setEditingId(null);
             setConfirmId(null);
             setCat(tab);
             revealed.current = new Set();
-            
-            
-            
-            
+
             setForm(newEntryForm(tab));
             setMode("form");
         };
@@ -426,11 +355,7 @@ function createPanelComponent(defaultMinimized = true) {
             setEditingId(id);
             revealed.current = new Set();
             const next = entryToForm(tab, entry);
-            
-            
-            
-            
-            
+
             if (tab === "techs" && id) {
                 const ids = techUnlockStructureIds(id, configStore.load());
                 if (ids.length > 0) {
@@ -445,9 +370,6 @@ function createPanelComponent(defaultMinimized = true) {
         };
 
         const cancelForm = () => {
-            
-            
-            
             const home = parentOf(cat);
             if (home) setCat(home);
             setMode("list");
@@ -482,16 +404,12 @@ function createPanelComponent(defaultMinimized = true) {
                 skApi.toast("Save failed — see console");
                 return;
             }
-            
-            
-            
-            
+
             refresh();
             skApi.toast(`${meta.label} saved — reload the game to apply it.`);
             cancelForm();
         };
 
-        
         const requestRemove = (id: string, tab: Tab = cat) => {
             const confirmKey = `${tab}:${id}`;
             if (confirmId !== confirmKey) {
@@ -510,14 +428,12 @@ function createPanelComponent(defaultMinimized = true) {
             skApi.toast("Removed — reload the game to apply it.");
         };
 
-        
         const renderLibrary = (f: FieldSpec, val: string, err?: string) => {
             const q = libQuery[f.key] ?? "";
-            
+
             const matches = searchLibraryAssets(q);
             const shown = matches.slice(0, 120);
 
-            
             const selectedPreview = (path: string) => {
                 const a = matches.find((x) => x.path === path);
                 if (!a?.preview) {
@@ -541,8 +457,6 @@ function createPanelComponent(defaultMinimized = true) {
                 if (!target) return;
                 const derived = autoGraphicsKey(name);
                 setForm((prev) => {
-                    
-                    
                     const next = resolveAutoFill(prev[target], prev[`${target}__auto`], derived);
                     if (next === null) return prev;
                     return { ...prev, [target]: next, [`${target}__auto`]: next };
@@ -587,8 +501,6 @@ function createPanelComponent(defaultMinimized = true) {
                                     style: val === a.path ? S.libTileActive : S.libTile,
                                     onClick: () => pick(a.name, a.path),
                                 },
-                                
-                                
                                 h("img", {
                                     src: a.preview,
                                     alt: a.name,
@@ -607,7 +519,6 @@ function createPanelComponent(defaultMinimized = true) {
                         `Showing ${shown.length} of ${matches.length} — refine the search.`,
                     )
                     : null,
-                
                 val ? h("div", { style: S.spritePreviewRow }, ...selectedPreview(val)) : null,
                 err ? h("div", { style: S.errorText }, err) : null,
             );
@@ -629,11 +540,6 @@ function createPanelComponent(defaultMinimized = true) {
                 f.required ? h("span", { style: S.requiredMark }, "*") : null,
             );
 
-            
-            
-            
-            
-            
             const own = definitionFor(cat)?.panel?.renderField?.({
                 h,
                 form,
@@ -644,24 +550,12 @@ function createPanelComponent(defaultMinimized = true) {
                 value: val,
                 error: err,
                 locked,
-                
-                
+
                 tab: cat,
             });
             let control: unknown = own ?? null;
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             if (control === null && f.kind === "projectileOption") {
-                
-                
-                
                 control = renderProjectileOption({
                     h,
                     form,
@@ -676,9 +570,6 @@ function createPanelComponent(defaultMinimized = true) {
                 });
             }
             if (control === null && f.kind === "processRef") {
-                
-                
-                
                 control = renderProcessRef({
                     h,
                     form,
@@ -695,10 +586,6 @@ function createPanelComponent(defaultMinimized = true) {
             if (control === null && f.kind === "select") {
                 const opts = resolveOptions(f, form);
                 if (isContentField(f.options)) {
-                    
-                    
-                    
-                    
                     control = renderSelector({
                         react: { h },
                         value: val,
@@ -735,9 +622,6 @@ function createPanelComponent(defaultMinimized = true) {
                 const opts = resolveOptions(f, form);
                 const chosen = parseIdList(val);
                 if (isContentField(f.options)) {
-                    
-                    
-                    
                     control = renderSelector({
                         react: { h },
                         value: val,
@@ -758,15 +642,6 @@ function createPanelComponent(defaultMinimized = true) {
                             })),
                     });
                 } else if (opts.length === 0) {
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
                     const orphans = chosen.filter((v) => v && v !== "__none__");
                     control = h(
                         "div",
@@ -900,11 +775,7 @@ function createPanelComponent(defaultMinimized = true) {
                     placeholder: f.placeholder,
                     onChange: (e: { target: { value: string } }) => set(e.target.value),
                 });
-                
-                
-                
-                
-                
+
                 if (f.key === PASSTHROUGH_KEY) {
                     const carried = passthroughKeysOf(val);
                     if (carried.length) {
@@ -942,11 +813,7 @@ function createPanelComponent(defaultMinimized = true) {
                 { key: f.key, style: wide ? S.fieldCellWide : S.fieldCell },
                 labelRow,
                 control,
-                
-                
-                
                 nativeBox(f, opts),
-                
                 f.kind === "select" && f.key.endsWith("Key") && val
                     ? handlerDoc(val) ? h("div", { style: S.hintBelow }, handlerDoc(val)) : null
                     : err
@@ -957,13 +824,7 @@ function createPanelComponent(defaultMinimized = true) {
             );
         };
 
-        
         const renderAttachedList = (child: Tab) => {
-            
-            
-            
-            
-            
             if (isInlineCatalogue(child)) {
                 return h(
                     "div",
@@ -983,9 +844,7 @@ function createPanelComponent(defaultMinimized = true) {
 
             const childMeta = CATEGORY_META[child];
             const childSpec = listFor(child);
-            
-            
-            
+
             const childRows = mergeRows(
                 entriesOf(cfg, child),
                 childSpec?.discover?.() ?? [],
@@ -999,8 +858,7 @@ function createPanelComponent(defaultMinimized = true) {
                 "all",
                 false,
             );
-            
-            
+
             const openKey = `${child} `;
 
             return h(
@@ -1008,8 +866,6 @@ function createPanelComponent(defaultMinimized = true) {
                 { key: child, style: S.sectionBox },
                 h(
                     "div",
-                    
-                    
                     { style: S.listHeadingRow },
                     childMeta.label,
                     h("span", { style: S.chipCount }, String(childRows.length)),
@@ -1076,13 +932,9 @@ function createPanelComponent(defaultMinimized = true) {
 
         const renderList = () => {
             const listSpec = listFor(cat);
-            
-            
+
             const attached = attachedTo(cat).filter((c) => parentOf(c) === cat);
-            
-            
-            
-            
+
             const rows = mergeRows(entriesOf(cfg, cat), listSpec?.discover?.() ?? [], cat);
             const shown = filterRows(
                 rows,
@@ -1093,8 +945,7 @@ function createPanelComponent(defaultMinimized = true) {
             );
             const ownerCounts = countByOwner(rows);
             const owners = ownersOf(rows);
-            
-            
+
             const hiddenHere = countHiddenRows(rows, listOwner);
 
             const ownerChip = (key: OwnerKey, n: number) =>
@@ -1102,8 +953,7 @@ function createPanelComponent(defaultMinimized = true) {
                     "button",
                     {
                         key: `owner:${key}`,
-                        
-                        
+
                         style: listOwner === key
                             ? S.chipActive
                             : key === "own"
@@ -1116,25 +966,13 @@ function createPanelComponent(defaultMinimized = true) {
                             : key === "game"
                             ? "Built into the game"
                             : `Objects the "${key.slice(4)}" mod adds`,
-                        
-                        
-                        
+
                         onClick: () => setListOwner(listOwner === key ? "all" : key),
                     },
                     ownerLabel(key),
                     h("span", { style: S.chipCount }, String(n)),
                 );
 
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
             const hiddenToggle = () =>
                 h(
                     "label",
@@ -1153,48 +991,28 @@ function createPanelComponent(defaultMinimized = true) {
                             setListHidden(e.target.checked),
                     }),
                     "hidden",
-                    
-                    
                     hiddenHere ? h("span", { style: S.chipCount }, String(hiddenHere)) : null,
                 );
 
             return h(
                 "div",
-                
-                
-                
-                
                 { style: S.screen },
                 h(
                     "div",
                     { style: S.screenHead },
                     h("span", { style: S.screenTitle }, meta.label),
                     h("span", { style: S.screenBlurb }, meta.blurb),
-                    
-                    
-                    
-                    
                     h(
                         "span",
                         { style: S.chipCount },
                         `${ownerCounts.get("own") ?? 0} in config`,
                     ),
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
                     h(
                         "button",
                         { style: S.btnPrimary, onClick: () => startNew() },
                         "+ New",
                     ),
                 ),
-                
-                
                 h(
                     "div",
                     { style: S.listFilterBar },
@@ -1207,10 +1025,6 @@ function createPanelComponent(defaultMinimized = true) {
                             setListQuery(e.target.value),
                     }),
                 ),
-                
-                
-                
-                
                 h(
                     "div",
                     { style: S.listFilterBar },
@@ -1232,11 +1046,6 @@ function createPanelComponent(defaultMinimized = true) {
                     ? h(
                         "div",
                         { style: { ...S.emptyState, margin: "8px 10px" } },
-                        
-                        
-                        
-                        
-                        
                         rows.length === 0
                             ? `Nothing here yet — press “+ New” to create the first ${meta.label.toLowerCase()}.`
                             : shownBecauseOf(
@@ -1262,8 +1071,7 @@ function createPanelComponent(defaultMinimized = true) {
                                     row,
                                     expanded: openRow === row.id,
                                     toggle: () => setOpenRow(openRow === row.id ? null : row.id),
-                                    
-                                    
+
                                     edit: row.origin === "mod" && row.entry
                                         ? () => startEdit(row.entry as Record<string, unknown>)
                                         : undefined,
@@ -1276,9 +1084,6 @@ function createPanelComponent(defaultMinimized = true) {
                             )
                         ),
                     ),
-                
-                
-                
                 ...(attached.length === 0 ? [] : [
                     h(
                         "div",
@@ -1290,19 +1095,8 @@ function createPanelComponent(defaultMinimized = true) {
         };
 
         const renderForm = () => {
-            
-            
-            
             const sections = sectionsFor(cat, form);
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             for (const title of sectionsToReveal(sections, errors)) {
                 revealed.current.add(title);
             }
@@ -1318,10 +1112,6 @@ function createPanelComponent(defaultMinimized = true) {
                     h("span", { style: S.screenBlurb }, meta.blurb),
                     h("button", { style: S.btn, onClick: cancelForm }, "← Back"),
                 ),
-                
-                
-                
-                
                 ...(definitionFor(cat)?.panel?.renderHeader
                     ? [definitionFor(cat)!.panel!.renderHeader!({ h, form, cfg, setField })]
                     : []),
@@ -1331,11 +1121,7 @@ function createPanelComponent(defaultMinimized = true) {
                         {
                             key: sec.title,
                             style: S.sectionBox,
-                            
-                            
-                            
-                            
-                            
+
                             open: revealedSet.has(sec.title),
                         },
                         h(
@@ -1448,7 +1234,6 @@ function createPanelComponent(defaultMinimized = true) {
                 ),
             );
 
-        
         const persistPanel = (next: PanelState) => {
             setPanel(next);
             configStore.savePanel(next);
@@ -1472,7 +1257,7 @@ function createPanelComponent(defaultMinimized = true) {
             };
             try {
                 e.target.setPointerCapture?.(e.pointerId);
-            } catch {  }
+            } catch {}
             if (panel.x < 0) {
                 persistPanel({ ...panel, x: Math.round(rect.left), y: Math.round(rect.top) });
             }
@@ -1480,14 +1265,12 @@ function createPanelComponent(defaultMinimized = true) {
 
         const onDragMove = (e: { clientX: number; clientY: number }) => {
             if (!drag.current.active) return;
-            
-            
-            
+
             if (exceedsSlop(drag.current.startX, drag.current.startY, e.clientX, e.clientY)) {
                 drag.current.moved = true;
             }
             if (!drag.current.moved) return;
-            
+
             const vw = (globalThis as { innerWidth?: number }).innerWidth ?? 1280;
             const vh = (globalThis as { innerHeight?: number }).innerHeight ?? 720;
             const next = clampChip(
@@ -1505,8 +1288,7 @@ function createPanelComponent(defaultMinimized = true) {
             if (!drag.current.active) return;
             const moved = drag.current.moved;
             drag.current.active = false;
-            
-            
+
             if (moved) suppressClick.current = true;
             setPanel((p) => {
                 configStore.savePanel(p);
@@ -1514,7 +1296,6 @@ function createPanelComponent(defaultMinimized = true) {
             });
         };
 
-        
         const openFromChip = () => {
             if (suppressClick.current) {
                 suppressClick.current = false;
@@ -1530,7 +1311,6 @@ function createPanelComponent(defaultMinimized = true) {
             0,
         );
 
-        
         const posStyle = panel.minimized
             ? (panel.x >= 0 && panel.y >= 0
                 ? { left: panel.x, top: panel.y, right: "auto", bottom: "auto" }
@@ -1542,7 +1322,7 @@ function createPanelComponent(defaultMinimized = true) {
                 "div",
                 {
                     style: { ...S.panelRoot, ...posStyle },
-                    
+
                     onPointerDown: onDragDown,
                     onPointerMove: onDragMove,
                     onPointerUp: onDragUp,
@@ -1567,10 +1347,6 @@ function createPanelComponent(defaultMinimized = true) {
                     "div",
                     {
                         style: S.titleBar,
-                        
-                        
-                        
-                        
                     },
                     h("span", { style: S.titleText }, "My Own Mod — Configurator"),
                     h("span", { style: S.chipCount }, `${totalEntries} entries`),
@@ -1614,20 +1390,9 @@ function createPanelComponent(defaultMinimized = true) {
                     "div",
                     {
                         style: S.body,
-                        
-                        
-                        
-                        
-                        
-                        
+
                         key: `${cat}:${mode}`,
                     },
-                    
-                    
-                    
-                    
-                    
-                    
                     cat === "json"
                         ? renderJson()
                         : cat === "spriteEditor"
@@ -1674,7 +1439,6 @@ function createPanelComponent(defaultMinimized = true) {
     return Panel;
 }
 
-
 let _panelInstance: (() => unknown) | null = null;
 
 function getPanelInstance(startMinimized: boolean): () => unknown {
@@ -1682,7 +1446,6 @@ function getPanelInstance(startMinimized: boolean): () => unknown {
     _panelInstance = createPanelComponent(startMinimized);
     return _panelInstance;
 }
-
 
 export function ConfiguratorPanel(startMinimized = true): unknown {
     const React = HostReact;

@@ -1,20 +1,14 @@
-
 import { listElements, listRecipeMachines } from "../../../catalog.ts";
 import { type RecipeOutputEntry } from "../../../constants.ts";
 import * as S from "../../styles.ts";
 import { advField, elSelect, idField, numField } from "../fields.ts";
 import type { Definition, EntryReader, EntryWriter, FieldContext, FieldSpec } from "../types.ts";
 
-
 const SINGLE_OUTPUT_MACHINES = ["planterBox"];
-
 
 const isShaker = (f: Record<string, string>) => f.machine === "shaker";
 
-
 const isSingleOutput = (f: Record<string, string>) => SINGLE_OUTPUT_MACHINES.includes(f.machine);
-
-
 
 const FIELDS: FieldSpec[] = [
     idField(),
@@ -87,17 +81,10 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
-    
-    
     read.put("machine", read.str(e.kind));
     read.put("input", read.str(e.input) ?? read.num(e.input));
-    
-    
-    
+
     read.put("outputElement", read.str(e.output) ?? read.num(e.output));
     read.put("outputChance", read.num(e.chance));
     read.put("outputs", read.json(e.outputs));
@@ -106,16 +93,12 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("minVelocity", read.num(e.minimumDownwardVelocity));
 }
 
-
 function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setStr("kind", w.opt("machine"));
     w.setStr("input", w.opt("input"));
     w.setStr("output", w.opt("outputElement"));
     w.setNum("chance", w.optNum("outputChance"));
-    
-    
-    
-    
+
     const outs = w.optJson<RecipeOutputEntry[]>("outputs");
     if (outs) w.setRaw("outputs", outs);
     const above = w.optJson<RecipeOutputEntry[]>("outputsAbove");
@@ -125,9 +108,6 @@ function formToEntry(_form: Record<string, string>, w: EntryWriter): void {
     w.setNum("minimumDownwardVelocity", w.optNum("minVelocity"));
 }
 
-
-
-
 function renderOutputs(ctx: FieldContext): unknown {
     const { h, field, value, locked, setField } = ctx;
     const style = ctx.error ? S.inputError : S.input;
@@ -135,7 +115,7 @@ function renderOutputs(ctx: FieldContext): unknown {
     try {
         const parsed = JSON.parse(value || "[]");
         if (Array.isArray(parsed)) rows = parsed;
-    } catch {  }
+    } catch {}
     const writeRows = (next: { elementType?: string; chance?: number }[]) =>
         setField(field.key, JSON.stringify(next, null, 2));
     const elements = listElements();
@@ -203,13 +183,9 @@ function renderOutputs(ctx: FieldContext): unknown {
     );
 }
 
-
 function validateField(field: FieldSpec, value: string): string | undefined {
     if (field.kind !== "outputs") return undefined;
-    
-    
-    
-    
+
     if (!value.trim()) return "add at least one output";
     let parsed: unknown;
     try {
@@ -236,14 +212,10 @@ function validateField(field: FieldSpec, value: string): string | undefined {
     return undefined;
 }
 
-
 function renderField(ctx: FieldContext): unknown {
     if (ctx.field.kind !== "outputs") return null;
     return renderOutputs(ctx);
 }
-
-
-
 
 const FORM_COVERED = [
     "kind",
@@ -263,8 +235,6 @@ export const recipeDefinition: Definition = {
     entryToForm,
     formToEntry,
     validateField,
-    
-    
-    
+
     panel: { renderField },
 };

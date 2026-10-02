@@ -1,20 +1,11 @@
-
 import { listTechIds } from "../../../catalog.ts";
 import { advField, idField, NAME_MAX, textField } from "../fields.ts";
 import { CUSTOM, parseIdList, parseObjectOrUndefined, putCustomOrSelect } from "../values.ts";
 import type { Definition, EntryReader, EntryWriter, FieldSpec } from "../types.ts";
 
-
-
 const FIELDS: FieldSpec[] = [
     idField(),
     {
-        
-        
-        
-        
-        
-        
         key: "name",
         label: "Display name",
         kind: "text",
@@ -49,21 +40,10 @@ const FIELDS: FieldSpec[] = [
     advField(),
 ];
 
-
-
-
 function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     read.put("name", read.str(e.name));
     read.put("nameKey", read.str(e.nameKey));
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     const req = e.requirement;
     if (typeof req === "string") {
         putCustomOrSelect(read.put, req, "requirementTechId", "requirementJson", []);
@@ -73,11 +53,10 @@ function entryToForm(e: Record<string, unknown>, read: EntryReader): void {
     }
 }
 
-
 function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     w.setStr("name", w.opt("name"));
     w.setStr("nameKey", w.opt("nameKey"));
-    
+
     const rawReq = parseObjectOrUndefined(form.requirementJson);
     const techReq = w.opt("requirementTechId");
     if (techReq === CUSTOM) {
@@ -89,11 +68,7 @@ function formToEntry(form: Record<string, string>, w: EntryWriter): void {
     }
 }
 
-
-
-
 const FORM_COVERED = ["name", "nameKey", "requirement"];
-
 
 function validate(form: Record<string, string>, errors: Record<string, string>): void {
     if (errors.name || errors.nameKey) return;
@@ -109,6 +84,4 @@ export const upgradeCategoryDefinition: Definition = {
     entryToForm,
     formToEntry,
     validate,
-    
-    
 };

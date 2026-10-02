@@ -2,7 +2,6 @@ import { defineActions } from "../../engine/types.ts";
 import type { CellMutation, ProcessingContext } from "../api/processors.ts";
 import { p } from "../../engine/registry/params.ts";
 
-
 function commitOrWarn(
     context: unknown,
     mutations: CellMutation[],
@@ -39,7 +38,6 @@ function at(
     return { cellX: (structure?.x ?? 0) + dx, cellY: (structure?.y ?? 0) + dy };
 }
 
-
 export const processorActions = defineActions({
     processorLog: {
         role: "act",
@@ -58,7 +56,10 @@ export const processorActions = defineActions({
         role: "act",
         needs: [],
         doc: "Does nothing. Keeps the interval alive without side effects.",
-        type: "global", slots: ["processing"], scope: "structure", params: [],
+        type: "global",
+        slots: ["processing"],
+        scope: "structure",
+        params: [],
         fn: () => {},
     },
 
@@ -70,8 +71,8 @@ export const processorActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("x", "Cell x", "number", { min: 0, int: true }),
-        p("y", "Cell y", "number", { min: 0, int: true }),
+            p("x", "Cell x", "number", { min: 0, int: true }),
+            p("y", "Cell y", "number", { min: 0, int: true }),
         ],
         fn: (structure, context) => {
             try {
@@ -100,11 +101,11 @@ export const processorActions = defineActions({
         slots: ["processing"],
         scope: "cell",
         params: [
-        p("to", "Output element", "text", {
-        required: true,
-        hint: "element id committed into the cell",
-        }),
-        p("chance", "Chance", "number", { def: "1", min: 0, max: 1 }),
+            p("to", "Output element", "text", {
+                required: true,
+                hint: "element id committed into the cell",
+            }),
+            p("chance", "Chance", "number", { def: "1", min: 0, max: 1 }),
         ],
         fn: (structure, context, options) => {
             try {

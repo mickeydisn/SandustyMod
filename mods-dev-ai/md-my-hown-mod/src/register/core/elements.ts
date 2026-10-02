@@ -1,6 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api, normalizeElementPatch } from "../../packages/mysandkit.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 import { noteElementVisibility } from "./element-picker.ts";
 
 export function registerElements({ config }: RegisterContext): number {

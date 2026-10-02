@@ -2,7 +2,7 @@ import { LOG, type ModConfig, type StructureConfig } from "../../constants.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { isAlwaysUnlocked } from "../../ui/tech-link.ts";
 import { makeDrawnSprite } from "./drawn-sprite.ts";
-import { registerEach, type RegisterContext } from "../registry.ts";
+import { type RegisterContext, registerEach } from "../registry.ts";
 
 type DrawCtx = {
     ctx?: {

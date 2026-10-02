@@ -10,16 +10,13 @@ import {
 } from "../../engine/position.ts";
 import type { ProcessingContext } from "./processors.ts";
 
-
 interface StructureLike {
     x?: number;
     y?: number;
     shape?: number[][];
 }
 
-
 export interface ElementOptions {
-
     dx?: unknown;
     dy?: unknown;
 
@@ -35,7 +32,6 @@ export interface ElementOptions {
     mx?: unknown;
     my?: unknown;
 
-
     durationTicks?: unknown;
 
     density?: unknown;
@@ -50,18 +46,15 @@ export interface ElementOptions {
     slotValue?: unknown;
 }
 
-
 function num(value: unknown, fallback = 0): number {
     const n = Number(value);
     return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
-
 function anchorPosition(structure: StructureLike | null): Position | null {
     const anchor = anchorFor(structure);
     return anchor.source === "none" ? null : { x: anchor.x, y: anchor.y };
 }
-
 
 export function regionFor(
     structure: StructureLike | null,
@@ -79,7 +72,6 @@ export function regionFor(
     return { range: positionsFor(built.address, at), clamped: built.clamped };
 }
 
-
 export function walkRangeFor(
     structure: StructureLike | null,
     options: ElementOptions,
@@ -91,24 +83,20 @@ export function walkRangeFor(
     return { range: built.range, clamped: built.clamped };
 }
 
-
 export function clampNote(clamped: boolean, label: string): string {
     return clamped
         ? `[md-my-hown-mod:process] ${label}: range clamped to ${MAX_SCAN_SIDE}×${MAX_SCAN_SIDE} — the count below covers less than you asked for`
         : "";
 }
 
-
 export function elementOf(options: ElementOptions): string {
     return String(options.element ?? "");
 }
-
 
 export function dataSlotOf(options: ElementOptions): number {
     const n = Math.round(Number(options.slot));
     return Number.isInteger(n) && n >= 1 && n <= ELEMENT_DATA_SLOTS ? n : 0;
 }
-
 
 export function cellReaders(context: unknown): {
     readType: (x: number, y: number) => unknown;
@@ -136,7 +124,6 @@ export function cellReaders(context: unknown): {
             const t = api.elements.getTypeFromId(id);
             if (t != null) set.add(t);
         } catch {
-
         }
         return set;
     };
@@ -148,7 +135,6 @@ export function cellReaders(context: unknown): {
             const id = api.elements.getIdByType(found as number);
             if (typeof id === "string" && id) return id;
         } catch {
-
         }
         return String(found);
     };
@@ -172,14 +158,12 @@ export function cellReaders(context: unknown): {
     };
 }
 
-
 export interface ElementWriter {
     createAtCell: (x: number, y: number, type: string, options?: unknown) => void;
     replaceAtCell: (x: number, y: number, type: string, options?: unknown) => void;
 
     removeAtCell?: (x: number, y: number, options?: unknown) => void;
 }
-
 
 export function writeCells(
     structure: unknown,
@@ -195,8 +179,6 @@ export function writeCells(
 ): boolean {
     const s = structure as StructureLike | null;
     const ctx = context as ProcessingContext | null;
-
-
 
     const readType = ctx?.getResolvedTypeAtCell;
     const isEmpty = ctx?.isCellEmptyAtCell;
@@ -218,20 +200,11 @@ export function writeCells(
     if (note) console.warn(note);
     const cells = range;
 
-
-
-
-
-
-
-
-
     const plan: { cell: { x: number; y: number }; current: unknown; empty: boolean }[] = [];
     for (const cell of cells) {
         const empty = isEmpty ? isEmpty(cell.x, cell.y) : false;
         plan.push({ cell, current: empty ? null : readType(cell.x, cell.y), empty });
     }
-
 
     const noop: ElementWriter = {
         createAtCell: () => {},
@@ -244,11 +217,13 @@ export function writeCells(
     }
     if (queued === 0) return false;
 
-    if (!api.grid.mutate((writer: { elements: ElementWriter }) => {
-        for (const step of plan) {
-            decide(writer.elements, step.cell, step.current, step.empty);
-        }
-    })) {
+    if (
+        !api.grid.mutate((writer: { elements: ElementWriter }) => {
+            for (const step of plan) {
+                decide(writer.elements, step.cell, step.current, step.empty);
+            }
+        })
+    ) {
         console.warn(
             `[md-my-hown-mod:process] ${label}: no api.grid.mutate on this thread, so ` +
                 "nothing was written",
@@ -258,7 +233,6 @@ export function writeCells(
     return true;
 }
 
-
 export function createOptions(options: ElementOptions): Record<string, unknown> | undefined {
     const out: Record<string, unknown> = {};
     const ticks = num(options.durationTicks);
@@ -266,8 +240,6 @@ export function createOptions(options: ElementOptions): Record<string, unknown> 
     const density = Number(options.density);
     if (Number.isFinite(density) && density > 0) out.density = density;
     if (options.freeFalling === true) out.isFreeFalling = true;
-
-
 
     const vx = Number(options.vx);
     const vy = Number(options.vy);

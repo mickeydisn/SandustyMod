@@ -1,4 +1,3 @@
-
 import type { Tab } from "./schema.ts";
 import { CATEGORY_META } from "./schema.ts";
 import { RELATIONS } from "./relations.ts";
@@ -6,16 +5,15 @@ import { categoryColor } from "./graph.ts";
 import * as S from "./styles.ts";
 
 export interface InstanceNode {
-    
     cat: Tab;
     id: string;
     x: number;
     y: number;
     w: number;
     h: number;
-    
+
     col: number;
-    
+
     orphan: boolean;
 }
 
@@ -25,18 +23,17 @@ export interface InstanceEdge {
     toCat: Tab;
     toId: string;
     field: string;
-    
+
     broken: boolean;
 }
 
 export interface InstanceMap {
-    
     columns: { cat: Tab; label: string; count: number; x: number; y: number }[];
     nodes: InstanceNode[];
     edges: InstanceEdge[];
     width: number;
     height: number;
-    
+
     orphans: string[];
     brokenEdges: InstanceEdge[];
 }
@@ -63,7 +60,6 @@ function entriesOf(
     );
 }
 
-
 const MAP_ORDER: Tab[] = [
     "elements",
     "structures",
@@ -86,7 +82,6 @@ const MAP_ORDER: Tab[] = [
     "sprites",
     "modifiers",
 ];
-
 
 export function buildInstanceMap(cfg: Record<string, unknown>): InstanceMap {
     const present = new Set<Tab>();
@@ -174,7 +169,6 @@ export function buildInstanceMap(cfg: Record<string, unknown>): InstanceMap {
     };
 }
 
-
 export function instanceMapAsText(
     map: InstanceMap,
     cfg: Record<string, unknown>,
@@ -208,19 +202,16 @@ export function instanceMapAsText(
     return lines.join("\n");
 }
 
-
-
 type H = (t: string, p: Record<string, unknown> | null, ...c: unknown[]) => unknown;
 type Click = (key: string) => void;
 
 export interface MapProps {
     h: H;
     cfg: Record<string, unknown>;
-    
+
     onGoTo: Click;
     onCopy: (text: string) => void;
 }
-
 
 export function renderConfigMap(props: MapProps): unknown {
     const { h, cfg, onGoTo, onCopy } = props;
@@ -357,7 +348,6 @@ function orphanNote(h: H, map: InstanceMap): unknown {
     );
 }
 
-
 function legend(h: H, map: InstanceMap, onGoTo: Click): unknown {
     return h(
         "div",
@@ -381,7 +371,6 @@ function legend(h: H, map: InstanceMap, onGoTo: Click): unknown {
         ),
     );
 }
-
 
 function drawMap(h: H, map: InstanceMap, onGoTo: Click): unknown {
     const byId = new Map(map.nodes.map((n) => [`${n.cat}:${n.id}`, n]));
@@ -482,7 +471,6 @@ function drawMap(h: H, map: InstanceMap, onGoTo: Click): unknown {
                 title: n.orphan ? `${n.id} — not referenced by anything` : `${n.id}`,
                 onClick: () => onGoTo(n.cat),
             },
-            
             n.id.includes(":") ? n.id.split(":").slice(1).join(":") : n.id,
         )
     );

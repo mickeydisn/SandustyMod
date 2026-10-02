@@ -8,16 +8,16 @@ export const projectilesActions = defineActions({
         needs: ["pos"],
         doc: "Fires a projectile. Set `projectileId` and `velocity` in options.",
         type: "message",
-        
+
         slots: ["signal", "processing", "modifier", "itemAction"],
         scope: "global",
         itemTypes: ["Weapon"],
         params: [
-        p("projectileId", "Projectile", "text", {
-        hint: "falls back to the item's projectileId",
-        }),
-        p("power", "Power", "number", { def: "5", min: 0 }),
-        p("speed", "Speed", "number", { def: "20", min: 0 }),
+            p("projectileId", "Projectile", "text", {
+                hint: "falls back to the item's projectileId",
+            }),
+            p("power", "Power", "number", { def: "5", min: 0 }),
+            p("speed", "Speed", "number", { def: "20", min: 0 }),
         ],
         fn: (payload, _ctx, options) => {
             const o = (options ?? {}) as { projectileId?: string; vx?: number; vy?: number };
@@ -50,5 +50,4 @@ export const projectilesActions = defineActions({
             }
         },
     },
-
 });

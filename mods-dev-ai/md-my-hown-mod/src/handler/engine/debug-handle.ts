@@ -1,5 +1,3 @@
-
-
 /**
  * Publishes the action tables on `globalThis.__mdHandlers`.
  *
@@ -8,7 +6,12 @@
  * are published: three key listers and the action docs, which all three DOCS
  * aliases point at. The rest of the tables were being published for nobody.
  */
-import { ACTION_DOCS, ANY_ACTIONS, MODIFIER_ACTIONS, PROCESSING_ACTIONS } from "../actions/index.ts";
+import {
+    ACTION_DOCS,
+    ANY_ACTIONS,
+    MODIFIER_ACTIONS,
+    PROCESSING_ACTIONS,
+} from "../actions/index.ts";
 
 try {
     (globalThis as Record<string, unknown>).__mdHandlers = {

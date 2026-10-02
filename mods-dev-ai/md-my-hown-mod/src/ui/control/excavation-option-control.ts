@@ -1,4 +1,3 @@
-
 import {
     EXCAVATION_OPTION_DOCS,
     EXCAVATION_OPTIONS,
@@ -15,7 +14,6 @@ import type { SelectorHandle } from "../definition/types.ts";
 
 type H = FieldContext["h"];
 
-
 function paramSpecs(key: string): HandlerParam[] {
     return excavationOptionParams(key).map((p) => ({
         key: p.key,
@@ -25,15 +23,12 @@ function paramSpecs(key: string): HandlerParam[] {
     }));
 }
 
-
 function readParams(text: string | undefined): Record<string, unknown> {
     if (!text?.trim()) return {};
     try {
         const parsed = JSON.parse(text);
         return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
     } catch {
-        
-        
         return {};
     }
 }
@@ -44,7 +39,7 @@ export function renderExcavationOption(ctx: FieldContext): unknown {
     const known = !key || EXCAVATION_OPTIONS[key] !== undefined;
     const specs = key && known ? paramSpecs(key) : [];
     const stored = readParams(form[PARAMS_FORM_KEY]);
-    
+
     const preview = key && known ? resolveExcavationOption(key)!(stored) : undefined;
 
     const setParam = (spec: HandlerParam, text: string) => {
@@ -68,18 +63,11 @@ export function renderExcavationOption(ctx: FieldContext): unknown {
                     style: { ...S.input, cursor: "pointer" },
                     value: key,
                     onChange: (e: { target: { value: string } }) => {
-                        
-                        
-                        
-                        
-                        
                         setField(OPTIONS_FORM_KEY, e.target.value);
                         setField(PARAMS_FORM_KEY, "");
                     },
                 },
                 h("option", { value: "" }, "— set power by hand —"),
-                
-                
                 !known ? h("option", { value: key }, `${key} (unknown)`) : null,
                 ...excavationOptionKeys().map((k) => h("option", { key: k, value: k }, k)),
             ),
@@ -91,8 +79,6 @@ export function renderExcavationOption(ctx: FieldContext): unknown {
                         "a list. Leave this empty to use the power and options below.",
             ),
         ),
-        
-        
         key && known && specs.length === 0
             ? h("div", { style: S.hint }, "This option takes no parameters.")
             : null,
@@ -114,13 +100,11 @@ export function renderExcavationOption(ctx: FieldContext): unknown {
     );
 }
 
-
 function paramRows(
     h: H,
     specs: HandlerParam[],
     stored: Record<string, unknown>,
     setParam: (spec: HandlerParam, text: string) => void,
-    
     selector?: SelectorHandle,
 ): unknown {
     return h(
