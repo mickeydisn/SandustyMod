@@ -159,9 +159,13 @@ export function spawnRandomArtefact(origin: SpawnOrigin): {
     let found = false;
 
     for (let i = 0; i < SPAWN_ATTEMPTS; i++) {
+        // Below-only band: dy must be strictly positive (y+ in screen space),
+        // dx may be either side. Sampling dy from [1..maxD] rather than
+        // [-maxD..maxD] is what keeps the artefact under the generator.
         const dx = randInt(-maxD, maxD) * 4;
-        const dy = randInt(-maxD, maxD) * 4;
-        if (chebyshev(0, 0, dx, dy) < 1) continue; // not on center
+        const dy = randInt(1, maxD) * 4;
+        // Never level with or above the generator's own footprint rows.
+        if (dy < GENERATOR_SIZE) continue;
         if (chebyshev(0, 0, dx, dy) > maxD * 4) continue;
         const tx = cx0 + dx;
         const ty = cy0 + dy;

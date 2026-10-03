@@ -2,9 +2,9 @@
  * Artefact — not player-placeable, and not player-removable. Emits elements
  * then removes itself.
  *
- * Player protection is the engine's own `disallowSelection: true` definition
- * flag (see the register call). It needs no hooks, and the hooks that were
- * used before did nothing — see the comment below the register call.
+ * Removal protection is the engine's own `disallowSelection` + `disallowPick`
+ * definition flags (see the register call). No hook is used — see the note at
+ * the "NEVER unlock" comment for why `building:clearShape` cannot do this.
  *
  * Important: defaultData.remaining starts at 0. Spawn writes real data via
  * updateData and/or the pending map. We must NOT remove until the structure
@@ -22,10 +22,15 @@ import {
     type ArtefactProgress,
 } from "../constants.ts";
 import {
-    createElementAt,
     isCellEmpty,
     resolveElementType,
 } from "../utils/elements.ts";
+import {
+    createArtefactSpiralDraw,
+    forgetSpiralCounter,
+    peekSpiralCounter,
+    spawnEmittedElement,
+} from "../utils/artefactSpiral.ts";
 import { takePendingArtefact } from "../utils/pendingArtefacts.ts";
 
 interface StructurePos {
@@ -70,23 +75,39 @@ export function registerArtefact(
             // for this id, so it is never pushed into `player.buildings`.
             alwaysUnlocked: false,
             /**
-             * Engine-native "the player may not select this" flag — the real
-             * guard. The game reads it in three places (bundel 5251 / 79329 /
-             * 40443), and `structures.register` stores mod definitions into the
-             * same table those reads come from, so it applies to mod ids:
+             * Engine-native guards. Two separate flags are read by the engine
+             * and they are NOT interchangeable:
              *
-             *  - placement: rejects the copy/clone-structure flow
-             *  - marquee selection: the grabber can never pick it up / move it
-             *  - clear / demolish-by-marquee: the removal filter keeps the
-             *    structure when the caller passes `preserveUnselectable`,
-             *    which every player clear/move action does
+             *  - `disallowSelection` — the marquee/grabber layer. It is honoured
+             *    in the removal filter only when the caller passes
+             *    `preserveUnselectable`, which every player clear/move/cut does
+             *    (verified in the shipped bundle: the marquee-clear and
+             *    selection-cut call sites both pass it). It also keeps the
+             *    structure out of the grabber's selection set, so it cannot be
+             *    moved or copied.
              *
-             * Our own `removeAtCell` does NOT pass that option, so the
-             * artefact can still delete itself once production ends.
+             *  - `disallowPick` — the "Pick Block" shortcut layer. That path
+             *    checks ONLY this flag and never looks at `disallowSelection`,
+             *    so without it the player could pick the artefact off the map.
+             *    Vanilla uses the pair together for exactly this reason
+             *    (powerBrick, recall_shard).
+             *
+             * Our own `removeAtCell` intentionally passes neither option, so
+             * the artefact can still delete itself once production ends.
              */
             disallowSelection: true,
+            disallowPick: true,
             shape: [[0]],
             copyData: true,
+            /**
+             * Cartoon spiral aura. The engine lifts `draw` out of the definition
+             * before storing it (so the stored definition stays serializable)
+             * and calls it each frame with `(state, structure, render)`.
+             *
+             * It returns `false` on purpose: that keeps the engine's normal
+             * sprite rendering, and only adds the aura on top.
+             */
+            draw: createArtefactSpiralDraw(),
             buildModes: [{ type: "single" }],
             defaultData: {
                 elementType: "sand",
@@ -127,14 +148,22 @@ export function registerArtefact(
     // NEVER unlock — the player must not place / pick this from the build menu.
     // Only the generator places it via buildAtCell.
     //
-    // No hook-based protection is registered here on purpose. The three that
-    // used to be here were all inert:
-    //   - "building:clearShape" only fires for definitions with `dynamicShape`
-    //     (and it clears terrain, not the structure);
-    //   - "structures:removed:prepare" / ":moved:prepare" run *after* the store
-    //     filter has already dropped the structures, so editing their payload
-    //     arrays changes nothing.
-    // `disallowSelection` above is the engine's own guard.
+    // No hook is registered for removal protection, and
+    // `hooks.intercept("building:clearShape", …)` cannot do this job — it was
+    // tried and verified dead in the shipped bundle:
+    //
+    //   const def = getDefinition(t.type);
+    //   if (def.dynamicShape && runInterceptorsSafe(e,"building:clearShape",…)) return;
+    //
+    // Two independent reasons it cannot help:
+    //   1. it is gated on `dynamicShape`, which this definition does not set,
+    //      so the hook is never even invoked for the artefact (confirmed live:
+    //      a registered interceptor never fired);
+    //   2. that routine only clears *terrain* matching the shape — it never
+    //      removes the structure at all.
+    //
+    // The guard is the engine's own `disallowSelection` + `disallowPick` flags
+    // on the definition above.
 
     const structureType =
         api.structures.getTypeFromId?.(ARTEFACT_ID) ??
@@ -166,6 +195,11 @@ export function registerArtefact(
     } catch { /* optional */ }
 
     const removeStructure = (structure: StructurePos) => {
+        // Drop the runtime spiral counter for this cell — it is not persisted,
+        // so nothing else would ever release it and the Map would grow.
+        try {
+            forgetSpiralCounter(structure.x, structure.y);
+        } catch { /* best-effort */ }
         try {
             if (typeof api.structures.removeAtCellWhenIdle === "function") {
                 api.structures.removeAtCellWhenIdle(structure.x, structure.y);
@@ -235,13 +269,21 @@ export function registerArtefact(
                 }
             }
 
+            // Push each new element outward along the current spiral angle so the
+            // emission sweeps in step with the aura. Uses the same counter the
+            // draw hook advances, so both motions stay locked together.
             let emitted = 0;
+            const emitFrame = peekSpiralCounter(structure.x, structure.y);
+            const emit = (cx: number, cy: number) => {
+                spawnEmittedElement(cx, cy, elmType, emitFrame, emitted);
+                emitted++;
+            };
+
             for (const cell of neighbors(structure.x, structure.y)) {
                 if (emitted >= ARTEFACT_EMIT_PER_TICK) break;
                 if (emitted >= remaining) break;
                 if (!isCellEmpty(cell.x, cell.y)) continue;
-                createElementAt(cell.x, cell.y, elmType);
-                emitted++;
+                emit(cell.x, cell.y);
             }
 
             // If nothing empty around, try a slightly wider ring next
@@ -255,8 +297,7 @@ export function registerArtefact(
                             const cx = structure.x + dx;
                             const cy = structure.y + dy;
                             if (!isCellEmpty(cx, cy)) continue;
-                            createElementAt(cx, cy, elmType);
-                            emitted++;
+                            emit(cx, cy);
                         }
                     }
                 }

@@ -798,7 +798,12 @@
           <div class="callout">
             A definition stores a <strong>reference</strong> (<code>processId</code>), never a copy of the steps. Editing the process updates every use. The panel shows <code>used ×N</code> so the blast radius is visible.
           </div></article>
-          <article id="h-actions" class="block"><h3>Atomic actions</h3>
+          <article id="h-program-v2" class="block"><h3>Program v2 — mysandkit api</h3>
+<p class="blurb">A parallel program format that calls <code>mysandkit.api.*</code> functions directly (everything in <a href="https://github.com/mickeydisn/SandustyMod/blob/main/mods-dev-ai/md-my-hown-mod/src/packages/mysandkit.ts" target="_blank" rel="noopener">mysandkit.ts</a> except <code>register*</code>). In the Config editor open <strong>Program v2</strong>, drag API methods from the catalog, set parameters (typed from the TS signatures), optional <code>as</code> tag for the return value.</p>
+<p class="ed-muted">Step shape: <code>{ "key": "elements.createAtCell", "options": { "x", "y", … }, "as": "tag" }</code></p>
+</article>
+
+<article id="h-actions" class="block"><h3>Atomic actions</h3>
 <p class="blurb">Catalogue rebuilt from the current mod (<code>src/handler/actions/</code>). Actions are grouped by <strong>API object</strong> (sandkit) or <strong>engine role</strong>, matching the repo layout under <code>api/</code>, <code>engine/</code>, <code>custom/</code>, and <code>logic.ts</code>.</p>
 <div class="page-toc" style="position:static">
 <a href="#api-api-elements">Elements</a>

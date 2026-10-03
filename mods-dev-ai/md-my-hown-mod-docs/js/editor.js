@@ -15,6 +15,8 @@
     openSteps: new Set(["0"]),
     /** catalog | reorder */
     dragPayload: null,
+    programMode: "v1",
+    catalogFilter: { cell: false, returns: false },
   };
 
   function load() {
@@ -182,7 +184,7 @@
 
     $("#ed-add")?.addEventListener("click", () => {
       const blank = { id: "mdmy." + key.replace(/s$/, "") + "." + (list.length + 1) };
-      if (key === "processes") {
+      if (key === "processes" || key === "programV2") {
         blank.scope = "signal";
         blank.steps = [];
       }
@@ -352,7 +354,8 @@
       return;
     }
     const fields = S().FIELDS[key] || [["id", "ID", "text", { required: true }]];
-    const isProcess = key === "processes";
+    const isProcess = key === "processes" || key === "programV2";
+    const isProgramV2 = key === "programV2";
 
     main.innerHTML = `
       <div class="ed-toolbar">
@@ -411,6 +414,7 @@
 
     if (isProcess) {
       if (!Array.isArray(entry.steps)) entry.steps = [];
+      state.programMode = isProgramV2 ? "v2" : "v1";
       renderProgramSteps(entry);
       renderActionCatalog(entry);
       wireProgramDropZone(entry);
@@ -496,18 +500,59 @@
   }
 
 
+  function nsColor(ns) {
+    const map = {
+      elements: "#f87171",
+      structures: "#34d399",
+      terrains: "#a3a3a3",
+      grid: "#6b9eff",
+      energy: "#fbbf24",
+      items: "#c084fc",
+      player: "#2dd4bf",
+      projectiles: "#fb923c",
+      tech: "#e879f9",
+      upgrades: "#f472b6",
+      signals: "#22d3ee",
+      effects: "#fbbf24",
+      ui: "#a78bfa",
+      sprites: "#60a5fa",
+      storage: "#94a3b8",
+      settings: "#94a3b8",
+      random: "#f472b6",
+      rendering: "#818cf8",
+      assets: "#a3e635",
+      hooks: "#f97316",
+      api: "#ffe700",
+    };
+    return map[ns] || "#888";
+  }
+
   function renderActionCatalog(entry) {
     const host = $("#ed-catalog");
     if (!host) return;
-    const families = S().ACTION_FAMILIES || {};
+    const v2 = state.programMode === "v2";
+    const families = v2 ? S().PROGRAM_V2_FAMILIES || {} : S().ACTION_FAMILIES || {};
     const famKeys = Object.keys(families);
-    // fallback by role if no families
-    let html = '<div class="ed-catalog-head">Action catalog</div>';
+    const cf = state.catalogFilter || { cell: false, returns: false };
+    let html =
+      '<div class="ed-catalog-head">' +
+      (v2 ? "mysandkit api · Program v2" : "Action catalog") +
+      (v2
+        ? '<div class="ed-catalog-filters">' +
+          '<label class="ed-cat-filter"><input type="checkbox" id="cf-cell"' +
+          (cf.cell ? " checked" : "") +
+          '/> cell</label>' +
+          '<label class="ed-cat-filter"><input type="checkbox" id="cf-returns"' +
+          (cf.returns ? " checked" : "") +
+          '/> returns value</label>' +
+          "</div>"
+        : "") +
+      "</div>";
     if (famKeys.length) {
       famKeys.forEach((fk, i) => {
         const fam = families[fk];
         const title = (fam.title || fk).split("—")[0].trim();
-        const open = i < 2 ? " open" : "";
+        const open = i < 3 ? " open" : "";
         html +=
           '<details class="ed-catalog-fam"' +
           open +
@@ -517,41 +562,106 @@
           (fam.keys || []).length +
           ")</span></summary><div class=\"ed-catalog-list\">";
         (fam.keys || []).forEach((key) => {
-          const doc = ((S().ACTION_DOCS && S().ACTION_DOCS[key]) || "").slice(0, 80);
-          html +=
-            '<div class="ed-catalog-item" draggable="true" data-action="' +
-            escapeAttr(key) +
-            '" title="' +
-            escapeAttr(doc) +
-            '">' +
-            escapeHtml(key) +
-            "</div>";
+          if (v2) {
+            const meta = (S().PROGRAM_V2_META && S().PROGRAM_V2_META[key]) || {};
+            if (cf.cell && !meta.cell) return;
+            if (cf.returns && !meta.returns) return;
+            const doc = ((S().PROGRAM_V2_DOCS && S().PROGRAM_V2_DOCS[key]) || "").slice(0, 120);
+            const ret = (S().PROGRAM_V2_RETURNS && S().PROGRAM_V2_RETURNS[key]) || "";
+            const col = nsColor(fk);
+            const short = key.includes(".") ? key.split(".").slice(1).join(".") : key;
+            html +=
+              '<div class="ed-catalog-item" draggable="true" data-action="' +
+              escapeAttr(key) +
+              '" data-role="' +
+              escapeAttr(fk) +
+              '" style="border-left:3px solid ' +
+              col +
+              '" title="' +
+              escapeAttr(doc) +
+              '"><span class="ed-role-tag" style="background:' +
+              col +
+              '">' +
+              escapeHtml(fk) +
+              "</span> " +
+              escapeHtml(short) +
+              (ret
+                ? ' <span class="ed-muted">→ ' + escapeHtml(String(ret).slice(0, 24)) + "</span>"
+                : "") +
+              "</div>";
+          } else {
+            const doc = ((S().ACTION_DOCS && S().ACTION_DOCS[key]) || "").slice(0, 80);
+            const role = S().roleOf ? S().roleOf(key) : "act";
+            const col = (S().ROLE_COLOR && S().ROLE_COLOR[role]) || "#888";
+            const rlab = (S().ROLE_LABELS && S().ROLE_LABELS[role]) || role;
+            html +=
+              '<div class="ed-catalog-item" draggable="true" data-action="' +
+              escapeAttr(key) +
+              '" data-role="' +
+              escapeAttr(role) +
+              '" style="border-left:3px solid ' +
+              col +
+              '" title="' +
+              escapeAttr(rlab + " · " + doc) +
+              '"><span class="ed-role-tag" style="background:' +
+              col +
+              '">' +
+              escapeHtml(rlab) +
+              "</span> " +
+              escapeHtml(key) +
+              "</div>";
+          }
         });
         html += "</div></details>";
       });
-    } else {
+    } else if (!v2) {
       const acts = S().ACTIONS || {};
       Object.keys(acts).forEach((role) => {
+        const col = (S().ROLE_COLOR && S().ROLE_COLOR[role]) || "#888";
+        const rlab = (S().ROLE_LABELS && S().ROLE_LABELS[role]) || role;
         html +=
           '<details class="ed-catalog-fam" open><summary>' +
-          escapeHtml(role) +
+          escapeHtml(rlab) +
           '</summary><div class="ed-catalog-list">';
         (acts[role] || []).forEach((key) => {
           html +=
             '<div class="ed-catalog-item" draggable="true" data-action="' +
             escapeAttr(key) +
+            '" data-role="' +
+            escapeAttr(role) +
+            '" style="border-left:3px solid ' +
+            col +
+            '"><span class="ed-role-tag" style="background:' +
+            col +
             '">' +
+            escapeHtml(rlab) +
+            "</span> " +
             escapeHtml(key) +
             "</div>";
         });
         html += "</div></details>";
       });
     }
-    // if block
-    html +=
-      '<details class="ed-catalog-fam"><summary>Control</summary><div class="ed-catalog-list">' +
-      '<div class="ed-catalog-item" draggable="true" data-action="if">if</div></div></details>';
+    if (!v2) {
+      const bcol = (S().ROLE_COLOR && S().ROLE_COLOR.block) || "#e879f9";
+      html +=
+        '<details class="ed-catalog-fam"><summary>Control</summary><div class="ed-catalog-list">' +
+        '<div class="ed-catalog-item" draggable="true" data-action="if" data-role="block" style="border-left:3px solid ' +
+        bcol +
+        '"><span class="ed-role-tag" style="background:' +
+        bcol +
+        '">Block</span> if</div></div></details>';
+    }
     host.innerHTML = html;
+
+    host.querySelector("#cf-cell")?.addEventListener("change", (ev) => {
+      state.catalogFilter.cell = !!ev.target.checked;
+      renderActionCatalog(entry);
+    });
+    host.querySelector("#cf-returns")?.addEventListener("change", (ev) => {
+      state.catalogFilter.returns = !!ev.target.checked;
+      renderActionCatalog(entry);
+    });
 
     host.querySelectorAll(".ed-catalog-item").forEach((el) => {
       el.addEventListener("dragstart", (ev) => {
@@ -658,6 +768,18 @@
     if (!step.options || typeof step.options !== "object") step.options = {};
     const wrap = document.createElement("details");
     wrap.className = "ed-section ed-step-section";
+    let role, roleCol, roleLab;
+    if (state.programMode === "v2") {
+      role = (step.key || "").split(".")[0] || "api";
+      roleCol = nsColor(role);
+      roleLab = role;
+    } else {
+      role = step.key === "if" ? "block" : S().roleOf ? S().roleOf(step.key) : "act";
+      roleCol = (S().ROLE_COLOR && S().ROLE_COLOR[role]) || "#888";
+      roleLab = (S().ROLE_LABELS && S().ROLE_LABELS[role]) || role;
+    }
+    wrap.style.borderLeft = "3px solid " + roleCol;
+    wrap.dataset.role = role;
     const pathKey = stepPathKey(path || [index]);
     wrap.open = state.openSteps.has(pathKey);
     wrap.addEventListener("toggle", () => {
@@ -730,6 +852,10 @@
     left.innerHTML =
       '<span class="ed-step-grip" title="Drag to reorder">⋮⋮</span><span class="ed-step-idx">' +
       (index + 1) +
+      '</span><span class="ed-role-tag" style="background:' +
+      roleCol +
+      '">' +
+      escapeHtml(roleLab) +
       "</span> <code>" +
       escapeHtml(step.key || "?") +
       "</code>";
@@ -785,12 +911,27 @@
     body.appendChild(head);
 
     // Doc
-    const doc = (S().ACTION_DOCS && S().ACTION_DOCS[step.key]) || "";
-    const apis = (S().ACTION_APIS && S().ACTION_APIS[step.key]) || [];
-    if (doc || apis.length) {
+    let doc = "";
+    let apis = [];
+    let returns = "";
+    if (state.programMode === "v2") {
+      doc = (S().PROGRAM_V2_DOCS && S().PROGRAM_V2_DOCS[step.key]) || "";
+      returns = (S().PROGRAM_V2_RETURNS && S().PROGRAM_V2_RETURNS[step.key]) || "";
+      apis = ["mysandkit.api." + step.key];
+    } else {
+      doc = (S().ACTION_DOCS && S().ACTION_DOCS[step.key]) || "";
+      apis = (S().ACTION_APIS && S().ACTION_APIS[step.key]) || [];
+    }
+    if (doc || apis.length || returns) {
       const docEl = document.createElement("p");
       docEl.className = "ed-step-doc";
       docEl.textContent = doc;
+      if (returns) {
+        docEl.innerHTML +=
+          '<br/><span class="ed-muted">returns <code>' +
+          escapeHtml(String(returns)) +
+          "</code></span>";
+      }
       if (apis.length) {
         docEl.innerHTML +=
           '<br/><span class="ed-muted">API: ' +
@@ -933,6 +1074,19 @@
 
   /** Normalize ACTION_PARAMS entry to object shape */
   function paramDefs(actionKey) {
+    if (state.programMode === "v2") {
+      const raw = (S().PROGRAM_V2_PARAMS && S().PROGRAM_V2_PARAMS[actionKey]) || [];
+      return raw.map((p) => ({
+        key: p.key,
+        label: p.label || p.key,
+        type: p.type || "text",
+        hint: p.ts ? String(p.ts) : "",
+        def: p.def || "",
+        required: !p.optional,
+        options: [],
+        content: p.content || null,
+      }));
+    }
     const raw = (S().ACTION_PARAMS && S().ACTION_PARAMS[actionKey]) || [];
     return raw.map((p) =>
       Array.isArray(p)
@@ -946,6 +1100,48 @@
     lab.className = "ed-field";
     const title = document.createElement("span");
     const ck = contentKind(pr, step.key);
+
+    // cell type: {x,y} as one control → writes options[xKey], options[yKey]
+    if (pr.type === "cell" || pr.key === "cell") {
+      lab.classList.add("ed-field-wide");
+      const keys = pr.keys || ["x", "y"];
+      const xKey = keys[0] || "x";
+      const yKey = keys[1] || "y";
+      title.innerHTML =
+        escapeHtml(pr.label || "cell") +
+        ' <span class="ed-muted">{x, y}</span>' +
+        (pr.required ? " *" : "");
+      lab.appendChild(title);
+      const row = document.createElement("div");
+      row.className = "ed-cell-row";
+      const xInp = document.createElement("input");
+      xInp.type = "number";
+      xInp.placeholder = xKey;
+      xInp.value = step.options[xKey] != null ? String(step.options[xKey]) : "";
+      const yInp = document.createElement("input");
+      yInp.type = "number";
+      yInp.placeholder = yKey;
+      yInp.value = step.options[yKey] != null ? String(step.options[yKey]) : "";
+      const sync = () => {
+        const xv = xInp.value.trim();
+        const yv = yInp.value.trim();
+        if (xv === "") delete step.options[xKey];
+        else step.options[xKey] = Number(xv);
+        if (yv === "") delete step.options[yKey];
+        else step.options[yKey] = Number(yv);
+        // also store cell object for clarity
+        if (xv !== "" && yv !== "") step.options.cell = { x: Number(xv), y: Number(yv) };
+        else delete step.options.cell;
+        if (entry) syncRaw(entry);
+      };
+      xInp.addEventListener("change", sync);
+      yInp.addEventListener("change", sync);
+      row.appendChild(xInp);
+      row.appendChild(yInp);
+      lab.appendChild(row);
+      return lab;
+    }
+
     title.innerHTML =
       escapeHtml(pr.label || pr.key) +
       (pr.required ? " *" : "") +

@@ -1,0 +1,73 @@
+## api.gameConfig
+    - getAll()
+## api.settings
+    - getAll()
+## api.authorization
+    - getPlayerZoneId()
+## api.building
+    - cancelPlacement()
+## api.camera
+    - snapToPlayer()
+## api.input
+    - getMousePositionAtWorld()
+    - resetMouseState()
+    - isCtrlHeld()
+    - isAltHeld()
+## api.items
+    - getRegisteredIds()
+## api.player
+    - getPositionAtWorld()
+    - isOnGround()
+    - teleportToGround()
+## api.projectiles
+    - getAll()
+## api.sprites
+    - hideAllForPlayer()
+## api.time
+    - getElapsedMs()
+    - getTick()
+## api.ui
+    - openPauseMenu()
+    - useScale()
+## api.ui.hotbar
+    - getBankCount()
+    - getActiveBankIndex()
+    - getActiveSlotIndex()
+    - useHotbar()
+## api.action
+    - getActive()
+    - getSelected()
+## api.scene
+    - getActive()
+## api.elements
+    - getRegisteredTypes()
+## api.i18n
+    - getLocale()
+    - getLanguages()
+    - getAvailableLocales()
+    - getGlobals()
+## api.structures
+    - getAvailableTypes()
+## api.lights.persistent
+    - markDirty()
+## api.tools.grabber
+    - getSize()
+    - isActive()
+    - isLoaded()
+## api.sound
+    - stopActive()
+    - stopAll()
+## api.grid
+    - getDimensions()
+## api.pickups
+    - getAll()
+## api.factory
+    - getLevel()
+## api.maps
+    - getArtifactLocations()
+    - getActive()
+    - getAvailable()
+## api.rendering
+    - getGridMetrics()
+    - getOverlayViewportSize()
+

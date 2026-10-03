@@ -1577,3 +1577,59 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
   font-size: 14px;
   user-select: none;
 }
+
+.ed-role-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #141414;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+.ed-catalog-item {
+  border-left-width: 3px !important;
+  border-left-style: solid;
+}
+.ed-step-section {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.ed-catalog-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ed-catalog-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.ed-cat-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--sd-color-text-muted, #b6bcc1);
+  cursor: pointer;
+  font-weight: 500;
+}
+.ed-cat-filter input {
+  accent-color: var(--sd-color-primary, #ffe700);
+}
+.ed-cell-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.ed-cell-row input {
+  width: 100%;
+}

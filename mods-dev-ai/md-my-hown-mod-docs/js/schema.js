@@ -39,7 +39,8 @@ window.MD_SCHEMA = (function () {
         {key:"inputBindings", label:"Input bindings", color:"#c97a5c"},
         {key:"processing", label:"ProcessorLink", color:"#d64550"},
         {key:"modifiers", label:"Hook modifiers", color:"#e89870"},
-        {key:"processes", label:"Program", color:"#fbbf24", blocky:true},
+        {key:"processes", label:"Program", color:"#fbbf24"},
+        {key:"programV2", label:"Program v2", color:"#ffe700"},
       ]},
     { key:"energy", label:"Energy", hint:"Power",
       items:[
@@ -77,6 +78,7 @@ window.MD_SCHEMA = (function () {
     structureBehaviors: [["id","ID","text",{required:true}],["structureId","Structure id","text",{}],["behavior","Behavior (JSON)","json",{}]],
     placementConfigs: [["id","ID","text",{required:true}],["structureId","Structure id","text",{required:true}],["fields","Fields (JSON)","json",{required:true,hint:"[{id, kind, \u2026}]"}]],
     processes: [["id","ID","text",{required:true}],["name","Name","text",{}],["scope","Scope (slot)","select",{options:SLOTS,required:true}],["doc","Documentation","text",{}],["derived","Derived","bool",{}],["derivedFrom","Derived from","text",{}]],
+    programV2: [["id","ID","text",{required:true}],["name","Name","text",{}],["scope","Scope (slot)","select",{options:SLOTS,required:true}],["doc","Documentation","text",{}]],
   };
   const ACTION_PARAMS = {
   "addVelocity": [
@@ -2728,6 +2730,20 @@ window.MD_SCHEMA = (function () {
 };
 
   const FIELD_SECTIONS = {
+    "programV2": {
+      "id": "Identity",
+      "name": "Identity",
+      "scope": "Identity",
+      "doc": "Identity"
+    },
+    "processes": {
+      "id": "Identity",
+      "name": "Identity",
+      "scope": "Identity",
+      "doc": "Identity",
+      "derived": "Meta",
+      "derivedFrom": "Meta"
+    },
   "structures": {
     "shapeJson": "Placement",
     "shape": "Placement",
@@ -2875,6 +2891,8 @@ window.MD_SCHEMA = (function () {
   }
 };
   const SECTION_ORDER = {
+    "programV2": ["Identity", "Other"],
+    "processes": ["Identity", "Meta", "Other"],
   "structures": [
     "Identity",
     "Placement",
@@ -2942,6 +2960,2943 @@ window.MD_SCHEMA = (function () {
   ]
 };
 
+  
+  const PROGRAM_V2_FAMILIES = {
+  "elements": {
+    "title": "api.elements",
+    "api": "mysandkit.api.elements",
+    "keys": [
+      "elements.updateDefinition",
+      "elements.addInteractionInfo",
+      "elements.addElementToDiscoveries",
+      "elements.getTypeById",
+      "elements.getRegisteredTypes",
+      "elements.getDefinitionByType",
+      "elements.getIdByType",
+      "elements.getNameByType",
+      "elements.getResolvedTypeAtCell",
+      "elements.getTypeAtCell",
+      "elements.getTypeFromId",
+      "elements.isTypeAtCell",
+      "elements.setVelocityAtCell",
+      "elements.addParticleVelocityAtCell",
+      "elements.setDurationAtCell",
+      "elements.removeAtCell",
+      "elements.removeAtCellWhenIdle",
+      "elements.convertToParticleAtCell",
+      "elements.getDataFieldAtCell",
+      "elements.setDataFieldAtCell",
+      "elements.getVelocityAtCell",
+      "elements.teleportBetweenCells",
+      "elements.findFreeCellInStructure"
+    ]
+  },
+  "structures": {
+    "title": "api.structures",
+    "api": "mysandkit.api.structures",
+    "keys": [
+      "structures.updateDefinition",
+      "structures.getRegisteredTypes",
+      "structures.getUnlockedTypes",
+      "structures.getTypeName",
+      "structures.getAll",
+      "structures.getRegistered",
+      "structures.list",
+      "structures.includes",
+      "structures.getAtCell",
+      "structures.hasBuiltAtCell",
+      "structures.isTypeAtCell",
+      "structures.isType",
+      "structures.isBlockedByPlayerAtCell",
+      "structures.isLauncherAtCell",
+      "structures.buildAtCell",
+      "structures.removeAtCell",
+      "structures.removeAtCells",
+      "structures.update",
+      "structures.updateData",
+      "structures.setSpritesheetIndex",
+      "structures.setSpritesheetIndexAtCell",
+      "structures.setSpritesheetIndexByValue",
+      "structures.setSpritesheetIndexByValueAtCell",
+      "structures.mapValueToSpritesheetIndex",
+      "structures.processing.isEnabledAtCell",
+      "structures.processing.setEnabledAtCell",
+      "structures.addVariant",
+      "structures.getAvailableTypes",
+      "structures.getDefinitionByType",
+      "structures.getIdByType",
+      "structures.getTypeById",
+      "structures.countOfType"
+    ]
+  },
+  "terrains": {
+    "title": "api.terrains",
+    "api": "mysandkit.api.terrains",
+    "keys": [
+      "terrains.getDataAtCell",
+      "terrains.getHitPointsAtCell",
+      "terrains.getTypeAtCell",
+      "terrains.isAtCell",
+      "terrains.isTypeAtCell",
+      "terrains.isCellIdTerrain",
+      "terrains.damageAtCell",
+      "terrains.setHitPointsAtCell",
+      "terrains.getTypeById",
+      "terrains.updateDefinition",
+      "terrains.getIdByType",
+      "terrains.getDefinitionByType"
+    ]
+  },
+  "grid": {
+    "title": "api.grid",
+    "api": "mysandkit.api.grid",
+    "keys": [
+      "grid.isCellEmptyAtCell",
+      "grid.isTerrainAtCell",
+      "grid.reportActivityAtCell",
+      "grid.excavateAtCell"
+    ]
+  },
+  "energy": {
+    "title": "api.energy",
+    "api": "mysandkit.api.energy",
+    "keys": [
+      "energy.addAtCell",
+      "energy.consume"
+    ]
+  },
+  "items": {
+    "title": "api.items",
+    "api": "mysandkit.api.items",
+    "keys": [
+      "items.updateDefinition",
+      "items.getRegisteredIds",
+      "items.getDefinitionById",
+      "items.getRegistered",
+      "items.getAll",
+      "items.list"
+    ]
+  },
+  "player": {
+    "title": "api.player",
+    "api": "mysandkit.api.player",
+    "keys": [
+      "player.inventory.addById",
+      "player.buildings.unlockById",
+      "player.buildings.removeById"
+    ]
+  },
+  "projectiles": {
+    "title": "api.projectiles",
+    "api": "mysandkit.api.projectiles",
+    "keys": [
+      "projectiles.createBlueprintFromId",
+      "projectiles.spawnAtWorld"
+    ]
+  },
+  "tech": {
+    "title": "api.tech",
+    "api": "mysandkit.api.tech",
+    "keys": [
+      "tech.updateDefinition",
+      "tech.conservatory.appendUnlock"
+    ]
+  },
+  "upgrades": {
+    "title": "api.upgrades",
+    "api": "mysandkit.api.upgrades",
+    "keys": [
+      "upgrades.updateDefinition",
+      "upgrades.setLevelById"
+    ]
+  },
+  "signals": {
+    "title": "api.signals",
+    "api": "mysandkit.api.signals",
+    "keys": [
+      "signals.setOutputAtCell"
+    ]
+  },
+  "effects": {
+    "title": "api.effects",
+    "api": "mysandkit.api.effects",
+    "keys": [
+      "effects.createParticlesAtWorld",
+      "effects.includes"
+    ]
+  },
+  "ui": {
+    "title": "api.ui",
+    "api": "mysandkit.api.ui",
+    "keys": [
+      "ui.toast"
+    ]
+  },
+  "sprites": {
+    "title": "api.sprites",
+    "api": "mysandkit.api.sprites",
+    "keys": [
+      "sprites.load",
+      "sprites.loadFromMod",
+      "sprites.namespace",
+      "sprites.getRegistered",
+      "sprites.getLoaded",
+      "sprites.getAll",
+      "sprites.list"
+    ]
+  },
+  "storage": {
+    "title": "api.storage",
+    "api": "mysandkit.api.storage",
+    "keys": [
+      "storage.ensure",
+      "storage.set",
+      "storage.remove",
+      "storage.ensureFor",
+      "storage.removeFor"
+    ]
+  },
+  "settings": {
+    "title": "api.settings",
+    "api": "mysandkit.api.settings",
+    "keys": [
+      "settings.get"
+    ]
+  },
+  "random": {
+    "title": "api.random",
+    "api": "mysandkit.api.random",
+    "keys": [
+      "random.int"
+    ]
+  },
+  "rendering": {
+    "title": "api.rendering",
+    "api": "mysandkit.api.rendering",
+    "keys": [
+      "rendering.getGridMetrics",
+      "rendering.getDrawPositionAtCell"
+    ]
+  },
+  "assets": {
+    "title": "api.assets",
+    "api": "mysandkit.api.assets",
+    "keys": [
+      "assets.getUrl"
+    ]
+  },
+  "hooks": {
+    "title": "api.hooks",
+    "api": "mysandkit.api.hooks",
+    "keys": [
+      "hooks.hasHooks"
+    ]
+  },
+  "api": {
+    "title": "api (root)",
+    "api": "mysandkit.api",
+    "keys": [
+      "toast"
+    ]
+  },
+  "input": {
+    "title": "api.input",
+    "api": "mysandkit.api.input",
+    "keys": [
+      "input.getMouseCellPosition"
+    ]
+  }
+};
+  const PROGRAM_V2_PARAMS = {
+  "toast": [
+    {
+      "key": "msg",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "msg"
+    },
+    {
+      "key": "opts",
+      "optional": true,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "opts"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "storage.ensure": [],
+  "storage.set": [
+    {
+      "key": "key",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "key"
+    },
+    {
+      "key": "value",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "value"
+    }
+  ],
+  "storage.remove": [
+    {
+      "key": "key",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "key"
+    }
+  ],
+  "storage.ensureFor": [
+    {
+      "key": "modId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "modId"
+    }
+  ],
+  "storage.removeFor": [
+    {
+      "key": "modId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "modId"
+    },
+    {
+      "key": "key",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "key"
+    }
+  ],
+  "settings.get": [
+    {
+      "key": "fieldId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "fieldId"
+    }
+  ],
+  "rendering.getGridMetrics": [],
+  "rendering.getDrawPositionAtCell": [
+    {
+      "key": "cell",
+      "label": "cell (cx, cy)",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "cx",
+        "cy"
+      ]
+    }
+  ],
+  "elements.updateDefinition": [
+    {
+      "key": "idOrType",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "idOrType"
+    },
+    {
+      "key": "partial",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "partial"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "elements.addInteractionInfo": [
+    {
+      "key": "idOrType",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "idOrType"
+    },
+    {
+      "key": "interaction",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "interaction"
+    }
+  ],
+  "elements.addElementToDiscoveries": [
+    {
+      "key": "elementType",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": "element",
+      "label": "elementType"
+    }
+  ],
+  "elements.getTypeById": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    }
+  ],
+  "elements.getRegisteredTypes": [],
+  "elements.getDefinitionByType": [
+    {
+      "key": "t",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "t"
+    }
+  ],
+  "elements.getIdByType": [
+    {
+      "key": "t",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "t"
+    }
+  ],
+  "elements.getNameByType": [
+    {
+      "key": "t",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "t"
+    }
+  ],
+  "elements.getResolvedTypeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "elements.getTypeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "elements.getTypeFromId": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    }
+  ],
+  "elements.isTypeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "type",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "type"
+    }
+  ],
+  "elements.setVelocityAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "velocity",
+      "optional": false,
+      "type": "number",
+      "ts": "{ x: number; y: number }",
+      "def": "",
+      "content": null,
+      "label": "velocity"
+    }
+  ],
+  "elements.addParticleVelocityAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "velocity",
+      "optional": false,
+      "type": "number",
+      "ts": "{ x: number; y: number }",
+      "def": "",
+      "content": null,
+      "label": "velocity"
+    },
+    {
+      "key": "maxSpeed",
+      "optional": true,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "maxSpeed"
+    }
+  ],
+  "elements.setDurationAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "n",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "n"
+    },
+    {
+      "key": "opts",
+      "optional": true,
+      "type": "bool",
+      "ts": "{ updateMax?: boolean }",
+      "def": "",
+      "content": null,
+      "label": "opts"
+    }
+  ],
+  "elements.removeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "elements.removeAtCellWhenIdle": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "elements.convertToParticleAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "velocity",
+      "optional": false,
+      "type": "number",
+      "ts": "{ x: number; y: number }",
+      "def": "",
+      "content": null,
+      "label": "velocity"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "elements.getDataFieldAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "field",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "field"
+    }
+  ],
+  "elements.setDataFieldAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "field",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "field"
+    },
+    {
+      "key": "value",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "value"
+    }
+  ],
+  "elements.getVelocityAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "elements.teleportBetweenCells": [
+    {
+      "key": "fromX",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "fromX"
+    },
+    {
+      "key": "fromY",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "fromY"
+    },
+    {
+      "key": "toX",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "toX"
+    },
+    {
+      "key": "toY",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "toY"
+    }
+  ],
+  "elements.findFreeCellInStructure": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "size",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "size"
+    }
+  ],
+  "grid.isCellEmptyAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "grid.isTerrainAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "grid.reportActivityAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "grid.excavateAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "outVelocity",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "outVelocity"
+    },
+    {
+      "key": "number",
+      "optional": false,
+      "type": "text",
+      "ts": "number>"
+    },
+    {
+      "key": "damage",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "damage"
+    },
+    {
+      "key": "opts",
+      "optional": true,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "opts"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "player.inventory.addById": [
+    {
+      "key": "itemId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "itemId"
+    },
+    {
+      "key": "amount",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "1",
+      "content": null,
+      "label": "amount"
+    }
+  ],
+  "player.buildings.unlockById": [
+    {
+      "key": "structureId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": "structure",
+      "label": "structureId"
+    }
+  ],
+  "player.buildings.removeById": [
+    {
+      "key": "structureId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": "structure",
+      "label": "structureId"
+    }
+  ],
+  "structures.updateDefinition": [
+    {
+      "key": "idOrType",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "idOrType"
+    },
+    {
+      "key": "partial",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "partial"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "bool",
+      "ts": "{ useRawShape?: boolean }",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "structures.getRegisteredTypes": [],
+  "structures.getUnlockedTypes": [],
+  "structures.getTypeName": [
+    {
+      "key": "t",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "t"
+    }
+  ],
+  "structures.getAll": [],
+  "structures.getRegistered": [],
+  "structures.list": [],
+  "structures.includes": [
+    {
+      "key": "idOrType",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "idOrType"
+    }
+  ],
+  "structures.getAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "structures.hasBuiltAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "structures.isTypeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "ref",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "ref"
+    }
+  ],
+  "structures.isType": [
+    {
+      "key": "structure",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": "structure",
+      "label": "structure"
+    },
+    {
+      "key": "ref",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "ref"
+    }
+  ],
+  "structures.isBlockedByPlayerAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "structures.isLauncherAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "structures.buildAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "ref",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "ref"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "structures.removeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "structures.removeAtCells": [
+    {
+      "key": "positions",
+      "optional": false,
+      "type": "number",
+      "ts": "{ x: number; y: number }[]",
+      "def": "",
+      "content": null,
+      "label": "positions"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "structures.update": [
+    {
+      "key": "structure",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": "structure",
+      "label": "structure"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "structures.updateData": [
+    {
+      "key": "structure",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": "structure",
+      "label": "structure"
+    },
+    {
+      "key": "partial",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "partial"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "structures.setSpritesheetIndex": [
+    {
+      "key": "structure",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": "structure",
+      "label": "structure"
+    },
+    {
+      "key": "index",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "index"
+    }
+  ],
+  "structures.setSpritesheetIndexAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "index",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "index"
+    }
+  ],
+  "structures.setSpritesheetIndexByValue": [
+    {
+      "key": "structure",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": "structure",
+      "label": "structure"
+    },
+    {
+      "key": "value",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "value"
+    },
+    {
+      "key": "thresholds",
+      "optional": false,
+      "type": "number",
+      "ts": "number[]",
+      "def": "",
+      "content": null,
+      "label": "thresholds"
+    }
+  ],
+  "structures.setSpritesheetIndexByValueAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "value",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "value"
+    },
+    {
+      "key": "thresholds",
+      "optional": false,
+      "type": "number",
+      "ts": "number[]",
+      "def": "",
+      "content": null,
+      "label": "thresholds"
+    }
+  ],
+  "structures.mapValueToSpritesheetIndex": [
+    {
+      "key": "value",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "value"
+    },
+    {
+      "key": "thresholds",
+      "optional": false,
+      "type": "number",
+      "ts": "number[]",
+      "def": "",
+      "content": null,
+      "label": "thresholds"
+    }
+  ],
+  "structures.processing.isEnabledAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "structures.processing.setEnabledAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "enabled",
+      "optional": false,
+      "type": "bool",
+      "ts": "boolean",
+      "def": "",
+      "content": null,
+      "label": "enabled"
+    }
+  ],
+  "structures.addVariant": [
+    {
+      "key": "base",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "base"
+    },
+    {
+      "key": "variant",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "variant"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "structures.getAvailableTypes": [],
+  "structures.getDefinitionByType": [
+    {
+      "key": "ref",
+      "optional": false,
+      "type": "number",
+      "ts": "number | string",
+      "def": "",
+      "content": null,
+      "label": "ref"
+    }
+  ],
+  "structures.getIdByType": [
+    {
+      "key": "t",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "t"
+    }
+  ],
+  "structures.getTypeById": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    }
+  ],
+  "structures.countOfType": [
+    {
+      "key": "ref",
+      "optional": false,
+      "type": "number",
+      "ts": "number | string",
+      "def": "",
+      "content": null,
+      "label": "ref"
+    }
+  ],
+  "items.updateDefinition": [
+    {
+      "key": "idOrType",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "idOrType"
+    },
+    {
+      "key": "partial",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "partial"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "items.getRegisteredIds": [],
+  "items.getDefinitionById": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    }
+  ],
+  "items.getRegistered": [],
+  "items.getAll": [],
+  "items.list": [],
+  "tech.updateDefinition": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    },
+    {
+      "key": "partial",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "partial"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "tech.conservatory.appendUnlock": [
+    {
+      "key": "techId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "techId"
+    },
+    {
+      "key": "unlocks",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "unlocks"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "terrains.getDataAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "terrains.getHitPointsAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "terrains.getTypeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "terrains.isAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "terrains.isTypeAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "id",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "id"
+    }
+  ],
+  "terrains.isCellIdTerrain": [
+    {
+      "key": "cellId",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "cellId"
+    }
+  ],
+  "terrains.damageAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "damage",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "damage"
+    }
+  ],
+  "terrains.setHitPointsAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "hitPoints",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "hitPoints"
+    }
+  ],
+  "terrains.getTypeById": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    }
+  ],
+  "terrains.updateDefinition": [
+    {
+      "key": "idOrType",
+      "optional": false,
+      "type": "number",
+      "ts": "string | number",
+      "def": "",
+      "content": null,
+      "label": "idOrType"
+    },
+    {
+      "key": "partial",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "partial"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "terrains.getIdByType": [
+    {
+      "key": "t",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "t"
+    }
+  ],
+  "terrains.getDefinitionByType": [
+    {
+      "key": "t",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "t"
+    }
+  ],
+  "upgrades.updateDefinition": [
+    {
+      "key": "itemId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "itemId"
+    },
+    {
+      "key": "upgradeId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "upgradeId"
+    },
+    {
+      "key": "partial",
+      "optional": false,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "partial"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "upgrades.setLevelById": [
+    {
+      "key": "itemId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "itemId"
+    },
+    {
+      "key": "upgradeId",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "upgradeId"
+    },
+    {
+      "key": "level",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "level"
+    }
+  ],
+  "ui.toast": [
+    {
+      "key": "message",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "message"
+    }
+  ],
+  "hooks.hasHooks": [],
+  "assets.getUrl": [
+    {
+      "key": "path",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "path"
+    }
+  ],
+  "sprites.load": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    },
+    {
+      "key": "path",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "path"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "options"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "sprites.loadFromMod": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    },
+    {
+      "key": "path",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "path"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "options"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "sprites.namespace": [],
+  "sprites.getRegistered": [],
+  "sprites.getLoaded": [],
+  "sprites.getAll": [],
+  "sprites.list": [],
+  "input.getMouseCellPosition": [],
+  "signals.setOutputAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "value",
+      "optional": false,
+      "type": "bool",
+      "ts": "boolean",
+      "def": "",
+      "content": null,
+      "label": "value"
+    }
+  ],
+  "energy.addAtCell": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "amount",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "amount"
+    }
+  ],
+  "energy.consume": [
+    {
+      "key": "amount",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "amount"
+    },
+    {
+      "key": "options",
+      "optional": true,
+      "type": "json",
+      "ts": "Record<string",
+      "def": "",
+      "content": null,
+      "label": "options"
+    },
+    {
+      "key": "unknown",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown>"
+    }
+  ],
+  "effects.createParticlesAtWorld": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "options",
+      "optional": false,
+      "type": "number",
+      "ts": "{ count?: number; [key: string]: unknown }",
+      "def": "",
+      "content": null,
+      "label": "options"
+    }
+  ],
+  "effects.includes": [
+    {
+      "key": "effect",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "effect"
+    }
+  ],
+  "projectiles.createBlueprintFromId": [
+    {
+      "key": "id",
+      "optional": false,
+      "type": "text",
+      "ts": "string",
+      "def": "",
+      "content": null,
+      "label": "id"
+    }
+  ],
+  "projectiles.spawnAtWorld": [
+    {
+      "key": "cell",
+      "label": "cell",
+      "type": "cell",
+      "optional": false,
+      "ts": "{ x: number, y: number }",
+      "def": "",
+      "content": null,
+      "keys": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "key": "angle",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "angle"
+    },
+    {
+      "key": "blueprint",
+      "optional": false,
+      "type": "text",
+      "ts": "unknown",
+      "def": "",
+      "content": null,
+      "label": "blueprint"
+    }
+  ],
+  "random.int": [
+    {
+      "key": "min",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "min"
+    },
+    {
+      "key": "max",
+      "optional": false,
+      "type": "number",
+      "ts": "number",
+      "def": "",
+      "content": null,
+      "label": "max"
+    }
+  ]
+};
+  const PROGRAM_V2_DOCS = {
+  "toast": "mysandkit api.toast(msg: string, opts?: Record<string, unknown>) \u2192 unknown",
+  "storage.ensure": "mysandkit api.storage.ensure() \u2192 unknown",
+  "storage.set": "mysandkit api.storage.set(key: string, value: unknown) \u2192 unknown",
+  "storage.remove": "mysandkit api.storage.remove(key: string) \u2192 unknown",
+  "storage.ensureFor": "mysandkit api.storage.ensureFor(modId: string) \u2192 unknown",
+  "storage.removeFor": "mysandkit api.storage.removeFor(modId: string, key: string) \u2192 unknown",
+  "settings.get": "mysandkit api.settings.get(fieldId: string) \u2192 unknown",
+  "rendering.getGridMetrics": "mysandkit api.rendering.getGridMetrics() \u2192 unknown",
+  "rendering.getDrawPositionAtCell": "mysandkit api.rendering.getDrawPositionAtCell(cx: number, cy: number) \u2192 unknown",
+  "elements.updateDefinition": "mysandkit api.elements.updateDefinition(idOrType: string | number, partial: Record<string, unknown>) \u2192 unknown",
+  "elements.addInteractionInfo": "mysandkit api.elements.addInteractionInfo(idOrType: string | number, interaction: unknown) \u2192 unknown",
+  "elements.addElementToDiscoveries": "mysandkit api.elements.addElementToDiscoveries(elementType: number) \u2192 unknown",
+  "elements.getTypeById": "mysandkit api.elements.getTypeById(id: string) \u2192 number | undefined",
+  "elements.getRegisteredTypes": "mysandkit api.elements.getRegisteredTypes() \u2192 number[]",
+  "elements.getDefinitionByType": "mysandkit api.elements.getDefinitionByType(t: number) \u2192 Record<string, unknown> | undefined",
+  "elements.getIdByType": "mysandkit api.elements.getIdByType(t: number) \u2192 string | undefined",
+  "elements.getNameByType": "mysandkit api.elements.getNameByType(t: number) \u2192 string | undefined",
+  "elements.getResolvedTypeAtCell": "mysandkit api.elements.getResolvedTypeAtCell(x: number, y: number) \u2192 number | undefined",
+  "elements.getTypeAtCell": "mysandkit api.elements.getTypeAtCell(x: number, y: number) \u2192 number | null",
+  "elements.getTypeFromId": "mysandkit api.elements.getTypeFromId(id: string) \u2192 number | null",
+  "elements.isTypeAtCell": "mysandkit api.elements.isTypeAtCell(x: number, y: number, type: number) \u2192 boolean",
+  "elements.setVelocityAtCell": "mysandkit api.elements.setVelocityAtCell(x: number,\n            y: number,\n            velocity: { x: number; y: number },) \u2192 boolean",
+  "elements.addParticleVelocityAtCell": "mysandkit api.elements.addParticleVelocityAtCell(x: number,\n            y: number,\n            velocity: { x: number; y: number },\n            maxSpeed?: number,) \u2192 boolean",
+  "elements.setDurationAtCell": "mysandkit api.elements.setDurationAtCell(x: number,\n            y: number,\n            n: number,\n            opts?: { updateMax?: boolean },) \u2192 boolean",
+  "elements.removeAtCell": "mysandkit api.elements.removeAtCell(x: number, y: number, options?: unknown) \u2192 boolean",
+  "elements.removeAtCellWhenIdle": "mysandkit api.elements.removeAtCellWhenIdle(x: number, y: number, options?: unknown) \u2192 boolean",
+  "elements.convertToParticleAtCell": "mysandkit api.elements.convertToParticleAtCell(x: number,\n            y: number,\n            velocity: { x: number; y: number },\n            options?: unknown,) \u2192 boolean",
+  "elements.getDataFieldAtCell": "mysandkit api.elements.getDataFieldAtCell(x: number, y: number, field: number) \u2192 number | null",
+  "elements.setDataFieldAtCell": "mysandkit api.elements.setDataFieldAtCell(x: number,\n            y: number,\n            field: number,\n            value: number,) \u2192 void",
+  "elements.getVelocityAtCell": "mysandkit api.elements.getVelocityAtCell(x: number, y: number) \u2192 unknown",
+  "elements.teleportBetweenCells": "mysandkit api.elements.teleportBetweenCells(fromX: number,\n            fromY: number,\n            toX: number,\n            toY: number,) \u2192 boolean",
+  "elements.findFreeCellInStructure": "mysandkit api.elements.findFreeCellInStructure(x: number,\n            y: number,\n            size: number,) \u2192 unknown",
+  "grid.isCellEmptyAtCell": "mysandkit api.grid.isCellEmptyAtCell(x: number, y: number) \u2192 boolean | undefined",
+  "grid.isTerrainAtCell": "mysandkit api.grid.isTerrainAtCell(x: number, y: number) \u2192 boolean",
+  "grid.reportActivityAtCell": "mysandkit api.grid.reportActivityAtCell(x: number, y: number) \u2192 void",
+  "grid.excavateAtCell": "mysandkit api.grid.excavateAtCell(x: number,\n            y: number,\n            outVelocity: Record<string, number>,\n            damage: number,\n            opts?: Record<string, unknown>,) \u2192 void",
+  "player.inventory.addById": "mysandkit api.player.inventory.addById(itemId: string,\n                amount = 1,) \u2192 boolean",
+  "player.buildings.unlockById": "mysandkit api.player.buildings.unlockById(structureId: string) \u2192 boolean",
+  "player.buildings.removeById": "mysandkit api.player.buildings.removeById(structureId: string) \u2192 boolean",
+  "structures.updateDefinition": "mysandkit api.structures.updateDefinition(idOrType: string | number,\n            partial: Record<string, unknown>,\n            options?: { useRawShape?: boolean },) \u2192 void",
+  "structures.getRegisteredTypes": "mysandkit api.structures.getRegisteredTypes() \u2192 number[]",
+  "structures.getUnlockedTypes": "mysandkit api.structures.getUnlockedTypes() \u2192 number[]",
+  "structures.getTypeName": "mysandkit api.structures.getTypeName(t: number) \u2192 string | undefined",
+  "structures.getAll": "mysandkit api.structures.getAll() \u2192 Record<string, unknown>[]",
+  "structures.getRegistered": "mysandkit api.structures.getRegistered() \u2192 Record<string, unknown>[]",
+  "structures.list": "mysandkit api.structures.list() \u2192 Record<string, unknown>[]",
+  "structures.includes": "mysandkit api.structures.includes(idOrType: string | number) \u2192 boolean",
+  "structures.getAtCell": "mysandkit api.structures.getAtCell(x: number, y: number) \u2192 Record<string, unknown> | null",
+  "structures.hasBuiltAtCell": "mysandkit api.structures.hasBuiltAtCell(x: number, y: number) \u2192 boolean",
+  "structures.isTypeAtCell": "mysandkit api.structures.isTypeAtCell(x: number, y: number, ref: string | number) \u2192 boolean",
+  "structures.isType": "mysandkit api.structures.isType(structure: unknown, ref: string) \u2192 boolean",
+  "structures.isBlockedByPlayerAtCell": "mysandkit api.structures.isBlockedByPlayerAtCell(x: number, y: number) \u2192 boolean",
+  "structures.isLauncherAtCell": "mysandkit api.structures.isLauncherAtCell(x: number, y: number) \u2192 boolean",
+  "structures.buildAtCell": "mysandkit api.structures.buildAtCell(x: number, y: number, ref: string, options?: unknown) \u2192 boolean",
+  "structures.removeAtCell": "mysandkit api.structures.removeAtCell(x: number, y: number, options?: unknown) \u2192 boolean",
+  "structures.removeAtCells": "mysandkit api.structures.removeAtCells(positions: { x: number; y: number }[],\n            options?: unknown,) \u2192 boolean",
+  "structures.update": "mysandkit api.structures.update(structure: unknown, options?: unknown) \u2192 boolean",
+  "structures.updateData": "mysandkit api.structures.updateData(structure: unknown,\n            partial: Record<string, unknown>,\n            options?: unknown,) \u2192 boolean",
+  "structures.setSpritesheetIndex": "mysandkit api.structures.setSpritesheetIndex(structure: unknown, index: number) \u2192 boolean",
+  "structures.setSpritesheetIndexAtCell": "mysandkit api.structures.setSpritesheetIndexAtCell(x: number, y: number, index: number) \u2192 boolean",
+  "structures.setSpritesheetIndexByValue": "mysandkit api.structures.setSpritesheetIndexByValue(structure: unknown,\n            value: number,\n            thresholds: number[],) \u2192 boolean",
+  "structures.setSpritesheetIndexByValueAtCell": "mysandkit api.structures.setSpritesheetIndexByValueAtCell(x: number,\n            y: number,\n            value: number,\n            thresholds: number[],) \u2192 boolean",
+  "structures.mapValueToSpritesheetIndex": "mysandkit api.structures.mapValueToSpritesheetIndex(value: number, thresholds: number[]) \u2192 number",
+  "structures.processing.isEnabledAtCell": "mysandkit api.structures.processing.isEnabledAtCell(x: number, y: number) \u2192 boolean",
+  "structures.processing.setEnabledAtCell": "mysandkit api.structures.processing.setEnabledAtCell(x: number, y: number, enabled: boolean) \u2192 boolean",
+  "structures.addVariant": "mysandkit api.structures.addVariant(base: string | number, variant: unknown, options?: unknown) \u2192 void",
+  "structures.getAvailableTypes": "mysandkit api.structures.getAvailableTypes() \u2192 Set<number | string>",
+  "structures.getDefinitionByType": "mysandkit api.structures.getDefinitionByType(ref: number | string) \u2192 Record<string, unknown> | undefined",
+  "structures.getIdByType": "mysandkit api.structures.getIdByType(t: number) \u2192 string | undefined",
+  "structures.getTypeById": "mysandkit api.structures.getTypeById(id: string) \u2192 number | string",
+  "structures.countOfType": "mysandkit api.structures.countOfType(ref: number | string) \u2192 number | null",
+  "items.updateDefinition": "mysandkit api.items.updateDefinition(idOrType: string | number, partial: Record<string, unknown>) \u2192 void",
+  "items.getRegisteredIds": "mysandkit api.items.getRegisteredIds() \u2192 string[]",
+  "items.getDefinitionById": "mysandkit api.items.getDefinitionById(id: string) \u2192 Record<string, unknown> | undefined",
+  "items.getRegistered": "mysandkit api.items.getRegistered() \u2192 Record<string, unknown>[]",
+  "items.getAll": "mysandkit api.items.getAll() \u2192 Record<string, unknown>[]",
+  "items.list": "mysandkit api.items.list() \u2192 Record<string, unknown>[]",
+  "tech.updateDefinition": "mysandkit api.tech.updateDefinition(id: string, partial: Record<string, unknown>) \u2192 void",
+  "tech.conservatory.appendUnlock": "mysandkit api.tech.conservatory.appendUnlock(techId: string, unlocks: Record<string, unknown>) \u2192 boolean",
+  "terrains.getDataAtCell": "mysandkit api.terrains.getDataAtCell(x: number, y: number) \u2192 Record<string, unknown> | null",
+  "terrains.getHitPointsAtCell": "mysandkit api.terrains.getHitPointsAtCell(x: number, y: number) \u2192 number | null",
+  "terrains.getTypeAtCell": "mysandkit api.terrains.getTypeAtCell(x: number, y: number) \u2192 number | null",
+  "terrains.isAtCell": "mysandkit api.terrains.isAtCell(x: number, y: number) \u2192 boolean",
+  "terrains.isTypeAtCell": "mysandkit api.terrains.isTypeAtCell(x: number, y: number, id: string | number) \u2192 boolean",
+  "terrains.isCellIdTerrain": "mysandkit api.terrains.isCellIdTerrain(cellId: unknown) \u2192 boolean",
+  "terrains.damageAtCell": "mysandkit api.terrains.damageAtCell(x: number, y: number, damage: number) \u2192 boolean",
+  "terrains.setHitPointsAtCell": "mysandkit api.terrains.setHitPointsAtCell(x: number, y: number, hitPoints: number) \u2192 boolean",
+  "terrains.getTypeById": "mysandkit api.terrains.getTypeById(id: string) \u2192 number | null",
+  "terrains.updateDefinition": "mysandkit api.terrains.updateDefinition(idOrType: string | number, partial: Record<string, unknown>) \u2192 void",
+  "terrains.getIdByType": "mysandkit api.terrains.getIdByType(t: number) \u2192 string | undefined",
+  "terrains.getDefinitionByType": "mysandkit api.terrains.getDefinitionByType(t: number) \u2192 Record<string, unknown> | undefined",
+  "upgrades.updateDefinition": "mysandkit api.upgrades.updateDefinition(itemId: string,\n            upgradeId: string,\n            partial: Record<string, unknown>,) \u2192 void",
+  "upgrades.setLevelById": "mysandkit api.upgrades.setLevelById(itemId: string, upgradeId: string, level: number) \u2192 void",
+  "ui.toast": "mysandkit api.ui.toast(message: string) \u2192 void",
+  "hooks.hasHooks": "mysandkit api.hooks.hasHooks() \u2192 boolean",
+  "assets.getUrl": "mysandkit api.assets.getUrl(path: string) \u2192 string | undefined",
+  "sprites.load": "mysandkit api.sprites.load(id: string, path: string, options?: Record<string, unknown>) \u2192 unknown",
+  "sprites.loadFromMod": "mysandkit api.sprites.loadFromMod(id: string, path: string, options?: Record<string, unknown>) \u2192 unknown",
+  "sprites.namespace": "mysandkit api.sprites.namespace() \u2192 string | undefined",
+  "sprites.getRegistered": "mysandkit api.sprites.getRegistered() \u2192 string[]",
+  "sprites.getLoaded": "mysandkit api.sprites.getLoaded() \u2192 string[]",
+  "sprites.getAll": "mysandkit api.sprites.getAll() \u2192 string[]",
+  "sprites.list": "mysandkit api.sprites.list() \u2192 string[]",
+  "input.getMouseCellPosition": "mysandkit api.input.getMouseCellPosition() \u2192 unknown",
+  "signals.setOutputAtCell": "mysandkit api.signals.setOutputAtCell(x: number, y: number, value: boolean) \u2192 void",
+  "energy.addAtCell": "mysandkit api.energy.addAtCell(x: number, y: number, amount: number) \u2192 void",
+  "energy.consume": "mysandkit api.energy.consume(amount: number, options?: Record<string, unknown>) \u2192 number",
+  "effects.createParticlesAtWorld": "mysandkit api.effects.createParticlesAtWorld(x: number,\n            y: number,\n            options: { count?: number; [key: string]: unknown },) \u2192 void",
+  "effects.includes": "mysandkit api.effects.includes(effect: string) \u2192 boolean",
+  "projectiles.createBlueprintFromId": "mysandkit api.projectiles.createBlueprintFromId(id: string) \u2192 unknown",
+  "projectiles.spawnAtWorld": "mysandkit api.projectiles.spawnAtWorld(x: number, y: number, angle: number, blueprint: unknown) \u2192 void",
+  "random.int": "mysandkit api.random.int(min: number, max: number) \u2192 number | undefined"
+};
+  const PROGRAM_V2_RETURNS = {
+  "toast": "unknown",
+  "storage.ensure": "unknown",
+  "storage.set": "unknown",
+  "storage.remove": "unknown",
+  "storage.ensureFor": "unknown",
+  "storage.removeFor": "unknown",
+  "settings.get": "unknown",
+  "rendering.getGridMetrics": "unknown",
+  "rendering.getDrawPositionAtCell": "unknown",
+  "elements.updateDefinition": "unknown",
+  "elements.addInteractionInfo": "unknown",
+  "elements.addElementToDiscoveries": "unknown",
+  "elements.getTypeById": "number | undefined",
+  "elements.getRegisteredTypes": "number[]",
+  "elements.getDefinitionByType": "Record<string, unknown> | undefined",
+  "elements.getIdByType": "string | undefined",
+  "elements.getNameByType": "string | undefined",
+  "elements.getResolvedTypeAtCell": "number | undefined",
+  "elements.getTypeAtCell": "number | null",
+  "elements.getTypeFromId": "number | null",
+  "elements.isTypeAtCell": "boolean",
+  "elements.setVelocityAtCell": "boolean",
+  "elements.addParticleVelocityAtCell": "boolean",
+  "elements.setDurationAtCell": "boolean",
+  "elements.removeAtCell": "boolean",
+  "elements.removeAtCellWhenIdle": "boolean",
+  "elements.convertToParticleAtCell": "boolean",
+  "elements.getDataFieldAtCell": "number | null",
+  "elements.setDataFieldAtCell": "void",
+  "elements.getVelocityAtCell": "unknown",
+  "elements.teleportBetweenCells": "boolean",
+  "elements.findFreeCellInStructure": "unknown",
+  "grid.isCellEmptyAtCell": "boolean | undefined",
+  "grid.isTerrainAtCell": "boolean",
+  "grid.reportActivityAtCell": "void",
+  "grid.excavateAtCell": "void",
+  "player.inventory.addById": "boolean",
+  "player.buildings.unlockById": "boolean",
+  "player.buildings.removeById": "boolean",
+  "structures.updateDefinition": "void",
+  "structures.getRegisteredTypes": "number[]",
+  "structures.getUnlockedTypes": "number[]",
+  "structures.getTypeName": "string | undefined",
+  "structures.getAll": "Record<string, unknown>[]",
+  "structures.getRegistered": "Record<string, unknown>[]",
+  "structures.list": "Record<string, unknown>[]",
+  "structures.includes": "boolean",
+  "structures.getAtCell": "Record<string, unknown> | null",
+  "structures.hasBuiltAtCell": "boolean",
+  "structures.isTypeAtCell": "boolean",
+  "structures.isType": "boolean",
+  "structures.isBlockedByPlayerAtCell": "boolean",
+  "structures.isLauncherAtCell": "boolean",
+  "structures.buildAtCell": "boolean",
+  "structures.removeAtCell": "boolean",
+  "structures.removeAtCells": "boolean",
+  "structures.update": "boolean",
+  "structures.updateData": "boolean",
+  "structures.setSpritesheetIndex": "boolean",
+  "structures.setSpritesheetIndexAtCell": "boolean",
+  "structures.setSpritesheetIndexByValue": "boolean",
+  "structures.setSpritesheetIndexByValueAtCell": "boolean",
+  "structures.mapValueToSpritesheetIndex": "number",
+  "structures.processing.isEnabledAtCell": "boolean",
+  "structures.processing.setEnabledAtCell": "boolean",
+  "structures.addVariant": "void",
+  "structures.getAvailableTypes": "Set<number | string>",
+  "structures.getDefinitionByType": "Record<string, unknown> | undefined",
+  "structures.getIdByType": "string | undefined",
+  "structures.getTypeById": "number | string",
+  "structures.countOfType": "number | null",
+  "items.updateDefinition": "void",
+  "items.getRegisteredIds": "string[]",
+  "items.getDefinitionById": "Record<string, unknown> | undefined",
+  "items.getRegistered": "Record<string, unknown>[]",
+  "items.getAll": "Record<string, unknown>[]",
+  "items.list": "Record<string, unknown>[]",
+  "tech.updateDefinition": "void",
+  "tech.conservatory.appendUnlock": "boolean",
+  "terrains.getDataAtCell": "Record<string, unknown> | null",
+  "terrains.getHitPointsAtCell": "number | null",
+  "terrains.getTypeAtCell": "number | null",
+  "terrains.isAtCell": "boolean",
+  "terrains.isTypeAtCell": "boolean",
+  "terrains.isCellIdTerrain": "boolean",
+  "terrains.damageAtCell": "boolean",
+  "terrains.setHitPointsAtCell": "boolean",
+  "terrains.getTypeById": "number | null",
+  "terrains.updateDefinition": "void",
+  "terrains.getIdByType": "string | undefined",
+  "terrains.getDefinitionByType": "Record<string, unknown> | undefined",
+  "upgrades.updateDefinition": "void",
+  "upgrades.setLevelById": "void",
+  "ui.toast": "void",
+  "hooks.hasHooks": "boolean",
+  "assets.getUrl": "string | undefined",
+  "sprites.load": "unknown",
+  "sprites.loadFromMod": "unknown",
+  "sprites.namespace": "string | undefined",
+  "sprites.getRegistered": "string[]",
+  "sprites.getLoaded": "string[]",
+  "sprites.getAll": "string[]",
+  "sprites.list": "string[]",
+  "input.getMouseCellPosition": "unknown",
+  "signals.setOutputAtCell": "void",
+  "energy.addAtCell": "void",
+  "energy.consume": "number",
+  "effects.createParticlesAtWorld": "void",
+  "effects.includes": "boolean",
+  "projectiles.createBlueprintFromId": "unknown",
+  "projectiles.spawnAtWorld": "void",
+  "random.int": "number | undefined"
+};
+  const PROGRAM_V2_META = {
+  "toast": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "storage.ensure": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "storage.set": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "storage.remove": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "storage.ensureFor": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "storage.removeFor": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "settings.get": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "rendering.getGridMetrics": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "rendering.getDrawPositionAtCell": {
+    "cell": true,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "elements.updateDefinition": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "elements.addInteractionInfo": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "elements.addElementToDiscoveries": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "elements.getTypeById": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number | undefined"
+  },
+  "elements.getRegisteredTypes": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number[]"
+  },
+  "elements.getDefinitionByType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown> | undefined"
+  },
+  "elements.getIdByType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string | undefined"
+  },
+  "elements.getNameByType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string | undefined"
+  },
+  "elements.getResolvedTypeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "number | undefined"
+  },
+  "elements.getTypeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "number | null"
+  },
+  "elements.getTypeFromId": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number | null"
+  },
+  "elements.isTypeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.setVelocityAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.addParticleVelocityAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.setDurationAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.removeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.removeAtCellWhenIdle": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.convertToParticleAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.getDataFieldAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "number | null"
+  },
+  "elements.setDataFieldAtCell": {
+    "cell": true,
+    "returns": false,
+    "returnType": "void"
+  },
+  "elements.getVelocityAtCell": {
+    "cell": true,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "elements.teleportBetweenCells": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "elements.findFreeCellInStructure": {
+    "cell": true,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "grid.isCellEmptyAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean | undefined"
+  },
+  "grid.isTerrainAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "grid.reportActivityAtCell": {
+    "cell": true,
+    "returns": false,
+    "returnType": "void"
+  },
+  "grid.excavateAtCell": {
+    "cell": true,
+    "returns": false,
+    "returnType": "void"
+  },
+  "player.inventory.addById": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "player.buildings.unlockById": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "player.buildings.removeById": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.updateDefinition": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "structures.getRegisteredTypes": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number[]"
+  },
+  "structures.getUnlockedTypes": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number[]"
+  },
+  "structures.getTypeName": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string | undefined"
+  },
+  "structures.getAll": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown>[]"
+  },
+  "structures.getRegistered": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown>[]"
+  },
+  "structures.list": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown>[]"
+  },
+  "structures.includes": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.getAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "Record<string, unknown> | null"
+  },
+  "structures.hasBuiltAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.isTypeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.isType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.isBlockedByPlayerAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.isLauncherAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.buildAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.removeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.removeAtCells": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.update": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.updateData": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.setSpritesheetIndex": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.setSpritesheetIndexAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.setSpritesheetIndexByValue": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.setSpritesheetIndexByValueAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.mapValueToSpritesheetIndex": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number"
+  },
+  "structures.processing.isEnabledAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.processing.setEnabledAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "structures.addVariant": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "structures.getAvailableTypes": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Set<number | string>"
+  },
+  "structures.getDefinitionByType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown> | undefined"
+  },
+  "structures.getIdByType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string | undefined"
+  },
+  "structures.getTypeById": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number | string"
+  },
+  "structures.countOfType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number | null"
+  },
+  "items.updateDefinition": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "items.getRegisteredIds": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string[]"
+  },
+  "items.getDefinitionById": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown> | undefined"
+  },
+  "items.getRegistered": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown>[]"
+  },
+  "items.getAll": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown>[]"
+  },
+  "items.list": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown>[]"
+  },
+  "tech.updateDefinition": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "tech.conservatory.appendUnlock": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "terrains.getDataAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "Record<string, unknown> | null"
+  },
+  "terrains.getHitPointsAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "number | null"
+  },
+  "terrains.getTypeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "number | null"
+  },
+  "terrains.isAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "terrains.isTypeAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "terrains.isCellIdTerrain": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "terrains.damageAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "terrains.setHitPointsAtCell": {
+    "cell": true,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "terrains.getTypeById": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number | null"
+  },
+  "terrains.updateDefinition": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "terrains.getIdByType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string | undefined"
+  },
+  "terrains.getDefinitionByType": {
+    "cell": false,
+    "returns": true,
+    "returnType": "Record<string, unknown> | undefined"
+  },
+  "upgrades.updateDefinition": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "upgrades.setLevelById": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "ui.toast": {
+    "cell": false,
+    "returns": false,
+    "returnType": "void"
+  },
+  "hooks.hasHooks": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "assets.getUrl": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string | undefined"
+  },
+  "sprites.load": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "sprites.loadFromMod": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "sprites.namespace": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string | undefined"
+  },
+  "sprites.getRegistered": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string[]"
+  },
+  "sprites.getLoaded": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string[]"
+  },
+  "sprites.getAll": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string[]"
+  },
+  "sprites.list": {
+    "cell": false,
+    "returns": true,
+    "returnType": "string[]"
+  },
+  "input.getMouseCellPosition": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "signals.setOutputAtCell": {
+    "cell": true,
+    "returns": false,
+    "returnType": "void"
+  },
+  "energy.addAtCell": {
+    "cell": true,
+    "returns": false,
+    "returnType": "void"
+  },
+  "energy.consume": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number"
+  },
+  "effects.createParticlesAtWorld": {
+    "cell": true,
+    "returns": false,
+    "returnType": "void"
+  },
+  "effects.includes": {
+    "cell": false,
+    "returns": true,
+    "returnType": "boolean"
+  },
+  "projectiles.createBlueprintFromId": {
+    "cell": false,
+    "returns": false,
+    "returnType": "unknown"
+  },
+  "projectiles.spawnAtWorld": {
+    "cell": true,
+    "returns": false,
+    "returnType": "void"
+  },
+  "random.int": {
+    "cell": false,
+    "returns": true,
+    "returnType": "number | undefined"
+  }
+};
+
   function roleOf(key) {
     if (key === "if") return "block";
     for (const [r, keys] of Object.entries(ACTIONS)) {
@@ -2958,6 +5913,6 @@ window.MD_SCHEMA = (function () {
   }
   return {
     ROLE_COLOR, ROLE_LABELS, SLOTS, MATTER, CATEGORIES, RECIPE_KINDS, BUILD_MODES,
-    MENU_GROUPS, COLLECTIONS, FIELDS, FIELD_SECTIONS, SECTION_ORDER, ACTION_PARAMS, ACTIONS, ACTION_DOCS, ACTION_APIS, ACTION_FAMILIES, roleOf, emptyConfig,
+    MENU_GROUPS, COLLECTIONS, FIELDS, FIELD_SECTIONS, SECTION_ORDER, ACTION_PARAMS, ACTIONS, ACTION_DOCS, ACTION_APIS, ACTION_FAMILIES, PROGRAM_V2_FAMILIES, PROGRAM_V2_PARAMS, PROGRAM_V2_DOCS, PROGRAM_V2_RETURNS, PROGRAM_V2_META, roleOf, emptyConfig,
   };
 })();
