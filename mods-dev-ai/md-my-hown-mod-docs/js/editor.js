@@ -9,6 +9,8 @@
   const state = {
     config: null,
     collection: "elements",
+    menuId: null,
+    defaultScope: null,
     editIndex: null,
     dragFrom: null,
     /** @type {Set<string>} path keys of expanded steps e.g. "0", "0.then.1" */
@@ -53,7 +55,19 @@
     if (!Array.isArray(state.config[key])) state.config[key] = [];
     return state.config[key];
   }
-  function collectionMeta(key) {
+  function collectionMeta(key, menuId) {
+    for (const g of S().MENU_GROUPS) {
+      const hit = g.items.find((i) => {
+        if (menuId) return i.menuId === menuId || (i.key === key && i.menuId === menuId);
+        return i.key === key && !i.menuId;
+      });
+      if (hit) return hit;
+      // fallback: first matching key
+      if (!menuId) {
+        const h2 = g.items.find((i) => i.key === key);
+        if (h2) return h2;
+      }
+    }
     for (const g of S().MENU_GROUPS) {
       const hit = g.items.find((i) => i.key === key);
       if (hit) return hit;
@@ -71,7 +85,14 @@
   function updateCounts() {
     $$(".ed-col").forEach((btn) => {
       const key = btn.dataset.col;
-      const n = (state.config[key] || []).length;
+      const scope = btn.dataset.scope || "";
+      let n = 0;
+      const list = state.config[key] || [];
+      if (scope && key === "programV2") {
+        n = list.filter((e) => (e.scope || "") === scope).length;
+      } else {
+        n = list.length;
+      }
       const badge = btn.querySelector(".ed-count");
       if (badge) badge.textContent = n ? String(n) : "";
     });
@@ -106,16 +127,34 @@
       cols.appendChild(gh);
       g.items.forEach((c) => {
         const btn = document.createElement("button");
+        const mid = c.menuId || "";
+        const active =
+          c.key === state.collection &&
+          (mid ? state.menuId === mid : !state.menuId || state.menuId === mid);
         btn.type = "button";
-        btn.className = "ed-col" + (c.key === state.collection ? " on" : "");
+        btn.className =
+          "ed-col" +
+          (c.nest ? " ed-col-nest" : "") +
+          (active ? " on" : "");
         btn.dataset.col = c.key;
+        if (mid) btn.dataset.menuId = mid;
+        if (c.defaultScope) btn.dataset.scope = c.defaultScope;
         btn.innerHTML = `<span class="ed-dot" style="background:${c.color}"></span>
           <span class="ed-col-label">${escapeHtml(c.label)}</span>
           <span class="ed-count"></span>`;
         btn.addEventListener("click", () => {
           state.collection = c.key;
+          state.menuId = c.menuId || null;
+          state.defaultScope = c.defaultScope || null;
           state.editIndex = null;
-          $$(".ed-col").forEach((b) => b.classList.toggle("on", b.dataset.col === state.collection));
+          state.programMode = c.key === "programV2" ? "v2" : c.key === "processes" ? "v1" : state.programMode;
+          $$(".ed-col").forEach((b) => {
+            const bMid = b.dataset.menuId || "";
+            const on =
+              b.dataset.col === state.collection &&
+              (state.menuId ? bMid === state.menuId : !bMid);
+            b.classList.toggle("on", on);
+          });
           renderMain();
         });
         cols.appendChild(btn);
@@ -164,28 +203,55 @@
     const main = $("#ed-main");
     if (!main) return;
     const key = state.collection;
-    const list = ensureArray(key);
-    const meta = collectionMeta(key);
+    const all = ensureArray(key);
+    const scopeFilter = state.defaultScope;
+    const list =
+      key === "programV2" && scopeFilter
+        ? all.filter((e) => (e.scope || "") === scopeFilter)
+        : all;
+    const meta = collectionMeta(key, state.menuId);
 
     if (state.editIndex != null) {
       renderForm(main, key, state.editIndex, meta);
       return;
     }
 
+    const groupDoc = (() => {
+      for (const g of S().MENU_GROUPS || []) {
+        if (g.items.some((i) => i.key === key && (state.menuId ? i.menuId === state.menuId : true))) {
+          return g.doc || g.hint || "";
+        }
+      }
+      return "";
+    })();
+    const itemDoc = meta.doc || meta.hint || "";
+    const docBody = [itemDoc, groupDoc && itemDoc !== groupDoc ? groupDoc : ""]
+      .filter(Boolean)
+      .join("\n\n");
+
     main.innerHTML = `
       <div class="ed-toolbar">
         <div>
           <h2 class="ed-title">${escapeHtml(meta.label)}</h2>
-          <p class="ed-sub">${list.length} entr${list.length === 1 ? "y" : "ies"} · <code>${escapeHtml(key)}</code></p>
+          <p class="ed-sub">${list.length} entr${list.length === 1 ? "y" : "ies"} · <code>${escapeHtml(key)}</code>${
+            scopeFilter ? ' · scope <code>' + escapeHtml(scopeFilter) + '</code>' : ''
+          }</p>
         </div>
         <button type="button" class="graph-btn primary" id="ed-add">+ Add</button>
       </div>
+      ${
+        docBody
+          ? `<details class="ed-cat-doc"><summary class="ed-cat-doc-sum">About this category</summary>
+              <div class="ed-cat-doc-body">${escapeHtml(docBody).replace(/\n/g, "<br/>")}</div>
+            </details>`
+          : ""
+      }
       <div class="ed-cards" id="ed-cards"></div>`;
 
     $("#ed-add")?.addEventListener("click", () => {
-      const blank = { id: "mdmy." + key.replace(/s$/, "") + "." + (list.length + 1) };
+      const blank = { id: "mdmy." + key.replace(/s$/, "") + "." + (all.length + 1) };
       if (key === "processes" || key === "programV2") {
-        blank.scope = "signal";
+        blank.scope = state.defaultScope || "signal";
         blank.steps = [];
       }
       if (key === "recipes") blank.kind = "structure";
@@ -195,8 +261,8 @@
         blank.enabled = true;
       }
       if (key === "elements") blank.matterType = "Solid";
-      list.push(blank);
-      state.editIndex = list.length - 1;
+      all.push(blank);
+      state.editIndex = all.length - 1;
       save();
       renderMain();
     });
@@ -206,14 +272,17 @@
       cards.innerHTML = `<div class="ed-empty">No entries. Click <strong>+ Add</strong>.</div>`;
       return;
     }
+    // Map filtered entries to real indices in `all`
+    const realIndices = list.map((e) => all.indexOf(e));
     cards.innerHTML = list
       .map((entry, i) => {
+        const real = realIndices[i];
         const id = entry.id || "(no id)";
         const sub =
           entry.name || entry.scope || entry.kind || entry.handlerKey ||
           entry.processId || entry.structureType || entry.structureId || entry.hookId || "";
         const stepsN = Array.isArray(entry.steps) ? entry.steps.length : null;
-        return `<div class="ed-card" data-i="${i}">
+        return `<div class="ed-card" data-i="${real}">
           <div class="ed-card-body">
             <div class="ed-card-id">${escapeHtml(id)}</div>
             <div class="ed-card-sub">${escapeHtml(String(sub))}${
@@ -221,8 +290,8 @@
             }</div>
           </div>
           <div class="ed-card-actions">
-            <button type="button" class="graph-btn ed-edit" data-i="${i}">Edit</button>
-            <button type="button" class="graph-btn ed-del" data-i="${i}">Del</button>
+            <button type="button" class="graph-btn ed-edit" data-i="${real}">Edit</button>
+            <button type="button" class="graph-btn ed-del" data-i="${real}">Del</button>
           </div>
         </div>`;
       })
@@ -237,8 +306,8 @@
     $$(".ed-del", cards).forEach((b) => {
       b.addEventListener("click", () => {
         const i = Number(b.dataset.i);
-        if (!confirm("Delete " + (list[i]?.id || i) + "?")) return;
-        list.splice(i, 1);
+        if (!confirm("Delete " + (all[i]?.id || i) + "?")) return;
+        all.splice(i, 1);
         save();
         renderMain();
       });

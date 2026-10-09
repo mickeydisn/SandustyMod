@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Solaris Heart Canvas</title>
+<style>
+  :root {
+    --sidebar-width: 300px;
+    --bg: #0b0d12;
+    --panel-bg: #14171f;
+    --sidebar-bg: #10131b;
+    --border: #282e3d;
+    --text: #e6e9f0;
+    --muted: #8a92a3;
+    --accent: #ff6b8a;
+    --accent-glow: #ff3d60;
+    --green: #69f0ae;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", "Noto Sans KR", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .app { display: flex; height: 100%; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+  /* ---- Left menu (parameters) ---- */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar__title {
+    padding: 16px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: var(--green);
+    border-bottom: 1px solid var(--border);
+    background: #0f121b;
+  }
+
+  .sidebar__scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px 18px;
+  }
+
+  .param-group { margin-bottom: 16px; }
+
+  .param-group__label {
+
+  .param-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .param-row:last-child { border-bottom: none; }
+
+  .param-row label {
+    font-size: 13px;
+    color: var(--text);
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+
+  .param-row input[type="range"] {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #2a3140;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .param-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--panel-bg);
+    cursor: pointer;
+
+  .param-btn {
+    width: 100%;
+    padding: 9px;
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #1a202d;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .param-btn:hover { background: #242b3b; border-color: #3a4457; }
+  .param-btn.primary {
+    background: var(--accent); border-color: var(--accent);
+    color: #1a0a12;
+  }
+  .param-btn.primary:hover {
+    background: var(--accent-glow); border-color: var(--accent-glow);
+  }
+
+  /* ---- Main canvas panel ---- */
+  .canvas-panel {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #07090e;
+  }
+  .canvas-panel canvas {
+    display: block;
+    width: 100%; height: 100%;
+    position: absolute; top: 0; left: 0;
+  }
+
+  .canvas-panel__bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(1200px 600px at 50% 30%, rgba(110,40,70,0.18), transparent 60%),
+      radial-gradient(900px 500px at 85% 80%, rgba(46,100,255,0.12), transparent 55%),
+      radial-gradient(700px 500px at 15% 75%, rgba(255,80,120,0.10), transparent 55%);
+    pointer-events: none;
+  }
+
+  .canvas-panel__label {
+
+    <!-- Left menu: parameter form -->
+    <aside class="sidebar">
+      <div class="sidebar__title">Solaris · Heart Parameter</div>
+      <div class="sidebar__scroll">
+        <div class="param-group">
+          <div class="param-group__label">Heart Style</div>
+          <div class="param-row">
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="pulse">Pulse</option>
+              <option value="wave">Wave</option>
+              <option value="ripple">Ripple</option>
+            </select>
+          </div>
+          <div class="param-row">
+            <label for="intensity">Pulse Intensity</label>
+            <input type="range" id="intensity" min="0" max="2" step="0.05" value="1" />
+            <span class="param-row__value" id="intensity-value">1.00</span>
+          </div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-group__label">Visuals</div>
+          <div class="param-row">
+            <label for="size">Size</label>
+            <input type="range" id="size" min="60" max="360" value="200" />
+            <span class="param-row__value" id="size-value">200</span>
+          </div>
+          <div class="param-row">
+            <label for="speed">Speed</label>
+            <input type="range" id="speed" min="1" max="20" value="8" />
+            <span class="param-row__value" id="speed-value">8</span>
+          </div>
+          <div class="param-row">
+            <label for="glow">Glow</label>
+            <input type="range" id="glow" min="0" max="3" step="0.05" value="1.6" />
+            <span class="param-row__value" id="glow-value">1.60</span>
+          </div>
+          <div class="param-row">
+            <label for="hue">Hue Shift</label>
+            <input type="range" id="hue" min="0" max="360" value="350" />
+            <span class="param-row__value" id="hue-value">350</span>
+          </div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-group__label">Flare Color</div>
+          <div class="param-row">
+            <label for="from">From</label>
+            <input type="color" id="from" value="#ff2d7a" />
+          </div>
+          <div class="param-row">
+            <label for="to">To</label>
+            <input type="color" id="to" value="#ff9a56" />
+          </div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-group__label">Particles</div>
+          <div class="param-row">
+            <label for="particle">Count</label>
+            <input type="range" id="particle" min="0" max="400" value="120" />
+            <span class="param-row__value" id="particle-value">120</span>
+          </div>
+          <div class="param-row">
+            <label for="alpha">Alpha</label>
+            <input type="range" id="alpha" min="0" max="1" step="0.05" value="0.85" />
+            <span class="param-row__value" id="alpha-value">0.85</span>
+          </div>
+          <div class="param-row">
+            <label for="wind">Wind</label>
+            <input type="range" id="wind" min="-1" max="1" step="0.05" value="0" />
+            <span class="param-row__value" id="wind-value">0.00</span>
+          </div>
+        </div>
+
+        <button id="reset" class="param-btn">Reset to defaults</button>
+      </div>
+    </aside>
+
+    <!-- Main panel: 2D canvas animation -->
+    <main class="canvas-panel">
+      <div class="canvas-panel__bg"></div>
+      <canvas id="heart"></canvas>
+      <div class="canvas-panel__label">Live 2D heart animation with parameter effects</div>
+    </main>
+  </div>
+
+    position: absolute;
+    bottom: 18px; left: 20px;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+
+    box-shadow: 0 0 6px var(--accent-glow);
+  }
+
+  .param-row input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--panel-bg);
+    cursor: pointer;
+  }
+
+  .param-row__value {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 42px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .param-row input[type="color"] {
+    width: 36px; height: 36px;
+    padding: 2px; border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel-bg);
+    cursor: pointer;
+  }
+
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+
+<script>
+(function () {
+  "use strict";
+
+  const canvas = document.getElementById("heart");
+  const ctx = canvas.getContext("2d");
+
+  // All configurable parameters
+  const params = {
+    mode: "pulse",        // pulse | wave | ripple
+    intensity: 1.0,       // pulse strength
+    size: 200,            // heart diameter in px
+    speed: 8,             // overall animation speed (frames/sec)
+    glow: 1.6,            // glow radius multiplier
+    hue: 350,             // hue shift for color gradient (0-360)
+    from: "#ff2d7a",      // core color
+    to: "#ff9a56",        // outer color
+    particle: 120,        // particle count
+    alpha: 0.85,          // particle alpha
+    wind: 0,              // horizontal drift bias (-1..1)
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  // ---- DOM bindings ----
+  const els = {
+    mode: $("mode"),
+    intensity: $("intensity"),
+    intensityValue: $("intensity-value"),
+    size: $("size"),
+    sizeValue: $("size-value"),
+    speed: $("speed"),
+    speedValue: $("speed-value"),
+    glow: $("glow"),
+    glowValue: $("glow-value"),
+    hue: $("hue"),
+    hueValue: $("hue-value"),
+    from: $("from"),
+    to: $("to"),
+    particle: $("particle"),
+    particleValue: $("particle-value"),
+    alpha: $("alpha"),
+    alphaValue: $("alpha-value"),
+    wind: $("wind"),
+    windValue: $("wind-value"),
+    reset: $("reset"),
+  };
+
+  // ---- Canvas sizing ----
+  function resize() {
+    const panel = canvas.closest(".canvas-panel");
+    canvas.width = panel.clientWidth;
+    canvas.height = panel.clientHeight;
+  }
+
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---- Helpers ----
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function map(value, inMin, inMax, outMin, outMax) {
+    return ((value - inMin) / (inMax - inMin)) * (outMax - outMin) + outMin;
+  }
+
+  function hueToRgb(p, q, t) {
+
+  // ---- Particles ----
+  let particles = [];
+
+  function buildParticles(count, size) {
+    particles = [];
+    const speedFactor = params.speed / 8;
+    const len = Math.max(6, Math.min(24, size / 12));
+    for (let i = 0; i < count; i++) {
+      const t = Math.random() * Math.PI * 2;
+      const p = heartPoint(t, size);
+      // Random spread around the heart outline
+      const spread = size * 0.35;
+      const off = Math.random() < 0.5 ? -1 : 1;
+      particles.push({
+        x: p.x + (Math.random() - 0.5) * spread * 0.6,
+        y: p.y + (Math.random() - 0.5) * spread * 0.6,
+        vx: (Math.random() - 0.5) * 0.8 * speedFactor,
+        vy: (Math.random() - 0.5) * 0.8 * speedFactor - 0.2,
+        life: Math.random(),
+        size: len * (0.4 + Math.random() * 0.6),
+        baseSize: len,
+        hueOff: Math.random() * 60 - 30,
+        gravity: 0.012 + Math.random() * 0.01,
+        drag: 0.985,
+        phase: Math.random() * Math.PI * 2,
+        twinkle: Math.random(),
+      });
+    }
+  }
+
+  // ---- Animation state ----
+  const state = {
+    time: 0,
+    heartScale: 1,
+    waveOffset: 0,
+    ripples: [],
+    pulsePhase: 0,
+    baseGlow: params.glow,
+  };
+
+  // Ripples emanating from the heart
+  function addRipple() {
+    if (params.mode !== "ripple") return;
+    state.ripples.push({
+      x: 0, y: 0, radius: 0, maxRadius: params.size + 60, speed: 0.6 + Math.random() * 0.8,
+      alpha: 0.35 + Math.random() * 0.3,
+      width: 1 + Math.random() * 3,
+    });
+  }
+
+  // ---- Drawing ----
+  function drawHeart(cx, cy, baseScale, time, intensity, hueShift, glow, size) {
+    const s = baseScale * size;
+    const bounds = heartBounds(s);
+    const dw = bounds.w;
+    const dh = bounds.h;
+    const offsetX = cx - dw / 2;
+    const offsetY = cy - dh / 2;
+
+    // Glow layers (multi-pass)
+    const glowPasses = 3;
+    for (let pass = glowPasses; pass >= 1; pass--) {
+      const g = glow * (pass * 0.45);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 1.15 * pass + g);
+      const c = hslToRgb((hueShift + 20) % 360, 0.95, 0.5 + (3 - pass) * 0.08);
+      grad.addColorStop(0, `rgba(${c[0]|0},${c[1]|0},${c[2]|0},0.55)`);
+
+  // ---- Main loop ----
+  let lastTime = 0;
+  let frameCount = 0;
+
+  function tick(timestamp) {
+    const dt = Math.min(50, timestamp - lastTime);
+    lastTime = timestamp;
+    frameCount++;
+
+    const panel = canvas.closest(".canvas-panel");
+    const W = panel.clientWidth;
+    const H = panel.clientHeight;
+
+    // Time in seconds, scaled by speed
+    state.time = (timestamp / 1000) * (params.speed / 8);
+
+    // Heart sits at the center of the panel
+    const cx = W / 2;
+    const cy = H / 2;
+
+    // ---- Mode-specific animated params ----
+    const baseIntensity = params.intensity;
+
+    switch (params.mode) {
+      case "pulse":
+        // Smooth sinusoidal pulse
+        state.heartScale = 1 + baseIntensity * 0.18 * Math.sin(state.time * 1.2 + state.pulsePhase);
+        state.pulsePhase += 0.08;
+        break;
+      case "wave":
+        // Traveling wave along the heart shape
+        state.waveOffset += params.speed * 0.02;
+        state.heartScale = 1 + baseIntensity * 0.12 *
+          Math.sin(state.time * 0.9 + state.waveOffset);
+        break;
+      case "ripple":
+        // Repeated ring emmissions
+        if (frameCount % 6 === 0) addRipple();
+        state.heartScale = 1 + baseIntensity * 0.10 * Math.sin(state.time * 1.0 + state.pulsePhase);
+        state.pulsePhase += 0.1;
+        break;
+    }
+
+    // Clamp scale
+    state.heartScale = Math.max(0.6, Math.min(1.8, state.heartScale));
+
+    // ---- Update particles ----
+    const speedFactor = params.speed / 8;
+    for (const p of particles) {
+      p.life += 0.012 * speedFactor;
+      p.x += p.vx * speedFactor + (parseFloat(params.wind) * 0.25 * speedFactor);
+      p.vy += p.gravity * speedFactor;
+      p.vx *= p.drag;
+      p.vy *= p.drag;
+
+      // Pulse influence on particle size
+      const pulse = 1 + baseIntensity * 0.1 * Math.sin(state.time * 1.2 + p.phase);
+      const twinkle = 0.4 + 0.6 * Math.sin(state.time * 2.3 + p.twinkle * 7.3);
+
+      // Kill particles that drift too far
+      const dist = Math.hypot(p.x - cx, p.y - cy);
+      if (p.life > 1 || dist > W * 0.6 || p.x < -100 || p.x > W + 100) {
+        // Respawn at a new random spot on the heart
+        const t = Math.random() * Math.PI * 2;
+        const sp = heartPoint(t, params.size);
+
+  // ---- Parameter sync (UI -> params) ----
+  function syncParams() {
+    params.mode = els.mode.value;
+    params.intensity = parseFloat(els.intensity.value);
+    params.size = parseInt(els.size.value, 10);
+    params.speed = parseInt(els.speed.value, 10);
+    params.glow = parseFloat(els.glow.value);
+    params.hue = parseInt(els.hue.value, 10);
+    params.from = els.from.value;
+    params.to = els.to.value;
+    params.particle = parseInt(els.particle.value, 10);
+    params.alpha = parseFloat(els.alpha.value);
+    params.wind = parseFloat(els.wind.value);
+
+    els.intensityValue.textContent = params.intensity.toFixed(2);
+    els.sizeValue.textContent = params.size;
+    els.speedValue.textContent = params.speed;
+    els.glowValue.textContent = params.glow.toFixed(2);
+    els.hueValue.textContent = params.hue;
+    els.particleValue.textContent = params.particle;
+    els.alphaValue.textContent = params.alpha.toFixed(2);
+    els.windValue.textContent = params.wind.toFixed(2);
+
+    // Rebuild particles on size/particle change
+    buildParticles(params.particle, params.size);
+  }
+
+  function bindRange(el, valEl) {
+    el.addEventListener("input", () => {
+      syncParams();
+    });
+  }
+
+  function bindColor(el) {
+    el.addEventListener("input", () => {
+      params[el.id] = el.value;
+    });
+  }
+
+  // Bind all controls
+  bindRange(els.intensity, els.intensityValue);
+  bindRange(els.size, els.sizeValue);
+  bindRange(els.speed, els.speedValue);
+  bindRange(els.glow, els.glowValue);
+  bindRange(els.hue, els.hueValue);
+  bindColor(els.from);
+  bindColor(els.to);
+  bindRange(els.particle, els.particleValue);
+  bindRange(els.alpha, els.alphaValue);
+  bindRange(els.wind, els.windValue);
+
+  els.mode.addEventListener("change", () => {
+    syncParams();
+  });
+
+  els.reset.addEventListener("click", () => {
+    els.mode.value = "pulse";
+    els.intensity.value = 1;
+    els.size.value = 200;
+    els.speed.value = 8;
+    els.glow.value = 1.6;
+    els.hue.value = 350;
+    els.from.value = "#ff2d7a";
+    els.to.value = "#ff9a56";
+    els.particle.value = 120;
+    els.alpha.value = 0.85;
+    els.wind.value = 0;
+    syncParams();
+  });
+
+  // Kick off
+  syncParams();
+  buildParticles(params.particle, params.size);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
+
+        p.x = sp.x + (Math.random() - 0.5) * params.size * 0.4;
+        p.y = sp.y + (Math.random() - 0.5) * params.size * 0.4;
+        p.vx = (Math.random() - 0.5) * 0.6 * speedFactor;
+        p.vy = (Math.random() - 0.5) * 0.6 * speedFactor - 0.1;
+        p.life = 0;
+        p.baseSize = p.size * (0.6 + Math.random() * 0.6);
+        p.twinkle = Math.random();
+      }
+    }
+
+    // ---- Clear & composite ----
+    ctx.clearRect(0, 0, W, H);
+
+    // Soft dark vignette
+    const vigGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.8);
+    vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+    vigGrad.addColorStop(1, "rgba(0,0,0,0.35)");
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw heart(s)
+    const draws = 3;
+    for (let d = 0; d < draws; d++) {
+      const scale = state.heartScale * (1 + 0.06 * Math.sin(state.time * 0.5 + d * 2.1));
+      drawHeart(cx, cy, scale, state.time, baseIntensity, params.hue, params.glow, params.size);
+    }
+
+    // Ripples
+    if (params.mode === "ripple") {
+      for (let i = state.ripples.length - 1; i >= 0; i--) {
+        const r = state.ripples[i];
+        r.radius += r.speed * 0.6;
+        r.alpha -= 0.012;
+        if (r.radius > r.maxRadius || r.alpha <= 0) {
+          state.ripples.splice(i, 1);
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,120,160,${r.alpha})`;
+        ctx.lineWidth = r.width;
+        ctx.stroke();
+      }
+    }
+
+    // Particles
+    for (const p of particles) {
+      const pulse = 1 + baseIntensity * 0.08 * Math.sin(state.time * 1.2 + p.phase);
+      const size = p.baseSize * pulse;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,200,220,${params.alpha * 0.9 * p.life * p.life})`;
+      ctx.fill();
+    }
+
+    // Subtle floating sparkle dust across the panel
+    for (let i = 0; i < 20; i++) {
+      const sx = (i * 137.5 + state.time * 5) % W;
+      const sy = (i * 97.3 + state.time * 3) % H;
+      const sz = 1 + Math.sin(state.time + i) * 0.8;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sz * 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,230,245,${0.12 + 0.08 * Math.sin(state.time * 1.7 + i * 2.3)})`;
+      ctx.fill();
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+      grad.addColorStop(0.35, `rgba(${c[0]|0},${c[1]|0},${c[2]|0},0.25)`);
+      grad.addColorStop(1, `rgba(${c[0]|0},${c[1]|0},${c[2]|0},0)`);
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 1.1 * pass + g, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Core glow rim
+    ctx.save();
+    ctx.shadowColor = `hsla(${hueShift}, 100%, 68%, ${0.35 * glow})`;
+    ctx.shadowBlur = s * 0.5 * glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, s, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fill();
+    ctx.restore();
+
+    // Heart silhouette
+    ctx.beginPath();
+    const step = 0.02;
+    for (let i = 0; i <= 200; i++) {
+      const t = i * step;
+      const p = heartPoint(t, s);
+      const px = offsetX + p.x;
+      const py = offsetY + p.y;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    // Animated color: lerp from `from` to `to` based on pulsating wave
+    const hueValue = (hueShift + Math.sin(time * 0.08 + state.waveOffset) * 12) % 360;
+    const col = hslToRgb(hueValue, 1, 0.52 - 0.12 * (1 - intensity));
+    ctx.fillStyle = `rgb(${col[0]|0},${col[1]|0},${col[2]|0})`;
+
+    ctx.shadowColor = `hsla(${hueValue}, 100%, 68%, ${0.3 * glow})`;
+    ctx.shadowBlur = s * 0.35 * glow;
+    ctx.fill();
+
+    // Bright highlight edge
+    ctx.beginPath();
+    ctx.arc(cx, cy, s, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${0.12 + 0.08 * intensity})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 0.16667) return p + (q - p) * 6 * t;
+    if (t < 0.5) return q;
+    if (t < 0.66667) return p + (q - p) * (0.66667 - t) * 6;
+    return p;
+  }
+
+  function hslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    if (s === 0) return [l, l, l];
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    return [hueToRgb(p, q, h + 0.333), hueToRgb(p, q, h), hueToRgb(p, q, h - 0.333)];
+  }
+
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  // Normalize 0..1
+  function norm(v, min, max) { return Math.max(0, Math.min(1, (v - min) / (max - min))); }
+
+  // ---- Heart path ----
+  // Parametric heart: x(t), y(t) for t in [0, 2pi)
+  function heartPoint(t, size) {
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const scale = size / 16;
+    return { x: x * scale, y: y * scale };
+  }
+
+  // Sub-pixel accurate bounding box for the heart shape
+  function heartBounds(size) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i <= 200; i++) {
+      const p = heartPoint((i / 200) * Math.PI * 2, size);
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    }
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+

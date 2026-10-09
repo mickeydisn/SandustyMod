@@ -1,5 +1,6 @@
 import { LOG } from "../../constants.ts";
 import { api, resolveElementRef } from "../../packages/mysandkit.ts";
+import type { Interaction } from "../../packages/mysandkit.ts";
 import { type RegisterContext, registerEach } from "../registry.ts";
 
 export function registerInteractions({ config }: RegisterContext): number {
@@ -9,6 +10,6 @@ export function registerInteractions({ config }: RegisterContext): number {
             console.warn(`${LOG} interaction ${ix.id}: bad elementId`);
             return;
         }
-        api.elements.addInteractionInfo(el as string | number, ix.interaction);
+        api.elements.addInteractionInfo(el, ix.interaction as Interaction);
     });
 }

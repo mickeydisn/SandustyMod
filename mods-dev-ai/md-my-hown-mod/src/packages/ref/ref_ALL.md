@@ -38,10 +38,10 @@ api.building                                                  [ ] not wrapped
     isBlockedAtCell(cellX, cellY)                             [ ]
     cancelPlacement()                                         [ ]
     selectStructure(structureTypeOrId)                        [ ]
-api.camera                                                    [ ] not wrapped
-    snapToPlayer()                                            [ ]
-    setFocusAtWorld(worldX, worldY)                           [ ]
-    releaseFocus(options?)                                    [ ]
+api.camera                                                    [x] 3/3
+    snapToPlayer()                                            [x]
+    setFocusAtWorld(worldX, worldY)                           [x]
+    releaseFocus(options?)                                    [x]
 api.collector                                                 [ ] not wrapped
     getValueFromCellId(cellId)                                [ ]
     getValueByType(elementType)                               [ ]
@@ -66,50 +66,59 @@ api.effects                                                   [x] 1/4
     createAtWorld(effectId, worldX, worldY, options?)         [ ]
     createLaserAtWorld(startWorldX, startWorldY, endWorldX, endWorldY, options?)  [ ]
     createParticlesAtWorld(worldX, worldY, options?)          [x]
-api.energy                                                    [x] 3/6
+api.energy                                                    [x] 6/6
     registerType(structureId, type, options?)                 [x]
     addAtCell(cellX, cellY, amount, options?)                 [x]
     consume(amount, options?)                                 [x]
-    consumeExcludingNetworkAtCell(cellX, cellY, amount)       [ ]
-    getNetworkAtCell(cellX, cellY)                            [ ]
-    getNetworkFreeCapacityAtCell(cellX, cellY)                [ ]
-api.input                                                     [x] 1/11
+    consumeExcludingNetworkAtCell(cellX, cellY, amount)       [x]
+    getNetworkAtCell(cellX, cellY)                            [x]
+    getNetworkFreeCapacityAtCell(cellX, cellY)                [x]
+api.input                                                     [x] 12/12
     registerBinding(bindingId, defaultKeys, definition)       [x]
-    getMousePositionAtCell()                                  [ ]
-    getMousePositionAtWorld()                                 [ ]
-    getBoundKeys(bindingId)                                   [ ]
-    getDisplayKey(bindingId, defaultLabel?)                   [ ]
-    triggerBinding(bindingId)                                 [ ]
-    pressBinding(bindingId)                                   [ ]
-    releaseBinding(bindingId)                                 [ ]
-    resetMouseState()                                         [ ]
-    isCtrlHeld()                                              [ ]
-    isAltHeld()                                               [ ]
-api.items                                                     [x] 4/7
-    createById(itemId)                                        [ ]
+    getMouseCellPosition()                                  [x]
+    getMousePositionAtCell()                                [x] ~= getMouseCellPosition
+    getMousePositionAtWorld()                               [x]
+    getBoundKeys(bindingId)                                 [x]
+    getDisplayKey(bindingId, defaultLabel?)                 [x]
+    triggerBinding(bindingId)                               [x]
+    pressBinding(bindingId)                                 [x]
+    releaseBinding(bindingId)                               [x]
+    resetMouseState()                                       [x]
+    isCtrlHeld()                                            [x]
+    isAltHeld()                                             [x]
+api.items                                                     [x] 9/9
+    spriteMounts                                              [x]
     getRegisteredIds()                                        [x]
-spriteMounts                                                  (see api.items)
     register(definition)                                      [x]
     updateDefinition(itemId, partial)                         [x]
     getDefinitionById(itemId)                                 [x]
-    getActive()                                               [ ]
-    isActiveById(itemId, itemType?)                           [ ]
-api.patterns                                                  [ ] not wrapped
-    createCircle(diameterCells)                               [ ]
-    excavateAtCell(cellX, cellY, pattern, outVelocity, power, options?)  [ ]
-api.player                                                    [x] 1/12
-    getPositionAtWorld()                                      [ ]
-    setPositionAtWorld(worldX, worldY)                        [ ]
-    setVelocity(velocityX, velocityY)                         [ ]
-    setMovementSpeedMultiplier(multiplier)                    [ ]
-    setMovementMode(mode)                                     [ ]
-    isOnGround()                                              [ ]
-    teleportToGround()                                        [ ]
-    isCollidingWithCell(cellX, cellY)                         [ ]
-    isWithinRadiusOfCell(cellX, cellY, radiusCells)           [ ]
-    isPositionClearAtWorld(worldX, worldY)                    [ ]
-    inventory.hasById(itemId)                                 [~] ~= addById
+    createById(itemId)                                        [x]
+    createFromId(itemId)                                      [x] ~= createById
+    getActive()                                               [x]
+    isActiveById(itemId, itemType?)                           [x]
+api.patterns                                                  [x] 2/2
+    createCircle(diameterCells)                               [x]
+    excavateAtCell(cellX, cellY, pattern, outVelocity, power, options?)  [x]
+api.player                                                    [x] 14/14
+    getPositionAtWorld()                                      [x]
+    getWorldPosition()                                        [x] ~= getPositionAtWorld
+    setPositionAtWorld(worldX, worldY)                        [x]
+    setWorldPosition(worldX, worldY)                          [x] ~= setPositionAtWorld
+    setVelocity(velocityX, velocityY)                         [x]
+    setMovementSpeedMultiplier(multiplier)                    [x]
+    setMovementMode(mode)                                     [x]
+    isOnGround()                                              [x]
+    teleportToGround()                                        [x]
+    isCollidingWithCell(cellX, cellY)                         [x]
+    isWithinRadiusOfCell(cellX, cellY, radiusCells)           [x]
+    isPositionClearAtWorld(worldX, worldY)                    [x]
+    isWorldPositionClear(worldX, worldY)                      [x] ~= isPositionClearAtWorld
+    inventory.hasById(itemId)                                 [x]
     inventory.addById(itemId)                                 [x]
+    inventory.addFromId(itemId)                               [x] ~= addById
+    player.buildings.unlockById(structureId)                  [x]
+    player.buildings.unlockByType(structureId)                [x] ~= unlockById
+    player.buildings.removeById(structureId)                  [x]
 api.progression                                               [ ] not wrapped
     complete({ domain: "tutorial", grantNormalUnlocks? } | { domain: "objective", id })  [ ]
 api.projectiles                                               [x] 2/7
@@ -182,37 +191,50 @@ api.scene                                                     [ ] not wrapped
 api.cooldown                                                  [ ] not wrapped
     start(cooldown)                                           [ ]
     isReady(cooldown, durationOverrideMs?)                    [ ]
-api.elements                                                  [x] 21/30
+api.elements                                                  [x] 43/43
     getRegisteredTypes()                                      [x]
     register(definition)                                      [x]
     updateDefinition(elementTypeOrId, partial)                [x]
     addInteractionInfo(elementTypeOrId, interaction)          [x]
     getTypeById(elementId)                                    [x]
+    getTypeFromId(elementId)                                  [x] ~= getTypeById
     getIdByType(elementType)                                  [x]
     getNameByType(elementType)                                [x]
     getDefinitionByType(elementType)                          [x]
     getTypeAtCell(cellX, cellY)                               [x]
     getResolvedTypeAtCell(cellX, cellY)                       [x]
-    getResolvedTypeFromCellId(cellId)                         [ ]
-    getInfoAtCell(cellX, cellY)                               [ ]
-    getMatterTypeAtCell(cellX, cellY)                         [ ]
+    getResolvedTypeFromCellId(cellId)                         [x]
+    getInfoAtCell(cellX, cellY)                               [x]
+    getMatterTypeAtCell(cellX, cellY)                         [x]
     isTypeAtCell(cellX, cellY, elementTypeOrId)               [x]
-    isFreeFallingAtCell(cellX, cellY)                         [ ]
+    isFreeFallingAtCell(cellX, cellY)                         [x]
     findFreeCellInStructure(structureCellX, structureCellY, structureSizeCells)  [x]
-    createAtCell(cellX, cellY, elementTypeOrId, options?)     [ ]
-    replaceAtCell(cellX, cellY, elementTypeOrId, options?)    [ ]
+    createAtCell(cellX, cellY, elementTypeOrId, options?)     [x]
+    createAtCellWhenIdle(cellX, cellY, elementTypeOrId, options?)  [x]
+    replaceAtCell(cellX, cellY, elementTypeOrId, options?)    [x]
+    replaceAtCellWhenIdle(cellX, cellY, elementTypeOrId, options?)  [x]
     removeAtCell(cellX, cellY, options?)                      [x]
+    removeAtCellWhenIdle(cellX, cellY, options?)              [x]
     teleportBetweenCells(fromCellX, fromCellY, toCellX, toCellY)  [x]
+    teleportBetweenCellsWhenIdle(fromCellX, fromCellY, toCellX, toCellY)  [x]
     getVelocityAtCell(cellX, cellY)                           [x]
     setVelocityAtCell(cellX, cellY, velocity)                 [x]
+    setVelocityAtCellWhenIdle(cellX, cellY, velocity)         [x]
     addParticleVelocityAtCell(cellX, cellY, velocity, maxSpeedCellsPerSecond?)  [x]
+    addParticleVelocityAtCellWhenIdle(cellX, cellY, velocity, maxSpeedCellsPerSecond?)  [x]
     convertToParticleAtCell(cellX, cellY, velocity)           [x]
-    convertFromParticleAtCell(cellX, cellY)                   [~] ~= convertToParticleAtCell
+    convertToParticleAtCellWhenIdle(cellX, cellY, velocity)   [x]
+    convertFromParticleAtCell(cellX, cellY)                   [x]
+    convertFromParticleAtCellWhenIdle(cellX, cellY)           [x]
     getDataFieldAtCell(cellX, cellY, dataFieldNumber)         [x]
     setDataFieldAtCell(cellX, cellY, dataFieldNumber, value)  [x]
-    refreshColorAtCell(cellX, cellY)                          [ ]
-    setPhysicsAtCell(cellX, cellY, physicsState)              [ ]
+    setDataFieldAtCellWhenIdle(cellX, cellY, dataFieldNumber, value)  [x]
+    refreshColorAtCell(cellX, cellY)                          [x]
+    refreshColorAtCellWhenIdle(cellX, cellY)                  [x]
+    setPhysicsAtCell(cellX, cellY, physicsState)              [x]
+    setPhysicsAtCellWhenIdle(cellX, cellY, physicsState)      [x]
     setDurationAtCell(cellX, cellY, durationTicks, options?)  [x]
+    setDurationAtCellWhenIdle(cellX, cellY, durationTicks, options?)  [x]
 api.entities                                                  [ ] not wrapped
     getById(entityId)                                         [ ]
     getAllByType(entityTypeId)                                [ ]
@@ -253,23 +275,27 @@ api.signals                                                   [x] 1/4
     interactables.register(structureTypeOrId, handler)        [+] via signals.registerTarget("interactables", ...)
     registerSenderType(structureId, getOutput?)               [+] via signals.registerTarget("sender", ...)
     setOutputAtCell(cellX, cellY, on)                         [x]
-api.structures                                                [x] 23/27
+api.structures                                                [x] 38/38
     recipes.register(id, definition)                          [x]
     register(definition, options?)                            [x]
     updateDefinition(structureTypeOrId, partial, options?)    [x]
-    registerVariant(baseStructureTypeOrId, variant, options?)  [ ]
-    forEachOfType(structureTypeOrId, callback)                [ ]
+    registerVariant(baseStructureTypeOrId, variant, options?)  [x] ~= addVariant
+    forEachOfType(structureTypeOrId, callback)                [x]
+    addProcessor(structureType, definition)                   [x]
     registerPlacementConfig(definition)                       [x]
     getAtCell(cellX, cellY)                                   [x]
     getDefinitionByType(structureType)                        [x]
     getAvailableTypes()                                       [x]
+    getUnlockedTypes()                                        [x] ~= getAvailableTypes
     getTypeById(structureId)                                  [x]
+    getTypeFromId(structureId)                                [x] ~= getTypeById
     hasBuiltAtCell(cellX, cellY)                              [x]
     isBlockedByPlayerAtCell(cellX, cellY)                     [x]
     isLauncherAtCell(cellX, cellY)                            [x]
     isType(structure, structureId)                            [x]
     isTypeAtCell(cellX, cellY, structureId)                   [x]
-    isLockedByType(structureType)                             [ ]
+    isLockedByType(structureType)                             [x]
+    isUnlockedByType(structureType)                           [x]
     mapValueToSpritesheetIndex(value, thresholds)             [x]
     setSpritesheetIndex(structure, index)                     [x]
     setSpritesheetIndexAtCell(cellX, cellY, index)            [x]
@@ -277,27 +303,34 @@ api.structures                                                [x] 23/27
     setSpritesheetIndexByValueAtCell(cellX, cellY, value, thresholds)  [x]
     update(structure, options?)                               [x]
     updateData(structure, partial, options?)                  [x]
+    setData(structure, partial, options?)                     [x] ~= updateData
     buildAtCell(cellX, cellY, structureTypeOrId, options?)    [x]
+    buildAtCellWhenIdle(cellX, cellY, structureTypeOrId, options?)  [x]
     removeAtCell(cellX, cellY, options?)                      [x]
-    removeBetweenCells(startCellX, startCellY, endCellX, endCellY, options?)  [ ]
+    removeAtCellWhenIdle(cellX, cellY, options?)              [x]
+    removeBetweenCells(startCellX, startCellY, endCellX, endCellY, options?)  [x]
+    removeBetweenCellsWhenIdle(startCellX, startCellY, endCellX, endCellY, options?)  [x]
     removeAtCells(positions, options?)                        [x]
+    removeAtCellsWhenIdle(positions, options?)                [x]
 api.structures.processing                                     [x] 3/3
     register(id, definition)                                  [x]
     isEnabledAtCell(cellX, cellY)                             [x]
     setEnabledAtCell(cellX, cellY, enabled)                   [x]
-api.tech                                                      [x] 4/8
-    getDefinitionById(techId)                                 [ ]
+api.tech                                                      [x] 9/9
+    getDefinitionById(techId)                                 [x]
     updateDefinition(techId, partial)                         [x]
     registerDefinition(techId, definition)                    [x]
+    addDefinition(techId, definition)                         [x] ~= registerDefinition
     registerNode(techId, definition, options)                 [x]
     conservatory.appendUnlock(techId, unlocks)                [x]
-    isResearchedById(techId)                                  [ ]
-    isLockedById(techId)                                      [ ]
-    setLockedById(techId, locked)                             [ ]
-api.terrains                                                  [x] 12/16
+    isResearchedById(techId)                                  [x]
+    isLockedById(techId)                                      [x]
+    setLockedById(techId, locked)                             [x]
+api.terrains                                                  [x] 22/22
     register(definition)                                      [x]
     updateDefinition(terrainTypeOrId, partial)                [x]
     getTypeById(terrainId)                                    [x]
+    getTypeFromId(terrainId)                                  [x] ~= getTypeById
     getIdByType(terrainType)                                  [x]
     getDefinitionByType(terrainType)                          [x]
     getTypeAtCell(cellX, cellY)                               [x]
@@ -305,22 +338,31 @@ api.terrains                                                  [x] 12/16
     isAtCell(cellX, cellY)                                    [x]
     isTypeAtCell(cellX, cellY, terrainId)                     [x]
     isCellIdTerrain(cellId)                                   [x]
-    createAtCell(cellX, cellY, terrainTypeOrId, options?)     [ ]
-    replaceAtCell(cellX, cellY, terrainTypeOrId, options?)    [ ]
-    removeAtCell(cellX, cellY, options?)                      [ ]
+    createAtCell(cellX, cellY, terrainType, options?)         [x]
+    createAtCellWhenIdle(cellX, cellY, terrainType, options?)  [x]
+    replaceAtCell(cellX, cellY, terrainType, options?)        [x]
+    replaceAtCellWhenIdle(cellX, cellY, terrainType, options?)  [x]
+    removeAtCell(cellX, cellY, options?)                      [x]
+    removeAtCellWhenIdle(cellX, cellY, options?)              [x]
     damageAtCell(cellX, cellY, damage)                        [x]
-    meltAtCell(cellX, cellY)                                  [ ]
+    meltAtCell(cellX, cellY)                                  [x]
     setHitPointsAtCell(cellX, cellY, hitPoints)               [x]
+    setHitPointsAtCellWhenIdle(cellX, cellY, hitPoints)       [x]
+    setHpAtCell(cellX, cellY, hitPoints)                      [x] ~= setHitPointsAtCell
+    setHpAtCellWhenIdle(cellX, cellY, hitPoints)              [x]
 api.triggers                                                  [x] 1/1
     register(triggerId, definition)                           [x]
-api.lights.temporary                                          [ ] not wrapped
-    createAtWorld(worldX, worldY, options?)                   [ ]
-    removeById(lightId)                                       [ ]
-api.lights.persistent                                         [ ] not wrapped
-    createAtWorld(worldX, worldY, options?)                   [ ]
-    removeAtWorld(worldX, worldY)                             [ ]
-    fadeAtWorld(worldX, worldY, durationMs?)                  [ ]
-    markDirty()                                               [ ]
+api.lights.temporary                                          [x] 2/2
+    createAtWorld(worldX, worldY, options?)                   [x]
+    removeById(lightId)                                       [x]
+api.lights.vfx                                                [x] 2/2
+    createAtWorld(worldX, worldY, options?)                   [x]
+    removeById(lightId)                                       [x]
+api.lights.persistent                                         [x] 4/4
+    createAtWorld(worldX, worldY, options?)                   [x]
+    removeAtWorld(worldX, worldY)                             [x]
+    fadeAtWorld(worldX, worldY, durationMs?)                  [x]
+    markDirty()                                               [x]
 api.player.buildings                                          [x] 2/2
     unlockById(structureId)                                   [x]
     removeById(structureId)                                   [x]
@@ -329,9 +371,10 @@ api.tools.grabber                                             [ ] not wrapped
     getSize()                                                 [ ]
     isActive()                                                [ ]
     isLoaded()                                                [ ]
-api.shared.buffers                                            [ ] not wrapped
-    ensure(key, config)                                       [ ]
-    get(key)                                                  [ ]
+api.shared.buffers                                            [x] 3/3
+    ensure(key, config)                                       [x]
+    create(key, config)                                       [x] ~= ensure
+    get(key)                                                  [x]
 api.workers                                                   [ ] not wrapped
     setPostUpdateEnabled(enabled)                             [ ]
 api.schedule                                                  [ ] not wrapped

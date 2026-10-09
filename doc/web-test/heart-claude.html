@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Heartbeat Lab</title>
+<style>
+:root{--bg:#14070d;--side:#1f0d16;--ink:#f7e6ec;--mute:#b88a99;--line:#3a1b29;--acc:#ff3d6e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#fff1f4;--side:#ffffff;--ink:#3a1020;--mute:#8a5568;--line:#f1ccd6;--acc:#e0245e}}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Georgia,'Times New Roman',serif;display:flex}
+aside{width:290px;flex:none;background:var(--side);border-right:1px solid var(--line);padding:22px 20px;overflow-y:auto}
+h1{font-size:22px;font-weight:normal;margin:0 0 4px}
+p.sub{margin:0 0 20px;color:var(--mute);font-size:14px}
+form{display:flex;flex-direction:column;gap:16px;font-family:system-ui,sans-serif;font-size:13px}
+label{display:flex;flex-direction:column;gap:6px;color:var(--mute)}
+label span{display:flex;justify-content:space-between}
+label b{color:var(--ink);font-weight:500}
+input[type=range]{accent-color:var(--acc);width:100%}
+input[type=color]{width:100%;height:30px;border:1px solid var(--line);background:none;padding:0}
+select{padding:7px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.check{flex-direction:row;align-items:center;gap:8px}
+button{padding:10px;background:var(--acc);color:#fff;border:0;font-size:14px;cursor:pointer}
+button.alt{background:none;color:var(--ink);border:1px solid var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+main{flex:1;min-width:0;position:relative}
+canvas{display:block;width:100%;height:100%}
+@media (max-width:700px){body{flex-direction:column}aside{width:auto;max-height:42%;border-right:0;border-bottom:1px solid var(--line)}main{min-height:300px}}
+</style>
+</head>
+<body>
+<aside>
+  <h1>Heartbeat lab</h1>
+  <p class="sub">Adjust the heart and watch it respond.</p>
+  <form id="f" onsubmit="return false">
+    <label><span>Size <b id="o_size"></b></span><input type="range" id="size" min="8" max="24" value="15"></label>
+    <label><span>Beat speed <b id="o_speed"></b></span><input type="range" id="speed" min="0.3" max="3" step="0.1" value="1.2"></label>
+    <label><span>Beat strength <b id="o_beat"></b></span><input type="range" id="beat" min="0" max="0.3" step="0.01" value="0.12"></label>
+    <label><span>Particles <b id="o_count"></b></span><input type="range" id="count" min="0" max="300" step="10" value="120"></label>
+    <label><span>Glow <b id="o_glow"></b></span><input type="range" id="glow" min="0" max="60" value="30"></label>
+    <label>Heart color<input type="color" id="color" value="#ff3d6e"></label>
+    <label>Style
+      <select id="style"><option value="solid">Solid</option><option value="outline">Outline</option><option value="dots">Dots</option></select>
+    </label>
+    <label class="check"><input type="checkbox" id="rings" checked> Pulse rings</label>
+    <label class="check"><input type="checkbox" id="trail" checked> Motion trail</label>
+    <button id="pause" type="button">Pause</button>
+    <button id="reset" type="button" class="alt">Reset</button>
+  </form>
+</aside>
+<main><canvas id="c" aria-label="Animated beating heart"></canvas></main>
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('c'),ctx=cv.getContext('2d');
+const defaults={size:15,speed:1.2,beat:0.12,count:120,glow:30,color:'#ff3d6e',style:'solid',rings:true,trail:true};
+const ids=Object.keys(defaults);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W,H,paused=false,t=0,last=performance.now(),particles=[],rings=[],lastBeat=-1,mouse=null;
+const P=()=>{const p={};ids.forEach(k=>{const e=$(k);p[k]=e.type==='checkbox'?e.checked:e.type==='range'?+e.value:e.value});return p};
+let p=P();
+function sync(){p=P();['size','speed','beat','count','glow'].forEach(k=>$('o_'+k).textContent=p[k]);}
+$('f').addEventListener('input',sync);sync();
+$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Resume':'Pause'};
+$('reset').onclick=()=>{ids.forEach(k=>{const e=$(k);e.type==='checkbox'?e.checked=defaults[k]:e.value=defaults[k]});sync();particles=[];rings=[]};
+function resize(){const r=cv.getBoundingClientRect(),d=devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',resize);resize();
+cv.addEventListener('pointermove',e=>{const r=cv.getBoundingClientRect();mouse={x:e.clientX-r.left,y:e.clientY-r.top}});
+cv.addEventListener('pointerleave',()=>mouse=null);
+const hx=a=>16*Math.pow(Math.sin(a),3);
+const hy=a=>-(13*Math.cos(a)-5*Math.cos(2*a)-2*Math.cos(3*a)-Math.cos(4*a));
+function rgba(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${n>>8&255},${n&255},${a})`}
+function spawn(cx,cy,s){
+  const a=Math.random()*Math.PI*2;
+  particles.push({x:cx+hx(a)*s,y:cy+hy(a)*s,vx:(Math.random()-.5)*.6+Math.sin(a)*.4,vy:-0.4-Math.random()*1.2,life:1,r:1+Math.random()*2.5});
+}
+function pulse(){const x=(Math.sin(t*p.speed*Math.PI*2)); // double-beat "lub-dub"
+  const ph=(t*p.speed)%1;return Math.exp(-Math.pow((ph-.1)*12,2))+.6*Math.exp(-Math.pow((ph-.32)*12,2))}
+function drawHeart(cx,cy,s,sc){
+  const N=p.style==='dots'?160:240;
+  ctx.save();ctx.translate(cx,cy);ctx.scale(sc,sc);
+  const g=ctx.createRadialGradient(0,-s*4,s,0,0,s*18);
+  g.addColorStop(0,rgba('#ffffff',.85));g.addColorStop(.25,rgba(p.color,1));g.addColorStop(1,rgba(p.color,.7));
+  ctx.shadowColor=p.color;ctx.shadowBlur=p.glow;
+  if(p.style==='dots'){
+    ctx.fillStyle=p.color;
+    for(let i=0;i<N;i++){const a=i/N*Math.PI*2;
+      for(let k=1;k<=3;k++){const f=k/3,w=1+.06*Math.sin(t*3+i*.3);
+        ctx.beginPath();ctx.arc(hx(a)*s*f*w,hy(a)*s*f*w,1.4+f,0,7);ctx.globalAlpha=.35+.2*f;ctx.fill();}}
+    ctx.globalAlpha=1;
+  }else{
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){const a=i/N*Math.PI*2;i?ctx.lineTo(hx(a)*s,hy(a)*s):ctx.moveTo(hx(a)*s,hy(a)*s)}
+    ctx.closePath();
+    if(p.style==='solid'){ctx.fillStyle=g;ctx.fill()}
+    else{ctx.lineWidth=3;ctx.strokeStyle=p.color;ctx.stroke()}
+  }
+  ctx.restore();
+}
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(!paused){t+=dt}
+  const cs=getComputedStyle(document.documentElement);
+  const bg=cs.getPropertyValue('--bg').trim()||'#14070d';
+  ctx.globalAlpha=p.trail&&!reduce?.22:1;ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
+  const cx=W/2,cy=H/2+p.size*1.2,base=Math.min(W,H)/45*(p.size/15);
+  const pl=reduce?0:pulse(),sc=1+p.beat*pl;
+  const beatNow=Math.floor(t*p.speed);
+  if(!paused&&beatNow!==lastBeat){lastBeat=beatNow;if(p.rings)rings.push({r:0,a:.7})}
+  // rings
+  if(!paused)rings.forEach(r=>{r.r+=dt*base*22;r.a-=dt*.5});
+  rings=rings.filter(r=>r.a>0);
+  rings.forEach(r=>{ctx.beginPath();ctx.arc(cx,cy-base*2,base*10+r.r,0,7);ctx.strokeStyle=rgba(p.color,Math.max(0,r.a));ctx.lineWidth=2;ctx.stroke()});
+  // particles
+  if(!paused&&!reduce){const n=Math.round(p.count*dt*1.5);for(let i=0;i<n;i++)spawn(cx,cy,base*sc)}
+  if(!paused)particles.forEach(q=>{
+    q.x+=q.vx;q.y+=q.vy;q.life-=dt*.5;
+    if(mouse){const dx=q.x-mouse.x,dy=q.y-mouse.y,d=Math.hypot(dx,dy)+1;if(d<120){q.vx+=dx/d*.15;q.vy+=dy/d*.15}}
+  });
+  particles=particles.filter(q=>q.life>0).slice(-1200);
+  ctx.shadowBlur=0;
+  particles.forEach(q=>{ctx.beginPath();ctx.arc(q.x,q.y,q.r*q.life,0,7);ctx.fillStyle=rgba(p.color,q.life*.8);ctx.fill()});
+  drawHeart(cx,cy,base,sc);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

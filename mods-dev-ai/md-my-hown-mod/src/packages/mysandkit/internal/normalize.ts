@@ -8,11 +8,13 @@ function registerI18n(map: Record<string, string>) {
     if (Object.keys(map).length) i18n.register("en", map);
 }
 
-export function normalizeElementPatch(entry: Record<string, unknown>): Record<string, unknown> {
+export function normalizeElementPatch(
+    entry: Partial<ElementConfig> & Record<string, unknown>,
+): Record<string, unknown> {
     const out: Record<string, unknown> = { ...entry };
-    const mt = resolveMatterType(entry.matterType as string | number | undefined);
+    const mt = resolveMatterType(entry.matterType);
     if (mt !== undefined) out.matterType = mt;
-    const rawColors = entry.colors as { variants?: unknown } | number[][] | undefined;
+    const rawColors = entry.colors;
     const rawVariants = Array.isArray(rawColors) ? rawColors : rawColors?.variants;
     if (Array.isArray(rawVariants) && rawVariants.length > 0) {
         out.colors = Array.isArray(rawColors)
@@ -30,10 +32,10 @@ export function normalizeElement(def: ElementConfig): Record<string, unknown> {
     const name = def.name ?? id;
     const nameKey = def.nameKey ?? `elements|${id}|name`;
     const out: Record<string, unknown> = { ...def, id, name, nameKey };
-    const mt = resolveMatterType(def.matterType as string | number | undefined);
+    const mt = resolveMatterType(def.matterType);
     if (mt !== undefined) out.matterType = mt;
 
-    const rawColors = def.colors as { variants?: unknown } | number[][] | undefined;
+    const rawColors = def.colors;
     const rawVariants = Array.isArray(rawColors) ? rawColors : rawColors?.variants;
     if (Array.isArray(rawVariants) && rawVariants.length > 0) {
         out.colors = Array.isArray(rawColors)

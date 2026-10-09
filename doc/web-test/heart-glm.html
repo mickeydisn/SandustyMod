@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Animation Studio</title>
+    <style>
+        /* ======================================== */
+        /* CSS STYLES: Layout and Appearance */
+        /* ======================================== */
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+            background-color: #1a1a2e; /* Dark background for contrast */
+            overflow: hidden; /* Prevents scroll bars due to animation */
+        }
+
+        /* Flexbox layout for sidebar and main panel */
+        #container {
+            display: flex;
+            height: 100vh; /* Takes up the full viewport height */
+        }
+
+        /* Left Menu / Parameter Panel Styling */
+        #sidebar {
+            width: 300px; /* Fixed width for the menu */
+            background-color: #2c3e50; /* Slightly lighter dark tone */
+            color: white;
+            padding: 20px;
+            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5);
+            overflow-y: auto; /* Allows scrolling if inputs overflow */
+        }
+
+        h2 {
+            color: #e74c3c; /* Heart color accent */
+            margin-top: 0;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .parameter-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+
+        input[type="range"] {
+            width: 95%;
+            /* Styling the range slider for better visuals */
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 35px;
+            border: none;
+            padding: 0;
+        }
+
+        /* Main Panel Styling */
+        #main-panel {
+            flex-grow: 1; /* Takes up all remaining horizontal space */
+            background-color: #0a0a14; /* Very dark background for canvas contrast */
+            display: flex;
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+        }
+
+        /* Canvas Styling */
+        #heartCanvas {
+            border: 1px solid #3498db; /* Optional border for visibility */
+            background-color: rgba(0, 0, 0, 0.1); /* Slight background tint */
+            display: block; /* Removes any default inline element spacing */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CONTAINER holds the entire page layout (Sidebar + Main Panel) -->
+    <div id="container">
+
+        <!-- LEFT MENU / PARAMETER FORM -->
+        <aside id="sidebar">
+            <h2>Heart Animator Controls</h2>
+            
+            <!-- Parameter Form -->
+            <form id="animationForm">
+
+                <div class="parameter-group">
+                    <label for="heartColor">Heart Fill Color:</label>
+                    <input type="color" id="heartColor" value="#e74c3c">
+                </div>
+
+                <div class="parameter-group">
+                    <label for="pulseScale">Pulse Intensity (Size Multiplier):</label>
+                    <!-- Scale controls the beating effect -->
+                    <input type="range" id="pulseScale" name="pulseScale" min="0.5" max="2.0" value="1.0" step="0.01">
+                    <small id="scaleValue">(Current: 1.0x)</small>
+                </div>
+
+                <div class="parameter-group">
+                    <label for="beatFrequency">Beat Speed (Pulse Rate):</label>
+                    <!-- Frequency controls how fast the scale changes -->
+                    <input type="range" id="beatFrequency" name="beatFrequency" min="0.01" max="0.5" value="0.1" step="0.01">
+                    <small id="freqValue">(Current: 0.1s)</small>
+                </div>
+
+            </form>
+        </aside>
+
+        <!-- MAIN PANEL / CANVAS AREA -->
+        <main id="main-panel">
+            <canvas id="heartCanvas" width="800" height="600"></canvas>
+        </main>
+
+    </div>
+
+    <script>
+        /* ======================================== */
+        /* JAVASCRIPT: Animation and Logic */
+        /* ======================================== */
+
+        // Get canvas and context setup
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Constants for drawing the heart (makes scaling easier)
+        const BASE_SIZE = 150; // Base size for the heart drawing
+
+        // Variables controlled by parameters
+        let pulseScale = 1.0; // The base scale factor applied to the heart drawing
+        let beatFrequency = 0.1; // How fast the sine wave cycles (controls animation speed)
+        let currentColor = '#e74c3c';
+        
+        // Time variable used for sine wave calculation (animation driver)
+        let animationTime = 0;
+
+        // --- Event Listeners: Linking UI to JS variables ---
+        const formElements = {
+            color: document.getElementById('heartColor'),
+            pulseScaleInput: document.getElementById('pulseScale'),
+            beatFrequencyInput: document.getElementById('beatFrequency')
+        };
+
+        // Update the JS variables when inputs change
+        formElements.color.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+        });
+
+        formElements.pulseScaleInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            pulseScale = value; // Update the JS scale factor
+            document.getElementById('scaleValue').textContent = `(Current: ${value.toFixed(1)}x)`;
+        });
+
+        formElements.beatFrequencyInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            beatFrequency = value; // Update the JS frequency factor
+            document.getElementById('freqValue').textContent = `(Current: ${value}s)`;
+        });
+
+
+        // --- Drawing Functions ---
+
+        /**
+         * Draws a mathematical approximation of a heart shape.
+         * @param {number} size - The current overall scale of the heart.
+         */
+        function drawHeart(size) {
+            ctx.beginPath();
+
+            // Start point (bottom tip)
+            ctx.moveTo(canvas.width / 2, canvas.height / 2 + size * 0.1); 
+
+            // Curve to the left point
+            ctx.bezierCurveTo(
+                canvas.width / 2 - size * 1.5, canvas.height / 2 + size * 0.3, // Control Point 1 (Pull left/down)
+                canvas.width / 2 - size * 1.5, canvas.height / 2 - size * 0.8, // Control Point 2 (Apex)
+                canvas.width / 2, canvas.height / 2 - size * 1.0 // Apex point (top center)
+            );
+
+            // Curve to the right point (completing the shape)
+            ctx.bezierCurveTo(
+                canvas.width / 2 + size * 1.5, canvas.height / 2 - size * 0.8, // Control Point 3 (Apex)
+                canvas.width / 2 + size * 1.5, canvas.height / 2 + size * 0.3, // Control Point 4 (Pull right/down)
+                canvas.width / 2, canvas.height / 2 + size * 0.1 // Back to bottom tip
+            );
+
+            ctx.closePath();
+        }
+
+
+        /**
+         * Main render function for the animation loop.
+         */
+        function animate() {
+            // 1. Clear the canvas for the next frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // --- EFFECT CALCULATION (The Beating Heart) ---
+            // Use a sine wave to create smooth pulsing movement.
+            // Sine ranges from -1 to 1. We map this to a scale range (e.g., 0.8 to 1.2)
+            // The `animationTime` drives the oscillation.
+            const heartbeatFactor = Math.sin(animationTime) * 0.5 + 0.7; // Value oscillates between 0.2 and 1.2
+            
+            // Apply the user-controlled base scale factor (pulseScale) to the effect.
+            const currentDrawScale = heartbeatFactor * pulseScale;
+
+
+            // 2. Draw the Heart (The Visual Output)
+            drawHeart(BASE_SIZE * currentDrawScale);
+
+            // 3. Style and Render
+            ctx.fillStyle = currentColor + 'cc'; // Added transparency (cc) for blending/fade
+            ctx.fill();
+
+            // Optional: Add a pulsating stroke outline for extra effect
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = 4 * currentDrawScale / pulseScale; // Line width pulses with the heart
+            ctx.stroke();
+
+
+            // 4. Advance Time and Loop
+            animationTime += heartbeatFrequency * 0.05; // Increment time based on user frequency input
+            requestAnimationFrame(animate); // Request the next frame
+        }
+
+        // Start the animation loop when the page loads
+        window.onload = () => {
+            // Initial setting of scale value display
+             document.getElementById('scaleValue').textContent = `(Current: ${pulseScale.toFixed(1)}x)`;
+            // Start the beating animation
+            animate(); 
+        };
+
+    </script>
+
+</body>
+</html>

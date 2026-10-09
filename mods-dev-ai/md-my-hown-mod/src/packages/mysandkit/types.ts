@@ -1,4 +1,40 @@
-export type SignalHandler = (...args: unknown[]) => unknown;
+/**
+ * Public config types for the sandkit wrapper.
+ *
+ * These are the *authoring* surface: what a mod passes to
+ * `elements.register`, `structures.register`, and `items.register`. They build
+ * on the host types vendored in `host-types/` so ids stay tagged and optional
+ * fields match the host, instead of collapsing into `Record<string, unknown>`.
+ */
+import type {
+    ElementCollectable,
+    ElementColorVariant,
+    ElementFlammable,
+    Interaction,
+    MatterType,
+    StructureBuildMode,
+    StructureRegisterOptions,
+    StructureRender,
+    StructureRenderUi,
+    StructureVariant,
+} from "./host-types/domain.d.ts";
+
+export type {
+    ElementCollectable,
+    ElementColorVariant,
+    ElementFlammable,
+    Interaction,
+    MatterType,
+    StructureBuildMode,
+    StructureRegisterOptions,
+    StructureRender,
+    StructureRenderUi,
+    StructureVariant,
+};
+
+export type { SignalHandler } from "./host-types/signals.ts";
+export type { ItemInstance, ItemSpriteMount, ItemSpriteMounts } from "./api/items.ts";
+export type { ElementInfoAtCell, ElementPhysicsState } from "./host-types/domain.d.ts";
 
 export type MatterTypeName =
     | "Solid"
@@ -26,7 +62,8 @@ export interface ElementColorVariantFromData {
 }
 
 export interface ElementColors {
-    variants?: number[][];
+    /** Palette entries, RGB or RGBA. */
+    variants?: ElementColorVariant[];
     variantFromDataField1?: ElementColorVariantFromData;
 }
 
@@ -43,7 +80,8 @@ export interface ElementConfig {
     description?: string;
     descriptionKey?: string;
 
-    matterType?: MatterTypeName | number;
+    /** Matter category by name or numeric value; normalised before sending. */
+    matterType?: MatterTypeName | MatterType;
 
     density?: number;
 
@@ -51,59 +89,41 @@ export interface ElementConfig {
 
     materialId?: number;
 
-    colors?: ElementColors | number[][];
+    colors?: ElementColors | ElementColorVariant[];
 
     duration?: number;
     durationRandom?: ElementDurationRandom;
 
-    flammable?: boolean | Record<string, unknown>;
+    flammable?: boolean | ElementFlammable;
     isGrabbable?: boolean;
     isTransportable?: boolean;
 
     hidden?: boolean;
 
-    interactions?: unknown[];
+    /** Tooltip interactions. Typed, no longer `unknown[]`. */
+    interactions?: Interaction[];
 
-    defaultDataFields?: Record<string, number | string | boolean>;
+    /** Named data fields with their default values. */
+    defaultDataFields?: Record<string, number>;
+
+    /**
+     * Collector value for this element.
+     *
+     * Verified in the bundle at `bundel.js` 110675 (`liquidGold` registers
+     * `collectable: { value: 2 }`), read back at 16697 and 48662.
+     */
+    collectable?: ElementCollectable;
+
+    /**
+     * Whether the element appears in the picker. The engine derives this from
+     * `matterType` and `isTransportable` rather than reading it from the
+     * definition (see `bundel.js` 30864-30885), so it is reported on reads
+     * rather than sent on register.
+     */
+    visibleInPicker?: boolean;
 
     getExtraProps?: () => Record<string, unknown>;
 
-    [key: string]: unknown;
-}
-
-export interface StructureBuildMode {
-    type: string;
-
-    directions?: string[];
-    [key: string]: unknown;
-}
-
-export interface StructureVariant {
-    id: string;
-
-    angles: number[];
-}
-
-export interface StructureRenderUi {
-    size?: { width: number; height: number };
-    width?: string;
-    height?: string;
-    offset?: { x: number; y: number };
-    objectPosition?: string;
-    clipToBounds?: boolean;
-    imageName?: string;
-}
-
-export interface StructureRender {
-    imageName?: string;
-    size?: { width: number; height: number };
-    offset?: { x: number; y: number };
-    ui?: StructureRenderUi;
-
-    spritesheet?: {
-        frameBuffer?: { key: string; index?: number };
-        [key: string]: unknown;
-    };
     [key: string]: unknown;
 }
 
@@ -120,11 +140,34 @@ export interface StructureConfig {
 
     hideFromBuildMenu?: boolean;
 
-    alwaysUnlocked?: boolean;
+    /**
+     * Structure id whose unlock also unlocks this one.
+     *
+     * This is the engine's field name (`bundel.js` 125951 — `quantumPortalExit`
+     * sets `unlockedBy: "quantumPortal"`). The mod's own config uses the alias
+     * `unlockNode`, which `register/core/structures.ts` strips before sending.
+     */
+    unlockedBy?: string;
 
+    /** Mod-only alias for {@link unlockedBy}. Never sent to the host. */
     unlockNode?: string;
+
     disallowPick?: boolean;
 
+    /**
+     * Engine field behind {@link disallowPick}. Confirmed in the bundle; the
+     * mod maps one onto the other in `withSelectionGuard`.
+     */
+    disallowSelection?: boolean;
+
+    /**
+     * Mod-only placement cap.
+     *
+     * The engine has **no** `maxPlaced` option — caps come from a
+     * `placementConfigs` entry carrying an `integer` field (see
+     * `PlacementConfigDefinition`). The mod counts these itself in
+     * `register/core/placement-limits.ts` and strips this key.
+     */
     maxPlaced?: number;
 
     blockGridType?: string;
@@ -137,6 +180,12 @@ export interface StructureConfig {
 
     draw?: (...args: never[]) => boolean | void;
 
+    /**
+     * Mod-only key naming the draw routine to attach.
+     *
+     * The engine has no `drawKey`; the mod swaps it for a real `draw`
+     * function and strips the key.
+     */
     drawKey?: string;
 
     defaultData?: Record<string, unknown>;
@@ -148,7 +197,14 @@ export interface StructureConfig {
 
     tooltipHover?: Record<string, unknown>;
 
-    registerOptions?: { useRawShape?: boolean };
+    /**
+     * Wrapper-only options.
+     *
+     * `useRawShape` is not part of the definition the host stores — the mod
+     * passes it as a separate argument to `structures.register` after
+     * removing it from the body.
+     */
+    registerOptions?: StructureRegisterOptions;
     [key: string]: unknown;
 }
 

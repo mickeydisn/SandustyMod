@@ -19,7 +19,14 @@
     "fmt": {
         "useTabs": false,
         "lineWidth": 100,
-        "indentWidth": 4
+        "indentWidth": 4,
+        "exclude": [
+            // Generated reference listings. Their coverage tables rely on
+            // column alignment to stay readable, and `deno fmt` reflows
+            // markdown, which collapses that alignment. Edit by hand and
+            // regenerate the HTML page with `node src/packages/ref/sync_html.mjs`.
+            "**/src/packages/ref/*"
+        ]
     },
     "lint": {
         "rules": {

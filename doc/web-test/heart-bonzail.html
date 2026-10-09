@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Heart Canvas</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            height: 100vh;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        /* Left Menu */
+        .left-menu {
+            width: 260px;
+            background: #1e293b;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            border-right: 1px solid #334155;
+        }
+
+        .left-menu h2 {
+            font-size: 1.2rem;
+            color: #f8fafc;
+        }
+
+        .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #ef4444;
+        }
+
+        .color-input {
+            width: 100%;
+            height: 40px;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Main Panel */
+        .main-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+
+        canvas {
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Left Menu -->
+    <div class="left-menu">
+        <h2>Animation Parameters</h2>
+        <form id="paramsForm">
+            <div class="param-group">
+                <label for="size">Heart Size</label>
+                <input type="range" id="size" min="60" max="240" value="130">
+            </div>
+
+            <div class="param-group">
+                <label for="speed">Animation Speed</label>
+                <input type="range" id="speed" min="0.2" max="3.0" step="0.1" value="1">
+            </div>
+
+            <div class="param-group">
+                <label for="pulse">Pulse Intensity</label>
+                <input type="range" id="pulse" min="0" max="2.5" step="0.1" value="1">
+            </div>
+
+            <div class="param-group">
+                <label for="color">Heart Color</label>
+                <input type="color" id="color" class="color-input" value="#ef4444">
+            </div>
+        </form>
+    </div>
+
+    <!-- Main Panel -->
+    <div class="main-panel">
+        <canvas id="heartCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Animation State
+        let size = 130;
+        let speed = 1;
+        let pulse = 1;
+        let color = '#ef4444';
+        let time = 0;
+
+        // Resize canvas to fit main panel
+        function resizeCanvas() {
+            const panelWidth = window.innerWidth - 260; // Subtract left menu width
+            canvas.width = Math.min(panelWidth * 0.7, 600);
+            canvas.height = window.innerHeight;
+        }
+
+        // Draw the heart shape with effects
+        function drawHeart(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Pulsing scale effect
+            const scale = 1 + (Math.sin(time * speed) * pulse);
+            ctx.scale(scale, scale);
+
+            // Glow effect
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = color;
+
+            // Gradient fill
+            const gradient = ctx.createRadialGradient(0, 0, size / 4, 0, 0, size);
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(1, color);
+
+            ctx.beginPath();
+            const r = size / 2;
+            // Parametric heart equation (0 to π covers the full shape)
+            for (let t = 0; t <= Math.PI; t += Math.PI / 100) {
+                const x = Math.pow(Math.sin(t), 3) * r;
+                const y = -(Math.cos(t) - Math.pow(Math.sin(t), 2) * (2 / 3)) * r;
+                if (t === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+
+            // Close and fill
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Subtle border
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Animation loop
+        function animate() {
+            time += 0.025 * speed;
+
+            // Clear canvas with slight transparency for smooth transitions
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            drawHeart(centerX, centerY);
+            requestAnimationFrame(animate);
+        }
+
+        // Update parameters from form inputs in real-time
+        document.getElementById('size').addEventListener('input', (e) => size = parseInt(e.target.value));
+        document.getElementById('speed').addEventListener('input', (e) => speed = parseFloat(e.target.value));
+        document.getElementById('pulse').addEventListener('input', (e) => pulse = parseFloat(e.target.value));
+        document.getElementById('color').addEventListener('input', (e) => color = e.target.value);
+
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        animate();
+    </script>
+</body>
+</html>

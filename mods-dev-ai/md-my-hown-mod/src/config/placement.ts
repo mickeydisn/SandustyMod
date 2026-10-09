@@ -1,4 +1,5 @@
 import type { PlacementConfigConfig, PlacementFieldConfig } from "../constants.ts";
+import type { PlacementConfigDefinition } from "../packages/mysandkit.ts";
 
 export interface PlacementProblem {
     readonly field: "structureId" | "fields";
@@ -56,8 +57,15 @@ export function placementConfigProblem(
     return null;
 }
 
+/**
+ * Narrowed payload handed to the host.
+ *
+ * Only reached after {@link placementConfigProblem} has passed, so the
+ * discriminated field union holds — this is what turns the engine's
+ * runtime throws into compile-time guarantees.
+ */
 export function placementConfigPayload(
     def: PlacementConfigConfig,
-): { structureId: string; fields: PlacementFieldConfig[] } {
-    return { structureId: def.structureId, fields: def.fields };
+): PlacementConfigDefinition {
+    return { structureId: def.structureId, fields: def.fields } as PlacementConfigDefinition;
 }

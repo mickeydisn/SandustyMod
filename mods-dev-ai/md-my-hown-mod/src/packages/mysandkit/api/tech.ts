@@ -2,6 +2,60 @@ import { g } from "../host.ts";
 import { LOG } from "../../../constants.ts";
 
 export const tech = {
+    /**
+     * Read a registered tech definition.
+     *
+     * Returns `undefined` for an unknown id.
+     */
+    getDefinitionById(id: string): Record<string, unknown> | undefined {
+        try {
+            return g()?.api?.tech?.getDefinitionById?.(id) as
+                | Record<string, unknown>
+                | undefined;
+        } catch (e) {
+            console.warn(`${LOG} tech.getDefinitionById failed`, id, e);
+            return undefined;
+        }
+    },
+
+    /** Whether a tech has been researched. */
+    isResearchedById(id: string): boolean {
+        try {
+            return g()?.api?.tech?.isResearchedById?.(id) === true;
+        } catch (e) {
+            console.warn(`${LOG} tech.isResearchedById failed`, id, e);
+            return false;
+        }
+    },
+
+    /**
+     * Whether a tech is currently locked out.
+     *
+     * Separate from research: a researched tech can still be re-locked.
+     */
+    isLockedById(id: string): boolean {
+        try {
+            return g()?.api?.tech?.isLockedById?.(id) === true;
+        } catch (e) {
+            console.warn(`${LOG} tech.isLockedById failed`, id, e);
+            return false;
+        }
+    },
+
+    /** Force a tech into or out of the locked state. */
+    setLockedById(id: string, locked: boolean): boolean {
+        try {
+            const ns = g()?.api?.tech;
+            const fn = ns?.setLockedById;
+            if (typeof fn !== "function") return false;
+            fn.call(ns, id, locked);
+            return true;
+        } catch (e) {
+            console.warn(`${LOG} tech.setLockedById failed`, id, locked, e);
+            return false;
+        }
+    },
+
     registerDefinition(id: string, body: Record<string, unknown>): boolean {
         try {
             const ns = g()?.api?.tech;
@@ -13,6 +67,11 @@ export const tech = {
             console.error(`${LOG} tech.registerDefinition failed`, id, e);
             return false;
         }
+    },
+
+    /** Host alias of {@link registerDefinition}. */
+    addDefinition(id: string, body: Record<string, unknown>): boolean {
+        return tech.registerDefinition(id, body);
     },
     registerNode(
         id: string,

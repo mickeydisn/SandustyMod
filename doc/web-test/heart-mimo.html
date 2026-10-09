@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart FX — 2D Canvas Playground</title>
+    <style>
+        :root {
+            --bg-color: #0b1020;
+            --panel-bg: #131a2e;
+            --panel-2: #0e1425;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #2a3550;
+            --heart-color: #ff2d55;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ---------- Left menu / parameter form ---------- */
+        .sidebar {
+            flex: 0 0 300px;
+            width: 300px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .sidebar h1 { font-size: 1.05rem; margin: 0 0 4px; }
+
+        .sidebar .sub {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            line-height: 1.45;
+            margin: 0 0 14px;
+        }
+
+        .group {
+            background-color: var(--panel-2);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 14px;
+        }
+
+        .group > h2 {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.09em;
+            margin: 0;
+            padding: 10px 12px 4px;
+            text-transform: uppercase;
+        }
+
+        .group .body { padding: 0 12px 12px; }
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 10px 0 3px;
+        }
+
+        .row label { color: var(--text-color); font-size: 0.8rem; }
+
+        .row output {
+            background-color: rgba(59, 130, 246, 0.14);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--accent-color);
+            font-size: 0.7rem;
+            font-variant-numeric: tabular-nums;
+            padding: 1px 6px;
+            white-space: nowrap;
+        }
+
+        input[type="range"] {
+            accent-color: var(--heart-color);
+            display: block;
+            margin: 0 0 8px;
+            width: 100%;
+        }
+
+        input[type="color"] {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            height: 26px;
+            padding: 1px;
+            width: 54px;
+        }
+
+        select {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-size: 0.8rem;
+            padding: 6px 8px;
+            width: 100%;
+        }
+
+        .check {
+            align-items: center;
+            cursor: pointer;
+            display: flex;
+            font-size: 0.82rem;
+            gap: 8px;
+            padding: 5px 0;
+        }
+
+        .check input { accent-color: var(--heart-color); }
+
+        .btns {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: 1fr 1fr;
+            margin-top: 4px;
+        }
+
+        button {
+            background-color: var(--panel-2);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 8px 6px;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+
+        button:hover {
+            background-color: #1a2440;
+            border-color: var(--accent-color);
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+
+        button.primary:hover { background-color: var(--accent-hover); }
+
+        .btn-wide { grid-column: 1 / -1; }
+
+        /* ---------- Main panel ---------- */
+        .stage {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .stage-head {
+            align-items: center;
+            background-color: var(--panel-2);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            font-size: 0.74rem;
+            gap: 14px;
+            justify-content: space-between;
+            padding: 8px 14px;
+        }
+
+        .stage-head .hint { color: var(--text-muted); }
+
+        .stats {
+            color: var(--text-muted);
+            display: flex;
+            font-variant-numeric: tabular-nums;
+            gap: 14px;
+        }
+
+        .stats b { color: var(--accent-color); font-weight: 600; }
+
+        #fx {
+            cursor: crosshair;
+            display: block;
+            flex: 1;
+            height: 100%;
+            width: 100%;
+        }
+
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 8px;
+        }
+
+        @media (max-width: 760px) {
+            .app { flex-direction: column; }
+            .sidebar { flex: 0 0 44vh; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- ===================== LEFT MENU : PARAMETER FORM ===================== -->
+        <aside class="sidebar">
+            <h1>Heart FX</h1>
+            <p class="sub">2D canvas heart animation. Tune the parameters on the left — the preview updates live.</p>
+
+            <form id="params" autocomplete="off">
+                <!-- Shape -->
+                <section class="group">
+                    <h2>Shape</h2>
+                    <div class="body">
+                        <div class="row">
+                            <label for="size">Size</label>
+                            <output data-out="size">160 px</output>
+                        </div>
+                        <input type="range" id="size" data-param="size" min="40" max="360" step="4" value="160">
+
+                        <div class="row">
+                            <label for="spin">Rotation</label>
+                            <output data-out="spin">0 °/s</output>
+                        </div>
+                        <input type="range" id="spin" data-param="spin" min="-120" max="120" step="1" value="0">
+
+                        <div class="row">
+                            <label for="style">Render style</label>
+                        </div>
+                        <select id="style" data-param="style">
+                            <option value="fill">Solid fill</option>
+                            <option value="gradient" selected>Gradient glow</option>
+                            <option value="outline">Outline</option>
+                            <option value="neon">Neon</option>
+                            <option value="wireframe">Wireframe</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- Beat -->
+                <section class="group">
+                    <h2>Beat</h2>
+                    <div class="body">
+                        <div class="row">
+                            <label for="bpm">Heart rate</label>
+                            <output data-out="bpm">72 BPM</output>
+                        </div>
+                        <input type="range" id="bpm" data-param="bpm" min="30" max="200" step="1" value="72">
+
+                        <div class="row">
+                            <label for="pulse">Pulse strength</label>
+                            <output data-out="pulse">0.16</output>
+                        </div>
+                        <input type="range" id="pulse" data-param="pulse" min="0" max="0.5" step="0.01" value="0.16">
+                    </div>
+                </section>
+                <!-- Look -->
+                <section class="group">
+                    <h2>Look</h2>
+                    <div class="body">
+                        <div class="row">
+                            <label for="heartColor">Heart color</label>
+                            <input type="color" id="heartColor" data-param="heartColor" value="#ff2d55">
+                        </div>
+                        <div class="row">
+                            <label for="glowColor">Glow color</label>
+                            <input type="color" id="glowColor" data-param="glowColor" value="#ff6b9d">
+                        </div>
+                        <div class="row">
+                            <label for="bgColor">Background</label>
+                            <input type="color" id="bgColor" data-param="bgColor" value="#070b14">
+                        </div>
+
+                        <div class="row">
+                            <label for="glow">Glow</label>
+                            <output data-out="glow">60 %</output>
+                        </div>
+                        <input type="range" id="glow" data-param="glow" min="0" max="100" step="1" value="60">
+
+                        <div class="row">
+                            <label for="trail">Trail fade</label>
+                            <output data-out="trail">25 %</output>
+                        </div>
+                        <input type="range" id="trail" data-param="trail" min="0" max="95" step="1" value="25">
+                    </div>
+                </section>
+
+                <!-- Effects -->
+                <section class="group">
+                    <h2>Effects</h2>
+                    <div class="body">
+                        <div class="row">
+                            <label for="particles">Particles</label>
+                            <output data-out="particles">90</output>
+                        </div>
+                        <input type="range" id="particles" data-param="particles" min="0" max="400" step="10" value="90">
+
+                        <label class="check"><input type="checkbox" data-param="shock" checked> Beat shockwaves</label>
+                        <label class="check"><input type="checkbox" data-param="rings" checked> Orbit rings</label>
+                        <label class="check"><input type="checkbox" data-param="sparkles" checked> Sparkles</label>
+                        <label class="check"><input type="checkbox" data-param="ecg" checked> ECG monitor</label>
+                        <label class="check"><input type="checkbox" data-param="stars" checked> Star field</label>
+                    </div>
+                </section>
+
+                <div class="btns">
+                    <button type="button" id="btnPause" class="primary">Pause</button>
+                    <button type="button" id="btnBeat">Force beat</button>
+                    <button type="button" id="btnReset">Reset</button>
+                    <button type="button" id="btnRandom">Randomize</button>
+                    <button type="button" id="btnClear" class="btn-wide">Clear trails</button>
+                </div>
+            </form>
+        </aside>
+
+        <!-- ===================== MAIN PANEL : CANVAS ===================== -->
+        <main class="stage">
+            <div class="stage-head">
+                <span class="hint">Click the canvas to spawn a burst</span>
+                <span class="stats">
+                    <span>FPS <b id="statFps">–</b></span>
+                    <span>BPM <b id="statBpm">72</b></span>
+                    <span>Parts <b id="statParts">0</b></span>
+                </span>
+            </div>
+            <canvas id="fx"></canvas>
+        </main>
+    </div>
+
+    <script>
+        'use strict';
+
+        /* ============================================================
+           Parameters (bound to the left-hand form via data-param)
+           ============================================================ */
+        const DEFAULTS = {
+            size: 160, spin: 0, style: 'gradient',
+            bpm: 72, pulse: 0.16,
+            heartColor: '#ff2d55', glowColor: '#ff6b9d', bgColor: '#070b14',
+            glow: 60, trail: 25,
+            particles: 90,
+            shock: true, rings: true, sparkles: true, ecg: true, stars: true
+        };
+        const P = Object.assign({}, DEFAULTS);
+
+        const UNITS = { size: ' px', spin: ' °/s', bpm: ' BPM', pulse: '', glow: ' %', trail: ' %', particles: '' };
+        const form = document.getElementById('params');
+        const controls = Array.from(form.querySelectorAll('[data-param]'));
+        const outputs = Array.from(form.querySelectorAll('[data-out]'));
+
+        function formatValue(key, val) {
+            if (key === 'pulse') return Number(val).toFixed(2);
+            return String(val) + (UNITS[key] || '');
+        }
+
+        function readControl(el) {
+            const key = el.dataset.param;
+            if (el.type === 'checkbox') P[key] = el.checked;
+            else if (el.type === 'range') P[key] = parseFloat(el.value);
+            else P[key] = el.value;
+            const out = form.querySelector('[data-out="' + key + '"]');
+            if (out) out.textContent = formatValue(key, el.value);
+        }
+
+        function writeControl(el) {
+            const key = el.dataset.param;
+            if (el.type === 'checkbox') el.checked = !!P[key];
+            else el.value = P[key];
+            const out = form.querySelector('[data-out="' + key + '"]');
+            if (out) out.textContent = formatValue(key, P[key]);
+        }
+
+        controls.forEach(el => el.addEventListener('input', () => readControl(el)));
+        form.addEventListener('submit', e => e.preventDefault());
+
+        /* ============================================================
+           Canvas setup (DPR aware + resize aware)
+           ============================================================ */
+        const canvas = document.getElementById('fx');
+        const ctx = canvas.getContext('2d');
+        let W = 0, H = 0;
+
+        function resize() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const rect = canvas.getBoundingClientRect();
+            W = Math.max(1, Math.floor(rect.width));
+            H = Math.max(1, Math.floor(rect.height));
+            canvas.width = Math.floor(W * dpr);
+            canvas.height = Math.floor(H * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.fillStyle = P.bgColor;
+            ctx.fillRect(0, 0, W, H);
+            initStars();
+        }
+        new ResizeObserver(resize).observe(canvas);
+
+        /* ============================================================
+           Heart geometry — parametric heart curve, normalized
+           x = 16 sin³t ; y = 13cos t − 5cos 2t − 2cos 3t − cos 4t
+           ============================================================ */
+        const HEART = (() => {
+            const pts = [];
+            const N = 160;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (let i = 0; i < N; i++) {
+                const t = (i / N) * Math.PI * 2;
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                pts.push([x, y]);
+                minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+                minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+            }
+            const scale = 2 / Math.max(maxX - minX, maxY - minY); // fits in [-1, 1]
+            const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+            return pts.map(([x, y]) => [(x - cx) * scale, (y - cy) * scale]);
+        })();
+
+        // Build the heart path on the context, centered at (cx, cy), width = size*2
+        function heartPath(cx, cy, size, rot, squash) {
+            const cos = Math.cos(rot), sin = Math.sin(rot);
+            ctx.beginPath();
+            for (let i = 0; i < HEART.length; i++) {
+                let x = HEART[i][0] * size, y = HEART[i][1] * size * (squash || 1);
+                const rx = x * cos - y * sin;
+                const ry = x * sin + y * cos;
+                const px = cx + rx, py = cy - ry; // flip Y so heart points down
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+        }
+        /* ============================================================
+           Beat clock — "lub-dub" envelope over a phase in [0, 1)
+           ============================================================ */
+        let beatTime = 0;      // seconds elapsed on the beat clock
+        let prevBeatIdx = 0;
+        let pulseKick = 0;     // extra envelope from "force beat"
+
+        const gauss = (x, mu, s) => Math.exp(-((x - mu) * (x - mu)) / (2 * s * s));
+
+        // Two-thump heartbeat envelope (systole peaks, diastole rest)
+        function beatEnvelope(ph) {
+            return gauss(ph, 0.06, 0.045) + 0.55 * gauss(ph, 0.26, 0.06);
+        }
+
+        /* ============================================================
+           Particle + star + shockwave systems
+           ============================================================ */
+        let particles = [];
+        let shockwaves = [];
+        let stars = [];
+
+        function initStars() {
+            stars = [];
+            const n = Math.round((W * H) / 9000);
+            for (let i = 0; i < n; i++) {
+                stars.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    r: 0.4 + Math.random() * 1.3,
+                    tw: Math.random() * Math.PI * 2,
+                    sp: 0.5 + Math.random() * 2
+                });
+            }
+        }
+
+        function spawnParticles(cx, cy, count, spread, power) {
+            for (let i = 0; i < count; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const off = Math.random() * spread;
+                const sp = (30 + Math.random() * 140) * power;
+                particles.push({
+                    x: cx + Math.cos(a) * off,
+                    y: cy + Math.sin(a) * off,
+                    vx: Math.cos(a) * sp,
+                    vy: Math.sin(a) * sp - 20,
+                    life: 0,
+                    ttl: 0.7 + Math.random() * 1.4,
+                    r: 1 + Math.random() * 2.6
+                });
+            }
+            if (particles.length > 1400) particles.splice(0, particles.length - 1400);
+        }
+
+        function onBeat(cx, cy) {
+            if (P.shock) shockwaves.push({ x: cx, y: cy, r: 4, life: 0, ttl: 0.9 });
+            if (P.particles > 0) spawnParticles(cx, cy, Math.round(P.particles * 0.25), P.size * 0.5, 1.1);
+        }
+
+        /* ============================================================
+           ECG buffer — scrolling waveform synced to the beat phase
+           ============================================================ */
+        const ECG_LEN = 420;
+        let ecgBuf = new Array(ECG_LEN).fill(0);
+
+        function ecgSample(ph) {
+            // P wave, QRS complex, T wave within one cardiac cycle
+            return 0.12 * gauss(ph, 0.14, 0.03)
+                - 0.10 * gauss(ph, 0.26, 0.012)
+                + 1.00 * gauss(ph, 0.30, 0.013)
+                - 0.24 * gauss(ph, 0.34, 0.016)
+                + 0.22 * gauss(ph, 0.52, 0.05);
+        }
+        /* ============================================================
+           Drawing helpers
+           ============================================================ */
+        function hexToRgba(hex, a) {
+            const h = hex.replace('#', '');
+            const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+            return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+        }
+
+        function drawStars(t) {
+            if (!P.stars) return;
+            for (const s of stars) {
+                const a = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(t * s.sp + s.tw));
+                ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')';
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawSparkles(cx, cy, base, t) {
+            if (!P.sparkles) return;
+            const count = 10;
+            for (let i = 0; i < count; i++) {
+                const ang = (i / count) * Math.PI * 2 + t * 0.3;
+                const dist = base * (1.25 + 0.18 * Math.sin(t * 1.7 + i));
+                const x = cx + Math.cos(ang) * dist;
+                const y = cy + Math.sin(ang) * dist * 0.85;
+                const tw = 0.5 + 0.5 * Math.sin(t * 4 + i * 1.3);
+                const r = 2 + 4 * tw;
+                ctx.strokeStyle = hexToRgba(P.glowColor, 0.35 + 0.5 * tw);
+                ctx.lineWidth = 1.4;
+                ctx.beginPath();
+                ctx.moveTo(x - r, y); ctx.lineTo(x + r, y);
+                ctx.moveTo(x, y - r); ctx.lineTo(x, y + r);
+                ctx.stroke();
+            }
+        }
+
+        function drawOrbitRings(cx, cy, base, t) {
+            if (!P.rings) return;
+            for (let k = 0; k < 2; k++) {
+                const ang = t * (0.6 + k * 0.35) * (k % 2 ? -1 : 1);
+                const rx = base * (1.45 + k * 0.35);
+                const ry = rx * (0.30 + k * 0.12);
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(ang);
+                ctx.strokeStyle = hexToRgba(P.glowColor, 0.30 - k * 0.08);
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                // bead travelling along the ring
+                const a2 = (t * (1.5 + k)) % (Math.PI * 2);
+                ctx.fillStyle = P.glowColor;
+                ctx.beginPath();
+                ctx.arc(Math.cos(a2) * rx, Math.sin(a2) * ry, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        function drawHeart(cx, cy, base, rot, scale) {
+            const size = base * scale;
+            ctx.save();
+
+            // Soft halo behind the heart
+            const halo = ctx.createRadialGradient(cx, cy, size * 0.1, cx, cy, size * 1.7);
+            halo.addColorStop(0, hexToRgba(P.glowColor, 0.10 + 0.22 * Math.min(1, (scale - 1) / Math.max(P.pulse, 0.05))));
+            halo.addColorStop(1, hexToRgba(P.glowColor, 0));
+            ctx.fillStyle = halo;
+            ctx.fillRect(cx - size * 2, cy - size * 2, size * 4, size * 4);
+
+            const glowPx = (P.glow / 100) * 55;
+            ctx.shadowBlur = glowPx;
+            ctx.shadowColor = P.glowColor;
+
+            switch (P.style) {
+                case 'fill': {
+                    heartPath(cx, cy, size, rot, 1);
+                    ctx.fillStyle = P.heartColor;
+                    ctx.fill();
+                    break;
+                }
+                case 'gradient': {
+                    heartPath(cx, cy, size, rot, 1);
+                    const g = ctx.createRadialGradient(cx, cy - size * 0.3, size * 0.1, cx, cy, size * 1.3);
+                    g.addColorStop(0, P.glowColor);
+                    g.addColorStop(1, P.heartColor);
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                    break;
+                }
+                case 'outline': {
+                    heartPath(cx, cy, size, rot, 1);
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = P.heartColor;
+                    ctx.stroke();
+                    break;
+                }
+                case 'neon': {
+                    heartPath(cx, cy, size, rot, 1);
+                    ctx.lineWidth = 7;
+                    ctx.strokeStyle = hexToRgba(P.heartColor, 0.35);
+                    ctx.stroke();
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.shadowBlur = glowPx * 1.6;
+                    ctx.stroke();
+                    break;
+                }
+                case 'wireframe': {
+                    heartPath(cx, cy, size, rot, 1);
+                    ctx.lineWidth = 1.6;
+                    ctx.strokeStyle = hexToRgba(P.heartColor, 0.9);
+                    ctx.stroke();
+                    for (let f = 0.75; f > 0.1; f -= 0.2) {
+                        heartPath(cx, cy, size * f, rot, 1);
+                        ctx.strokeStyle = hexToRgba(P.glowColor, 0.30 + f * 0.4);
+                        ctx.stroke();
+                    }
+                    // spokes from the centre out to the outline
+                    ctx.strokeStyle = hexToRgba(P.glowColor, 0.22);
+                    ctx.beginPath();
+                    const cos = Math.cos(rot), sin = Math.sin(rot);
+                    for (let i = 0; i < HEART.length; i += 8) {
+                        const x = HEART[i][0] * size, y = HEART[i][1] * size;
+                        ctx.moveTo(cx + (x * cos - y * sin), cy - (x * sin + y * cos));
+                        ctx.lineTo(cx, cy);
+                    }
+                    ctx.stroke();
+                    break;
+                }
+            }
+
+            // Inner highlight to give the shape some volume
+            if (P.style === 'fill' || P.style === 'gradient') {
+                ctx.shadowBlur = 0;
+                const shine = ctx.createRadialGradient(
+                    cx - size * 0.35, cy - size * 0.45, 0,
+                    cx - size * 0.35, cy - size * 0.45, size * 0.9
+                );
+                shine.addColorStop(0, 'rgba(255,255,255,0.35)');
+                shine.addColorStop(1, 'rgba(255,255,255,0)');
+                heartPath(cx, cy, size, rot, 1);
+                ctx.fillStyle = shine;
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+        function drawParticles(dt) {
+            if (!particles.length) return;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life += dt;
+                if (p.life >= p.ttl) { particles.splice(i, 1); continue; }
+                p.vy += 26 * dt;              // gravity
+                p.vx *= (1 - 1.4 * dt);       // drag
+                p.vy *= (1 - 1.4 * dt);
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                const k = 1 - p.life / p.ttl;
+                const r = p.r * (0.4 + 0.6 * k);
+                ctx.fillStyle = hexToRgba(P.glowColor, 0.75 * k);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawShockwaves(dt) {
+            if (!shockwaves.length) return;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = shockwaves.length - 1; i >= 0; i--) {
+                const s = shockwaves[i];
+                s.life += dt;
+                if (s.life >= s.ttl) { shockwaves.splice(i, 1); continue; }
+                const k = 1 - s.life / s.ttl;
+                s.r += (P.size * 2.6 + 260) * dt;
+                ctx.strokeStyle = hexToRgba(P.glowColor, 0.55 * k);
+                ctx.lineWidth = 1 + 3 * k;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawEcg(waveH) {
+            const top = H - waveH;
+            // Solid backing so trails don't smear the trace
+            ctx.fillStyle = P.bgColor;
+            ctx.fillRect(0, top, W, waveH);
+            ctx.strokeStyle = hexToRgba(P.glowColor, 0.25);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, top + 0.5);
+            ctx.lineTo(W, top + 0.5);
+            ctx.stroke();
+
+            // grid
+            ctx.strokeStyle = hexToRgba(P.glowColor, 0.07);
+            ctx.beginPath();
+            for (let x = 0; x < W; x += 24) { ctx.moveTo(x + 0.5, top); ctx.lineTo(x + 0.5, H); }
+            for (let y = top + 12; y < H; y += 16) { ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); }
+            ctx.stroke();
+
+            const baseY = top + waveH * 0.62;
+            const amp = waveH * 0.42;
+            ctx.save();
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = P.glowColor;
+            ctx.strokeStyle = P.glowColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < ecgBuf.length; i++) {
+                const x = (i / (ecgBuf.length - 1)) * W;
+                const y = baseY - ecgBuf[i] * amp;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            // leading dot at the newest sample
+            const lx = W - 1, ly = baseY - ecgBuf[ecgBuf.length - 1] * amp;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(lx - 1, ly, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        /* ============================================================
+           Controls
+           ============================================================ */
+        let paused = false;
+        const btnPause = document.getElementById('btnPause');
+
+        btnPause.addEventListener('click', () => {
+            paused = !paused;
+            btnPause.textContent = paused ? 'Play' : 'Pause';
+        });
+
+        document.getElementById('btnBeat').addEventListener('click', () => {
+            pulseKick = 1;
+            onBeat(cx(), cy());
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            Object.assign(P, DEFAULTS);
+            controls.forEach(writeControl);
+            particles = [];
+            shockwaves = [];
+            ecgBuf.fill(0);
+            resize();
+        });
+
+        document.getElementById('btnRandom').addEventListener('click', () => {
+            const rnd = (a, b) => a + Math.random() * (b - a);
+            const hex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+            Object.assign(P, {
+                size: Math.round(rnd(60, 320) / 4) * 4,
+                spin: Math.round(rnd(-90, 90)),
+                style: ['fill', 'gradient', 'outline', 'neon', 'wireframe'][Math.floor(Math.random() * 5)],
+                bpm: Math.round(rnd(45, 160)),
+                pulse: +rnd(0.05, 0.35).toFixed(2),
+                heartColor: hex(), glowColor: hex(), bgColor: '#070b14',
+                glow: Math.round(rnd(20, 100)),
+                trail: Math.round(rnd(0, 80)),
+                particles: Math.round(rnd(0, 350) / 10) * 10
+            });
+            controls.forEach(writeControl);
+        });
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            ctx.fillStyle = P.bgColor;
+            ctx.fillRect(0, 0, W, H);
+            particles = [];
+            shockwaves = [];
+        });
+
+        canvas.addEventListener('pointerdown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left, y = e.clientY - rect.top;
+            shockwaves.push({ x, y, r: 4, life: 0, ttl: 0.7 });
+            spawnParticles(x, y, 40 + Math.round(P.particles * 0.4), 10, 1.2);
+        });
+        /* ============================================================
+           Main loop
+           ============================================================ */
+        const statFps = document.getElementById('statFps');
+        const statBpm = document.getElementById('statBpm');
+        const statParts = document.getElementById('statParts');
+
+        const cx = () => W / 2;
+        const cy = () => (P.ecg ? (H - 110) / 2 : H / 2);
+
+        let rot = 0;
+        let last = performance.now();
+        let fpsAcc = 0, fpsCount = 0, fpsTimer = 0, uiTimer = 0;
+        let ecgAcc = 0;
+        let spawnBudget = 0;
+
+        function frame(now) {
+            let dt = (now - last) / 1000;
+            last = now;
+            if (dt > 0.1) dt = 0.1; // clamp after tab switches
+            const t = now / 1000;
+
+            // ---- advance clocks ----
+            if (!paused) {
+                beatTime += dt;
+                rot += (P.spin * Math.PI / 180) * dt;
+                pulseKick = Math.max(0, pulseKick - dt * 3);
+            }
+
+            const cycle = 60 / P.bpm;
+            const beatIdx = Math.floor(beatTime / cycle);
+            const phase = (beatTime % cycle) / cycle;
+
+            const hc = { x: cx(), y: cy() };
+            if (beatIdx !== prevBeatIdx) {
+                prevBeatIdx = beatIdx;
+                if (!paused) onBeat(hc.x, hc.y);
+            }
+
+            // ---- background with trail persistence ----
+            const fade = 1 - (P.trail / 100) * 0.92;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = hexToRgba(P.bgColor, fade);
+            ctx.fillRect(0, 0, W, H);
+
+            drawStars(t);
+
+            // ---- heartbeat scale (lub-dub) ----
+            const env = beatEnvelope(phase) + pulseKick;
+            const scale = 1 + P.pulse * env;
+
+            // ---- effects behind the heart ----
+            drawOrbitRings(hc.x, hc.y, P.size, t);
+            drawShockwaves(paused ? 0 : dt);
+            drawSparkles(hc.x, hc.y, P.size, t);
+
+            drawHeart(hc.x, hc.y, P.size, rot, scale);
+
+            // ---- particles (continuous emission + beat bursts) ----
+            if (!paused && P.particles > 0) {
+                const emit = P.particles * dt * 0.9;
+                let n = Math.floor(emit);
+                spawnBudget += emit - n;
+                if (spawnBudget >= 1) { n += Math.floor(spawnBudget); spawnBudget %= 1; }
+                if (n > 0) spawnParticles(hc.x, hc.y, n, P.size * 0.7, 0.55);
+            }
+            drawParticles(paused ? 0 : dt);
+
+            // ---- ECG ----
+            if (P.ecg) {
+                if (!paused) {
+                    const samplesPerFrame = dt * (P.bpm / 60) * 140; // 140 samples per cardiac cycle
+                    ecgAcc += samplesPerFrame;
+                    while (ecgAcc >= 1) {
+                        ecgAcc -= 1;
+                        ecgBuf.shift();
+                        ecgBuf.push(ecgSample(phase));
+                    }
+                }
+                drawEcg(110);
+            }
+
+            // ---- HUD ----
+            fpsCount++;
+            fpsTimer += dt;
+            uiTimer += dt;
+            if (fpsTimer >= 0.5) {
+                fpsAcc = fpsCount / fpsTimer;
+                fpsCount = 0;
+                fpsTimer = 0;
+            }
+            if (uiTimer >= 0.25) {
+                uiTimer = 0;
+                statFps.textContent = fpsAcc ? fpsAcc.toFixed(0) : '–';
+                statBpm.textContent = String(P.bpm);
+                statParts.textContent = String(particles.length);
+            }
+
+            requestAnimationFrame(frame);
+        }
+
+        // ---- boot ----
+        controls.forEach(writeControl);
+        resize();
+        requestAnimationFrame(frame);
+
+
+
+
+
+
+    </script>
+
+
+

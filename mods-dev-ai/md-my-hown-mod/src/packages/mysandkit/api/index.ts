@@ -6,6 +6,10 @@ import { rendering } from "./rendering.ts";
 import { elements } from "./elements.ts";
 import { grid } from "./grid.ts";
 import { player } from "./player.ts";
+import { lights } from "./lights.ts";
+import { camera } from "./camera.ts";
+import { patterns } from "./patterns.ts";
+import { shared } from "./shared.ts";
 import { structures } from "./structures.ts";
 import { items } from "./items.ts";
 import { tech } from "./tech.ts";
@@ -53,6 +57,10 @@ export const api = {
     elements,
     grid,
     player,
+    lights,
+    camera,
+    patterns,
+    shared,
     structures,
     items,
     tech,

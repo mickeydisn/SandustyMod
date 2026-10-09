@@ -8,51 +8,106 @@ window.MD_SCHEMA = (function () {
   const RECIPE_KINDS = ["grower","planterBox","shaker","kineticPress","condenser","steamDryer","synthesizer","snowmaker","smelter","structure"];
   const BUILD_MODES = ["single","singleDirectional","line","launcherRectUp","launcherRectSide","rectangle","rectangleDirectional"];
   const MENU_GROUPS = [
-    { key:"content", label:"Content", hint:"What the player sees",
+    { key:"memory", label:"Memory", hint:"Shared process values",
+      doc:"Buffers store named values every process in this mod can read and write. Use them as shared state between signals, processing, and items — not world content the player sees.",
       items:[
-        {key:"terrains", label:"Terrains", color:"#a08060"},
-        {key:"elements", label:"Elements", color:"#6b9eff"},
-        {key:"structures", label:"Structures", color:"#5ec4a0"},
-        {key:"placementConfigs", label:"Placement fields", color:"#70a090"},
-        {key:"structureBehaviors", label:"Behaviours", color:"#60b0a0"},
-        {key:"signals", label:"Signals", color:"#f5b880"},
-        {key:"items", label:"Items", color:"#b794f4"},
-        {key:"excavationProfiles", label:"Excavation profiles", color:"#90b0a0"},
-        {key:"projectiles", label:"Projectiles", color:"#b0a0e0"},
-        {key:"buffers", label:"Buffer", color:"#8fbc8f"},
+        {key:"buffers", label:"Buffer", color:"#8fbc8f",
+          doc:"A path-keyed store (bool or string). Processes use bufferRead / bufferWrite / bufferIncrement. Declare paths here so Program steps can pick them as ⌗buffer tags."},
       ]},
-    { key:"production", label:"Production", hint:"How things transform",
+    { key:"elements", label:"Elements", hint:"World matter & reactions",
+      doc:"Matter the simulation moves and transforms: terrains (solid cells), elements (sand, fluids, gases), and the rules that change them (behaviours, contact reactions, machine recipes).",
       items:[
-        {key:"contacts", label:"Contact reactions", color:"#e8b84a"},
-        {key:"recipes", label:"Machine recipes", color:"#e07a5f"},
+        {key:"terrains", label:"Terrains", color:"#a08060",
+          doc:"Static or diggable ground cells. HP, colours, excavation drops, and flags (fog, flammable, building). Distinct from elements: terrains sit under the particle simulation."},
+        {key:"elements", label:"Elements", color:"#6b9eff",
+          doc:"Simulated matter types (solid, liquid, gas, particle…). Density, colour, duration, flammability, and interactions. IDs become ⌗element tags in programs."},
+        {key:"structureBehaviors", label:"Behaviours", color:"#60b0a0", nest:1,
+          doc:"Behaviour definitions attached under elements/structures in the mod panel. Describe custom per-tick or event behaviour hooks linked to content."},
+        {key:"contacts", label:"Contact reactions", color:"#e8b84a", nest:1,
+          doc:"When two element types touch, produce outputs or side effects. Pair element A/B with result rules — the contact reaction graph of the world."},
+        {key:"recipes", label:"Machine recipes", color:"#e07a5f", nest:1,
+          doc:"Inputs → outputs for processing structures (growers, presses, converters). Kind selects the machine family; link to a structure via process or recipe id."},
+      ]},
+    { key:"structures", label:"Structures", hint:"Buildings & process links",
+      doc:"Placeable buildings: footprint, unlock, render, and the programs that run when they process or receive signals. ProcessorLink ties a structure type to a processing pipeline.",
+      items:[
+        {key:"structures", label:"Structures", color:"#5ec4a0",
+          doc:"Building definitions: id, shape, category, unlock node, render, default data. The id is the ⌗structure content tag used by build/query actions."},
+        {key:"placementConfigs", label:"Placement fields", color:"#70a090", nest:1,
+          doc:"Hotbar / placement UI fields for structures (widgets under Structures in the game panel). Not peer content — they qualify how a structure is placed."},
+        {key:"signals", label:"Signals", color:"#f5b880", nest:1,
+          doc:"Signal wiring for structures: targets, modes, and how outputs connect. Used with Interact:PROG (scope signal)."},
+        {key:"programV2", label:"Interact:PROG", color:"#ffe700", nest:1, defaultScope:"signal", menuId:"prog-signal",
+          doc:"Program v2 steps that call mysandkit.api.* when the structure’s signal / interact path runs. Scope is fixed to signal for this list."},
+        {key:"processing", label:"ProcessorLink", color:"#d64550",
+          doc:"Links a structure type to a processing pipeline (grower, shaker, kinetic press, custom). Points at processing definitions and Program v2 processing scope."},
+        {key:"programV2", label:"Processing:PROG", color:"#fbbf24", nest:1, defaultScope:"processing", menuId:"prog-processing",
+          doc:"Program v2 for the processing tick of a structure. Scope processing — drag mysandkit api calls that run each process cycle."},
+      ]},
+    { key:"action", label:"Action", hint:"Items & input",
+      doc:"Player tools and input: items (weapons, tools), excavation and projectile data, key bindings, and programs that fire on trigger input.",
+      items:[
+        {key:"items", label:"Items", color:"#b794f4",
+          doc:"Holdable items: sprite, cooldown, category, optional handler / process id. Unlocked via tech or inventory grants."},
+        {key:"excavationProfiles", label:"Excavation profiles", color:"#90b0a0", nest:1,
+          doc:"How an item digs: radius, filters, strength. Referenced by items and by itemExcavate / grid.excavate helpers."},
+        {key:"projectiles", label:"Projectiles", color:"#b0a0e0", nest:1,
+          doc:"Projectile blueprints for shooting items: speed, gravity, impact. Used by itemShoot / projectiles.spawnAtWorld."},
+        {key:"inputBindings", label:"Input bindings", color:"#c97a5c",
+          doc:"Map keys / buttons to actions or programs. Pair with Processing:PROG (trigger scope) for input-driven logic."},
+        {key:"programV2", label:"Processing:PROG", color:"#ffe700", nest:1, defaultScope:"trigger", menuId:"prog-trigger",
+          doc:"Program v2 with scope trigger — runs from input bindings / trigger call sites. Same store as other Program v2 entries, filtered by scope."},
       ]},
     { key:"tech", label:"Tech", hint:"Research & upgrades",
+      doc:"Research tree and item upgrades: tech nodes unlock content; upgrade categories group per-item upgrade tracks.",
       items:[
-        {key:"unlockNodes", label:"Unlock nodes", color:"#7aa2f7"},
-        {key:"techs", label:"Tech nodes", color:"#5b8def"},
-        {key:"upgrades", label:"Upgrades", color:"#c084fc"},
-        {key:"upgradeCategories", label:"Upgrade categories", color:"#a78b9a"},
+        {key:"techs", label:"Tech nodes", color:"#5b8def",
+          doc:"Research definitions: cost, prerequisites, unlocks (structures, items, recipes). Register via tech API."},
+        {key:"unlockNodes", label:"Unlock nodes", color:"#7aa2f7", nest:1,
+          doc:"Unlock node ids referenced by structures (unlockNode field) and tech unlock lists. The gate between research and build menu."},
+        {key:"upgradeCategories", label:"Upgrade categories", color:"#a78b9a",
+          doc:"Groups of upgrades under an item (e.g. damage, capacity). Categories organise the upgrade UI."},
+        {key:"upgrades", label:"Upgrades", color:"#c084fc", nest:1,
+          doc:"Single upgrade levels: item id, upgrade id, effects. setLevelById / Program v2 upgrades.* can change levels at runtime."},
       ]},
-    { key:"actions", label:"Actions", hint:"Player, clock & programs",
+    { key:"actions", label:"Actions", hint:"Triggers, hooks & programs",
+      doc:"Time-based triggers, engine hook modifiers, and legacy HandlerAction programs (role-based catalogue). Prefer Program v2 (mysandkit) for new work.",
       items:[
-        {key:"triggers", label:"Triggers", color:"#f0a070"},
-        {key:"inputBindings", label:"Input bindings", color:"#c97a5c"},
-        {key:"processing", label:"ProcessorLink", color:"#d64550"},
-        {key:"modifiers", label:"Hook modifiers", color:"#e89870"},
-        {key:"processes", label:"Program", color:"#fbbf24"},
-        {key:"programV2", label:"Program v2", color:"#ffe700"},
+        {key:"triggers", label:"Triggers", color:"#f0a070",
+          doc:"Clock / interval triggers that start a process on a schedule or event. Scope often pairs with Program entries."},
+        {key:"modifiers", label:"Hook modifiers", color:"#e89870",
+          doc:"Intercept or modify engine hooks (kind intercept/modify). Advanced; enable carefully."},
+        {key:"processes", label:"Program", color:"#fbbf24",
+          doc:"Legacy HandlerAction programs: sense/decide/act steps from the mod’s action registry. Scope selects the call site (signal, processing, itemAction, …)."},
       ]},
     { key:"energy", label:"Energy", hint:"Power",
+      doc:"Power networks and energy type definitions for structures that consume or produce energy.",
       items:[
-        {key:"energyNetworks", label:"Networks", color:"#2dd4bf"},
-        {key:"energyTypes", label:"Energy types", color:"#14b8a6"},
+        {key:"energyNetworks", label:"Networks", color:"#2dd4bf",
+          doc:"Named energy networks structures can join. Conductors and consumers reference these ids."},
+        {key:"energyTypes", label:"Energy types", color:"#14b8a6",
+          doc:"Kinds of energy (units, colours, behaviour). Used when adding/consuming energy at cells."},
       ]},
-    { key:"assets", label:"Assets", hint:"Images",
+    { key:"sprites", label:"Sprites", hint:"Assets",
+      doc:"Image assets loaded for structures, items, and UI. Register paths and ids used by render configs.",
       items:[
-        {key:"sprites", label:"Sprites", color:"#7ec8e3"},
+        {key:"sprites", label:"Sprites", color:"#7ec8e3",
+          doc:"Sprite entries: id, path, load options. Referenced from structure render and item sprite fields."},
       ]},
   ];
-  const COLLECTIONS = MENU_GROUPS.flatMap(g => g.items);
+
+  const COLLECTIONS = (() => {
+    const seen = new Set();
+    const out = [];
+    MENU_GROUPS.forEach((g) => {
+      g.items.forEach((i) => {
+        if (seen.has(i.key)) return;
+        seen.add(i.key);
+        out.push(i);
+      });
+    });
+    return out;
+  })();
   const FIELDS = {
     elements: [["id","ID","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["matterType","Matter type","select",{options:MATTER}],["density","Density","number",{}],["metaColor","Meta color","text",{hint:"0xRRGGBB"}],["materialId","Material id","number",{}],["duration","Duration (s)","number",{}],["flammable","Flammable","bool",{}],["isGrabbable","Grabbable","bool",{}],["isTransportable","Transportable","bool",{}],["hidden","Hidden","bool",{}],["visibleInPicker","Visible in picker","bool",{}],["colors","Colors (JSON)","json",{hint:"{ variants: [[r,g,b,a],\u2026] }"}],["durationRandom","Duration random (JSON)","json",{hint:"{min,max}"}],["defaultDataFields","Default data fields (JSON)","json",{}],["interactions","Interactions (JSON)","json",{}]],
     terrains: [["id","ID","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["hp","HP","number",{}],["materialId","Material id","number",{}],["metaColor","Meta color","text",{}],["colorHSL","Color HSL (JSON)","json",{}],["colorPattern","Color pattern (JSON)","json",{}],["colorGradient","Color gradient (JSON)","json",{}],["output","Output drop (JSON)","json",{hint:"{elementType, chance}"}],["background","Background (JSON)","json",{}],["backgroundElementType","Background element","text",{}],["fog","Fog","bool",{}],["flammable","Flammable","bool",{}],["noShadow","No shadow","bool",{}],["isBuilding","Is building","bool",{}],["excavationRequirements","Excavation requirements (JSON)","json",{}],["interactions","Interactions (JSON)","json",{}]],

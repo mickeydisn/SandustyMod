@@ -1,14 +1,35 @@
 import { g } from "../host.ts";
 import { LOG } from "../../../constants.ts";
-import { type StructureConfig } from "../types.ts";
+import { type StructureConfig, type StructureRegisterOptions } from "../types.ts";
 import { normalizeStructure } from "../internal/normalize.ts";
 import { resolveStructureType } from "../internal/refs.ts";
+import type {
+    PlacementConfigDefinition,
+    StructureId,
+    StructureProcessingDefinition,
+    StructureRecipeDefinition,
+    StructureRef,
+    StructureType,
+    StructureVariant,
+} from "../host-types/domain.d.ts";
+
+/** Runtime structure instance handed to callbacks by the host. */
+export type StructureInstance = Record<string, unknown> & {
+    /** Structure id, when the host reports one. */
+    id?: StructureId;
+};
 
 export const structures = {
-    registerPlacementConfig(definition: unknown): boolean {
+    /**
+     * Register a placement-cap override.
+     *
+     * The engine throws on a missing `structureId`, empty `fields`, duplicate
+     * field ids, or an unlabelled field — see `PlacementConfigDefinition`.
+     */
+    registerPlacementConfig(definition: PlacementConfigDefinition): boolean {
         try {
             const ns = g()?.api?.structures as
-                | { registerPlacementConfig?: (definition: unknown) => unknown }
+                | { registerPlacementConfig?: (d: PlacementConfigDefinition) => unknown }
                 | undefined;
             if (typeof ns?.registerPlacementConfig !== "function") return false;
             ns.registerPlacementConfig(definition);
@@ -19,36 +40,36 @@ export const structures = {
         }
     },
     updateDefinition(
-        idOrType: string | number,
-        partial: Record<string, unknown>,
-        options?: { useRawShape?: boolean },
+        ref: StructureRef,
+        partial: Partial<StructureConfig>,
+        options?: StructureRegisterOptions,
     ): void {
         try {
-            g()?.api?.structures?.updateDefinition?.(idOrType, partial, options);
+            g()?.api?.structures?.updateDefinition?.(ref, partial, options);
         } catch (e) {
-            console.error(`${LOG} structures.updateDefinition failed`, idOrType, e);
+            console.error(`${LOG} structures.updateDefinition failed`, ref, e);
         }
     },
 
-    getRegisteredTypes(): number[] {
+    getRegisteredTypes(): StructureType[] {
         try {
-            return g()?.api?.structures?.getRegisteredTypes?.() ?? [];
+            return (g()?.api?.structures?.getRegisteredTypes?.() ?? []) as StructureType[];
         } catch (e) {
             console.warn(`${LOG} structures.getRegisteredTypes failed`, e);
             return [];
         }
     },
 
-    getUnlockedTypes(): number[] {
+    getUnlockedTypes(): StructureType[] {
         try {
-            return g()?.api?.structures?.getUnlockedTypes?.() ?? [];
+            return (g()?.api?.structures?.getUnlockedTypes?.() ?? []) as StructureType[];
         } catch (e) {
             console.warn(`${LOG} structures.getUnlockedTypes failed`, e);
             return [];
         }
     },
 
-    getTypeName(t: number): string | undefined {
+    getTypeName(t: StructureType): string | undefined {
         try {
             return g()?.api?.structures?.getTypeName?.(t) as string | undefined;
         } catch (e) {
@@ -56,42 +77,43 @@ export const structures = {
             return undefined;
         }
     },
-    getAll(): Record<string, unknown>[] {
+    getAll(): StructureInstance[] {
         try {
-            return g()?.api?.structures?.getAll?.() ?? [];
+            return (g()?.api?.structures?.getAll?.() ?? []) as StructureInstance[];
         } catch (e) {
             console.warn(`${LOG} structures.getAll failed`, e);
             return [];
         }
     },
-    getRegistered(): Record<string, unknown>[] {
+    getRegistered(): StructureInstance[] {
         try {
-            return g()?.api?.structures?.getRegistered?.() ?? [];
+            return (g()?.api?.structures?.getRegistered?.() ?? []) as StructureInstance[];
         } catch (e) {
             console.warn(`${LOG} structures.getRegistered failed`, e);
             return [];
         }
     },
-    list(): Record<string, unknown>[] {
+    list(): StructureInstance[] {
         try {
-            return g()?.api?.structures?.list?.() ?? [];
+            return (g()?.api?.structures?.list?.() ?? []) as StructureInstance[];
         } catch (e) {
             console.warn(`${LOG} structures.list failed`, e);
             return [];
         }
     },
-    includes(idOrType: string | number): boolean {
+    includes(ref: StructureRef): boolean {
         try {
-            return g()?.api?.structures?.includes?.(idOrType) === true;
+            return g()?.api?.structures?.includes?.(ref) === true;
         } catch (e) {
-            console.warn(`${LOG} structures.includes failed`, idOrType, e);
+            console.warn(`${LOG} structures.includes failed`, ref, e);
             return false;
         }
     },
 
-    getAtCell(x: number, y: number): Record<string, unknown> | null {
+    getAtCell(x: number, y: number): StructureInstance | null {
         try {
-            return g()?.api?.structures?.getAtCell?.(x, y) ?? null;
+            return (g()?.api?.structures?.getAtCell?.(x, y) as StructureInstance | null) ??
+                null;
         } catch (e) {
             console.warn(`${LOG} structures.getAtCell failed`, x, y, e);
             return null;
@@ -106,7 +128,7 @@ export const structures = {
         }
     },
 
-    isTypeAtCell(x: number, y: number, ref: string | number): boolean {
+    isTypeAtCell(x: number, y: number, ref: StructureRef): boolean {
         try {
             return g()?.api?.structures?.isTypeAtCell?.(x, y, ref) === true;
         } catch (e) {
@@ -162,6 +184,91 @@ export const structures = {
         }
     },
 
+    /**
+     * Remove every structure inside an inclusive rectangle.
+     *
+     * Both corners are absolute cell coordinates, inclusive of both edges.
+     */
+    removeBetweenCells(
+        startX: number,
+        startY: number,
+        endX: number,
+        endY: number,
+        options?: unknown,
+    ): boolean {
+        try {
+            const ns = g()?.api?.structures;
+            const fn = ns?.removeBetweenCells;
+            if (typeof fn !== "function") return false;
+            fn.call(ns, startX, startY, endX, endY, options);
+            return true;
+        } catch (e) {
+            console.warn(
+                `${LOG} structures.removeBetweenCells failed`,
+                startX,
+                startY,
+                endX,
+                endY,
+                e,
+            );
+            return false;
+        }
+    },
+
+    /** Build at a cell, deferred until the simulation is idle. */
+    buildAtCellWhenIdle(
+        x: number,
+        y: number,
+        ref: string,
+        options?: unknown,
+    ): boolean {
+        try {
+            const ns = g()?.api?.structures;
+            const fn = ns?.buildAtCellWhenIdle ?? ns?.buildAtCell;
+            if (typeof fn !== "function") return false;
+            fn.call(ns, x, y, ref, options);
+            return true;
+        } catch (e) {
+            console.warn(`${LOG} structures.buildAtCellWhenIdle failed`, x, y, e);
+            return false;
+        }
+    },
+
+    /** Remove at a cell, deferred until the simulation is idle. */
+    removeAtCellWhenIdle(x: number, y: number, options?: unknown): boolean {
+        try {
+            const ns = g()?.api?.structures;
+            const fn = ns?.removeAtCellWhenIdle ?? ns?.removeAtCell;
+            if (typeof fn !== "function") return false;
+            fn.call(ns, x, y, options);
+            return true;
+        } catch (e) {
+            console.warn(`${LOG} structures.removeAtCellWhenIdle failed`, x, y, e);
+            return false;
+        }
+    },
+
+    /** Remove many cells, deferred until the simulation is idle. */
+    removeAtCellsWhenIdle(
+        positions: { x: number; y: number }[],
+        options?: unknown,
+    ): boolean {
+        try {
+            const ns = g()?.api?.structures;
+            const fn = ns?.removeAtCellsWhenIdle ?? ns?.removeAtCells;
+            if (typeof fn !== "function") return false;
+            fn.call(ns, positions, options);
+            return true;
+        } catch (e) {
+            console.warn(
+                `${LOG} structures.removeAtCellsWhenIdle failed`,
+                positions.length,
+                e,
+            );
+            return false;
+        }
+    },
+
     removeAtCells(
         positions: { x: number; y: number }[],
         options?: unknown,
@@ -187,6 +294,64 @@ export const structures = {
             return false;
         }
     },
+    /** Alias of {@link updateData}; identical host call. */
+    setData(
+        structure: unknown,
+        partial: Record<string, unknown>,
+        options?: unknown,
+    ): boolean {
+        return structures.updateData(structure, partial, options);
+    },
+
+    /**
+     * Attach a processor to an already-registered structure type.
+     *
+     * Runs the same validator as `processing.register`: `intervalMs` must be
+     * finite and positive and `process` must be synchronous, or the host
+     * throws (`extra-mod-runtime.js` 2160-2162; validator at 775-782).
+     */
+    addProcessor(
+        ref: StructureRef,
+        definition: StructureProcessingDefinition,
+    ): boolean {
+        try {
+            const ns = g()?.api?.structures;
+            if (typeof ns?.addProcessor !== "function") return false;
+            ns.addProcessor(ref, definition);
+            return true;
+        } catch (e) {
+            console.error(`${LOG} structures.addProcessor failed`, ref, e);
+            return false;
+        }
+    },
+
+    /** Remove every structure inside an inclusive rectangle, when idle. */
+    removeBetweenCellsWhenIdle(
+        startX: number,
+        startY: number,
+        endX: number,
+        endY: number,
+        options?: unknown,
+    ): boolean {
+        try {
+            const ns = g()?.api?.structures;
+            const fn = ns?.removeBetweenCellsWhenIdle ?? ns?.removeBetweenCells;
+            if (typeof fn !== "function") return false;
+            fn.call(ns, startX, startY, endX, endY, options);
+            return true;
+        } catch (e) {
+            console.warn(
+                `${LOG} structures.removeBetweenCellsWhenIdle failed`,
+                startX,
+                startY,
+                endX,
+                endY,
+                e,
+            );
+            return false;
+        }
+    },
+
     updateData(
         structure: unknown,
         partial: Record<string, unknown>,
@@ -268,7 +433,10 @@ export const structures = {
     },
 
     processing: {
-        register(structureType: string | number, def: Record<string, unknown>): void {
+        register(
+            structureType: StructureRef,
+            def: StructureProcessingDefinition,
+        ): void {
             try {
                 const st = resolveStructureType(structureType);
                 g()?.api?.structures?.processing?.register?.(st, def);
@@ -312,7 +480,7 @@ export const structures = {
         }
     },
     recipes: {
-        register(structureType: string | number, recipe: Record<string, unknown>): void {
+        register(structureType: StructureRef, recipe: StructureRecipeDefinition): void {
             try {
                 const st = resolveStructureType(structureType);
                 g()?.api?.structures?.recipes?.register?.(st, recipe);
@@ -321,7 +489,11 @@ export const structures = {
             }
         },
     },
-    addVariant(base: string | number, variant: unknown, options?: unknown): void {
+    addVariant(
+        base: StructureRef,
+        variant: StructureVariant,
+        options?: StructureRegisterOptions,
+    ): void {
         try {
             const fn = g()?.api?.structures?.addVariant ??
                 g()?.api?.structures?.registerVariant;
@@ -331,19 +503,80 @@ export const structures = {
         }
     },
 
-    getAvailableTypes(): Set<number | string> {
+    /** Host name for {@link structures.addVariant}. */
+    registerVariant(
+        base: StructureRef,
+        variant: StructureVariant,
+        options?: StructureRegisterOptions,
+    ): void {
+        structures.addVariant(base, variant, options);
+    },
+
+    /**
+     * Whether a structure type is still locked.
+     *
+     * Inverted internally — the facade computes `!isUnlocked`
+     * (`extra-mod-runtime.js` 2138).
+     */
+    isLockedByType(ref: StructureRef): boolean {
         try {
-            return g()?.api?.structures?.getAvailableTypes?.() ?? new Set();
+            return g()?.api?.structures?.isLockedByType?.(ref) === true;
+        } catch (e) {
+            console.warn(`${LOG} structures.isLockedByType failed`, ref, e);
+            return false;
+        }
+    },
+
+    /** Unlocked counterpart of {@link isLockedByType}. */
+    isUnlockedByType(ref: StructureRef): boolean {
+        try {
+            return g()?.api?.structures?.isUnlockedByType?.(ref) === true;
+        } catch (e) {
+            console.warn(`${LOG} structures.isUnlockedByType failed`, ref, e);
+            return false;
+        }
+    },
+
+    /** Alias of {@link getTypeById}; identical resolution, different name. */
+    getTypeFromId(id: StructureId): StructureRef | undefined {
+        return structures.getTypeById(id);
+    },
+
+    /**
+     * Run a callback for every placed instance of a structure type.
+     *
+     * The callback receives each instance. Host-side this forwards straight to
+     * `structures.forEachOfType` (`extra-mod-runtime.js` 2174).
+     */
+    forEachOfType(
+        ref: StructureRef,
+        callback: (structure: StructureInstance) => void,
+    ): boolean {
+        try {
+            const fn = g()?.api?.structures?.forEachOfType;
+            if (typeof fn !== "function") return false;
+            fn.call(g()?.api?.structures, ref, callback);
+            return true;
+        } catch (e) {
+            console.error(`${LOG} structures.forEachOfType failed`, ref, e);
+            return false;
+        }
+    },
+
+    getAvailableTypes(): Set<StructureRef> {
+        try {
+            return (g()?.api?.structures?.getAvailableTypes?.() ??
+                new Set()) as Set<StructureRef>;
         } catch (e) {
             console.warn(`${LOG} structures.getAvailableTypes failed`, e);
             return new Set();
         }
     },
 
-    getDefinitionByType(ref: number | string): Record<string, unknown> | undefined {
+    getDefinitionByType(ref: StructureRef): StructureConfig | undefined {
         try {
-            return (g()?.api?.structures?.getDefinitionByType?.(ref) ?? undefined) as
-                | Record<string, unknown>
+            return g()?.api?.structures?.getDefinitionByType?.(ref) as
+                | StructureConfig
                 | undefined;
         } catch (e) {
             console.warn(`${LOG} structures.getDefinitionByType failed`, ref, e);
@@ -351,21 +584,21 @@ export const structures = {
         }
     },
 
-    getIdByType(t: number): string | undefined {
+    getIdByType(t: StructureType): StructureId | undefined {
         try {
-            return g()?.api?.structures?.getIdByType?.(t) as string | undefined;
+            return g()?.api?.structures?.getIdByType?.(t) as StructureId | undefined;
         } catch (e) {
             console.warn(`${LOG} structures.getIdByType failed`, t, e);
             return undefined;
         }
     },
 
-    getTypeById(id: string): number | string {
+    getTypeById(id: StructureId): StructureType | StructureId {
         try {
             const s = g()?.api?.structures as
                 | {
-                    getTypeFromId?: (a: string) => number;
-                    getTypeById?: (a: string) => number;
+                    getTypeFromId?: (a: StructureId) => StructureType;
+                    getTypeById?: (a: StructureId) => StructureType;
                 }
                 | undefined;
             return s?.getTypeFromId?.(id) ?? s?.getTypeById?.(id) ?? id;
@@ -375,10 +608,10 @@ export const structures = {
         }
     },
 
-    countOfType(ref: number | string): number | null {
+    countOfType(ref: StructureRef): number | null {
         try {
             const fn = g()?.api?.structures?.forEachOfType as
-                | ((a: number | string, b: () => void) => unknown)
+                | ((a: StructureRef, b: (s: StructureInstance) => void) => unknown)
                 | undefined;
             if (typeof fn !== "function") return null;
             let n = 0;

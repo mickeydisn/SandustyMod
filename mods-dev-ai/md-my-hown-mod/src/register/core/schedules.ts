@@ -1,4 +1,5 @@
 import { LOG } from "../../constants.ts";
+import type { SignalHandler } from "../../packages/mysandkit.ts";
 import { api } from "../../packages/mysandkit.ts";
 import { compileEntryProcess } from "../../handler/processing/custom-process/index.ts";
 import { type RegisterContext, registerEach } from "../registry.ts";
@@ -29,7 +30,7 @@ export function registerSignals({ config, processes }: RegisterContext): number 
                 !api.signals.registerTarget(
                     asKind,
                     def.target,
-                    handler as (...args: unknown[]) => unknown,
+                    handler as SignalHandler,
                 )
             ) {
                 console.warn(`${LOG} signal ${def.id}: no ${asKind}.register on this build`);

@@ -1633,3 +1633,61 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
 .ed-cell-row input {
   width: 100%;
 }
+
+.ed-col-nest {
+  padding-left: 22px !important;
+  opacity: 0.95;
+}
+.ed-col-nest .ed-col-label {
+  font-size: 12px;
+}
+.ed-col-nest::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  width: 6px;
+  height: 1px;
+  background: var(--sd-color-border, #2e2e2e);
+}
+.ed-col {
+  position: relative;
+}
+
+.ed-cat-doc {
+  max-width: 720px;
+  margin: 0 0 12px;
+  border: 1px solid var(--sd-color-border, #2e2e2e);
+  border-radius: 8px;
+  background: var(--sd-color-surface-muted, #141414);
+  overflow: hidden;
+}
+.ed-cat-doc-sum {
+  list-style: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sd-color-text-muted, #b6bcc1);
+  background: var(--sd-color-surface, #1c2127);
+  user-select: none;
+}
+.ed-cat-doc-sum::-webkit-details-marker { display: none; }
+.ed-cat-doc-sum::before {
+  content: "▸ ";
+  color: var(--sd-color-primary, #ffe700);
+  font-size: 10px;
+}
+.ed-cat-doc[open] > .ed-cat-doc-sum::before { content: "▾ "; }
+.ed-cat-doc-sum:hover {
+  color: var(--sd-color-primary, #ffe700);
+  background: var(--sd-color-surface-hover, #2a323d);
+}
+.ed-cat-doc-body {
+  padding: 10px 12px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sd-color-text, #e8eef5);
+  border-top: 1px solid var(--sd-color-border, #2e2e2e);
+}

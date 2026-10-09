@@ -1,6 +1,8 @@
 import { g } from "../host.ts";
+import type { MatterTypeName } from "../types.ts";
+import type { ElementColorVariant, MatterType } from "../host-types/domain.d.ts";
 
-const MATTER_MAP: Record<string, number> = {
+const MATTER_MAP: Record<string, MatterType> = {
     solid: 1,
     liquid: 2,
     particle: 3,
@@ -11,7 +13,9 @@ const MATTER_MAP: Record<string, number> = {
     powder: 8,
 };
 
-export function resolveMatterType(v: string | number | undefined): number | undefined {
+export function resolveMatterType(
+    v: MatterTypeName | MatterType | undefined,
+): MatterType | undefined {
     if (v === undefined || v === null) return undefined;
     if (typeof v === "number" && Number.isFinite(v)) return v;
     if (typeof v === "string") {
@@ -34,7 +38,7 @@ const NEUTRAL_VARIANT: [number, number, number, number] = [204, 204, 204, 255];
 
 export function variantFromMetaColor(
     metaColor: unknown,
-): [number, number, number, number] {
+): ElementColorVariant {
     if (typeof metaColor !== "number" || !Number.isFinite(metaColor)) return NEUTRAL_VARIANT;
     const packed = Math.max(0, Math.min(0xffffff, Math.floor(metaColor)));
     return [(packed >> 16) & 255, (packed >> 8) & 255, packed & 255, 255];

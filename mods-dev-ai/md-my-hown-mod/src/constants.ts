@@ -154,14 +154,23 @@ export interface TerrainConfig {
     hp?: number;
     materialId?: number;
     metaColor?: number;
+    /** Base colour as `[h, s, l]`; the host requires exactly 3 components. */
     colorHSL?: number[];
+    /** Tiled pattern; `colorsHSL` cells are RGBA (4 components). */
     colorPattern?: { size?: number[]; colorsHSL?: number[][][] };
+    /** Damage gradient; each stop colour is `[h, s, l]`. */
     colorGradient?: { stops?: Array<{ hp: number; color: unknown }> };
+    /** Drop on destroy; `elementType: null` means nothing is dropped. */
     output?: { elementType?: string | number | null; chance?: number };
     background?: Record<string, unknown>;
+    /** Element rendered behind the terrain. */
     backgroundElementType?: string | number;
+    /** Element used while the terrain is fogged. */
+    fogElementType?: string | number;
     fog?: boolean;
     flammable?: boolean;
+    burnDurationRandom?: { min: number; max: number };
+    fireDurationRandom?: { min: number; max: number };
     excavationRequirements?: string[];
     interactions?: unknown[];
     noShadow?: boolean;
