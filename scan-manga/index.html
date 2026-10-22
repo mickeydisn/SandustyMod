@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan-Manga Navigator — catalogue & lecture</title>
+  <meta name="description" content="Naviguer, rechercher et lire les mangas de scan-manga.com — historique + liste déjà lus (100% local).">
+  <link rel="preconnect" href="https://static.scan-manga.com">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📚%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">📚</div>
+      <div>
+        <h1>Scan-Manga Navigator</h1>
+        <p class="subtitle">Source&nbsp;<a href="https://www.scan-manga.com/" target="_blank" rel="noopener">scan-manga.com</a>&nbsp;·&nbsp;données en local (aucun compte)</p>
+      </div>
+    </div>
+    <div class="searchbox" role="search">
+      <input id="searchInput" type="search" placeholder="Rechercher un manga… (ex&nbsp;: One Piece, Naruto, Solo Leveling)" autocomplete="off" aria-label="Rechercher un manga">
+      <button id="searchBtn" title="Rechercher"><span class="visually-hidden">Rechercher</span>🔍</button>
+      <button id="reloadBtn" class="ghost" title="Recharger le catalogue"><span class="visually-hidden">Recharger</span>↻</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Navigation">
+    <button class="tab active" data-tab="catalogue">📖&nbsp;Catalogue <span class="badge" id="countCatalogue">0</span></button>
+    <button class="tab" data-tab="history">🕘&nbsp;Ouverts <span class="badge" id="countHistory">0</span></button>
+    <button class="tab" data-tab="read">✅&nbsp;Déjà lus <span class="badge" id="countRead">0</span></button>
+    <span class="status" id="status">Chargement…</span>
+  </nav>
+
+  <main>
+    <!-- CATALOGUE -->
+    <section id="view-catalogue" class="view">
+      <div id="proxyNotice" class="notice hidden"></div>
+      <div class="toolbar">
+        <label class="checkline">
+          <input type="checkbox" id="onlyReadable">
+          <span>Afficher uniquement les mangas avec des chapitres lisibles</span>
+        </label>
+        <span class="meta" id="readableInfo"></span>
+      </div>
+      <div id="catalogueGrid" class="grid"></div>
+      <div id="catalogueEmpty" class="empty hidden">
+        <div class="empty-icon">🔍</div>
+        <p><strong>Aucun résultat.</strong></p>
+        <p>Si le catalogue ne charge pas, vérifiez que le serveur local tourne&nbsp;:</p>
+        <ol>
+          <li>Lancer <code>python3 server.py</code> dans le dossier <code>scan-manga/</code>.</li>
+          <li>Ouvrir <a href="http://localhost:8090" target="_blank" rel="noopener">http://localhost:8090</a> (et non <code>index.html</code> en double-clic).</li>
+          <li>Cliquer « ↻ » pour recharger le catalogue.</li>
+        </ol>
+        <div class="manual-add">
+          <input id="manualUrl" type="url" placeholder="Colle l'URL fiche manga…" list="manualUrls">
+          <datalist id="manualUrls"></datalist>
+          <button id="manualAddBtn">＋ Ajouter / Ouvrir</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORIQUE -->
+    <section id="view-history" class="view hidden">
+      <div class="toolbar">
+        <div><p>Liste automatique des mangas que vous avez <strong>ouverts</strong> (dernier chapitre retenu).</p></div>
+        <button id="clearHistoryBtn" class="danger ghost">🗑&nbsp;Vider l'historique</button>
+      </div>
+      <div id="historyGrid" class="grid"></div>
+    </section>
+
+    <!-- LUS -->
+    <section id="view-read" class="view hidden">
+      <div class="toolbar">
+        <div><p>Mangas marqués <strong>« déjà lu »</strong> via le bouton ✅.</p></div>
+        <button id="clearReadBtn" class="danger ghost">🗑&nbsp;Vider les lus</button>
+      </div>
+      <div id="readGrid" class="grid"></div>
+    </section>
+
+    <!-- FICHE MANGA -->
+    <section id="view-manga" class="view hidden">
+      <button id="backToCatalogue" class="ghost">← Retour au catalogue</button>
+      <div class="manga-head">
+        <div class="cover-wrap">
+          <img id="mangaCover" class="manga-cover" alt="Couverture" loading="lazy">
+          <div class="cover-fallback" id="mangaCoverFallback">📕</div>
+        </div>
+        <div class="manga-info">
+          <div class="meta-row">
+            <h1 id="mangaTitle">—</h1>
+            <span class="pill status-pill" id="mangaStatusBadge"></span>
+          </div>
+          <p class="manga-url"><a id="mangaLink" href="#" target="_blank" rel="noopener">Voir sur scan-manga.com ↗</a></p>
+          <div class="manga-meta-grid" id="mangaMetaGrid"></div>
+          <p id="mangaDescription" class="description"></p>
+          <div class="actions">
+            <button id="toggleReadBtn" class="primary">✅&nbsp;Marquer comme déjà lu</button>
+            <button id="removeHistoryBtn" class="ghost">Retirer de l'historique</button>
+          </div>
+        </div>
+      </div>
+      <div class="chapter-section">
+        <div class="chapter-header">
+          <h3>Chapitres <span class="badge" id="countChapters">0</span></h3>
+          <div class="chapter-tools">
+            <input id="chapterFilter" type="search" placeholder="Filtrer les chapitres…">
+            <select id="sortChapters">
+              <option value="desc">Décroissant (dernier d'abord)</option>
+              <option value="asc">Croissant (premier d'abord)</option>
+            </select>
+          </div>
+        </div>
+        <div id="chapterList" class="chapters"></div>
+      </div>
+    </section>
+
+    <!-- LECTEUR -->
+    <section id="view-reader" class="view hidden">
+      <div class="reader-bar top sticky">
+        <button id="backToManga" class="ghost">← Fiche manga</button>
+        <select id="readerChapterSelect" title="Choisir un chapitre"></select>
+        <div class="reader-nav">
+          <button id="prevChapterBtn" class="ghost">⟨&nbsp;Précédent</button>
+          <button id="readerReadBtn" class="ghost" title="Marquer le manga comme lu">✅&nbsp;Lu</button>
+          <button id="nextChapterBtn" class="ghost">Suivant&nbsp;⟩</button>
+        </div>
+        <label class="zoom">Largeur <input id="pageWidth" type="range" min="320" max="1400" value="900"></label>
+      </div>
+      <h2 id="readerTitle"></h2>
+      <p id="readerHint" class="meta"></p>
+      <div id="pages" class="pages"></div>
+      <div class="reader-bar bottom">
+        <button id="prevChapterBtn2" class="ghost">⟨&nbsp;Précédent</button>
+        <button id="markChapterReadBtn" class="primary">✔&nbsp;Chapitre lu → suivant</button>
+        <button id="nextChapterBtn2" class="ghost">Suivant&nbsp;⟩</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Application statique 100&nbsp;% locale · <kbd>localStorage</kbd>&nbsp;: <code>scanmanga_history</code> + <code>scanmanga_read</code> · Si une image ne charge pas, cliquez dessus pour réessayer. Source&nbsp;: scan-manga.com — respectez leurs CGU.</p>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
