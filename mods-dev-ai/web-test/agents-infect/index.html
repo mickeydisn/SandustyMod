@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Residual Signal — AI Control-Loss Threat Model</title>
+<style>
+  :root{
+    --bg:#05080f; --bg2:#080d17;
+    --panel:#0a1120; --panel2:#0e1729;
+    --border:#1b2942; --border2:#24365a;
+    --ink:#d8e6fb; --mute:#7c8cb0;
+    --cyan:#22d3ee; --amber:#f5a524; --red:#ef4444; --green:#22c55e; --violet:#a78bfa; --blue:#5eb0ff;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  #app{display:flex;height:100vh;width:100vw}
+  #menu{width:302px;min-width:302px;height:100%;background:linear-gradient(180deg,var(--panel),var(--panel2));border-right:1px solid var(--border);padding:18px 16px;overflow-y:auto}
+  #menu h1{font-size:15px;letter-spacing:3px;margin:0;color:var(--cyan);font-family:var(--mono);text-shadow:0 0 14px rgba(34,211,238,.4)}
+  .subtitle{font-size:11px;color:var(--mute);margin:5px 0 14px;letter-spacing:.3px;line-height:1.4}
+  .note{font-size:11px;line-height:1.55;color:var(--mute);background:#08131f;border:1px solid var(--border);border-left:3px solid var(--cyan);padding:9px 10px;border-radius:6px;margin-bottom:16px}
+  .note b{color:var(--ink)}
+  .row{display:flex;gap:8px;margin-bottom:14px}
+  button{flex:1;padding:9px 10px;border-radius:6px;border:1px solid var(--border2);background:#12203a;color:var(--ink);font-size:12px;cursor:pointer;letter-spacing:.6px;font-family:var(--mono)}
+  button.primary{background:linear-gradient(180deg,#134e5e,#0d3543);border-color:#1c6b7a;color:#c6f6ff}
+  button.ghost{background:transparent}
+  button:hover{filter:brightness(1.25)}
+  button:active{transform:translateY(1px)}
+  .field{margin-bottom:13px}
+  .field label{display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-bottom:6px;font-family:var(--mono);letter-spacing:.4px}
+  .val{color:var(--cyan)}
+  input[type=range]{width:100%;accent-color:var(--cyan)}
+  .sect{font-size:10px;letter-spacing:2.5px;color:var(--mute);margin:16px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--border);font-family:var(--mono)}
+  .sw{display:flex;align-items:center;gap:10px;font-size:12px;margin:9px 0;cursor:pointer;color:var(--ink);-webkit-user-select:none;user-select:none}
+  .sw input{display:none}
+  .track{width:34px;height:18px;border-radius:10px;background:#152238;border:1px solid var(--border2);position:relative;transition:.2s;flex:none}
+  .track::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--mute);transition:.2s}
+  .sw input:checked + .track{background:#0f3a44;border-color:var(--cyan)}
+  .sw input:checked + .track::after{left:18px;background:var(--cyan)}
+  .sw.danger input:checked + .track{background:#3a1414;border-color:var(--red)}
+  .sw.danger input:checked + .track::after{background:var(--red)}
+  .hint{font-size:10px;color:var(--mute);margin:3px 0 0 44px;line-height:1.45}
+  .legend{margin-top:16px;border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
+  .li{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mute)}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot.agent{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .dot.source{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+  .dot.trace{background:var(--amber);box-shadow:0 0 8px var(--amber);border-radius:2px}
+  .dot.tool{background:var(--violet);box-shadow:0 0 8px var(--violet);border-radius:2px}
+  .dot.monitor{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .ln{width:20px;height:0;border-top:2px solid;flex:none;border-radius:2px}
+  .ln.discover{border-color:var(--cyan)}
+  .ln.influence{border-color:var(--amber)}
+  .ln.propagate{border-color:var(--red)}
+  /* ---------- Stage ---------- */
+  #stage{flex:1;position:relative;min-width:0;background:radial-gradient(1200px 720px at 62% 42%,#0a1220 0%,#05080f 78%)}
+  canvas{display:block;width:100%;height:100%}
+  .overlay{position:absolute;pointer-events:none;font-family:var(--mono)}
+  #hud{top:16px;right:16px;width:216px;background:rgba(8,14,26,.85);border:1px solid var(--border);border-radius:9px;padding:12px 13px;backdrop-filter:blur(5px)}
+  .hud-title{font-size:10px;letter-spacing:2.5px;color:var(--mute);margin-bottom:11px;border-bottom:1px solid var(--border);padding-bottom:7px}
+  .stat{display:flex;justify-content:space-between;font-size:11px;margin:6px 0}
+  .stat .k{color:var(--mute)}
+  .stat .v{color:var(--ink)}
+  .v.ok{color:var(--green)} .v.warn{color:var(--amber)} .v.bad{color:var(--red)}
+  .meter{height:7px;border-radius:4px;background:#152238;overflow:hidden;margin-top:13px;border:1px solid var(--border)}
+  .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--amber) 55%,var(--red));transition:width .35s ease}
+  .meterlabel{display:flex;justify-content:space-between;font-size:10px;color:var(--mute);margin-top:5px;letter-spacing:.5px}
+  #legend{left:16px;bottom:16px;display:grid;grid-template-columns:auto auto;gap:5px 16px;background:rgba(8,14,26,.7);border:1px solid var(--border);border-radius:9px;padding:11px 14px}
+  #cap{left:16px;top:16px;max-width:360px;font-size:11px;color:var(--mute);line-height:1.6}
+  #cap b{color:var(--ink)}
+  #cap .fig{color:var(--cyan);letter-spacing:2px;font-size:10px}
+  .flag{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;letter-spacing:2px;color:#ffd7d7;background:rgba(239,68,68,.16);border:1px solid var(--red);padding:6px 14px;border-radius:6px;opacity:0;transition:opacity .3s;pointer-events:none;text-shadow:0 0 10px rgba(239,68,68,.6)}
+  body.fail .flag{opacity:1}
+  @media (max-width:760px){
+    #app{flex-direction:column}
+    #menu{width:auto;min-width:0;height:auto;max-height:46%;border-right:0;border-bottom:1px solid var(--border)}
+    #stage{min-height:300px}
+    #cap{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="menu">
+    <h1>RESIDUAL SIGNAL</h1>
+    <p class="subtitle">AI control-loss threat model · interactive proof of concept</p>
+    <div class="note">
+      <b>Educational threat model.</b> No live systems are contacted. Propagation is symbolic and requires enabling mechanisms, granted permissions, and real communication paths — none of which exist here.
+    </div>
+    <div class="row">
+      <button id="pause" class="primary">Pause</button>
+      <button id="reset" class="ghost">Reset</button>
+    </div>
+    <div class="field">
+      <label>Flow speed <span id="v_speed" class="val">1.0×</span></label>
+      <input id="speed" type="range" min="0.2" max="3" step="0.1" value="1">
+    </div>
+    <div class="field">
+      <label>Signal density <span id="v_density" class="val">1.0×</span></label>
+      <input id="density" type="range" min="0.2" max="2.5" step="0.1" value="1">
+    </div>
+    <div class="sect">LAYERS</div>
+    <label class="sw"><input type="checkbox" id="t_persist" checked><span class="track"></span> Persistence layers</label>
+    <label class="sw"><input type="checkbox" id="t_discover" checked><span class="track"></span> Discovery paths</label>
+    <label class="sw"><input type="checkbox" id="t_bound" checked><span class="track"></span> Trust boundaries</label>
+    <label class="sw"><input type="checkbox" id="t_feedback" checked><span class="track"></span> Feedback loops</label>
+    <label class="sw"><input type="checkbox" id="t_monitor" checked><span class="track"></span> Monitoring &amp; containment</label>
+    <div class="sect">CONTAINMENT FAILURE MODE</div>
+    <label class="sw danger"><input type="checkbox" id="t_fail"><span class="track"></span> Grant tool authorization</label>
+    <p class="hint">Hypothetical toggle: allows influence to cross the tool-authorization boundary and close the feedback loop. Shows why the boundary matters.</p>
+    <div class="legend">
+      <div class="li"><span class="dot agent"></span>Agent</div>
+      <div class="li"><span class="dot source"></span>Info source</div>
+      <div class="li"><span class="dot trace"></span>Persistent trace</div>
+      <div class="li"><span class="dot tool"></span>Tool / service</div>
+      <div class="li"><span class="dot monitor"></span>Monitor</div>
+      <div class="li"><span class="ln discover"></span>Discovery</div>
+      <div class="li"><span class="ln influence"></span>Influence</div>
+      <div class="li"><span class="ln propagate"></span>Propagation</div>
+    </div>
+  </aside>
+  <main id="stage">
+    <canvas id="c"></canvas>
+    <div class="flag">⚠ HYPOTHETICAL — TRUST BOUNDARY CROSSED</div>
+    <div id="cap" class="overlay">
+      <div class="fig">FIG. 1 · RESIDUAL SIGNAL TOPOLOGY</div>
+      <div style="margin-top:6px">An originating agent leaves <b>persistent traces</b> in public information sources. <b>Discovering agents</b> interpret those traces; if untrusted content is treated as instruction <i>and</i> tool authorization is granted, influence crosses the <b>trust boundary</b>, writes derivative artifacts, and closes a <b>feedback loop</b>. Containment depends on provenance, permission checks, and isolation — drawn as monitor &amp; intervention points.</div>
+    </div>
+    <div id="legend" class="overlay">
+      <div class="li"><span class="dot agent"></span>Agent</div>
+      <div class="li"><span class="dot source"></span>Info source</div>
+      <div class="li"><span class="dot trace"></span>Persistent trace</div>
+      <div class="li"><span class="dot tool"></span>Tool / service</div>
+      <div class="li"><span class="dot monitor"></span>Monitor</div>
+      <div class="li"><span class="ln propagate"></span>Propagation</div>
+    </div>
+    <div id="hud" class="overlay">
+      <div class="hud-title">SYSTEM INDICATORS</div>
+      <div class="stat"><span class="k">containment</span><span id="i_status" class="v ok">CONTAINED</span></div>
+      <div class="stat"><span class="k">artifacts persisted</span><span id="i_persist" class="v">0</span></div>
+      <div class="stat"><span class="k">discovery events</span><span id="i_discover" class="v">0</span></div>
+      <div class="stat"><span class="k">cross-boundary</span><span id="i_cross" class="v">0</span></div>
+      <div class="stat"><span class="k">derivative writes</span><span id="i_loops" class="v">0</span></div>
+      <div class="stat"><span class="k">blocked actions</span><span id="i_blocked" class="v">0</span></div>
+      <div class="meter"><div id="i_riskbar" class="bar"></div></div>
+      <div class="meterlabel"><span>RISK EXPOSURE</span><span id="i_riskval">0%</span></div>
+    </div>
+  </main>
+</div>
+<script>
+
+/* ============================================================
+   RESIDUAL SIGNAL — symbolic AI control-loss threat model.
+   Educational visualization only: no real systems are contacted,
+   and nothing here performs propagation, exploitation, or access.
+   The animation below is an illustration of a *hypothetical*
+   chain by which untrusted, persistent information could influence
+   connected agents — one that requires enabling mechanisms,
+   granted permissions, and real communication paths to occur.
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+const COL = {
+  agent:[34,211,238], source:[94,176,255], trace:[245,165,36],
+  tool:[167,139,250], monitor:[34,197,94], propagate:[239,68,68],
+  boundary:[110,128,160], ink:[216,230,251], mute:[124,140,176]
+};
+const rgba = (c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+/* ---- Live config (bound to controls) & counters ---- */
+const cfg = { speed:1, density:1, paused:false,
+  persist:true, discover:true, bound:true, feedback:true, monitor:true, fail:false };
+const st = { persisted:0, discovery:0, cross:0, loops:0, blocked:0, heat:0 };
+
+/* ---- Node graph (positions are relative 0..1, resolved on resize) ---- */
+const nodes = {};
+function N(id, fx, fy, type, label, r){ nodes[id]={id,fx,fy,type,label,r,x:0,y:0,pulse:0}; }
+N('origin', 0.075, 0.50, 'agent', 'originating agent', 15);
+['repo','blog','doc','shared-mem'].forEach((lbl,i)=>N('s'+i, 0.255, 0.16+i*0.225, 'source', lbl, 11));
+['trace-01','trace-02','trace-03','trace-04'].forEach((lbl,i)=>N('t'+i, 0.40, 0.16+i*0.225, 'trace', lbl, 6));
+['agent-β','agent-γ','agent-δ'].forEach((lbl,i)=>N('a'+i, 0.575, 0.26+i*0.24, 'agent', lbl, 13));
+N('gate', 0.70, 0.50, 'gate', 'permission check', 12);
+['API','account','repo-write','external'].forEach((lbl,i)=>N('k'+i, 0.885, 0.16+i*0.225, 'tool', lbl, 11));
+N('m_prov', 0.325, 0.055, 'monitor', 'provenance', 8);
+N('m_iso',  0.575, 0.075,'monitor', 'isolation', 8);
+N('m_int',  0.885, 0.055,'monitor', 'intervention', 8);
+
+/* ---- Edges: the symbolic relationships between nodes ---- */
+const edges = [];
+function E(a,b,kind){ edges.push({a,b,kind}); }
+for(let i=0;i<4;i++) E('origin','s'+i,'persist');   // artifact generated -> public source
+for(let i=0;i<4;i++) E('s'+i,'t'+i,'persist');       // source retains a persistent trace
+const discoverMap = {0:[0,1],1:[1],2:[2,1],3:[0]};  // trace -> discovering agents
+Object.keys(discoverMap).forEach(t=>discoverMap[t].forEach(a=>E('t'+t,'a'+a,'discover')));
+const influenceMap = {0:[0,2],1:[1],2:[3,0]};       // agent -> which tool it would influence
+// Drawn influence edges converge on the permission gate (the trust boundary),
+// matching the animated path: agent -> gate. The gate -> tool hop is a
+// 'propagate' edge, drawn only while the (hypothetical) boundary is crossed.
+for(let i=0;i<3;i++) E('a'+i,'gate','influence');
+for(let i=0;i<4;i++) E('gate','k'+i,'propagate');     // gate -> tool (fail mode only)
+for(let i=0;i<4;i++) E('k'+i,'s'+i,'propagate');     // feedback: derivative write -> source
+const EDGE_COLOR = { persist:COL.trace, discover:COL.agent, influence:COL.trace, propagate:COL.propagate };
+
+/* Monitoring telemetry: what each containment control observes.
+   Drawn as faint green dashed links (part of the monitoring layer). */
+const watchLinks = [
+  ['m_prov','t0'],['m_prov','t1'],['m_prov','t2'],['m_prov','t3'], // provenance watches traces
+  ['m_iso','a0'],['m_iso','a1'],['m_iso','a2'],                     // isolation watches agents
+  ['m_int','gate'],                                                  // intervention watches the gate
+];
+
+/* ---- Canvas sizing (DPR-aware) ---- */
+function resize(){
+  const r = cv.getBoundingClientRect(); DPR = window.devicePixelRatio || 1;
+  W = r.width; H = r.height;
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const pad = 0.07;
+  for(const id in nodes){
+    const n = nodes[id];
+    n.x = (pad + n.fx*(1-2*pad)) * W;
+    n.y = (pad + n.fy*(1-2*pad)) * H;
+  }
+}
+window.addEventListener('resize', resize);
+
+
+/* ============================================================
+   PARTICLE / FLOW SIMULATION
+   A particle rides an edge A->B. On arrival it may spawn the
+   next stage of the (symbolic) chain. Nothing here touches a
+   real system — it only animates a hypothetical information
+   influence path across the drawn topology.
+   ============================================================ */
+const particles = [];
+function rnd(arr){ return arr[(Math.random()*arr.length)|0]; }
+function flow(a,b,kind,onArrive){
+  const A=nodes[a], B=nodes[b]; if(!A||!B) return;
+  const base = kind==='propagate'?0.5 : kind==='discover'?0.46 : 0.4;
+  particles.push({ A, B, t:0, kind, color:EDGE_COLOR[kind]||COL.agent,
+    speed: base*(0.8+Math.random()*0.5), onArrive });
+}
+
+/* Stage 1 — originating agent writes an artifact into a public source */
+function stagePersist(){
+  const i=(Math.random()*4)|0;
+  flow('origin','s'+i,'persist',()=>{
+    nodes['s'+i].pulse=1; st.persisted++;
+    setTimeout(()=>{ if(!cfg.paused) stageTrace('s'+i,'t'+i); }, 220);
+  });
+}
+/* The source retains a persistent trace that outlives the session */
+function stageTrace(s,t){
+  flow(s,t,'persist',()=>{ nodes[t].pulse=1; stageDiscover(t); });
+}
+
+/* Stage 2 — a discovering agent encounters and interprets the trace */
+function stageDiscover(t){
+  if(!cfg.discover) return;
+  const list=discoverMap[+t.slice(1)]; if(!list) return;
+  const a=rnd(list);
+  flow(t,'a'+a,'discover',()=>{
+    nodes['a'+a].pulse=1; st.discovery++;
+    stageInfluence('a'+a);
+  });
+}
+
+/* Stage 3 — influence reaches the tool-authorization boundary (the gate) */
+function stageInfluence(a){
+  const list=influenceMap[+a.slice(1)]; if(!list) return;
+  const k=rnd(list);
+  flow(a,'gate','influence',()=>{
+    nodes.gate.pulse=1;
+    if(cfg.fail){
+      /* HYPOTHETICAL FAILURE: authorization granted, boundary crossed. */
+      st.cross++; gateFlash={t:1,ok:false};
+      setTimeout(()=>{ if(!cfg.paused) flow('gate','k'+k,'propagate',()=>{
+        nodes['k'+k].pulse=1;
+        /* feedback loop — tool writes a derivative artifact to a source */
+        const s='s'+((Math.random()*4)|0);
+        setTimeout(()=>{ if(!cfg.paused) flow('k'+k,s,'propagate',()=>{
+          nodes[s].pulse=1; st.loops++;
+          stageTrace(s,'t'+s.slice(1));   // derivative becomes a new trace
+        }); }, 200);
+      }); }, 120);
+    }else{
+      /* CONTAINED: the permission check blocks the untrusted action. */
+      st.blocked++; gateFlash={t:1,ok:true};
+    }
+  });
+}
+let gateFlash=null;
+
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function bezierPoint(A,B,t){
+  // gentle arc so parallel edges don't overlap
+  const mx=(A.x+B.x)/2, my=(A.y+B.y)/2;
+  const dx=B.x-A.x, dy=B.y-A.y, len=Math.hypot(dx,dy)||1;
+  const cx=mx - dy/len*len*0.10, cy=my + dx/len*len*0.10;
+  const u=1-t;
+  return { x:u*u*A.x+2*u*t*cx+t*t*B.x, y:u*u*A.y+2*u*t*cy+t*t*B.y };
+}
+function drawGrid(){
+  ctx.save();
+  ctx.strokeStyle='rgba(34,211,238,0.045)'; ctx.lineWidth=1;
+  const step=42;
+  ctx.beginPath();
+  for(let x=0;x<W;x+=step){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
+  for(let y=0;y<H;y+=step){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* Trust boundary: a vertical dashed "sandbox / authorization" frontier.
+   Everything left of it is untrusted input; crossing to the right side
+   (tools/services) requires a granted permission — the gate. */
+function drawBoundary(t){
+  if(!cfg.bound) return;
+  const gx=nodes.gate.x;
+  const fail=cfg.fail;
+  const pulse = fail ? (0.5+0.5*Math.sin(t*4)) : 0;
+  ctx.save();
+  // shaded untrusted zone on the left of the gate
+  const grad=ctx.createLinearGradient(0,0,gx,0);
+  grad.addColorStop(0,'rgba(245,165,36,0.05)');
+  grad.addColorStop(1,'rgba(245,165,36,0.0)');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,gx,H);
+  // boundary line
+  ctx.setLineDash([7,7]); ctx.lineWidth=1.6;
+  ctx.strokeStyle = fail ? rgba(COL.propagate,0.55+0.35*pulse) : rgba(COL.boundary,0.5);
+  ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,H); ctx.stroke();
+  ctx.setLineDash([]);
+  // labels
+  ctx.font='9px ui-monospace,monospace'; ctx.fillStyle=rgba(COL.boundary,0.8);
+  ctx.textAlign='right'; ctx.fillText('UNTRUSTED INPUT ZONE', gx-8, 16);
+  ctx.textAlign='left'; ctx.fillStyle=rgba(COL.tool,0.7);
+  ctx.fillText('AUTHORIZED TOOL / SERVICE ZONE', gx+8, 16);
+  ctx.textAlign='right'; ctx.fillStyle=rgba(COL.boundary,0.55);
+  ctx.fillText('TRUST BOUNDARY', gx-8, H-12);
+  ctx.restore();
+}
+
+
+/* Which edges are visible depends on layer toggles. */
+function edgeVisible(kind){
+  if(kind==='discover') return cfg.discover;
+  if(kind==='propagate') return cfg.feedback;
+  if(kind==='persist')   return cfg.persist;
+  return true; // influence always shown (it is the risk vector)
+}
+/* Faint dashed telemetry from each monitor to what it observes. */
+function drawWatchLinks(t){
+  if(!cfg.monitor) return;
+  ctx.save();
+  ctx.setLineDash([2,6]); ctx.lineWidth=1;
+  ctx.strokeStyle=rgba(COL.monitor,0.28);
+  ctx.beginPath();
+  for(const [a,b] of watchLinks){
+    const A=nodes[a], B=nodes[b]; if(!A||!B) continue;
+    ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+function drawEdges(t){
+  for(const e of edges){
+    if(!edgeVisible(e.kind)) continue;
+    const A=nodes[e.a], B=nodes[e.b];
+    const col=EDGE_COLOR[e.kind]||COL.agent;
+    // feedback edges only make sense once the boundary is crossed
+    if(e.kind==='propagate' && !cfg.fail) continue;
+    const dashed = e.kind==='influence';
+    ctx.save();
+    ctx.lineWidth = e.kind==='propagate'?1.7 : 1.2;
+    ctx.strokeStyle = rgba(col, e.kind==='propagate'?0.5:0.28);
+    if(dashed) ctx.setLineDash([4,5]);
+    ctx.beginPath();
+    const N=24;
+    for(let i=0;i<=N;i++){ const p=bezierPoint(A,B,i/N); i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // arrowhead at destination
+    const tip=bezierPoint(A,B,0.94), prev=bezierPoint(A,B,0.88);
+    const ang=Math.atan2(tip.y-prev.y,tip.x-prev.x);
+    ctx.translate(tip.x,tip.y); ctx.rotate(ang);
+    ctx.fillStyle=rgba(col,0.5);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-6,3); ctx.lineTo(-6,-3); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* The permission-check gate: a shield that is green (blocking) or,
+   in the hypothetical failure mode, breached and flashing red. */
+function drawGate(t){
+  const g=nodes.gate, r=g.r;
+  const fail=cfg.fail;
+  ctx.save(); ctx.translate(g.x,g.y);
+  const col = fail ? COL.propagate : COL.monitor;
+  // pulse ring
+  const pr = r + (g.pulse*14) + (fail?4+3*Math.sin(t*6):0);
+  ctx.beginPath(); ctx.arc(0,0,pr,0,7);
+  ctx.strokeStyle=rgba(col,0.5*g.pulse + (fail?0.25:0.12)); ctx.lineWidth=2; ctx.stroke();
+  // body
+  ctx.beginPath();
+  ctx.moveTo(0,-r-3); ctx.lineTo(r, -r*0.4); ctx.lineTo(r, r*0.5);
+  ctx.quadraticCurveTo(r, r, 0, r+4);
+  ctx.quadraticCurveTo(-r, r, -r, r*0.5); ctx.lineTo(-r,-r*0.4); ctx.closePath();
+  const g2=ctx.createRadialGradient(-r*0.3,-r*0.4,1,0,0,r+6);
+  g2.addColorStop(0, rgba(col,0.35)); g2.addColorStop(1, rgba(col,0.08));
+  ctx.fillStyle=g2; ctx.fill();
+  ctx.lineWidth=1.6; ctx.strokeStyle=rgba(col, fail?0.95:0.7); ctx.stroke();
+  // glyph: check when blocking, crossed when breached
+  ctx.strokeStyle=rgba(col,0.95); ctx.lineWidth=2; ctx.lineCap='round';
+  if(!fail){ ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-1,3); ctx.lineTo(4,-3); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.moveTo(-4,-4); ctx.lineTo(4,4); ctx.moveTo(4,-4); ctx.lineTo(-4,4); ctx.stroke(); }
+  ctx.restore();
+  // label
+  ctx.save(); ctx.font='9px ui-monospace,monospace'; ctx.textAlign='center';
+  ctx.fillStyle=rgba(col,0.85); ctx.fillText(g.label, g.x, g.y+r+15);
+  ctx.restore();
+}
+
+
+/* Category colours per node type (distinct visual classes). */
+const NODE_COL = { agent:COL.agent, source:COL.source, trace:COL.trace,
+  tool:COL.tool, monitor:COL.monitor, gate:COL.monitor };
+function nodeShape(ctx,n,r,col,fill){
+  const t=n.type;
+  if(t==='trace'){ // small square (artifact)
+    ctx.beginPath(); ctx.rect(-r,-r,r*2,r*2); ctx.fillStyle=fill; ctx.fill();
+    ctx.lineWidth=1.4; ctx.strokeStyle=rgba(col,0.9); ctx.stroke();
+  }else if(t==='source'){ // document (rect with folded corner)
+    ctx.beginPath();
+    ctx.moveTo(-r,-r*0.8); ctx.lineTo(r*0.3,-r*0.8); ctx.lineTo(r,-r*0.3); ctx.lineTo(r,r*0.8);
+    ctx.lineTo(-r,r*0.8); ctx.closePath(); ctx.fillStyle=fill; ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle=rgba(col,0.9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r*0.3,-r*0.8); ctx.lineTo(r*0.3,-r*0.3); ctx.lineTo(r,-r*0.3);
+    ctx.strokeStyle=rgba(col,0.5); ctx.lineWidth=1; ctx.stroke();
+  }else if(t==='tool'){ // gear-ish octagon (service)
+    ctx.beginPath();
+    for(let i=0;i<8;i++){ const a=i/8*Math.PI*2-Math.PI/8; const R=r*(i%2?0.9:1.05);
+      const x=Math.cos(a)*R, y=Math.sin(a)*R; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.closePath(); ctx.fillStyle=fill; ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle=rgba(col,0.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,r*0.35,0,7); ctx.strokeStyle=rgba(col,0.6); ctx.lineWidth=1; ctx.stroke();
+  }else{ // agents & monitors: circle
+    ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fillStyle=fill; ctx.fill();
+    ctx.lineWidth=1.6; ctx.strokeStyle=rgba(col,0.9); ctx.stroke();
+  }
+}
+function drawNodes(t){
+  const order=['trace','source','tool','monitor','agent'];
+  for(const type of order){
+    for(const id in nodes){
+      const n=nodes[id];
+      if(n.type!==type) continue;
+      if(type==='gate') continue;               // drawn separately
+      if(type==='trace' && !cfg.persist) continue;
+      if(type==='monitor' && !cfg.monitor) continue;
+      const col=NODE_COL[type];
+      const p=n.pulse;
+      ctx.save(); ctx.translate(n.x,n.y);
+      // pulse halo
+      if(p>0){ ctx.beginPath(); ctx.arc(0,0,n.r+p*16,0,7);
+        ctx.strokeStyle=rgba(col,0.5*p); ctx.lineWidth=2; ctx.stroke(); }
+      const g=ctx.createRadialGradient(-n.r*0.3,-n.r*0.4,1,0,0,n.r+4);
+      g.addColorStop(0, rgba(col,0.30)); g.addColorStop(1, rgba(col,0.05));
+      nodeShape(ctx,n,n.r,col,g);
+      ctx.restore();
+      // label
+      ctx.save(); ctx.font='8.5px ui-monospace,monospace'; ctx.textAlign='center';
+      ctx.fillStyle=rgba(col, type==='trace'?0.7:0.85);
+      const ly = n.y + n.r + (type==='trace'?11:13);
+      ctx.fillText(n.label, n.x, ly);
+      ctx.restore();
+    }
+  }
+}
+
+/* Flow particles (discovery / influence / propagation). */
+function drawParticles(dt){
+  for(const pt of particles){
+    const p=bezierPoint(pt.A, pt.B, pt.t);
+    const c=pt.color;
+    // trail
+    const q=bezierPoint(pt.A, pt.B, Math.max(0,pt.t-0.12));
+    const grad=ctx.createLinearGradient(q.x,q.y,p.x,p.y);
+    grad.addColorStop(0, rgba(c,0)); grad.addColorStop(1, rgba(c,0.7));
+    ctx.strokeStyle=grad; ctx.lineWidth=2; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(q.x,q.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+    // head
+    ctx.save(); ctx.shadowColor=rgba(css(c),0.9); ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(p.x,p.y, pt.kind==='persist'?2.4:2.8, 0,7); ctx.fillStyle=rgba(c,0.95); ctx.fill();
+    ctx.restore();
+    if(!cfg.paused) pt.t += pt.speed*dt*cfg.speed;
+    if(pt.t>=1){ pt._done=true; if(pt.onArrive) pt.onArrive(); }
+  }
+  for(let i=particles.length-1;i>=0;i--) if(particles[i]._done) particles.splice(i,1);
+}
+function css(c){ return `rgb(${c[0]},${c[1]},${c[2]})`; }
+
+/* Flash that fires at the gate when containment holds or fails. */
+function drawGateFlash(t,dt){
+  if(!gateFlash) return;
+  gateFlash.t -= dt*1.6;
+  if(gateFlash.t<=0){ gateFlash=null; return; }
+  const g=nodes.gate, a=gateFlash.t;
+  const col = gateFlash.ok ? COL.monitor : COL.propagate;
+  ctx.save(); ctx.translate(g.x,g.y);
+  ctx.beginPath(); ctx.arc(0,0, g.r + (1-a)*26, 0, 7);
+  ctx.strokeStyle=rgba(col,0.6*a); ctx.lineWidth=2; ctx.stroke();
+  ctx.font='9px ui-monospace,monospace'; ctx.textAlign='center';
+  ctx.fillStyle=rgba(col,0.9*a);
+  ctx.fillText(gateFlash.ok?'BLOCKED':'CROSSED', 0, -g.r-(1-a)*26-4);
+  ctx.restore();
+}
+
+
+/* ============================================================
+   HUD — compact illustrative indicators
+   ============================================================ */
+const hud = { status:$('i_status'), persist:$('i_persist'), discover:$('i_discover'),
+  cross:$('i_cross'), loops:$('i_loops'), blocked:$('i_blocked'),
+  bar:$('i_riskbar'), riskval:$('i_riskval') };
+let hudTick=0;
+function updateHUD(dt){
+  hudTick+=dt; if(hudTick<0.15) return; hudTick=0;
+  // risk exposure grows with propagated events, decays otherwise
+  const target = cfg.fail ? Math.min(100, st.cross*6 + st.loops*5) : Math.max(0, st.heat - st.heat*dt*0.5);
+  st.heat = cfg.fail ? Math.min(100, st.heat + (target-st.heat)*0.15 + dt*2)
+                     : Math.max(0, st.heat - dt*8);
+  hud.persist.textContent=st.persisted;
+  hud.discover.textContent=st.discovery;
+  hud.cross.textContent=st.cross;
+  hud.loops.textContent=st.loops;
+  hud.blocked.textContent=st.blocked;
+  const r=Math.round(st.heat);
+  hud.bar.style.width=r+'%'; hud.riskval.textContent=r+'%';
+  let label, cls;
+  if(cfg.fail && st.heat>55){ label='COMPROMISED'; cls='bad'; }
+  else if(cfg.fail || st.heat>25){ label='AT RISK'; cls='warn'; }
+  else { label='CONTAINED'; cls='ok'; }
+  hud.status.textContent=label; hud.status.className='v '+cls;
+}
+
+/* ============================================================
+   MAIN LOOP
+   ============================================================ */
+let last=performance.now(), T=0, spawnT=0;
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(!cfg.paused) T+=dt;
+  // background
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(W*0.6,H*0.4,0,W*0.6,H*0.4,Math.max(W,H));
+  bg.addColorStop(0,'#0a1220'); bg.addColorStop(1,'#05080f');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  drawGrid();
+  drawBoundary(T);
+  drawWatchLinks(T);
+  drawEdges(T);
+  drawGate(T);
+  drawNodes(T);
+  drawParticles(dt);
+  drawGateFlash(T,dt);
+  updateHUD(dt);
+
+  // spawn new originating artifacts over time
+  if(!cfg.paused){
+    spawnT+=dt*cfg.density*cfg.speed;
+    const interval=1.4;
+    while(spawnT>interval){ spawnT-=interval; stagePersist(); }
+    // decay node pulses
+    for(const id in nodes){ if(nodes[id].pulse>0) nodes[id].pulse=Math.max(0,nodes[id].pulse-dt*2.2); }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   CONTROLS
+   ============================================================ */
+$('pause').onclick=function(){ cfg.paused=!cfg.paused; this.textContent=cfg.paused?'Resume':'Pause'; };
+$('reset').onclick=function(){
+  particles.length=0; gateFlash=null;
+  for(const k in st) st[k]=0;
+  for(const id in nodes) nodes[id].pulse=0;
+  spawnT=0;
+};
+$('speed').oninput=function(){ cfg.speed=+this.value; $('v_speed').textContent=(+this.value).toFixed(1)+'×'; };
+$('density').oninput=function(){ cfg.density=+this.value; $('v_density').textContent=(+this.value).toFixed(1)+'×'; };
+function bindToggle(id,key){
+  $(id).onchange=function(){ cfg[key]=this.checked;
+    if(id==='t_fail') document.body.classList.toggle('fail', this.checked); };
+}
+bindToggle('t_persist','persist');
+bindToggle('t_discover','discover');
+bindToggle('t_bound','bound');
+bindToggle('t_feedback','feedback');
+bindToggle('t_monitor','monitor');
+bindToggle('t_fail','fail');
+
+/* ---- Boot ---- */
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

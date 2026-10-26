@@ -4,6 +4,9 @@ build*/
 
 # Dotfiles & IDE config (user rule: ignore anything starting with ".")
 .*
+*.db
+*.db.bak
+*.bak
 
 # ...except keep .gitignore itself tracked
 !.gitignore

@@ -250,17 +250,39 @@
 
     $("#ed-add")?.addEventListener("click", () => {
       const blank = { id: "mdmy." + key.replace(/s$/, "") + "." + (all.length + 1) };
+      // Seed every collection with the defaults its register step expects.
+      const DEFAULTS = {
+        processes: null, // handled below (needs scope/steps)
+        programV2: null,
+        recipes: { kind: "structure" },
+        signals: { kind: "targets" },
+        modifiers: { kind: "intercept", enabled: true },
+        elements: { matterType: "Solid" },
+        unlockNodes: { kind: "always" },
+        structureBehaviors: { kind: "conveyor" },
+        energyTypes: { type: "conductor" },
+        buffers: { type: "number" },
+        processing: { intervalMs: 1000 },
+        triggers: { interval: 60, sequentialRuns: 1 },
+        items: { itemType: "Mod" },
+        structures: { categoryKey: "blocks" },
+        projectiles: {},
+        excavationProfiles: { power: 1, pattern: [[1]] },
+        placementConfigs: { fields: [] },
+        contacts: {},
+        terrains: {},
+        sprites: { fromMod: true },
+        techs: {},
+        upgrades: {},
+        upgradeCategories: {},
+        inputBindings: {},
+        energyNetworks: {},
+      };
+      Object.assign(blank, DEFAULTS[key] || {});
       if (key === "processes" || key === "programV2") {
         blank.scope = state.defaultScope || "signal";
         blank.steps = [];
       }
-      if (key === "recipes") blank.kind = "structure";
-      if (key === "signals") blank.kind = "targets";
-      if (key === "modifiers") {
-        blank.kind = "intercept";
-        blank.enabled = true;
-      }
-      if (key === "elements") blank.matterType = "Solid";
       all.push(blank);
       state.editIndex = all.length - 1;
       save();
@@ -315,6 +337,100 @@
   }
 
 
+  /* ---------- typed-field infrastructure (Phase 1) ---------- */
+  const FIELD_TYPES = [
+    "text", "number", "bool", "select", "tags", "color", "ref",
+    "kv", "list", "matrix", "triple", "pair", "json",
+  ];
+
+  function pathTokens(p) {
+    const out = [];
+    String(p).replace(/([^.[\]]+)|\[(\d+)\]/g, (_m, key, idx) => {
+      out.push(idx != null ? Number(idx) : key);
+    });
+    return out;
+  }
+  function joinPath(prefix, k) {
+    if (!prefix) return String(k || "");
+    if (!k) return String(prefix);
+    return prefix + "." + k;
+  }
+  function setPath(obj, p, v) {
+    const t = pathTokens(p);
+    if (!t.length) return;
+    let o = obj;
+    for (let i = 0; i < t.length - 1; i++) {
+      const k = t[i];
+      if (o[k] == null || typeof o[k] !== "object") o[k] = typeof t[i + 1] === "number" ? [] : {};
+      o = o[k];
+    }
+    o[t[t.length - 1]] = v;
+  }
+  function delPath(obj, p) {
+    const t = pathTokens(p);
+    if (!t.length) return;
+    let o = obj;
+    for (let i = 0; i < t.length - 1; i++) {
+      o = o == null ? undefined : o[t[i]];
+      if (o == null || typeof o !== "object") return;
+    }
+    delete o[t[t.length - 1]];
+  }
+  function getPathVal(obj, p) {
+    let o = obj;
+    for (const k of pathTokens(p)) {
+      if (o == null) return undefined;
+      o = o[k];
+    }
+    return o;
+  }
+  function deepClone(v) {
+    return v == null ? v : JSON.parse(JSON.stringify(v));
+  }
+  function isEmptyObj(v) {
+    return !!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0;
+  }
+  /** Parent prefixes of a path ("sprite.id" → "sprite") — used to prune emptied containers. */
+  function parentPaths(p) {
+    const t = pathTokens(p);
+    const out = [];
+    for (let i = 1; i < t.length; i++) out.push(t.slice(0, i).join("."));
+    return out;
+  }
+
+  function refValues(from) {
+    if (!from) return [];
+    if (from === "@actions") {
+      const acts = (S() && S().ACTIONS) || {};
+      const out = [];
+      Object.keys(acts).forEach((r) => (acts[r] || []).forEach((k) => out.push(k)));
+      return out;
+    }
+    const list = (state.config || {})[from];
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((e) => (e && (e.id != null ? e.id : e.path != null ? e.path : null)))
+      .filter((v) => v != null && v !== "")
+      .map(String);
+  }
+  function colorToHex(v, fmt) {
+    if (v == null || v === "") return "#000000";
+    if (typeof v === "number" && fmt === "int") {
+      return "#" + (v >>> 0 & 0xffffff).toString(16).padStart(6, "0");
+    }
+    const s = String(v);
+    if (/^#[0-9a-fA-F]{6}$/.test(s)) return s;
+    if (/^#[0-9a-fA-F]{3}$/.test(s)) {
+      return "#" + s.slice(1).split("").map((c) => c + c).join("");
+    }
+    return "#000000";
+  }
+  function arrayFromNumericObj(o) {
+    const keys = Object.keys(o).map(Number).filter((n) => !Number.isNaN(n)).sort((a, b) => a - b);
+    if (!keys.length) return null;
+    return keys.map((n) => o[String(n)]);
+  }
+
   function renderSectionedForm(collection, fields, entry) {
     const secMap = (S().FIELD_SECTIONS && S().FIELD_SECTIONS[collection]) || {};
     const order = (S().SECTION_ORDER && S().SECTION_ORDER[collection]) || [];
@@ -341,7 +457,7 @@
       .map((sec, i) => {
         const rows = groups[sec] || [];
         const body = rows
-          .map(([k, label, type, extra]) => fieldControl(k, label, type, extra, entry[k]))
+          .map(([k, label, type, extra]) => fieldControl(k, label, type, extra, getPathVal(entry, k)))
           .join("");
         const open = sec === "Identity" || i === 0 ? " open" : "";
         return (
@@ -359,59 +475,677 @@
       .join("");
   }
 
+  function attrsFor(extra) {
+    const a = [];
+    if (extra && extra.required) a.push('data-req="1"');
+    if (extra && extra.rows) {
+      if (extra.rows.min != null) a.push(`data-rows-min="${extra.rows.min}"`);
+      if (extra.rows.max != null) a.push(`data-rows-max="${extra.rows.max}"`);
+    }
+    if (extra && extra.min != null) a.push(`data-min="${extra.min}"`);
+    if (extra && extra.max != null) a.push(`data-max="${extra.max}"`);
+    if (extra && extra.pattern) a.push(`data-pattern="${escapeAttr(extra.pattern)}"`);
+    if (extra && extra.msg) a.push(`data-msg="${escapeAttr(extra.msg)}"`);
+    if (extra && extra.coerceBy) a.push(`data-coerce="${escapeAttr(extra.coerceBy)}"`);
+    return a.join(" ");
+  }
+  function whenAttr(extra) {
+    return extra && extra.when ? ` data-when="${escapeAttr(JSON.stringify(extra.when))}"` : "";
+  }
+  function ctrl(inner, extra) {
+    return `<div class="ed-ctrl"${whenAttr(extra)}>${inner}</div>`;
+  }
+  function kvRowHtml(key, val) {
+    const v = val == null ? "" : typeof val === "object" ? JSON.stringify(val) : String(val);
+    return `<div class="ed-kv-row"><input type="text" class="ed-kv-key" data-kv-key value="${escapeAttr(key)}" placeholder="key" />
+      <input type="text" class="ed-kv-val" data-kv-val value="${escapeAttr(v)}" placeholder="value" />
+      <button type="button" class="ed-kv-del" title="Remove pair">×</button></div>`;
+  }
+  function listRowHtml(fields, item, index) {
+    const body = fields
+      .map((f) => fieldControl(f[0], f[1], f[2], f[3], item ? getPathVal(item, f[0]) : undefined))
+      .join("");
+    return `<div class="ed-list-row"><span class="ed-list-idx">${index + 1}</span>${body}
+      <button type="button" class="ed-list-del" title="Remove row">×</button></div>`;
+  }
+
   function fieldControl(k, label, type, extra, value) {
     extra = extra || {};
+    const req = extra.required ? " *" : "";
+    const hint = extra.hint || "";
+    if (!FIELD_TYPES.includes(type)) {
+      console.error("[editor] unknown field type", JSON.stringify(type), "for field", k);
+      return ctrl(
+        `<label class="ed-field ed-field-bad"><span>${escapeHtml(label)} ⚠ unknown type</span>
+        <input type="text" value="${escapeAttr(String(type))}" disabled /></label>`,
+        extra
+      );
+    }
+    if (type === "kv") {
+      const obj = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      const vt = extra.valueType || "auto";
+      const rows = Object.keys(obj).map((kk) => kvRowHtml(kk, obj[kk])).join("");
+      return ctrl(
+        `<div class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <div class="ed-kv" data-kv="${escapeAttr(k)}" data-kv-type="${vt}" ${attrsFor(extra)}>${rows}</div>
+        <div class="ed-ctrl-actions"><button type="button" class="graph-btn ed-kv-add">+ Add pair</button></div>
+        ${hint ? `<p class="ed-muted">${escapeHtml(hint)}</p>` : ""}</div>`,
+        extra
+      );
+    }
+    if (type === "list") {
+      const fields = extra.fields || [];
+      const arr = Array.isArray(value) ? value : [];
+      const rows = arr.map((it, i) => listRowHtml(fields, it, i)).join("");
+      return ctrl(
+        `<div class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <div class="ed-list" data-list="${escapeAttr(k)}" data-fields="${escapeAttr(JSON.stringify(fields))}" data-item="${extra.item || "object"}" ${attrsFor(extra)}>${rows}</div>
+        <div class="ed-ctrl-actions"><button type="button" class="graph-btn ed-list-add">+ Add row</button></div>
+        ${hint ? `<p class="ed-muted">${escapeHtml(hint)}</p>` : ""}</div>`,
+        extra
+      );
+    }
+    return leafControl(k, label, type, extra, value);
+  }
+
+  function leafControl(k, label, type, extra, value) {
+    const req = extra.required ? " *" : "";
+    const hint = extra.hint || "";
+    const A = attrsFor(extra);
+    const dataF = `data-f="${escapeAttr(k)}" data-t="${type}"`;
     if (type === "bool") {
-      return `<label class="ed-field"><span>${escapeHtml(label)}</span>
-        <input type="checkbox" data-k="${k}" ${value ? "checked" : ""} /></label>`;
+      return ctrl(
+        `<label class="ed-field"><span>${escapeHtml(label)}</span>
+        <input type="checkbox" ${dataF} ${value ? "checked" : ""} /></label>`,
+        extra
+      );
     }
     if (type === "select") {
       let opts = extra.options || [];
       if (typeof opts === "string") opts = S()[opts] || [];
+      const cur = value == null ? "" : String(value);
+      const known = cur === "" || opts.includes(cur);
       const options = opts
-        .map((o) => `<option value="${escapeAttr(o)}" ${String(value) === o ? "selected" : ""}>${escapeHtml(o)}</option>`)
+        .map((o) => `<option value="${escapeAttr(o)}" ${cur === o ? "selected" : ""}>${escapeHtml(o)}</option>`)
         .join("");
-      return `<label class="ed-field"><span>${escapeHtml(label)}${extra.required ? " *" : ""}</span>
-        <select data-k="${k}"><option value="">—</option>${options}</select></label>`;
+      const unknown = known
+        ? ""
+        : `<option value="${escapeAttr(cur)}" selected>${escapeHtml(cur)} ⚠ not in list</option>`;
+      return ctrl(
+        `<label class="ed-field${known ? "" : " ed-warn"}"><span>${escapeHtml(label)}${req}</span>
+        <select ${dataF} ${A}><option value="">—</option>${unknown}${options}</select></label>`,
+        extra
+      );
+    }
+    if (type === "tags") {
+      const arr = Array.isArray(value) ? value : [];
+      return ctrl(
+        `<label class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <input type="text" ${dataF} data-num="${extra.numeric ? 1 : 0}" ${A}
+          value="${escapeAttr(arr.join(", "))}"
+          placeholder="${escapeAttr(hint || "comma-separated")} " /></label>`,
+        extra
+      );
+    }
+    if (type === "color") {
+      const fmt = extra.fmt || "string";
+      const hex = colorToHex(value, fmt);
+      const shown =
+        value == null || value === ""
+          ? ""
+          : fmt === "int" && typeof value === "number"
+          ? hex
+          : String(value);
+      return ctrl(
+        `<label class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <span class="ed-color">
+          <input type="color" class="ed-color-pick" value="${hex}" title="colour picker" />
+          <input type="text" ${dataF} data-fmt="${fmt}" ${A} value="${escapeAttr(shown)}" placeholder="#RRGGBB" />
+        </span></label>`,
+        extra
+      );
+    }
+    if (type === "ref") {
+      const vals = refValues(extra.from);
+      const dlId =
+        "dl-" + String(k).replace(/[^a-zA-Z0-9_-]+/g, "_") + "-" + extra.from;
+      const isNull = value === null;
+      const cur = value == null || value === null ? "" : String(value);
+      return ctrl(
+        `<label class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <span class="ed-ref">
+          <input type="text" list="${escapeAttr(dlId)}" ${dataF} ${A} value="${escapeAttr(cur)}"
+            placeholder="${escapeAttr(hint || (extra.from ? "id from " + extra.from : ""))}" />
+          <datalist id="${escapeAttr(dlId)}">${vals
+            .map((v) => `<option value="${escapeAttr(v)}"></option>`)
+            .join("")}</datalist>
+          ${
+            extra.nullable
+              ? `<label class="ed-null" title="store an explicit null — means deliberately nothing">
+            <input type="checkbox" ${dataF.replace('data-t="ref"', 'data-t="nullflag"')} ${isNull ? "checked" : ""} /> null</label>`
+              : ""
+          }
+        </span></label>`,
+        extra
+      );
+    }
+    if (type === "triple" || type === "pair") {
+      const tri = Array.isArray(value) ? value : [];
+      const slots = extra.labels || (type === "pair" ? ["A", "B"] : ["0", "1", "2"]);
+      return ctrl(
+        `<label class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <span class="ed-triple" ${dataF} data-slots="${escapeAttr(slots.join("|"))}" ${A} title="${escapeAttr(hint)}">
+          ${slots
+            .map(
+              (s, i) =>
+                `<input type="number" data-slot="${i}" placeholder="${escapeAttr(s)}" value="${
+                  tri[i] != null ? escapeAttr(String(tri[i])) : ""
+                }" />`
+            )
+            .join("")}
+        </span></label>`,
+        extra
+      );
+    }
+    if (type === "matrix") {
+      const rows = Array.isArray(value) ? value : [];
+      const group = extra.group || 0;
+      const text = rows
+        .map((r) =>
+          (Array.isArray(r) ? r : [])
+            .map((c) => (Array.isArray(c) ? c.join(" ") : String(c)))
+            .join(group > 1 ? "   " : ",")
+        )
+        .join("\n");
+      const cellHint =
+        group > 1
+          ? `one row per line, ${group} numbers per cell, cells separated by "   " (e.g. 1 0.5 0 1   0 1 0.5 1)`
+          : "one row per line: 1,0,1";
+      return ctrl(
+        `<label class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <textarea ${dataF} ${A} data-group="${group}" rows="${Math.max(3, Math.min(rows.length || 3, 12))}"
+          placeholder="${escapeAttr(hint || cellHint)}">${escapeHtml(text)}</textarea></label>`,
+        extra
+      );
     }
     if (type === "json") {
       const text = value == null ? "" : typeof value === "string" ? value : JSON.stringify(value, null, 2);
-      return `<label class="ed-field ed-field-wide"><span>${escapeHtml(label)}${extra.required ? " *" : ""}</span>
-        <textarea data-k="${k}" data-json="1" rows="3" placeholder="${escapeAttr(extra.hint || "JSON")}">${escapeHtml(text)}</textarea></label>`;
+      return ctrl(
+        `<label class="ed-field ed-field-wide"><span>${escapeHtml(label)}${req}</span>
+        <textarea ${dataF} ${A} rows="3" placeholder="${escapeAttr(hint || "JSON")}">${escapeHtml(text)}</textarea></label>`,
+        extra
+      );
     }
-    return `<label class="ed-field"><span>${escapeHtml(label)}${extra.required ? " *" : ""}</span>
-      <input type="${type === "number" ? "number" : "text"}" data-k="${k}" value="${escapeAttr(
-        value == null ? "" : String(value)
-      )}" placeholder="${escapeAttr(extra.hint || "")}" /></label>`;
+    if (type === "number") {
+      return ctrl(
+        `<label class="ed-field"><span>${escapeHtml(label)}${req}</span>
+        <input type="number" ${dataF} ${A} value="${escapeAttr(value == null ? "" : String(value))}"
+          placeholder="${escapeAttr(hint)}" /></label>`,
+        extra
+      );
+    }
+    return ctrl(
+      `<label class="ed-field"><span>${escapeHtml(label)}${req}</span>
+      <input type="text" ${dataF} ${A} value="${escapeAttr(value == null ? "" : String(value))}"
+        placeholder="${escapeAttr(hint)}" /></label>`,
+      extra
+    );
   }
 
-  function readFormInto(entry, form) {
-    $$("[data-k]", form).forEach((el) => {
-      const k = el.dataset.k;
-      if (el.type === "checkbox") entry[k] = el.checked;
-      else if (el.dataset.json) {
-        const raw = el.value.trim();
-        if (!raw) delete entry[k];
-        else {
-          try {
-            entry[k] = JSON.parse(raw);
-          } catch {
-            entry[k] = raw;
-          }
+
+  function markErr(el, errors, msg) {
+    if (!errors) return;
+    const lab = (el && el.closest && (el.closest(".ed-field") || el.closest(".ed-ctrl"))) || el;
+    if (lab && lab.classList) lab.classList.add("err");
+    if (el && el.classList) el.classList.add("err");
+    errors.push(msg);
+  }
+  function fieldLabelOf(el, path) {
+    const lab = el && el.closest && el.closest(".ed-field");
+    const span = lab && lab.querySelector("span");
+    return (span ? span.textContent : path).replace(" *", "").trim();
+  }
+  function coerceValue(el, form, v) {
+    const by = el.dataset.coerce;
+    if (!by || !form) return { ok: true, value: v };
+    const other = form.querySelector(`[data-f="${by}"]`);
+    const t = !other
+      ? ""
+      : other.type === "checkbox"
+      ? other.checked
+        ? "true"
+        : "false"
+      : String(other.value || "").trim();
+    if (t === "number") {
+      const n = Number(v);
+      return Number.isFinite(n) ? { ok: true, value: n } : { ok: false };
+    }
+    if (t === "bool") {
+      if (v === true || v === "true") return { ok: true, value: true };
+      if (v === false || v === "false") return { ok: true, value: false };
+      return { ok: false };
+    }
+    return { ok: true, value: String(v) };
+  }
+  function isHiddenEl(el) {
+    return !!(el && el.closest && el.closest("[hidden]"));
+  }
+
+  /** Recursive reader: walks container children, writing into `root` at `prefix`. */
+  function walkScope(scope, prefix, root, errors, form) {
+    const children = scope && scope.children ? Array.from(scope.children) : [];
+    for (const child of children) {
+      const d = child.dataset || {};
+      if (d.list != null) {
+        handleList(child, joinPath(prefix, d.list), root, errors, form);
+        continue;
+      }
+      if (d.kv != null) {
+        handleKv(child, joinPath(prefix, d.kv), root, errors, form);
+        continue;
+      }
+      if (d.f != null) {
+        handleLeaf(child, joinPath(prefix, d.f), root, errors, form);
+        continue;
+      }
+      if (child.children && child.children.length) walkScope(child, prefix, root, errors, form);
+    }
+  }
+
+  let ownedSet = null;
+  function noteOwned(p) {
+    if (!ownedSet || !p) return;
+    ownedSet.add(p);
+    parentPaths(p).forEach((pp) => ownedSet.add(pp));
+  }
+  /** Fill `target` from the DOM form. Pass `errors = null` for silent preview mode. */
+  function fillFromForm(target, form, errors) {
+    ownedSet = new Set();
+    walkScope(form, "", target, errors, form);
+    const paths = Array.from(ownedSet).sort((a, b) => pathTokens(b).length - pathTokens(a).length);
+    for (const p of paths) {
+      if (isEmptyObj(getPathVal(target, p))) delPath(target, p);
+    }
+    ownedSet = null;
+  }
+  /**
+   * Apply the form to `entry`. Returns false when validation errors were found;
+   * `errors` then lists them (and the offending controls carry `.err`).
+   */
+  function readFormInto(entry, form, errors) {
+    errors = errors || [];
+    $$(".err", form).forEach((el) => el.classList.remove("err"));
+    fillFromForm(entry, form, errors);
+    return errors.length === 0;
+  }
+
+  function handleLeaf(el, path, root, errors, form) {
+    const t = el.dataset.t;
+    if (isHiddenEl(el)) {
+      // Conditional field that does not apply → its key must not survive a save.
+      delPath(root, path);
+      noteOwned(path);
+      return;
+    }
+    noteOwned(path);
+    const req = el.dataset.req === "1";
+    const label = (el.closest(".ed-field") && el.closest(".ed-field").querySelector("span")
+      ? el.closest(".ed-field").querySelector("span").textContent
+      : path
+    ).replace(" *", "").trim();
+    const need = () => markErr(el, errors, `${label} is required`);
+    if (t === "nullflag") {
+      if (el.checked) setPath(root, path, null);
+      return;
+    }
+    if (t === "bool") {
+      setPath(root, path, !!el.checked);
+      return;
+    }
+    if (t === "triple" || t === "pair") {
+      const slots = $$("[data-slot]", el);
+      const vals = slots.map((s) => String(s.value || "").trim());
+      const names = (el.dataset.slots || "").split("|").filter(Boolean);
+      const want = names.length || slots.length;
+      const what = want === 2 ? "two numbers" : want === 4 ? "four numbers" : `${want} numbers`;
+      if (vals.every((v) => v === "")) {
+        if (req) need();
+        else delPath(root, path);
+        return;
+      }
+      const nums = vals.map((v) => Number(v));
+      if (nums.some((n) => !Number.isFinite(n))) {
+        markErr(el, errors, `${label}: needs ${what}`);
+        return;
+      }
+      setPath(root, path, nums);
+      return;
+    }
+    const raw = String(el.value || "").trim();
+    if (t === "number") {
+      if (raw === "") {
+        if (req) need();
+        else delPath(root, path);
+        return;
+      }
+      const n = Number(raw);
+      if (!Number.isFinite(n)) {
+        markErr(el, errors, `${label}: not a number`);
+        return;
+      }
+      if (el.dataset.min != null && n < Number(el.dataset.min)) {
+        markErr(el, errors, `${label} must be ≥ ${el.dataset.min}`);
+        return;
+      }
+      if (el.dataset.max != null && n > Number(el.dataset.max)) {
+        markErr(el, errors, `${label} must be ≤ ${el.dataset.max}`);
+        return;
+      }
+      setPath(root, path, n);
+      return;
+    }
+    if (t === "tags") {
+      if (raw === "") {
+        if (req) need();
+        else delPath(root, path);
+        return;
+      }
+      const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      if (el.dataset.num === "1") {
+        const nums = parts.map((p) => Number(p));
+        if (nums.some((x) => !Number.isFinite(x))) {
+          markErr(el, errors, `${label}: list must be numbers (comma-separated)`);
+          return;
         }
-      } else if (el.type === "number") {
-        if (el.value === "") delete entry[k];
-        else {
-          const n = Number(el.value);
-          if (!Number.isNaN(n)) entry[k] = n;
+        setPath(root, path, nums);
+      } else {
+        setPath(root, path, parts);
+      }
+      return;
+    }
+    if (t === "color") {
+      if (raw === "") {
+        if (req) need();
+        else delPath(root, path);
+        return;
+      }
+      const hex = raw.startsWith("#") ? raw : "#" + raw;
+      if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+        markErr(el, errors, `${label}: need a #RRGGBB colour`);
+        return;
+      }
+      setPath(root, path, el.dataset.fmt === "int" ? Number.parseInt(hex.slice(1), 16) : hex);
+      return;
+    }
+    if (t === "matrix") {
+      const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+      if (!lines.length) {
+        if (req) need();
+        else delPath(root, path);
+        return;
+      }
+      const group = Number(el.dataset.group) || 0;
+      const rows = [];
+      let width = null;
+      for (const line of lines) {
+        // With grouped cells, 2+ spaces or a tab separates cells; otherwise comma/space.
+        if (group > 1) {
+          const parts = line.split(/\s{2,}|\t+/).filter(Boolean);
+          const packed = [];
+          for (const part of parts) {
+            const nums = part.split(/[\s,]+/).filter(Boolean).map((c) => Number(c));
+            if (nums.some((c) => !Number.isFinite(c))) {
+              markErr(el, errors, `${label}: rows must contain only numbers`);
+              return;
+            }
+            if (nums.length !== group) {
+              markErr(el, errors, `${label}: every cell needs exactly ${group} numbers`);
+              return;
+            }
+            packed.push(nums);
+          }
+          if (width == null) width = packed.length;
+          else if (packed.length !== width) {
+            markErr(el, errors, `${label}: every row needs the same number of cells`);
+            return;
+          }
+          rows.push(packed);
+          continue;
+        }
+        const cells = line.split(/[\s,]+/).filter(Boolean).map((c) => Number(c));
+        if (cells.some((c) => !Number.isFinite(c))) {
+          markErr(el, errors, `${label}: rows must contain only numbers`);
+          return;
+        }
+        if (width == null) width = cells.length;
+        else if (cells.length !== width) {
+          markErr(el, errors, `${label}: every row needs the same number of cells`);
+          return;
+        }
+        rows.push(cells);
+      }
+      setPath(root, path, rows);
+      return;
+    }
+    if (t === "json") {
+      if (raw === "") {
+        if (req) need();
+        else delPath(root, path);
+        return;
+      }
+      try {
+        setPath(root, path, JSON.parse(raw));
+      } catch (e) {
+        markErr(el, errors, `${label}: invalid JSON — ${e.message}`);
+      }
+      return;
+    }
+    // text · select · ref
+    if (raw === "") {
+      if (req) need();
+      else delPath(root, path);
+      return;
+    }
+    const pat = el.dataset.pattern;
+    if (pat) {
+      let ok = false;
+      try {
+        ok = new RegExp(pat).test(raw);
+      } catch (_) {
+        ok = true;
+      }
+      if (!ok) {
+        markErr(el, errors, `${label}: ${el.dataset.msg || "invalid format"}`);
+        return;
+      }
+    }
+    if (el.dataset.coerce) {
+      const c = coerceValue(el, form, raw);
+      if (!c.ok) {
+        markErr(el, errors, `${label}: value does not match the selected type`);
+        return;
+      }
+      setPath(root, path, c.value);
+      return;
+    }
+    setPath(root, path, raw);
+  }
+
+  function handleKv(container, path, root, errors, form) {
+    if (isHiddenEl(container)) {
+      delPath(root, path);
+      noteOwned(path);
+      return;
+    }
+    noteOwned(path);
+    const label = fieldLabelOf(container, path);
+    const req = container.dataset.req === "1";
+    const vt = container.dataset.kvType || "auto";
+    const obj = {};
+    $$(".ed-kv-row", container).forEach((row) => {
+      const kIn = row.querySelector("[data-kv-key]");
+      const vIn = row.querySelector("[data-kv-val]");
+      const key = String((kIn && kIn.value) || "").trim();
+      const val = String((vIn && vIn.value) || "").trim();
+      if (!key || val === "") return;
+      if (vt === "number") {
+        const n = Number(val);
+        if (!Number.isFinite(n)) {
+          markErr(vIn, errors, `${label}: "${key}" must be a number`);
+          return;
+        }
+        obj[key] = n;
+      } else if (vt === "string") {
+        obj[key] = val;
+      } else if (/^-?\d+(\.\d+)?$/.test(val)) {
+        obj[key] = Number(val);
+      } else if (val === "true" || val === "false") {
+        obj[key] = val === "true";
+      } else if (/^[{[]/.test(val)) {
+        try {
+          obj[key] = JSON.parse(val);
+        } catch (e) {
+          markErr(vIn, errors, `${label}: "${key}" is not valid JSON (${e.message})`);
         }
       } else {
-        const v = el.value.trim();
-        if (v) entry[k] = v;
-        else delete entry[k];
+        obj[key] = val;
       }
     });
+    if (Object.keys(obj).length) {
+      setPath(root, path, obj);
+    } else if (req) {
+      markErr(container, errors, `${label} needs at least one pair`);
+    } else {
+      delPath(root, path);
+    }
   }
+
+  function handleList(container, path, root, errors, form) {
+    if (isHiddenEl(container)) {
+      delPath(root, path);
+      noteOwned(path);
+      return;
+    }
+    noteOwned(path);
+    const label = fieldLabelOf(container, path);
+    const req = container.dataset.req === "1";
+    const out = [];
+    $$(".ed-list-row", container).forEach((row) => {
+      if (isHiddenEl(row)) return;
+      const tmp = {};
+      walkScope(row, "", tmp, errors, form);
+      const v = container.dataset.item === "array" ? arrayFromNumericObj(tmp) : tmp;
+      if (v && (Array.isArray(v) ? v.length : !isEmptyObj(v))) out.push(v);
+    });
+    const min = Number(container.dataset.rowsMin);
+    const max = Number(container.dataset.rowsMax);
+    if (out.length) {
+      if (Number.isFinite(min) && out.length < min) {
+        markErr(container, errors, `${label} needs at least ${min} row${min === 1 ? "" : "s"}`);
+        return;
+      }
+      if (Number.isFinite(max) && out.length > max) {
+        markErr(container, errors, `${label} allows at most ${max} row${max === 1 ? "" : "s"}`);
+        return;
+      }
+      setPath(root, path, out);
+    } else if (Number.isFinite(min) && min > 0) {
+      markErr(container, errors, `${label} needs at least ${min} row${min === 1 ? "" : "s"}`);
+    } else if (req) {
+      markErr(container, errors, `${label} needs at least one row`);
+    } else {
+      delPath(root, path);
+    }
+  }
+
+  function evalWhen(cond, v) {
+    if (!cond) return true;
+    if (Array.isArray(cond.in)) return cond.in.map(String).includes(String(v));
+    if (Array.isArray(cond.notIn)) return !cond.notIn.map(String).includes(String(v));
+    if (cond.truthy) return v !== undefined && v !== null && v !== false && v !== "" && v !== "false";
+    if (cond.falsy) return !evalWhen({ truthy: true }, v);
+    if ("equals" in cond) {
+      if (cond.equals === null) return v === null;
+      return String(v) === String(cond.equals);
+    }
+    return true;
+  }
+  /** Show/hide every `data-when` control from the live form state. */
+  function applyWhen(form, entry) {
+    if (!form) return;
+    const probe = deepClone(entry) || {};
+    walkScope(form, "", probe, null, form);
+    $$("[data-when]", form).forEach((el) => {
+      let cond = null;
+      try {
+        cond = JSON.parse(el.getAttribute("data-when"));
+      } catch (_) {
+        return;
+      }
+      const row = el.closest(".ed-list-row");
+      let scopeObj = probe;
+      if (row) {
+        scopeObj = {};
+        walkScope(row, "", scopeObj, null, form);
+      }
+      el.hidden = !evalWhen(cond, getPathVal(scopeObj, cond.field));
+    });
+  }
+  /** Live preview: refresh conditional visibility + the read-only Raw JSON mirror. */
+  function liveSync(form, entry) {
+    if (!form) return;
+    applyWhen(form, entry);
+    const probe = deepClone(entry) || {};
+    fillFromForm(probe, form, null);
+    const ta = $("#ed-raw");
+    if (ta && document.activeElement !== ta) ta.value = JSON.stringify(probe, null, 2);
+  }
+  function onFormInput(ev, form, entry) {
+    const t = ev && ev.target;
+    if (t && t.classList && t.classList.contains("ed-color-pick")) {
+      const txt = t.parentElement && t.parentElement.querySelector("[data-t='color']");
+      if (txt) txt.value = t.value;
+    }
+    liveSync(form, entry);
+  }
+  function renumberRows(host) {
+    $$(".ed-list-row", host).forEach((r, i) => {
+      const idx = r.querySelector(".ed-list-idx");
+      if (idx) idx.textContent = String(i + 1);
+    });
+  }
+  function onFormClick(ev, form, entry) {
+    const t = ev && ev.target;
+    if (!t || !t.classList) return;
+    if (t.classList.contains("ed-list-add")) {
+      const host = t.closest(".ed-ctrl") && t.closest(".ed-ctrl").querySelector("[data-list]");
+      if (host) {
+        let fields = [];
+        try {
+          fields = JSON.parse(host.dataset.fields || "[]");
+        } catch (_) {}
+        host.insertAdjacentHTML(
+          "beforeend",
+          listRowHtml(fields, null, host.querySelectorAll(".ed-list-row").length)
+        );
+      }
+    } else if (t.classList.contains("ed-list-del")) {
+      const row = t.closest(".ed-list-row");
+      const host = t.closest("[data-list]");
+      if (row) row.remove();
+      if (host) renumberRows(host);
+    } else if (t.classList.contains("ed-kv-add")) {
+      const host = t.closest(".ed-ctrl") && t.closest(".ed-ctrl").querySelector("[data-kv]");
+      if (host) host.insertAdjacentHTML("beforeend", kvRowHtml("", ""));
+    } else if (t.classList.contains("ed-kv-del")) {
+      const row = t.closest(".ed-kv-row");
+      if (row) row.remove();
+    } else {
+      return;
+    }
+    liveSync(form, entry);
+  }
+
 
 
   function renderForm(main, key, index, meta) {
@@ -455,11 +1189,15 @@
             </div>`
           : ""
       }
-      <details class="ed-raw"><summary>Raw JSON</summary><textarea id="ed-raw" rows="12"></textarea></details>`;
+      <details class="ed-raw"><summary>Raw JSON (read-only preview — the form is what saves)</summary><textarea id="ed-raw" rows="12" readonly spellcheck="false"></textarea></details>`;
 
     const form = $("#ed-form");
     form.innerHTML = renderSectionedForm(key, fields, entry);
-    $("#ed-raw").value = JSON.stringify(entry, null, 2);
+    form.addEventListener("input", (ev) => onFormInput(ev, form, entry));
+    form.addEventListener("change", () => liveSync(form, entry));
+    form.addEventListener("click", (ev) => onFormClick(ev, form, entry));
+    applyWhen(form, entry);
+    liveSync(form, entry);
 
     $("#ed-back")?.addEventListener("click", () => {
       state.editIndex = null;
@@ -467,15 +1205,12 @@
       renderMain();
     });
     $("#ed-save")?.addEventListener("click", () => {
-      readFormInto(entry, form);
-      try {
-        const raw = JSON.parse($("#ed-raw").value);
-        const steps = entry.steps;
-        Object.keys(entry).forEach((k) => delete entry[k]);
-        Object.assign(entry, raw);
-        if (isProcess && Array.isArray(steps)) entry.steps = steps;
-      } catch (_) {}
-      list[index] = entry;
+      const errors = [];
+      if (!readFormInto(entry, form, errors)) {
+        alert("Fix these fields before saving:\n• " + errors.join("\n• "));
+        return;
+      }
+      syncRaw(entry);
       save();
       state.editIndex = null;
       renderMain();

@@ -486,6 +486,12 @@
                 <tr><td><code>tooltipHover</code></td><td>object</td><td>
                   Hover inspector, e.g. <code>{ type: "filter" }</code> or a custom
                   <code>dataFieldMessage</code> with <code>messageKey</code> + field rows.
+                  With <code>type: "custom"</code> the host reads a <strong>single</strong>
+                  field descriptor <code>{ field, param, fallback }</code>; <code>field</code>
+                  is an integer <code>1–4</code> (any other value is dropped, see
+                  <code>composeTooltipHover</code>). When <code>messageKey</code> is empty the
+                  mod's own panel leaves the previous value untouched rather than clearing it —
+                  clear the field explicitly to remove the tooltip.
                 </td></tr>
                 <tr><td><code>registerOptions</code></td><td>object</td><td>
                   Second arg to <code>structures.register</code>.

@@ -39,7 +39,16 @@ import {
 } from "./engine.ts";
 import * as T from "./theme.ts";
 
-export type Tool = "pencil" | "eraser" | "fill" | "picker" | "pan" | "addtile" | "removetile" | "rect" | "copytile";
+export type Tool =
+    | "pencil"
+    | "eraser"
+    | "fill"
+    | "picker"
+    | "pan"
+    | "addtile"
+    | "removetile"
+    | "rect"
+    | "copytile";
 
 export interface EditorProps {
     session: EditSession;
@@ -57,14 +66,26 @@ const TOOLS: Array<[Tool, string, string, string]> = [
     ["pan", "Pan", "5", "Pan (5 / space / shift+drag)"],
 ];
 const TILE_TOOLS: Array<[Tool, string, string, string]> = [
-    ["addtile", "Add tile", "6", "Add tile (6) — click near a tile edge; the new tile copies the tile on its left"],
+    [
+        "addtile",
+        "Add tile",
+        "6",
+        "Add tile (6) — click near a tile edge; the new tile copies the tile on its left",
+    ],
     ["removetile", "Del tile", "7", "Remove tile (7) — click a tile to delete it"],
     ["rect", "Square", "8", "Square / rectangle (8) — drag to draw"],
     ["copytile", "Copy tile", "9", "Copy tile (9) — drag a 16×16 tile onto another one"],
 ];
 const KEY_TOOL: Record<string, Tool> = {
-    "1": "pencil", "2": "eraser", "3": "fill", "4": "picker", "5": "pan",
-    "6": "addtile", "7": "removetile", "8": "rect", "9": "copytile",
+    "1": "pencil",
+    "2": "eraser",
+    "3": "fill",
+    "4": "picker",
+    "5": "pan",
+    "6": "addtile",
+    "7": "removetile",
+    "8": "rect",
+    "9": "copytile",
 };
 
 const MIN_ZOOM = 0.5, MAX_ZOOM = 48;
@@ -145,10 +166,15 @@ export function getSpriteEditor(): (props: EditorProps) => any {
 
         const [, setTick] = useState(0);
         const bump = () => setTick((n: number) => n + 1);
-        const [pos, setPos] = useState(() => lastPos ?? {
-            x: Math.max(8, Math.round((window.innerWidth - Math.min(780, window.innerWidth - 16)) / 2)),
-            y: 24,
-        });
+        const [pos, setPos] = useState(() =>
+            lastPos ?? {
+                x: Math.max(
+                    8,
+                    Math.round((window.innerWidth - Math.min(780, window.innerWidth - 16)) / 2),
+                ),
+                y: 24,
+            }
+        );
         const dragRef = useRef(null as any);
         const F = useRef({} as any); // always-latest handlers for the native listeners
 
@@ -159,7 +185,10 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             const d = sess().doc;
             if (!offRef.current) offRef.current = document.createElement("canvas");
             const o: HTMLCanvasElement = offRef.current;
-            if (o.width !== d.width || o.height !== d.height) { o.width = d.width; o.height = d.height; }
+            if (o.width !== d.width || o.height !== d.height) {
+                o.width = d.width;
+                o.height = d.height;
+            }
             o.getContext("2d")!.putImageData(new ImageData(d.data as any, d.width, d.height), 0, 0);
         };
 
@@ -180,7 +209,12 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             for (let y = 0; y * K < d.height; y++) {
                 for (let x = 0; x * K < d.width; x++) {
                     ctx.fillStyle = (x + y) % 2 ? T.C.checkA : T.C.checkB;
-                    ctx.fillRect(x * K, y * K, Math.min(K, d.width - x * K), Math.min(K, d.height - y * K));
+                    ctx.fillRect(
+                        x * K,
+                        y * K,
+                        Math.min(K, d.width - x * K),
+                        Math.min(K, d.height - y * K),
+                    );
                 }
             }
             ctx.drawImage(offRef.current, 0, 0);
@@ -189,20 +223,37 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 ctx.lineWidth = 1 / v.zoom;
                 ctx.strokeStyle = "rgba(255,255,255,0.07)";
                 ctx.beginPath();
-                for (let x = 0; x <= d.width; x++) { ctx.moveTo(x, 0); ctx.lineTo(x, d.height); }
-                for (let y = 0; y <= d.height; y++) { ctx.moveTo(0, y); ctx.lineTo(d.width, y); }
+                for (let x = 0; x <= d.width; x++) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, d.height);
+                }
+                for (let y = 0; y <= d.height; y++) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(d.width, y);
+                }
                 ctx.stroke();
             }
             if (S.grid && v.zoom >= 4) {
                 ctx.lineWidth = 1 / v.zoom;
                 ctx.strokeStyle = "rgba(255,255,255,0.16)";
                 ctx.beginPath();
-                for (let x = 0; x <= d.width; x += CELL) { ctx.moveTo(x, 0); ctx.lineTo(x, d.height); }
-                for (let y = 0; y <= d.height; y += CELL) { ctx.moveTo(0, y); ctx.lineTo(d.width, y); }
+                for (let x = 0; x <= d.width; x += CELL) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, d.height);
+                }
+                for (let y = 0; y <= d.height; y += CELL) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(d.width, y);
+                }
                 ctx.stroke();
                 ctx.strokeStyle = "rgba(246,165,49,0.55)";
                 ctx.lineWidth = 1.5 / v.zoom;
-                ctx.strokeRect(0.5 / v.zoom, 0.5 / v.zoom, d.width - 1 / v.zoom, d.height - 1 / v.zoom);
+                ctx.strokeRect(
+                    0.5 / v.zoom,
+                    0.5 / v.zoom,
+                    d.width - 1 / v.zoom,
+                    d.height - 1 / v.zoom,
+                );
             }
             drawOverlay(ctx);
             ctx.restore();
@@ -220,35 +271,57 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 ctx.fillRect(x, 0, CELL, d.height);
                 if (srcW > 0) {
                     ctx.globalAlpha = 0.65;
-                    ctx.drawImage(offRef.current, srcStart, 0, srcW, d.height, x, 0, srcW, d.height);
+                    ctx.drawImage(
+                        offRef.current,
+                        srcStart,
+                        0,
+                        srcW,
+                        d.height,
+                        x,
+                        0,
+                        srcW,
+                        d.height,
+                    );
                     ctx.globalAlpha = 1;
                 }
-                ctx.strokeStyle = T.C.accent2; ctx.lineWidth = 1.5 / z;
+                ctx.strokeStyle = T.C.accent2;
+                ctx.lineWidth = 1.5 / z;
                 ctx.setLineDash([3 / z, 3 / z]);
                 ctx.strokeRect(x, 0, CELL, d.height);
                 ctx.setLineDash([]);
                 ctx.lineWidth = 3 / z;
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, d.height); ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, d.height);
+                ctx.stroke();
             } else if (o.kind === "remove") {
                 const x = o.col * CELL, w = Math.min(CELL, d.width - x);
                 ctx.fillStyle = "rgba(226,88,93,0.38)";
                 ctx.fillRect(x, 0, w, d.height);
-                ctx.strokeStyle = T.C.danger; ctx.lineWidth = 2 / z;
+                ctx.strokeStyle = T.C.danger;
+                ctx.lineWidth = 2 / z;
                 ctx.strokeRect(x, 0, w, d.height);
                 ctx.beginPath();
-                ctx.moveTo(x, 0); ctx.lineTo(x + w, d.height); ctx.moveTo(x + w, 0); ctx.lineTo(x, d.height);
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x + w, d.height);
+                ctx.moveTo(x + w, 0);
+                ctx.lineTo(x, d.height);
                 ctx.stroke();
             } else if (o.kind === "copy") {
-                ctx.strokeStyle = T.C.accent; ctx.lineWidth = 2 / z;
+                ctx.strokeStyle = T.C.accent;
+                ctx.lineWidth = 2 / z;
                 ctx.strokeRect(o.src.cx * CELL, o.src.cy * CELL, CELL, CELL);
                 if (o.dst) {
                     const dx = o.dst.cx * CELL, dy = o.dst.cy * CELL;
                     ctx.save();
-                    ctx.beginPath(); ctx.rect(0, 0, d.width, d.height); ctx.clip();
+                    ctx.beginPath();
+                    ctx.rect(0, 0, d.width, d.height);
+                    ctx.clip();
                     ctx.clearRect(dx, dy, CELL, CELL);
                     ctx.drawImage(o.tileCanvas, dx, dy);
                     ctx.restore();
-                    ctx.strokeStyle = T.C.accent2; ctx.lineWidth = 2 / z;
+                    ctx.strokeStyle = T.C.accent2;
+                    ctx.lineWidth = 2 / z;
                     ctx.strokeRect(dx, dy, CELL, CELL);
                 } else {
                     ctx.globalAlpha = 0.6;
@@ -263,13 +336,17 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             if (!wrap || !c) return;
             const w = wrap.clientWidth || 480, hgt = wrap.clientHeight || 360;
             const S = R.current;
-            S.cw = w; S.ch = hgt;
+            S.cw = w;
+            S.ch = hgt;
             c.style.width = w + "px";
             c.style.height = hgt + "px";
             c.width = Math.round(w * dpr());
             c.height = Math.round(hgt * dpr());
             const v = sess().view;
-            if (!v.fitted) { fit(); v.fitted = true; }
+            if (!v.fitted) {
+                fit();
+                v.fitted = true;
+            }
             render();
         };
 
@@ -288,7 +365,8 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             v.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
             v.panX = ax - bx * v.zoom;
             v.panY = ay - by * v.zoom;
-            bump(); render();
+            bump();
+            render();
         };
 
         // ── document changes ─────────────────────────────────────────────
@@ -296,14 +374,18 @@ export function getSpriteEditor(): (props: EditorProps) => any {
         const afterDoc = () => {
             syncOff();
             R.current.palette = scanPalette(sess().doc);
-            bump(); render();
+            bump();
+            render();
         };
 
-        const beginStroke = () => { R.current.stroke = snapshotOf(sess().doc); };
+        const beginStroke = () => {
+            R.current.stroke = snapshotOf(sess().doc);
+        };
         const endStroke = () => {
             const S = R.current;
             if (!S.stroke) return;
-            const snap = S.stroke; S.stroke = null;
+            const snap = S.stroke;
+            S.stroke = null;
             if (!samePixels(snap.data, sess().doc.data)) {
                 pushUndo(sess(), snap);
                 S.palette = scanPalette(sess().doc);
@@ -324,7 +406,10 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             return [c.r, c.g, c.b, 255];
         };
 
-        const setColor = (r: number, g: number, b: number) => { R.current.color = { r, g, b }; bump(); };
+        const setColor = (r: number, g: number, b: number) => {
+            R.current.color = { r, g, b };
+            bump();
+        };
 
         const structural = (fn: () => PixelDoc | null): boolean => {
             const s = sess();
@@ -366,9 +451,13 @@ export function getSpriteEditor(): (props: EditorProps) => any {
         const syncCursor = () => {
             const c = canvasRef.current, S = R.current;
             if (!c) return;
-            c.style.cursor = S.panning ? "grabbing"
-                : (S.tool === "pan" || modPan()) ? "grab"
-                : S.tool === "copytile" ? "copy" : "crosshair";
+            c.style.cursor = S.panning
+                ? "grabbing"
+                : (S.tool === "pan" || modPan())
+                ? "grab"
+                : S.tool === "copytile"
+                ? "copy"
+                : "crosshair";
         };
 
         const updateHover = () => {
@@ -379,7 +468,10 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 const t = tileAt(toDoc(S.lastScreen.sx, S.lastScreen.sy));
                 if (t) {
                     if (S.tool === "addtile") {
-                        S.overlay = { kind: "add", bx: Math.min(Math.round(t.fx / CELL) * CELL, sess().doc.width) };
+                        S.overlay = {
+                            kind: "add",
+                            bx: Math.min(Math.round(t.fx / CELL) * CELL, sess().doc.width),
+                        };
                     } else {
                         S.overlay = { kind: "remove", col: t.cx };
                     }
@@ -390,9 +482,15 @@ export function getSpriteEditor(): (props: EditorProps) => any {
 
         const selectTool = (t: Tool) => {
             const S = R.current;
-            if (S.shapeDrag) { cancelStroke(); }
-            S.tool = t; S.copyDrag = null; S.shapeDrag = null; S.overlay = null; S.pointerDown = false;
-            syncCursor(); bump(); updateHover();
+            if (S.shapeDrag) cancelStroke();
+            S.tool = t;
+            S.copyDrag = null;
+            S.shapeDrag = null;
+            S.overlay = null;
+            S.pointerDown = false;
+            syncCursor();
+            bump();
+            updateHover();
         };
 
         // ── tools at a point ─────────────────────────────────────────────
@@ -409,11 +507,14 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             if (!p) return;
             if (S.tool === "pencil" || S.tool === "eraser") {
                 if (isNew) beginStroke();
-                const col: [number, number, number, number] = S.tool === "eraser" ? [0, 0, 0, 0] : colorArr();
+                const col: [number, number, number, number] = S.tool === "eraser"
+                    ? [0, 0, 0, 0]
+                    : colorArr();
                 if (S.lastPixel) paintLine(d, S.lastPixel.lx, S.lastPixel.ly, p.lx, p.ly, col);
                 else setPixel(d, p.lx, p.ly, col[0], col[1], col[2], col[3]);
                 S.lastPixel = p;
-                syncOff(); render();
+                syncOff();
+                render();
             } else if (S.tool === "fill") {
                 beginStroke();
                 floodFill(d, p.lx, p.ly, colorArr());
@@ -425,10 +526,18 @@ export function getSpriteEditor(): (props: EditorProps) => any {
 
         const updateShape = (c: { x: number; y: number }) => {
             const S = R.current, d = sess().doc, sd = S.shapeDrag;
-            const [lx, ly] = constrainRectEnd(d, sd.x0, sd.y0, Math.floor(c.x), Math.floor(c.y), S.rectSquare);
+            const [lx, ly] = constrainRectEnd(
+                d,
+                sd.x0,
+                sd.y0,
+                Math.floor(c.x),
+                Math.floor(c.y),
+                S.rectSquare,
+            );
             d.data.set(S.stroke.data); // live preview from the untouched pixels
             drawRect(d, sd.x0, sd.y0, lx, ly, S.rectFilled, colorArr());
-            syncOff(); render();
+            syncOff();
+            render();
         };
 
         // ── native pointer handlers (registered once, call latest via F) ──
@@ -454,7 +563,10 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                     structural(() => insertTile(s.doc, bx));
                 } else {
                     const ok = structural(() => removeTile(s.doc, t.cx));
-                    if (!ok) { S.note = "Cannot remove the last tile"; bump(); }
+                    if (!ok) {
+                        S.note = "Cannot remove the last tile";
+                        bump();
+                    }
                 }
                 updateHover();
                 return;
@@ -474,7 +586,8 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 S.pointerDown = true;
                 const tile = extractTile(s.doc, t.cx, t.cy);
                 const tc = document.createElement("canvas");
-                tc.width = CELL; tc.height = CELL;
+                tc.width = CELL;
+                tc.height = CELL;
                 tc.getContext("2d")!.putImageData(new ImageData(tile as any, CELL, CELL), 0, 0);
                 S.copyDrag = { src: t, tile, tileCanvas: tc };
                 S.overlay = { kind: "copy", src: t, dst: null, tileCanvas: tc, mx: c.x, my: c.y };
@@ -490,9 +603,14 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             const el = statusRef.current;
             if (!el) return;
             const p = pixelAt(c);
-            if (!p) { el.textContent = `x:${Math.floor(c.x)} y:${Math.floor(c.y)}`; return; }
+            if (!p) {
+                el.textContent = `x:${Math.floor(c.x)} y:${Math.floor(c.y)}`;
+                return;
+            }
             const px = getPixel(sess().doc, p.lx, p.ly);
-            el.textContent = `x:${p.lx} y:${p.ly}  ${rgbToHex(px[0], px[1], px[2])}${px[3] < 255 ? ` a:${px[3]}` : ""}`;
+            el.textContent = `x:${p.lx} y:${p.ly}  ${rgbToHex(px[0], px[1], px[2])}${
+                px[3] < 255 ? ` a:${px[3]}` : ""
+            }`;
         };
 
         const onMove = (e: MouseEvent) => {
@@ -511,12 +629,25 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             S.lastScreen = { sx, sy };
             setStatus(c);
             if (S.copyDrag) {
-                S.overlay = { kind: "copy", src: S.copyDrag.src, dst: tileAt(c), tileCanvas: S.copyDrag.tileCanvas, mx: c.x, my: c.y };
+                S.overlay = {
+                    kind: "copy",
+                    src: S.copyDrag.src,
+                    dst: tileAt(c),
+                    tileCanvas: S.copyDrag.tileCanvas,
+                    mx: c.x,
+                    my: c.y,
+                };
                 render();
                 return;
             }
-            if (S.shapeDrag) { updateShape(c); return; }
-            if (S.pointerDown && (S.tool === "pencil" || S.tool === "eraser")) { applyToolAt(c, false); return; }
+            if (S.shapeDrag) {
+                updateShape(c);
+                return;
+            }
+            if (S.pointerDown && (S.tool === "pencil" || S.tool === "eraser")) {
+                applyToolAt(c, false);
+                return;
+            }
             if (S.tool === "addtile" || S.tool === "removetile") updateHover();
         };
 
@@ -525,11 +656,16 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             if (!(S.panning || S.pointerDown || S.copyDrag || S.shapeDrag)) return;
             if (S.copyDrag) {
                 const cd = S.copyDrag;
-                S.copyDrag = null; S.overlay = null;
+                S.copyDrag = null;
+                S.overlay = null;
                 const r = canvasRef.current?.getBoundingClientRect();
-                const inside = r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+                const inside = r && e.clientX >= r.left && e.clientX <= r.right &&
+                    e.clientY >= r.top && e.clientY <= r.bottom;
                 let t = null;
-                if (inside) { const p = canvasPoint(e); t = tileAt(toDoc(p.sx, p.sy)); }
+                if (inside) {
+                    const p = canvasPoint(e);
+                    t = tileAt(toDoc(p.sx, p.sy));
+                }
                 if (t && !(t.cx === cd.src.cx && t.cy === cd.src.cy)) {
                     const before = snapshotOf(s.doc);
                     pasteTile(s.doc, t.cx, t.cy, cd.tile);
@@ -551,7 +687,13 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             e.stopPropagation();
             const wrap = wrapRef.current;
             let dx = e.deltaX, dy = e.deltaY;
-            if (e.deltaMode === 1) { dx *= 16; dy *= 16; } else if (e.deltaMode === 2) { dx *= wrap.clientWidth; dy *= wrap.clientHeight; }
+            if (e.deltaMode === 1) {
+                dx *= 16;
+                dy *= 16;
+            } else if (e.deltaMode === 2) {
+                dx *= wrap.clientWidth;
+                dy *= wrap.clientHeight;
+            }
             const v = sess().view;
             if (e.shiftKey || e.ctrlKey) {
                 const d = dy || dx;
@@ -559,7 +701,8 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 const { sx, sy } = canvasPoint(e);
                 setZoom(v.zoom * (d < 0 ? 1.15 : 1 / 1.15), sx, sy);
             } else {
-                v.panY -= dy; v.panX -= dx;
+                v.panY -= dy;
+                v.panX -= dx;
                 render();
             }
         };
@@ -579,40 +722,83 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             if (isTyping(e.target)) return;
             const S = R.current;
             const key = e.key;
-            if (e.code === "Space") { S.spaceHeld = true; syncCursor(); e.preventDefault(); return; }
-            if (key === "Shift") { S.shiftHeld = true; syncCursor(); return; }
-            if ((e.ctrlKey || e.metaKey) && key.toLowerCase() === "z") { doUndo(); e.preventDefault(); return; }
-            if ((e.ctrlKey || e.metaKey) && key.toLowerCase() === "s") { e.preventDefault(); void doSave(); return; }
-            if (KEY_TOOL[key] && !e.ctrlKey && !e.metaKey && !e.altKey) { selectTool(KEY_TOOL[key]); return; }
+            if (e.code === "Space") {
+                S.spaceHeld = true;
+                syncCursor();
+                e.preventDefault();
+                return;
+            }
+            if (key === "Shift") {
+                S.shiftHeld = true;
+                syncCursor();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && key.toLowerCase() === "z") {
+                doUndo();
+                e.preventDefault();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && key.toLowerCase() === "s") {
+                e.preventDefault();
+                void doSave();
+                return;
+            }
+            if (KEY_TOOL[key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                selectTool(KEY_TOOL[key]);
+                return;
+            }
             if (key === "Escape" && (S.copyDrag || S.shapeDrag)) {
                 cancelStroke();
-                S.copyDrag = null; S.shapeDrag = null; S.overlay = null; S.pointerDown = false;
+                S.copyDrag = null;
+                S.shapeDrag = null;
+                S.overlay = null;
+                S.pointerDown = false;
                 render();
                 return;
             }
             if (key === "+" || key === "=") setZoom(sess().view.zoom * 1.3);
             else if (key === "-") setZoom(sess().view.zoom / 1.3);
-            else if (key === "0") { fit(); bump(); render(); }
+            else if (key === "0") {
+                fit();
+                bump();
+                render();
+            }
         };
         const onKeyUp = (e: KeyboardEvent) => {
             e.stopPropagation();
             const S = R.current;
-            if (e.code === "Space") { S.spaceHeld = false; syncCursor(); if (!isTyping(e.target)) e.preventDefault(); }
-            if (e.key === "Shift") { S.shiftHeld = false; syncCursor(); }
+            if (e.code === "Space") {
+                S.spaceHeld = false;
+                syncCursor();
+                if (!isTyping(e.target)) e.preventDefault();
+            }
+            if (e.key === "Shift") {
+                S.shiftHeld = false;
+                syncCursor();
+            }
         };
 
         // ── save / close ─────────────────────────────────────────────────
         const doSave = async (): Promise<boolean> => {
             const S = R.current;
             if (S.saving) return false;
-            S.saving = true; bump();
+            S.saving = true;
+            bump();
             let ok = false;
-            try { ok = await props.onSave(sess()); } catch (e) { console.error("[sprite-editor] save failed", e); }
-            S.saving = false; bump();
+            try {
+                ok = await props.onSave(sess());
+            } catch (e) {
+                console.error("[sprite-editor] save failed", e);
+            }
+            S.saving = false;
+            bump();
             return ok;
         };
         const requestClose = () => {
-            if (sess().dirty) { R.current.closing = true; bump(); } else props.onClose();
+            if (sess().dirty) {
+                R.current.closing = true;
+                bump();
+            } else props.onClose();
         };
         const doExport = () => {
             const name = (sess().id.split(":").pop() || "sprite") + ".png";
@@ -633,9 +819,13 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             const next = String(input.value).toUpperCase();
             if (next.toLowerCase() === ed.prev.toLowerCase()) return;
             if (recolor(sess().doc, ed.prev, next)) {
-                if (!ed.pushed) { pushUndo(sess(), ed.snap); ed.pushed = true; }
+                if (!ed.pushed) {
+                    pushUndo(sess(), ed.snap);
+                    ed.pushed = true;
+                }
                 ed.prev = next;
-                syncOff(); render();
+                syncOff();
+                render();
             }
         };
         const onRecolorChange = () => {
@@ -648,14 +838,30 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             if (!sourceHex || sourceHex.toLowerCase() === targetHex.toLowerCase()) return;
             const s = sess(), before = snapshotOf(s.doc);
             // the swatch dropped ON takes the colour that was dragged
-            if (recolor(s.doc, targetHex, sourceHex)) { pushUndo(s, before); afterDoc(); }
+            if (recolor(s.doc, targetHex, sourceHex)) {
+                pushUndo(s, before);
+                afterDoc();
+            }
         };
 
-        F.current = { onDown, onMove, onUp, onWheel, onKeyDown, onKeyUp, resize, onRecolorInput, onRecolorChange };
+        F.current = {
+            onDown,
+            onMove,
+            onUp,
+            onWheel,
+            onKeyDown,
+            onKeyUp,
+            resize,
+            onRecolorInput,
+            onRecolorChange,
+        };
 
         // ── mount: native listeners ──────────────────────────────────────
         useEffect(() => {
-            const canvas = canvasRef.current, wrap = wrapRef.current, root = rootRef.current, ci = colorEditRef.current;
+            const canvas = canvasRef.current,
+                wrap = wrapRef.current,
+                root = rootRef.current,
+                ci = colorEditRef.current;
             syncOff();
             resize();
 
@@ -666,11 +872,17 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             const kd = (e: any) => F.current.onKeyDown(e);
             const ku = (e: any) => F.current.onKeyUp(e);
             const kp = (e: any) => e.stopPropagation();
-            const ctxm = (e: any) => { e.preventDefault(); e.stopPropagation(); };
+            const ctxm = (e: any) => {
+                e.preventDefault();
+                e.stopPropagation();
+            };
             const leave = () => {
                 const S = R.current;
                 S.lastScreen = null;
-                if (!S.copyDrag && S.overlay) { S.overlay = null; render(); }
+                if (!S.copyDrag && S.overlay) {
+                    S.overlay = null;
+                    render();
+                }
             };
             // hover: claim the keyboard only if nothing inside already has it (don't interrupt typing)
             const enterRoot = () => {
@@ -710,7 +922,9 @@ export function getSpriteEditor(): (props: EditorProps) => any {
                 lastPos = p;
                 setPos(p);
             };
-            const dup = () => { dragRef.current = null; };
+            const dup = () => {
+                dragRef.current = null;
+            };
             window.addEventListener("mousemove", dmove);
             window.addEventListener("mouseup", dup);
 
@@ -736,14 +950,19 @@ export function getSpriteEditor(): (props: EditorProps) => any {
         }, []);
 
         // re-render the canvas after any React re-render (state may have changed the doc)
-        useEffect(() => { syncOff(); render(); });
+        useEffect(() => {
+            syncOff();
+            render();
+        });
 
         // ── UI ───────────────────────────────────────────────────────────
         const S = R.current, s = sess();
         const hex = rgbToHex(S.color.r, S.color.g, S.color.b);
         const toolBtn = ([t, label, key, title]: [Tool, string, string, string]) =>
             h("button", {
-                key: t, type: "button", title,
+                key: t,
+                type: "button",
+                title,
                 style: S.tool === t ? T.btnActive : T.btn,
                 onClick: () => selectTool(t),
             }, `${key} ${label}`);
@@ -753,124 +972,357 @@ export function getSpriteEditor(): (props: EditorProps) => any {
             h("div", {
                 key: c,
                 draggable: true,
-                title: `${c} — ${pal.counts[c]} px · click select · double-click recolor · drag onto another swatch to merge`,
-                style: { ...T.swatch, background: c, outline: c === hex ? `2px solid ${T.C.accent}` : "none", outlineOffset: 1 },
-                onClick: () => { const r = hexToRgb(c); setColor(r.r, r.g, r.b); },
-                onDoubleClick: (e: any) => { e.stopPropagation(); startRecolor(c); },
-                onDragStart: (e: any) => { e.dataTransfer.setData("text/plain", c); e.dataTransfer.effectAllowed = "move"; },
-                onDragOver: (e: any) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; },
-                onDragEnter: (e: any) => { e.preventDefault(); e.currentTarget.style.outline = `2px dashed ${T.C.accent2}`; },
-                onDragLeave: (e: any) => { e.currentTarget.style.outline = c === hex ? `2px solid ${T.C.accent}` : "none"; },
+                title: `${c} — ${
+                    pal.counts[c]
+                } px · click select · double-click recolor · drag onto another swatch to merge`,
+                style: {
+                    ...T.swatch,
+                    background: c,
+                    outline: c === hex ? `2px solid ${T.C.accent}` : "none",
+                    outlineOffset: 1,
+                },
+                onClick: () => {
+                    const r = hexToRgb(c);
+                    setColor(r.r, r.g, r.b);
+                },
+                onDoubleClick: (e: any) => {
+                    e.stopPropagation();
+                    startRecolor(c);
+                },
+                onDragStart: (e: any) => {
+                    e.dataTransfer.setData("text/plain", c);
+                    e.dataTransfer.effectAllowed = "move";
+                },
+                onDragOver: (e: any) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                },
+                onDragEnter: (e: any) => {
+                    e.preventDefault();
+                    e.currentTarget.style.outline = `2px dashed ${T.C.accent2}`;
+                },
+                onDragLeave: (e: any) => {
+                    e.currentTarget.style.outline = c === hex ? `2px solid ${T.C.accent}` : "none";
+                },
                 onDrop: (e: any) => {
                     e.preventDefault();
                     e.currentTarget.style.outline = "none";
                     mergeSwatch(c, e.dataTransfer.getData("text/plain"));
                 },
-            }));
+            })
+        );
 
-        const w = Math.min(780, window.innerWidth - 16), hgt = Math.min(590, window.innerHeight - 16);
+        const w = Math.min(780, window.innerWidth - 16),
+            hgt = Math.min(590, window.innerHeight - 16);
 
-        return h("div", {
-            ref: rootRef, tabIndex: -1,
-            style: { ...T.win, left: pos.x, top: pos.y, width: w, height: hgt },
-            onMouseDown: (e: any) => e.stopPropagation(),
-        },
-            // header
-            h("div", {
-                style: T.header,
-                onMouseDown: (e: any) => {
-                    if (e.button !== 0 || (e.target as HTMLElement).closest("button,input")) return;
-                    dragRef.current = { ox: e.clientX - pos.x, oy: e.clientY - pos.y };
-                    e.preventDefault();
-                },
+        return h(
+            "div",
+            {
+                ref: rootRef,
+                tabIndex: -1,
+                style: { ...T.win, left: pos.x, top: pos.y, width: w, height: hgt },
+                onMouseDown: (e: any) => e.stopPropagation(),
             },
+            // header
+            h(
+                "div",
+                {
+                    style: T.header,
+                    onMouseDown: (e: any) => {
+                        if (e.button !== 0 || (e.target as HTMLElement).closest("button,input")) {
+                            return;
+                        }
+                        dragRef.current = { ox: e.clientX - pos.x, oy: e.clientY - pos.y };
+                        e.preventDefault();
+                    },
+                },
                 h("b", { style: { letterSpacing: 0.5 } }, "✏ SPRITE EDITOR"),
                 s.isNew
                     ? h("input", {
-                        style: { ...T.textInput, flex: 1 }, value: s.id, spellCheck: false,
+                        style: { ...T.textInput, flex: 1 },
+                        value: s.id,
+                        spellCheck: false,
                         title: "Sprite id (used by items / structures / projectiles)",
-                        onChange: (e: any) => { s.id = e.target.value; bump(); },
+                        onChange: (e: any) => {
+                            s.id = e.target.value;
+                            bump();
+                        },
                     })
-                    : h("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, title: s.id }, s.id),
-                h("span", { style: { color: s.dirty ? T.C.accent : T.C.muted }, title: s.dirty ? "Unsaved changes" : "Saved" }, s.dirty ? "● unsaved" : "saved"),
-                h("button", { type: "button", style: T.btnPrimary, disabled: S.saving, onClick: () => { void doSave(); }, title: "Save (Ctrl+S)" }, S.saving ? "Saving…" : "Save"),
-                h("button", { type: "button", style: T.btn, onClick: doExport, title: "Download as .png" }, "Export PNG"),
-                h("button", { type: "button", style: T.btn, onClick: requestClose, title: "Close" }, "✕"),
+                    : h("span", {
+                        style: {
+                            flex: 1,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                        },
+                        title: s.id,
+                    }, s.id),
+                h("span", {
+                    style: { color: s.dirty ? T.C.accent : T.C.muted },
+                    title: s.dirty ? "Unsaved changes" : "Saved",
+                }, s.dirty ? "● unsaved" : "saved"),
+                h("button", {
+                    type: "button",
+                    style: T.btnPrimary,
+                    disabled: S.saving,
+                    onClick: () => {
+                        void doSave();
+                    },
+                    title: "Save (Ctrl+S)",
+                }, S.saving ? "Saving…" : "Save"),
+                h("button", {
+                    type: "button",
+                    style: T.btn,
+                    onClick: doExport,
+                    title: "Download as .png",
+                }, "Export PNG"),
+                h(
+                    "button",
+                    { type: "button", style: T.btn, onClick: requestClose, title: "Close" },
+                    "✕",
+                ),
             ),
             // unsaved-close bar
-            S.closing ? h("div", { style: T.bar },
-                h("span", { style: { flex: 1 } }, "Unsaved changes."),
-                h("button", { type: "button", style: T.btnPrimary, onClick: async () => { if (await doSave()) props.onClose(); else { R.current.closing = false; bump(); } } }, "Save & close"),
-                h("button", { type: "button", style: T.btnDanger, onClick: () => props.onClose(), title: "Throw the changes away" }, "Discard"),
-                h("button", { type: "button", style: T.btn, onClick: () => { R.current.closing = false; bump(); } }, "Cancel"),
-            ) : null,
+            S.closing
+                ? h(
+                    "div",
+                    { style: T.bar },
+                    h("span", { style: { flex: 1 } }, "Unsaved changes."),
+                    h("button", {
+                        type: "button",
+                        style: T.btnPrimary,
+                        onClick: async () => {
+                            if (await doSave()) props.onClose();
+                            else {
+                                R.current.closing = false;
+                                bump();
+                            }
+                        },
+                    }, "Save & close"),
+                    h("button", {
+                        type: "button",
+                        style: T.btnDanger,
+                        onClick: () => props.onClose(),
+                        title: "Throw the changes away",
+                    }, "Discard"),
+                    h("button", {
+                        type: "button",
+                        style: T.btn,
+                        onClick: () => {
+                            R.current.closing = false;
+                            bump();
+                        },
+                    }, "Cancel"),
+                )
+                : null,
             // body
-            h("div", { style: T.body },
-                h("div", { style: T.aside },
-                    h("div", { style: T.section },
+            h(
+                "div",
+                { style: T.body },
+                h(
+                    "div",
+                    { style: T.aside },
+                    h(
+                        "div",
+                        { style: T.section },
                         h("h3", { style: T.h3 }, "Tools"),
-                        h("div", { style: T.toolGrid },
+                        h(
+                            "div",
+                            { style: T.toolGrid },
                             ...TOOLS.map(toolBtn),
-                            h("button", { type: "button", style: T.btn, title: "Undo (Ctrl+Z)", onClick: doUndo, disabled: s.undo.length === 0 }, "↶ Undo"),
+                            h("button", {
+                                type: "button",
+                                style: T.btn,
+                                title: "Undo (Ctrl+Z)",
+                                onClick: doUndo,
+                                disabled: s.undo.length === 0,
+                            }, "↶ Undo"),
                         ),
                     ),
-                    h("div", { style: T.section },
+                    h(
+                        "div",
+                        { style: T.section },
                         h("h3", { style: T.h3 }, "Tiles & shapes"),
                         h("div", { style: T.toolGrid }, ...TILE_TOOLS.map(toolBtn)),
-                        h("label", { style: T.check },
-                            h("input", { type: "checkbox", checked: S.rectFilled, onChange: (e: any) => { S.rectFilled = e.target.checked; e.target.blur(); bump(); } }),
-                            "filled square"),
-                        h("label", { style: T.check },
-                            h("input", { type: "checkbox", checked: S.rectSquare, onChange: (e: any) => { S.rectSquare = e.target.checked; e.target.blur(); bump(); } }),
-                            "lock 1:1 ratio"),
-                    ),
-                    h("div", { style: T.section },
-                        h("h3", { style: T.h3 }, "Current color"),
-                        h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-                            h("div", { style: { width: 30, height: 26, border: `1px solid ${T.C.border}`, background: hex } }),
+                        h(
+                            "label",
+                            { style: T.check },
                             h("input", {
-                                type: "color", value: hex.toLowerCase(),
-                                style: { width: 34, height: 26, border: `1px solid ${T.C.border}`, background: "none", padding: 0, cursor: "pointer" },
-                                onChange: (e: any) => { const r = hexToRgb(e.target.value); setColor(r.r, r.g, r.b); },
+                                type: "checkbox",
+                                checked: S.rectFilled,
+                                onChange: (e: any) => {
+                                    S.rectFilled = e.target.checked;
+                                    e.target.blur();
+                                    bump();
+                                },
+                            }),
+                            "filled square",
+                        ),
+                        h(
+                            "label",
+                            { style: T.check },
+                            h("input", {
+                                type: "checkbox",
+                                checked: S.rectSquare,
+                                onChange: (e: any) => {
+                                    S.rectSquare = e.target.checked;
+                                    e.target.blur();
+                                    bump();
+                                },
+                            }),
+                            "lock 1:1 ratio",
+                        ),
+                    ),
+                    h(
+                        "div",
+                        { style: T.section },
+                        h("h3", { style: T.h3 }, "Current color"),
+                        h(
+                            "div",
+                            { style: { display: "flex", alignItems: "center", gap: 8 } },
+                            h("div", {
+                                style: {
+                                    width: 30,
+                                    height: 26,
+                                    border: `1px solid ${T.C.border}`,
+                                    background: hex,
+                                },
+                            }),
+                            h("input", {
+                                type: "color",
+                                value: hex.toLowerCase(),
+                                style: {
+                                    width: 34,
+                                    height: 26,
+                                    border: `1px solid ${T.C.border}`,
+                                    background: "none",
+                                    padding: 0,
+                                    cursor: "pointer",
+                                },
+                                onChange: (e: any) => {
+                                    const r = hexToRgb(e.target.value);
+                                    setColor(r.r, r.g, r.b);
+                                },
                             }),
                             h("span", { style: { color: T.C.muted, fontSize: 11 } }, hex),
                         ),
                     ),
-                    h("div", { style: T.section },
+                    h(
+                        "div",
+                        { style: T.section },
                         h("h3", { style: T.h3 }, "Palette"),
-                        pal.colors.length
-                            ? h("div", { style: T.palette }, ...swatches)
-                            : h("div", { style: { color: T.C.muted, fontSize: 11 } }, "Draw something to see its colors."),
-                    ),
-                    h("div", { style: T.section },
-                        h("h3", { style: T.h3 }, "View"),
-                        h("div", { style: { display: "flex", gap: 5, alignItems: "center" } },
-                            h("button", { type: "button", style: T.btn, onClick: () => setZoom(s.view.zoom / 1.3), title: "Zoom out (-)" }, "−"),
-                            h("span", { style: { flex: 1, textAlign: "center", color: T.C.muted } }, Math.round(s.view.zoom * 100) + "%"),
-                            h("button", { type: "button", style: T.btn, onClick: () => setZoom(s.view.zoom * 1.3), title: "Zoom in (+)" }, "+"),
-                            h("button", { type: "button", style: T.btn, onClick: () => { fit(); bump(); render(); }, title: "Fit (0)" }, "Fit"),
+                        pal.colors.length ? h("div", { style: T.palette }, ...swatches) : h(
+                            "div",
+                            { style: { color: T.C.muted, fontSize: 11 } },
+                            "Draw something to see its colors.",
                         ),
-                        h("label", { style: T.check },
-                            h("input", { type: "checkbox", checked: S.grid, onChange: (e: any) => { S.grid = e.target.checked; e.target.blur(); bump(); } }),
-                            "tile grid"),
-                        h("label", { style: T.check },
-                            h("input", { type: "checkbox", checked: S.gridPx, onChange: (e: any) => { S.gridPx = e.target.checked; e.target.blur(); bump(); } }),
-                            "pixel grid (zoom ≥ 800%)"),
+                    ),
+                    h(
+                        "div",
+                        { style: T.section },
+                        h("h3", { style: T.h3 }, "View"),
+                        h(
+                            "div",
+                            { style: { display: "flex", gap: 5, alignItems: "center" } },
+                            h("button", {
+                                type: "button",
+                                style: T.btn,
+                                onClick: () => setZoom(s.view.zoom / 1.3),
+                                title: "Zoom out (-)",
+                            }, "−"),
+                            h(
+                                "span",
+                                { style: { flex: 1, textAlign: "center", color: T.C.muted } },
+                                Math.round(s.view.zoom * 100) + "%",
+                            ),
+                            h("button", {
+                                type: "button",
+                                style: T.btn,
+                                onClick: () => setZoom(s.view.zoom * 1.3),
+                                title: "Zoom in (+)",
+                            }, "+"),
+                            h("button", {
+                                type: "button",
+                                style: T.btn,
+                                onClick: () => {
+                                    fit();
+                                    bump();
+                                    render();
+                                },
+                                title: "Fit (0)",
+                            }, "Fit"),
+                        ),
+                        h(
+                            "label",
+                            { style: T.check },
+                            h("input", {
+                                type: "checkbox",
+                                checked: S.grid,
+                                onChange: (e: any) => {
+                                    S.grid = e.target.checked;
+                                    e.target.blur();
+                                    bump();
+                                },
+                            }),
+                            "tile grid",
+                        ),
+                        h(
+                            "label",
+                            { style: T.check },
+                            h("input", {
+                                type: "checkbox",
+                                checked: S.gridPx,
+                                onChange: (e: any) => {
+                                    S.gridPx = e.target.checked;
+                                    e.target.blur();
+                                    bump();
+                                },
+                            }),
+                            "pixel grid (zoom ≥ 800%)",
+                        ),
                     ),
                 ),
-                h("div", { ref: wrapRef, style: T.canvasWrap },
-                    h("canvas", { ref: canvasRef, style: { position: "absolute", left: 0, top: 0, cursor: "crosshair" } }),
-                    h("input", { ref: colorEditRef, type: "color", tabIndex: -1, style: { position: "absolute", width: 0, height: 0, opacity: 0, pointerEvents: "none" } }),
+                h(
+                    "div",
+                    { ref: wrapRef, style: T.canvasWrap },
+                    h("canvas", {
+                        ref: canvasRef,
+                        style: { position: "absolute", left: 0, top: 0, cursor: "crosshair" },
+                    }),
+                    h("input", {
+                        ref: colorEditRef,
+                        type: "color",
+                        tabIndex: -1,
+                        style: {
+                            position: "absolute",
+                            width: 0,
+                            height: 0,
+                            opacity: 0,
+                            pointerEvents: "none",
+                        },
+                    }),
                 ),
             ),
             // footer
-            h("div", { style: T.footer },
+            h(
+                "div",
+                { style: T.footer },
                 h("b", { style: { color: T.C.text } }, `${s.doc.width}×${s.doc.height}`),
-                h("span", null, `${Math.ceil(s.doc.width / CELL)} tile${Math.ceil(s.doc.width / CELL) === 1 ? "" : "s"}`),
+                h(
+                    "span",
+                    null,
+                    `${Math.ceil(s.doc.width / CELL)} tile${
+                        Math.ceil(s.doc.width / CELL) === 1 ? "" : "s"
+                    }`,
+                ),
                 h("span", { ref: statusRef, style: { minWidth: 150 } }, "x:– y:–"),
                 h("span", { style: { color: T.C.accent } }, S.note),
                 h("span", { style: { flex: 1 } }),
-                h("span", null, "1-9 tools · space/shift+drag pan · scroll pan · shift+scroll zoom · Ctrl+Z undo · Ctrl+S save"),
+                h(
+                    "span",
+                    null,
+                    "1-9 tools · space/shift+drag pan · scroll pan · shift+scroll zoom · Ctrl+Z undo · Ctrl+S save",
+                ),
             ),
         );
     }

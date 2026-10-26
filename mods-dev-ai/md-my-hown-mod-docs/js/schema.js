@@ -7,6 +7,16 @@ window.MD_SCHEMA = (function () {
   const CATEGORIES = ["blocks","logistics","production","economy","logic","fluids","lighting","special","misc","thermal"];
   const RECIPE_KINDS = ["grower","planterBox","shaker","kineticPress","condenser","steamDryer","synthesizer","snowmaker","smelter","structure"];
   const BUILD_MODES = ["single","singleDirectional","line","launcherRectUp","launcherRectSide","rectangle","rectangleDirectional"];
+  const BUFFER_TYPES = ["number","bool","string"];
+  const ENERGY_ROLES = ["conductor","storage"];
+  const BEHAVIOR_KINDS = ["conveyor","launcher"];
+  const UNLOCK_NODE_KINDS = ["always","tech"];
+  const DRAW_KEYS = ["default","hidden","outline","drawnSprite"];
+/** `structures.tooltipHover.type` — see `composeTooltipHover`. */
+  const TOOLTIP_HOVER_TYPES = ["filter", "custom"];
+
+  const ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,62}$";
+  const ID_MSG = "lowercase letters, digits, . _ - (max 63)";
   const MENU_GROUPS = [
     { key:"memory", label:"Memory", hint:"Shared process values",
       doc:"Buffers store named values every process in this mod can read and write. Use them as shared state between signals, processing, and items — not world content the player sees.",
@@ -109,29 +119,52 @@ window.MD_SCHEMA = (function () {
     return out;
   })();
   const FIELDS = {
-    elements: [["id","ID","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["matterType","Matter type","select",{options:MATTER}],["density","Density","number",{}],["metaColor","Meta color","text",{hint:"0xRRGGBB"}],["materialId","Material id","number",{}],["duration","Duration (s)","number",{}],["flammable","Flammable","bool",{}],["isGrabbable","Grabbable","bool",{}],["isTransportable","Transportable","bool",{}],["hidden","Hidden","bool",{}],["visibleInPicker","Visible in picker","bool",{}],["colors","Colors (JSON)","json",{hint:"{ variants: [[r,g,b,a],\u2026] }"}],["durationRandom","Duration random (JSON)","json",{hint:"{min,max}"}],["defaultDataFields","Default data fields (JSON)","json",{}],["interactions","Interactions (JSON)","json",{}]],
-    terrains: [["id","ID","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["hp","HP","number",{}],["materialId","Material id","number",{}],["metaColor","Meta color","text",{}],["colorHSL","Color HSL (JSON)","json",{}],["colorPattern","Color pattern (JSON)","json",{}],["colorGradient","Color gradient (JSON)","json",{}],["output","Output drop (JSON)","json",{hint:"{elementType, chance}"}],["background","Background (JSON)","json",{}],["backgroundElementType","Background element","text",{}],["fog","Fog","bool",{}],["flammable","Flammable","bool",{}],["noShadow","No shadow","bool",{}],["isBuilding","Is building","bool",{}],["excavationRequirements","Excavation requirements (JSON)","json",{}],["interactions","Interactions (JSON)","json",{}]],
-    structures: [["id","ID","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["categoryKey","Category","select",{options:CATEGORIES}],["order","Order","number",{}],["unlockNode","Unlock node","text",{required:true}],["hideFromBuildMenu","Hide from build menu","bool",{}],["alwaysUnlocked","Always unlocked","bool",{}],["disallowPick","Disallow pick","bool",{}],["maxPlaced","Max placed","number",{}],["blockGridType","Block grid type","text",{}],["shape","Shape matrix (JSON)","json",{hint:"number[][] 1=occupied"}],["buildModes","Build modes (JSON)","json",{hint:"[{type, directions?}]"}],["variants","Variants (JSON)","json",{hint:"[{id, angles}]"}],["render","Render (JSON)","json",{hint:"{imageName, size, offset, ui, spritesheet}"}],["drawKey","Draw key","text",{}],["defaultData","Default data (JSON)","json",{}],["copyData","Copy data","bool",{}],["rejectWhenBlocked","Reject when blocked","bool",{}],["altOriginOffsetY","Alt origin offset Y","number",{}],["tooltipHover","Tooltip hover (JSON)","json",{}],["registerOptions","Register options (JSON)","json",{}]],
-    items: [["id","ID","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["itemType","Item type","select",{options:["Weapon", "Tool", "Consumable", "Mod"]}],["type","Type alias","text",{}],["categoryKey","Category","text",{}],["sprite","Sprite (JSON)","json",{required:true,hint:"{id, type, mount?}"}],["cooldown","Cooldown","number",{}],["handlerKey","Handler / process id","text",{}],["hideFromBuildMenu","Hide from menu","bool",{}]],
-    sprites: [["id","ID","text",{required:true}],["path","Path (mod-relative)","text",{}],["source","Source URL","text",{}],["fromMod","From mod","bool",{}],["options","Options (JSON)","json",{}]],
-    buffers: [["id","ID","text",{required:true}],["value","Initial value","text",{}],["numberValue","Initial number","number",{}]],
-    contacts: [["id","ID","text",{required:true}],["inputA","Input A","text",{required:true}],["inputB","Input B","text",{required:true}],["outputA","Output A","text",{}],["outputB","Output B","text",{}],["orientation","Orientation","text",{}]],
-    recipes: [["id","ID","text",{required:true}],["kind","Kind","select",{options:RECIPE_KINDS}],["structureType","Structure type","text",{}],["input","Input element","text",{}],["output","Output element","text",{}],["chance","Chance 0\u20131","number",{}],["outputs","Outputs (JSON)","json",{}],["outputsAbove","Outputs above (JSON)","json",{}],["outputsBelow","Outputs below (JSON)","json",{}],["minimumDownwardVelocity","Min downward velocity","number",{}]],
-    processing: [["id","ID","text",{required:true}],["structureType","Structure type","text",{}],["intervalMs","Interval (ms)","number",{}],["processId","Process id","text",{}],["handlerKey","Handler key","text",{}]],
-    techs: [["id","ID","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["cost","Cost (JSON)","json",{}],["requires","Requires (JSON)","json",{}],["unlocks","Unlocks (JSON)","json",{}]],
-    unlockNodes: [["id","ID","text",{required:true}],["name","Name","text",{}],["description","Description","text",{}]],
-    upgrades: [["id","ID","text",{required:true}],["name","Name","text",{}],["category","Category","text",{}],["maxLevel","Max level","number",{}],["processId","Process id","text",{}],["handlerKey","Handler key","text",{}],["costs","Costs (JSON)","json",{}],["targets","Targets (JSON)","json",{}]],
-    upgradeCategories: [["id","ID","text",{required:true}],["name","Name","text",{}],["order","Order","number",{}]],
-    triggers: [["id","ID","text",{required:true}],["triggerId","Trigger id","text",{}],["interval","Interval","number",{}],["sequentialRuns","Sequential runs","number",{}],["handlerKey","Handler / process","text",{}],["extra","Extra (JSON)","json",{}]],
-    signals: [["id","ID","text",{required:true}],["kind","Kind","select",{options:["targets", "interactables", "senderType"]}],["target","Target","text",{required:true}],["handlerKey","Handler / process","text",{}],["processId","Process id","text",{}]],
-    modifiers: [["id","ID","text",{required:true}],["hookId","Hook id","text",{required:true}],["kind","Kind","select",{options:["intercept", "modify"]}],["handlerKey","Handler / process","text",{}],["processId","Process id","text",{}],["enabled","Enabled","bool",{}],["notes","Notes","text",{}],["options","Options (JSON)","json",{}]],
-    inputBindings: [["id","ID","text",{required:true}],["displayName","Display name","text",{required:true}],["displayNameKey","Display name key","text",{}],["category","Category","text",{required:true}],["defaultKeys","Default keys (JSON)","json",{hint:"[\"KeyO\"]"}],["onDownKey","On down handler","text",{}],["onUpKey","On up handler","text",{}],["subsection","Subsection (JSON)","json",{}]],
+    elements: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["matterType","Matter type","select",{options:MATTER,required:true}],["density","Density","number",{required:true,min:0,max:1000,hint:"0-1000, heavier sinks"}],["metaColor","Meta colour","color",{fmt:"int",hint:"packed RGB for minimap"}],["materialId","Material id","number",{}],["duration","Duration (s)","number",{min:0}],["durationRandom.min","Duration min (s)","number",{min:0,hint:"both min+max required to take effect"}],["durationRandom.max","Duration max (s)","number",{min:0}],["flammable","Flammable","bool",{}],["collectable.value","Collector value","number",{min:0}],["isGrabbable","Grabbable","bool",{}],["isTransportable","Transportable","bool",{}],["hidden","Hidden","bool",{}],["visibleInPicker","Visible in picker","bool",{}],["colors.variants","Colour variants","list",{item:"array",hint:"RGBA per row, engine picks one at random per cell",fields:[["0","R","number",{min:0,max:255}],["1","G","number",{min:0,max:255}],["2","B","number",{min:0,max:255}],["3","A","number",{min:0,max:255}]]}],["colors.variantFromDataField1","Variant from data field 1","kv",{valueType:"auto",hint:"rangeMin, rangeMax, invert, useGradient"}],["defaultDataFields","Default data fields","kv",{valueType:"number",hint:"name → default number"}],["interactions","Interactions","list",{item:"object",hint:"One row per tooltip interaction. Which fields apply depends on Kind (Interaction union in host-types/domain.d.ts).",fields:[
+        ["kind","Kind","select",{required:true,options:["destroyer","structure","entity","flammable","meltable","freezable","custom"]}],
+        ["items","Items destroyed","tags",{when:{field:"kind",equals:"destroyer"},hint:"item ids removed by this interaction, e.g. drill"}],
+        ["structures","Structures","tags",{when:{field:"kind",equals:"structure"},hint:"structure ids shown in the interaction tooltip"}],
+        ["entities","Entities","tags",{when:{field:"kind",equals:"entity"},hint:"entity type ids referenced by the interaction"}],
+        ["textKey","Text key","text",{when:{field:"kind",in:["structure","custom"]},hint:"i18n key for the interaction label text"}],
+        ["crossedOutWhen.dataField","Crossed out · data field","number",{when:{field:"kind",in:["structure","custom"]}}],
+        ["crossedOutWhen.equals","Crossed out · equals","number",{when:{field:"kind",in:["structure","custom"]},hint:"hide the label when the data field has this value"}],
+        ["visibleWhen.dataField","Visible · data field","number",{when:{field:"kind",in:["structure","custom"]}}],
+        ["visibleWhen.equals","Visible · equals","number",{when:{field:"kind",in:["structure","custom"]},hint:"show the label only when the data field has this value"}],
+        ["onlyWhenTranslated","Only when translated","bool",{when:{field:"kind",in:["structure","custom"]},hint:"hide the label unless the text key exists in the active locale"}]
+      ]}]],
+    terrains: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["hp","HP","number",{min:0}],["materialId","Material id","number",{min:101,max:149,hint:"host accepts 101-149 only"}],["metaColor","Meta colour","color",{fmt:"int"}],["colorHSL","Colour HSL","triple",{labels:["H 0-360","S 0-100","L 0-100"],hint:"h,s,l — host needs exactly 3"}],["output.elementType","Drop element","ref",{from:"elements",nullable:true,hint:"tick null = drops nothing"}],["output.chance","Drop chance","number",{min:0,max:1}],["backgroundElementType","Background element","ref",{from:"elements"}],["fog","Fog","bool",{}],["flammable","Flammable","bool",{}],["noShadow","No shadow","bool",{}],["isBuilding","Is building","bool",{}],["excavationRequirements","Excavation requirements","tags",{hint:"terrain ids the digger needs"}],["colorGradient.stops","Colour gradient stops","list",{item:"object",hint:"hp → colour",fields:[["hp","At HP","number",{required:true,min:0}],["color","Colour","triple",{labels:["R","G","B"]}]]}],["colorPattern.size","Pattern tile size","pair",{labels:["Width","Height"],hint:"exactly 2 numbers: [width, height]"}],
+      ["colorPattern.colorsHSL","Pattern cells (RGBA)","matrix",{group:4,required:true,hint:"one row per line, 4 numbers per cell (H,S,L,A), cells separated by 2+ spaces — matches TerrainColorPattern.colorsHSL"}],["background","Background","kv",{hint:"passed straight through to the host (TerrainDefinition index signature). The host does not document these keys — verify against the game before relying on one."}],["interactions","Interactions","list",{item:"object",hint:"One row per tooltip interaction. Which fields apply depends on Kind (Interaction union in host-types/domain.d.ts).",fields:[
+        ["kind","Kind","select",{required:true,options:["destroyer","structure","entity","flammable","meltable","freezable","custom"]}],
+        ["items","Items destroyed","tags",{when:{field:"kind",equals:"destroyer"},hint:"item ids removed by this interaction, e.g. drill"}],
+        ["structures","Structures","tags",{when:{field:"kind",equals:"structure"},hint:"structure ids shown in the interaction tooltip"}],
+        ["entities","Entities","tags",{when:{field:"kind",equals:"entity"},hint:"entity type ids referenced by the interaction"}],
+        ["textKey","Text key","text",{when:{field:"kind",in:["structure","custom"]},hint:"i18n key for the interaction label text"}],
+        ["crossedOutWhen.dataField","Crossed out · data field","number",{when:{field:"kind",in:["structure","custom"]}}],
+        ["crossedOutWhen.equals","Crossed out · equals","number",{when:{field:"kind",in:["structure","custom"]},hint:"hide the label when the data field has this value"}],
+        ["visibleWhen.dataField","Visible · data field","number",{when:{field:"kind",in:["structure","custom"]}}],
+        ["visibleWhen.equals","Visible · equals","number",{when:{field:"kind",in:["structure","custom"]},hint:"show the label only when the data field has this value"}],
+        ["onlyWhenTranslated","Only when translated","bool",{when:{field:"kind",in:["structure","custom"]},hint:"hide the label unless the text key exists in the active locale"}]
+      ]}]],
+    structures: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["categoryKey","Category","select",{options:CATEGORIES}],["order","Order","number",{}],["unlockNode","Unlock node","ref",{from:"unlockNodes",required:true,hint:"mod alias of unlockedBy · node kind always = free at start"}],["hideFromBuildMenu","Hide from build menu","bool",{}],["disallowPick","Disallow pick","bool",{}],["maxPlaced","Max placed","number",{min:0,hint:"mod-only cap, stripped before the host call"}],["blockGridType","Block grid type","text",{}],["shape","Shape matrix","matrix",{hint:"one row per line, 1 = occupied · number[][]"}],["buildModes","Build modes","list",{item:"object",hint:"how the player draws this structure",fields:[["type","Mode","select",{options:BUILD_MODES}],["directions","Directions","tags",{hint:"e.g. up,down"}]]}],["variants","Variants","list",{item:"object",hint:"rotation variants",fields:[["id","Variant id","text",{}],["angles","Angles","tags",{numeric:true,hint:"e.g. 0, 90, 180, 270"}]]}],["render.imageName","Render image","ref",{from:"sprites",hint:"render.imageName"}],["render.size.width","Render width","number",{min:0}],["render.size.height","Render height","number",{min:0}],["render.offset.x","Render offset X","number",{}],["render.offset.y","Render offset Y","number",{}],["drawKey","Draw key","select",{options:DRAW_KEYS,hint:"mod-only: custom draw routine alias"}],["defaultData","Default data","kv",{valueType:"auto"}],["copyData","Copy data","bool",{}],["rejectWhenBlocked","Reject when blocked","bool",{}],["altOriginOffsetY","Alt origin offset Y","number",{}],["tooltipHover.type","Tooltip hover · kind","select",{options:TOOLTIP_HOVER_TYPES,hint:"filter = built-in inspector · custom = dataFieldMessage tooltip"}],["tooltipHover.dataFieldMessage.messageKey","Tooltip message key","text",{when:{field:"tooltipHover.type",equals:"custom"},required:true,hint:"i18n key shown in the hover tooltip"}],["tooltipHover.dataFieldMessage.fields","Tooltip message fields","list",{item:"object",when:{field:"tooltipHover.type",equals:"custom"},hint:"exactly one row — the host reads a single field descriptor",fields:[["field","Data field","number",{min:1,max:4,hint:"optional — kept only when an integer 1-4"}],["param","Param","text",{}],["fallback","Fallback","text",{hint:"shown when the param has no translation"}]]}],["registerOptions.useRawShape","Use raw shape","bool",{hint:"wrapper-only: pass shape without normalising"}],["energyType","Energy network","ref",{from:"energyNetworks",hint:"entries whose energyType matches join this network"}]],
+    items: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["itemType","Item class","select",{options:["Weapon", "Tool", "Consumable", "Mod"]}],["type","Engine type alias","text",{hint:"raw engine type when it differs from the item class"}],["categoryKey","Category key","text",{}],["sprite.id","Sprite","ref",{from:"sprites",required:true}],["sprite.type","Sprite type","text",{}],["sprite.mount","Sprite mount","text",{hint:"e.g. hand"}],["cooldown","Cooldown (s)","number",{min:0}],["processId","Process","ref",{from:"processes",hint:"itemAction program compiled at register time"}],["handlerKey","Handler key","ref",{from:"@actions",hint:"engine handler when no itemAction program is used"}],["hideFromBuildMenu","Hide from menu","bool",{}]],
+    sprites: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["path","Path (mod-relative)","text",{hint:"PNG inside the mod folder — picked up when fromMod is on"}],["source","Source URL / data: URL","text",{hint:"data: URLs load through the sprite editor"}],["fromMod","Load from mod folder","bool",{}],["options","Load options","kv",{valueType:"auto",hint:"passed straight to api.sprites.load / loadFromMod"}]],
+    buffers: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["path","Buffer path","text",{required:true,hint:"prefix program buffer tags use, e.g. mdmy.buffers.counter"}],["type","Value type","select",{options:BUFFER_TYPES,required:true}],["default","Initial value","text",{coerceBy:"type",hint:"typed by Value type: number / true,false / text"}],["min","Min","number",{}],["max","Max","number",{}]],
+    contacts: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["inputA","Input A","ref",{from:"elements",required:true}],["inputB","Input B","ref",{from:"elements",required:true}],["outputA","Output A","ref",{from:"elements",nullable:true,hint:"tick null for no output"}],["outputB","Output B","ref",{from:"elements",nullable:true,hint:"tick null for no output"}],["orientation","Orientation","text",{hint:"leave empty for no orientation — verify against api.reactions.registerContact"}]],
+    recipes: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["kind","Machine kind","select",{options:RECIPE_KINDS,required:true}],["structureType","Structure type","ref",{from:"structures",hint:"machine structure when kind is not a built-in machine"}],["input","Input element","ref",{from:"elements",required:true,hint:"element consumed per run"}],["output","Output element","ref",{from:"elements",when:{field:"kind",in:["planterBox","grower"]}}],["chance","Output chance","number",{min:0,max:1,when:{field:"kind",in:["planterBox","grower"]}}],["outputs","Outputs","list",{item:"object",when:{field:"kind",notIn:["planterBox","grower","shaker"]},hint:"element + chance per output",fields:[["elementType","Element","ref",{from:"elements",required:true}],["chance","Chance","number",{min:0,max:1}]]}],["outputsAbove","Outputs above","list",{item:"object",when:{field:"kind",equals:"shaker"},hint:"shaker: dropped when hit from above",fields:[["elementType","Element","ref",{from:"elements",required:true}],["chance","Chance","number",{min:0,max:1}]]}],["outputsBelow","Outputs below","list",{item:"object",when:{field:"kind",equals:"shaker"},hint:"shaker: dropped when hit from below",fields:[["elementType","Element","ref",{from:"elements",required:true}],["chance","Chance","number",{min:0,max:1}]]}],["minimumDownwardVelocity","Min downward velocity","number",{min:0,when:{field:"kind",equals:"kineticPress"}}]],
+    processing: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["structureType","Structure","ref",{from:"structures",required:true}],["intervalMs","Interval (ms)","number",{required:true,min:1,hint:"host rejects non-positive values"}],["processId","Process","ref",{from:"processes",hint:"program compiled into process() — handlerKey is not read by the register step"}]],
+    techs: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["name","Name","text",{}],["nameKey","Name key","text",{}],["description","Description","text",{}],["descriptionKey","Description key","text",{}],["cost","Cost","number",{min:0}],["currencyType","Currency type","text",{}],["branch","Branch","text",{}],["parentId","Parent tech","ref",{from:"techs",hint:"tech-tree parent — presence also triggers api.tech.registerNode"}],["requires","Requires","tags",{hint:"comma-separated tech ids"}],["unlocks.structures","Unlocked structures","tags",{hint:"comma-separated structure ids"}],["unlocks.items","Unlocked items","tags",{hint:"comma-separated item ids"}],["unlocks.map","Unlocks map","bool",{}]],
+    unlockNodes: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["kind","Kind","select",{options:UNLOCK_NODE_KINDS,required:true}],["name","Name","text",{}],["description","Description","text",{}],["cost","Cost","number",{min:0}],["currencyType","Currency type","text",{}],["branch","Branch","text",{}],["parentId","Parent","text",{}],["requires","Requires","tags",{hint:"comma-separated node/tech ids"}],["techId","Tech id","ref",{from:"techs",hint:"existing tech this node points at — otherwise a tech is built from the node"}]],
+    upgrades: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["itemId","Item","ref",{from:"items",required:true}],["categoryId","Category","ref",{from:"upgradeCategories",required:true}],["itemName","Item name","text",{}],["itemNameKey","Item name key","text",{}],["processId","Process","ref",{from:"processes",hint:"program compiled as the upgrade's onUpgrade"}],["onUpgradeKey","On upgrade key","text",{}],["requirement","Requirement","kv",{valueType:"auto",hint:"what the player must have"}],["upgrade.id","Upgrade id","text",{}],["upgrade.nameKey","Upgrade name key","text",{}],["upgrade.descriptionKey","Upgrade description key","text",{}],["upgrade.maxLevel","Max level","number",{min:1}],["upgrade.costs","Costs per level","tags",{numeric:true,hint:"comma-separated numbers"}],["upgrade.oneOff","One-off","bool",{}]],
+    upgradeCategories: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["categoryId","Category id","text",{required:true}],["name","Name","text",{}],["nameKey","Name key","text",{}],["itemId","Item","ref",{from:"items"}],["itemName","Item name","text",{}],["itemNameKey","Item name key","text",{}],["requirement","Requirement","kv",{valueType:"auto",hint:"what the player needs before upgrading"}],["upgrade","Upgrade defaults","kv",{valueType:"auto",hint:"default upgrade payload for items in this category"}],["onUpgradeKey","On upgrade key","text",{}]],
+    triggers: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["triggerId","Trigger id","text",{hint:"host trigger id — defaults to the entry id"}],["interval","Interval (ticks)","number",{min:1,hint:"default 60"}],["sequentialRuns","Sequential runs","number",{min:1,hint:"default 1"}],["processId","Process","ref",{from:"processes",hint:"the program this trigger runs — this is the key the compiler reads"}],["extra","Extra","kv",{valueType:"auto",hint:"passed straight to api.triggers.register"}]],
+    signals: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["kind","Kind","select",{options:["targets", "interactables", "senderType"],required:true}],["target","Target structure","ref",{from:"structures",required:true,hint:"StructureRef — senderType registers as sender"}],["processId","Process","ref",{from:"processes",hint:"the program this signal runs — this is the key the compiler reads"}]],
+    modifiers: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["hookId","Hook id","text",{required:true,hint:"api.hooks hook name the action wraps"}],["kind","Kind","select",{options:["intercept", "modify"]}],["handlerKey","Action key","ref",{from:"@actions",required:true,hint:"modifier-signature actions only"}],["enabled","Enabled","bool",{}],["notes","Notes","text",{}],["options","Options","kv",{valueType:"auto",hint:"passed to the action as its options"}]],
+    inputBindings: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["displayName","Display name","text",{required:true}],["displayNameKey","Display name key","text",{}],["category","Category","text",{required:true}],["defaultKeys","Default keys","tags",{hint:"comma-separated KeyboardEvent codes, e.g. KeyO"}],["onDownKey","On down action","ref",{from:"@actions",hint:"action key run while the key is held"}],["onUpKey","On up action","ref",{from:"@actions"}],["subsection.title","Subsection title","text",{}],["subsection.titleKey","Subsection title key","text",{}],["subsection.description","Subsection description","text",{}],["subsection.descriptionKey","Subsection description key","text",{}]],
     energyNetworks: [["id","ID","text",{required:true}],["name","Name","text",{}],["description","Description","text",{}]],
-    energyTypes: [["id","ID","text",{required:true}],["name","Name","text",{}],["network","Network","text",{}]],
-    projectiles: [["id","ID","text",{required:true}],["name","Name","text",{}],["sprite","Sprite","text",{}],["options","Options (JSON)","json",{}]],
-    excavationProfiles: [["id","ID","text",{required:true}],["name","Name","text",{}],["options","Options (JSON)","json",{}]],
-    structureBehaviors: [["id","ID","text",{required:true}],["structureId","Structure id","text",{}],["behavior","Behavior (JSON)","json",{}]],
-    placementConfigs: [["id","ID","text",{required:true}],["structureId","Structure id","text",{required:true}],["fields","Fields (JSON)","json",{required:true,hint:"[{id, kind, \u2026}]"}]],
+    energyTypes: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["structureId","Structure","ref",{from:"structures",required:true}],["type","Energy role","select",{options:ENERGY_ROLES,required:true}],["options.energyType","Network","ref",{from:"energyNetworks",hint:"energyNetworks id — a network nothing joins has no effect"}],["options.capacity","Capacity","number",{min:0}],["options.priority","Priority","number",{}]],
+    projectiles: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["sprite.id","Sprite","ref",{from:"sprites",required:true,hint:"defaults to <id>-sprite when empty"}],["sprite.tint","Sprite tint","color",{fmt:"int",hint:"packed RGB tint"}],["getOptionsKey","Options key","text",{}],["options","Projectile options","kv",{valueType:"auto",hint:"flat key/value payload the option compiler reads"}]],
+    excavationProfiles: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["power","Power","number",{required:true,min:0}],["pattern","Pattern","matrix",{required:true,hint:"one row per line, 1 = cell hit — e.g. 1 / 1,1 / 1"}],["options.fromGun","From gun","bool",{}],["options.fromRocketExplosion","From rocket explosion","bool",{}],["options.fromDrill","From drill","bool",{}],["options.useLiteralOutVelocity","Literal out velocity","bool",{}],["options.destroyNonDestructible","Destroy non-destructible","bool",{}],["options.forceRemoveAll","Force remove all","bool",{}],["options.drillTierDamage","Drill tier damage","number",{min:0}],["terrainRules","Terrain rules","list",{item:"object",hint:"per-terrain overrides when this profile digs a cell",fields:[["cellType","Terrain","ref",{from:"terrains"}],["damage","Damage","number",{}],["outputElementType","Drop element","ref",{from:"elements"}]]}]],
+    structureBehaviors: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["kind","Kind","select",{options:BEHAVIOR_KINDS,required:true}],["behaviorType","Behaviour type","text",{}],["definition","Definition payload","kv",{valueType:"auto",required:true,hint:"conveyor: id + options… · launcher: payload keys — flat key/value pairs"}]],
+    placementConfigs: [["id","ID","text",{required:true,pattern:ID_PATTERN,msg:ID_MSG}],["structureId","Structure","ref",{from:"structures",required:true}],["fields","Placement fields","list",{item:"object",required:true,hint:"integer field caps placement like maxPlaced / choice offers presets",fields:[["type","Field type","select",{options:["integer","choice"],required:true}],["id","Field id","text",{required:true}],["label","Label","text",{}],["labelKey","Label key","text",{}],["min","Min","number",{when:{field:"type",equals:"integer"}}],["max","Max","number",{when:{field:"type",equals:"integer"}}],["default","Default","number",{when:{field:"type",equals:"integer"}}],["options","Choice options","list",{item:"object",when:{field:"type",equals:"choice"},fields:[["value","Value","text",{required:true}],["label","Label","text",{}],["labelKey","Label key","text",{}]]}]]}]],
     processes: [["id","ID","text",{required:true}],["name","Name","text",{}],["scope","Scope (slot)","select",{options:SLOTS,required:true}],["doc","Documentation","text",{}],["derived","Derived","bool",{}],["derivedFrom","Derived from","text",{}]],
     programV2: [["id","ID","text",{required:true}],["name","Name","text",{}],["scope","Scope (slot)","select",{options:SLOTS,required:true}],["doc","Documentation","text",{}]],
   };
@@ -2784,6 +2817,95 @@ window.MD_SCHEMA = (function () {
   }
 };
 
+// Section maps for every collection. A field with no entry falls back to "Other"
+// (or "Identity" for `id`); sections missing from SECTION_ORDER are appended in
+// field order, so every collection renders in a deterministic order.
+const NEW_SECTIONS = {
+  "buffers": { id: "Identity", path: "Identity", type: "Value", default: "Value", min: "Limits", max: "Limits" },
+  "terrains": {
+    description: "Identity", colorHSL: "Appearance", "output.elementType": "Drops",
+    "output.chance": "Drops", backgroundElementType: "Appearance", fog: "Flags",
+    noShadow: "Flags", isBuilding: "Flags", "colorGradient.stops": "Appearance",
+    colorPattern: "Appearance", background: "Appearance", interactions: "Interactions",
+    "colorPattern.size": "Appearance",
+    "colorPattern.colorsHSL": "Appearance",
+  },
+  "elements": {
+    nameKey: "Identity", materialId: "Physics", "durationRandom.min": "Behaviour",
+    "durationRandom.max": "Behaviour", flammable: "Behaviour", "collectable.value": "Behaviour",
+    hidden: "Flags", "colors.variants": "Appearance", "colors.variantFromDataField1": "Appearance",
+    interactions: "Interactions",
+  },
+  "structureBehaviors": { id: "Identity", kind: "Definition", behaviorType: "Definition", definition: "Definition" },
+  "contacts": { id: "Identity", inputA: "Inputs", inputB: "Inputs", outputA: "Outputs", outputB: "Outputs", orientation: "Outputs" },
+  "recipes": {
+    kind: "Machine", structureType: "Machine", input: "Inputs", output: "Outputs",
+    chance: "Outputs", minimumDownwardVelocity: "Outputs",
+  },
+  "structures": {
+    nameKey: "Identity", maxPlaced: "Placement", "render.imageName": "Render",
+    "render.size.width": "Render", "render.size.height": "Render", "render.offset.x": "Render",
+    "render.offset.y": "Render", altOriginOffsetY: "Render", "registerOptions.useRawShape": "Flags",
+    energyType: "Flags",
+  },
+  "placementConfigs": { id: "Identity", structureId: "Identity", fields: "Fields" },
+  "signals": { processId: "Program" },
+  "processing": { processId: "Program" },
+  "items": {
+    nameKey: "Identity", type: "Item", categoryKey: "Item", "sprite.id": "Sprite",
+    "sprite.type": "Sprite", "sprite.mount": "Sprite", cooldown: "Item",
+    processId: "Program", handlerKey: "Program",
+  },
+  "excavationProfiles": {
+    id: "Identity", power: "Digging", pattern: "Digging",
+    "options.fromGun": "Sources", "options.fromRocketExplosion": "Sources",
+    "options.fromDrill": "Sources", "options.useLiteralOutVelocity": "Sources",
+    "options.destroyNonDestructible": "Sources", "options.forceRemoveAll": "Sources",
+    "options.drillTierDamage": "Sources", terrainRules: "Terrain rules",
+  },
+  "projectiles": {
+    id: "Identity", "sprite.id": "Sprite", "sprite.tint": "Sprite",
+    getOptionsKey: "Options", options: "Options",
+  },
+  "inputBindings": {
+    id: "Identity", displayName: "Identity", displayNameKey: "Identity",
+    category: "Placement", defaultKeys: "Keys", onDownKey: "Keys", onUpKey: "Keys",
+    "subsection.title": "Subsection", "subsection.titleKey": "Subsection",
+    "subsection.description": "Subsection", "subsection.descriptionKey": "Subsection",
+  },
+  "techs": {
+    nameKey: "Identity", "unlocks.structures": "Unlocks", "unlocks.items": "Unlocks",
+    "unlocks.map": "Unlocks",
+  },
+  "unlockNodes": {
+    id: "Identity", kind: "Identity", name: "Identity", description: "Identity",
+    cost: "Research", currencyType: "Research", branch: "Research", parentId: "Research",
+    requires: "Research", techId: "Tech",
+  },
+  "upgradeCategories": {
+    id: "Identity", categoryId: "Identity", name: "Identity", nameKey: "Identity",
+    itemId: "Item", itemName: "Item", itemNameKey: "Item",
+    requirement: "Requirement", upgrade: "Upgrade", onUpgradeKey: "Upgrade",
+  },
+  "upgrades": {
+    itemName: "Identity", processId: "Program", onUpgradeKey: "Program",
+    requirement: "Requirement", "upgrade.id": "Identity", "upgrade.nameKey": "Identity",
+    "upgrade.descriptionKey": "Identity", "upgrade.maxLevel": "Upgrade",
+    "upgrade.costs": "Upgrade", "upgrade.oneOff": "Upgrade",
+  },
+  "triggers": { triggerId: "Identity", processId: "Program", extra: "Extra" },
+  "modifiers": {
+    id: "Identity", hookId: "Hook", kind: "Hook", handlerKey: "Hook",
+    enabled: "Flags", notes: "Notes", options: "Options",
+  },
+  "energyNetworks": { id: "Identity", name: "Identity", description: "Identity" },
+  "energyTypes": {
+    id: "Identity", structureId: "Network", type: "Network",
+    "options.energyType": "Options", "options.capacity": "Options", "options.priority": "Options",
+  },
+  "sprites": { id: "Identity", path: "Source", source: "Source", fromMod: "Source", options: "Load options" },
+};
+
   const FIELD_SECTIONS = {
     "programV2": {
       "id": "Identity",
@@ -2811,7 +2933,10 @@ window.MD_SCHEMA = (function () {
     "rejectWhenBlocked": "Placement",
     "unlockNode": "Flags",
     "tooltipHoverJson": "Render",
-    "tooltipHover": "Render",
+    "tooltipHover": "Tooltip",
+    "tooltipHover.type": "Tooltip",
+    "tooltipHover.dataFieldMessage.messageKey": "Tooltip",
+    "tooltipHover.dataFieldMessage.fields": "Tooltip",
     "variantsJson": "Render",
     "variants": "Render",
     "imageName": "Render",
@@ -2945,6 +3070,10 @@ window.MD_SCHEMA = (function () {
     "id": "Identity"
   }
 };
+  // Merge the exhaustive per-collection maps (explicit entries win over NEW_SECTIONS).
+  Object.keys(NEW_SECTIONS).forEach((col) => {
+    FIELD_SECTIONS[col] = Object.assign({}, NEW_SECTIONS[col], FIELD_SECTIONS[col] || {});
+  });
   const SECTION_ORDER = {
     "programV2": ["Identity", "Other"],
     "processes": ["Identity", "Meta", "Other"],
@@ -3014,6 +3143,26 @@ window.MD_SCHEMA = (function () {
     "Other"
   ]
 };
+  // Any section a collection uses but never orders is appended in field order by the
+  // editor, so SECTION_ORDER stays advisory; fill the gaps here for determinism and
+  // always park the catch-all "Other" bucket last.
+  COLLECTIONS.forEach((col) => {
+    const secMap = FIELD_SECTIONS[col.key] || {};
+    const used = [];
+    (FIELDS[col.key] || []).forEach((row) => {
+      const s = secMap[row[0]] || (row[0] === "id" ? "Identity" : "Other");
+      if (!used.includes(s)) used.push(s);
+    });
+    const order = (SECTION_ORDER[col.key] || []).slice();
+    used.forEach((s) => {
+      if (!order.includes(s)) order.push(s);
+    });
+    SECTION_ORDER[col.key] = [
+      ...order.filter((s) => used.includes(s) && s !== "Other"),
+      ...(order.includes("Other") && used.includes("Other") ? ["Other"] : []),
+    ];
+  });
+
 
   
   const PROGRAM_V2_FAMILIES = {
